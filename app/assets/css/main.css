@@ -1,0 +1,290 @@
+@font-face {
+  font-family: 'Archivo';
+  src: url('/fonts/archivo-variable-latin.woff2') format('woff2');
+  font-display: swap;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+}
+
+:root {
+  --bg: #131511;
+  --bg-raised: #1d2019;
+  --bg-hover: #262a20;
+  --border: #3a3f2e;
+  --gold: #ffd642;
+  --khaki: #b8b08d;
+  --text: #eceada;
+  --muted: #8f9078;
+  --red: #ff4b3e;
+  --teal: #4ad7c8;
+  --tier-c: #8f9078;
+  --tier-b: #6fbf73;
+  --tier-a: #4ad7c8;
+  --tier-s: #ffd642;
+  --tier-splus: #ff4b3e;
+  --cat-supply: #4a90ff;
+  --cat-eagle: var(--red);
+  --cat-orbital: var(--teal);
+  --cat-defense: var(--tier-b);
+  --cat-armor: var(--gold);
+  --cat-booster: #ff9f43;
+  --cat-primary: #9fb0d8;
+  --cat-gear: var(--khaki);
+  --font-body: 'Chakra Petch', ui-sans-serif, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Archivo', ui-sans-serif, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-snap: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 150ms;
+  --dur-med: 250ms;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 500px at 50% -10%, #23271c 0%, transparent 60%),
+    var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  margin: 0 0 0.5rem;
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  font-stretch: 125%;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+h2, h3 {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+h2 { font-size: 1.05rem; color: var(--khaki); }
+h3 { font-size: 0.9rem; }
+
+p { margin: 0.25rem 0; }
+
+a { color: var(--teal); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+.muted { color: var(--muted); }
+.small { font-size: 0.8rem; }
+.row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.spread { justify-content: space-between; }
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem 1rem 4rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
+}
+
+.panel {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--bg-hover);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.05s ease, filter 0.15s ease;
+}
+
+.btn:hover:not(:disabled) { filter: brightness(1.15); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn.primary {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #171712;
+}
+
+.btn.danger {
+  background: transparent;
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.btn.ghost { background: transparent; }
+.btn.tiny { padding: 0.25rem 0.6rem; font-size: 0.7rem; }
+
+input[type="text"], input[type="number"], select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  font: inherit;
+}
+
+input[type="checkbox"] { accent-color: var(--gold); width: 1rem; height: 1rem; }
+
+.chip {
+  display: inline-block;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  color: var(--khaki);
+}
+
+.chip.warn { color: var(--red); border-color: var(--red); }
+
+.tier-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.2rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: 1px solid currentColor;
+}
+
+.tier-badge.sm { min-width: 1.6rem; font-size: 0.75rem; padding: 0.1rem 0.3rem; }
+
+[data-tier="c"], [data-tier="C"] { color: var(--tier-c); }
+[data-tier="b"], [data-tier="B"] { color: var(--tier-b); }
+[data-tier="a"], [data-tier="A"] { color: var(--tier-a); }
+[data-tier="s"], [data-tier="S"] { color: var(--tier-s); }
+[data-tier="s+"], [data-tier="S+"] { color: var(--tier-splus); }
+
+.pips { display: inline-flex; gap: 3px; align-items: center; }
+.pips i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--khaki);
+  display: inline-block;
+}
+.pips i.on {
+  background: var(--red);
+  border-color: var(--red);
+  animation: pip-in 300ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+@keyframes pip-in {
+  from { transform: scale(0.4); opacity: 0.4; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.grid {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(19, 21, 17, 0.92);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-stretch: 125%;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  font-size: 1.05rem;
+}
+
+.top-bar nav { display: flex; gap: 1rem; }
+
+details.panel summary {
+  cursor: pointer;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--khaki);
+}
+
+@media (min-width: 700px) {
+  .page { padding-top: 1.5rem; }
+}
+
+/* Phase swaps (Vue <Transition name="phase" mode="out-in">) */
+.phase-enter-active {
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+}
+.phase-leave-active {
+  transition: opacity 120ms ease-in, transform 120ms ease-in;
+}
+.phase-enter-from {
+  opacity: 0;
+  transform: translateY(12px) scale(0.995);
+}
+.phase-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* Attention pulse for the one button the squad must press next */
+.btn.attn {
+  animation: attn-pulse 1.6s ease-in-out infinite;
+}
+@keyframes attn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 45%, transparent); }
+  50% { box-shadow: 0 0 0 8px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

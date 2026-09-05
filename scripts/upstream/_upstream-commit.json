@@ -1,0 +1,106 @@
+{
+  "sha": "9c4a8aaffd83385a2ca85d1105adfe9c9afe430b",
+  "node_id": "C_kwDOL1t6DdoAKDljNGE4YWFmZmQ4MzM4NWEyY2E4NWQxMTA1YWRmZTljOWFmZTQzMGI",
+  "commit": {
+    "author": {
+      "name": "JoeBen Wilson",
+      "email": "53917177+Selenestica@users.noreply.github.com",
+      "date": "2026-08-27T13:17:56Z"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "date": "2026-08-27T13:17:56Z"
+    },
+    "message": "Merge pull request #41 from wisq/main\n\nAdd missing Weapons tag for Meltagun.",
+    "tree": {
+      "sha": "1ed5d602ca4edb16cf61e30094750d9cc5b05755",
+      "url": "https://api.github.com/repos/Selenestica/hd2-random-strat/git/trees/1ed5d602ca4edb16cf61e30094750d9cc5b05755"
+    },
+    "url": "https://api.github.com/repos/Selenestica/hd2-random-strat/git/commits/9c4a8aaffd83385a2ca85d1105adfe9c9afe430b",
+    "comment_count": 0,
+    "verification": {
+      "verified": true,
+      "reason": "valid",
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJqkDkECRC1aQ7uu5UhlAAAo/kQAArqS0VIQXGb6gjBjrnJUwtu\nAOwgjaGn4vB+d8pFbFjl/dapoE9VM/WqNiBW3GeLibK0zz2M1fBYp81N0HMDNijA\nIzM2k0naF217gAIohcAw90Nj5m2BSEftQ0GtBtRi8YhtkyRfwxZgyhBtSkY6UVV6\nUH9MnR+3kAdrWsvl+jpCU8PvcWUePjZirBjpoUW2JPzUa+OmyNolCwFQF3drqdgd\nuxuljcAIMpZwk0E4D4TEN5YMcVWn03QuOzxwsBkBt4XhOcVydsTLN/SwPy/4tvLs\nr5Ote25ZRdIkD8li0TCZ4zhuWl/MBCQapUirGhLBKxXwbNylWO36sHxA6Qj6Yj4K\nLFSiJO92ldn6pi+9EY/g+olFX0FdncXWob8QRyerRnifCHwKT52hrbbGMRqfrESD\nwHdY5WEbIoFKg+SMho6YgvIU2pxDENU4upFigfDOwUq4NpWmlt3N6VkYMPpq+HGw\nUD5ouCmLZw0LbbD4ycT/p97b6mSYYsAFjtWAYZHKyzugjQITwT6WuVD5l+uAwNyG\n9+HIAuAivLynaGnS/m+amQkUS4u97S6w9yh8XB/DEYKEW02m45GjR4JAFEZ5YQz3\nag7pO+XQu/KhLCMnM8MwffUjRJ0WyhZqcjg55gwwJ2A8nT6R8PSiqnW6kQ36bxw8\nlfJnLqKM+E+y2WOY7yoB\n=Jn1+\n-----END PGP SIGNATURE-----\n",
+      "payload": "tree 1ed5d602ca4edb16cf61e30094750d9cc5b05755\nparent 1f61fbbfa93a2a9b2c149f159cade274eaf65c92\nparent 8f76ae9f4b1dc981de3e82e86a53bffbd08b7d72\nauthor JoeBen Wilson <53917177+Selenestica@users.noreply.github.com> 1787836676 -0400\ncommitter GitHub <noreply@github.com> 1787836676 -0400\n\nMerge pull request #41 from wisq/main\n\nAdd missing Weapons tag for Meltagun.",
+      "verified_at": "2026-08-27T13:17:56Z"
+    }
+  },
+  "url": "https://api.github.com/repos/Selenestica/hd2-random-strat/commits/9c4a8aaffd83385a2ca85d1105adfe9c9afe430b",
+  "html_url": "https://github.com/Selenestica/hd2-random-strat/commit/9c4a8aaffd83385a2ca85d1105adfe9c9afe430b",
+  "comments_url": "https://api.github.com/repos/Selenestica/hd2-random-strat/commits/9c4a8aaffd83385a2ca85d1105adfe9c9afe430b/comments",
+  "author": {
+    "login": "Selenestica",
+    "id": 53917177,
+    "node_id": "MDQ6VXNlcjUzOTE3MTc3",
+    "avatar_url": "https://avatars.githubusercontent.com/u/53917177?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/Selenestica",
+    "html_url": "https://github.com/Selenestica",
+    "followers_url": "https://api.github.com/users/Selenestica/followers",
+    "following_url": "https://api.github.com/users/Selenestica/following{/other_user}",
+    "gists_url": "https://api.github.com/users/Selenestica/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/Selenestica/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/Selenestica/subscriptions",
+    "organizations_url": "https://api.github.com/users/Selenestica/orgs",
+    "repos_url": "https://api.github.com/users/Selenestica/repos",
+    "events_url": "https://api.github.com/users/Selenestica/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/Selenestica/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "committer": {
+    "login": "web-flow",
+    "id": 19864447,
+    "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+    "avatar_url": "https://avatars.githubusercontent.com/u/19864447?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/web-flow",
+    "html_url": "https://github.com/web-flow",
+    "followers_url": "https://api.github.com/users/web-flow/followers",
+    "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+    "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+    "organizations_url": "https://api.github.com/users/web-flow/orgs",
+    "repos_url": "https://api.github.com/users/web-flow/repos",
+    "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/web-flow/received_events",
+    "type": "User",
+    "user_view_type": "public",
+    "site_admin": false
+  },
+  "parents": [
+    {
+      "sha": "1f61fbbfa93a2a9b2c149f159cade274eaf65c92",
+      "url": "https://api.github.com/repos/Selenestica/hd2-random-strat/commits/1f61fbbfa93a2a9b2c149f159cade274eaf65c92",
+      "html_url": "https://github.com/Selenestica/hd2-random-strat/commit/1f61fbbfa93a2a9b2c149f159cade274eaf65c92"
+    },
+    {
+      "sha": "8f76ae9f4b1dc981de3e82e86a53bffbd08b7d72",
+      "url": "https://api.github.com/repos/Selenestica/hd2-random-strat/commits/8f76ae9f4b1dc981de3e82e86a53bffbd08b7d72",
+      "html_url": "https://github.com/Selenestica/hd2-random-strat/commit/8f76ae9f4b1dc981de3e82e86a53bffbd08b7d72"
+    }
+  ],
+  "stats": {
+    "total": 2,
+    "additions": 1,
+    "deletions": 1
+  },
+  "files": [
+    {
+      "sha": "9f4786c08086480bacd234d0d3f9c06292e7fb6c",
+      "filename": "js/constants/stratagems.js",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "blob_url": "https://github.com/Selenestica/hd2-random-strat/blob/9c4a8aaffd83385a2ca85d1105adfe9c9afe430b/js%2Fconstants%2Fstratagems.js",
+      "raw_url": "https://github.com/Selenestica/hd2-random-strat/raw/9c4a8aaffd83385a2ca85d1105adfe9c9afe430b/js%2Fconstants%2Fstratagems.js",
+      "contents_url": "https://api.github.com/repos/Selenestica/hd2-random-strat/contents/js%2Fconstants%2Fstratagems.js?ref=9c4a8aaffd83385a2ca85d1105adfe9c9afe430b",
+      "patch": "@@ -1073,7 +1073,7 @@ const STRATAGEMS = [\n     displayName: \"Meltagun\",\n     type: \"Stratagem\",\n     category: \"Supply\",\n-    tags: [\"at\"],\n+    tags: [\"Weapons\", \"at\"],\n     warbondCode: \"warbond26\",\n     internalName: \"meltagun\",\n     imageURL: \"meltagun.svg\","
+    }
+  ]
+}
