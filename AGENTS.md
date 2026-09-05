@@ -359,12 +359,22 @@ slots are free. No queue infrastructure — presence only.
 
 ### Deployment
 
-One Node service (Nitro) on Fly.io/Railway (~$0–5/mo), WebSocket + REST + static app together —
-per-page HTML is a fixed ~2.6 KB gzip shell, so client assets, not rendered pages, dominate
-bandwidth. To cut egress further, serve the static app from a CDN (unmetered free egress, e.g.
-Cloudflare Pages with a `/*` shell fallback) and keep only WS + REST on the Node service.
+One Node service (Nitro) on Fly.io (`griffdive.fly.dev`, `ams` region), WebSocket + REST + static
+app together — per-page HTML is a fixed ~2.6 KB gzip shell, so client assets, not rendered pages,
+dominate bandwidth. To cut egress further, serve the static app from a CDN (unmetered free egress,
+e.g. Cloudflare Pages with a `/*` shell fallback) and keep only WS + REST on the Node service.
 `pnpm generate` remains supported for a static, offline, solo-only build. Storage driver swap
 (memory → Redis) is config-only for horizontal scale later.
+
+CI/CD: `.github/workflows/ci.yml` runs lint/typecheck/unit tests + the Playwright E2E suite on
+every PR and push to `main`; the `deploy` job (push to `main` only, needs both green) runs
+`flyctl deploy --remote-only` against the `Dockerfile` + `fly.toml` in repo using the
+`FLY_API_TOKEN` repo secret (a scope-limited deploy token, not a full account token). The image
+runs `node .output/server/index.mjs` on internal port 8080. `fly.toml` pins one machine
+(`min_machines_running = 1`, `auto_stop_machines = false`): room state is an in-memory KV and live
+peers live in an in-process directory — more than one machine splits squads across processes, and
+every deploy restarts the process, wiping in-flight rooms. Don't touch those two settings until
+the Redis swap lands.
 
 ---
 

@@ -1,26 +1,15 @@
-# Source: https://nuxtjs.org/deployments/koyeb#dockerize-your-application
-FROM node:lts as builder
-
+# syntax=docker/dockerfile:1
+FROM node:24-alpine AS build
 WORKDIR /app
-
+RUN corepack enable
 COPY . .
+RUN pnpm install --frozen-lockfile --prod=false \
+  && pnpm build
 
-RUN yarn install \
-  --prefer-offline \
-  --frozen-lockfile \
-  --non-interactive \
-  --production=false
-
-RUN yarn build
-
-FROM node:lts
-
+FROM node:24-alpine
 WORKDIR /app
-
-COPY --from=builder /app .
-
-ENV HOST 0.0.0.0
-ENV PORT 8080
-
-# Source: https://nuxt.com/docs/getting-started/deployment#entry-point
+ENV HOST=0.0.0.0 \
+    PORT=8080 \
+    NODE_ENV=production
+COPY --from=build /app/.output ./.output
 CMD ["node", ".output/server/index.mjs"]

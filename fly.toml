@@ -9,18 +9,20 @@ primary_region = 'ams'
 [build]
 
 [env]
+  HOST = '0.0.0.0'
   PORT = '8080'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = 'stop'
+  auto_stop_machines = false
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ['app']
 
+# Single instance only: room state is an in-memory KV (`useStorage('rooms')`)
+# and live peers live in an in-process directory. Scaling beyond one machine
+# splits squads across processes — deploy a Redis-backed storage driver first.
 [[vm]]
-  memory = '1gb'
-  cpu_kind = 'shared'
-  cpus = 1
-  memory_mb = 256
+  size = 'shared-cpu-1x'
+  memory = '256mb'
