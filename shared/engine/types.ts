@@ -6,7 +6,6 @@ export type CrusadeVariant = 'standard' | 'soloDuo' | 'super' | 'soloDuoSuper' |
 
 export interface CrusadeSettings {
   variant: CrusadeVariant
-  ownedWarbondCodes: string[]
 }
 
 export type DivePhase = 'lobby' | 'spin' | 'pacts' | 'diving' | 'rewards' | 'forfeit' | 'complete'
@@ -18,16 +17,16 @@ export interface DiverState {
   pactsLocked: boolean
   pactIds: string[]
   pickedOptionId: string | null
+  warbondCodes: string[]
 }
 
 export interface WheelResult {
   seed: number
   misfortuneId: string
-  front: FrontId
 }
 
 export interface ItemRef {
-  ownerId: string | 'shared'
+  ownerId: string
   itemId: string
 }
 
@@ -50,10 +49,12 @@ export interface DiveState {
   hostId: string | null
   openToLobby: boolean
   wheel: WheelResult | null
+  // The front is drawn once per operation and persists across its missions —
+  // each mission draws only a fresh misfortune.
+  frontId: FrontId | null
   misfortuneAccepted: boolean
   rerollTokens: number
   completedCombos: string[]
-  sharedStratagemIds: string[]
   personalInventories: Record<string, string[]>
   offerSeed: number | null
   lastReport: MissionReport | null
@@ -67,11 +68,13 @@ export type EngineAction
     | { type: 'ACCEPT_MISFORTUNE', accepted: boolean }
     | { type: 'REROLL_WHEEL', wheel: 'misfortune' | 'front', seed: number }
     | { type: 'SET_PACTS', playerId: string, pactIds: string[] }
+    | { type: 'SET_WARBONDS', playerId: string, warbondCodes: string[] }
     | { type: 'REPORT_RESULT', outcome: MissionOutcome, stars: number, timePct?: number }
     | { type: 'FORFEIT_ITEM', itemRef: ItemRef }
     | { type: 'PICK_REWARD', playerId: string, optionId: string }
     | { type: 'ADVANCE' }
     | { type: 'END_DIVE' }
+    | { type: 'KICK_DIVER', playerId: string }
     | { type: 'SET_NAME', playerId: string, name: string }
     | { type: 'TRANSFER_HOST', playerId: string }
     | { type: 'TOGGLE_OPEN', open: boolean }

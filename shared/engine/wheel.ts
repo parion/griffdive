@@ -3,8 +3,7 @@ import { MISFORTUNES } from '../data/misfortunes'
 import type { FrontId } from '../data/fronts'
 import type { Misfortune } from '../data/misfortunes'
 import { MISFORTUNE_MIN_DIFFICULTY, MIN_DIFFICULTY } from './config'
-import { mulberry32, pickRandom } from './rng'
-import type { WheelResult } from './types'
+import { deriveSeed, mulberry32, pickRandom } from './rng'
 
 export function eligibleMisfortunes(difficulty: number): Misfortune[] {
   return MISFORTUNES.filter(
@@ -12,14 +11,17 @@ export function eligibleMisfortunes(difficulty: number): Misfortune[] {
   )
 }
 
-// Draw order is fixed: misfortune first, then front. Same seed + difficulty
-// always yields the same wheel on every client (AGENTS.md: spins are seeds).
-export function deriveSpin(seed: number, difficulty: number): WheelResult {
-  const rng = mulberry32(seed)
-  const pool = eligibleMisfortunes(difficulty)
-  const misfortune = pickRandom(rng, pool)
-  const front = pickRandom(rng, FRONTS)
-  return { seed, misfortuneId: misfortune.id, front: front.id }
+// Misfortune and front draw from independent seeded streams, so a per-mission
+// misfortune redraw never disturbs the operation's front. Same seed always
+// yields the same draw on every client (AGENTS.md: spins are seeds).
+export function deriveMisfortune(seed: number, difficulty: number): Misfortune {
+  const rng = mulberry32(deriveSeed(seed, 1))
+  return pickRandom(rng, eligibleMisfortunes(difficulty))
+}
+
+export function deriveFront(seed: number): FrontId {
+  const rng = mulberry32(deriveSeed(seed, 2))
+  return pickRandom(rng, FRONTS).id
 }
 
 export function misfortuneById(id: string): Misfortune | null {

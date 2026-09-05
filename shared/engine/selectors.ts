@@ -1,4 +1,4 @@
-import { ALL_ITEMS } from '../data/catalog'
+import { ALL_ITEMS, ALL_WARBOND_CODES } from '../data/catalog'
 import type { Front } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
 import type { Misfortune } from '../data/misfortunes'
@@ -28,11 +28,38 @@ export function activeMisfortune(state: DiveState): Misfortune | null {
 }
 
 export function currentFront(state: DiveState): Front | null {
-  const id = state.wheel?.front
+  const id = state.frontId
   if (!id) {
     return null
   }
   return { id, displayName: frontDisplayName(id) }
+}
+
+export interface MisfortuneDecision {
+  decided: boolean
+  accepted: boolean
+}
+
+// `misfortuneAccepted: false` alone can't tell "not yet decided" from
+// "explicitly declined" — the decision stamp lives in the action log: the
+// first decision recorded after the current draw (spin or reroll) is the
+// squad's choice.
+export function misfortuneDecision(state: DiveState): MisfortuneDecision {
+  for (let i = state.actionLog.length - 1; i >= 0; i--) {
+    const action = state.actionLog[i]
+    if (!action) {
+      break
+    }
+    if (action.type === 'ACCEPT_MISFORTUNE') {
+      return { decided: true, accepted: action.accepted }
+    }
+    // A spin (new mission) or a misfortune reroll reopens the decision; a
+    // front reroll doesn't touch the misfortune on the table.
+    if (action.type === 'SPIN_WHEEL' || (action.type === 'REROLL_WHEEL' && action.wheel === 'misfortune')) {
+      break
+    }
+  }
+  return { decided: state.misfortuneAccepted, accepted: state.misfortuneAccepted }
 }
 
 function frontDisplayName(id: string): Front['displayName'] {
@@ -91,11 +118,10 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
     state.difficulty,
     diverLuck(state, diver),
   )
-  const pool = rewardPoolFor(state.settings?.ownedWarbondCodes ?? [])
-  const owned = new Set([
-    ...(state.personalInventories[diver.id] ?? []),
-    ...state.sharedStratagemIds,
-  ])
+  // The pool is the diver's own: warbonds are personal purchases, so each
+  // diver rolls offers against the catalog they can actually use.
+  const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
+  const owned = new Set(state.personalInventories[diver.id] ?? [])
   const count = optionsForStars(state.lastReport.stars, ceiling)
   return rollRewardOptions(deriveSeed(seed, 2), ceiling, count, pool, owned)
 }
@@ -124,15 +150,22 @@ export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): Cei
   return ceilingRange(difficulty, maxRisk, pactRisk)
 }
 
-export function canRerollWheel(state: DiveState): { allowed: boolean, free: boolean, reason: string | null } {
-  if (!state.wheel) {
+export function canRerollWheel(
+  state: DiveState,
+  wheel: 'misfortune' | 'front',
+): { allowed: boolean, free: boolean, reason: string | null } {
+  if (!state.wheel || !state.frontId) {
     return { allowed: false, free: false, reason: 'Spin the wheel first' }
   }
   if (state.divers.some(diver => diver.pactsLocked)) {
     return { allowed: false, free: false, reason: 'Pacts already locked' }
   }
+  // The front locks in with its operation — rerolls are mission-1 business.
+  if (wheel === 'front' && state.missionIndex > 0) {
+    return { allowed: false, free: false, reason: 'The front locks in for the whole operation' }
+  }
   const completed = state.completedCombos.includes(
-    comboKey(state.wheel.misfortuneId, state.wheel.front),
+    comboKey(state.wheel.misfortuneId, state.frontId),
   )
   if (completed) {
     return { allowed: true, free: true, reason: null }

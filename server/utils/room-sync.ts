@@ -112,7 +112,7 @@ export function lobbyEntryFor(room: StoredRoom): LobbyEntry | null {
     slotsFree: SQUAD_SIZE_MAX - squadSize,
     difficulty: room.state.difficulty,
     variant: room.state.settings?.variant ?? null,
-    front: room.state.wheel?.front ?? null,
+    front: room.state.frontId ?? null,
     hostName: room.state.divers.find(diver => diver.isHost)?.name ?? '',
   }
 }
@@ -256,7 +256,12 @@ export async function processHello(
 // Self-service actions are coerced to the sender — a client can never act as
 // another diver.
 function enforceSelf(action: EngineAction, playerId: string): EngineAction {
-  if (action.type === 'SET_PACTS' || action.type === 'PICK_REWARD' || action.type === 'SET_NAME') {
+  if (
+    action.type === 'SET_PACTS'
+    || action.type === 'SET_WARBONDS'
+    || action.type === 'PICK_REWARD'
+    || action.type === 'SET_NAME'
+  ) {
     return { ...action, playerId }
   }
   return action

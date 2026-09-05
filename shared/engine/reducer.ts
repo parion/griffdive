@@ -1,16 +1,26 @@
-import { ITEMS_BY_ID } from '../data/catalog'
+import { ITEMS_BY_ID, WARBONDS } from '../data/catalog'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction } from './types'
 import { ACTION_LOG_CAP, MAX_DIFFICULTY, MAX_NAME_LENGTH, MAX_PACTS, REROLL_TOKENS_PER_OPERATION, maxStarsFor, missionsPerOperation } from './config'
 import { isPactSelectable } from './pacts'
-import { STARTING_KITS, personalKitIds } from './progression'
+import { STARTING_KITS, startingItemIds } from './progression'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed } from './rng'
 import { comboKey, diverOptions } from './selectors'
-import { deriveSpin } from './wheel'
+import { deriveFront, deriveMisfortune } from './wheel'
 
-export function createDiveState(settings: CrusadeSettings, hostId: string, hostName: string): DiveState {
+export function createDiveState(
+  settings: CrusadeSettings,
+  hostId: string,
+  hostName: string,
+  warbondCodes?: string[],
+): DiveState {
   const lobby = joinDiver(createLobbyState(), hostId, hostName) ?? createLobbyState()
-  return reduce(lobby, { type: 'START_DIVE', settings })
+  // The host's own warbond selection, applied like any self-service action so
+  // the action log records it.
+  const seated = warbondCodes
+    ? reduce(lobby, { type: 'SET_WARBONDS', playerId: hostId, warbondCodes })
+    : lobby
+  return reduce(seated, { type: 'START_DIVE', settings })
 }
 
 function commit(state: DiveState, patch: Partial<DiveState>, action: EngineAction): DiveState {
@@ -23,17 +33,16 @@ function commit(state: DiveState, patch: Partial<DiveState>, action: EngineActio
 
 function applyStart(state: DiveState, settings: CrusadeSettings): Partial<DiveState> {
   const kit = STARTING_KITS[settings.variant]
-  const personal = personalKitIds(settings.variant)
   const personalInventories: Record<string, string[]> = {}
   for (const diver of state.divers) {
-    personalInventories[diver.id] = [...personal]
+    personalInventories[diver.id] = startingItemIds(settings.variant)
   }
   return {
     settings,
     difficulty: kit.startDifficulty,
     phase: 'spin',
     rerollTokens: REROLL_TOKENS_PER_OPERATION,
-    sharedStratagemIds: [...kit.stratagems],
+    frontId: null,
     personalInventories,
   }
 }
@@ -60,6 +69,11 @@ export function resetOperation(state: DiveState): Partial<DiveState> {
     ...resetForNextMission(state),
     missionInOperation: 1,
     rerollTokens: REROLL_TOKENS_PER_OPERATION,
+    // A restarted operation keeps its front but draws a fresh misfortune per
+    // mission — the retry begins at the spin, like every mission.
+    wheel: null,
+    misfortuneAccepted: false,
+    phase: 'spin',
   }
 }
 
@@ -76,8 +90,11 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (state.phase !== 'spin' || !state.settings) {
         return state
       }
+      // Every mission draws its own misfortune; the front is drawn once per
+      // operation, with the first spin, and persists across its missions.
       return commit(state, {
-        wheel: deriveSpin(action.seed, state.difficulty),
+        wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed, state.difficulty).id },
+        frontId: state.frontId ?? deriveFront(action.seed),
         // The misfortune is a draw, not a verdict — the squad decides.
         misfortuneAccepted: false,
         phase: 'pacts',
@@ -98,21 +115,35 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
     }
 
     case 'REROLL_WHEEL': {
-      if (state.phase !== 'pacts' || !state.wheel) {
+      if (state.phase !== 'pacts' || !state.wheel || !state.frontId) {
         return state
       }
       if (state.divers.some(diver => diver.pactsLocked)) {
         return state
       }
+      // The front locks in with its operation — mission-1 decision window only.
+      if (action.wheel === 'front' && state.missionIndex > 0) {
+        return state
+      }
       const completed = state.completedCombos.includes(
-        comboKey(state.wheel.misfortuneId, state.wheel.front),
+        comboKey(state.wheel.misfortuneId, state.frontId),
       )
       if (!completed && state.rerollTokens < 1) {
         return state
       }
+      // A misfortune reroll redraws that mission's draw and reopens its
+      // decision; a front reroll (mission 1 only) swaps the operation's front
+      // and leaves the misfortune decision standing.
+      if (action.wheel === 'misfortune') {
+        return commit(state, {
+          wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed, state.difficulty).id },
+          misfortuneAccepted: false,
+          rerollTokens: completed ? state.rerollTokens : state.rerollTokens - 1,
+          seedHistory: [...state.seedHistory, action.seed],
+        }, action)
+      }
       return commit(state, {
-        wheel: deriveSpin(action.seed, state.difficulty),
-        misfortuneAccepted: false,
+        frontId: deriveFront(action.seed),
         rerollTokens: completed ? state.rerollTokens : state.rerollTokens - 1,
         seedHistory: [...state.seedHistory, action.seed],
       }, action)
@@ -144,8 +175,25 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }, action)
     }
 
+    case 'SET_WARBONDS': {
+      // Warbonds are what each diver actually owns — declared personally and
+      // valid in any phase, like SET_NAME. Reward pools read them at offer
+      // time; PICK_REWARD re-validates options, so no phase gate is needed.
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      if (!diver) {
+        return state
+      }
+      const known = new Set(WARBONDS.map(warbond => warbond.code))
+      const codes = [...new Set(action.warbondCodes)].filter(code => known.has(code))
+      return commit(state, {
+        divers: state.divers.map(candidate =>
+          candidate.id === diver.id ? { ...candidate, warbondCodes: codes } : candidate,
+        ),
+      }, action)
+    }
+
     case 'REPORT_RESULT': {
-      if (state.phase !== 'diving' || !state.wheel) {
+      if (state.phase !== 'diving' || !state.wheel || !state.frontId) {
         return state
       }
       // wiki.gg Mission Result: a completed mission never awards zero stars,
@@ -162,14 +210,15 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           offerSeed: deriveSeed(state.wheel.seed, state.missionIndex),
           completedCombos: [
             ...state.completedCombos,
-            comboKey(state.wheel.misfortuneId, state.wheel.front),
+            comboKey(state.wheel.misfortuneId, state.frontId),
           ],
         }, action)
       }
-      const holdingsEmpty = state.sharedStratagemIds.length === 0
-        && state.divers.every(diver => (state.personalInventories[diver.id] ?? []).length === 0)
+      const holdingsEmpty = state.divers.every(
+        diver => (state.personalInventories[diver.id] ?? []).length === 0,
+      )
       if (holdingsEmpty) {
-        return commit(state, { ...resetOperation(state), phase: 'pacts' }, action)
+        return commit(state, { ...resetOperation(state) }, action)
       }
       return commit(state, { phase: 'forfeit', lastReport: report }, action)
     }
@@ -178,17 +227,8 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (state.phase !== 'forfeit') {
         return state
       }
+      // Failure costs exactly one item, from the owner diver the squad picks.
       const { itemRef } = action
-      if (itemRef.ownerId === 'shared') {
-        if (!state.sharedStratagemIds.includes(itemRef.itemId)) {
-          return state
-        }
-        return commit(state, {
-          sharedStratagemIds: state.sharedStratagemIds.filter(id => id !== itemRef.itemId),
-          ...resetOperation(state),
-          phase: 'pacts',
-        }, action)
-      }
       const inventory = state.personalInventories[itemRef.ownerId]
       if (!inventory?.includes(itemRef.itemId)) {
         return state
@@ -199,7 +239,6 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           [itemRef.ownerId]: inventory.filter(id => id !== itemRef.itemId),
         },
         ...resetOperation(state),
-        phase: 'pacts',
       }, action)
     }
 
@@ -221,16 +260,12 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       const divers = state.divers.map(candidate =>
         candidate.id === diver.id ? { ...candidate, pickedOptionId: action.optionId } : candidate,
       )
-      const sharedStratagemIds = item.type === 'stratagem' && !state.sharedStratagemIds.includes(item.id)
-        ? [...state.sharedStratagemIds, item.id]
-        : state.sharedStratagemIds
-      const personalInventories = item.type === 'equipment'
-        ? {
-            ...state.personalInventories,
-            [diver.id]: [...(state.personalInventories[diver.id] ?? []), item.id],
-          }
-        : state.personalInventories
-      return commit(state, { divers, sharedStratagemIds, personalInventories }, action)
+      // Every reward is personal — stratagems included (no shared pool).
+      const personalInventories = {
+        ...state.personalInventories,
+        [diver.id]: [...(state.personalInventories[diver.id] ?? []), item.id],
+      }
+      return commit(state, { divers, personalInventories }, action)
     }
 
     case 'ADVANCE': {
@@ -249,9 +284,11 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
             achieved: true,
             ...resetForNextMission(state),
             wheel: null,
+            frontId: null,
           }, action)
         }
-        // Operation completed: the wheel re-spins for the next operation.
+        // Operation completed: a fresh operation draws a new front with its
+        // first spin.
         return commit(state, {
           missionIndex,
           difficulty: nextDifficulty,
@@ -259,17 +296,20 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           rerollTokens: REROLL_TOKENS_PER_OPERATION,
           ...resetForNextMission(state),
           wheel: null,
+          frontId: null,
           misfortuneAccepted: false,
           phase: 'spin',
         }, action)
       }
-      // Same operation: the misfortune × front persists — divers re-choose
-      // pacts only.
+      // Same operation: the front persists, but every mission draws a fresh
+      // misfortune — the next mission begins at the spin.
       return commit(state, {
         missionIndex,
         missionInOperation,
         ...resetForNextMission(state),
-        phase: 'pacts',
+        wheel: null,
+        misfortuneAccepted: false,
+        phase: 'spin',
       }, action)
     }
 
@@ -278,6 +318,24 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         return state
       }
       return commit(state, { phase: 'complete' }, action)
+    }
+
+    case 'KICK_DIVER': {
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      // The host anchors the squad — transfer host first to remove them.
+      if (!diver || diver.id === state.hostId) {
+        return state
+      }
+      // A kicked diver takes their personal inventory with them; their
+      // pending pact lock or reward pick stops blocking the squad.
+      const personalInventories = Object.fromEntries(
+        Object.entries(state.personalInventories).filter(([id]) => id !== diver.id),
+      )
+      const divers = state.divers.filter(candidate => candidate.id !== diver.id)
+      const phase = state.phase === 'pacts' && divers.every(entry => entry.pactsLocked)
+        ? 'diving'
+        : state.phase
+      return commit(state, { divers, personalInventories, phase }, action)
     }
 
     case 'SET_NAME': {

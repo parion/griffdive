@@ -111,7 +111,7 @@ describe('room-sync', () => {
 
     // Host launches the crusade first — the room starts in lobby phase.
     await processAction(kv, peers, host, {
-      action: { type: 'START_DIVE', settings: { variant: 'standard', ownedWarbondCodes: [] } },
+      action: { type: 'START_DIVE', settings: { variant: 'standard' } },
     })
     sent(host).length = 0
 
@@ -125,21 +125,69 @@ describe('room-sync', () => {
     const snapshot = await lastSnapshot(joiner)
     expect(snapshot.wheel?.seed).toBe(42)
 
-    // Self-service spoofing is coerced to the sender.
+    // Self-service spoofing is coerced to the sender. The pact is
+    // always-selectable — valid under any drawn misfortune.
     await processAction(kv, peers, joiner, {
-      action: { type: 'SET_PACTS', playerId: hostId.selfId, pactIds: ['thirsty'] },
+      action: { type: 'SET_PACTS', playerId: hostId.selfId, pactIds: ['stimAbstinent'] },
     })
     const after = await lastSnapshot(joiner)
     const coerced = after.divers.find(diver => diver.id === joinerId)
-    expect(coerced?.pactIds).toEqual(['thirsty'])
+    expect(coerced?.pactIds).toEqual(['stimAbstinent'])
     const hostDiver = after.divers.find(diver => diver.id === hostId.selfId)
     expect(hostDiver?.pactIds).toEqual([])
+
+    // Warbonds are self-service too: the spoofed playerId is coerced to the
+    // sender, and unknown codes are filtered by the reducer.
+    await processAction(kv, peers, joiner, {
+      action: { type: 'SET_WARBONDS', playerId: hostId.selfId, warbondCodes: ['warbond3', 'ghostBond', 'warbond3'] },
+    })
+    const afterWarbonds = await lastSnapshot(joiner)
+    const joinerDiver = afterWarbonds.divers.find(diver => diver.id === joinerId)
+    expect(joinerDiver?.warbondCodes).toEqual(['warbond3'])
+    const hostAfterWarbonds = afterWarbonds.divers.find(diver => diver.id === hostId.selfId)
+    expect(hostAfterWarbonds?.warbondCodes.length).toBeGreaterThan(1)
 
     // Reducer no-ops stay silent.
     const before = await lastSnapshot(joiner)
     await processAction(kv, peers, joiner, { action: { type: 'ADVANCE' } })
     const afterNoop = await lastSnapshot(joiner)
     expect(afterNoop).toBe(before)
+  })
+
+  it('lets the host kick a diver and silences the kicked diver', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    await processHello(kv, peers, joiner, { name: 'B' })
+    const joinerWelcome = sent(joiner).find(m => m.type === 'welcome')
+    if (joinerWelcome?.type !== 'welcome') {
+      throw new Error('no welcome')
+    }
+    const joinerId = joinerWelcome.selfId
+
+    sent(host).length = 0
+    sent(joiner).length = 0
+
+    // Kicking is host-only.
+    await processAction(kv, peers, joiner, { action: { type: 'KICK_DIVER', playerId: 'x' } })
+    expect(sent(joiner).some(m => m.type === 'error' && m.code === 'not-host')).toBe(true)
+
+    // Host kicks the joiner; the removal syncs to every peer.
+    await processAction(kv, peers, host, { action: { type: 'KICK_DIVER', playerId: joinerId } })
+    const snapshot = await lastSnapshot(host)
+    expect(snapshot.divers).toHaveLength(1)
+    expect((await lastSnapshot(joiner)).divers).toHaveLength(1)
+
+    // The kicked diver's connection is live but unseated: no more actions.
+    await processAction(kv, peers, joiner, { action: { type: 'SET_NAME', playerId: joinerId, name: 'Ghost' } })
+    expect(sent(joiner).some(m => m.type === 'error' && m.code === 'not-in-room')).toBe(true)
   })
 
   it('fills up at four divers and reports room-full', async () => {

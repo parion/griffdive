@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { STARTING_KITS, VARIANTS, assertKitsValid, kitIds, personalKitIds } from './progression'
+import { STARTING_KITS, VARIANTS, assertKitsValid, startingItemIds } from './progression'
 
 describe('variants', () => {
   it('matches the AGENTS.md start difficulties', () => {
@@ -35,10 +35,15 @@ describe('starting kits', () => {
     expect(STARTING_KITS.quickplay.boosters).toContain('uavrecon')
   })
 
-  it('builds personal inventories without stratagems', () => {
-    const personal = personalKitIds('standard')
-    expect(personal).toContain('r2124constitution')
-    expect(personal).not.toContain('onetrueflag')
-    expect(kitIds('standard').length).toBeGreaterThan(personal.length)
+  it('builds one personal kit per diver — stratagems included, no shared pool', () => {
+    const kit = startingItemIds('standard')
+    expect(kit).toContain('r2124constitution')
+    expect(kit).toContain('onetrueflag')
+    expect(kit.length).toBe(STARTING_KITS.standard.stratagems.length
+      + STARTING_KITS.standard.primaries.length
+      + STARTING_KITS.standard.secondaries.length
+      + STARTING_KITS.standard.throwables.length
+      + STARTING_KITS.standard.armorPassives.length
+      + STARTING_KITS.standard.boosters.length)
   })
 })

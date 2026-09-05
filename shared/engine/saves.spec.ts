@@ -27,15 +27,15 @@ function v1Doc(overrides: Partial<SaveDoc['state']> = {}): SaveDoc {
       missionIndex: 0,
       missionInOperation: 1,
       achieved: false,
-      settings: { variant: 'standard', ownedWarbondCodes: [] },
+      settings: { variant: 'standard' },
       divers: [],
       hostId: null,
       openToLobby: false,
       wheel: null,
+      frontId: null,
       misfortuneAccepted: false,
       rerollTokens: 1,
       completedCombos: [],
-      sharedStratagemIds: [],
       personalInventories: {},
       offerSeed: null,
       lastReport: null,
@@ -44,6 +44,11 @@ function v1Doc(overrides: Partial<SaveDoc['state']> = {}): SaveDoc {
       ...overrides,
     },
   }
+}
+
+// v1–v3 wheels carried the front; the legacy shape reads it during migration.
+function legacyWheel(seed: number, misfortuneId: string, front: string): SaveDoc['state']['wheel'] {
+  return { seed, misfortuneId, front } as SaveDoc['state']['wheel']
 }
 
 describe('save migration v1 → v2 (armor passives)', () => {
@@ -67,7 +72,7 @@ describe('save migration v1 → v2 (armor passives)', () => {
   it('marks held wheels as accepted (misfortunes were forced pre-v3)', () => {
     const doc = v1Doc({
       phase: 'diving',
-      wheel: { seed: 9, misfortuneId: 'noBackpacks', front: 'terminids' },
+      wheel: legacyWheel(9, 'noBackpacks', 'terminids'),
     })
     const migrated = normalizeSaveDoc(doc)!
     expect(migrated.state.misfortuneAccepted).toBe(true)
@@ -82,14 +87,15 @@ describe('save migration v1 → v2 (armor passives)', () => {
       phase: 'forfeit',
       missionInOperation: 3,
       rerollTokens: 0,
-      wheel: { seed: 7, misfortuneId: 'noBackpacks', front: 'terminids' },
+      wheel: legacyWheel(7, 'noBackpacks', 'terminids'),
       lastReport: { outcome: 'failure', stars: 2 },
       offerSeed: null,
       personalInventories: { host: [pieceId] },
     })
     const migrated = normalizeSaveDoc(doc)!
-    expect(migrated.state.phase).toBe('pacts')
-    expect(migrated.state.wheel?.seed).toBe(7)
+    expect(migrated.state.phase).toBe('spin')
+    expect(migrated.state.wheel).toBeNull()
+    expect(migrated.state.frontId).toBe('terminids')
     expect(migrated.state.missionInOperation).toBe(1)
     expect(migrated.state.rerollTokens).toBe(1)
   })
@@ -106,5 +112,36 @@ describe('save migration v1 → v2 (armor passives)', () => {
   it('rejects malformed docs', () => {
     expect(normalizeSaveDoc(null)).toBeNull()
     expect(normalizeSaveDoc({ slotName: 'x' })).toBeNull()
+  })
+
+  it('accepts pre-v5 docs whose settings carried squad warbonds (diagnostics only)', () => {
+    const doc = v1Doc()
+    const settings = doc.state.settings as unknown as Record<string, unknown>
+    settings.ownedWarbondCodes = ['warbond3']
+    const migrated = normalizeSaveDoc(doc)
+    expect(migrated).not.toBeNull()
+    expect(migrated!.state.settings).toMatchObject({ variant: 'standard' })
+    expect(migrated!.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
+  })
+})
+
+describe('save migration v3 → v4 (misfortune per mission, front on the state)', () => {
+  it('moves the front off the wheel and keeps running missions coherent', () => {
+    const doc = v1Doc({
+      phase: 'pacts',
+      missionIndex: 1,
+      missionInOperation: 2,
+      wheel: legacyWheel(11, 'noSentries', 'automatons'),
+      misfortuneAccepted: true,
+    })
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.state.frontId).toBe('automatons')
+    expect(migrated.state.wheel).toEqual({ seed: 11, misfortuneId: 'noSentries' })
+  })
+
+  it('leaves frontless states (pre-spin, lobby, complete) with no front', () => {
+    const migrated = normalizeSaveDoc(v1Doc())!
+    expect(migrated.state.frontId).toBeNull()
+    expect(migrated.state.wheel).toBeNull()
   })
 })

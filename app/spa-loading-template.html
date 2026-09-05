@@ -1,0 +1,46 @@
+<div class="gd-splash">
+  <div class="gd-splash__brand">GRIFFDIVE</div>
+  <div class="gd-splash__sweep"><i></i></div>
+</div>
+<style>
+  .gd-splash {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    background:
+      radial-gradient(1200px 500px at 50% -10%, #23271c 0%, transparent 60%),
+      #131511;
+    font-family: ui-sans-serif, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  .gd-splash__brand {
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    color: #ffd642;
+  }
+  .gd-splash__sweep {
+    width: 120px;
+    height: 2px;
+    overflow: hidden;
+    border-radius: 1px;
+    background: #3a3f2e;
+  }
+  .gd-splash__sweep i {
+    display: block;
+    width: 40%;
+    height: 100%;
+    background: #4ad7c8;
+    animation: gd-sweep 1.1s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+  @keyframes gd-sweep {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(250%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gd-splash__sweep i { animation: none; }
+  }
+</style>

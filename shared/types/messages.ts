@@ -37,6 +37,7 @@ export const HOST_ONLY_ACTIONS = [
   'FORFEIT_ITEM',
   'ADVANCE',
   'END_DIVE',
+  'KICK_DIVER',
   'TRANSFER_HOST',
   'TOGGLE_OPEN',
 ] as const

@@ -135,9 +135,12 @@ export const STARTING_KITS: Readonly<Record<CrusadeVariant, StartingKit>> = {
   },
 }
 
-export function personalKitIds(variant: CrusadeVariant): string[] {
+// The full starting kit every diver owns personally — stratagems included
+// (no shared pool: earned stratagems belong to the diver who rolled them).
+export function startingItemIds(variant: CrusadeVariant): string[] {
   const kit = STARTING_KITS[variant]
   return [
+    ...kit.stratagems,
     ...kit.primaries,
     ...kit.secondaries,
     ...kit.throwables,
@@ -146,14 +149,9 @@ export function personalKitIds(variant: CrusadeVariant): string[] {
   ]
 }
 
-// Exported for tests: every kit id must exist in the catalog.
-export function kitIds(variant: CrusadeVariant): string[] {
-  return [...STARTING_KITS[variant].stratagems, ...personalKitIds(variant)]
-}
-
 export function assertKitsValid(): void {
   for (const variant of Object.keys(STARTING_KITS) as CrusadeVariant[]) {
-    for (const id of kitIds(variant)) {
+    for (const id of startingItemIds(variant)) {
       if (!ITEMS_BY_ID.has(id)) {
         throw new Error(`Starting kit "${variant}" references unknown item "${id}"`)
       }

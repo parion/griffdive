@@ -1,6 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   modules: ['@nuxt/eslint', '@nuxt/fonts', '@pinia/nuxt', 'motion-v/nuxt'],
+  ssr: false,
   components: [
     { path: '~/components', pathPrefix: false },
   ],

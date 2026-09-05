@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { STARTING_KITS } from './progression'
+import { startingItemIds } from './progression'
 import { createDiveState, reduce } from './reducer'
+import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
 import { allDiversPicked, canRerollWheel, comboKey, diverOptions } from './selectors'
 import type { DiveState, DiverState, EngineAction } from './types'
 
-const SETTINGS = { variant: 'standard' as const, ownedWarbondCodes: ['warbond3', 'warbond4'] }
+const SETTINGS = { variant: 'standard' as const }
 
 function freshState(): DiveState {
   return createDiveState(SETTINGS, 'p1', 'Griffin')
@@ -40,12 +41,14 @@ const skeletonActions: EngineAction[] = [
   { type: 'ACCEPT_MISFORTUNE', accepted: true },
   { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 2 },
   { type: 'SET_PACTS', playerId: 'p1', pactIds: ['thirsty'] },
+  { type: 'SET_WARBONDS', playerId: 'p1', warbondCodes: ['warbond3'] },
   { type: 'REPORT_RESULT', outcome: 'success', stars: 5 },
   { type: 'REPORT_RESULT', outcome: 'failure', stars: 2, timePct: 0.5 },
-  { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'shared', itemId: 'onetrueflag' } },
+  { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'p1', itemId: 'onetrueflag' } },
   { type: 'PICK_REWARD', playerId: 'p1', optionId: 'x' },
   { type: 'ADVANCE' },
   { type: 'END_DIVE' },
+  { type: 'KICK_DIVER', playerId: 'p2' },
   { type: 'SET_NAME', playerId: 'p1', name: 'Griffin' },
   { type: 'TRANSFER_HOST', playerId: 'p2' },
   { type: 'TOGGLE_OPEN', open: true },
@@ -64,7 +67,7 @@ describe('reduce (purity + no-op safety)', () => {
     expect(reduce(base, { type: 'ACCEPT_MISFORTUNE', accepted: true })).toBe(base)
     expect(reduce(base, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })).toBe(base)
     expect(reduce(base, { type: 'PICK_REWARD', playerId: 'p1', optionId: 'x' })).toBe(base)
-    expect(reduce(base, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'shared', itemId: 'onetrueflag' } })).toBe(base)
+    expect(reduce(base, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'p1', itemId: 'onetrueflag' } })).toBe(base)
     expect(reduce(base, { type: 'ADVANCE' })).toBe(base)
     const diving = divingState(42)
     expect(reduce(diving, { type: 'SPIN_WHEEL', seed: 1 })).toBe(diving)
@@ -78,8 +81,8 @@ describe('START_DIVE', () => {
     const state = freshState()
     expect(state.phase).toBe('spin')
     expect(state.difficulty).toBe(3)
-    expect(state.sharedStratagemIds).toEqual(STARTING_KITS.standard.stratagems)
-    expect(state.personalInventories.p1).toContain('r2124constitution')
+    // Every diver owns the full starting kit — stratagems included.
+    expect(state.personalInventories.p1).toEqual(startingItemIds('standard'))
     expect(state.rerollTokens).toBe(1)
   })
 
@@ -110,24 +113,45 @@ describe('SPIN_WHEEL / REROLL_WHEEL', () => {
     const state = reduce(spunState(42), { type: 'REROLL_WHEEL', wheel: 'front', seed: 43 })
     const blocked = reduce(state, { type: 'REROLL_WHEEL', wheel: 'front', seed: 44 })
     expect(blocked).toBe(state)
-    expect(canRerollWheel(blocked).allowed).toBe(false)
+    expect(canRerollWheel(blocked, 'front').allowed).toBe(false)
   })
 
   it('rerolls free when the combo was already completed', () => {
     const state = spunState(42)
     const marked: DiveState = {
       ...state,
-      completedCombos: [comboKey(state.wheel!.misfortuneId, state.wheel!.front)],
+      completedCombos: [comboKey(state.wheel!.misfortuneId, state.frontId!)],
     }
     const rerolled = reduce(marked, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 43 })
     expect(rerolled.rerollTokens).toBe(1)
-    expect(canRerollWheel(marked).free).toBe(true)
+    expect(canRerollWheel(marked, 'misfortune').free).toBe(true)
   })
 
   it('rejects rerolls after pacts are locked', () => {
     const state = divingState(42)
     const blocked = reduce(state, { type: 'REROLL_WHEEL', wheel: 'front', seed: 44 })
     expect(blocked).toBe(state)
+  })
+
+  it('locks the front after the operation starts; the misfortune stays rerollable', () => {
+    let state = divingState(42, ['stimAbstinent'])
+    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+    const options = diverOptions(state, requireDiver(state))
+    state = reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: options[0]!.optionId })
+    state = reduce(state, { type: 'ADVANCE' })
+    expect(state.missionIndex).toBe(1)
+    // Mission 2 begins at the spin — only after the fresh draw is the pact
+    // window open, and in it the front reroll is refused.
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 60 })
+    expect(state.phase).toBe('pacts')
+
+    const blocked = reduce(state, { type: 'REROLL_WHEEL', wheel: 'front', seed: 43 })
+    expect(blocked).toBe(state)
+    expect(canRerollWheel(state, 'front')).toMatchObject({
+      allowed: false,
+      reason: 'The front locks in for the whole operation',
+    })
+    expect(canRerollWheel(state, 'misfortune').allowed).toBe(true)
   })
 })
 
@@ -182,6 +206,40 @@ describe('SET_PACTS', () => {
   })
 })
 
+describe('SET_WARBONDS (personal ownership)', () => {
+  it('defaults every diver to the full warbond catalog', () => {
+    const state = freshState()
+    expect(state.divers[0]?.warbondCodes.length).toBeGreaterThan(0)
+  })
+
+  it('sets a diver\'s codes and filters unknown ones', () => {
+    const state = reduce(freshState(), {
+      type: 'SET_WARBONDS',
+      playerId: 'p1',
+      warbondCodes: ['warbond3', 'ghostBond', 'warbond3'],
+    })
+    expect(state.divers[0]?.warbondCodes).toEqual(['warbond3'])
+  })
+
+  it('works in the lobby phase and in any mission phase', () => {
+    const lobby = createLobbyState()
+    const seated = reduce(joinDiver(lobby, 'p1', 'Griffin')!, {
+      type: 'SET_WARBONDS',
+      playerId: 'p1',
+      warbondCodes: ['warbond3'],
+    })
+    expect(seated.divers[0]?.warbondCodes).toEqual(['warbond3'])
+    const diving = divingState(42)
+    const changed = reduce(diving, { type: 'SET_WARBONDS', playerId: 'p1', warbondCodes: [] })
+    expect(changed.divers[0]?.warbondCodes).toEqual([])
+  })
+
+  it('ignores unknown divers', () => {
+    const state = freshState()
+    expect(reduce(state, { type: 'SET_WARBONDS', playerId: 'ghost', warbondCodes: [] })).toBe(state)
+  })
+})
+
 describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
   it('clamps stars to what the difficulty offers', () => {
     const state = divingState(42)
@@ -199,7 +257,7 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
     expect(state.phase).toBe('rewards')
     expect(state.lastReport?.stars).toBe(3)
     expect(state.offerSeed).not.toBeNull()
-    expect(state.completedCombos).toContain(comboKey(state.wheel!.misfortuneId, state.wheel!.front))
+    expect(state.completedCombos).toContain(comboKey(state.wheel!.misfortuneId, state.frontId!))
 
     const options = diverOptions(state, requireDiver(state))
     expect(options.length).toBeGreaterThan(0)
@@ -211,20 +269,17 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
     }
     state = reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: picked.optionId })
     expect(allDiversPicked(state)).toBe(true)
-    if (picked.item.type === 'stratagem') {
-      expect(state.sharedStratagemIds).toContain(picked.item.id)
-    }
-    else {
-      expect(state.personalInventories.p1).toContain(picked.item.id)
-    }
+    // Stratagems are personal too — every reward lands in the picker's kit.
+    expect(state.personalInventories.p1).toContain(picked.item.id)
 
     state = reduce(state, { type: 'ADVANCE' })
     expect(state.missionIndex).toBe(1)
     expect(state.missionInOperation).toBe(2)
-    // The wheel persists for the whole operation — mission 2 re-chooses pacts
-    // under the same misfortune.
-    expect(state.phase).toBe('pacts')
-    expect(state.wheel?.seed).toBe(42)
+    // The front persists for the whole operation, but mission 2 begins at the
+    // spin: a fresh misfortune awaits the squad's decision.
+    expect(state.phase).toBe('spin')
+    expect(state.wheel).toBeNull()
+    expect(state.frontId).not.toBeNull()
     expect(state.divers[0]?.pactIds).toEqual([])
   })
 
@@ -234,6 +289,7 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
     let options = diverOptions(state, requireDiver(state))
     state = reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: options[0]!.optionId })
     state = reduce(state, { type: 'ADVANCE' })
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 99 })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
     options = diverOptions(state, requireDiver(state))
@@ -243,6 +299,7 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
     expect(state.missionInOperation).toBe(1)
     expect(state.phase).toBe('spin')
     expect(state.wheel).toBeNull()
+    expect(state.frontId).toBeNull()
     expect(state.rerollTokens).toBe(1)
   })
 
@@ -254,11 +311,13 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 0 })
     state = reduce(state, {
       type: 'FORFEIT_ITEM',
-      itemRef: { ownerId: 'shared', itemId: requireId(state.sharedStratagemIds[0]) },
+      itemRef: { ownerId: 'p1', itemId: requireId(state.personalInventories.p1?.[0]) },
     })
-    // Medium runs 2-mission operations and the wheel carries over the retry,
-    // so the squad returns straight to the pact phase.
+    // Medium runs 2-mission operations; the front carries over the retry and
+    // every mission — retries included — draws a fresh misfortune, so the
+    // squad returns to the spin phase.
     for (let i = 0; i < 2; i++) {
+      state = reduce(state, { type: 'SPIN_WHEEL', seed: 50 + i })
       state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
       state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
       const options = diverOptions(state, requireDiver(state))
@@ -276,16 +335,18 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
 })
 
 describe('REPORT_RESULT (failure) → forfeit', () => {
-  it('forfeits one item and restarts the operation with the wheel intact', () => {
+  it('forfeits one item and restarts the operation at the spin', () => {
     let state = divingState(42)
+    const frontBefore = state.frontId
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 2 })
     expect(state.phase).toBe('forfeit')
 
-    const sharedId = requireId(state.sharedStratagemIds[0])
-    state = reduce(state, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'shared', itemId: sharedId } })
-    expect(state.sharedStratagemIds).not.toContain(sharedId)
-    expect(state.phase).toBe('pacts')
-    expect(state.wheel?.seed).toBe(42)
+    const personalId = requireId(state.personalInventories.p1?.[0])
+    state = reduce(state, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'p1', itemId: personalId } })
+    expect(state.personalInventories.p1).not.toContain(personalId)
+    expect(state.phase).toBe('spin')
+    expect(state.wheel).toBeNull()
+    expect(state.frontId).toBe(frontBefore)
     expect(state.missionInOperation).toBe(1)
     expect(state.rerollTokens).toBe(1)
   })
@@ -296,27 +357,28 @@ describe('REPORT_RESULT (failure) → forfeit', () => {
     const personal = requireId(state.personalInventories.p1?.[0])
     state = reduce(state, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'p1', itemId: personal } })
     expect(state.personalInventories.p1).not.toContain(personal)
-    expect(state.phase).toBe('pacts')
+    expect(state.phase).toBe('spin')
   })
 
   it('skips forfeit when there is nothing to lose', () => {
     let state = divingState(42)
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1 })
-    state = reduce(state, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'shared', itemId: requireId(state.sharedStratagemIds[0]) } })
+    state = reduce(state, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'p1', itemId: requireId(state.personalInventories.p1?.[0]) } })
     const stripped: DiveState = {
       ...state,
-      sharedStratagemIds: [],
       personalInventories: { p1: [] },
     }
     const reported = reduce(stripped, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1 })
-    expect(reported.phase).toBe('pacts')
-    expect(reported.wheel?.seed).toBe(42)
+    expect(reported.phase).toBe('spin')
+    expect(reported.wheel).toBeNull()
+    expect(reported.frontId).not.toBeNull()
   })
 
   it('rejects forfeiting an item the squad does not own', () => {
     let state = divingState(42)
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1 })
-    expect(reduce(state, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'shared', itemId: 'ghostgun' } })).toBe(state)
+    expect(reduce(state, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'p1', itemId: 'ghostgun' } })).toBe(state)
+    expect(reduce(state, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'ghost', itemId: 'onetrueflag' } })).toBe(state)
   })
 })
 
@@ -332,8 +394,8 @@ describe('identity actions', () => {
     const withTwo: DiveState = {
       ...freshState(),
       divers: [
-        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], pickedOptionId: null },
-        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], pickedOptionId: null },
+        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [] },
+        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [] },
       ],
     }
     const moved = reduce(withTwo, { type: 'TRANSFER_HOST', playerId: 'p2' })
@@ -349,5 +411,71 @@ describe('identity actions', () => {
 
   it('TOGGLE_OPEN flags the room for the lobby', () => {
     expect(reduce(freshState(), { type: 'TOGGLE_OPEN', open: true }).openToLobby).toBe(true)
+  })
+})
+
+describe('KICK_DIVER', () => {
+  function twoDiverState(): DiveState {
+    return {
+      ...freshState(),
+      divers: [
+        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [] },
+        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [] },
+      ],
+      personalInventories: {
+        p1: startingItemIds(SETTINGS.variant),
+        p2: startingItemIds(SETTINGS.variant),
+      },
+    }
+  }
+
+  it('removes the diver and their personal inventory', () => {
+    const state = reduce(twoDiverState(), { type: 'KICK_DIVER', playerId: 'p2' })
+    expect(state.divers.map(diver => diver.id)).toEqual(['p1'])
+    expect(state.personalInventories.p2).toBeUndefined()
+    expect(state.personalInventories.p1?.length).toBeGreaterThan(0)
+  })
+
+  it('cannot kick the host or a diver who is not seated', () => {
+    const base = twoDiverState()
+    expect(reduce(base, { type: 'KICK_DIVER', playerId: 'p1' })).toBe(base)
+    expect(reduce(base, { type: 'KICK_DIVER', playerId: 'ghost' })).toBe(base)
+  })
+
+  it('kicks from the lobby before the crusade starts', () => {
+    const lobby = joinDiver(joinDiver(createLobbyState(), 'p1', 'A')!, 'p2', 'B')
+    if (!lobby) {
+      throw new Error('expected both divers seated')
+    }
+    const kicked = reduce(lobby, { type: 'KICK_DIVER', playerId: 'p2' })
+    expect(kicked.divers).toHaveLength(1)
+    const started = reduce(kicked, { type: 'START_DIVE', settings: SETTINGS })
+    expect(started.phase).toBe('spin')
+    expect(Object.keys(started.personalInventories)).toEqual(['p1'])
+  })
+
+  it('a kicked diver no longer blocks the pact window', () => {
+    const spun = reduce(twoDiverState(), { type: 'SPIN_WHEEL', seed: 42 })
+    const halfLocked = reduce(spun, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+    expect(halfLocked.phase).toBe('pacts')
+    const kicked = reduce(halfLocked, { type: 'KICK_DIVER', playerId: 'p2' })
+    expect(kicked.phase).toBe('diving')
+
+    const stillPicking = reduce(spun, { type: 'KICK_DIVER', playerId: 'p2' })
+    expect(stillPicking.phase).toBe('pacts')
+  })
+
+  it('a kicked diver no longer blocks the reward draft', () => {
+    let state = reduce(twoDiverState(), { type: 'SPIN_WHEEL', seed: 42 })
+    state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+    state = reduce(state, { type: 'SET_PACTS', playerId: 'p2', pactIds: [] })
+    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+    expect(state.phase).toBe('rewards')
+    const options = diverOptions(state, requireDiver(state))
+    state = reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: requireId(options[0]?.optionId) })
+    expect(reduce(state, { type: 'ADVANCE' })).toBe(state)
+    state = reduce(state, { type: 'KICK_DIVER', playerId: 'p2' })
+    state = reduce(state, { type: 'ADVANCE' })
+    expect(state.phase).toBe('spin')
   })
 })

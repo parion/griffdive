@@ -7,25 +7,47 @@ const props = withDefaults(defineProps<{
   selected?: boolean
   disabled?: boolean
   compact?: boolean
-}>(), { compact: false, selected: false, disabled: false })
+  showcase?: boolean
+  owners?: string[]
+}>(), {
+  compact: false,
+  selected: false,
+  disabled: false,
+  showcase: false,
+  owners: () => [],
+})
 
 defineEmits<{ select: [] }>()
 
 const imageUrl = computed(() => itemImageUrl(props.item))
+
+const ownerInitials = computed(() =>
+  props.owners.map(name => name.trim().slice(0, 2).toUpperCase()))
 </script>
 
 <template>
   <button
     class="item-card"
-    :class="{ selected, disabled, compact }"
+    :class="{ selected, disabled, compact, showcase }"
     type="button"
     :data-category="item.category.toLowerCase()"
     :disabled="disabled"
     @click="$emit('select')"
   >
+    <span
+      v-if="showcase && imageUrl"
+      class="item-media"
+    >
+      <img
+        :src="imageUrl"
+        alt=""
+        loading="lazy"
+        draggable="false"
+      >
+    </span>
     <span class="item-top">
       <img
-        v-if="imageUrl"
+        v-if="!showcase && imageUrl"
         class="item-icon"
         :src="imageUrl"
         alt=""
@@ -60,6 +82,17 @@ const imageUrl = computed(() => itemImageUrl(props.item))
         :key="tag"
         class="tag"
       >{{ tag }}</span>
+    </span>
+    <span
+      v-if="showcase && owners.length > 1"
+      class="item-owners"
+    >
+      <span
+        v-for="(name, i) in owners"
+        :key="i"
+        class="owner-chip"
+        :title="name"
+      >{{ ownerInitials[i] }}</span>
     </span>
   </button>
 </template>
@@ -104,6 +137,7 @@ const imageUrl = computed(() => itemImageUrl(props.item))
 .item-card.disabled { cursor: default; opacity: 0.9; }
 
 .item-top { display: flex; align-items: center; gap: 0.5rem; }
+.item-name { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
 
 .item-icon {
   flex-shrink: 0;
@@ -126,9 +160,9 @@ const imageUrl = computed(() => itemImageUrl(props.item))
   font-size: 0.7rem;
   font-weight: 700;
   border: 1px solid currentColor;
+  flex-shrink: 0;
 }
 
-.item-name { font-weight: 700; }
 .item-meta { display: flex; gap: 0.35rem; flex-wrap: wrap; }
 .item-tags { display: flex; gap: 0.3rem; flex-wrap: wrap; }
 
@@ -138,5 +172,39 @@ const imageUrl = computed(() => itemImageUrl(props.item))
   border: 1px dashed var(--border);
   border-radius: 4px;
   padding: 0 0.35rem;
+}
+
+.item-card.showcase { padding: 0.5rem; gap: 0.45rem; }
+
+.item-media {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--cat) 12%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--cat) 20%, var(--border));
+  overflow: hidden;
+}
+.item-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.item-card[data-category='primary'] .item-media,
+.item-card[data-category='secondary'] .item-media {
+  aspect-ratio: 5 / 3;
+  padding: 0.35rem;
+}
+.item-card:not([data-category='primary']):not([data-category='secondary']) .item-media { padding: 0.75rem; }
+
+.item-owners { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.owner-chip {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 0.3rem;
 }
 </style>

@@ -1,4 +1,5 @@
 import { CATALOG_VERSION, ITEMS_BY_ID } from '../data/catalog'
+import type { FrontId } from '../data/fronts'
 import { SAVE_SCHEMA_VERSION } from '../types/save'
 import type { SaveDoc } from '../types/save'
 import { ENGINE_VERSION } from './config'
@@ -37,8 +38,12 @@ export function normalizeSaveDoc(raw: unknown): SaveDoc | null {
   return migrateSaveDoc(doc as SaveDoc)
 }
 
-// Migration chain: bump SAVE_SCHEMA_VERSION, then rewrite older shapes here
-// step by step. v1 is the baseline.
+// Legacy chain (v1→v4), frozen pre-alpha: saves are not migratable while
+// mechanics are in flux (see AGENTS.md, Save model). The chain reopens at the
+// alpha release, when the schema freezes. v5 moved warbond ownership to each
+// diver; v6 dropped the shared stratagem pool (all stratagems are personal) —
+// no migration steps: pre-v6 divers read their personal inventories only, and
+// stratagems that lived in the old shared pool are gone.
 export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   let migrated = doc
   if (migrated.schemaVersion < 2) {
@@ -46,6 +51,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   }
   if (migrated.schemaVersion < 3) {
     migrated = migrateV2toV3(migrated)
+  }
+  if (migrated.schemaVersion < 4) {
+    migrated = migrateV3toV4(migrated)
   }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
@@ -56,7 +64,8 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
 // piece ids still held from v1 inventories are dead weight and get stripped.
 // A crusade paused mid-forfeit whose holdings were all armor has nothing left
 // to lose: restart the operation exactly as the reducer's empty-holdings path.
-// The wheel persists across the restart, so the phase resumes at pacts.
+// The front persists across the restart; the retry draws a fresh misfortune,
+// so the phase resumes at spin.
 function migrateV1toV2(doc: SaveDoc): SaveDoc {
   const personalInventories: Record<string, string[]> = {}
   for (const [diverId, ids] of Object.entries(doc.state.personalInventories ?? {})) {
@@ -66,12 +75,15 @@ function migrateV1toV2(doc: SaveDoc): SaveDoc {
     })
   }
   const state: DiveState = { ...doc.state, personalInventories }
-  const holdingsEmpty = state.sharedStratagemIds.length === 0
-    && Object.values(personalInventories).every(ids => ids.length === 0)
+  const holdingsEmpty = Object.values(personalInventories).every(ids => ids.length === 0)
   if (state.phase === 'forfeit' && holdingsEmpty) {
+    // resetOperation drops the wheel (the retry draws a fresh misfortune), so
+    // salvage the legacy front first — the front persists across the restart.
+    const legacyWheel = state.wheel as (typeof state.wheel & { front?: FrontId }) | null
+    const frontId = state.frontId ?? legacyWheel?.front ?? null
     return {
       ...doc,
-      state: { ...state, ...resetOperation(state), phase: 'pacts' },
+      state: { ...state, ...resetOperation(state), frontId },
     }
   }
   return {
@@ -89,6 +101,24 @@ function migrateV2toV3(doc: SaveDoc): SaveDoc {
     state: {
       ...doc.state,
       misfortuneAccepted: doc.state.wheel !== null,
+    },
+  }
+}
+
+// v4: one misfortune per mission — the front moved off the wheel. It is drawn
+// once per operation and now lives on the state; running missions keep the
+// front their wheel carried and finish under their drawn misfortune.
+function migrateV3toV4(doc: SaveDoc): SaveDoc {
+  const wheel = doc.state.wheel
+  const legacyWheel = wheel as (typeof wheel & { front?: FrontId }) | null
+  return {
+    ...doc,
+    state: {
+      ...doc.state,
+      frontId: doc.state.frontId ?? legacyWheel?.front ?? null,
+      wheel: wheel
+        ? { seed: wheel.seed, misfortuneId: wheel.misfortuneId }
+        : null,
     },
   }
 }

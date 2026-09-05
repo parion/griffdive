@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { WARBONDS } from '~~/shared/data/catalog'
 import { MAX_DIFFICULTY, MAX_PACTS, maxStarsFor, missionsPerOperation } from '~~/shared/engine/config'
 import { difficultyName } from '~~/shared/engine/progression'
+import { difficultyImageUrl } from '~~/shared/data/images'
 import { pactRiskTotal } from '~~/shared/engine/pacts'
 import {
   activeMisfortune,
@@ -34,6 +34,18 @@ watch(
   () => session.state.value?.wheel?.seed,
   () => {
     pactSelection.value = []
+  },
+)
+
+// Once the diver banks their reward, surface the squad inventory so the new
+// item is visible without hunting for it.
+const squadInventory = ref<HTMLDetailsElement | null>(null)
+watch(
+  () => self.value?.pickedOptionId ?? null,
+  (picked) => {
+    if (picked && squadInventory.value) {
+      squadInventory.value.open = true
+    }
   },
 )
 
@@ -145,18 +157,39 @@ function isOnline(diverId: string): boolean {
   return session.online.value.includes(diverId)
 }
 
+// Host moderation: remove a diver who left or is blocking the squad.
+function canKick(diverId: string): boolean {
+  return session.mode === 'room'
+    && session.selfIsHost.value
+    && diverId !== session.selfId.value
+    && diverId !== session.state.value?.hostId
+}
+
+function kick(diverId: string): void {
+  dispatch({ type: 'KICK_DIVER', playerId: diverId })
+}
+
+const kicked = computed(() =>
+  session.mode === 'room'
+  && !!session.state.value
+  && !!session.selfId.value
+  && !session.state.value.divers.some(diver => diver.id === session.selfId.value))
+
 // Online-room lobby: the host configures and launches the crusade here.
 const lobbyVariant = ref<CrusadeVariant>('standard')
-const lobbyWarbonds = ref<string[]>([])
 const nameDraft = ref('')
+const nameTouched = ref(false)
 
-onMounted(() => {
-  lobbyWarbonds.value = WARBONDS.map(warbond => warbond.code)
-  nameDraft.value = storedDiverName()
-})
+// Adopt the diver's actual name (welcome snapshot / local save) until edited.
+watch(() => self.value?.name, (name) => {
+  if (name && !nameTouched.value) {
+    nameDraft.value = name
+  }
+}, { immediate: true })
 
 function commitName(): void {
   const name = nameDraft.value.trim() || 'Diver'
+  nameTouched.value = true
   rememberDiverName(name)
   nameDraft.value = name
   if (session.selfId.value) {
@@ -166,13 +199,14 @@ function commitName(): void {
 
 function launchCrusade(): void {
   commitName()
-  dispatch({
-    type: 'START_DIVE',
-    settings: {
-      variant: lobbyVariant.value,
-      ownedWarbondCodes: [...lobbyWarbonds.value],
-    },
-  })
+  dispatch({ type: 'START_DIVE', settings: { variant: lobbyVariant.value } })
+}
+
+// Warbonds are what each diver actually owns — declared per diver, any phase.
+function commitWarbonds(codes: string[]): void {
+  if (session.selfId.value) {
+    dispatch({ type: 'SET_WARBONDS', playerId: session.selfId.value, warbondCodes: codes })
+  }
 }
 </script>
 
@@ -190,11 +224,25 @@ function launchCrusade(): void {
           <h1 class="mono">
             {{ session.slotName.value || 'Dive' }}
           </h1>
-          <p class="muted small">
-            {{ difficultyName(session.state.value.difficulty) }} ({{ session.state.value.difficulty }})
-            · operation mission {{ session.state.value.missionInOperation }}/{{ opLength }}
-            · mission #{{ session.state.value.missionIndex + 1 }}
-          </p>
+          <div class="dive-meta">
+            <img
+              class="diff-icon"
+              :src="difficultyImageUrl(session.state.value.difficulty)"
+              alt=""
+              draggable="false"
+            >
+            <div class="meta-stack">
+              <span class="diff-descriptor">
+                <span class="diff-name">{{ difficultyName(session.state.value.difficulty) }}</span>
+                <span class="diff-num">{{ session.state.value.difficulty }}</span>
+              </span>
+              <MissionTrack
+                :mission-in-operation="session.state.value.missionInOperation"
+                :op-length="opLength"
+                :mission-index="session.state.value.missionIndex"
+              />
+            </div>
+          </div>
         </div>
         <div class="row">
           <span
@@ -259,7 +307,17 @@ function launchCrusade(): void {
             <span
               class="dot"
               :class="{ on: isOnline(diver.id) }"
-            />{{ diver.name }}
+            /><input
+              v-if="diver.id === session.selfId.value"
+              v-model="nameDraft"
+              class="self-name"
+              type="text"
+              maxlength="32"
+              title="Your name"
+              aria-label="Your name"
+              @change="commitName"
+            >
+            <template v-else>{{ diver.name }}</template>
             <span
               v-if="diver.id === session.state.value?.hostId"
               class="crown"
@@ -268,9 +326,42 @@ function launchCrusade(): void {
               v-if="diver.id === session.selfId.value"
               class="muted small"
             >(you)</span>
+            <button
+              v-if="canKick(diver.id)"
+              class="kick"
+              type="button"
+              :aria-label="`Kick ${diver.name} from the squad`"
+              title="Kick from squad"
+              @click="kick(diver.id)"
+            >
+              ×
+            </button>
           </span>
         </div>
       </section>
+
+      <p
+        v-if="kicked"
+        class="panel kicked"
+      >
+        You were removed from this dive by the host.
+        <NuxtLink to="/">Back to base</NuxtLink>
+      </p>
+
+      <details
+        v-if="self"
+        class="panel self-warbonds"
+      >
+        <summary>Your warbonds</summary>
+        <p class="muted small">
+          Warbonds are personal purchases — your reward offers only include items you own.
+          Each diver declares their own; the host doesn't set these.
+        </p>
+        <WarbondPicker
+          :warbond-codes="self.warbondCodes"
+          @update:warbond-codes="commitWarbonds"
+        />
+      </details>
 
       <p
         v-if="session.lastError.value"
@@ -287,6 +378,7 @@ function launchCrusade(): void {
       </p>
 
       <Transition
+        v-if="!kicked"
         name="phase"
         mode="out-in"
       >
@@ -300,23 +392,11 @@ function launchCrusade(): void {
               class="panel"
             >
               <h2>Launch the crusade</h2>
-              <div class="setup-grid">
-                <label class="field">
-                  <span class="muted small">Your name</span>
-                  <input
-                    v-model="nameDraft"
-                    type="text"
-                    maxlength="32"
-                    @change="commitName"
-                  >
-                </label>
-                <CrusadeSetup
-                  v-model:variant="lobbyVariant"
-                  v-model:owned-warbond-codes="lobbyWarbonds"
-                  start-label="Launch crusade"
-                  @start="launchCrusade"
-                />
-              </div>
+              <CrusadeSetup
+                v-model:variant="lobbyVariant"
+                start-label="Launch crusade"
+                @start="launchCrusade"
+              />
             </section>
             <p
               v-else
@@ -537,8 +617,8 @@ function launchCrusade(): void {
               <h2>Operation failed</h2>
               <p class="muted">
                 The operation restarts. Choose <strong>one</strong> item for the squad to lose —
-                from any diver's kit or the shared stratagem pool.
-                The wheel result carries over to the retry.
+                any item from any diver's personal inventory, stratagems included.
+                The front carries over; the retry draws a fresh misfortune.
               </p>
             </section>
             <InventoryGrid
@@ -565,7 +645,7 @@ function launchCrusade(): void {
               </p>
               <p class="row small muted">
                 {{ session.state.value.missionIndex }} missions · {{ session.state.value.completedCombos.length }} combos completed
-                · shared pool: {{ session.state.value.sharedStratagemIds.length }} stratagems
+                · {{ Object.values(session.state.value.personalInventories).flat().length }} items owned across the squad
               </p>
               <div class="row">
                 <button
@@ -586,7 +666,10 @@ function launchCrusade(): void {
         </div>
       </Transition>
 
-      <details class="panel">
+      <details
+        ref="squadInventory"
+        class="panel"
+      >
         <summary>Squad inventory</summary>
         <InventoryGrid :state="session.state.value" />
       </details>
@@ -604,6 +687,55 @@ function launchCrusade(): void {
 .phase-stack { display: grid; gap: 1rem; }
 .stack { display: grid; gap: 0.6rem; }
 .badge-pop { display: inline-grid; }
+
+.dive-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.1rem;
+}
+
+.diff-icon {
+  height: 2.5rem;
+  padding: 0.2rem 0.45rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.meta-stack {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.diff-descriptor {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.diff-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--khaki);
+}
+
+.diff-num {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.25rem;
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  color: var(--gold);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
 
 .report-form {
   display: grid;
@@ -628,7 +760,64 @@ function launchCrusade(): void {
 }
 
 .squad-strip { padding: 0.6rem 0.75rem; }
+.self-warbonds { padding: 0.6rem 0.8rem; }
+.self-warbonds summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--khaki);
+}
 .diver-chip { display: inline-flex; align-items: center; gap: 0.35rem; }
+.kick {
+  width: 0.9rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--red);
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Pointer devices reveal the kick affordance on chip hover; touch devices
+   always show it — there is no hover to rely on. */
+@media (hover: hover) and (pointer: fine) {
+  .kick {
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition:
+      opacity var(--dur-fast) var(--ease-out),
+      width var(--dur-fast) var(--ease-out);
+  }
+
+  .diver-chip:hover .kick,
+  .kick:focus-visible {
+    width: 0.9rem;
+    opacity: 1;
+  }
+}
+.kicked { border-color: var(--red); }
+.self-name {
+  width: 9ch;
+  min-width: 5ch;
+  padding: 0 0.15rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--border);
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+.self-name:focus {
+  outline: none;
+  border-bottom-color: var(--gold);
+}
 .crown { color: var(--gold); }
 .dot {
   width: 7px;
@@ -638,6 +827,4 @@ function launchCrusade(): void {
   display: inline-block;
 }
 .dot.on { background: var(--teal); }
-.setup-grid { display: grid; gap: 1rem; }
-.field { display: grid; gap: 0.4rem; }
 </style>

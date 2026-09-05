@@ -1,5 +1,6 @@
+import { ALL_WARBOND_CODES } from '../data/catalog'
 import { MIN_DIFFICULTY, REROLL_TOKENS_PER_OPERATION, SQUAD_SIZE_MAX } from './config'
-import { personalKitIds } from './progression'
+import { startingItemIds } from './progression'
 import type { DiveState, DiverState } from './types'
 
 // A freshly created room: no settings, no divers. The first joiner becomes
@@ -16,10 +17,10 @@ export function createLobbyState(): DiveState {
     hostId: null,
     openToLobby: false,
     wheel: null,
+    frontId: null,
     misfortuneAccepted: false,
     rerollTokens: REROLL_TOKENS_PER_OPERATION,
     completedCombos: [],
-    sharedStratagemIds: [],
     personalInventories: {},
     offerSeed: null,
     lastReport: null,
@@ -45,8 +46,11 @@ export function joinDiver(state: DiveState, playerId: string, name: string): Div
     pactsLocked: false,
     pactIds: [],
     pickedOptionId: null,
+    // Warbonds are personal purchases — every diver declares their own set
+    // (self-service SET_WARBONDS); the app defaults to all.
+    warbondCodes: [...ALL_WARBOND_CODES],
   }
-  const kit = state.settings ? personalKitIds(state.settings.variant) : []
+  const kit = state.settings ? startingItemIds(state.settings.variant) : []
   return {
     ...state,
     divers: [...state.divers, diver],

@@ -15,7 +15,7 @@ must update this file in the same commit.**
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core), Phase 2 (realtime squads) and Phase 3 (lobby) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (119 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (135 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection; open-dive lobby with filters and instant join — verified by a live two-peer smoke
@@ -34,7 +34,7 @@ pnpm only (`pnpm-lock.yaml` is canonical).
 | `pnpm dev` | exists | Dev server at `http://localhost:3000` |
 | `pnpm build` | exists | Production build (Node/Nitro server) |
 | `pnpm preview` | exists | Preview production build |
-| `pnpm generate` | exists | Static build (solo/offline only — no WebSocket server) |
+| `pnpm generate` | exists | Static build (pure client-side SPA — solo/offline only — no WebSocket server) |
 | `pnpm lint` | exists | ESLint via `@nuxt/eslint` module |
 | `pnpm lint:fix` | exists | Auto-fix lint/style issues |
 | `pnpm test` | exists | Vitest (engine unit + golden tests) |
@@ -82,23 +82,23 @@ Design principles — every gameplay decision must honor these:
 
 A **crusade** (= run) is played by a squad of 1–4 divers in the real game. An **operation** is a
 variable-length set of missions at the crusade's current difficulty (wiki.gg/Difficulty): 2
-missions at difficulties 3–4, 3 missions at 5 and up. The **wheel result persists for the entire
-operation** — one misfortune × front per operation, re-spun only when the operation completes (a
-failure restart keeps the wheel; divers re-choose pacts only). Per mission:
-1. **Spin** (first mission of an operation only) — squad spins the Wheel of Misfortune: one
-   **misfortune** (team-wide restriction, accepted or declined before pacts lock) and one
-   **front** (Terminids / Automatons / Illuminate).
+missions at difficulties 3–4, 3 missions at 5 and up. The **front (faction) is drawn once per
+operation**, with the operation's first spin, and persists across its missions — a failure
+restart keeps it. Every mission begins with a fresh misfortune draw. Per mission:
+1. **Spin** — the squad spins the Wheel of Misfortune: one **misfortune** (team-wide restriction,
+   accepted or declined before pacts lock) for this mission; the operation's first spin also
+   draws the **front** (Terminids / Automatons / Illuminate).
 2. **Pact** — each diver privately picks 0–3 **pacts** (personal restrictions). The reward-tier
    preview updates live with their personal ceiling.
 3. **Dive** — play the mission in Helldivers 2. Success = main objectives complete **and** the squad
    extracts. Objectives complete + squad wipe = failure (extraction rule).
 4. **Report** — squad records outcome: success (stars 1–max, optional time %) or failure (no stars).
 5. **Rewards** (success only) — each diver is offered N options rolled against their personal tier
-   ceiling and picks one. Stratagem rewards go to the shared pool; all else goes to personal
-   inventories. Armor rewards are **passives**, never armor pieces (see inventory model).
-6. **Advance** — next mission. Completing all missions of an operation bumps the crusade difficulty
-   by +1. Failure restarts the operation (mission 1) at the same difficulty and the squad forfeits
-   one item.
+   ceiling and picks one. All rewards go to the diver's personal inventory — stratagems included.
+   Armor rewards are **passives**, never armor pieces (see inventory model).
+6. **Advance** — next mission, which draws a fresh misfortune. Completing all missions of an
+   operation bumps the crusade difficulty by +1. Failure restarts the operation (mission 1) at the
+   same difficulty, keeps the front, and the squad forfeits one item.
 
 The crusade is **achieved** ("Griffdive achieved") when the squad completes an operation at
 difficulty 10. The run may then end, or continue in endless mode (post-v1).
@@ -113,17 +113,19 @@ difficulty 10. The run may then end, or continue in endless mode (post-v1).
 | Solo/Duo Super | 1–2 | 4 | Same as Super + Orbital Precision Strike |
 | Quickplay | any | 7 (Suicide Mission) | Extra stratagems + boosters at start |
 
-The item catalog is filtered by the squad's owned warbonds (selected at crusade start; Penitent
-Crusade parity).
+Warbonds are premium, per-player purchases, so ownership is declared **per diver**, never by the
+host: each diver self-declares their owned warbonds (`SET_WARBONDS`, self-service, any phase;
+default all). Reward offers roll against the diver's own catalog — a diver is never offered items
+from warbonds they don't own. Starting kits are not warbond-filtered.
 
 ### Team layer — misfortunes (Wheel)
 
 ### Team layer — misfortunes (Wheel)
 
-Exactly one misfortune per **operation**, drawn from the pool eligible at the operation's
+Exactly one misfortune per **mission**, drawn from the pool eligible at the operation's
 difficulty. The draw is an offer, not a verdict: before any pact locks, the squad (host executes,
 IRL voice vote) **accepts or declines** it. Declining runs a zero-team-risk dive; accepting applies
-the misfortune's **team risk** (1–5) to every diver's luck for the whole operation. A reroll redraws
+the misfortune's **team risk** (1–5) to every diver's luck for this mission. A reroll redraws
 and resets the decision.
 
 Starter catalog (all values tunable in `shared/engine/config.ts`; ids and shape are the contract):
@@ -148,10 +150,13 @@ Starter catalog (all values tunable in `shared/engine/config.ts`; ids and shape 
 **Rerolls:** rerolling a wheel result is free if the squad already completed that exact
 (misfortune × front) combo earlier in this crusade (the video's overrule rule). Otherwise the squad
 spends a reroll token — 1 token per operation, spendable on either wheel. Never rerollable into an
-outcome the pool doesn't allow at the current difficulty.
+outcome the pool doesn't allow at the current difficulty. **The front (faction) locks in for the
+whole operation**: it can only be rerolled during the operation's first mission decision window
+(`missionIndex === 0`, enforced in the reducer and `canRerollWheel`); misfortune rerolls stay
+available in any pact window.
 
-**Fronts:** the front is drawn with the misfortune (one per operation) and only affects combo
-tracking (and future front-specific content). It exists for flavor and the reroll economy.
+**Fronts:** the front is drawn with the operation's first spin (one per operation) and only affects
+combo tracking (and future front-specific content). It exists for flavor and the reroll economy.
 
 ### Personal layer — pacts
 
@@ -190,6 +195,8 @@ ceiling roll:  start at the base tier; each step to the next tier
 
 - Difficulty alone never buys S or S+; only stacked chosen risk does, and even max luck (11)
   leaves S+ below a coin flip. A zero-luck dive always rolls its base tier.
+- The reward pool is personal: each diver rolls against the catalog of warbonds *they* declared
+  (plus `warbondCode === 'none'` items, minus armor pieces) — never the squad's or the host's.
 - Higher difficulties inside a band climb easier: diff 5 rolls into B more readily than diff 3,
   diff 10 into S more readily than diff 8 (`bandPosition`).
 - Ceiling = the best tier that *can* appear in that diver's options; the roll is seeded from the
@@ -206,37 +213,43 @@ ceiling roll:  start at the base tier; each step to the next tier
   reaches **S** about a quarter of the time, **S+** rarely. Diff 10 with zero luck → **A**, never
   S. Risk pays at every altitude; nothing is guaranteed, but everything gets likelier.
 
-### Inventory model (hybrid)
+### Inventory model
 
-- **Personal:** primaries, secondaries, throwables, boosters, armor **passives** — each diver owns
-  and rewards their own.
+- **Personal:** primaries, secondaries, throwables, boosters, armor **passives**, and
+  **stratagems** — each diver owns and rewards their own. Every diver starts with the full
+  starting kit (stratagems included); stratagem rewards go to the diver who rolled them. There is
+  no shared pool — a deliberate deviation from Penitent Crusade's sharing rule.
 - **Armor = passives, not pieces.** Armor rewards are passive unlocks: the reward pool never offers
   armor pieces (`category === 'armor'` excluded in `rewardPoolFor`). Any armor piece (any weight or
   rating) is freely wearable as long as its passive is owned; the catalog's armor pieces exist as
   the passive → piece mapping (codex display). Losing a passive in a forfeit removes the ability to
   wear armor carrying it.
-- **Shared pool:** stratagems — owned by the squad, usable by anyone in-mission (Penitent Crusade
-  sharing rule). Reward options may offer stratagems (added to the pool) or personal items.
-- **Forfeit on failure:** the squad collectively picks exactly one item to lose — any diver's
-  personal item (including an owned passive) or one stratagem from the shared pool. Host executes
-  the pick (simple majority voice vote IRL; the app doesn't police it).
+- **Forfeit on failure:** the squad collectively picks exactly one item to lose — any item from any
+  diver's personal inventory (stratagems included). Host executes the pick (simple majority voice
+  vote IRL; the app doesn't police it).
 
 ### Save model
 
 Anonymous/local-first. Named save slots in `localStorage` (`SaveDoc` in `shared/types/save.ts`,
-stamped with save-schema + engine + catalog versions), normalized and migrated on load via
-`shared/engine/saves.ts` (schema v3: accepted-misfortune stamp — misfortunes were forced before
-becoming optional; v2 stripped armor-piece ids from inventories — armor rewards are passives now), plus JSON export/import (Penitent Crusade parity). No accounts in v1 —
+stamped with save-schema + engine + catalog versions), normalized on load via
+`shared/engine/saves.ts`, plus JSON export/import (Penitent Crusade parity). **Pre-alpha policy:
+saves are not migratable.** Mechanics are still being established, so schema/engine changes may
+freely break old saves — version stamps exist for diagnostics only, normalization drops
+incompatible docs, and no new migration steps get written. The migration chain reopens at the
+alpha release, when the schema freezes. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
-`achieved` flag, inventories, shared pool, `completedCombos` (misfortune × front), reroll tokens,
-action log (capped), RNG seed history.
+`achieved` flag, `frontId`, inventories, per-diver warbond declarations,
+`completedCombos` (misfortune × front), reroll tokens, action log (capped), RNG seed history.
 
 ---
 
 ## Architecture
 
-Nuxt 4 full-stack app: Vue 3 frontend, Nitro server (REST + WebSocket), and a pure TypeScript game
-engine compiled against both sides via `shared/`.
+Nuxt 4 full-stack app in SPA mode (`ssr: false` — no server rendering; the app is
+localStorage/WS-driven with no SEO surface): Vue 3 frontend, Nitro server (REST + WebSocket),
+and a pure TypeScript game engine compiled against both sides via `shared/`. Nitro serves the
+app shell (`app/spa-loading-template.html` shows until Vue mounts) plus deep-link fallback for
+all routes; static hosts need a `/*` → shell fallback instead.
 
 ### Directory map
 
@@ -244,7 +257,8 @@ engine compiled against both sides via `shared/`.
 app/
   pages/           index (new crusade / host / join / continue), dive/[id] (solo + room flow),
                    lobby (open dives), codex
-  components/      dive/ (WheelPanel, PactPicker, RewardDraft, InventoryGrid, CrusadeSetup),
+  components/      dive/ (WheelPanel, PactPicker, RewardDraft, InventoryGrid, CrusadeSetup,
+                   WarbondPicker),
                    ui/ (ItemCard, TierBadge, RiskPips)
   composables/     useDiveSession (unified local/room driver), useDiveEngine (local reducer +
                    persist), useGameSocket (WS, reconnect, stored playerId), useSaves,
@@ -266,12 +280,14 @@ shared/
   utils/           room-code.ts (room-code alphabet + validator)
   data/            items (equipment.ts, stratagems.ts), warbonds.ts, fronts.ts,
                    misfortunes.ts, pacts.ts, catalog.ts (aggregation + CATALOG_VERSION),
-                   images.ts (imageURL filename → /images/<dir> URL resolver)
+                   images.ts (imageURL filename → /images/<dir> URL resolver,
+                   difficultyImageUrl for the 1–10 difficulty emblems)
 scripts/
   import-catalog.mjs  upstream → shared/data converter (report-only mode: --report)
   upstream/           vendored MIT constants (snapshot commit recorded in _upstream-commit.json)
 public/images/        bundled item art keyed by folder: equipment/ (weapons, throwables,
-                      boosters), armor/, armorpassives/, svgs/ (stratagems), warbonds/
+                      boosters), armor/, armorpassives/, svgs/ (stratagems), warbonds/,
+                      difficulty/ (1–10 difficulty emblems)
 e2e/                  Playwright specs (solo flow, room sync, lobby join)
 playwright.config.ts  production-build webServer on :3173 (WebSocket included)
 vitest.config.ts     mirrors Nuxt aliases (~~, ~) so engine + server tests resolve
@@ -312,21 +328,26 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 | S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message` |
 
 REST fallbacks: `POST /api/rooms` → `{ code }`; `GET /api/rooms/:code` → `{ code, state }` (404);
-`GET /api/lobby` → `{ rooms }`. Self-service actions (`SET_PACTS`, `PICK_REWARD`, `SET_NAME`) are
+`GET /api/lobby` → `{ rooms }`. Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`,
+`SET_NAME`) are
 coerced to the sender — a client can never act as another diver.
 
 Canonical engine actions (the reducer union; keep names stable):
 
 `START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}`
-`REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}`
+`REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId}`
-`ADVANCE{}` `END_DIVE{}` `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}` `TOGGLE_OPEN{open}`
+`ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}` `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}` `TOGGLE_OPEN{open}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
-`REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `ADVANCE`, `END_DIVE`, `TRANSFER_HOST`,
-`TOGGLE_OPEN`. `SET_PACTS`, `PICK_REWARD`, `SET_NAME` are self-service. Host disconnect →
+`REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `ADVANCE`, `END_DIVE`, `KICK_DIVER`,
+`TRANSFER_HOST`, `TOGGLE_OPEN`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME` are self-service. Host disconnect →
 `TRANSFER_HOST` to the earliest joiner; none left → room hibernates in storage with a TTL.
 Reconnect = re-`hello` with stored playerId → server replays snapshot.
+`KICK_DIVER` (host, any phase, lobby included) removes a diver who left or is blocking the
+squad: their pending pact lock or reward pick stops gating progress, their personal inventory
+leaves with them, and the host can never be kicked. It is a soft kick — the removed client
+shows a removal notice, but their invite link still seats them again as a fresh diver.
 
 ### Lobby / matchmaking (Phase 3)
 
@@ -338,7 +359,10 @@ slots are free. No queue infrastructure — presence only.
 
 ### Deployment
 
-One Node service (Nitro) on Fly.io/Railway (~$0–5/mo), WebSocket + REST + static app together.
+One Node service (Nitro) on Fly.io/Railway (~$0–5/mo), WebSocket + REST + static app together —
+per-page HTML is a fixed ~2.6 KB gzip shell, so client assets, not rendered pages, dominate
+bandwidth. To cut egress further, serve the static app from a CDN (unmetered free egress, e.g.
+Cloudflare Pages with a `/*` shell fallback) and keep only WS + REST on the Node service.
 `pnpm generate` remains supported for a static, offline, solo-only build. Storage driver swap
 (memory → Redis) is config-only for horizontal scale later.
 
@@ -360,8 +384,9 @@ One Node service (Nitro) on Fly.io/Railway (~$0–5/mo), WebSocket + REST + stat
   equipment images from [helldivers.wiki.gg](https://helldivers.wiki.gg/wiki/Helldivers_2). Asset
   licensing: respect upstream terms; hot-link or bundle only what the licenses allow.
 - **Versioning:** `CATALOG_VERSION` bumped whenever items/warbonds change (Helldivers 2 patches add
-  warbonds). Saves record catalog + engine versions; migrations live in `shared/engine/progression.ts`
-  helpers and run on load.
+  warbonds). Saves record catalog + engine versions as diagnostics only; pre-alpha they buy no
+  compatibility — incompatible saves are dropped, not migrated. Migration machinery returns at the
+  alpha release.
 
 ---
 
@@ -420,8 +445,9 @@ One Node service (Nitro) on Fly.io/Railway (~$0–5/mo), WebSocket + REST + stat
   score boundary (0, 2, 4, 6, 9), pact validity vs each misfortune, reroll rules, forfeit paths.
 - **Golden tests:** seeded runs (`mulberry32`) recorded as JSON snapshots — spin results, reward
   option sets, full crusade replays. Goldens live in `shared/engine/__goldens__/`; regenerate with
-  `GRIFFDIVE_UPDATE_GOLDENS=1 pnpm test`. Any reducer change that breaks goldens is a breaking
-  change: bump engine version + write migration, or revert.
+  `GRIFFDIVE_UPDATE_GOLDENS=1 pnpm test`. Pre-alpha, a reducer change that breaks goldens just
+  regenerates them (saves are not migratable — see Save model); from alpha on, breaking changes
+  must bump the engine version + write a migration, or revert.
 - **Server tests** (Vitest, fake KV + fake peers in `server/utils/room-sync.spec.ts`): room
   join/spin/pick flows, host authority + coercion, host migration, reattachment, room-full,
   TTL pruning, lobby list. (`@nuxt/test-utils` + Playwright browser flows land in Phase 3+.)

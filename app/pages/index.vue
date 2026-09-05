@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { WARBONDS } from '~~/shared/data/catalog'
+import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
 import { difficultyName } from '~~/shared/engine/progression'
 import { createDiveState } from '~~/shared/engine/reducer'
 import { isRoomCode } from '~~/shared/utils/room-code'
@@ -11,7 +11,7 @@ const recentRooms = useRecentRooms()
 
 const diverName = ref('Griffin')
 const variant = ref<CrusadeVariant>('standard')
-const selectedWarbonds = ref<string[]>([])
+const myWarbonds = ref<string[]>([])
 const slotList = ref<{ id: string, doc: SaveDoc }[]>([])
 const joinCode = ref('')
 const hosting = ref(false)
@@ -22,7 +22,7 @@ const onlineDives = ref<OnlineDive[]>([])
 const onlineLoading = ref(true)
 
 onMounted(() => {
-  selectedWarbonds.value = WARBONDS.map(warbond => warbond.code)
+  myWarbonds.value = [...ALL_WARBOND_CODES]
   slotList.value = saves.listSaves()
   refreshOnlineDives()
 })
@@ -66,11 +66,13 @@ const startLabel = computed(() =>
 
 function startCrusade(): void {
   const name = diverName.value.trim() || 'Diver'
-  const settings: CrusadeSettings = {
-    variant: variant.value,
-    ownedWarbondCodes: [...selectedWarbonds.value],
-  }
-  const state = createDiveState(settings, crypto.randomUUID(), name)
+  const settings: CrusadeSettings = { variant: variant.value }
+  const state = createDiveState(
+    settings,
+    crypto.randomUUID(),
+    name,
+    [...myWarbonds.value],
+  )
   const variantName = VARIANTS_LABELS[variant.value] ?? 'Crusade'
   const id = saves.createSlot(state, `${name} · ${variantName}`)
   navigateTo(`/dive/${id}`)
@@ -223,11 +225,16 @@ function formatSavedAt(doc: SaveDoc): string {
         </button>
       </div>
       <details class="adv">
-        <summary>Customize variant &amp; warbonds</summary>
+        <summary>Customize variant &amp; your warbonds</summary>
         <CrusadeSetup
           v-model:variant="variant"
-          v-model:owned-warbond-codes="selectedWarbonds"
           :show-start="false"
+        />
+        <p class="muted small">
+          Warbonds are personal — reward offers only include items you own.
+        </p>
+        <WarbondPicker
+          v-model:warbond-codes="myWarbonds"
         />
       </details>
     </section>

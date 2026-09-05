@@ -2,7 +2,6 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { WARBONDS } from '../data/catalog'
 import { MISFORTUNE_RISK } from './config'
 import { createDiveState, reduce } from './reducer'
 import { diverOptions } from './selectors'
@@ -32,20 +31,16 @@ interface MissionRecord {
   seed: number
   misfortuneId: string
   misfortuneAccepted: boolean
-  front: string
   pactIds: string[]
   outcome: 'success' | 'failure'
   stars: number
   optionId: string | null
   forfeitedItemId: string | null
+  front: string | null
 }
 
 function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptions: string[] } {
-  let state = createDiveState(
-    { variant: 'standard', ownedWarbondCodes: WARBONDS.map(warbond => warbond.code) },
-    'host',
-    'Griffin',
-  )
+  let state = createDiveState({ variant: 'standard' }, 'host', 'Griffin')
   const records: MissionRecord[] = []
   let firstOptions: string[] = []
   let firstRecorded = false
@@ -70,7 +65,7 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
       seed: state.wheel!.seed,
       misfortuneId: state.wheel!.misfortuneId,
       misfortuneAccepted: accepted,
-      front: state.wheel!.front,
+      front: state.frontId,
       pactIds,
       outcome: failure ? 'failure' : 'success',
       stars,
@@ -88,13 +83,10 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
 
     if (failure) {
       if (state.phase === 'forfeit') {
-        const sharedId = state.sharedStratagemIds[0]
         const personalId = (state.personalInventories.host ?? [])[0]
-        const itemRef = sharedId
-          ? { ownerId: 'shared' as const, itemId: sharedId }
-          : personalId
-            ? { ownerId: 'host', itemId: personalId }
-            : null
+        const itemRef = personalId
+          ? { ownerId: 'host', itemId: personalId }
+          : null
         if (itemRef) {
           state = reduce(state, { type: 'FORFEIT_ITEM', itemRef })
           record.forfeitedItemId = itemRef.itemId
@@ -143,7 +135,6 @@ describe('golden: full scripted crusade (standard, diff 3 → 10)', () => {
         missionInOperation: state.missionInOperation,
         rerollTokens: state.rerollTokens,
         completedCombos: [...state.completedCombos].sort(),
-        sharedStratagemIds: [...state.sharedStratagemIds].sort(),
         personalInventory: [...(state.personalInventories.host ?? [])].sort(),
         seedHistory: state.seedHistory,
       },

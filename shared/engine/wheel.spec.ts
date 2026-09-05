@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveSpin, eligibleMisfortunes } from './wheel'
+import { deriveFront, deriveMisfortune, eligibleMisfortunes } from './wheel'
 
 describe('eligibleMisfortunes', () => {
   it('starts with only the difficulty-3 pool', () => {
@@ -15,26 +15,36 @@ describe('eligibleMisfortunes', () => {
   })
 })
 
-describe('deriveSpin', () => {
+describe('deriveMisfortune / deriveFront', () => {
   it('is deterministic per seed and difficulty', () => {
-    expect(deriveSpin(1234, 5)).toEqual(deriveSpin(1234, 5))
+    expect(deriveMisfortune(1234, 5).id).toBe(deriveMisfortune(1234, 5).id)
+    expect(deriveFront(1234)).toBe(deriveFront(1234))
   })
 
   it('always lands in the eligible pool and a valid front', () => {
     const fronts = new Set(['terminids', 'automatons', 'illuminate'])
     for (let seed = 0; seed < 200; seed++) {
-      const spin = deriveSpin(seed, 4)
       const pool = eligibleMisfortunes(4).map(misfortune => misfortune.id)
-      expect(pool).toContain(spin.misfortuneId)
-      expect(fronts.has(spin.front)).toBe(true)
-      expect(spin.seed).toBe(seed)
+      expect(pool).toContain(deriveMisfortune(seed, 4).id)
+      expect(fronts.has(deriveFront(seed))).toBe(true)
     }
   })
 
   it('varies results across seeds', () => {
-    const results = new Set(
-      Array.from({ length: 50 }, (_, seed) => deriveSpin(seed, 6).misfortuneId),
+    const misfortunes = new Set(
+      Array.from({ length: 50 }, (_, seed) => deriveMisfortune(seed, 6).id),
     )
-    expect(results.size).toBeGreaterThan(1)
+    expect(misfortunes.size).toBeGreaterThan(1)
+    const fronts = new Set(Array.from({ length: 50 }, (_, seed) => deriveFront(seed)))
+    expect(fronts.size).toBe(3)
+  })
+
+  it('draws the misfortune and the front from independent streams', () => {
+    // The same seed must draw the same front regardless of which misfortune
+    // pool the difficulty offers — the per-mission redraw never disturbs it.
+    for (const difficulty of [3, 9]) {
+      expect(deriveFront(4242)).toBe(deriveFront(4242))
+      expect(eligibleMisfortunes(difficulty)).toContain(deriveMisfortune(4242, difficulty))
+    }
   })
 })

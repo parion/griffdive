@@ -1,39 +1,17 @@
 <script setup lang="ts">
-import { WARBONDS } from '~~/shared/data/catalog'
 import { STARTING_KITS, VARIANTS, difficultyName } from '~~/shared/engine/progression'
 import type { CrusadeVariant } from '~~/shared/engine/types'
 
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
   variant: CrusadeVariant
-  ownedWarbondCodes: string[]
   startLabel?: string
   showStart?: boolean
 }>(), { startLabel: 'Start crusade', showStart: true })
 
 const emit = defineEmits<{
   'update:variant': [variant: CrusadeVariant]
-  'update:ownedWarbondCodes': [codes: string[]]
   'start': []
 }>()
-
-const allSelected = computed(() => props.ownedWarbondCodes.length === WARBONDS.length)
-
-function toggleAllWarbonds(event: Event): void {
-  emit('update:ownedWarbondCodes', (event.target as HTMLInputElement).checked
-    ? WARBONDS.map(warbond => warbond.code)
-    : [])
-}
-
-function toggleWarbond(code: string, checked: boolean): void {
-  const set = new Set(props.ownedWarbondCodes)
-  if (checked) {
-    set.add(code)
-  }
-  else {
-    set.delete(code)
-  }
-  emit('update:ownedWarbondCodes', [...set])
-}
 </script>
 
 <template>
@@ -57,30 +35,6 @@ function toggleWarbond(code: string, checked: boolean): void {
           <strong>{{ entry.name }}</strong>
           <span class="muted small">{{ entry.squadSize }} · starts at {{ difficultyName(STARTING_KITS[entry.id].startDifficulty) }}</span>
           <span class="small muted">{{ entry.description }}</span>
-        </label>
-      </div>
-    </div>
-    <div class="field">
-      <span class="row spread">
-        <span class="muted small">Owned warbonds</span>
-        <label class="small row"><input
-          type="checkbox"
-          :checked="allSelected"
-          @change="toggleAllWarbonds"
-        > all</label>
-      </span>
-      <div class="warbond-grid">
-        <label
-          v-for="warbond in WARBONDS"
-          :key="warbond.code"
-          class="warbond"
-        >
-          <input
-            type="checkbox"
-            :checked="ownedWarbondCodes.includes(warbond.code)"
-            @change="toggleWarbond(warbond.code, ($event.target as HTMLInputElement).checked)"
-          >
-          {{ warbond.displayName }}
         </label>
       </div>
     </div>
@@ -111,12 +65,4 @@ function toggleWarbond(code: string, checked: boolean): void {
 
 .variant-card.on { border-color: var(--gold); outline: 1px solid var(--gold); }
 .variant-card input { accent-color: var(--gold); }
-
-.warbond-grid {
-  display: grid;
-  gap: 0.25rem 0.9rem;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-}
-
-.warbond { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; }
 </style>

@@ -272,15 +272,6 @@ details.panel summary {
   transform: translateY(-8px);
 }
 
-/* Attention pulse for the one button the squad must press next */
-.btn.attn {
-  animation: attn-pulse 1.6s ease-in-out infinite;
-}
-@keyframes attn-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 45%, transparent); }
-  50% { box-shadow: 0 0 0 8px transparent; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
