@@ -2,16 +2,15 @@ import { ALL_ITEMS, ALL_WARBOND_CODES } from '../data/catalog'
 import type { Front } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
 import type { Misfortune } from '../data/misfortunes'
-import { PACTS } from '../data/pacts'
 import type { Pact } from '../data/pacts'
 import type { Item } from '../data/types'
 import { MISFORTUNE_RISK, baseTierFor } from './config'
-import { isPactSelectable, pactRiskTotal } from './pacts'
+import { pactRiskTotal, rollPactOffer } from './pacts'
 import { luckOf, maxCeiling, oddsToReach, optionsForStars, rollCeiling, rollRewardOptions } from './rewards'
 import type { RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
 import type { DiveState, DiverState, RewardTier } from './types'
-import { eligibleMisfortunes } from './wheel'
+import { eligibleMisfortunes, frontById } from './wheel'
 
 export function comboKey(misfortuneId: string, front: string): string {
   return `${misfortuneId}:${front}`
@@ -28,11 +27,7 @@ export function activeMisfortune(state: DiveState): Misfortune | null {
 }
 
 export function currentFront(state: DiveState): Front | null {
-  const id = state.frontId
-  if (!id) {
-    return null
-  }
-  return { id, displayName: frontDisplayName(id) }
+  return state.frontId ? frontById(state.frontId) : null
 }
 
 export interface MisfortuneDecision {
@@ -40,37 +35,14 @@ export interface MisfortuneDecision {
   accepted: boolean
 }
 
-// `misfortuneAccepted: false` alone can't tell "not yet decided" from
-// "explicitly declined" — the decision stamp lives in the action log: the
-// first decision recorded after the current draw (spin or reroll) is the
-// squad's choice.
+// The phase carries the decision: 'decision' is the open vote, everything
+// after it is decided (accepted or declined). A misfortune reroll reopens it
+// by returning the phase to 'decision'.
 export function misfortuneDecision(state: DiveState): MisfortuneDecision {
-  for (let i = state.actionLog.length - 1; i >= 0; i--) {
-    const action = state.actionLog[i]
-    if (!action) {
-      break
-    }
-    if (action.type === 'ACCEPT_MISFORTUNE') {
-      return { decided: true, accepted: action.accepted }
-    }
-    // A spin (new mission) or a misfortune reroll reopens the decision; a
-    // front reroll doesn't touch the misfortune on the table.
-    if (action.type === 'SPIN_WHEEL' || (action.type === 'REROLL_WHEEL' && action.wheel === 'misfortune')) {
-      break
-    }
+  if (!state.wheel || state.phase === 'decision') {
+    return { decided: false, accepted: false }
   }
-  return { decided: state.misfortuneAccepted, accepted: state.misfortuneAccepted }
-}
-
-function frontDisplayName(id: string): Front['displayName'] {
-  switch (id) {
-    case 'terminids':
-      return 'Terminids'
-    case 'automatons':
-      return 'Automatons'
-    default:
-      return 'Illuminate'
-  }
+  return { decided: true, accepted: state.misfortuneAccepted }
 }
 
 export function teamRiskOf(state: DiveState): number {
@@ -180,20 +152,19 @@ export function allDiversPicked(state: DiveState): boolean {
   return state.divers.every(diver => diver.pickedOptionId !== null)
 }
 
-export function pactChoices(
-  misfortuneId: string | null,
-): { pact: Pact, selectable: boolean, blockedReason: string | null }[] {
-  const misfortuneName = misfortuneId
-    ? (MISFORTUNES.find(misfortune => misfortune.id === misfortuneId)?.name ?? null)
-    : null
-  return PACTS.map((pact) => {
-    const selectable = isPactSelectable(pact.id, misfortuneId)
-    return {
-      pact,
-      selectable,
-      blockedReason: selectable || !misfortuneName ? null : `Redundant under ${misfortuneName}`,
-    }
-  })
+// The per-diver pact offer: rolled deterministically from the wheel seed once
+// the squad has decided the misfortune (accepted pools are filtered, declined
+// draws offer from the full catalog). Derived, never stored — same seed, same
+// offer on every client.
+export function pactOfferFor(state: DiveState, diverId: string): Pact[] {
+  const decision = misfortuneDecision(state)
+  if (!state.wheel || !decision.decided) {
+    return []
+  }
+  const active = decision.accepted ? currentMisfortune(state) : null
+  return rollPactOffer(
+    deriveSeed(state.wheel.seed, hashString(diverId)),
+    active?.id ?? null,
+    state.difficulty,
+  )
 }
-
-export { isPactSelectable, pactRiskTotal }

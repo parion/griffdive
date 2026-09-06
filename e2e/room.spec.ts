@@ -74,8 +74,10 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   await pageB.goto(pageA.url())
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
 
-  // Host spins; the joiner stalls before locking pacts.
+  // Host spins and locks the misfortune in; the joiner stalls before locking
+  // pacts.
   await pageA.getByRole('button', { name: 'Spin', exact: true }).click()
+  await pageA.getByRole('button', { name: 'Lock it in' }).click()
   await expect(pageB.getByRole('button', { name: 'Lock in & dive' })).toBeVisible()
 
   // Hovering the joiner's chip reveals the kick affordance.

@@ -1,11 +1,10 @@
-import { ITEMS_BY_ID, WARBONDS } from '../data/catalog'
+import { ALL_WARBOND_CODES, ITEMS_BY_ID, WARBONDS } from '../data/catalog'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction } from './types'
-import { ACTION_LOG_CAP, MAX_DIFFICULTY, MAX_NAME_LENGTH, MAX_PACTS, REROLL_TOKENS_PER_OPERATION, maxStarsFor, missionsPerOperation } from './config'
-import { isPactSelectable } from './pacts'
+import { ACTION_LOG_CAP, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, maxStarsFor, missionsPerOperation } from './config'
 import { STARTING_KITS, startingItemIds } from './progression'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed } from './rng'
-import { comboKey, diverOptions } from './selectors'
+import { comboKey, diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
 import { deriveFront, deriveMisfortune } from './wheel'
 
 export function createDiveState(
@@ -95,27 +94,37 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       return commit(state, {
         wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed, state.difficulty).id },
         frontId: state.frontId ?? deriveFront(action.seed),
-        // The misfortune is a draw, not a verdict — the squad decides.
+        // The misfortune is a draw, not a verdict — the squad decides before
+        // any pact offer exists.
         misfortuneAccepted: false,
-        phase: 'pacts',
+        phase: 'decision',
         seedHistory: [...state.seedHistory, action.seed],
       }, action)
     }
 
     case 'ACCEPT_MISFORTUNE': {
-      if (state.phase !== 'pacts' || !state.wheel) {
+      if (!state.wheel) {
         return state
       }
-      // Team risk is shared, so the decision is frozen once anyone locks pacts
-      // (accepting late could invalidate an already-locked pact).
-      if (state.divers.some(diver => diver.pactsLocked)) {
+      // The first call decides (the spin leaves the squad in 'decision');
+      // afterwards the call may still flip while nobody has locked pacts —
+      // team risk is shared, so the decision freezes at the first pact lock.
+      const deciding = state.phase === 'decision'
+      const switching = state.phase === 'pacts' && !state.divers.some(diver => diver.pactsLocked)
+      if (!deciding && !switching) {
         return state
       }
-      return commit(state, { misfortuneAccepted: action.accepted }, action)
+      if (switching && action.accepted === state.misfortuneAccepted) {
+        return state
+      }
+      return commit(state, {
+        misfortuneAccepted: action.accepted,
+        ...(deciding ? { phase: 'pacts' } : {}),
+      }, action)
     }
 
     case 'REROLL_WHEEL': {
-      if (state.phase !== 'pacts' || !state.wheel || !state.frontId) {
+      if ((state.phase !== 'decision' && state.phase !== 'pacts') || !state.wheel || !state.frontId) {
         return state
       }
       if (state.divers.some(diver => diver.pactsLocked)) {
@@ -138,6 +147,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         return commit(state, {
           wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed, state.difficulty).id },
           misfortuneAccepted: false,
+          phase: 'decision',
           rerollTokens: completed ? state.rerollTokens : state.rerollTokens - 1,
           seedHistory: [...state.seedHistory, action.seed],
         }, action)
@@ -150,6 +160,8 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
     }
 
     case 'SET_PACTS': {
+      // Pacts only exist after the wheel decision — the offer is rolled from
+      // the decided draw.
       if (state.phase !== 'pacts') {
         return state
       }
@@ -157,11 +169,10 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (!diver || diver.pactsLocked) {
         return state
       }
-      if (action.pactIds.length > MAX_PACTS) {
-        return state
-      }
-      const misfortuneId = state.wheel?.misfortuneId ?? null
-      if (!action.pactIds.every(id => isPactSelectable(id, misfortuneId))) {
+      // A diver may only lock pacts from their own rolled offer — the offer
+      // already filters whatever the accepted misfortune blocks.
+      const offer = pactOfferFor(state, action.playerId)
+      if (!action.pactIds.every(id => offer.some(pact => pact.id === id))) {
         return state
       }
       const divers = state.divers.map(candidate =>
@@ -250,15 +261,34 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (!diver || diver.pickedOptionId) {
         return state
       }
-      if (!diverOptions(state, diver).some(option => option.optionId === action.optionId)) {
+      const option = diverOptions(state, diver).find(
+        candidate => candidate.optionId === action.optionId,
+      )
+      if (!option) {
         return state
       }
-      const item = ITEMS_BY_ID.get(action.optionId)
+      // Diver's Choice banks the item the diver named; every other option is
+      // the item itself (optionId === item id). pickedOptionId always records
+      // the banked item's id.
+      const itemId = option.choice ? action.choiceItemId : action.optionId
+      if (!itemId) {
+        return state
+      }
+      const item = ITEMS_BY_ID.get(itemId)
       if (!item) {
         return state
       }
+      if (option.choice) {
+        // The free pick still honors the personal-catalog rules: only items
+        // from the diver's own warbonds, never armor pieces, nothing owned.
+        const owned = new Set(state.personalInventories[diver.id] ?? [])
+        const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
+        if (owned.has(item.id) || !pool.some(entry => entry.id === item.id)) {
+          return state
+        }
+      }
       const divers = state.divers.map(candidate =>
-        candidate.id === diver.id ? { ...candidate, pickedOptionId: action.optionId } : candidate,
+        candidate.id === diver.id ? { ...candidate, pickedOptionId: itemId } : candidate,
       )
       // Every reward is personal — stratagems included (no shared pool).
       const personalInventories = {

@@ -46,6 +46,8 @@ html {
   color-scheme: dark;
 }
 
+html.modal-open { overflow: hidden; }
+
 body {
   margin: 0;
   background:
@@ -176,6 +178,17 @@ input[type="checkbox"] { accent-color: var(--gold); width: 1rem; height: 1rem; }
 }
 
 .chip.warn { color: var(--red); border-color: var(--red); }
+
+button.chip {
+  font: inherit;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+  background: transparent;
+  transition: filter 0.15s ease;
+}
+button.chip:hover:not(:disabled) { filter: brightness(1.35); }
+button.chip:active:not(:disabled) { transform: translateY(1px); }
 
 .tier-badge {
   display: inline-grid;

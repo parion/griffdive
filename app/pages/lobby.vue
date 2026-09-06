@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FrontId } from '~~/shared/data/fronts'
 import { VARIANTS, difficultyName } from '~~/shared/engine/progression'
+import { frontById } from '~~/shared/engine/wheel'
 import type { CrusadeVariant } from '~~/shared/engine/types'
 import type { LobbyEntry } from '~~/shared/types/messages'
 
@@ -50,17 +51,8 @@ function variantName(variant: LobbyEntry['variant']): string {
   return VARIANTS.find(entry => entry.id === variant)?.name ?? 'Fresh lobby'
 }
 
-function frontName(front: LobbyEntry['front']): string {
-  switch (front) {
-    case 'terminids':
-      return 'Terminids'
-    case 'automatons':
-      return 'Automatons'
-    case 'illuminate':
-      return 'Illuminate'
-    default:
-      return ''
-  }
+function frontOf(front: LobbyEntry['front']) {
+  return front ? frontById(front) : null
 }
 </script>
 
@@ -141,7 +133,9 @@ function frontName(front: LobbyEntry['front']): string {
         <p class="small muted">
           {{ room.squadSize }}/4 divers · {{ room.slotsFree }} slot{{ room.slotsFree === 1 ? '' : 's' }} free
           <template v-if="room.front">
-            · vs {{ frontName(room.front) }}
+            · vs <strong
+              :style="{ color: frontOf(room.front)?.accent }"
+            >{{ frontOf(room.front)?.displayName }}</strong>
           </template>
         </p>
         <NuxtLink

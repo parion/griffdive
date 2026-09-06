@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { MAX_DIFFICULTY, MAX_PACTS, maxStarsFor, missionsPerOperation } from '~~/shared/engine/config'
+import { MAX_DIFFICULTY, maxStarsFor, missionsPerOperation } from '~~/shared/engine/config'
+import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
 import { difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
+import { pactName } from '~~/shared/data/pacts'
 import { pactRiskTotal } from '~~/shared/engine/pacts'
 import {
   activeMisfortune,
@@ -11,6 +13,8 @@ import {
   currentFront,
   diverCeiling,
   diverOptions,
+  pactOfferFor,
+  rewardPoolFor,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
 import type { CrusadeVariant, EngineAction, ItemRef } from '~~/shared/engine/types'
@@ -30,12 +34,20 @@ const misfortune = computed(() => (session.state.value ? activeMisfortune(sessio
 const front = computed(() => (session.state.value ? currentFront(session.state.value) : null))
 
 const pactSelection = ref<string[]>([])
+// A new draw or a flipped decision rolls a fresh offer — start the pick clean.
 watch(
-  () => session.state.value?.wheel?.seed,
+  () => [session.state.value?.wheel?.seed, session.state.value?.misfortuneAccepted],
   () => {
     pactSelection.value = []
   },
 )
+
+// The offer exists only once the wheel decision is in; it is derived from the
+// seed, so every client shows this diver the same 2–3 pacts.
+const pactOffer = computed(() =>
+  session.state.value && session.selfId.value
+    ? pactOfferFor(session.state.value, session.selfId.value)
+    : [])
 
 // Once the diver banks their reward, surface the squad inventory so the new
 // item is visible without hunting for it.
@@ -54,7 +66,7 @@ function togglePact(pactId: string): void {
   if (set.has(pactId)) {
     set.delete(pactId)
   }
-  else if (set.size < MAX_PACTS) {
+  else if (set.size < pactOffer.value.length) {
     set.add(pactId)
   }
   pactSelection.value = [...set]
@@ -78,11 +90,18 @@ const options = computed(() =>
   session.state.value && self.value ? diverOptions(session.state.value, self.value) : [],
 )
 
-// spin and pacts share one scene so the wheel reveal isn't interrupted by the
-// phase flip that follows the spin.
+// Diver's Choice picks from the diver's own catalog: their declared warbonds
+// minus anything already owned. Same personal-pool rule as the rolled offers.
+const rewardPool = computed(() =>
+  self.value ? rewardPoolFor(self.value.warbondCodes ?? ALL_WARBOND_CODES) : [])
+const ownedIds = computed(() =>
+  session.state.value?.personalInventories[session.selfId.value ?? ''] ?? [])
+
+// spin, the wheel decision and pacts share one scene so the wheel reveal isn't
+// interrupted by the phase flips that follow the spin.
 const phaseKey = computed(() => {
   const phase = session.state.value?.phase
-  return phase === 'spin' || phase === 'pacts' ? 'spin-pacts' : phase
+  return phase === 'spin' || phase === 'decision' || phase === 'pacts' ? 'spin-pacts' : phase
 })
 
 const reportMode = ref<'none' | 'success' | 'failure'>('none')
@@ -122,10 +141,13 @@ function report(outcome: 'success' | 'failure'): void {
   reportMode.value = 'none'
 }
 
-function pick(optionId: string): void {
-  if (session.selfId.value) {
-    dispatch({ type: 'PICK_REWARD', playerId: session.selfId.value, optionId })
+function pick(optionId: string, choiceItemId?: string): void {
+  if (!session.selfId.value) {
+    return
   }
+  dispatch(choiceItemId
+    ? { type: 'PICK_REWARD', playerId: session.selfId.value, optionId, choiceItemId }
+    : { type: 'PICK_REWARD', playerId: session.selfId.value, optionId })
 }
 
 function advance(): void {
@@ -406,7 +428,7 @@ function commitWarbonds(codes: string[]): void {
             </p>
           </template>
 
-          <template v-if="session.state.value.phase === 'spin' || session.state.value.phase === 'pacts'">
+          <template v-if="session.state.value.phase === 'spin' || session.state.value.phase === 'decision' || session.state.value.phase === 'pacts'">
             <WheelPanel
               :state="session.state.value"
               :can-control="canControl"
@@ -449,12 +471,12 @@ function commitWarbonds(codes: string[]): void {
                         v-for="pactId in self.pactIds"
                         :key="pactId"
                         class="chip"
-                      >{{ pactId }}</span>
+                      >{{ pactName(pactId) }}</span>
                     </p>
                   </div>
                   <template v-else>
                     <PactPicker
-                      :misfortune-id="misfortune?.id ?? null"
+                      :offer="pactOffer"
                       :selected="pactSelection"
                       @toggle="togglePact"
                       @lock="lockPacts"
@@ -491,11 +513,15 @@ function commitWarbonds(codes: string[]): void {
               <p>
                 <template v-if="misfortune">
                   <strong>{{ misfortune.name }}</strong> — {{ misfortune.rule }}
-                  · vs <strong>{{ front?.displayName }}</strong>
+                  · vs <strong
+                    :style="front ? { color: front.accent } : undefined"
+                  >{{ front?.displayName }}</strong>
                 </template>
                 <template v-else>
                   No team misfortune — safe dive
-                  · vs <strong>{{ front?.displayName }}</strong>
+                  · vs <strong
+                    :style="front ? { color: front.accent } : undefined"
+                  >{{ front?.displayName }}</strong>
                 </template>
               </p>
               <p class="row small">
@@ -504,12 +530,31 @@ function commitWarbonds(codes: string[]): void {
                   v-for="pactId in self?.pactIds ?? []"
                   :key="pactId"
                   class="chip"
-                >{{ pactId }}</span>
+                >{{ pactName(pactId) }}</span>
                 <span
                   v-if="!self?.pactIds.length"
                   class="muted"
                 >none — safe dive</span>
               </p>
+              <ul class="squad-pacts small">
+                <li
+                  v-for="diver in session.state.value.divers"
+                  :key="diver.id"
+                >
+                  <span class="muted">{{ diver.name }}</span>
+                  <template v-if="diver.pactIds.length">
+                    — <span
+                      v-for="pactId in diver.pactIds"
+                      :key="pactId"
+                      class="chip"
+                    >{{ pactName(pactId) }}</span>
+                  </template>
+                  <span
+                    v-else
+                    class="muted"
+                  >— no pacts</span>
+                </li>
+              </ul>
               <p class="row small muted">
                 Ceiling up to <TierBadge :tier="lockedCeiling ?? 'C'" />
               </p>
@@ -587,6 +632,8 @@ function commitWarbonds(codes: string[]): void {
             <RewardDraft
               :options="options"
               :picked-id="self?.pickedOptionId ?? null"
+              :pool="rewardPool"
+              :owned-ids="ownedIds"
               @pick="pick"
             />
             <Transition name="phase">
@@ -667,6 +714,7 @@ function commitWarbonds(codes: string[]): void {
       </Transition>
 
       <details
+        v-if="session.state.value.phase !== 'lobby'"
         ref="squadInventory"
         class="panel"
       >
@@ -687,6 +735,16 @@ function commitWarbonds(codes: string[]): void {
 .phase-stack { display: grid; gap: 1rem; }
 .stack { display: grid; gap: 0.6rem; }
 .badge-pop { display: inline-grid; }
+
+.squad-pacts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.5rem;
+}
 
 .dive-meta {
   display: flex;

@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import { ALL_ITEMS, ITEMS_BY_ID } from '../data/catalog'
+import { PACTS } from '../data/pacts'
 import { startingItemIds } from './progression'
+import { DIVERS_CHOICE_OPTION_ID } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { allDiversPicked, canRerollWheel, comboKey, diverOptions } from './selectors'
+import { allDiversPicked, canRerollWheel, comboKey, diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
 import type { DiveState, DiverState, EngineAction } from './types'
 
 const SETTINGS = { variant: 'standard' as const }
@@ -16,8 +19,32 @@ function spunState(seed = 42): DiveState {
   return reduce(freshState(), { type: 'SPIN_WHEEL', seed })
 }
 
+function decidedState(seed = 42, accepted = true): DiveState {
+  return reduce(spunState(seed), { type: 'ACCEPT_MISFORTUNE', accepted })
+}
+
+function offerPacts(state: DiveState, diverId = 'p1'): string[] {
+  return pactOfferFor(state, diverId).map(pact => pact.id)
+}
+
+function outsideOffer(state: DiveState, diverId = 'p1'): string {
+  const offered = new Set(offerPacts(state, diverId))
+  const outside = PACTS.map(pact => pact.id).find(id => !offered.has(id))
+  if (!outside) {
+    throw new Error('expected a pact outside the rolled offer')
+  }
+  return outside
+}
+
 function divingState(seed = 42, pactIds: string[] = []): DiveState {
-  return reduce(spunState(seed), { type: 'SET_PACTS', playerId: 'p1', pactIds })
+  const decided = decidedState(seed)
+  // Only pacts the wheel offered can lock — intersect the requested pick.
+  const offered = new Set(offerPacts(decided))
+  return reduce(decided, {
+    type: 'SET_PACTS',
+    playerId: 'p1',
+    pactIds: pactIds.filter(id => offered.has(id)),
+  })
 }
 
 function requireDiver(state: DiveState): DiverState {
@@ -69,6 +96,9 @@ describe('reduce (purity + no-op safety)', () => {
     expect(reduce(base, { type: 'PICK_REWARD', playerId: 'p1', optionId: 'x' })).toBe(base)
     expect(reduce(base, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'p1', itemId: 'onetrueflag' } })).toBe(base)
     expect(reduce(base, { type: 'ADVANCE' })).toBe(base)
+    // No pact locks before the wheel decision.
+    const spun = spunState(42)
+    expect(reduce(spun, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })).toBe(spun)
     const diving = divingState(42)
     expect(reduce(diving, { type: 'SPIN_WHEEL', seed: 1 })).toBe(diving)
     expect(reduce(diving, { type: 'ACCEPT_MISFORTUNE', accepted: false })).toBe(diving)
@@ -97,7 +127,8 @@ describe('START_DIVE', () => {
 describe('SPIN_WHEEL / REROLL_WHEEL', () => {
   it('derives the wheel and stores the seed', () => {
     const state = spunState(42)
-    expect(state.phase).toBe('pacts')
+    // The draw opens the decision window, not the pact window.
+    expect(state.phase).toBe('decision')
     expect(state.wheel?.seed).toBe(42)
     expect(state.seedHistory).toEqual([42])
   })
@@ -140,10 +171,10 @@ describe('SPIN_WHEEL / REROLL_WHEEL', () => {
     state = reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: options[0]!.optionId })
     state = reduce(state, { type: 'ADVANCE' })
     expect(state.missionIndex).toBe(1)
-    // Mission 2 begins at the spin — only after the fresh draw is the pact
-    // window open, and in it the front reroll is refused.
+    // Mission 2 begins at the spin — only after the fresh draw is decided does
+    // the pact window open, and in it the front reroll is refused.
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 60 })
-    expect(state.phase).toBe('pacts')
+    expect(state.phase).toBe('decision')
 
     const blocked = reduce(state, { type: 'REROLL_WHEEL', wheel: 'front', seed: 43 })
     expect(blocked).toBe(state)
@@ -156,36 +187,54 @@ describe('SPIN_WHEEL / REROLL_WHEEL', () => {
 })
 
 describe('ACCEPT_MISFORTUNE (optional team risk)', () => {
-  it('accepts and declines the drawn misfortune before pacts lock', () => {
+  it('moves the squad from decision to pacts, and accepts or declines', () => {
     const state = spunState(42)
+    expect(state.phase).toBe('decision')
     const accepted = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     expect(accepted.misfortuneAccepted).toBe(true)
+    expect(accepted.phase).toBe('pacts')
     const declined = reduce(accepted, { type: 'ACCEPT_MISFORTUNE', accepted: false })
     expect(declined.misfortuneAccepted).toBe(false)
+    expect(declined.phase).toBe('pacts')
   })
 
   it('freezes the decision once any pact is locked', () => {
-    const locked = reduce(spunState(42), { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
-    expect(reduce(locked, { type: 'ACCEPT_MISFORTUNE', accepted: true })).toBe(locked)
+    const locked = divingState(42)
+    expect(reduce(locked, { type: 'ACCEPT_MISFORTUNE', accepted: !locked.misfortuneAccepted })).toBe(locked)
   })
 
   it('resets the decision on a reroll', () => {
-    const accepted = reduce(spunState(42), { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    const accepted = decidedState(42)
     const rerolled = reduce(accepted, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 43 })
     expect(rerolled.misfortuneAccepted).toBe(false)
+    expect(rerolled.phase).toBe('decision')
     expect(rerolled.wheel?.seed).toBe(43)
   })
 })
 
 describe('SET_PACTS', () => {
-  it('locks pacts and moves to diving (solo)', () => {
-    const state = reduce(spunState(42), { type: 'SET_PACTS', playerId: 'p1', pactIds: ['stimAbstinent'] })
+  it('locks pacts from the rolled offer and moves to diving (solo)', () => {
+    const decided = decidedState(42)
+    const pactIds = offerPacts(decided).slice(0, 2)
+    expect(pactIds.length).toBeGreaterThan(0)
+    const state = reduce(decided, { type: 'SET_PACTS', playerId: 'p1', pactIds })
     expect(state.phase).toBe('diving')
     expect(state.divers[0]?.pactsLocked).toBe(true)
+    expect(state.divers[0]?.pactIds).toEqual(pactIds)
+  })
+
+  it('rejects pacts outside the diver\'s rolled offer', () => {
+    const decided = decidedState(42)
+    expect(reduce(decided, { type: 'SET_PACTS', playerId: 'p1', pactIds: [outsideOffer(decided)] })).toBe(decided)
+  })
+
+  it('is a no-op before the wheel decision', () => {
+    const spun = spunState(42)
+    expect(reduce(spun, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })).toBe(spun)
   })
 
   it('rejects pacts blocked by the accepted misfortune', () => {
-    const accepted = reduce(spunState(42), { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    const accepted = decidedState(42)
     const misfortuneId = accepted.wheel!.misfortuneId
     const blocked = (BLOCKED_UNDER_MISFORTUNE[misfortuneId] ?? [])[0]
     if (!blocked) {
@@ -194,15 +243,15 @@ describe('SET_PACTS', () => {
     expect(reduce(accepted, { type: 'SET_PACTS', playerId: 'p1', pactIds: [blocked] })).toBe(accepted)
   })
 
-  it('rejects more than MAX_PACTS and unknown pacts', () => {
-    const state = spunState(42)
-    const tooMany = reduce(state, {
+  it('rejects more pacts than the offer holds, and unknown ids', () => {
+    const decided = decidedState(42)
+    const tooMany = reduce(decided, {
       type: 'SET_PACTS',
       playerId: 'p1',
-      pactIds: ['stimAbstinent', 'deadWeight', 'loadoutLoyalist', 'antiTankAbstinent'],
+      pactIds: PACTS.map(pact => pact.id),
     })
-    expect(tooMany).toBe(state)
-    expect(reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: ['ghostPact'] })).toBe(state)
+    expect(tooMany).toBe(decided)
+    expect(reduce(decided, { type: 'SET_PACTS', playerId: 'p1', pactIds: ['ghostPact'] })).toBe(decided)
   })
 })
 
@@ -290,6 +339,7 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
     state = reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: options[0]!.optionId })
     state = reduce(state, { type: 'ADVANCE' })
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 99 })
+    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
     options = diverOptions(state, requireDiver(state))
@@ -318,6 +368,7 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
     // squad returns to the spin phase.
     for (let i = 0; i < 2; i++) {
       state = reduce(state, { type: 'SPIN_WHEEL', seed: 50 + i })
+      state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
       state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
       state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
       const options = diverOptions(state, requireDiver(state))
@@ -456,17 +507,19 @@ describe('KICK_DIVER', () => {
 
   it('a kicked diver no longer blocks the pact window', () => {
     const spun = reduce(twoDiverState(), { type: 'SPIN_WHEEL', seed: 42 })
-    const halfLocked = reduce(spun, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+    const decided = reduce(spun, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    const halfLocked = reduce(decided, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     expect(halfLocked.phase).toBe('pacts')
     const kicked = reduce(halfLocked, { type: 'KICK_DIVER', playerId: 'p2' })
     expect(kicked.phase).toBe('diving')
 
-    const stillPicking = reduce(spun, { type: 'KICK_DIVER', playerId: 'p2' })
-    expect(stillPicking.phase).toBe('pacts')
+    const stillDeciding = reduce(spun, { type: 'KICK_DIVER', playerId: 'p2' })
+    expect(stillDeciding.phase).toBe('decision')
   })
 
   it('a kicked diver no longer blocks the reward draft', () => {
     let state = reduce(twoDiverState(), { type: 'SPIN_WHEEL', seed: 42 })
+    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p2', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
@@ -477,5 +530,98 @@ describe('KICK_DIVER', () => {
     state = reduce(state, { type: 'KICK_DIVER', playerId: 'p2' })
     state = reduce(state, { type: 'ADVANCE' })
     expect(state.phase).toBe('spin')
+  })
+})
+
+describe('PICK_REWARD — Diver\'s Choice (S+)', () => {
+  // The S+ ceiling is a rare roll, so the fixture searches offer seeds through
+  // the real selector until one produces the choice slot — deterministic, no
+  // runtime randomness, and the phase/offerSeed shape matches a real report.
+  function choiceState(): DiveState {
+    const base = divingState(42, PACTS.map(pact => pact.id))
+    const diver = requireDiver(base)
+    for (let offerSeed = 0; offerSeed < 4000; offerSeed++) {
+      const candidate: DiveState = {
+        ...base,
+        phase: 'rewards',
+        offerSeed,
+        lastReport: { outcome: 'success', stars: 3 },
+      }
+      if (diverOptions(candidate, diver).some(option => option.choice)) {
+        return candidate
+      }
+    }
+    throw new Error('no offer seed produced a Diver\'s Choice offer')
+  }
+
+  function claimableId(state: DiveState): string {
+    const diver = requireDiver(state)
+    const owned = new Set(state.personalInventories[diver.id] ?? [])
+    const item = rewardPoolFor(diver.warbondCodes).find(entry => !owned.has(entry.id))
+    if (!item) {
+      throw new Error('expected a claimable item')
+    }
+    return item.id
+  }
+
+  it('banks the item the diver names', () => {
+    const state = choiceState()
+    const itemId = claimableId(state)
+    const picked = reduce(state, {
+      type: 'PICK_REWARD',
+      playerId: 'p1',
+      optionId: DIVERS_CHOICE_OPTION_ID,
+      choiceItemId: itemId,
+    })
+    expect(picked.divers[0]?.pickedOptionId).toBe(itemId)
+    expect(picked.personalInventories.p1).toContain(itemId)
+    expect(allDiversPicked(picked)).toBe(true)
+    // A catalog item was banked — the sentinel never enters the inventory.
+    expect(ITEMS_BY_ID.has(itemId)).toBe(true)
+  })
+
+  it('refuses a choice pick that names no item', () => {
+    const state = choiceState()
+    expect(reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: DIVERS_CHOICE_OPTION_ID })).toBe(state)
+    expect(reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: DIVERS_CHOICE_OPTION_ID, choiceItemId: 'ghostgun' })).toBe(state)
+  })
+
+  it('refuses items outside the diver\'s own warbonds', () => {
+    const state = reduce(choiceState(), { type: 'SET_WARBONDS', playerId: 'p1', warbondCodes: [] })
+    const foreign = ALL_ITEMS.find(item => item.warbondCode !== 'none' && item.category !== 'armor')
+    if (!foreign) {
+      throw new Error('expected a warbond-gated item')
+    }
+    expect(reduce(state, {
+      type: 'PICK_REWARD',
+      playerId: 'p1',
+      optionId: DIVERS_CHOICE_OPTION_ID,
+      choiceItemId: foreign.id,
+    })).toBe(state)
+  })
+
+  it('refuses armor pieces — rewards are the passives', () => {
+    const state = choiceState()
+    const piece = ALL_ITEMS.find(item => item.category === 'armor')
+    if (!piece) {
+      throw new Error('expected an armor piece')
+    }
+    expect(reduce(state, {
+      type: 'PICK_REWARD',
+      playerId: 'p1',
+      optionId: DIVERS_CHOICE_OPTION_ID,
+      choiceItemId: piece.id,
+    })).toBe(state)
+  })
+
+  it('refuses items the diver already owns', () => {
+    const state = choiceState()
+    const owned = requireId(state.personalInventories.p1?.[0])
+    expect(reduce(state, {
+      type: 'PICK_REWARD',
+      playerId: 'p1',
+      optionId: DIVERS_CHOICE_OPTION_ID,
+      choiceItemId: owned,
+    })).toBe(state)
   })
 })

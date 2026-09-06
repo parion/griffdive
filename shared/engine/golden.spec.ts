@@ -2,16 +2,18 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { ALL_WARBOND_CODES } from '../data/catalog'
 import { MISFORTUNE_RISK } from './config'
 import { createDiveState, reduce } from './reducer'
-import { diverOptions } from './selectors'
+import { diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
 import type { DiveState } from './types'
 
 const UPDATE = process.env.GRIFFDIVE_UPDATE_GOLDENS === '1'
 const goldenPath = join(dirname(fileURLToPath(import.meta.url)), '__goldens__', 'crusade-standard.json')
 
 // Always-selectable pacts (none appear in BLOCKED_UNDER_MISFORTUNE), so the
-// scripted rotation is valid under every possible misfortune.
+// scripted rotation is meaningful under every possible misfortune. Each
+// mission only locks the pacts the wheel actually offered.
 const PACT_ROTATION: string[][] = [
   [],
   ['stimAbstinent'],
@@ -35,6 +37,7 @@ interface MissionRecord {
   outcome: 'success' | 'failure'
   stars: number
   optionId: string | null
+  choiceItemId: string | null
   forfeitedItemId: string | null
   front: string | null
 }
@@ -51,11 +54,13 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
     if (mission === 0) {
       state = reduce(state, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: seedFor(999) })
     }
-    // The squad accepts intense misfortunes and declines weak ones — the
-    // rotation pacts never conflict with any misfortune, so both paths work.
+    // The squad accepts intense misfortunes and declines weak ones.
     const accepted = (MISFORTUNE_RISK[state.wheel!.misfortuneId] ?? 0) >= 3
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted })
-    const pactIds = PACT_ROTATION[mission % PACT_ROTATION.length] ?? []
+    // The diver picks a subset of what the wheel offered this mission.
+    const rotation = PACT_ROTATION[mission % PACT_ROTATION.length] ?? []
+    const offered = new Set(pactOfferFor(state, 'host').map(pact => pact.id))
+    const pactIds = rotation.filter(id => offered.has(id))
     state = reduce(state, { type: 'SET_PACTS', playerId: 'host', pactIds })
 
     const failure = mission % 5 === 3
@@ -70,6 +75,7 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
       outcome: failure ? 'failure' : 'success',
       stars,
       optionId: null,
+      choiceItemId: null,
       forfeitedItemId: null,
     }
 
@@ -105,7 +111,23 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
       }
       const option = options[0]
       record.optionId = option?.optionId ?? null
-      if (option) {
+      if (option?.choice) {
+        // Diver's Choice banks a deterministic free pick: the first item in
+        // the diver's own pool they don't own (stable catalog order).
+        const owned = new Set(state.personalInventories.host ?? [])
+        const itemId = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
+          .find(item => !owned.has(item.id))?.id ?? null
+        record.choiceItemId = itemId
+        if (itemId) {
+          state = reduce(state, {
+            type: 'PICK_REWARD',
+            playerId: 'host',
+            optionId: option.optionId,
+            choiceItemId: itemId,
+          })
+        }
+      }
+      else if (option) {
         state = reduce(state, { type: 'PICK_REWARD', playerId: 'host', optionId: option.optionId })
       }
       state = reduce(state, { type: 'ADVANCE' })

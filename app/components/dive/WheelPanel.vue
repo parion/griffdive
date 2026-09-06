@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { FRONTS } from '~~/shared/data/fronts'
+import { factionImageUrl } from '~~/shared/data/images'
 import { MISFORTUNE_RISK } from '~~/shared/engine/config'
 import {
   canRerollWheel,
@@ -9,6 +10,7 @@ import {
 } from '~~/shared/engine/selectors'
 import { eligibleMisfortunes } from '~~/shared/engine/wheel'
 import type { DiveState } from '~~/shared/engine/types'
+import { ACCOUNTABILITY_LABELS } from '~/utils/accountability'
 import { riseIn } from '~/utils/motion'
 
 const props = withDefaults(defineProps<{ state: DiveState, canControl?: boolean }>(), { canControl: true })
@@ -24,11 +26,20 @@ const teamRisk = computed(() =>
   props.state.wheel ? (MISFORTUNE_RISK[props.state.wheel.misfortuneId] ?? 0) : 0,
 )
 
-// The decision window closes once anyone locks pacts — team risk is shared,
-// so the accept/opt-out call is frozen at that point.
+// The decision is its own phase: the spin leaves the squad in 'decision', and
+// only the accepted-or-declined call moves them on to pacts. A switch is still
+// allowed while nobody has locked pacts — team risk is shared, so the call
+// freezes at the first pact lock.
 const decision = computed(() => misfortuneDecision(props.state))
 const decisionOpen = computed(() =>
+  props.state.phase === 'decision'
+  && props.state.wheel !== null)
+const canSwitch = computed(() =>
   props.state.phase === 'pacts'
+  && props.state.wheel !== null
+  && !props.state.divers.some(diver => diver.pactsLocked))
+const rerollWindow = computed(() =>
+  (props.state.phase === 'decision' || props.state.phase === 'pacts')
   && props.state.wheel !== null
   && !props.state.divers.some(diver => diver.pactsLocked))
 
@@ -39,6 +50,12 @@ const frontNames = computed(() => FRONTS.map(entry => entry.displayName))
 
 const misfortuneReeling = ref(false)
 const frontReeling = ref(false)
+
+// Faction colors keyed by display name, so the reel rolls its candidates in
+// their own colors and never shows the winner's before it lands.
+const frontColors: Record<string, string> = Object.fromEntries(
+  FRONTS.map(entry => [entry.displayName, entry.accent]),
+)
 
 // Reels replay only on live changes — a spin or reroll re-seeds them, while a
 // page load mid-phase settles straight onto the stored result.
@@ -51,6 +68,18 @@ watch(() => props.state.wheel?.seed ?? null, (seed) => {
 
 const frontReelId = ref<string | null>(null)
 let frontTick = 0
+
+// The card frame stays neutral until the drawn front actually settles — the
+// reel has a start delay, so keying the frame to the state change alone makes
+// the border flash before the roll begins.
+const frontSettled = ref(true)
+function onFrontReeling(rolling: boolean): void {
+  frontReeling.value = rolling
+  if (!rolling) {
+    frontSettled.value = true
+  }
+}
+
 watch(() => props.state.frontId, (id, prev) => {
   if (id === null || misfortuneReelId.value === null) {
     return
@@ -59,6 +88,7 @@ watch(() => props.state.frontId, (id, prev) => {
     frontTick++
   }
   frontReelId.value = `${misfortuneReelId.value}:${frontTick}`
+  frontSettled.value = false
 })
 
 const cardTone = computed(() =>
@@ -108,7 +138,7 @@ function rerollLabel(
             class="head-tools"
           >
             <button
-              v-if="canControl && decisionOpen"
+              v-if="canControl && rerollWindow"
               class="reroll-dice"
               type="button"
               :disabled="!misfortuneReroll.allowed || misfortuneReeling"
@@ -132,6 +162,12 @@ function rerollLabel(
             />
           </strong>
           <p>{{ misfortune?.rule }}</p>
+          <p
+            v-if="misfortune"
+            class="small muted"
+          >
+            {{ ACCOUNTABILITY_LABELS[misfortune.accountability] }}
+          </p>
           <span class="row small muted">Team risk <RiskPips :value="teamRisk" /></span>
           <div
             v-if="!decision.decided && canControl"
@@ -155,7 +191,7 @@ function rerollLabel(
             </button>
           </div>
           <button
-            v-else-if="decision.decided && canControl"
+            v-else-if="decision.decided && canSwitch"
             class="btn tiny ghost"
             type="button"
             @click="$emit('decide', !decision.accepted)"
@@ -166,7 +202,7 @@ function rerollLabel(
             v-else-if="!decision.decided && !canControl"
             class="muted small"
           >
-            The host decides before pacts lock.
+            The host decides before pacts roll.
           </p>
         </template>
         <button
@@ -181,10 +217,26 @@ function rerollLabel(
       </Motion>
       <Motion
         as="div"
-        class="wheel-card"
-        :class="{ reeling: frontReeling }"
+        class="wheel-card front-card"
+        :class="{ reeling: frontReeling, accented: !!front && frontSettled }"
+        :style="front ? { '--front-accent': front.accent } : undefined"
         v-bind="riseIn(1)"
       >
+        <AnimatePresence>
+          <Motion
+            v-if="front && frontSettled"
+            :key="front.id"
+            as="img"
+            class="front-art"
+            :src="factionImageUrl(front.id)"
+            alt=""
+            draggable="false"
+            :initial="{ opacity: 0, x: 26 }"
+            :animate="{ opacity: 0.16, x: 0 }"
+            :exit="{ opacity: 0, x: 26 }"
+            :transition="{ duration: 0.45, ease: 'easeOut' }"
+          />
+        </AnimatePresence>
         <span class="card-head">
           <span class="muted small">Front</span>
           <span
@@ -206,9 +258,10 @@ function rerollLabel(
             <ReelText
               :final="front?.displayName ?? ''"
               :candidates="frontNames"
+              :colors="frontColors"
               :reel-id="frontReelId"
               :start-delay="150"
-              @reeling="frontReeling = $event"
+              @reeling="onFrontReeling"
             />
           </strong>
           <p class="muted small">
@@ -252,6 +305,33 @@ function rerollLabel(
 }
 .misfortune { position: relative; overflow: hidden; }
 .misfortune-name { font-size: 1.1rem; color: var(--gold); }
+.front-card { position: relative; overflow: hidden; isolation: isolate; }
+.front-card .misfortune-name { color: var(--front-accent, var(--gold)); }
+
+/* Faction emblem watermark: behind the card text (isolation keeps z-index -1
+   above the card's own background), slides in from the right edge on settle
+   and slides back out while a roll is live. */
+.front-art {
+  position: absolute;
+  top: 50%;
+  right: -0.5rem;
+  translate: 0 -50%;
+  width: 7rem;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* A settled front frames its card in faction colors — border and a faint
+   wash. While the reel spins the frame stays neutral: the names rolling by
+   carry their own faction colors, so nothing gives the draw away early. The
+   border fades in only on the way back, so a settle reads as a reveal. */
+.front-card.accented {
+  border-color: color-mix(in srgb, var(--front-accent) 55%, var(--border));
+  background:
+    linear-gradient(165deg, color-mix(in srgb, var(--front-accent) 10%, transparent), transparent 55%),
+    var(--bg);
+  transition: border-color var(--dur-med) var(--ease-out);
+}
 
 .wheel-card.misfortune.pending {
   border-style: dashed;

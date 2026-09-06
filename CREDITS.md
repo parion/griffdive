@@ -20,8 +20,8 @@ Griffdive stands on the work of the Helldivers community. Thank you.
 ## Equipment images
 
 - [helldivers.wiki.gg](https://helldivers.wiki.gg/wiki/Helldivers_2).
-- Bundled in `public/images/{equipment,armor,armorpassives,warbonds}/` (imported via the Penitent
-  Crusade asset bundle); resolved to URLs by `shared/data/images.ts`.
+- Bundled in `public/images/{equipment,armor,armorpassives,warbonds,difficulty,faction}/` (imported
+  via the Penitent Crusade asset bundle); resolved to URLs by `shared/data/images.ts`.
 - These are Arrowhead/Sony game renders reproduced for non-commercial fan use; see Intellectual
   property below.
 

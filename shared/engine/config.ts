@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 5
+export const ENGINE_VERSION = 7
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -35,6 +35,24 @@ export function maxStarsFor(difficulty: number): number {
 }
 
 export const MAX_PACTS = 3
+// Pacts come as a rolled offer, not the whole catalog: 2 options on diffs 3–6,
+// 3 from 7 up (values must stay within MAX_PACTS). The diver picks any subset
+// of what the wheel offers.
+export const PACT_OPTIONS: Readonly<Record<number, number>> = {
+  3: 2,
+  4: 2,
+  5: 2,
+  6: 2,
+  7: 3,
+  8: 3,
+  9: 3,
+  10: 3,
+}
+
+export function pactOptionsFor(difficulty: number): number {
+  return PACT_OPTIONS[difficulty] ?? 2
+}
+
 export const REROLL_TOKENS_PER_OPERATION = 1
 export const ACTION_LOG_CAP = 200
 
@@ -92,9 +110,10 @@ export const MISFORTUNE_RISK: Readonly<Record<string, number>> = {
   oopsAllOrbitals: 3,
   noResupplies: 4,
   zeroDeaths: 4,
-  secondaryOnly: 4,
+  noReserves: 4,
   noStratagems: 5,
   meleeOnly: 5,
+  pacifist: 5,
 }
 
 export const MISFORTUNE_MIN_DIFFICULTY: Readonly<Record<string, number>> = {
@@ -109,18 +128,24 @@ export const MISFORTUNE_MIN_DIFFICULTY: Readonly<Record<string, number>> = {
   stealth: 5,
   oopsAllOrbitals: 6,
   zeroDeaths: 7,
-  secondaryOnly: 7,
+  noReserves: 7,
   noStratagems: 9,
   meleeOnly: 9,
+  pacifist: 9,
 }
 
 export const PACT_RISK: Readonly<Record<string, number>> = {
   packLight: 1,
   thirsty: 1,
-  stimAbstinent: 2,
+  emptyPockets: 1,
   antiTankAbstinent: 2,
   deadWeight: 2,
+  stimAbstinent: 2,
   loadoutLoyalist: 2,
+  primaryConcern: 2,
+  grounded: 2,
+  shipSilent: 2,
+  openField: 2,
   barebones: 3,
-  sidearmPurist: 3,
+  untouchable: 3,
 }

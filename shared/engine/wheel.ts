@@ -24,10 +24,6 @@ export function deriveFront(seed: number): FrontId {
   return pickRandom(rng, FRONTS).id
 }
 
-export function misfortuneById(id: string): Misfortune | null {
-  return MISFORTUNES.find(misfortune => misfortune.id === id) ?? null
-}
-
 export function frontById(id: FrontId | string): (typeof FRONTS)[number] | null {
   return FRONTS.find(front => front.id === id) ?? null
 }

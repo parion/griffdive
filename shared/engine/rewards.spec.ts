@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS } from '../data/catalog'
-import { luckOf, maxCeiling, oddsToReach, optionsForStars, rollCeiling, rollRewardOptions, tierWeight } from './rewards'
+import { DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, luckOf, maxCeiling, oddsToReach, optionsForStars, rollCeiling, rollRewardOptions, tierWeight } from './rewards'
 import { mulberry32 } from './rng'
 import type { RewardTier } from './types'
 
@@ -125,10 +125,26 @@ describe('rollRewardOptions', () => {
     }
   })
 
-  it('guarantees an S-tier option at S+', () => {
+  it('leads with Diver\'s Choice at S+ and still rolls a guaranteed S option', () => {
     for (let seed = 0; seed < 50; seed++) {
       const options = rollRewardOptions(seed, 'S+', 3, ALL_ITEMS, new Set())
-      expect(options.some(option => option.item.tier === 's')).toBe(true)
+      // The choice slot comes first and names the sentinel, not an item.
+      expect(options[0]).toMatchObject({ optionId: DIVERS_CHOICE_OPTION_ID, choice: true })
+      // The bonus slot is the choice, so the remaining roll fills count - 1.
+      expect(options).toHaveLength(3)
+      expect(options.some(option => option.item.tier === 's' && !option.choice)).toBe(true)
+    }
+  })
+
+  it('offers only the choice slot when S+ leaves no room to roll', () => {
+    const options = rollRewardOptions(7, 'S+', 1, ALL_ITEMS, new Set())
+    expect(options).toEqual([{ optionId: DIVERS_CHOICE_OPTION_ID, item: DIVERS_CHOICE_ITEM, choice: true }])
+  })
+
+  it('never offers the choice slot below S+', () => {
+    for (const ceiling of ['C', 'B', 'A', 'S'] as const) {
+      const options = rollRewardOptions(3, ceiling, 2, ALL_ITEMS, new Set())
+      expect(options.some(option => option.choice)).toBe(false)
     }
   })
 

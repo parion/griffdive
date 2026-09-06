@@ -1,12 +1,23 @@
 <script setup lang="ts">
+import { ITEMS_BY_ID } from '~~/shared/data/catalog'
+import type { Item } from '~~/shared/data/types'
 import type { RewardOption } from '~~/shared/engine/rewards'
 import { SPRING_SNAP, riseIn } from '~/utils/motion'
 
-const props = defineProps<{ options: RewardOption[], pickedId: string | null }>()
-const emit = defineEmits<{ pick: [optionId: string] }>()
+const props = defineProps<{
+  options: RewardOption[]
+  pickedId: string | null
+  pool: Item[]
+  ownedIds: string[]
+}>()
 
+const emit = defineEmits<{ pick: [optionId: string, choiceItemId?: string] }>()
+
+// Diver's Choice banks the picked item's id, which is not among the rolled
+// options — resolve it from the catalog for the banked banner.
 const pickedItem = computed(() =>
-  props.options.find(option => option.optionId === props.pickedId)?.item ?? null,
+  props.options.find(option => option.optionId === props.pickedId)?.item
+  ?? (props.pickedId ? ITEMS_BY_ID.get(props.pickedId) ?? null : null),
 )
 </script>
 
@@ -19,7 +30,7 @@ const pickedItem = computed(() =>
       >
         <h2>Rewards — choose one</h2>
         <p class="muted small">
-          Stratagems join the shared squad pool; everything else is yours.
+          Every reward is yours alone — stratagems included.
         </p>
         <div class="grid">
           <Motion
@@ -32,7 +43,14 @@ const pickedItem = computed(() =>
             :exit="{ opacity: 0, y: -12, scale: 0.92 }"
             :transition="{ ...SPRING_SNAP, delay: index * 0.07 }"
           >
+            <DiversChoiceCard
+              v-if="option.choice"
+              :pool="pool"
+              :owned-ids="ownedIds"
+              @choose="choiceItemId => emit('pick', option.optionId, choiceItemId)"
+            />
             <ItemCard
+              v-else
               :item="option.item"
               @select="emit('pick', option.optionId)"
             />

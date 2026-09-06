@@ -1,5 +1,9 @@
 export type Tier = 'c' | 'b' | 'a' | 's'
 
+// How a wheel rule can be verified in Helldivers 2: the pre-dive loadout
+// screen, live in the mission, or the end-of-mission stats screen.
+export type Accountability = 'loadout' | 'field' | 'stats'
+
 export type EquipmentCategory
   = | 'primary'
     | 'secondary'

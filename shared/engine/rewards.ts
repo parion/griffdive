@@ -16,6 +16,24 @@ import type { RewardTier } from './types'
 const TIER_INDEX: Readonly<Record<Tier, number>> = { c: 0, b: 1, a: 2, s: 3 }
 const CEILING_LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
+// No catalog item carries the S+ tier, so a ceiling that breaks the scale
+// banks as Diver's Choice instead: one option to claim any item the diver's
+// own catalog allows. The sentinel id can never collide with a catalog id
+// (catalog ids are camelCase) and is never stored — offers are derived.
+export const DIVERS_CHOICE_OPTION_ID = 's-plus:divers-choice'
+
+// Display stand-in for the choice slot; the UI renders its own special card
+// for it and PICK_REWARD swaps in the actually chosen item.
+export const DIVERS_CHOICE_ITEM: Item = {
+  id: DIVERS_CHOICE_OPTION_ID,
+  displayName: 'Diver’s Choice',
+  type: 'equipment',
+  category: 'booster',
+  tags: [],
+  warbondCode: 'none',
+  tier: 's',
+}
+
 // Chosen risk (accepted team misfortune + personal pacts) buys odds, not tiers.
 export function luckOf(teamRisk: number, pactRisk: number): number {
   return teamRisk + pactRisk
@@ -84,6 +102,9 @@ export function tierWeight(tier: Tier, ceiling: RewardTier): number {
 export interface RewardOption {
   optionId: string
   item: Item
+  // Diver's Choice: the diver names the item when picking (PICK_REWARD's
+  // choiceItemId); the placeholder item is display-only.
+  choice?: boolean
 }
 
 export function rollRewardOptions(
@@ -94,6 +115,14 @@ export function rollRewardOptions(
   excludeIds: ReadonlySet<string>,
 ): RewardOption[] {
   const rng = mulberry32(seed)
+  const picked: RewardOption[] = []
+
+  // S+ breaks the scale: its bonus slot is Diver's Choice (AGENTS.md: Reward
+  // math) — any item from the diver's own catalog, picked at draft time.
+  if (ceiling === 'S+') {
+    picked.push({ optionId: DIVERS_CHOICE_OPTION_ID, item: DIVERS_CHOICE_ITEM, choice: true })
+  }
+
   let candidates = pool.filter(
     item => !excludeIds.has(item.id) && tierWeight(item.tier, ceiling) > 0,
   )
@@ -102,11 +131,11 @@ export function rollRewardOptions(
     // rather than offer nothing — an empty offer deadlocks the dive.
     candidates = pool.filter(item => !excludeIds.has(item.id))
   }
-  const picked: RewardOption[] = []
   const taken = new Set<string>()
 
-  // S+ guarantees at least one top-tier option (AGENTS.md: Reward math).
-  if (ceiling === 'S+') {
+  // S+ still guarantees one rolled top-tier option beside the choice
+  // (AGENTS.md: Reward math).
+  if (ceiling === 'S+' && picked.length < count) {
     const top = candidates.filter(item => item.tier === 's')
     const item = top.length > 0 ? top[Math.floor(rng() * top.length)] : undefined
     if (item) {

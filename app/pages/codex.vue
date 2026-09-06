@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ALL_ITEMS, WARBONDS } from '~~/shared/data/catalog'
+import { ALL_ITEMS, TIER_RANK, WARBONDS } from '~~/shared/data/catalog'
 import type { ItemCategory } from '~~/shared/data/types'
 
 const CATEGORIES: (ItemCategory | 'all')[] = [
@@ -34,6 +34,15 @@ const filtered = computed(() =>
     }
     return true
   }),
+)
+
+const tierGroups = computed(() =>
+  [...new Set(filtered.value.map(item => item.tier))]
+    .sort((a, b) => TIER_RANK[b] - TIER_RANK[a])
+    .map(tier => ({
+      tier,
+      items: filtered.value.filter(item => item.tier === tier),
+    })),
 )
 
 function warbondName(code: string): string {
@@ -81,25 +90,68 @@ function warbondName(code: string): string {
       >
     </section>
 
-    <section class="grid">
-      <div
-        v-for="item in filtered"
-        :key="item.id"
-        class="codex-row"
+    <template
+      v-for="group in tierGroups"
+      :key="group.tier"
+    >
+      <h2
+        class="tier-heading"
+        :data-tier="group.tier"
       >
-        <ItemCard
-          :item="item"
-          disabled
-        />
-        <p class="muted small">
-          {{ warbondName(item.warbondCode) }}
-        </p>
-      </div>
-    </section>
+        <span class="label">{{ group.tier.toUpperCase() }} Tier</span>
+        <span class="count">{{ group.items.length }}</span>
+      </h2>
+      <section class="grid">
+        <div
+          v-for="item in group.items"
+          :key="item.id"
+          class="codex-row"
+        >
+          <ItemCard
+            :item="item"
+            disabled
+          />
+          <p class="muted small">
+            {{ warbondName(item.warbondCode) }}
+          </p>
+        </div>
+      </section>
+    </template>
   </main>
 </template>
 
 <style scoped>
 .codex-row { display: grid; gap: 0.2rem; }
 .panel select, .panel input[type="text"] { min-width: 0; flex: 1 1 10rem; }
+.tier-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 1.75rem 0 0.75rem;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  font-stretch: 125%;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.tier-heading::before, .tier-heading::after {
+  content: '';
+  align-self: center;
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.35;
+}
+.tier-heading .count {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+.tier-heading[data-tier='s'] { color: var(--tier-s); }
+.tier-heading[data-tier='a'] { color: var(--tier-a); }
+.tier-heading[data-tier='b'] { color: var(--tier-b); }
+.tier-heading[data-tier='c'] { color: var(--tier-c); }
 </style>

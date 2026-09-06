@@ -1,5 +1,25 @@
 import { describe, expect, it } from 'vitest'
+import { MISFORTUNES } from '../data/misfortunes'
+import { MIN_DIFFICULTY, MISFORTUNE_MIN_DIFFICULTY, MISFORTUNE_RISK } from './config'
 import { deriveFront, deriveMisfortune, eligibleMisfortunes } from './wheel'
+
+describe('misfortune catalog integrity', () => {
+  it('every misfortune has risk, an entry difficulty, and an accountability channel', () => {
+    for (const misfortune of MISFORTUNES) {
+      expect(MISFORTUNE_RISK[misfortune.id]).toBeGreaterThan(0)
+      expect(MISFORTUNE_MIN_DIFFICULTY[misfortune.id]).toBeGreaterThanOrEqual(MIN_DIFFICULTY)
+      expect(['loadout', 'field', 'stats']).toContain(misfortune.accountability)
+    }
+    expect(new Set(MISFORTUNES.map(misfortune => misfortune.name)).size).toBe(MISFORTUNES.length)
+  })
+
+  it('the hardest restrictions wait for the highest difficulties', () => {
+    expect(MISFORTUNE_MIN_DIFFICULTY.pacifist).toBe(9)
+    expect(MISFORTUNE_MIN_DIFFICULTY.noReserves).toBe(7)
+    expect(MISFORTUNE_RISK.pacifist).toBe(5)
+    expect(MISFORTUNE_RISK.noReserves).toBe(4)
+  })
+})
 
 describe('eligibleMisfortunes', () => {
   it('starts with only the difficulty-3 pool', () => {
@@ -11,7 +31,9 @@ describe('eligibleMisfortunes', () => {
     const ids = eligibleMisfortunes(9).map(misfortune => misfortune.id)
     expect(ids).toContain('noStratagems')
     expect(ids).toContain('meleeOnly')
-    expect(ids).toHaveLength(14)
+    expect(ids).toContain('pacifist')
+    expect(ids).toContain('noReserves')
+    expect(ids).toHaveLength(15)
   })
 })
 

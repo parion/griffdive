@@ -116,6 +116,7 @@ function removeSlot(id: string): void {
 const PHASE_LABELS: Record<string, string> = {
   lobby: 'In lobby',
   spin: 'Awaiting spin',
+  decision: 'Deciding the wheel',
   pacts: 'Picking pacts',
   diving: 'Diving',
   rewards: 'Reward draft',

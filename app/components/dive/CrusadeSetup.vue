@@ -19,23 +19,19 @@ const emit = defineEmits<{
     <div class="field">
       <span class="muted small">Variant</span>
       <div class="variant-grid">
-        <label
+        <button
           v-for="entry in VARIANTS"
           :key="entry.id"
           class="variant-card"
           :class="{ on: variant === entry.id }"
+          type="button"
+          :aria-pressed="variant === entry.id"
+          @click="emit('update:variant', entry.id)"
         >
-          <input
-            type="radio"
-            name="variant"
-            :value="entry.id"
-            :checked="variant === entry.id"
-            @change="emit('update:variant', entry.id)"
-          >
           <strong>{{ entry.name }}</strong>
           <span class="muted small">{{ entry.squadSize }} · starts at {{ difficultyName(STARTING_KITS[entry.id].startDifficulty) }}</span>
           <span class="small muted">{{ entry.description }}</span>
-        </label>
+        </button>
       </div>
     </div>
     <button
@@ -61,8 +57,11 @@ const emit = defineEmits<{
   border-radius: 8px;
   padding: 0.6rem 0.7rem;
   cursor: pointer;
+  text-align: left;
+  color: inherit;
+  background: none;
+  font: inherit;
 }
 
 .variant-card.on { border-color: var(--gold); outline: 1px solid var(--gold); }
-.variant-card input { accent-color: var(--gold); }
 </style>

@@ -1,3 +1,4 @@
+import type { FrontId } from './fronts'
 import type { Item, ItemCategory, Warbond } from './types'
 
 // Filenames in the catalog's `imageURL` are bare basenames; this map resolves
@@ -42,4 +43,16 @@ const DIFFICULTY_ICON_FILES: Readonly<Record<number, string>> = {
 export function difficultyImageUrl(difficulty: number): string {
   const clamped = Math.min(Math.max(difficulty, 1), 10)
   return `/images/difficulty/${DIFFICULTY_ICON_FILES[clamped]}`
+}
+
+// Faction emblems live outside the item catalog, like difficulty emblems;
+// keyed by front id.
+const FACTION_ICON_FILES: Readonly<Record<FrontId, string>> = {
+  terminids: 'Terminids_Icon.webp',
+  automatons: 'Automatons_Icon.webp',
+  illuminate: 'Illuminate_Icon.webp',
+}
+
+export function factionImageUrl(front: FrontId): string {
+  return `/images/faction/${FACTION_ICON_FILES[front]}`
 }

@@ -15,7 +15,7 @@ must update this file in the same commit.**
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core), Phase 2 (realtime squads) and Phase 3 (lobby) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (135 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (163 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection; open-dive lobby with filters and instant join — verified by a live two-peer smoke
@@ -85,18 +85,25 @@ variable-length set of missions at the crusade's current difficulty (wiki.gg/Dif
 missions at difficulties 3–4, 3 missions at 5 and up. The **front (faction) is drawn once per
 operation**, with the operation's first spin, and persists across its missions — a failure
 restart keeps it. Every mission begins with a fresh misfortune draw. Per mission:
-1. **Spin** — the squad spins the Wheel of Misfortune: one **misfortune** (team-wide restriction,
-   accepted or declined before pacts lock) for this mission; the operation's first spin also
-   draws the **front** (Terminids / Automatons / Illuminate).
-2. **Pact** — each diver privately picks 0–3 **pacts** (personal restrictions). The reward-tier
-   preview updates live with their personal ceiling.
-3. **Dive** — play the mission in Helldivers 2. Success = main objectives complete **and** the squad
+1. **Spin** — the squad spins the Wheel of Misfortune: one **misfortune** (team-wide restriction)
+   for this mission; the operation's first spin also draws the **front** (Terminids / Automatons /
+   Illuminate).
+2. **Decide** — before any pact exists, the squad (host executes, IRL voice vote) **accepts or
+   declines** the drawn misfortune. Declining runs a zero-team-risk dive; accepting applies the
+   misfortune's **team risk** (1–5) to every diver's luck for this mission. A reroll redraws and
+   resets the decision.
+3. **Pact** — each diver is dealt a personal **pact offer**: 2 pacts on difficulties 3–6, 3 on 7+,
+   rolled deterministically from the wheel seed (per diver) once the decision is in. The offer
+   pool filters out pacts the accepted misfortune makes redundant or impossible; a declined draw
+   offers from the full catalog. Each diver privately picks any subset of their offer (0 to all).
+   The reward-tier preview updates live with their personal ceiling.
+4. **Dive** — play the mission in Helldivers 2. Success = main objectives complete **and** the squad
    extracts. Objectives complete + squad wipe = failure (extraction rule).
-4. **Report** — squad records outcome: success (stars 1–max, optional time %) or failure (no stars).
-5. **Rewards** (success only) — each diver is offered N options rolled against their personal tier
+5. **Report** — squad records outcome: success (stars 1–max, optional time %) or failure (no stars).
+6. **Rewards** (success only) — each diver is offered N options rolled against their personal tier
    ceiling and picks one. All rewards go to the diver's personal inventory — stratagems included.
    Armor rewards are **passives**, never armor pieces (see inventory model).
-6. **Advance** — next mission, which draws a fresh misfortune. Completing all missions of an
+7. **Advance** — next mission, which draws a fresh misfortune. Completing all missions of an
    operation bumps the crusade difficulty by +1. Failure restarts the operation (mission 1) at the
    same difficulty, keeps the front, and the squad forfeits one item.
 
@@ -120,32 +127,41 @@ from warbonds they don't own. Starting kits are not warbond-filtered.
 
 ### Team layer — misfortunes (Wheel)
 
-### Team layer — misfortunes (Wheel)
-
 Exactly one misfortune per **mission**, drawn from the pool eligible at the operation's
-difficulty. The draw is an offer, not a verdict: before any pact locks, the squad (host executes,
-IRL voice vote) **accepts or declines** it. Declining runs a zero-team-risk dive; accepting applies
-the misfortune's **team risk** (1–5) to every diver's luck for this mission. A reroll redraws
-and resets the decision.
+difficulty. The draw is an offer, not a verdict: in a dedicated **decision** phase before pacts
+roll, the squad (host executes, IRL voice vote) **accepts or declines** it. Declining runs a
+zero-team-risk dive; accepting applies the misfortune's **team risk** (1–5) to every diver's luck
+for this mission. A reroll redraws and resets the decision.
 
 Starter catalog (all values tunable in `shared/engine/config.ts`; ids and shape are the contract):
 
-| Misfortune | Rule | Team risk | Enters pool at |
-| --- | --- | --- | --- |
-| No Backpacks | No backpack stratagems | 1 | diff 3 |
-| No Sentries | No sentry stratagems | 1 | diff 3 |
-| No Boosters | No boosters equipped | 1 | diff 3 |
-| No Resupplies | Never call resupply | 2 | diff 3 |
-| No Eagles | No Eagle stratagems | 2 | diff 4 |
-| Fragile Liberty | Light armor only | 2 | diff 4 |
-| No Orbitals | No orbital stratagems | 2 | diff 5 |
-| Primary Only | Primary weapon only (stratagems allowed) | 3 | diff 5 |
-| Stealth | No raised alarms or bot detections | 3 | diff 5 |
-| Oops, All Orbitals | Orbital stratagems only | 3 | diff 6 |
-| Zero Deaths | Any diver death = mission failure | 4 | diff 7 |
-| Secondary Only | Secondary weapons only | 4 | diff 7 |
-| No Stratagems | No stratagems at all, not even resupply | 5 | diff 9 |
-| Melee Only | Melee weapons only | 5 | diff 9 |
+| Misfortune | Rule | Team risk | Enters pool at | Accountable via |
+| --- | --- | --- | --- | --- |
+| No Backpacks | No backpack stratagems | 1 | diff 3 | loadout |
+| No Sentries | No sentry stratagems | 1 | diff 3 | loadout |
+| No Boosters | No boosters equipped | 1 | diff 3 | loadout |
+| No Resupplies | Never call resupply | 4 | diff 3 | field |
+| No Eagles | No Eagle stratagems | 2 | diff 4 | loadout |
+| Fragile Liberty | Light armor only | 2 | diff 4 | loadout |
+| No Orbitals | No orbital stratagems | 2 | diff 5 | loadout |
+| Primary Only | Primaries only — no support weapons, no pickups or swaps (stratagems allowed) | 3 | diff 5 | field |
+| Stealth | No raised alarms or bot detections | 3 | diff 5 | field |
+| Oops, All Orbitals | Orbital stratagems only | 3 | diff 6 | loadout |
+| Zero Deaths | Any diver death = mission failure | 4 | diff 7 | field |
+| No Reserves | No one gets reinforced this mission | 4 | diff 7 | field |
+| No Stratagems | No stratagems at all, not even resupply | 5 | diff 9 | loadout |
+| Melee Only | Melee weapons only | 5 | diff 9 | field |
+| Pacifist | No diver scores a kill | 5 | diff 9 | stats |
+
+**Accountability:** misfortunes are held to the same standard as pacts (see Personal layer) —
+every wheel rule must be checkable through the loadout screen, live in the field, or the
+end-of-mission stats screen. *Secondary Only* was discarded for this (nothing attributes which
+gun fired, and its checkable residue — no support weapons — is worth 1–2 risk, not 4) and was
+replaced by *No Reserves*; *Primary Only* was re-ruled to its observable core (no support
+weapons, no pickups or swaps — carried gear is visible on every model). *Melee Only* stays: its
+breach is the one rule that is literally audible (any gunshot), and support weapons are visibly
+absent. *Pacifist* is the clean stats-channel rule — stratagem kills count to the caller, so a
+zero-kill squad is forced into genuine support builds.
 
 **Rerolls:** rerolling a wheel result is free if the squad already completed that exact
 (misfortune × front) combo earlier in this crusade (the video's overrule rule). Otherwise the squad
@@ -153,38 +169,55 @@ spends a reroll token — 1 token per operation, spendable on either wheel. Neve
 outcome the pool doesn't allow at the current difficulty. **The front (faction) locks in for the
 whole operation**: it can only be rerolled during the operation's first mission decision window
 (`missionIndex === 0`, enforced in the reducer and `canRerollWheel`); misfortune rerolls stay
-available in any pact window.
+available in any decision or pact window (until the first pact lock).
 
 **Fronts:** the front is drawn with the operation's first spin (one per operation) and only affects
 combo tracking (and future front-specific content). It exists for flavor and the reroll economy.
 
 ### Personal layer — pacts
 
-Each diver picks up to 3 pacts per mission (before the dive, after the wheel result is known). Pacts
-are personal restrictions worth **pact risk** (1–3). Pact risk adds only to that diver's luck. A
-pact that would be redundant or impossible under the accepted misfortune is unselectable (e.g.
-*Thirsty* under *No Stratagems*; *Sidearm Purist* under *Melee Only*) — declined misfortunes block
-nothing.
+Each diver picks 0–3 pacts per mission, but never straight from the catalog: once the wheel
+decision is in, the engine **rolls each diver a personal pact offer** — 2 pacts on difficulties
+3–6, 3 on 7+ (`PACT_OPTIONS` in `shared/engine/config.ts`). The offer is a deterministic
+derivation of the wheel seed per diver (`pactOfferFor` in `shared/engine/selectors.ts`), so every
+client computes the same 2–3 pacts with no extra sync; it is never stored. The pool filters out
+pacts the **accepted** misfortune makes redundant or impossible; a declined draw offers from the
+full catalog. Pacts are personal restrictions worth **pact risk** (1–3), and pact risk adds only
+to that diver's luck.
+
+**Accountability rule:** every pact in the catalog must be verifiable in Helldivers 2 through one
+of three channels — the **loadout screen** (equipped gear and stratagems, visible pre-dive), the
+**field** (resupply beacons, carried gear, deaths and reinforce prompts, all visible live), or the
+**end-of-mission stats screen** (stims used, deaths, reinforcements per player). Pacts with no
+observable trace — usage only the diver themselves can see — are banned from the catalog (the old
+*Sidearm Purist* was discarded for exactly this: nothing in HD2 attributes kills or shots to a
+weapon slot).
 
 Starter catalog:
 
-| Pact | Rule | Pact risk |
-| --- | --- | --- |
-| Pack Light | I bring no backpack | 1 |
-| Thirsty | I call and take no resupplies | 1 |
-| Stim Abstinent | I use no stims | 2 |
-| Anti-Tank Abstinent | I carry nothing anti-tank | 2 |
-| Dead Weight | If I die, I refuse reinforcement — I stay dead | 2 |
-| Loadout Loyalist | I use only my equipped loadout; no pickups or swaps | 2 |
-| Barebones | I fill no stratagem slots | 3 |
-| Sidearm Purist | I fight with my secondary only | 3 |
+| Pact | Rule | Pact risk | Accountable via |
+| --- | --- | --- | --- |
+| Pack Light | I bring no backpack | 1 | loadout |
+| Thirsty | I call and take no resupplies | 1 | field |
+| Empty Pockets | I equip no booster | 1 | loadout |
+| Anti-Tank Abstinent | I carry nothing anti-tank | 2 | loadout |
+| Dead Weight | If I die, I refuse reinforcement — I stay dead | 2 | field |
+| Stim Abstinent | I use no stims | 2 | stats |
+| Loadout Loyalist | I use only my equipped loadout; no pickups or swaps | 2 | field |
+| Primary Concern | I bring no support weapon | 2 | loadout |
+| Grounded | I bring no Eagle stratagems | 2 | loadout |
+| Ship Silent | I bring no orbital stratagems | 2 | loadout |
+| Open Field | I bring no sentries, mines, or emplacements | 2 | loadout |
+| Barebones | I fill no stratagem slots | 3 | loadout |
+| Untouchable | I finish the mission without dying | 3 | field |
 
 ### Reward math
 
 ```
 luck          = teamRisk + pactRisk
 teamRisk      = accepted misfortune (0–5, 0 when declined)
-pactRisk      = sum of the diver's pacts (0–6)
+pactRisk      = sum of the diver's picked pacts (max 8: the rolled
+                2–3-pact offer bounds what a diver can stack)
 
 base tier:     diff 3–5 → C   diff 6–7 → B   diff 8–10 → A
 ceiling roll:  start at the base tier; each step to the next tier
@@ -193,7 +226,7 @@ ceiling roll:  start at the base tier; each step to the next tier
                bandPos = position within the difficulty band (0 floor → 1 top)
 ```
 
-- Difficulty alone never buys S or S+; only stacked chosen risk does, and even max luck (11)
+- Difficulty alone never buys S or S+; only stacked chosen risk does, and even max luck (13)
   leaves S+ below a coin flip. A zero-luck dive always rolls its base tier.
 - The reward pool is personal: each diver rolls against the catalog of warbonds *they* declared
   (plus `warbondCode === 'none'` items, minus armor pieces) — never the squad's or the host's.
@@ -201,7 +234,14 @@ ceiling roll:  start at the base tier; each step to the next tier
   diff 10 into S more readily than diff 8 (`bandPosition`).
 - Ceiling = the best tier that *can* appear in that diver's options; the roll is seeded from the
   offer seed (two rng streams: one ceiling, one options) so every client computes the same offer.
-  Rolls are weighted toward the tier below the ceiling; S+ guarantees at least one S-tier option.
+  Rolls are weighted toward the tier below the ceiling; the roll still guarantees one S-tier option
+  beside it.
+- **S+ = Diver's Choice.** No catalog item carries the S+ tier, so the S+ bonus slot is a free
+  pick: the diver claims **any item from their own catalog** — same personal-pool rules as every
+  reward (warbond-owned items only, armor pieces excluded, nothing already owned). The option
+  rides a stable sentinel id (`DIVERS_CHOICE_OPTION_ID` in `shared/engine/rewards.ts`); the UI
+  opens a minified codex picker for it, and `PICK_REWARD` carries the named item in
+  `choiceItemId`. `pickedOptionId` always records the banked item's id.
 - Previews stay legible: the UI shows base tier → best plausible tier (`maxCeiling`, per-step odds
   ≥ 0.2) with the odds of reaching it (`oddsToReach`).
 - **Option count** comes from stars (team performance), lookup table `starsToOptions`:
@@ -209,8 +249,8 @@ ceiling roll:  start at the base tier; each step to the next tier
   difficulty-capped per the game (wiki.gg/Missions): max 3 at diffs 3–4, 4 at 5–6, 5 at 7+; a
   completed mission never awards 0 and a failed mission awards none (`maxStarsFor` in
   `shared/engine/config.ts`).
-- Example curves: diff 3 with an intense misfortune (5) + full pacts (6) → luck 11 → ceiling
-  reaches **S** about a quarter of the time, **S+** rarely. Diff 10 with zero luck → **A**, never
+- Example curves: diff 3 with an intense misfortune (5) + two stacked pacts (4) → luck 9 → ceiling
+  reaches **S** about a fifth of the time, **S+** rarely. Diff 10 with zero luck → **A**, never
   S. Risk pays at every altitude; nothing is guaranteed, but everything gets likelier.
 
 ### Inventory model
@@ -257,12 +297,15 @@ all routes; static hosts need a `/*` → shell fallback instead.
 app/
   pages/           index (new crusade / host / join / continue), dive/[id] (solo + room flow),
                    lobby (open dives), codex
-  components/      dive/ (WheelPanel, PactPicker, RewardDraft, InventoryGrid, CrusadeSetup,
-                   WarbondPicker),
-                   ui/ (ItemCard, TierBadge, RiskPips)
+  components/      dive/ (WheelPanel, PactPicker, RewardDraft, DiversChoiceCard — the special
+                   S+ "Diver's Choice" offer card, DiversChoicePicker — its minified codex
+                   modal, InventoryGrid, CrusadeSetup, WarbondPicker),
+                   ui/ (ItemCard, TierBadge, RiskPips, ChangelogModal — GitHub deploy log shown
+                   from the pre-alpha header chip),
   composables/     useDiveSession (unified local/room driver), useDiveEngine (local reducer +
                    persist), useGameSocket (WS, reconnect, stored playerId), useSaves,
-                   useRecentRooms (visited room codes; feeds the home "Continue" online list)
+                   useRecentRooms (visited room codes; feeds the home "Continue" online list),
+                   useChangelog (GitHub deployments + commits → changelog entries, 10-min cache)
   stores/          session.ts (Pinia: selfId, snapshot, online, lobby list)
   utils/           seed.ts (client seed generation)
   assets/css/      main.css — global HD2 theme (two-font system, see Conventions)
@@ -287,7 +330,7 @@ scripts/
   upstream/           vendored MIT constants (snapshot commit recorded in _upstream-commit.json)
 public/images/        bundled item art keyed by folder: equipment/ (weapons, throwables,
                       boosters), armor/, armorpassives/, svgs/ (stratagems), warbonds/,
-                      difficulty/ (1–10 difficulty emblems)
+                      difficulty/ (1–10 difficulty emblems), faction/ (front emblems)
 e2e/                  Playwright specs (solo flow, room sync, lobby join)
 playwright.config.ts  production-build webServer on :3173 (WebSocket included)
 vitest.config.ts     mirrors Nuxt aliases (~~, ~) so engine + server tests resolve
@@ -336,7 +379,7 @@ Canonical engine actions (the reducer union; keep names stable):
 
 `START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}`
 `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `SET_WARBONDS{playerId,warbondCodes}`
-`REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId}`
+`REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}` `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}` `TOGGLE_OPEN{open}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,

@@ -8,7 +8,15 @@ export interface CrusadeSettings {
   variant: CrusadeVariant
 }
 
-export type DivePhase = 'lobby' | 'spin' | 'pacts' | 'diving' | 'rewards' | 'forfeit' | 'complete'
+export type DivePhase
+  = | 'lobby'
+    | 'spin'
+    | 'decision'
+    | 'pacts'
+    | 'diving'
+    | 'rewards'
+    | 'forfeit'
+    | 'complete'
 
 export interface DiverState {
   id: string
@@ -71,7 +79,7 @@ export type EngineAction
     | { type: 'SET_WARBONDS', playerId: string, warbondCodes: string[] }
     | { type: 'REPORT_RESULT', outcome: MissionOutcome, stars: number, timePct?: number }
     | { type: 'FORFEIT_ITEM', itemRef: ItemRef }
-    | { type: 'PICK_REWARD', playerId: string, optionId: string }
+    | { type: 'PICK_REWARD', playerId: string, optionId: string, choiceItemId?: string }
     | { type: 'ADVANCE' }
     | { type: 'END_DIVE' }
     | { type: 'KICK_DIVER', playerId: string }

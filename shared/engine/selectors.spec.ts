@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { WARBONDS } from '../data/catalog'
 import { oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { activeMisfortune, ceilingRange, diverOptions, misfortuneDecision, rewardPoolFor, teamRiskOf } from './selectors'
+import { activeMisfortune, ceilingRange, diverOptions, misfortuneDecision, pactOfferFor, rewardPoolFor, teamRiskOf } from './selectors'
+import { isPactSelectable } from './pacts'
 import type { DiverState, RewardTier } from './types'
 
 function spunState(seed = 42, accepted = false) {
@@ -15,9 +16,10 @@ function spunState(seed = 42, accepted = false) {
     : spun
 }
 
-describe('misfortuneDecision (from the action log)', () => {
-  it('a fresh draw is undecided even though state reads false', () => {
+describe('misfortuneDecision (from the phase)', () => {
+  it('a fresh draw is undecided — the squad sits in the decision phase', () => {
     const state = spunState(42, false)
+    expect(state.phase).toBe('decision')
     expect(state.misfortuneAccepted).toBe(false)
     expect(misfortuneDecision(state)).toMatchObject({ decided: false, accepted: false })
   })
@@ -46,6 +48,41 @@ describe('misfortuneDecision (from the action log)', () => {
     const rerolled = reduce(accepted, { type: 'REROLL_WHEEL', wheel: 'front', seed: 7 })
     expect(rerolled.frontId).not.toBe(accepted.frontId)
     expect(misfortuneDecision(rerolled)).toMatchObject({ decided: true, accepted: true })
+  })
+})
+
+describe('pactOfferFor', () => {
+  it('offers nothing until the wheel decision is in', () => {
+    const spun = spunState(42)
+    expect(pactOfferFor(spun, 'host')).toEqual([])
+    // A reroll reopens the decision and the offer goes away with it.
+    const rerolled = reduce(spun, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 7 })
+    expect(pactOfferFor(rerolled, 'host')).toEqual([])
+  })
+
+  it('rolls the difficulty\'s offer count once decided', () => {
+    const accepted = spunState(42, true)
+    expect(accepted.difficulty).toBe(3)
+    expect(pactOfferFor(accepted, 'host')).toHaveLength(2)
+    // Same seed, same offer — a derivation, not a stored roll.
+    expect(pactOfferFor(accepted, 'host')).toEqual(pactOfferFor(accepted, 'host'))
+  })
+
+  it('keeps every offered pact selectable under the accepted misfortune', () => {
+    const accepted = spunState(1234, true)
+    const misfortuneId = accepted.wheel!.misfortuneId
+    for (const pact of pactOfferFor(accepted, 'host')) {
+      expect(isPactSelectable(pact.id, misfortuneId)).toBe(true)
+    }
+  })
+
+  it('a declined draw offers from the unfiltered catalog', () => {
+    const declined = reduce(spunState(42, false), { type: 'ACCEPT_MISFORTUNE', accepted: false })
+    const offer = pactOfferFor(declined, 'host')
+    expect(offer).toHaveLength(2)
+    for (const pact of offer) {
+      expect(isPactSelectable(pact.id, null)).toBe(true)
+    }
   })
 })
 
@@ -93,6 +130,7 @@ describe('diverOptions', () => {
   it('offers no armor pieces even with every warbond owned', () => {
     let state = createDiveState({ variant: 'standard' }, 'host', 'Griffin')
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 1234 })
+    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'host', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
     const diver = state.divers.find((candidate): candidate is DiverState => candidate.id === 'host')!
@@ -107,6 +145,7 @@ describe('diverOptions', () => {
     let state = createDiveState({ variant: 'standard' }, 'host', 'Griffin')
     state = reduce(state, { type: 'SET_WARBONDS', playerId: 'host', warbondCodes: [] })
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 1234 })
+    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'host', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
     const diver = state.divers.find((candidate): candidate is DiverState => candidate.id === 'host')!

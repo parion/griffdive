@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { pactOfferFor } from '~~/shared/engine/selectors'
 import { ROOM_TTL_MS, createPeerDirectory, createRoom, loadRoom, listLobby, lobbyEntryFor, processAction, processClose, processHello } from './room-sync'
 import type { PeerLike, RoomKV, StoredRoom } from './room-sync'
 import type { ServerMessage } from '~~/shared/types/messages'
@@ -120,19 +121,29 @@ describe('room-sync', () => {
     expect(sent(joiner).some(m => m.type === 'error' && m.code === 'not-host')).toBe(true)
     expect(sent(host)).toHaveLength(0)
 
-    // Host spins; everyone gets a state.
+    // Host spins; everyone gets a state — the draw opens the decision window.
     await processAction(kv, peers, host, { action: { type: 'SPIN_WHEEL', seed: 42 } })
     const snapshot = await lastSnapshot(joiner)
     expect(snapshot.wheel?.seed).toBe(42)
 
-    // Self-service spoofing is coerced to the sender. The pact is
-    // always-selectable — valid under any drawn misfortune.
+    // The decision precedes pacts: the host locks the misfortune in.
+    await processAction(kv, peers, host, { action: { type: 'ACCEPT_MISFORTUNE', accepted: true } })
+    const decided = await lastSnapshot(joiner)
+    expect(decided.phase).toBe('pacts')
+
+    // Self-service spoofing is coerced to the sender. The pact comes from the
+    // joiner's own rolled offer.
+    const offer = pactOfferFor(decided, joinerId)
+    const pactId = offer[0]?.id
+    if (!pactId) {
+      throw new Error('no pact offered')
+    }
     await processAction(kv, peers, joiner, {
-      action: { type: 'SET_PACTS', playerId: hostId.selfId, pactIds: ['stimAbstinent'] },
+      action: { type: 'SET_PACTS', playerId: hostId.selfId, pactIds: [pactId] },
     })
     const after = await lastSnapshot(joiner)
     const coerced = after.divers.find(diver => diver.id === joinerId)
-    expect(coerced?.pactIds).toEqual(['stimAbstinent'])
+    expect(coerced?.pactIds).toEqual([pactId])
     const hostDiver = after.divers.find(diver => diver.id === hostId.selfId)
     expect(hostDiver?.pactIds).toEqual([])
 

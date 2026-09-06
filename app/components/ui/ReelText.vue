@@ -11,16 +11,21 @@ const props = withDefaults(defineProps<{
   reelId: string | number | null
   duration?: number
   startDelay?: number
+  /** Optional color per name: candidates roll in their own, the final settles in its own. */
+  colors?: Record<string, string>
 }>(), { duration: 1500, startDelay: 0 })
 
 const emit = defineEmits<{ reeling: [value: boolean] }>()
 
-const display = ref(props.final)
+const display = ref('')
 const reeling = ref(false)
 const stepKey = ref('settled')
 const stepDelay = ref(120)
 
 let timer: ReturnType<typeof setTimeout> | undefined
+// A reel is armed (start delay or ticking) — `final` updates must not touch
+// the display, or the draw flashes its answer before the roll begins.
+let scheduled = false
 
 function shuffle(list: readonly string[]): string[] {
   const bag = [...list]
@@ -57,17 +62,23 @@ function buildSchedule(): ReelStep[] {
 
 function run(): void {
   clearTimeout(timer)
-  display.value = props.final
   reeling.value = false
   if (!import.meta.client) {
+    display.value = props.final
     return
   }
 
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   if (props.reelId == null || reduced || props.candidates.length === 0) {
+    // No reel will run — settle straight onto the final and report it.
+    display.value = props.final
+    scheduled = false
+    emit('reeling', false)
     return
   }
 
+  // Hold the previous text through the start delay; the roll swaps it out.
+  scheduled = true
   const schedule = buildSchedule()
   const begin = (): void => {
     reeling.value = true
@@ -80,6 +91,7 @@ function run(): void {
       stepDelay.value = step.delay
       index++
       if (index >= schedule.length) {
+        scheduled = false
         reeling.value = false
         emit('reeling', false)
         return
@@ -93,7 +105,7 @@ function run(): void {
 
 watch(() => props.reelId, run, { immediate: true })
 watch(() => props.final, (final) => {
-  if (!reeling.value) {
+  if (!reeling.value && !scheduled) {
     display.value = final
   }
 })
@@ -108,6 +120,11 @@ const reelTransition = computed(() =>
     ? { duration: Math.min(stepDelay.value / 1000 * 0.8, 0.26), ease: 'easeOut' }
     : { ...SPRING_POP },
 )
+
+const colorStyle = computed(() => {
+  const color = props.colors?.[display.value]
+  return color ? { color } : undefined
+})
 </script>
 
 <template>
@@ -128,7 +145,7 @@ const reelTransition = computed(() =>
         :animate="reeling ? { y: 0, opacity: 1 } : { scale: 1, opacity: 1 }"
         :exit="{ y: '0.85em', opacity: 0 }"
         :transition="reelTransition"
-      >{{ display }}</Motion>
+      ><span :style="colorStyle">{{ display }}</span></Motion>
     </AnimatePresence>
   </span>
 </template>
@@ -147,7 +164,9 @@ const reelTransition = computed(() =>
   will-change: transform, opacity;
 }
 
+/* Rolling text reads khaki unless the parent pins --reel-color or hands
+   per-name colors, which ride the inline style above. */
 .reel.reeling .reel-text {
-  color: var(--khaki);
+  color: var(--reel-color, var(--khaki));
 }
 </style>

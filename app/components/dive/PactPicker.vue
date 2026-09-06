@@ -1,34 +1,28 @@
 <script setup lang="ts">
-import { MAX_PACTS, PACT_RISK } from '~~/shared/engine/config'
-import { pactChoices } from '~~/shared/engine/selectors'
+import type { Pact } from '~~/shared/data/pacts'
+import { PACT_RISK } from '~~/shared/engine/config'
+import { ACCOUNTABILITY_LABELS } from '~/utils/accountability'
 
-const props = defineProps<{ misfortuneId: string | null, selected: string[] }>()
-const emit = defineEmits<{ toggle: [pactId: string], lock: [] }>()
-
-const choices = computed(() => pactChoices(props.misfortuneId))
-
-function toggle(pactId: string, selectable: boolean): void {
-  if (!selectable) {
-    return
-  }
-  emit('toggle', pactId)
-}
+const props = defineProps<{ offer: Pact[], selected: string[] }>()
+defineEmits<{ toggle: [pactId: string], lock: [] }>()
 </script>
 
 <template>
   <section class="panel">
     <h2>Pacts <span class="muted small">(personal risk, personal rewards)</span></h2>
+    <p class="muted small">
+      Rolled from the wheel decision — take any, all, or none of what's offered.
+    </p>
     <ul class="pact-list">
       <li
-        v-for="{ pact, selectable, blockedReason } in choices"
+        v-for="pact in props.offer"
         :key="pact.id"
       >
         <button
           class="pact"
-          :class="{ on: selected.includes(pact.id), off: !selectable }"
+          :class="{ on: selected.includes(pact.id) }"
           type="button"
-          :disabled="!selectable"
-          @click="toggle(pact.id, selectable)"
+          @click="$emit('toggle', pact.id)"
         >
           <span class="pact-head">
             <strong>{{ pact.name }}</strong>
@@ -37,17 +31,17 @@ function toggle(pactId: string, selectable: boolean): void {
               :max="3"
             />
           </span>
-          <p
-            class="small"
-            :class="blockedReason ? 'muted' : ''"
-          >
-            {{ blockedReason ?? pact.rule }}
+          <p class="small">
+            {{ pact.rule }}
+          </p>
+          <p class="small muted">
+            {{ ACCOUNTABILITY_LABELS[pact.accountability] }}
           </p>
         </button>
       </li>
     </ul>
     <div class="row spread">
-      <span class="muted small">{{ selected.length }}/{{ MAX_PACTS }} pacts taken</span>
+      <span class="muted small">{{ selected.length }}/{{ offer.length }} offered taken</span>
       <button
         class="btn primary"
         type="button"
@@ -71,6 +65,7 @@ function toggle(pactId: string, selectable: boolean): void {
 
 .pact {
   width: 100%;
+  height: 100%;
   text-align: left;
   background: var(--bg);
   border: 1px solid var(--border);
@@ -82,7 +77,7 @@ function toggle(pactId: string, selectable: boolean): void {
   transition: border-color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
 }
 
-.pact:hover:not(:disabled):not(.off) {
+.pact:hover:not(:disabled) {
   border-color: var(--khaki);
   transform: translateY(-1px);
 }
@@ -91,7 +86,6 @@ function toggle(pactId: string, selectable: boolean): void {
   outline: 1px solid var(--red);
   animation: pact-pulse 320ms var(--ease-out);
 }
-.pact.off { opacity: 0.45; cursor: not-allowed; }
 .pact-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
 .pact p { margin: 0.15rem 0 0; }
 

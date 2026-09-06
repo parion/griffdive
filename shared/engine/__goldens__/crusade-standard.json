@@ -11,6 +11,7 @@
       "outcome": "success",
       "stars": 3,
       "optionId": "flexiblereinforcementbudget",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -19,12 +20,11 @@
       "misfortuneId": "noBackpacks",
       "misfortuneAccepted": false,
       "front": "automatons",
-      "pactIds": [
-        "stimAbstinent"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "g13incendiaryimpact",
+      "optionId": "firebombhellpods",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -34,12 +34,12 @@
       "misfortuneAccepted": false,
       "front": "terminids",
       "pactIds": [
-        "antiTankAbstinent",
         "deadWeight"
       ],
       "outcome": "success",
       "stars": 3,
       "optionId": "samplescanner",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -49,13 +49,12 @@
       "misfortuneAccepted": false,
       "front": "terminids",
       "pactIds": [
-        "stimAbstinent",
-        "deadWeight",
-        "loadoutLoyalist"
+        "deadWeight"
       ],
       "outcome": "failure",
       "stars": 0,
       "optionId": null,
+      "choiceItemId": null,
       "forfeitedItemId": "onetrueflag"
     },
     {
@@ -64,12 +63,11 @@
       "misfortuneId": "noResupplies",
       "misfortuneAccepted": true,
       "front": "terminids",
-      "pactIds": [
-        "loadoutLoyalist"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 3,
       "optionId": "boltpistol",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -78,12 +76,11 @@
       "misfortuneId": "noBackpacks",
       "misfortuneAccepted": false,
       "front": "terminids",
-      "pactIds": [
-        "deadWeight"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 3,
       "optionId": "electricalconduit",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -96,6 +93,7 @@
       "outcome": "success",
       "stars": 4,
       "optionId": "oxygenator",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -104,12 +102,11 @@
       "misfortuneId": "primaryOnly",
       "misfortuneAccepted": true,
       "front": "terminids",
-      "pactIds": [
-        "stimAbstinent"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 4,
       "optionId": "reducedsignature",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -118,13 +115,11 @@
       "misfortuneId": "stealth",
       "misfortuneAccepted": true,
       "front": "terminids",
-      "pactIds": [
-        "antiTankAbstinent",
-        "deadWeight"
-      ],
+      "pactIds": [],
       "outcome": "failure",
       "stars": 0,
       "optionId": null,
+      "choiceItemId": null,
       "forfeitedItemId": "defoliationtool"
     },
     {
@@ -133,14 +128,11 @@
       "misfortuneId": "noEagles",
       "misfortuneAccepted": false,
       "front": "terminids",
-      "pactIds": [
-        "stimAbstinent",
-        "deadWeight",
-        "loadoutLoyalist"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 4,
       "optionId": "aflam40flamesentry",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -149,12 +141,11 @@
       "misfortuneId": "noResupplies",
       "misfortuneAccepted": true,
       "front": "terminids",
-      "pactIds": [
-        "loadoutLoyalist"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "sg225spbreakerspraynpray",
+      "optionId": "sg225breaker",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -163,12 +154,11 @@
       "misfortuneId": "fragileLiberty",
       "misfortuneAccepted": false,
       "front": "terminids",
-      "pactIds": [
-        "deadWeight"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 4,
       "optionId": "sampleextricator",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -181,6 +171,7 @@
       "outcome": "success",
       "stars": 4,
       "optionId": "sta52assaultrifle",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -189,12 +180,11 @@
       "misfortuneId": "noSentries",
       "misfortuneAccepted": false,
       "front": "illuminate",
-      "pactIds": [
-        "stimAbstinent"
-      ],
+      "pactIds": [],
       "outcome": "failure",
       "stars": 0,
       "optionId": null,
+      "choiceItemId": null,
       "forfeitedItemId": "orbitalemsstrike"
     },
     {
@@ -204,12 +194,12 @@
       "misfortuneAccepted": true,
       "front": "illuminate",
       "pactIds": [
-        "antiTankAbstinent",
-        "deadWeight"
+        "antiTankAbstinent"
       ],
       "outcome": "success",
       "stars": 4,
-      "optionId": "jar5dominator",
+      "optionId": "variable",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -219,13 +209,12 @@
       "misfortuneAccepted": false,
       "front": "illuminate",
       "pactIds": [
-        "stimAbstinent",
-        "deadWeight",
-        "loadoutLoyalist"
+        "deadWeight"
       ],
       "outcome": "success",
       "stars": 3,
       "optionId": "eaglenapalmstrike",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -234,12 +223,11 @@
       "misfortuneId": "fragileLiberty",
       "misfortuneAccepted": false,
       "front": "illuminate",
-      "pactIds": [
-        "loadoutLoyalist"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "wasplauncher",
+      "optionId": "defoliationtool",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -248,12 +236,11 @@
       "misfortuneId": "primaryOnly",
       "misfortuneAccepted": true,
       "front": "illuminate",
-      "pactIds": [
-        "deadWeight"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 5,
       "optionId": "orbitalprecisionstrike",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -266,6 +253,7 @@
       "outcome": "failure",
       "stars": 0,
       "optionId": null,
+      "choiceItemId": null,
       "forfeitedItemId": "orbitalsmokestrike"
     },
     {
@@ -274,12 +262,11 @@
       "misfortuneId": "noBoosters",
       "misfortuneAccepted": false,
       "front": "illuminate",
-      "pactIds": [
-        "stimAbstinent"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "integratedexplosives",
+      "optionId": "scout",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -288,29 +275,24 @@
       "misfortuneId": "noOrbitals",
       "misfortuneAccepted": false,
       "front": "illuminate",
-      "pactIds": [
-        "antiTankAbstinent",
-        "deadWeight"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "arc12blitzer",
+      "optionId": "sg225spbreakerspraynpray",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
       "mission": 21,
       "seed": 4203543429,
-      "misfortuneId": "secondaryOnly",
+      "misfortuneId": "noReserves",
       "misfortuneAccepted": true,
       "front": "illuminate",
-      "pactIds": [
-        "stimAbstinent",
-        "deadWeight",
-        "loadoutLoyalist"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "warppack",
+      "optionId": "s-plus:divers-choice",
+      "choiceItemId": "ar23liberator",
       "forfeitedItemId": null
     },
     {
@@ -319,12 +301,11 @@
       "misfortuneId": "noOrbitals",
       "misfortuneAccepted": false,
       "front": "terminids",
-      "pactIds": [
-        "loadoutLoyalist"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 5,
       "optionId": "antitankmines",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -333,12 +314,11 @@
       "misfortuneId": "noBackpacks",
       "misfortuneAccepted": false,
       "front": "terminids",
-      "pactIds": [
-        "deadWeight"
-      ],
+      "pactIds": [],
       "outcome": "failure",
       "stars": 0,
       "optionId": null,
+      "choiceItemId": null,
       "forfeitedItemId": "eaglesmokestrike"
     },
     {
@@ -350,7 +330,8 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "las58talon",
+      "optionId": "p72crisper",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -359,12 +340,11 @@
       "misfortuneId": "zeroDeaths",
       "misfortuneAccepted": true,
       "front": "terminids",
-      "pactIds": [
-        "stimAbstinent"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "sg20halt",
+      "optionId": "r63diligence",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -379,7 +359,8 @@
       ],
       "outcome": "success",
       "stars": 4,
-      "optionId": "r36eruptor",
+      "optionId": "s-plus:divers-choice",
+      "choiceItemId": "ar23pliberatorpenetrator",
       "forfeitedItemId": null
     },
     {
@@ -389,19 +370,18 @@
       "misfortuneAccepted": false,
       "front": "illuminate",
       "pactIds": [
-        "stimAbstinent",
-        "deadWeight",
-        "loadoutLoyalist"
+        "deadWeight"
       ],
       "outcome": "success",
       "stars": 5,
-      "optionId": "reinforcedepaulettes",
+      "optionId": "ballisticpadding",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
       "mission": 28,
       "seed": 1309757276,
-      "misfortuneId": "meleeOnly",
+      "misfortuneId": "pacifist",
       "misfortuneAccepted": true,
       "front": "illuminate",
       "pactIds": [
@@ -410,20 +390,20 @@
       "outcome": "failure",
       "stars": 0,
       "optionId": null,
+      "choiceItemId": null,
       "forfeitedItemId": "emsmortarsentry"
     },
     {
       "mission": 29,
       "seed": 3964193037,
-      "misfortuneId": "stealth",
+      "misfortuneId": "oopsAllOrbitals",
       "misfortuneAccepted": true,
       "front": "illuminate",
-      "pactIds": [
-        "deadWeight"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "m105stalwart",
+      "optionId": "mg43machinegun",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -435,7 +415,8 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "sh20shieldgeneratorpack",
+      "optionId": "portablehellbomb",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -444,43 +425,41 @@
       "misfortuneId": "noEagles",
       "misfortuneAccepted": false,
       "front": "illuminate",
-      "pactIds": [
-        "stimAbstinent"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "siegeready",
+      "optionId": "inflammable",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
       "mission": 32,
       "seed": 3337565728,
-      "misfortuneId": "stealth",
+      "misfortuneId": "oopsAllOrbitals",
       "misfortuneAccepted": true,
       "front": "terminids",
       "pactIds": [
-        "antiTankAbstinent",
         "deadWeight"
       ],
       "outcome": "success",
       "stars": 5,
-      "optionId": "hellpodspaceoptimization",
+      "optionId": "s-plus:divers-choice",
+      "choiceItemId": "ar23cliberatorconcussive",
       "forfeitedItemId": null
     },
     {
       "mission": 33,
       "seed": 1697034193,
-      "misfortuneId": "meleeOnly",
+      "misfortuneId": "pacifist",
       "misfortuneAccepted": true,
       "front": "terminids",
       "pactIds": [
-        "stimAbstinent",
-        "deadWeight",
-        "loadoutLoyalist"
+        "stimAbstinent"
       ],
       "outcome": "failure",
       "stars": 0,
       "optionId": null,
+      "choiceItemId": null,
       "forfeitedItemId": "shieldgeneratorrelay"
     },
     {
@@ -489,18 +468,17 @@
       "misfortuneId": "noBackpacks",
       "misfortuneAccepted": false,
       "front": "terminids",
-      "pactIds": [
-        "loadoutLoyalist"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "p113verdict",
+      "optionId": "p92warrant",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
       "mission": 35,
       "seed": 2710938419,
-      "misfortuneId": "stealth",
+      "misfortuneId": "oopsAllOrbitals",
       "misfortuneAccepted": true,
       "front": "terminids",
       "pactIds": [
@@ -509,6 +487,7 @@
       "outcome": "success",
       "stars": 3,
       "optionId": "eat12antitankemplacement",
+      "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
@@ -520,7 +499,8 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "sg8ppunisherplasma",
+      "optionId": "s-plus:divers-choice",
+      "choiceItemId": "ar23aliberatorcarbine",
       "forfeitedItemId": null
     }
   ],
@@ -548,6 +528,7 @@
       "noOrbitals:illuminate",
       "noOrbitals:illuminate",
       "noOrbitals:terminids",
+      "noReserves:illuminate",
       "noResupplies:illuminate",
       "noResupplies:illuminate",
       "noResupplies:terminids",
@@ -557,58 +538,57 @@
       "noSentries:automatons",
       "noSentries:illuminate",
       "noSentries:terminids",
+      "oopsAllOrbitals:illuminate",
+      "oopsAllOrbitals:terminids",
+      "oopsAllOrbitals:terminids",
       "primaryOnly:illuminate",
       "primaryOnly:terminids",
       "primaryOnly:terminids",
-      "secondaryOnly:illuminate",
-      "stealth:illuminate",
-      "stealth:terminids",
-      "stealth:terminids",
       "zeroDeaths:terminids"
     ],
     "personalInventory": [
       "aflam40flamesentry",
       "antitankmines",
-      "arc12blitzer",
+      "ar23aliberatorcarbine",
+      "ar23cliberatorconcussive",
+      "ar23liberator",
+      "ar23pliberatorpenetrator",
+      "ballisticpadding",
       "boltpistol",
       "cqc19stunlance",
       "cqc2saber",
       "cqc30stunbaton",
       "cqc42machete",
       "cqc73entrenchmenttool",
+      "defoliationtool",
       "eaglenapalmstrike",
       "eat12antitankemplacement",
       "electricalconduit",
       "extrapadding",
+      "firebombhellpods",
       "flexiblereinforcementbudget",
       "g12highexplosivegrenade",
-      "g13incendiaryimpact",
       "g3smokegrenade",
       "g89smokescreen",
-      "hellpodspaceoptimization",
-      "integratedexplosives",
-      "jar5dominator",
+      "inflammable",
       "k2throwingknife",
-      "las58talon",
-      "m105stalwart",
+      "mg43machinegun",
       "orbitalprecisionstrike",
       "oxygenator",
-      "p113verdict",
       "p2peacemaker",
+      "p72crisper",
+      "p92warrant",
+      "portablehellbomb",
       "r2124constitution",
-      "r36eruptor",
+      "r63diligence",
       "reducedsignature",
-      "reinforcedepaulettes",
       "sampleextricator",
       "samplescanner",
-      "sg20halt",
+      "scout",
+      "sg225breaker",
       "sg225spbreakerspraynpray",
-      "sg8ppunisherplasma",
-      "sh20shieldgeneratorpack",
-      "siegeready",
       "sta52assaultrifle",
-      "warppack",
-      "wasplauncher"
+      "variable"
     ],
     "seedHistory": [
       0,
