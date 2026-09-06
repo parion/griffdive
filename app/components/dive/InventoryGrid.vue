@@ -3,19 +3,19 @@ import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import type { Item, ItemCategory } from '~~/shared/data/types'
 import type { DiveState, ItemRef } from '~~/shared/engine/types'
 
-interface TypedEntry { item: Item, owners: string[] }
-interface TypeGroup { id: string, label: string, entries: TypedEntry[] }
+interface TypeGroup { id: string, label: string, items: Item[] }
+interface DiverKit { diverId: string, diverName: string, items: Item[], groups: TypeGroup[] }
 
 const props = withDefaults(defineProps<{
   state: DiveState
+  selfId?: string | null
   selectMode?: boolean
-}>(), { selectMode: false })
+}>(), { selfId: null, selectMode: false })
 
 const emit = defineEmits<{ forfeit: [itemRef: ItemRef] }>()
 
-type InventoryView = 'type' | 'diver'
-const view = ref<InventoryView>('type')
-const activeView = computed<InventoryView>(() => (props.selectMode ? 'diver' : view.value))
+type InventoryView = 'mine' | 'squad'
+const view = ref<InventoryView>('mine')
 
 function resolve(ids: readonly string[]): Item[] {
   return ids
@@ -23,49 +23,33 @@ function resolve(ids: readonly string[]): Item[] {
     .filter((item): item is Item => item !== undefined)
 }
 
-const ownedEntries = computed(() => {
-  const byItem = new Map<string, TypedEntry>()
-  for (const diver of props.state.divers) {
-    for (const id of props.state.personalInventories[diver.id] ?? []) {
-      const item = ITEMS_BY_ID.get(id)
-      if (!item) continue
-      const entry = byItem.get(id)
-      if (entry) entry.owners.push(diver.name)
-      else byItem.set(id, { item, owners: [diver.name] })
-    }
-  }
-  return byItem
-})
-
-function personalEntries(categories: readonly ItemCategory[]): TypedEntry[] {
-  return [...ownedEntries.value.values()].filter(entry => categories.includes(entry.item.category))
-}
-
-function personalStratagems(): TypedEntry[] {
-  return [...ownedEntries.value.values()].filter(entry => entry.item.type === 'stratagem')
-}
-
-const typeGroups = computed<TypeGroup[]>(() => {
+function typeGroupsFor(items: Item[]): TypeGroup[] {
+  const inCategories = (categories: readonly ItemCategory[]): Item[] =>
+    items.filter(item => categories.includes(item.category))
   const groups: TypeGroup[] = []
-  const weapons = personalEntries(['primary', 'secondary'])
-  if (weapons.length) groups.push({ id: 'weapons', label: 'Weapons', entries: weapons })
-  const throwables = personalEntries(['throwable'])
-  if (throwables.length) groups.push({ id: 'throwables', label: 'Throwables', entries: throwables })
-  const stratagems = personalStratagems()
-  if (stratagems.length) groups.push({ id: 'stratagems', label: 'Stratagems', entries: stratagems })
-  const armor = personalEntries(['armorPassive'])
-  if (armor.length) groups.push({ id: 'armor', label: 'Armor', entries: armor })
-  const boosters = personalEntries(['booster'])
-  if (boosters.length) groups.push({ id: 'boosters', label: 'Boosters', entries: boosters })
+  const add = (id: string, label: string, entries: Item[]) => {
+    if (entries.length) groups.push({ id, label, items: entries })
+  }
+  add('weapons', 'Weapons', inCategories(['primary', 'secondary']))
+  add('throwables', 'Throwables', inCategories(['throwable']))
+  add('stratagems', 'Stratagems', items.filter(item => item.type === 'stratagem'))
+  add('armor', 'Armor', inCategories(['armorPassive']))
+  add('boosters', 'Boosters', inCategories(['booster']))
   return groups
-})
+}
 
-const personalGroups = computed(() =>
-  props.state.divers.map(diver => ({
-    diver,
-    items: resolve(props.state.personalInventories[diver.id] ?? []),
-  })),
-)
+function kitFor(diver: DiveState['divers'][number]): DiverKit {
+  const items = resolve(props.state.personalInventories[diver.id] ?? [])
+  return { diverId: diver.id, diverName: diver.name, items, groups: typeGroupsFor(items) }
+}
+
+const mineGroups = computed<TypeGroup[]>(() =>
+  typeGroupsFor(resolve(props.state.personalInventories[props.selfId ?? ''] ?? [])))
+
+const otherKits = computed<DiverKit[]>(() =>
+  props.state.divers.filter(diver => diver.id !== props.selfId).map(kitFor))
+
+const allKits = computed<DiverKit[]>(() => props.state.divers.map(kitFor))
 
 function forfeit(ownerId: string, itemId: string): void {
   emit('forfeit', { ownerId, itemId })
@@ -75,34 +59,34 @@ function forfeit(ownerId: string, itemId: string): void {
 <template>
   <div class="inventory">
     <div
-      v-if="!selectMode"
+      v-if="!selectMode && otherKits.length"
       class="view-toggle"
     >
       <button
         type="button"
-        :class="{ active: activeView === 'type' }"
-        @click="view = 'type'"
+        :class="{ active: view === 'mine' }"
+        @click="view = 'mine'"
       >
-        By type
+        My kit
       </button>
       <button
         type="button"
-        :class="{ active: activeView === 'diver' }"
-        @click="view = 'diver'"
+        :class="{ active: view === 'squad' }"
+        @click="view = 'squad'"
       >
-        By diver
+        Squad
       </button>
     </div>
 
-    <template v-if="activeView === 'type'">
+    <template v-if="selectMode">
       <section
-        v-for="group in typeGroups"
-        :key="group.id"
+        v-for="kit in allKits"
+        :key="kit.diverId"
         class="inv-group"
       >
         <h3>
-          {{ group.label }}
-          <span class="muted small">({{ group.entries.length }})</span>
+          {{ kit.diverName }}'s kit
+          <span class="muted small">({{ kit.items.length }})</span>
         </h3>
         <TransitionGroup
           tag="div"
@@ -110,25 +94,24 @@ function forfeit(ownerId: string, itemId: string): void {
           class="showcase-grid"
         >
           <ItemCard
-            v-for="entry in group.entries"
-            :key="entry.item.id"
-            :item="entry.item"
+            v-for="item in kit.items"
+            :key="item.id"
+            :item="item"
             showcase
-            :owners="entry.owners"
-            disabled
+            @select="forfeit(kit.diverId, item.id)"
           />
         </TransitionGroup>
       </section>
     </template>
 
-    <template v-else>
+    <template v-else-if="view === 'mine'">
       <section
-        v-for="group in personalGroups"
-        :key="group.diver.id"
+        v-for="group in mineGroups"
+        :key="group.id"
         class="inv-group"
       >
         <h3>
-          {{ group.diver.name }}'s kit
+          {{ group.label }}
           <span class="muted small">({{ group.items.length }})</span>
         </h3>
         <TransitionGroup
@@ -141,10 +124,45 @@ function forfeit(ownerId: string, itemId: string): void {
             :key="item.id"
             :item="item"
             showcase
-            :disabled="!selectMode"
-            @select="forfeit(group.diver.id, item.id)"
+            disabled
           />
         </TransitionGroup>
+      </section>
+    </template>
+
+    <template v-else>
+      <section
+        v-for="kit in otherKits"
+        :key="kit.diverId"
+        class="inv-group"
+      >
+        <h3>
+          {{ kit.diverName }}'s kit
+          <span class="muted small">({{ kit.items.length }})</span>
+        </h3>
+        <div
+          v-for="group in kit.groups"
+          :key="group.id"
+          class="kit-type"
+        >
+          <h4>
+            {{ group.label }}
+            <span class="muted small">({{ group.items.length }})</span>
+          </h4>
+          <TransitionGroup
+            tag="div"
+            name="inv"
+            class="showcase-grid"
+          >
+            <ItemCard
+              v-for="item in group.items"
+              :key="item.id"
+              :item="item"
+              showcase
+              disabled
+            />
+          </TransitionGroup>
+        </div>
       </section>
     </template>
   </div>
@@ -153,6 +171,14 @@ function forfeit(ownerId: string, itemId: string): void {
 <style scoped>
 .inventory { display: grid; gap: 1rem; }
 .inv-group { display: grid; gap: 0.5rem; position: relative; }
+.kit-type { display: grid; gap: 0.4rem; }
+.kit-type h4 {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
 
 .view-toggle {
   display: inline-flex;

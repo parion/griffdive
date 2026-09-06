@@ -299,7 +299,8 @@ app/
                    lobby (open dives), codex
   components/      dive/ (WheelPanel, PactPicker, RewardDraft, DiversChoiceCard — the special
                    S+ "Diver's Choice" offer card, DiversChoicePicker — its minified codex
-                   modal, InventoryGrid, CrusadeSetup, WarbondPicker),
+                   modal, InventoryGrid, CrusadeSetup, WarbondPicker,
+                   JoinNameGate — name gate held while joining),
                    ui/ (ItemCard, TierBadge, RiskPips, ChangelogModal — GitHub deploy log shown
                    from the pre-alpha header chip),
   composables/     useDiveSession (unified local/room driver), useDiveEngine (local reducer +
@@ -312,7 +313,10 @@ app/
 server/
   routes/ws.ts     defineWebSocketHandler — single endpoint, ?room={code|__lobby__}
   utils/           room-sync.ts (hello/action/close/lobby core; KV + peers injected),
-                   room-storage.ts (useStorage('rooms') adapter)
+                   room-storage.ts (useStorage('rooms') adapter), peers.ts (process-wide
+                   peer directory shared by the WS route and metrics),
+                   metrics.ts (Prometheus registry: presence gauges + dive counter)
+  plugins/         metrics.ts (binds the gauges, serves /metrics on internal :9091)
   api/             rooms/index.post.ts (create), rooms/[code].get.ts (snapshot),
                    lobby/index.get.ts (list)
 shared/
@@ -366,7 +370,7 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 | C→S | `action` | `{ action: EngineAction }` (validated server-side) |
 | C→S | `ping` | heartbeat — answered with `pong` |
 | S→C | `welcome` | `{ selfId, hostId, roomCode, snapshot, online }` |
-| S→C | `state` | `{ snapshot, applied (EngineAction \| null), online }` — after each applied change; `online` = diver ids with live connections |
+| S→C | `state` | `{ snapshot, applied (EngineAction \| null), online }` — after each applied change; also an `applied: null` presence refresh the moment a seated diver's last connection drops; `online` = diver ids with live connections |
 | S→C | `lobby` | `{ rooms: LobbyEntry[] }` — open dives with slots |
 | S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message` |
 
@@ -408,6 +412,14 @@ dominate bandwidth. To cut egress further, serve the static app from a CDN (unme
 e.g. Cloudflare Pages with a `/*` shell fallback) and keep only WS + REST on the Node service.
 `pnpm generate` remains supported for a static, offline, solo-only build. Storage driver swap
 (memory → Redis) is config-only for horizontal scale later.
+
+Monitoring: `server/plugins/metrics.ts` exposes a Prometheus registry (`@prometheus-io/client`)
+on internal port 9091 (`METRICS_PORT` to override) — default Node metrics plus
+`griffdive_online_players`, `griffdive_active_rooms`, `griffdive_open_rooms` (gauges, snapshotted
+from the peer directory and lobby at scrape time) and `griffdive_dives_started_total` (counter,
+reset per process — query with `increase()` across deploys). `fly.toml`'s `[metrics]` has Fly
+scrape it every 15s into the managed Grafana at fly-metrics.net; the port is never registered in
+`[http_service]`, so it is unreachable from the public internet.
 
 CI/CD: `.github/workflows/ci.yml` runs lint/typecheck/unit tests + the Playwright E2E suite on
 every PR and push to `main`; the `deploy` job (push to `main` only, needs both green) runs
@@ -488,9 +500,10 @@ the Redis swap lands.
 - **Dependencies:** get approval before adding runtime deps. Currently approved adds:
   `@nuxt/eslint`, `vitest`, `vue-tsc`, `@nuxt/fonts` (Phase 0; fonts is build-time dev dep);
   `@vueuse/core`, `@pinia/nuxt`, `nanoid` (Phase 2);
-  `@playwright/test` (Phase 3). `motion-v` (Phase 4; the only approved animation runtime —
-  springs, `AnimatePresence`, shared-element layout). `@nuxt/test-utils` remains optional until a
-  Nuxt-runtime test actually needs it.
+  `@playwright/test` (Phase 3).   `motion-v` (Phase 4; the only approved animation runtime —
+  springs, `AnimatePresence`, shared-element layout). `@prometheus-io/client`
+  (server metrics registry; the official continuation of `prom-client`).
+  `@nuxt/test-utils` remains optional until a Nuxt-runtime test actually needs it.
 
 ## Testing strategy
 
@@ -503,7 +516,8 @@ the Redis swap lands.
   must bump the engine version + write a migration, or revert.
 - **Server tests** (Vitest, fake KV + fake peers in `server/utils/room-sync.spec.ts`): room
   join/spin/pick flows, host authority + coercion, host migration, reattachment, room-full,
-  TTL pruning, lobby list. (`@nuxt/test-utils` + Playwright browser flows land in Phase 3+.)
+  TTL pruning, lobby list, metrics gauges/counters (`metrics.spec.ts`). (`@nuxt/test-utils` +
+  Playwright browser flows land in Phase 3+.)
 - **E2E (Playwright, `e2e/*.spec.ts` via `@playwright/test`):** `playwright.config.ts` boots the
   production build (`pnpm build` + Nitro server, port 3173, WebSocket included). Specs: solo dive
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host

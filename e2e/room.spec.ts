@@ -10,21 +10,32 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await pageA.getByRole('button', { name: 'Host an online dive' }).click()
   await expect(pageA).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
 
+  // The name gate holds the host until they introduce themselves.
+  await pageA.getByLabel('Your name').fill('Host')
+  await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
   await expect(pageA.getByText('Wheel of Misfortune')).toBeVisible()
 
-  // A second browser joins through the same invite link.
+  // A second browser joins through the same invite link — the name gate
+  // blocks seating until they provide a name.
   await pageB.goto(pageA.url())
+  await expect(pageB.getByLabel('Your name')).toBeVisible()
+  await expect(pageB.locator('.diver-chip')).toHaveCount(0)
+  await pageB.getByLabel('Your name').fill('Duo')
+  await pageB.getByRole('button', { name: 'Join the dive' }).click()
+
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
   await expect(pageB.getByText('(you)')).toBeVisible()
   await expect(pageB.getByRole('button', { name: 'Spin', exact: true })).toBeDisabled()
 
-  // The joiner claims a name via their inline chip editor; it syncs to the host.
-  const nameBox = pageB.getByLabel('Your name')
-  await nameBox.fill('Duo')
-  await nameBox.blur()
-  await expect(pageB.getByLabel('Your name')).toHaveValue('Duo')
+  // The joiner's gate-provided name synced to the host; renaming via the
+  // inline chip editor still updates the squad in real time.
   await expect(pageA.locator('.diver-chip').filter({ hasText: 'Duo' })).toBeVisible()
+  const nameBox = pageB.getByLabel('Your name')
+  await nameBox.fill('Duo Prime')
+  await nameBox.blur()
+  await expect(pageB.getByLabel('Your name')).toHaveValue('Duo Prime')
+  await expect(pageA.locator('.diver-chip').filter({ hasText: 'Duo Prime' })).toBeVisible()
 
   // Host spins; the seeded result syncs to the joiner. The joiner's card shows
   // the pending decision — only the host can lock the misfortune in.
@@ -68,10 +79,14 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
 
   await pageA.goto('/')
   await pageA.getByRole('button', { name: 'Host an online dive' }).click()
+  await pageA.getByLabel('Your name').fill('Host')
+  await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
   await expect(pageA.getByText('Wheel of Misfortune')).toBeVisible()
 
   await pageB.goto(pageA.url())
+  await pageB.getByLabel('Your name').fill('Sidekick')
+  await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
 
   // Host spins and locks the misfortune in; the joiner stalls before locking

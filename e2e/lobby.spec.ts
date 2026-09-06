@@ -12,6 +12,8 @@ test('a stranger finds an open dive in the lobby and joins in one click', async 
   const roomCode = pageA.url().match(/([A-Z0-9]{6})$/)?.[1]
   expect(roomCode).toBeTruthy()
 
+  await pageA.getByLabel('Your name').fill('Host')
+  await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
   await expect(pageA.getByText('Wheel of Misfortune')).toBeVisible()
   await pageA.getByRole('button', { name: 'Open to lobby' }).click()
@@ -28,6 +30,8 @@ test('a stranger finds an open dive in the lobby and joins in one click', async 
 
   await pageB.getByRole('link', { name: 'Join dive' }).click()
   await expect(pageB).toHaveURL(new RegExp(`/dive/${roomCode}$`))
+  await pageB.getByLabel('Your name').fill('Stranger')
+  await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
 
   await contextA.close()

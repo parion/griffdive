@@ -21,11 +21,28 @@ export function rememberDiverName(name: string): void {
   }
 }
 
+// A saved name worth keeping — the bare 'Diver' placeholder doesn't count as
+// having introduced yourself.
+export function hasDiverName(): boolean {
+  if (!import.meta.client) {
+    return false
+  }
+  const name = localStorage.getItem('griffdive:name')?.trim()
+  return !!name && name !== 'Diver'
+}
+
 // Room-mode driver: state is server-authoritative. The client only sends
 // actions and applies snapshots (AGENTS.md: client state is never trusted).
 export function useGameSocket(roomCode: string) {
   const store = useSessionStore()
   const { rememberRoom } = useRecentRooms()
+
+  // Joining by link requires a name: first-timers to this room (no stored
+  // seat) who never introduced themselves (no saved name) are held until the
+  // name gate confirms them. Stored seats reconnect straight away.
+  const hasSeat = import.meta.client
+    && !!localStorage.getItem(playerKey(roomCode))
+  const awaitingName = ref(!hasSeat && !hasDiverName())
 
   const url = computed(() => {
     if (!import.meta.client) {
@@ -90,6 +107,7 @@ export function useGameSocket(roomCode: string) {
   }
 
   function connect(): void {
+    awaitingName.value = false
     store.openSession(roomCode)
     open()
   }
@@ -101,8 +119,12 @@ export function useGameSocket(roomCode: string) {
     }
   })
 
-  onMounted(connect)
+  onMounted(() => {
+    if (!awaitingName.value) {
+      connect()
+    }
+  })
   onBeforeUnmount(close)
 
-  return { store, dispatch, connect, close }
+  return { store, dispatch, connect, close, awaitingName }
 }

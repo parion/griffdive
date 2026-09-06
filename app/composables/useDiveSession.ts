@@ -10,6 +10,8 @@ export interface DiveSession {
   mode: 'local' | 'room'
   state: ComputedRef<DiveState | null>
   dispatch: (action: EngineAction) => void
+  connect: () => void
+  awaitingName: ComputedRef<boolean>
   newSeed: () => number
   selfId: ComputedRef<string | null>
   selfIsHost: ComputedRef<boolean>
@@ -30,6 +32,8 @@ export function useDiveSession(slotId: string): DiveSession {
       mode: 'local',
       state: computed(() => engine.state.value),
       dispatch: engine.dispatch,
+      connect: () => {},
+      awaitingName: computed(() => false),
       newSeed: engine.newSeed,
       selfId: computed(() => engine.state.value?.hostId ?? null),
       selfIsHost: computed(() => true),
@@ -42,11 +46,13 @@ export function useDiveSession(slotId: string): DiveSession {
     }
   }
 
-  const { store, dispatch } = useGameSocket(slotId)
+  const { store, dispatch, ...socket } = useGameSocket(slotId)
   return {
     mode: 'room',
     state: computed(() => store.snapshot),
     dispatch,
+    connect: () => socket.connect(),
+    awaitingName: computed(() => socket.awaitingName.value),
     newSeed,
     selfId: computed(() => store.selfId),
     selfIsHost: computed(() =>

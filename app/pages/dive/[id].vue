@@ -18,6 +18,7 @@ import {
   teamRiskOf,
 } from '~~/shared/engine/selectors'
 import type { CrusadeVariant, EngineAction, ItemRef } from '~~/shared/engine/types'
+import { rememberDiverName } from '~/composables/useGameSocket'
 
 const route = useRoute()
 const slotId = computed(() => String(route.params.id))
@@ -219,6 +220,13 @@ function commitName(): void {
   }
 }
 
+// The name gate runs before joining: confirm stores the name so the first
+// hello seats this diver named, then the connection opens.
+function confirmJoinName(name: string): void {
+  rememberDiverName(name)
+  session.connect()
+}
+
 function launchCrusade(): void {
   commitName()
   dispatch({ type: 'START_DIVE', settings: { variant: lobbyVariant.value } })
@@ -234,6 +242,10 @@ function commitWarbonds(codes: string[]): void {
 
 <template>
   <main class="page">
+    <JoinNameGate
+      v-if="session.awaitingName.value"
+      @confirm="confirmJoinName"
+    />
     <p
       v-if="session.loadError.value"
       class="panel"
@@ -718,8 +730,11 @@ function commitWarbonds(codes: string[]): void {
         ref="squadInventory"
         class="panel"
       >
-        <summary>Squad inventory</summary>
-        <InventoryGrid :state="session.state.value" />
+        <summary>Kit inventory</summary>
+        <InventoryGrid
+          :state="session.state.value"
+          :self-id="session.selfId.value"
+        />
       </details>
     </template>
     <p

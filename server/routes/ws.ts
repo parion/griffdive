@@ -1,8 +1,7 @@
-import { createPeerDirectory, processAction, processClose, processHello } from '../utils/room-sync'
+import { processAction, processClose, processHello } from '../utils/room-sync'
 import type { PeerLike } from '../utils/room-sync'
 import { roomKV } from '../utils/room-storage'
-
-const directory = createPeerDirectory()
+import { peers as directory } from '../utils/peers'
 
 function asPeerLike(peer: unknown): PeerLike {
   return peer as PeerLike

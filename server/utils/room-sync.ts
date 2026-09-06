@@ -6,6 +6,7 @@ import type { DiveState, EngineAction } from '~~/shared/engine/types'
 import { LOBBY_ROOM, isHostOnlyAction, isLobbyRoom } from '~~/shared/types/messages'
 import type { LobbyEntry, ServerMessage } from '~~/shared/types/messages'
 import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, isRoomCode } from '~~/shared/utils/room-code'
+import { roomMetrics } from './metrics'
 
 const newRoomCode = customAlphabet(ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH)
 const newPlayerId = () => nanoid(12)
@@ -40,6 +41,7 @@ export interface PeerDirectory {
   add(roomCode: string, peer: PeerLike): void
   remove(peer: PeerLike): void
   list(roomCode: string): PeerLike[]
+  rooms(): string[]
 }
 
 export function createPeerDirectory(): PeerDirectory {
@@ -60,6 +62,9 @@ export function createPeerDirectory(): PeerDirectory {
     },
     list(roomCode) {
       return [...(byRoom.get(roomCode) ?? [])]
+    },
+    rooms() {
+      return [...byRoom.keys()]
     },
   }
 }
@@ -307,6 +312,9 @@ export async function processAction(
 
   room.state = next
   await saveRoom(kv, room)
+  if (enforced.type === 'START_DIVE') {
+    roomMetrics.recordDiveStarted()
+  }
   broadcastState(peers, roomCode, room.state, enforced)
   if (wasOpen || room.state.openToLobby) {
     await broadcastLobby(kv, peers)
@@ -325,6 +333,13 @@ export async function processClose(kv: RoomKV, peers: PeerDirectory, peer: PeerL
     return
   }
 
+  // A diver can hold several live sockets (extra tabs, reconnect races): the
+  // seat — and the host role with it — only leaves with the last one.
+  const stillConnected = peers.list(roomCode).some(other => other.context.playerId === playerId)
+  if (stillConnected || !room.state.divers.some(diver => diver.id === playerId)) {
+    return
+  }
+
   // Host connection dropped: transfer to the earliest joiner still seated
   // (AGENTS.md: host migration). The diver stays seated for reconnect.
   if (room.state.hostId === playerId && room.state.divers.length > 1) {
@@ -337,6 +352,11 @@ export async function processClose(kv: RoomKV, peers: PeerDirectory, peer: PeerL
       if (room.state.openToLobby) {
         await broadcastLobby(kv, peers)
       }
+      return
     }
   }
+
+  // Presence-only refresh: remaining peers must drop the departed diver from
+  // their online list immediately, not at the next action.
+  broadcastState(peers, roomCode, room.state, null)
 }

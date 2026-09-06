@@ -20,6 +20,13 @@ primary_region = 'ams'
   min_machines_running = 1
   processes = ['app']
 
+# Scraped by Fly every 15s into the managed Prometheus (dashboards at
+# fly-metrics.net). Served by server/plugins/metrics.ts on a port that is
+# never registered in [http_service], so it is not publicly reachable.
+[metrics]
+  port = 9091
+  path = "/metrics"
+
 # Single instance only: room state is an in-memory KV (`useStorage('rooms')`)
 # and live peers live in an in-process directory. Scaling beyond one machine
 # splits squads across processes — deploy a Redis-backed storage driver first.

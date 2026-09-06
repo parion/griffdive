@@ -251,6 +251,63 @@ describe('room-sync', () => {
     expect(reWelcome.snapshot.divers).toHaveLength(2)
   })
 
+  it('refreshes presence as soon as a diver disconnects', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    const hostId = welcomeOf(host).selfId
+
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    await processHello(kv, peers, joiner, { name: 'Joiner' })
+    const joinerId = welcomeOf(joiner).selfId
+    sent(host).length = 0
+
+    // The joiner's connection drops and no action follows: the host must
+    // still see them go offline.
+    await processClose(kv, peers, joiner)
+
+    const states = sent(host).filter(m => m.type === 'state')
+    expect(states).toHaveLength(1)
+    const refresh = states[0]
+    if (refresh?.type !== 'state') {
+      throw new Error('no state message received')
+    }
+    expect(refresh.applied).toBeNull()
+    expect(refresh.online).toEqual([hostId])
+    expect(refresh.online).not.toContain(joinerId)
+  })
+
+  it('keeps the host seated while another of their sockets is live', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    const hostId = welcomeOf(host).selfId
+
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    await processHello(kv, peers, joiner, { name: 'Joiner' })
+    sent(joiner).length = 0
+
+    // A second tab of the host reattaches with the stored playerId.
+    const secondTab = fakePeer('ws-a2')
+    secondTab.context.roomCode = code
+    await processHello(kv, peers, secondTab, { name: 'Host', playerId: hostId })
+
+    // One host socket closes: seat, host role and presence all stay put.
+    await processClose(kv, peers, host)
+    expect(sent(joiner)).toHaveLength(0)
+    expect((await loadRoom(kv, code))?.state.hostId).toBe(hostId)
+  })
+
   it('publishes lobby entries only for open, non-full rooms', async () => {
     const kv = fakeKV()
     const peers = createPeerDirectory()
