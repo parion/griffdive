@@ -459,13 +459,23 @@ scrape it every 15s into the managed Grafana at fly-metrics.net; the port is nev
 `[http_service]`, so it is unreachable from the public internet.
 
 CI/CD: `.github/workflows/ci.yml` runs lint/typecheck/unit tests + the Playwright E2E suite on
-every PR and push to `main`; the `deploy` job (push to `main` only, needs both green) runs
-`flyctl deploy --remote-only` against the `Dockerfile` + `fly.toml` in repo using the
-`FLY_API_TOKEN` repo secret (a scope-limited deploy token, not a full account token). The image
+every PR and push to `main`. **Releases are batched:** the `deploy` job (push to `main` +
+`workflow_dispatch`, needs both green) targets the `production` GitHub environment, which is
+configured with a required reviewer — merges to `main` queue up as "Waiting" runs until the
+accumulated batch is approved and ships as one deploy. The `environment:` reference is what
+creates the GitHub deployment record (this — not Fly's GitHub app integration — feeds the
+"production deployments" UI and the in-app changelog); the job runs `flyctl deploy
+--remote-only --wait-timeout 300` against the `Dockerfile` + `fly.toml` in repo using the
+`FLY_API_TOKEN` repo secret (an app-scoped deploy token), then smoke-checks `/api/lobby` before
+the deployment is marked success. `.github/workflows/preview.yml` deploys a per-PR review app
+(`pr-<n>-parion-griffdive.fly.dev`, via `superfly/fly-pr-review-apps` with `fly.review.toml` and
+the org-scoped `FLY_REVIEW_TOKEN` secret) whose URL shows in the PR UI; the app is destroyed
+when the PR closes. The image
 runs `node .output/server/index.mjs` on internal port 8080. `fly.toml` pins one machine
 (`min_machines_running = 1`, `auto_stop_machines = false`): room state is an in-memory KV and live
 peers live in an in-process directory — more than one machine splits squads across processes, and
-every deploy restarts the process, wiping in-flight rooms. Don't touch those two settings until
+every deploy restarts the process, wiping in-flight rooms (the approval gate's batching directly
+reduces wipe frequency). Don't touch those two settings until
 the Redis swap lands.
 
 ---
