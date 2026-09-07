@@ -6,6 +6,11 @@ import { ENGINE_VERSION } from './config'
 import { resetOperation } from './reducer'
 import type { DiveState, DiverState } from './types'
 
+// Divers from pre-v7 docs predate the Field Promotion bookkeeping; pre-v8
+// docs predate failed-pact marks.
+type LegacyDiver = Omit<DiverState, 'catchUpGranted' | 'catchUpOwed' | 'skipsCurrentDraft' | 'failedPactIds'>
+  & Partial<Pick<DiverState, 'catchUpGranted' | 'catchUpOwed' | 'skipsCurrentDraft' | 'failedPactIds'>>
+
 export function createSaveDoc(state: DiveState, slotName: string, savedAt: string): SaveDoc {
   return {
     schemaVersion: SAVE_SCHEMA_VERSION,
@@ -55,22 +60,31 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 4) {
     migrated = migrateV3toV4(migrated)
   }
+  // v7/v8 fields (Field Promotion + legacy caches, failed pacts) default on
+  // older docs — shape defaulting, not a migration step (pre-alpha policy,
+  // Save model).
+  migrated = {
+    ...migrated,
+    state: {
+      ...migrated.state,
+      legacyCaches: migrated.state.legacyCaches ?? {},
+      divers: (migrated.state.divers ?? []).map((diver) => {
+        const legacy = diver as LegacyDiver
+        return {
+          ...legacy,
+          catchUpGranted: legacy.catchUpGranted ?? 0,
+          catchUpOwed: legacy.catchUpOwed ?? 0,
+          skipsCurrentDraft: legacy.skipsCurrentDraft ?? false,
+          // Saves from before pacts could be marked failed carry no marks —
+          // an empty list is the truthful default for them.
+          failedPactIds: legacy.failedPactIds ?? [],
+        }
+      }),
+    },
+  }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
-  return { ...migrated, state: normalizeDivers(migrated.state) }
-}
-
-// Normalization, not migration: saves from before pacts could be marked
-// failed carry divers without the field — an empty list is the truthful
-// default for them (the feature postdates those saves).
-function normalizeDivers(state: DiveState): DiveState {
-  return {
-    ...state,
-    divers: state.divers.map(diver => ({
-      ...diver,
-      failedPactIds: (diver as DiverState & { failedPactIds?: string[] }).failedPactIds ?? [],
-    })),
-  }
+  return migrated
 }
 
 // v2: armor rewards became passives — armor pieces are free shells, so any

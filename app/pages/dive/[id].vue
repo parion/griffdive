@@ -36,8 +36,17 @@ const front = computed(() => (session.state.value ? currentFront(session.state.v
 
 const pactSelection = ref<string[]>([])
 // A new draw or a flipped decision rolls a fresh offer — start the pick clean.
+// Primitive getters compare by value; a getter returning a fresh array would
+// re-fire on every snapshot (e.g. another diver locking pacts) and wipe picks
+// that are still in progress.
 watch(
-  () => [session.state.value?.wheel?.seed, session.state.value?.misfortuneAccepted],
+  () => session.state.value?.wheel?.seed,
+  () => {
+    pactSelection.value = []
+  },
+)
+watch(
+  () => session.state.value?.misfortuneAccepted,
   () => {
     pactSelection.value = []
   },
@@ -157,6 +166,18 @@ function pick(optionId: string, choiceItemId?: string): void {
     : { type: 'PICK_REWARD', playerId: session.selfId.value, optionId })
 }
 
+function claimCatchUpOption(optionId: string): void {
+  if (session.selfId.value) {
+    dispatch({ type: 'CLAIM_CATCHUP_OPTION', playerId: session.selfId.value, optionId })
+  }
+}
+
+function claimCache(cacheOwnerId: string): void {
+  if (session.selfId.value) {
+    dispatch({ type: 'CLAIM_CACHE', playerId: session.selfId.value, cacheOwnerId })
+  }
+}
+
 function advance(): void {
   dispatch({ type: 'ADVANCE' })
 }
@@ -167,6 +188,15 @@ function forfeit(itemRef: ItemRef): void {
 
 function endDive(): void {
   dispatch({ type: 'END_DIVE' })
+}
+
+// Dropping out is soft: the diver's inventory parks as a legacy cache, and
+// the same diver rejoining under their stored playerId reclaims it.
+function leaveDive(): void {
+  if (session.selfId.value) {
+    dispatch({ type: 'LEAVE_DIVE', playerId: session.selfId.value })
+  }
+  navigateTo('/')
 }
 
 function abandonSlot(): void {
@@ -325,6 +355,14 @@ function commitWarbonds(codes: string[]): void {
             {{ session.state.value.openToLobby ? 'Close to lobby' : 'Open to lobby' }}
           </button>
           <button
+            v-if="session.mode === 'room' && session.state.value.phase !== 'complete'"
+            class="btn ghost tiny"
+            type="button"
+            @click="leaveDive"
+          >
+            Leave dive
+          </button>
+          <button
             v-if="canControl && session.state.value.phase !== 'complete'"
             class="btn ghost tiny"
             type="button"
@@ -362,6 +400,11 @@ function commitWarbonds(codes: string[]): void {
               v-if="diver.id === session.state.value?.hostId"
               class="crown"
             >★</span>
+            <span
+              v-if="diver.catchUpOwed > 0"
+              class="catchup-chip"
+              title="Field Promotion picks owed"
+            >+{{ diver.catchUpOwed }}</span>
             <span
               v-if="diver.id === session.selfId.value"
               class="muted small"
@@ -416,6 +459,16 @@ function commitWarbonds(codes: string[]): void {
           Dismiss
         </button>
       </p>
+
+      <!-- The Field Promotion persists across phases: a mid-crusade joiner
+           catches up whenever it suits them, never gating the squad. -->
+      <FieldPromotionCard
+        v-if="self && self.catchUpOwed > 0 && session.state.value.phase !== 'complete'"
+        :state="session.state.value"
+        :diver="self"
+        @claim-option="claimCatchUpOption"
+        @claim-cache="claimCache"
+      />
 
       <Transition
         v-if="!kicked"
@@ -805,6 +858,14 @@ function commitWarbonds(codes: string[]): void {
 }
 
 .squad-strip { padding: 0.6rem 0.75rem; }
+.catchup-chip {
+  padding: 0 0.3rem;
+  border: 1px solid var(--teal);
+  border-radius: 4px;
+  color: var(--teal);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
 .self-warbonds { padding: 0.6rem 0.8rem; }
 .self-warbonds summary {
   cursor: pointer;

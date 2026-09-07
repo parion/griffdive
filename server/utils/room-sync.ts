@@ -1,6 +1,6 @@
 import { customAlphabet, nanoid } from 'nanoid'
 import { SQUAD_SIZE_MAX, MAX_NAME_LENGTH } from '~~/shared/engine/config'
-import { createLobbyState, joinDiver } from '~~/shared/engine/room'
+import { createLobbyState, joinDiver, seatingBlocked } from '~~/shared/engine/room'
 import { reduce } from '~~/shared/engine/reducer'
 import type { DiveState, EngineAction } from '~~/shared/engine/types'
 import { LOBBY_ROOM, isHostOnlyAction, isLobbyRoom } from '~~/shared/types/messages'
@@ -220,8 +220,9 @@ export async function processHello(
     playerId = known.id
   }
   else {
-    if (room.state.divers.length >= SQUAD_SIZE_MAX) {
-      sendError(peer, 'room-full', 'Dive squad is full')
+    const blocked = seatingBlocked(room.state)
+    if (blocked) {
+      sendError(peer, room.state.divers.length >= SQUAD_SIZE_MAX ? 'room-full' : 'dive-locked', blocked)
       return
     }
     playerId = newPlayerId()
@@ -266,6 +267,9 @@ function enforceSelf(action: EngineAction, playerId: string): EngineAction {
     || action.type === 'SET_WARBONDS'
     || action.type === 'PICK_REWARD'
     || action.type === 'SET_NAME'
+    || action.type === 'CLAIM_CATCHUP_OPTION'
+    || action.type === 'CLAIM_CACHE'
+    || action.type === 'LEAVE_DIVE'
   ) {
     return { ...action, playerId }
   }

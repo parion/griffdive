@@ -156,7 +156,9 @@ export function useChangelog() {
     error.value = null
     try {
       const [deployments, commits] = await Promise.all([
-        fetchGithub<GhDeployment[]>(`/repos/${GITHUB_REPO}/deployments?per_page=${MAX_DEPLOYMENTS}`),
+        // Production releases only: PR review apps also create GitHub
+        // deployments (environment `review`) and must not pollute the changelog.
+        fetchGithub<GhDeployment[]>(`/repos/${GITHUB_REPO}/deployments?environment=production&per_page=${MAX_DEPLOYMENTS}`),
         fetchGithub<GhCommit[]>(`/repos/${GITHUB_REPO}/commits?per_page=${MAX_COMMITS}`),
       ])
       if (!Array.isArray(deployments) || !Array.isArray(commits)) {

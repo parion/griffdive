@@ -1,0 +1,24 @@
+# Pull-request review-app config for .github/workflows/preview.yml. Deployed as
+# pr-<n>-parion-griffdive — the workflow overrides `app` via --app.
+app = 'griffdive-pr'
+primary_region = 'ams'
+
+[build]
+
+[env]
+  HOST = '0.0.0.0'
+  PORT = '8080'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Previews sleep when idle and wake on the next request — no always-on cost.
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+# Single instance, same as prod: room state is an in-memory KV.
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'

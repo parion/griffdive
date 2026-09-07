@@ -62,6 +62,10 @@ export const S_PLUS_BONUS_OPTIONS = 1
 // Each pact marked failed in the field forfeits this many reward options —
 // the stake the diver never actually carried (AGENTS.md: Reward math).
 export const OPTIONS_LOST_PER_FAILED_PACT = 1
+// Field Promotion cap: a mid-crusade joiner rolls at most this many catch-up
+// options (one per operation behind, capped). Catch-up buys altitude at the
+// current base tier with zero luck — never rarity.
+export const CATCHUP_CAP = 4
 export const TIER_ROLL_WEIGHT_BASE = 2
 export const MAX_NAME_LENGTH = 32
 

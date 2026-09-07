@@ -84,6 +84,10 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   if (state.offerSeed === null || !state.lastReport || state.lastReport.outcome !== 'success') {
     return []
   }
+  // Seated mid-mission: the squad dove without them, so the draft isn't theirs.
+  if (diver.skipsCurrentDraft) {
+    return []
+  }
   const seed = deriveSeed(state.offerSeed, hashString(diver.id))
   // Two rng streams derived from the offer seed: one rolls the tier ceiling,
   // one rolls the options — every client computes the same offer.
@@ -104,6 +108,21 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
     - diver.failedPactIds.length * OPTIONS_LOST_PER_FAILED_PACT,
   )
   return rollRewardOptions(deriveSeed(seed, 2), ceiling, count, pool, owned)
+}
+
+// The Field Promotion: a mid-crusade joiner's catch-up offer. Altitude
+// parity, never rarity — the ceiling is the difficulty's base tier at zero
+// luck (a zero-luck dive always rolls its base tier), so a late joiner buys
+// up to the squad's altitude without ever reaching S. Derived from the last
+// spun seed like every offer — deterministic, never stored.
+export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOption[] {
+  if (!state.settings || diver.catchUpOwed <= 0) {
+    return []
+  }
+  const seed = deriveSeed(state.seedHistory.at(-1) ?? 0, hashString(`${diver.id}:catchup`))
+  const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
+  const owned = new Set(state.personalInventories[diver.id] ?? [])
+  return rollRewardOptions(seed, baseTierFor(state.difficulty), diver.catchUpOwed, pool, owned)
 }
 
 export interface CeilingRange {
@@ -157,7 +176,17 @@ export function canRerollWheel(
 }
 
 export function allDiversPicked(state: DiveState): boolean {
-  return state.divers.every(diver => diver.pickedOptionId !== null)
+  return state.divers.every(
+    diver => diver.pickedOptionId !== null || diver.skipsCurrentDraft,
+  )
+}
+
+// Legacy caches a mid-crusade joiner can claim instead of their promotion.
+export function availableCaches(state: DiveState): { ownerId: string, itemIds: string[] }[] {
+  return Object.entries(state.legacyCaches).map(([ownerId, itemIds]) => ({
+    ownerId,
+    itemIds,
+  }))
 }
 
 // The per-diver pact offer: rolled deterministically from the wheel seed once
