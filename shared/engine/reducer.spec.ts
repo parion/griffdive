@@ -6,7 +6,7 @@ import { DIVERS_CHOICE_OPTION_ID } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { allDiversPicked, canRerollWheel, comboKey, diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
+import { allDiversPicked, canRerollWheel, catchUpOptionsFor, comboKey, diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
 import type { DiveState, DiverState, EngineAction } from './types'
 
 const SETTINGS = { variant: 'standard' as const }
@@ -60,6 +60,20 @@ function requireId(value: string | undefined): string {
     throw new Error('expected an item id')
   }
   return value
+}
+
+function twoDiverState(): DiveState {
+  return {
+    ...freshState(),
+    divers: [
+      { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false },
+      { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false },
+    ],
+    personalInventories: {
+      p1: startingItemIds(SETTINGS.variant),
+      p2: startingItemIds(SETTINGS.variant),
+    },
+  }
 }
 
 const skeletonActions: EngineAction[] = [
@@ -445,8 +459,8 @@ describe('identity actions', () => {
     const withTwo: DiveState = {
       ...freshState(),
       divers: [
-        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [] },
-        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [] },
+        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false },
+        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false },
       ],
     }
     const moved = reduce(withTwo, { type: 'TRANSFER_HOST', playerId: 'p2' })
@@ -466,24 +480,11 @@ describe('identity actions', () => {
 })
 
 describe('KICK_DIVER', () => {
-  function twoDiverState(): DiveState {
-    return {
-      ...freshState(),
-      divers: [
-        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [] },
-        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [] },
-      ],
-      personalInventories: {
-        p1: startingItemIds(SETTINGS.variant),
-        p2: startingItemIds(SETTINGS.variant),
-      },
-    }
-  }
-
-  it('removes the diver and their personal inventory', () => {
+  it('removes the diver, parks their inventory as a legacy cache', () => {
     const state = reduce(twoDiverState(), { type: 'KICK_DIVER', playerId: 'p2' })
     expect(state.divers.map(diver => diver.id)).toEqual(['p1'])
     expect(state.personalInventories.p2).toBeUndefined()
+    expect(state.legacyCaches.p2).toEqual(startingItemIds(SETTINGS.variant))
     expect(state.personalInventories.p1?.length).toBeGreaterThan(0)
   })
 
@@ -530,6 +531,164 @@ describe('KICK_DIVER', () => {
     state = reduce(state, { type: 'KICK_DIVER', playerId: 'p2' })
     state = reduce(state, { type: 'ADVANCE' })
     expect(state.phase).toBe('spin')
+  })
+})
+
+describe('LEAVE_DIVE', () => {
+  it('parks the leaver\u2019s inventory as a legacy cache and frees the squad', () => {
+    const state = reduce(twoDiverState(), { type: 'LEAVE_DIVE', playerId: 'p2' })
+    expect(state.divers.map(diver => diver.id)).toEqual(['p1'])
+    expect(state.legacyCaches.p2).toEqual(startingItemIds(SETTINGS.variant))
+    expect(state.personalInventories.p2).toBeUndefined()
+  })
+
+  it('transfers host to the earliest joiner when the host leaves', () => {
+    const state = reduce(twoDiverState(), { type: 'LEAVE_DIVE', playerId: 'p1' })
+    expect(state.divers.map(diver => diver.id)).toEqual(['p2'])
+    expect(state.hostId).toBe('p2')
+    expect(state.divers[0]?.isHost).toBe(true)
+    expect(state.legacyCaches.p1).toEqual(startingItemIds(SETTINGS.variant))
+  })
+
+  it('resets to a fresh lobby when the last diver leaves', () => {
+    const state = reduce(twoDiverState(), { type: 'LEAVE_DIVE', playerId: 'p1' })
+    const emptied = reduce(state, { type: 'LEAVE_DIVE', playerId: 'p2' })
+    expect(emptied.phase).toBe('lobby')
+    expect(emptied.settings).toBeNull()
+    expect(emptied.divers).toEqual([])
+    expect(emptied.legacyCaches).toEqual({})
+  })
+
+  it('parks no empty cache from a lobby departure', () => {
+    const lobby = joinDiver(joinDiver(createLobbyState(), 'p1', 'A')!, 'p2', 'B')
+    if (!lobby) {
+      throw new Error('expected both divers seated')
+    }
+    const left = reduce(lobby, { type: 'LEAVE_DIVE', playerId: 'p2' })
+    expect(left.divers.map(diver => diver.id)).toEqual(['p1'])
+    expect(left.legacyCaches).toEqual({})
+  })
+
+  it('a departing unknown diver is a no-op', () => {
+    const base = twoDiverState()
+    expect(reduce(base, { type: 'LEAVE_DIVE', playerId: 'ghost' })).toBe(base)
+  })
+})
+
+describe('Field Promotion (mid-crusade catch-up)', () => {
+  // Fixture shortcut: drive the crusade to difficulty 7 (standard starts at
+  // 3 → four operations behind), then seat a late joiner at the spin.
+  function catchUpState(difficulty = 7): DiveState {
+    let state = createDiveState(SETTINGS, 'p1', 'Griffin')
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
+    state = { ...state, difficulty, missionIndex: 9, phase: 'spin', wheel: null }
+    return joinDiver(state, 'late', 'Latecomer')!
+  }
+
+  function lateDiver(state: DiveState): DiverState {
+    const diver = state.divers.find(candidate => candidate.id === 'late')
+    if (!diver) {
+      throw new Error('expected the late joiner to be seated')
+    }
+    return diver
+  }
+
+  it('banks one base-tier option per pick until the promotion is spent', () => {
+    const state = catchUpState()
+    expect(lateDiver(state).catchUpOwed).toBe(4)
+    let updated = state
+    for (let pick = 0; pick < 4; pick++) {
+      // The offer re-derives against the remaining owed count, so each pick
+      // takes the current offer's first option.
+      const option = catchUpOptionsFor(updated, lateDiver(updated))[0]
+      if (!option) {
+        throw new Error('expected a catch-up option')
+      }
+      updated = reduce(updated, {
+        type: 'CLAIM_CATCHUP_OPTION',
+        playerId: 'late',
+        optionId: option.optionId,
+      })
+    }
+    expect(lateDiver(updated).catchUpOwed).toBe(0)
+    expect(catchUpOptionsFor(updated, lateDiver(updated))).toEqual([])
+    expect(updated.personalInventories.late!.length).toBeGreaterThan(startingItemIds(SETTINGS.variant).length)
+  })
+
+  it('rejects options outside the rolled offer and picks when not owed', () => {
+    const state = catchUpState()
+    const offered = new Set(catchUpOptionsFor(state, lateDiver(state)).map(option => option.optionId))
+    const outside = ALL_ITEMS.map(item => item.id).find(id => !offered.has(id))
+    if (!outside) {
+      throw new Error('expected an item outside the offer')
+    }
+    expect(reduce(state, { type: 'CLAIM_CATCHUP_OPTION', playerId: 'late', optionId: outside })).toBe(state)
+    expect(reduce(state, { type: 'CLAIM_CATCHUP_OPTION', playerId: 'p1', optionId: requireId(offered.values().next().value) })).toBe(state)
+  })
+
+  it('never rolls above the base tier, whatever the seed', () => {
+    // Difficulty 5: base tier C — every option must carry the c tier.
+    for (let seed = 0; seed < 200; seed++) {
+      const state = { ...catchUpState(5), seedHistory: [seed] }
+      const options = catchUpOptionsFor(state, lateDiver(state))
+      expect(options.length).toBeGreaterThan(0)
+      for (const option of options) {
+        expect(option.choice).toBeUndefined()
+        expect(option.item.tier).toBe('c')
+      }
+    }
+  })
+
+  it('claims a legacy cache wholesale instead of the promotion', () => {
+    let state = catchUpState()
+    state = { ...state, legacyCaches: { ...state.legacyCaches, departed: ['uavrecon'] } }
+    const claimed = reduce(state, { type: 'CLAIM_CACHE', playerId: 'late', cacheOwnerId: 'departed' })
+    expect(claimed.legacyCaches).toEqual({})
+    expect(lateDiver(claimed).catchUpOwed).toBe(0)
+    expect(claimed.personalInventories.late).toContain('uavrecon')
+  })
+
+  it('refuses a cache after promotion options were already rolled', () => {
+    let state = catchUpState()
+    state = { ...state, legacyCaches: { ...state.legacyCaches, departed: ['uavrecon'] } }
+    const option = catchUpOptionsFor(state, lateDiver(state))[0]
+    if (!option) {
+      throw new Error('expected a catch-up option')
+    }
+    state = reduce(state, { type: 'CLAIM_CATCHUP_OPTION', playerId: 'late', optionId: option.optionId })
+    expect(reduce(state, { type: 'CLAIM_CACHE', playerId: 'late', cacheOwnerId: 'departed' })).toBe(state)
+    expect(state.legacyCaches.departed).toEqual(['uavrecon'])
+  })
+
+  it('a joiner seated mid-mission skips the current draft instead of blocking it', () => {
+    let state = twoDiverState()
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
+    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+    state = reduce(state, { type: 'SET_PACTS', playerId: 'p2', pactIds: [] })
+    // 'late' arrives while the squad is diving — the mission is not theirs.
+    state = { ...state, phase: 'diving' }
+    state = joinDiver(state, 'late', 'Latecomer')!
+    const late = state.divers.find(diver => diver.id === 'late')
+    if (!late) {
+      throw new Error('expected the late joiner to be seated')
+    }
+    expect(late.skipsCurrentDraft).toBe(true)
+    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+    expect(diverOptions(state, late)).toEqual([])
+    // Only the divers who dove need to pick; the skip never blocks ADVANCE.
+    for (const diver of [state.divers[0], state.divers[1]]) {
+      const option = diverOptions(state, diver!)[0]
+      if (!option) {
+        throw new Error('expected a reward option')
+      }
+      state = reduce(state, { type: 'PICK_REWARD', playerId: diver!.id, optionId: option.optionId })
+    }
+    expect(allDiversPicked(state)).toBe(true)
+    const advanced = reduce(state, { type: 'ADVANCE' })
+    expect(advanced.phase).toBe('spin')
+    // The next mission is theirs: the skip clears with the mission reset.
+    expect(advanced.divers.find(diver => diver.id === 'late')?.skipsCurrentDraft).toBe(false)
   })
 })
 

@@ -14,7 +14,9 @@ function firstIdOf(category: 'armor' | 'armorPassive'): string {
   throw new Error(`catalog has no ${category} items`)
 }
 
-function v1Doc(overrides: Partial<SaveDoc['state']> = {}): SaveDoc {
+// v1 docs predate v7 fields — overrides type loosely because legacy state is
+// untrusted by design (normalizeSaveDoc re-validates).
+function v1Doc(overrides: Record<string, unknown> = {}): SaveDoc {
   return {
     schemaVersion: 1,
     engineVersion: 1,
@@ -42,9 +44,35 @@ function v1Doc(overrides: Partial<SaveDoc['state']> = {}): SaveDoc {
       actionLog: [],
       seedHistory: [],
       ...overrides,
-    },
+      // Legacy shape: missing v7 fields on purpose, untrusted by design.
+    } as unknown as SaveDoc['state'],
   }
 }
+
+describe('save defaulting (v7 catch-up fields)', () => {
+  it('defaults legacy caches and diver catch-up bookkeeping on old docs', () => {
+    const doc = v1Doc({
+      divers: [
+        {
+          id: 'host',
+          name: 'Griffin',
+          isHost: true,
+          pactsLocked: false,
+          pactIds: [],
+          pickedOptionId: null,
+          warbondCodes: [],
+        },
+      ],
+    })
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.state.legacyCaches).toEqual({})
+    expect(migrated.state.divers[0]).toMatchObject({
+      catchUpGranted: 0,
+      catchUpOwed: 0,
+      skipsCurrentDraft: false,
+    })
+  })
+})
 
 // v1–v3 wheels carried the front; the legacy shape reads it during migration.
 function legacyWheel(seed: number, misfortuneId: string, front: string): SaveDoc['state']['wheel'] {

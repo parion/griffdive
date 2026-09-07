@@ -1,6 +1,6 @@
 import type { DiveState } from '../engine/types'
 
-export const SAVE_SCHEMA_VERSION = 6
+export const SAVE_SCHEMA_VERSION = 7
 
 export interface SaveDoc {
   schemaVersion: number

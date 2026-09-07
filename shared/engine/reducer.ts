@@ -4,7 +4,7 @@ import { ACTION_LOG_CAP, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPER
 import { STARTING_KITS, startingItemIds } from './progression'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed } from './rng'
-import { comboKey, diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
+import { allDiversPicked, catchUpOptionsFor, comboKey, diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
 import { deriveFront, deriveMisfortune } from './wheel'
 
 export function createDiveState(
@@ -52,6 +52,7 @@ function resetDivers(state: DiveState): DiverState[] {
     pactsLocked: false,
     pactIds: [],
     pickedOptionId: null,
+    skipsCurrentDraft: false,
   }))
 }
 
@@ -74,6 +75,44 @@ export function resetOperation(state: DiveState): Partial<DiveState> {
     misfortuneAccepted: false,
     phase: 'spin',
   }
+}
+
+// A departed diver (kicked or left) parks their inventory as a legacy cache:
+// a late joiner may claim it instead of their Field Promotion, and the same
+// diver rejoining reclaims it. The last diver out abandons the crusade —
+// the room resets to an empty lobby (parked caches die with it).
+function removeDiver(state: DiveState, diverId: string, action: EngineAction): DiveState {
+  const diver = state.divers.find(candidate => candidate.id === diverId)
+  if (!diver) {
+    return state
+  }
+  const inventory = state.personalInventories[diver.id] ?? []
+  const legacyCaches = inventory.length > 0
+    ? { ...state.legacyCaches, [diver.id]: inventory }
+    : state.legacyCaches
+  const personalInventories = Object.fromEntries(
+    Object.entries(state.personalInventories).filter(([id]) => id !== diver.id),
+  )
+  const divers = state.divers.filter(candidate => candidate.id !== diver.id)
+  if (divers.length === 0) {
+    return createLobbyState()
+  }
+  const phase = state.phase === 'pacts' && divers.every(entry => entry.pactsLocked)
+    ? 'diving'
+    : state.phase
+  if (diver.id !== state.hostId) {
+    return commit(state, { divers, personalInventories, legacyCaches, phase }, action)
+  }
+  // The host anchors the squad — hostship moves to the earliest joiner still
+  // seated, mirroring the server's disconnect migration.
+  const nextHost = divers[0]!
+  return commit(state, {
+    divers: divers.map(entry => ({ ...entry, isHost: entry.id === nextHost.id })),
+    hostId: nextHost.id,
+    personalInventories,
+    legacyCaches,
+    phase,
+  }, action)
 }
 
 export function reduce(state: DiveState, action: EngineAction): DiveState {
@@ -299,7 +338,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
     }
 
     case 'ADVANCE': {
-      if (state.phase !== 'rewards' || !state.divers.every(diver => diver.pickedOptionId)) {
+      if (state.phase !== 'rewards' || !allDiversPicked(state)) {
         return state
       }
       const missionIndex = state.missionIndex + 1
@@ -353,19 +392,65 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
     case 'KICK_DIVER': {
       const diver = state.divers.find(candidate => candidate.id === action.playerId)
       // The host anchors the squad — transfer host first to remove them.
+      // A kicked diver's pending pact lock or reward pick stops blocking
+      // the squad; their inventory parks as a legacy cache.
       if (!diver || diver.id === state.hostId) {
         return state
       }
-      // A kicked diver takes their personal inventory with them; their
-      // pending pact lock or reward pick stops blocking the squad.
-      const personalInventories = Object.fromEntries(
-        Object.entries(state.personalInventories).filter(([id]) => id !== diver.id),
+      return removeDiver(state, diver.id, action)
+    }
+
+    case 'LEAVE_DIVE': {
+      return removeDiver(state, action.playerId, action)
+    }
+
+    case 'CLAIM_CATCHUP_OPTION': {
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      if (!diver || diver.catchUpOwed <= 0) {
+        return state
+      }
+      // Options roll at the base tier with zero luck, so no option is ever
+      // Diver's Choice — the item is the option.
+      const option = catchUpOptionsFor(state, diver).find(
+        candidate => candidate.optionId === action.optionId,
       )
-      const divers = state.divers.filter(candidate => candidate.id !== diver.id)
-      const phase = state.phase === 'pacts' && divers.every(entry => entry.pactsLocked)
-        ? 'diving'
-        : state.phase
-      return commit(state, { divers, personalInventories, phase }, action)
+      if (!option) {
+        return state
+      }
+      const divers = state.divers.map(candidate =>
+        candidate.id === diver.id ? { ...candidate, catchUpOwed: candidate.catchUpOwed - 1 } : candidate,
+      )
+      const personalInventories = {
+        ...state.personalInventories,
+        [diver.id]: [...(state.personalInventories[diver.id] ?? []), option.item.id],
+      }
+      return commit(state, { divers, personalInventories }, action)
+    }
+
+    case 'CLAIM_CACHE': {
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      const cache = state.legacyCaches[action.cacheOwnerId]
+      // The cache replaces the promotion wholesale: claiming after rolling
+      // options would stack both, so only an untouched promotion allows it.
+      if (
+        !diver
+        || diver.catchUpOwed <= 0
+        || diver.catchUpOwed !== diver.catchUpGranted
+        || !cache?.length
+      ) {
+        return state
+      }
+      const legacyCaches = Object.fromEntries(
+        Object.entries(state.legacyCaches).filter(([id]) => id !== action.cacheOwnerId),
+      )
+      const divers = state.divers.map(candidate =>
+        candidate.id === diver.id ? { ...candidate, catchUpOwed: 0 } : candidate,
+      )
+      const personalInventories = {
+        ...state.personalInventories,
+        [diver.id]: [...(state.personalInventories[diver.id] ?? []), ...cache],
+      }
+      return commit(state, { divers, legacyCaches, personalInventories }, action)
     }
 
     case 'SET_NAME': {
