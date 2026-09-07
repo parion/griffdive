@@ -4,7 +4,11 @@ import { SAVE_SCHEMA_VERSION } from '../types/save'
 import type { SaveDoc } from '../types/save'
 import { ENGINE_VERSION } from './config'
 import { resetOperation } from './reducer'
-import type { DiveState } from './types'
+import type { DiveState, DiverState } from './types'
+
+// Divers from pre-v7 docs predate the Field Promotion bookkeeping.
+type LegacyDiver = Omit<DiverState, 'catchUpGranted' | 'catchUpOwed' | 'skipsCurrentDraft'>
+  & Partial<Pick<DiverState, 'catchUpGranted' | 'catchUpOwed' | 'skipsCurrentDraft'>>
 
 export function createSaveDoc(state: DiveState, slotName: string, savedAt: string): SaveDoc {
   return {
@@ -54,6 +58,24 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   }
   if (migrated.schemaVersion < 4) {
     migrated = migrateV3toV4(migrated)
+  }
+  // v7 fields (Field Promotion + legacy caches) default on older docs —
+  // shape defaulting, not a migration step (pre-alpha policy, Save model).
+  migrated = {
+    ...migrated,
+    state: {
+      ...migrated.state,
+      legacyCaches: migrated.state.legacyCaches ?? {},
+      divers: (migrated.state.divers ?? []).map((diver) => {
+        const legacy = diver as LegacyDiver
+        return {
+          ...legacy,
+          catchUpGranted: legacy.catchUpGranted ?? 0,
+          catchUpOwed: legacy.catchUpOwed ?? 0,
+          skipsCurrentDraft: legacy.skipsCurrentDraft ?? false,
+        }
+      }),
+    },
   }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
