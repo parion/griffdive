@@ -15,12 +15,13 @@ must update this file in the same commit.**
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core), Phase 2 (realtime squads) and Phase 3 (lobby) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (163 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (186 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection; open-dive lobby with filters and instant join — verified by a live two-peer smoke
 test and the Playwright E2E suite (solo flow, two-browser room sync, lobby join) against the
-production build. Phase 4 (polish + deploy) is next. See [Roadmap](#roadmap).
+production build. Mid-crusade catch-up (Field Promotion + legacy caches, `LEAVE_DIVE`) has landed;
+Phase 4 (polish + deploy) is next. See [Roadmap](#roadmap).
 
 ---
 
@@ -268,6 +269,37 @@ ceiling roll:  start at the base tier; each step to the next tier
   diver's personal inventory (stratagems included). Host executes the pick (simple majority voice
   vote IRL; the app doesn't police it).
 
+### Mid-crusade joining — Field Promotion & legacy caches
+
+Divers drop in and out. A diver seated mid-crusade starts on the variant's surplus kit — which is
+useless at altitude — so the engine grants a **Field Promotion**: a one-time catch-up that restores
+*altitude, never rarity*.
+
+- **Sizing:** one option per completed operation behind (`difficulty − variant start difficulty`),
+  capped at `CATCHUP_CAP` (4) in `shared/engine/config.ts`.
+- **Tier:** options roll at the **current difficulty's base tier with luck 0** — the engine's own
+  "a zero-luck dive always rolls its base tier" rule. No ceiling roll, so S/S+ and Diver's Choice
+  are structurally unreachable. Risk remains the joiner's choice from their first mission; the
+  promotion only buys altitude parity.
+- **Derivation:** the offer derives from the last spun seed (`catchUpOptionsFor` in
+  `shared/engine/selectors.ts`) — deterministic, never stored, no reroll surface.
+- **Ceremony is soft:** the joiner claims picks whenever it suits them (`CLAIM_CATCHUP_OPTION`,
+  self-service, one per pick). It never gates squad progress — unlike the reward draft, where
+  `allDiversPicked` blocks `ADVANCE`.
+- **Legacy caches:** every departure (kicked via `KICK_DIVER` or voluntary via `LEAVE_DIVE`, both
+  self-service) parks the diver's inventory as `legacyCaches[playerId]` instead of deleting it.
+  A mid-crusade joiner with an untouched promotion may claim one cache wholesale
+  (`CLAIM_CACHE`) *instead of* rolling the promotion — claiming after rolling options is refused,
+  so the two never stack. The same diver rejoining under their stored playerId reclaims their
+  unclaimed cache automatically (soft-kick parity: their link still seats them).
+- **Seating window:** fresh joins only seat in `lobby/spin/decision/pacts/diving` — never during
+  `rewards`/`forfeit` (that would grant a draft for a mission the joiner never dove) or
+  `complete`. The server rejects with `dive-locked`. A joiner seated mid-mission
+  (`diving`) gets `skipsCurrentDraft` and sits out that mission's reward draft instead of
+  blocking it; the flag clears on the mission reset.
+- The last diver out abandons the crusade: the room resets to a fresh lobby (parked caches die
+  with it).
+
 ### Save model
 
 Anonymous/local-first. Named save slots in `localStorage` (`SaveDoc` in `shared/types/save.ts`,
@@ -279,7 +311,8 @@ incompatible docs, and no new migration steps get written. The migration chain r
 alpha release, when the schema freezes. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
 `achieved` flag, `frontId`, inventories, per-diver warbond declarations,
-`completedCombos` (misfortune × front), reroll tokens, action log (capped), RNG seed history.
+`completedCombos` (misfortune × front), reroll tokens, action log (capped), RNG seed history,
+legacy caches parked by departed divers, per-diver catch-up bookkeeping.
 
 ---
 
@@ -297,7 +330,8 @@ all routes; static hosts need a `/*` → shell fallback instead.
 app/
   pages/           index (new crusade / host / join / continue), dive/[id] (solo + room flow),
                    lobby (open dives), codex
-  components/      dive/ (WheelPanel, PactPicker, RewardDraft, DiversChoiceCard — the special
+  components/      dive/ (WheelPanel, PactPicker, RewardDraft, FieldPromotionCard — the mid-crusade
+                   catch-up ceremony, DiversChoiceCard — the special
                    S+ "Diver's Choice" offer card, DiversChoicePicker — its minified codex
                    modal, InventoryGrid, CrusadeSetup, WarbondPicker,
                    JoinNameGate — name gate held while joining),
@@ -372,7 +406,7 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 | S→C | `welcome` | `{ selfId, hostId, roomCode, snapshot, online }` |
 | S→C | `state` | `{ snapshot, applied (EngineAction \| null), online }` — after each applied change; also an `applied: null` presence refresh the moment a seated diver's last connection drops; `online` = diver ids with live connections |
 | S→C | `lobby` | `{ rooms: LobbyEntry[] }` — open dives with slots |
-| S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message` |
+| S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `dive-locked`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message` |
 
 REST fallbacks: `POST /api/rooms` → `{ code }`; `GET /api/rooms/:code` → `{ code, state }` (404);
 `GET /api/lobby` → `{ rooms }`. Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`,
@@ -384,11 +418,14 @@ Canonical engine actions (the reducer union; keep names stable):
 `START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}`
 `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
-`ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}` `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}` `TOGGLE_OPEN{open}`
+`CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}` `LEAVE_DIVE{playerId}`
+`ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
+`SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}` `TOGGLE_OPEN{open}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
 `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `ADVANCE`, `END_DIVE`, `KICK_DIVER`,
-`TRANSFER_HOST`, `TOGGLE_OPEN`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME` are self-service. Host disconnect →
+`TRANSFER_HOST`, `TOGGLE_OPEN`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
+`CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are self-service. Host disconnect →
 `TRANSFER_HOST` to the earliest joiner; none left → room hibernates in storage with a TTL.
 Reconnect = re-`hello` with stored playerId → server replays snapshot.
 `KICK_DIVER` (host, any phase, lobby included) removes a diver who left or is blocking the
@@ -508,7 +545,8 @@ the Redis swap lands.
 ## Testing strategy
 
 - **Engine unit tests** (Vitest, colocated `*.spec.ts`): reducer transitions, reward math at every
-  score boundary (0, 2, 4, 6, 9), pact validity vs each misfortune, reroll rules, forfeit paths.
+  score boundary (0, 2, 4, 6, 9), pact validity vs each misfortune, reroll rules, forfeit paths,
+  mid-crusade catch-up (promotion sizing/rolls, cache claims, departure parking, seating window).
 - **Golden tests:** seeded runs (`mulberry32`) recorded as JSON snapshots — spin results, reward
   option sets, full crusade replays. Goldens live in `shared/engine/__goldens__/`; regenerate with
   `GRIFFDIVE_UPDATE_GOLDENS=1 pnpm test`. Pre-alpha, a reducer change that breaks goldens just

@@ -201,6 +201,66 @@ describe('room-sync', () => {
     expect(sent(joiner).some(m => m.type === 'error' && m.code === 'not-in-room')).toBe(true)
   })
 
+  it('coerces LEAVE_DIVE to the sender and parks their cache', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    await processHello(kv, peers, joiner, { name: 'B' })
+    const joinerWelcome = sent(joiner).find(m => m.type === 'welcome')
+    if (joinerWelcome?.type !== 'welcome') {
+      throw new Error('no welcome')
+    }
+    const joinerId = joinerWelcome.selfId
+
+    await processAction(kv, peers, host, {
+      action: { type: 'START_DIVE', settings: { variant: 'standard' } },
+    })
+    sent(host).length = 0
+
+    // A spoofed playerId still leaves the sender, never the named diver.
+    await processAction(kv, peers, joiner, {
+      action: { type: 'LEAVE_DIVE', playerId: 'not-me' },
+    })
+    const snapshot = await lastSnapshot(host)
+    expect(snapshot.divers.map(diver => diver.id)).not.toContain(joinerId)
+    expect(snapshot.legacyCaches[joinerId]?.length).toBeGreaterThan(0)
+    expect(snapshot.personalInventories[joinerId]).toBeUndefined()
+
+    // The departed diver's live connection is unseated: no more actions.
+    await processAction(kv, peers, joiner, { action: { type: 'SET_NAME', playerId: joinerId, name: 'Ghost' } })
+    expect(sent(joiner).some(m => m.type === 'error' && m.code === 'not-in-room')).toBe(true)
+  })
+
+  it('refuses seating while the squad resolves the mission', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+
+    await processAction(kv, peers, host, { action: { type: 'START_DIVE', settings: { variant: 'standard' } } })
+    await processAction(kv, peers, host, { action: { type: 'SPIN_WHEEL', seed: 42 } })
+    await processAction(kv, peers, host, { action: { type: 'ACCEPT_MISFORTUNE', accepted: true } })
+    await processAction(kv, peers, host, { action: { type: 'SET_PACTS', playerId: 'x', pactIds: [] } })
+    await processAction(kv, peers, host, { action: { type: 'REPORT_RESULT', outcome: 'success', stars: 3 } })
+    const rewards = await lastSnapshot(host)
+    expect(rewards.phase).toBe('rewards')
+
+    const latecomer = fakePeer('ws-late')
+    latecomer.context.roomCode = code
+    await processHello(kv, peers, latecomer, { name: 'Late' })
+    expect(sent(latecomer).some(m => m.type === 'error' && m.code === 'dive-locked')).toBe(true)
+  })
+
   it('fills up at four divers and reports room-full', async () => {
     const kv = fakeKV()
     const peers = createPeerDirectory()

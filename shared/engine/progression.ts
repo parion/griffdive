@@ -149,6 +149,12 @@ export function startingItemIds(variant: CrusadeVariant): string[] {
   ]
 }
 
+// Completed operations behind the squad: each op bumps difficulty by one, so
+// the gap to the variant's start difficulty is the joiner's catch-up scale.
+export function catchUpOpsBehind(difficulty: number, variant: CrusadeVariant): number {
+  return Math.max(0, difficulty - STARTING_KITS[variant].startDifficulty)
+}
+
 export function assertKitsValid(): void {
   for (const variant of Object.keys(STARTING_KITS) as CrusadeVariant[]) {
     for (const id of startingItemIds(variant)) {
