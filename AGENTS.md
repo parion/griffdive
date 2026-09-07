@@ -212,6 +212,15 @@ Starter catalog:
 | Barebones | I fill no stratagem slots | 3 | loadout |
 | Untouchable | I finish the mission without dying | 3 | field |
 
+**Failed pacts:** a broken pact is marked **failed** (`FAIL_PACT{playerId,pactId}`) while the
+mission runs — during the diving phase only, by the diver themselves or by the host refereeing the
+squad (server refuses everyone else; the UI asks for a confirm since the mark is one-way). A
+failed pact is **voided**: its pact risk stops counting toward luck, so both the ceiling previews
+and the rolled offer drop, and it costs one reward option (`OPTIONS_LOST_PER_FAILED_PACT` in
+`shared/engine/config.ts`, floored at one so the draft always completes and never deadlocks
+ADVANCE). Failed pacts ride the diver's state (`failedPactIds`), reset with the pacts every
+mission, and land in the action log for audit.
+
 ### Reward math
 
 ```
@@ -250,6 +259,9 @@ ceiling roll:  start at the base tier; each step to the next tier
   difficulty-capped per the game (wiki.gg/Missions): max 3 at diffs 3–4, 4 at 5–6, 5 at 7+; a
   completed mission never awards 0 and a failed mission awards none (`maxStarsFor` in
   `shared/engine/config.ts`).
+- **Failed pacts forfeit stakes** (see Personal layer): each pact marked failed in the field voids
+  its risk — luck, previews and the rolled offer all drop — and costs one reward option, floored
+  at one so the draft always completes.
 - Example curves: diff 3 with an intense misfortune (5) + two stacked pacts (4) → luck 9 → ceiling
   reaches **S** about a fifth of the time, **S+** rarely. Diff 10 with zero luck → **A**, never
   S. Risk pays at every altitude; nothing is guaranteed, but everything gets likelier.
@@ -416,7 +428,7 @@ coerced to the sender — a client can never act as another diver.
 Canonical engine actions (the reducer union; keep names stable):
 
 `START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}`
-`REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `SET_WARBONDS{playerId,warbondCodes}`
+`REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}` `LEAVE_DIVE{playerId}`
 `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
@@ -425,7 +437,8 @@ Canonical engine actions (the reducer union; keep names stable):
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
 `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `ADVANCE`, `END_DIVE`, `KICK_DIVER`,
 `TRANSFER_HOST`, `TOGGLE_OPEN`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
-`CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are self-service. Host disconnect →
+`CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are self-service.
+`FAIL_PACT` is sent by the target diver or the host (server refuses everyone else). Host disconnect →
 `TRANSFER_HOST` to the earliest joiner; none left → room hibernates in storage with a TTL.
 Reconnect = re-`hello` with stored playerId → server replays snapshot.
 `KICK_DIVER` (host, any phase, lobby included) removes a diver who left or is blocking the

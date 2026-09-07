@@ -6,9 +6,10 @@ import { ENGINE_VERSION } from './config'
 import { resetOperation } from './reducer'
 import type { DiveState, DiverState } from './types'
 
-// Divers from pre-v7 docs predate the Field Promotion bookkeeping.
-type LegacyDiver = Omit<DiverState, 'catchUpGranted' | 'catchUpOwed' | 'skipsCurrentDraft'>
-  & Partial<Pick<DiverState, 'catchUpGranted' | 'catchUpOwed' | 'skipsCurrentDraft'>>
+// Divers from pre-v7 docs predate the Field Promotion bookkeeping; pre-v8
+// docs predate failed-pact marks.
+type LegacyDiver = Omit<DiverState, 'catchUpGranted' | 'catchUpOwed' | 'skipsCurrentDraft' | 'failedPactIds'>
+  & Partial<Pick<DiverState, 'catchUpGranted' | 'catchUpOwed' | 'skipsCurrentDraft' | 'failedPactIds'>>
 
 export function createSaveDoc(state: DiveState, slotName: string, savedAt: string): SaveDoc {
   return {
@@ -59,8 +60,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 4) {
     migrated = migrateV3toV4(migrated)
   }
-  // v7 fields (Field Promotion + legacy caches) default on older docs —
-  // shape defaulting, not a migration step (pre-alpha policy, Save model).
+  // v7/v8 fields (Field Promotion + legacy caches, failed pacts) default on
+  // older docs — shape defaulting, not a migration step (pre-alpha policy,
+  // Save model).
   migrated = {
     ...migrated,
     state: {
@@ -73,6 +75,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
           catchUpGranted: legacy.catchUpGranted ?? 0,
           catchUpOwed: legacy.catchUpOwed ?? 0,
           skipsCurrentDraft: legacy.skipsCurrentDraft ?? false,
+          // Saves from before pacts could be marked failed carry no marks —
+          // an empty list is the truthful default for them.
+          failedPactIds: legacy.failedPactIds ?? [],
         }
       }),
     },

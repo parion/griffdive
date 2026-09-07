@@ -24,6 +24,9 @@ export interface DiverState {
   isHost: boolean
   pactsLocked: boolean
   pactIds: string[]
+  // Pacts broken in the field and marked failed: their risk is voided and
+  // each costs a reward option. Reset with the pacts every mission.
+  failedPactIds: string[]
   pickedOptionId: string | null
   warbondCodes: string[]
   // Field Promotion bookkeeping for mid-crusade joiners: what they were
@@ -87,6 +90,7 @@ export type EngineAction
     | { type: 'ACCEPT_MISFORTUNE', accepted: boolean }
     | { type: 'REROLL_WHEEL', wheel: 'misfortune' | 'front', seed: number }
     | { type: 'SET_PACTS', playerId: string, pactIds: string[] }
+    | { type: 'FAIL_PACT', playerId: string, pactId: string }
     | { type: 'SET_WARBONDS', playerId: string, warbondCodes: string[] }
     | { type: 'REPORT_RESULT', outcome: MissionOutcome, stars: number, timePct?: number }
     | { type: 'FORFEIT_ITEM', itemRef: ItemRef }

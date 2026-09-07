@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS, ITEMS_BY_ID } from '../data/catalog'
 import { PACTS } from '../data/pacts'
+import { baseTierFor } from './config'
 import { startingItemIds } from './progression'
-import { DIVERS_CHOICE_OPTION_ID } from './rewards'
+import { DIVERS_CHOICE_OPTION_ID, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { allDiversPicked, canRerollWheel, catchUpOptionsFor, comboKey, diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
+import { allDiversPicked, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverLuck, diverOptions, pactOfferFor, pactRiskOf, rewardPoolFor, teamRiskOf } from './selectors'
 import type { DiveState, DiverState, EngineAction } from './types'
 
 const SETTINGS = { variant: 'standard' as const }
@@ -66,8 +67,8 @@ function twoDiverState(): DiveState {
   return {
     ...freshState(),
     divers: [
-      { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false },
-      { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false },
+      { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false },
+      { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false },
     ],
     personalInventories: {
       p1: startingItemIds(SETTINGS.variant),
@@ -82,6 +83,7 @@ const skeletonActions: EngineAction[] = [
   { type: 'ACCEPT_MISFORTUNE', accepted: true },
   { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 2 },
   { type: 'SET_PACTS', playerId: 'p1', pactIds: ['thirsty'] },
+  { type: 'FAIL_PACT', playerId: 'p1', pactId: 'thirsty' },
   { type: 'SET_WARBONDS', playerId: 'p1', warbondCodes: ['warbond3'] },
   { type: 'REPORT_RESULT', outcome: 'success', stars: 5 },
   { type: 'REPORT_RESULT', outcome: 'failure', stars: 2, timePct: 0.5 },
@@ -266,6 +268,90 @@ describe('SET_PACTS', () => {
     })
     expect(tooMany).toBe(decided)
     expect(reduce(decided, { type: 'SET_PACTS', playerId: 'p1', pactIds: ['ghostPact'] })).toBe(decided)
+  })
+})
+
+describe('FAIL_PACT (broken pacts in the field)', () => {
+  function divingWithHeldPact(seed = 42): { state: DiveState, pactId: string } {
+    const decided = decidedState(seed)
+    const pactId = offerPacts(decided)[0]!
+    return { state: reduce(decided, { type: 'SET_PACTS', playerId: 'p1', pactIds: [pactId] }), pactId }
+  }
+
+  it('marks a held pact failed during the diving phase', () => {
+    const { state, pactId } = divingWithHeldPact()
+    expect(state.phase).toBe('diving')
+    const failed = reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId })
+    expect(failed.divers[0]?.failedPactIds).toEqual([pactId])
+    // The mark does not move the mission along or unlock anything.
+    expect(failed.phase).toBe('diving')
+    expect(failed.divers[0]?.pactsLocked).toBe(true)
+  })
+
+  it('is a no-op outside diving, for unheld pacts, ghosts, and double marks', () => {
+    const decided = decidedState(42)
+    const held = offerPacts(decided)[0]!
+    expect(reduce(decided, { type: 'FAIL_PACT', playerId: 'p1', pactId: held })).toBe(decided)
+    const { state, pactId } = divingWithHeldPact()
+    expect(reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId: outsideOffer(state) })).toBe(state)
+    expect(reduce(state, { type: 'FAIL_PACT', playerId: 'ghost', pactId: pactId })).toBe(state)
+    const once = reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId: pactId })
+    expect(reduce(once, { type: 'FAIL_PACT', playerId: 'p1', pactId: pactId })).toBe(once)
+  })
+
+  it('voids the failed pact\'s risk in luck and ceiling', () => {
+    const { state, pactId } = divingWithHeldPact()
+    const diver = requireDiver(state)
+    expect(pactRiskOf(diver)).toBeGreaterThan(0)
+    const failed = reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId })
+    const failedDiver = requireDiver(failed)
+    expect(pactRiskOf(failedDiver)).toBe(0)
+    expect(diverLuck(failed, failedDiver)).toBe(teamRiskOf(failed))
+    expect(diverCeiling(failed, failedDiver)).toBe(maxCeiling(failed.difficulty, teamRiskOf(failed)))
+  })
+
+  it('forfeits one reward option per failed pact, never below one', () => {
+    const decided = decidedState(42)
+    const pactIds = offerPacts(decided)
+    expect(pactIds.length).toBeGreaterThan(0)
+    // Same mission, same report: the only difference is the broken pacts.
+    const clean = reduce(decided, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+    const cleanReported = reduce(clean, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+    const cleanCount = diverOptions(cleanReported, requireDiver(cleanReported)).length
+    const broken = pactIds.reduce(
+      (state, pactId) => reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId }),
+      reduce(decided, { type: 'SET_PACTS', playerId: 'p1', pactIds }),
+    )
+    const brokenReported = reduce(broken, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+    const brokenOptions = diverOptions(brokenReported, requireDiver(brokenReported))
+    expect(brokenOptions.length).toBe(Math.max(1, cleanCount - pactIds.length))
+    // The draft still completes: a thinner offer never deadlocks ADVANCE.
+    const picked = brokenOptions[0]!
+    const done = reduce(brokenReported, { type: 'PICK_REWARD', playerId: 'p1', optionId: picked.optionId })
+    expect(allDiversPicked(done)).toBe(true)
+    expect(reduce(done, { type: 'ADVANCE' }).phase).toBe('spin')
+  })
+
+  it('clears failed pacts with the rest of the mission state on advance', () => {
+    const { state, pactId } = divingWithHeldPact()
+    let next = reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId })
+    next = reduce(next, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+    const option = diverOptions(next, requireDiver(next))[0]
+    if (!option) {
+      throw new Error('expected at least one reward option')
+    }
+    next = reduce(next, { type: 'PICK_REWARD', playerId: 'p1', optionId: option.optionId })
+    next = reduce(next, { type: 'ADVANCE' })
+    expect(next.divers[0]?.failedPactIds).toEqual([])
+    expect(next.divers[0]?.pactIds).toEqual([])
+  })
+
+  it('leaves a zero-luck failure at the difficulty\'s base tier', () => {
+    const { state, pactId } = divingWithHeldPact()
+    const failed = reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId })
+    // Declined wheel: team risk is zero too, so only the base tier remains.
+    const declined = { ...failed, misfortuneAccepted: false }
+    expect(diverCeiling(declined, requireDiver(declined))).toBe(baseTierFor(declined.difficulty))
   })
 })
 
@@ -459,8 +545,8 @@ describe('identity actions', () => {
     const withTwo: DiveState = {
       ...freshState(),
       divers: [
-        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false },
-        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false },
+        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false },
+        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false },
       ],
     }
     const moved = reduce(withTwo, { type: 'TRANSFER_HOST', playerId: 'p2' })

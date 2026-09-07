@@ -9,6 +9,8 @@ const props = defineProps<{
   pickedId: string | null
   pool: Item[]
   ownedIds: string[]
+  // How many reward slots failed pacts forfeited — explains a thinner draft.
+  optionsLost?: number
 }>()
 
 const emit = defineEmits<{ pick: [optionId: string, choiceItemId?: string] }>()
@@ -31,6 +33,13 @@ const pickedItem = computed(() =>
         <h2>Rewards — choose one</h2>
         <p class="muted small">
           Every reward is yours alone — stratagems included.
+        </p>
+        <p
+          v-if="props.optionsLost"
+          class="small options-lost"
+        >
+          {{ props.optionsLost }} pact{{ props.optionsLost === 1 ? '' : 's' }} failed —
+          {{ props.optionsLost === 1 ? 'one reward option forfeited' : `${props.optionsLost} reward options forfeited` }}.
         </p>
         <div class="grid">
           <Motion
@@ -73,6 +82,10 @@ const pickedItem = computed(() =>
 </template>
 
 <style scoped>
+.options-lost {
+  margin: 0.25rem 0 0;
+  color: var(--red);
+}
 .banked {
   display: flex;
   align-items: baseline;
