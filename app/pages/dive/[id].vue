@@ -36,8 +36,17 @@ const front = computed(() => (session.state.value ? currentFront(session.state.v
 
 const pactSelection = ref<string[]>([])
 // A new draw or a flipped decision rolls a fresh offer — start the pick clean.
+// Primitive getters compare by value; a getter returning a fresh array would
+// re-fire on every snapshot (e.g. another diver locking pacts) and wipe picks
+// that are still in progress.
 watch(
-  () => [session.state.value?.wheel?.seed, session.state.value?.misfortuneAccepted],
+  () => session.state.value?.wheel?.seed,
+  () => {
+    pactSelection.value = []
+  },
+)
+watch(
+  () => session.state.value?.misfortuneAccepted,
   () => {
     pactSelection.value = []
   },

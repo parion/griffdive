@@ -1,0 +1,54 @@
+// Griffdive dev container: Nuxt 4 toolchain on the official Paseo daemon image.
+// Paseo serves its web UI on :6767 and pairs devices through the E2E-encrypted relay;
+// OpenCode is the agent CLI, with the Context7 MCP wired up in ../opencode.json.
+{
+  "name": "griffdive",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "remoteUser": "paseo",
+  "updateRemoteUserUID": true,
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "mounts": [
+    // Paseo home: daemon state, device pairing, agent credentials survive rebuilds.
+    "source=paseo-home-${devcontainerId},target=/home/paseo,type=volume",
+    // Container-side deps live outside the bind mount so host and container
+    // installs never clobber each other's platform-specific binaries.
+    "source=paseo-node-modules-${devcontainerId},target=/workspace/node_modules,type=volume",
+    // pnpm falls back to a project-local store when its default store is on a
+    // different filesystem than the project; keep that fallback off the bind mount.
+    "source=paseo-pnpm-store-${devcontainerId},target=/workspace/.pnpm-store,type=volume"
+  ],
+  "forwardPorts": [3000, 6767],
+  "portsAttributes": {
+    "3000": { "label": "Nuxt dev", "onAutoForward": "openBrowser" },
+    "6767": { "label": "Paseo web UI", "onAutoForward": "openBrowser" }
+  },
+  "otherPortsAttributes": { "onAutoForward": "silent" },
+  "containerEnv": {
+    // Relay is opt-in in Paseo; force it on for every daemon launch from this container.
+    "PASEO_RELAY_ENABLED": "true",
+    "PASEO_LISTEN": "0.0.0.0:6767"
+  },
+  "remoteEnv": {
+    // Optional: set PASEO_PASSWORD on the host to password-protect the daemon.
+    "PASEO_PASSWORD": "${localEnv:PASEO_PASSWORD:}"
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "Vue.volar",
+        "dbaeumer.vscode-eslint",
+        "vitest.explorer",
+        "ms-playwright.playwright"
+      ]
+    }
+  }
+}
