@@ -45,6 +45,7 @@ export function joinDiver(state: DiveState, playerId: string, name: string): Div
     isHost,
     pactsLocked: false,
     pactIds: [],
+    failedPactIds: [],
     pickedOptionId: null,
     // Warbonds are personal purchases — every diver declares their own set
     // (self-service SET_WARBONDS); the app defaults to all.

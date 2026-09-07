@@ -4,7 +4,7 @@ import { SAVE_SCHEMA_VERSION } from '../types/save'
 import type { SaveDoc } from '../types/save'
 import { ENGINE_VERSION } from './config'
 import { resetOperation } from './reducer'
-import type { DiveState } from './types'
+import type { DiveState, DiverState } from './types'
 
 export function createSaveDoc(state: DiveState, slotName: string, savedAt: string): SaveDoc {
   return {
@@ -57,7 +57,20 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
-  return migrated
+  return { ...migrated, state: normalizeDivers(migrated.state) }
+}
+
+// Normalization, not migration: saves from before pacts could be marked
+// failed carry divers without the field — an empty list is the truthful
+// default for them (the feature postdates those saves).
+function normalizeDivers(state: DiveState): DiveState {
+  return {
+    ...state,
+    divers: state.divers.map(diver => ({
+      ...diver,
+      failedPactIds: (diver as DiverState & { failedPactIds?: string[] }).failedPactIds ?? [],
+    })),
+  }
 }
 
 // v2: armor rewards became passives — armor pieces are free shells, so any

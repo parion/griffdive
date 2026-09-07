@@ -165,6 +165,51 @@ describe('room-sync', () => {
     expect(afterNoop).toBe(before)
   })
 
+  it('lets the diver and the host mark pacts failed, nobody else', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    const hostId = welcomeOf(host).selfId
+
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    await processHello(kv, peers, joiner, { name: 'B' })
+    const joinerId = welcomeOf(joiner).selfId
+
+    // Launch, spin, accept, and get both divers into the diving phase.
+    await processAction(kv, peers, host, { action: { type: 'START_DIVE', settings: { variant: 'standard' } } })
+    await processAction(kv, peers, host, { action: { type: 'SPIN_WHEEL', seed: 42 } })
+    await processAction(kv, peers, host, { action: { type: 'ACCEPT_MISFORTUNE', accepted: true } })
+    const decided = await lastSnapshot(joiner)
+    const offer = pactOfferFor(decided, joinerId).map(pact => pact.id)
+    if (offer.length < 2) {
+      throw new Error('expected at least two offered pacts')
+    }
+    await processAction(kv, peers, joiner, { action: { type: 'SET_PACTS', playerId: joinerId, pactIds: offer } })
+    await processAction(kv, peers, host, { action: { type: 'SET_PACTS', playerId: hostId, pactIds: [] } })
+    expect((await lastSnapshot(joiner)).phase).toBe('diving')
+    sent(joiner).length = 0
+
+    // A third party cannot mark someone else's pact failed.
+    await processAction(kv, peers, joiner, { action: { type: 'FAIL_PACT', playerId: hostId, pactId: offer[0]! } })
+    expect(sent(joiner).some(m => m.type === 'error' && m.code === 'bad-action')).toBe(true)
+    sent(joiner).length = 0
+
+    // The diver marks their own pact failed.
+    await processAction(kv, peers, joiner, { action: { type: 'FAIL_PACT', playerId: joinerId, pactId: offer[0]! } })
+    let snapshot = await lastSnapshot(joiner)
+    expect(snapshot.divers.find(diver => diver.id === joinerId)?.failedPactIds).toEqual([offer[0]])
+
+    // The host referees the squad: marking another diver's pact fails it.
+    await processAction(kv, peers, host, { action: { type: 'FAIL_PACT', playerId: joinerId, pactId: offer[1]! } })
+    snapshot = await lastSnapshot(joiner)
+    expect(snapshot.divers.find(diver => diver.id === joinerId)?.failedPactIds).toEqual(offer)
+  })
+
   it('lets the host kick a diver and silences the kicked diver', async () => {
     const kv = fakeKV()
     const peers = createPeerDirectory()

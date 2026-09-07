@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 7
+export const ENGINE_VERSION = 8
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -59,6 +59,9 @@ export const ACTION_LOG_CAP = 200
 export const STARS_TO_OPTIONS = [1, 1, 2, 2, 3, 4] as const
 export const MAX_OPTIONS = 4
 export const S_PLUS_BONUS_OPTIONS = 1
+// Each pact marked failed in the field forfeits this many reward options —
+// the stake the diver never actually carried (AGENTS.md: Reward math).
+export const OPTIONS_LOST_PER_FAILED_PACT = 1
 export const TIER_ROLL_WEIGHT_BASE = 2
 export const MAX_NAME_LENGTH = 32
 

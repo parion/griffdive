@@ -51,6 +51,7 @@ function resetDivers(state: DiveState): DiverState[] {
     ...diver,
     pactsLocked: false,
     pactIds: [],
+    failedPactIds: [],
     pickedOptionId: null,
   }))
 }
@@ -184,6 +185,27 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         divers,
         phase: divers.every(entry => entry.pactsLocked) ? 'diving' : 'pacts',
       }, action)
+    }
+
+    case 'FAIL_PACT': {
+      // Broken pacts are marked while the mission runs — after the report the
+      // offers are already rolled, so the window is the diving phase only.
+      if (state.phase !== 'diving') {
+        return state
+      }
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      if (!diver || !diver.pactIds.includes(action.pactId)) {
+        return state
+      }
+      if (diver.failedPactIds.includes(action.pactId)) {
+        return state
+      }
+      const divers = state.divers.map(candidate =>
+        candidate.id === diver.id
+          ? { ...candidate, failedPactIds: [...candidate.failedPactIds, action.pactId] }
+          : candidate,
+      )
+      return commit(state, { divers }, action)
     }
 
     case 'SET_WARBONDS': {

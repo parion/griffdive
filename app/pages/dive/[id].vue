@@ -132,6 +132,12 @@ function lockPacts(): void {
   }
 }
 
+// Broken pacts are marked in the field: by the diver themselves, or by the
+// host refereeing the squad.
+function failPact(playerId: string, pactId: string): void {
+  dispatch({ type: 'FAIL_PACT', playerId, pactId })
+}
+
 function report(outcome: 'success' | 'failure'): void {
   dispatch({
     type: 'REPORT_RESULT',
@@ -536,37 +542,12 @@ function commitWarbonds(codes: string[]): void {
                   >{{ front?.displayName }}</strong>
                 </template>
               </p>
-              <p class="row small">
-                <span class="muted">Your pacts:</span>
-                <span
-                  v-for="pactId in self?.pactIds ?? []"
-                  :key="pactId"
-                  class="chip"
-                >{{ pactName(pactId) }}</span>
-                <span
-                  v-if="!self?.pactIds.length"
-                  class="muted"
-                >none — safe dive</span>
-              </p>
-              <ul class="squad-pacts small">
-                <li
-                  v-for="diver in session.state.value.divers"
-                  :key="diver.id"
-                >
-                  <span class="muted">{{ diver.name }}</span>
-                  <template v-if="diver.pactIds.length">
-                    — <span
-                      v-for="pactId in diver.pactIds"
-                      :key="pactId"
-                      class="chip"
-                    >{{ pactName(pactId) }}</span>
-                  </template>
-                  <span
-                    v-else
-                    class="muted"
-                  >— no pacts</span>
-                </li>
-              </ul>
+              <PactBriefing
+                :divers="session.state.value.divers"
+                :self-id="session.selfId.value"
+                :is-host="session.selfIsHost.value"
+                @fail="failPact"
+              />
               <p class="row small muted">
                 Ceiling up to <TierBadge :tier="lockedCeiling ?? 'C'" />
               </p>
@@ -646,6 +627,7 @@ function commitWarbonds(codes: string[]): void {
               :picked-id="self?.pickedOptionId ?? null"
               :pool="rewardPool"
               :owned-ids="ownedIds"
+              :options-lost="self?.failedPactIds.length ?? 0"
               @pick="pick"
             />
             <Transition name="phase">
@@ -750,16 +732,6 @@ function commitWarbonds(codes: string[]): void {
 .phase-stack { display: grid; gap: 1rem; }
 .stack { display: grid; gap: 0.6rem; }
 .badge-pop { display: inline-grid; }
-
-.squad-pacts {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.25rem;
-  border-top: 1px dashed var(--border);
-  padding-top: 0.5rem;
-}
 
 .dive-meta {
   display: flex;

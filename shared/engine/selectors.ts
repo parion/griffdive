@@ -4,7 +4,7 @@ import { MISFORTUNES } from '../data/misfortunes'
 import type { Misfortune } from '../data/misfortunes'
 import type { Pact } from '../data/pacts'
 import type { Item } from '../data/types'
-import { MISFORTUNE_RISK, baseTierFor } from './config'
+import { MISFORTUNE_RISK, OPTIONS_LOST_PER_FAILED_PACT, baseTierFor } from './config'
 import { pactRiskTotal, rollPactOffer } from './pacts'
 import { luckOf, maxCeiling, oddsToReach, optionsForStars, rollCeiling, rollRewardOptions } from './rewards'
 import type { RewardOption } from './rewards'
@@ -53,8 +53,10 @@ export function teamRiskOf(state: DiveState): number {
   return misfortune ? (MISFORTUNE_RISK[misfortune.id] ?? 0) : 0
 }
 
+// A failed pact is voided: it no longer stakes risk, so its share of the
+// diver's luck disappears from previews and from the rolled offer alike.
 export function pactRiskOf(diver: DiverState): number {
-  return pactRiskTotal(diver.pactIds)
+  return pactRiskTotal(diver.pactIds.filter(id => !diver.failedPactIds.includes(id)))
 }
 
 export function diverLuck(state: DiveState, diver: DiverState): number {
@@ -94,7 +96,13 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   // diver rolls offers against the catalog they can actually use.
   const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
   const owned = new Set(state.personalInventories[diver.id] ?? [])
-  const count = optionsForStars(state.lastReport.stars, ceiling)
+  // Every failed pact forfeits one reward option (AGENTS.md: Reward math) —
+  // floored at one so the draft can always complete and never deadlock ADVANCE.
+  const count = Math.max(
+    1,
+    optionsForStars(state.lastReport.stars, ceiling)
+    - diver.failedPactIds.length * OPTIONS_LOST_PER_FAILED_PACT,
+  )
   return rollRewardOptions(deriveSeed(seed, 2), ceiling, count, pool, owned)
 }
 
