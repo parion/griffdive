@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     concurrency:
       group: production
-      cancel-in-progress: false
+      cancel-in-progress: true
     environment:
       name: production
       url: https://griffdive.fly.dev
