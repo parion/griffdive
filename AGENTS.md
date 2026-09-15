@@ -15,13 +15,15 @@ must update this file in the same commit.**
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core), Phase 2 (realtime squads) and Phase 3 (lobby) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (186 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (193 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection; open-dive lobby with filters and instant join — verified by a live two-peer smoke
-test and the Playwright E2E suite (solo flow, two-browser room sync, lobby join) against the
-production build. Mid-crusade catch-up (Field Promotion + legacy caches, `LEAVE_DIVE`) has landed;
-Phase 4 (polish + deploy) is next. See [Roadmap](#roadmap).
+test and the Playwright E2E suite (solo flow, two-browser room sync, lobby join, PWA affordances)
+against the production build. Mid-crusade catch-up (Field Promotion + legacy caches, `LEAVE_DIVE`)
+has landed, as has the Phase 4 PWA layer (installable manifest, generated icons, Workbox service
+worker with an offline shell + on-demand catalog art). Remaining Phase 4 polish is next. See
+[Roadmap](#roadmap).
 
 ---
 
@@ -36,13 +38,13 @@ pnpm only (`pnpm-lock.yaml` is canonical).
 | `pnpm build` | exists | Production build (Node/Nitro server) |
 | `pnpm preview` | exists | Preview production build |
 | `pnpm generate` | exists | Static build (pure client-side SPA — solo/offline only — no WebSocket server) |
+| `pnpm pwa:assets` | exists | Regenerate PWA icons + head links from `public/icon.svg` (`@vite-pwa/assets-generator`) |
 | `pnpm lint` | exists | ESLint via `@nuxt/eslint` module |
 | `pnpm lint:fix` | exists | Auto-fix lint/style issues |
 | `pnpm test` | exists | Vitest (engine unit + golden tests) |
 | `pnpm test:watch` | exists | Vitest watch mode |
-| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, lobby join; production build on :3173) |
+| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, lobby join, PWA affordances; production build on :3173) |
 | `pnpm typecheck` | exists | `nuxt typecheck` (vue-tsc) |
-| `pnpm test:e2e` | Phase 3 | Playwright (dive flow, room sync) |
 
 Update this table the moment a command lands.
 
@@ -381,8 +383,12 @@ scripts/
 public/images/        bundled item art keyed by folder: equipment/ (weapons, throwables,
                       boosters), armor/, armorpassives/, svgs/ (stratagems), warbonds/,
                       difficulty/ (1–10 difficulty emblems), faction/ (front emblems)
-e2e/                  Playwright specs (solo flow, room sync, lobby join)
+public/               PWA surface: icon.svg (brand source) + generated pwa-*.png /
+                      maskable-icon-512x512.png / apple-touch-icon-180x180.png.
+                      Regenerate with `pnpm pwa:assets` (config in pwa-assets.config.ts)
+e2e/                  Playwright specs (solo flow, room sync, lobby join, PWA affordances)
 playwright.config.ts  production-build webServer on :3173 (WebSocket included)
+pwa-assets.config.ts  @vite-pwa/assets-generator presets for the brand icon set
 vitest.config.ts     mirrors Nuxt aliases (~~, ~) so engine + server tests resolve
 ```
 
@@ -562,7 +568,9 @@ the Redis swap lands.
   `@vueuse/core`, `@pinia/nuxt`, `nanoid` (Phase 2);
   `@playwright/test` (Phase 3).   `motion-v` (Phase 4; the only approved animation runtime —
   springs, `AnimatePresence`, shared-element layout). `@prometheus-io/client`
-  (server metrics registry; the official continuation of `prom-client`).
+  (server metrics registry; the official continuation of `prom-client`). `@vite-pwa/nuxt` +
+  `@vite-pwa/assets-generator` (Phase 4; the installable PWA manifest, Workbox service worker and
+  the icon/head-link generator, the latter a build-time dev dep).
   `@nuxt/test-utils` remains optional until a Nuxt-runtime test actually needs it.
 
 ## Testing strategy
@@ -582,7 +590,8 @@ the Redis swap lands.
 - **E2E (Playwright, `e2e/*.spec.ts` via `@playwright/test`):** `playwright.config.ts` boots the
   production build (`pnpm build` + Nitro server, port 3173, WebSocket included). Specs: solo dive
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host
-  authority, pact lock-in), lobby join (open dive → filter → one-click join). Chromium only;
+  authority, pact lock-in), lobby join (open dive → filter → one-click join), PWA affordances
+  (manifest content type + icons served, SW reachable, shell head links). Chromium only;
   `pnpm exec playwright install chromium` after a fresh clone.
 
 ---
@@ -606,9 +615,11 @@ Each phase lands shippable. Update AGENTS.md (commands, status) as part of each 
   get the snapshot.*
 - **Phase 3 — Lobby.** Open-room flag, lobby topic broadcast, lobby page + filters, instant join,
   Playwright E2E. *Done when: a stranger can find an open dive and join in one click.*
-- **Phase 4 — Polish + deploy.** Wheel animation juice, reward draft ceremony, theme pass, PWA
-  affordances, Fly.io deploy + smoke test. *Done when: production URL serves a full multiplayer
-  dive.*
+- **Phase 4 — Polish + deploy (in progress).** Wheel animation juice, reward draft ceremony, theme
+  pass, Fly.io deploy + CI/CD (approval-gated batch releases, PR previews, metrics) and PWA
+  affordances (`@vite-pwa/nuxt`: installable manifest, generated icons, Workbox service worker with
+  an offline app shell + on-demand catalog art) have landed. Remaining: final polish pass. *Done
+  when: production URL serves a full multiplayer dive.*
 - **Phase 5 — Post-v1 backlog.** Specialists (PC parity), tier-maker custom rarity tables, heat
   ladders/bounties (clear risk N to claim N+1), endless mode, accounts + cloud saves, i18n.
 
