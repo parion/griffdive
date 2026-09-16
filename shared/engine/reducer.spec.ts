@@ -200,6 +200,16 @@ describe('SPIN_WHEEL / REROLL_WHEEL', () => {
     })
     expect(canRerollWheel(state, 'misfortune').allowed).toBe(true)
   })
+
+  it('reopens the front reroll at the start of a new operation', () => {
+    // ADVANCE keeps missionIndex climbing while resetting missionInOperation to
+    // 1; the opening mission draws a fresh front, so the gate must be
+    // per-operation, not global.
+    const state: DiveState = { ...spunState(42), missionIndex: 12, missionInOperation: 1 }
+    expect(canRerollWheel(state, 'front').allowed).toBe(true)
+    const rerolled = reduce(state, { type: 'REROLL_WHEEL', wheel: 'front', seed: 43 })
+    expect(rerolled.seedHistory).toEqual([42, 43])
+  })
 })
 
 describe('ACCEPT_MISFORTUNE (optional team risk)', () => {

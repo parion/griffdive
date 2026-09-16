@@ -31,6 +31,7 @@ const changelogOpen = ref(false)
         :open="changelogOpen"
         @close="changelogOpen = false"
       />
+      <ToastStack />
     </div>
   </MotionConfig>
 </template>
