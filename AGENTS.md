@@ -171,7 +171,7 @@ zero-kill squad is forced into genuine support builds.
 spends a reroll token — 1 token per operation, spendable on either wheel. Never rerollable into an
 outcome the pool doesn't allow at the current difficulty. **The front (faction) locks in for the
 whole operation**: it can only be rerolled during the operation's first mission decision window
-(`missionIndex === 0`, enforced in the reducer and `canRerollWheel`); misfortune rerolls stay
+(`missionInOperation === 1`, enforced in the reducer and `canRerollWheel`); misfortune rerolls stay
 available in any decision or pact window (until the first pact lock).
 
 **Fronts:** the front is drawn with the operation's first spin (one per operation) and only affects
@@ -570,7 +570,9 @@ the Redis swap lands.
   springs, `AnimatePresence`, shared-element layout). `@prometheus-io/client`
   (server metrics registry; the official continuation of `prom-client`). `@vite-pwa/nuxt` +
   `@vite-pwa/assets-generator` (Phase 4; the installable PWA manifest, Workbox service worker and
-  the icon/head-link generator, the latter a build-time dev dep).
+  the icon/head-link generator, the latter a build-time dev dep). `reka-ui` (Phase 4; the Vue port
+  of Radix primitives — the accessible Toast in `ui/ToastStack.vue`; headless, import components
+  explicitly).
   `@nuxt/test-utils` remains optional until a Nuxt-runtime test actually needs it.
 
 ## Testing strategy

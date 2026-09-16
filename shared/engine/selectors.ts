@@ -160,7 +160,7 @@ export function canRerollWheel(
     return { allowed: false, free: false, reason: 'Pacts already locked' }
   }
   // The front locks in with its operation — rerolls are mission-1 business.
-  if (wheel === 'front' && state.missionIndex > 0) {
+  if (wheel === 'front' && state.missionInOperation > 1) {
     return { allowed: false, free: false, reason: 'The front locks in for the whole operation' }
   }
   const completed = state.completedCombos.includes(

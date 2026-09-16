@@ -283,6 +283,45 @@ describe('room-sync', () => {
     expect(sent(joiner).some(m => m.type === 'error' && m.code === 'not-in-room')).toBe(true)
   })
 
+  it('reclaims a parked legacy cache when the same id rejoins', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    await processHello(kv, peers, joiner, { name: 'B' })
+    const joinerWelcome = sent(joiner).find(m => m.type === 'welcome')
+    if (joinerWelcome?.type !== 'welcome') {
+      throw new Error('no welcome')
+    }
+    const joinerId = joinerWelcome.selfId
+
+    await processAction(kv, peers, host, {
+      action: { type: 'START_DIVE', settings: { variant: 'standard' } },
+    })
+    const banked = (await lastSnapshot(host)).personalInventories[joinerId]?.length ?? 0
+    expect(banked).toBeGreaterThan(0)
+
+    await processAction(kv, peers, joiner, { action: { type: 'LEAVE_DIVE', playerId: joinerId } })
+    expect((await lastSnapshot(host)).legacyCaches[joinerId]?.length).toBe(banked)
+
+    // The same stored id comes back (same browser): reclaim, don't replace.
+    const rejoin = fakePeer('ws-c')
+    rejoin.context.roomCode = code
+    await processHello(kv, peers, rejoin, { playerId: joinerId, name: 'B' })
+
+    const welcome = welcomeOf(rejoin)
+    expect(welcome.selfId).toBe(joinerId)
+    expect(welcome.snapshot.legacyCaches[joinerId]).toBeUndefined()
+    expect(welcome.snapshot.personalInventories[joinerId]?.length).toBe(banked)
+    expect(welcome.snapshot.divers.map(diver => diver.id)).toContain(joinerId)
+  })
+
   it('refuses seating while the squad resolves the mission', async () => {
     const kv = fakeKV()
     const peers = createPeerDirectory()

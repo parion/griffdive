@@ -171,7 +171,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         return state
       }
       // The front locks in with its operation — mission-1 decision window only.
-      if (action.wheel === 'front' && state.missionIndex > 0) {
+      if (action.wheel === 'front' && state.missionInOperation > 1) {
         return state
       }
       const completed = state.completedCombos.includes(

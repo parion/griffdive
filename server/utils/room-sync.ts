@@ -213,6 +213,9 @@ export async function processHello(
 
   const storedId = typeof payload.playerId === 'string' ? payload.playerId : null
   const known = storedId ? room.state.divers.find(diver => diver.id === storedId) : undefined
+  // A stored id whose seat is gone but whose inventory sits in legacyCaches is
+  // the same diver rejoining: reuse the id so joinDiver reclaims the cache.
+  const reclaiming = !!storedId && !known && !!room.state.legacyCaches[storedId]
   let playerId: string
   let changed = false
 
@@ -225,7 +228,7 @@ export async function processHello(
       sendError(peer, room.state.divers.length >= SQUAD_SIZE_MAX ? 'room-full' : 'dive-locked', blocked)
       return
     }
-    playerId = newPlayerId()
+    playerId = reclaiming ? storedId! : newPlayerId()
     const joined = joinDiver(room.state, playerId, sanitizeName(payload.name))
     if (!joined) {
       sendError(peer, 'room-full', 'Dive squad is full')

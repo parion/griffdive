@@ -34,6 +34,50 @@ const self = computed(() =>
 const misfortune = computed(() => (session.state.value ? activeMisfortune(session.state.value) : null))
 const front = computed(() => (session.state.value ? currentFront(session.state.value) : null))
 
+const { push: pushToast } = useToasts()
+
+function diverName(id: string | null): string {
+  return session.state.value?.divers.find(diver => diver.id === id)?.name ?? 'another diver'
+}
+
+// Hostship moves under the squad's feet (disconnect migration) with no other
+// signal — announce the crown's arrival and departure.
+watch(
+  () => session.state.value?.hostId ?? null,
+  (hostId, previous) => {
+    if (!hostId || !previous || hostId === previous) {
+      return
+    }
+    if (hostId === session.selfId.value) {
+      pushToast('You are now host.')
+    }
+    else if (previous === session.selfId.value) {
+      pushToast(`Host moved to ${diverName(hostId)}.`)
+    }
+  },
+)
+
+// A dropped socket silently pauses sync and re-seats host — say so, but only
+// once per outage so auto-reconnect churn doesn't spam the stack.
+let wasConnected = false
+let reportedLost = false
+watch(
+  () => session.status.value,
+  (status) => {
+    if (status === 'connected') {
+      if (reportedLost) {
+        pushToast('Reconnected.')
+      }
+      wasConnected = true
+      reportedLost = false
+    }
+    else if (status === 'disconnected' && wasConnected && !reportedLost) {
+      pushToast('Connection lost — reconnecting…', 'warn')
+      reportedLost = true
+    }
+  },
+)
+
 const pactSelection = ref<string[]>([])
 // A new draw or a flipped decision rolls a fresh offer — start the pick clean.
 // Primitive getters compare by value; a getter returning a fresh array would
@@ -228,6 +272,18 @@ function kick(diverId: string): void {
   dispatch({ type: 'KICK_DIVER', playerId: diverId })
 }
 
+// Host moderation: the crown can be handed to any other seated diver.
+function canTransferHost(diverId: string): boolean {
+  return session.mode === 'room'
+    && session.selfIsHost.value
+    && diverId !== session.selfId.value
+    && diverId !== session.state.value?.hostId
+}
+
+function transferHost(diverId: string): void {
+  dispatch({ type: 'TRANSFER_HOST', playerId: diverId })
+}
+
 const kicked = computed(() =>
   session.mode === 'room'
   && !!session.state.value
@@ -409,6 +465,16 @@ function commitWarbonds(codes: string[]): void {
               v-if="diver.id === session.selfId.value"
               class="muted small"
             >(you)</span>
+            <button
+              v-if="canTransferHost(diver.id)"
+              class="handover"
+              type="button"
+              :aria-label="`Hand host to ${diver.name}`"
+              title="Hand over host"
+              @click="transferHost(diver.id)"
+            >
+              host
+            </button>
             <button
               v-if="canKick(diver.id)"
               class="kick"
@@ -887,9 +953,28 @@ function commitWarbonds(codes: string[]): void {
   line-height: 1;
   cursor: pointer;
 }
+.handover {
+  padding: 0 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+  color: var(--khaki);
+  font: inherit;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.handover:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
 
-/* Pointer devices reveal the kick affordance on chip hover; touch devices
-   always show it — there is no hover to rely on. */
+/* Pointer devices reveal the moderation affordances on chip hover; touch
+   devices always show them — there is no hover to rely on. */
 @media (hover: hover) and (pointer: fine) {
   .kick {
     width: 0;
@@ -903,6 +988,24 @@ function commitWarbonds(codes: string[]): void {
   .diver-chip:hover .kick,
   .kick:focus-visible {
     width: 0.9rem;
+    opacity: 1;
+  }
+
+  .handover {
+    max-width: 0;
+    padding-inline: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition:
+      opacity var(--dur-fast) var(--ease-out),
+      max-width var(--dur-fast) var(--ease-out),
+      padding-inline var(--dur-fast) var(--ease-out);
+  }
+
+  .diver-chip:hover .handover,
+  .handover:focus-visible {
+    max-width: 4rem;
+    padding-inline: 0.25rem;
     opacity: 1;
   }
 }
