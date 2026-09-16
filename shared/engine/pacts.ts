@@ -29,6 +29,49 @@ export function isPactSelectable(pactId: string, misfortuneId: string | null): b
   return !(BLOCKED_UNDER_MISFORTUNE[misfortuneId] ?? []).includes(pactId)
 }
 
+// A pact strictly implied by another pick is not a second restriction: picking
+// both would bank risk for a limitation already held. Barebones (no stratagem
+// slots filled) already forbids the backpack, resupply, support-weapon, Eagle,
+// orbital and sentry pacts. Anti-tank abstention stays out — thermite and other
+// anti-tank throwables are not stratagems.
+export const PACT_SUBSUMES: Readonly<Record<string, readonly string[]>> = {
+  barebones: ['packLight', 'thirsty', 'primaryConcern', 'grounded', 'shipSilent', 'openField'],
+}
+
+// The picked pact that already covers `pactId`, if any — the reason a pick is
+// redundant.
+export function pactSubsumedBy(pactId: string, pickedIds: readonly string[]): string | null {
+  for (const picked of pickedIds) {
+    if (picked !== pactId && (PACT_SUBSUMES[picked] ?? []).includes(pactId)) {
+      return picked
+    }
+  }
+  return null
+}
+
+// Toggle a pact against the subsumption rules. Adding a pact that another pick
+// already covers is refused; adding one that covers existing picks replaces
+// them, so the selection never stacks redundant restrictions.
+export function applyPactToggle(
+  offerIds: readonly string[],
+  pickedIds: readonly string[],
+  pactId: string,
+): string[] {
+  const picked = new Set(pickedIds)
+  if (picked.has(pactId)) {
+    picked.delete(pactId)
+    return [...picked]
+  }
+  if (!offerIds.includes(pactId) || pactSubsumedBy(pactId, pickedIds)) {
+    return [...picked]
+  }
+  for (const subsumed of PACT_SUBSUMES[pactId] ?? []) {
+    picked.delete(subsumed)
+  }
+  picked.add(pactId)
+  return [...picked]
+}
+
 export function pactRiskTotal(pactIds: readonly string[]): number {
   return pactIds.reduce((sum, id) => sum + (PACT_RISK[id] ?? 0), 0)
 }

@@ -2,6 +2,7 @@ import { ALL_WARBOND_CODES, ITEMS_BY_ID, WARBONDS } from '../data/catalog'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction } from './types'
 import { ACTION_LOG_CAP, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, maxStarsFor, missionsPerOperation } from './config'
 import { STARTING_KITS, startingItemIds } from './progression'
+import { pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed } from './rng'
 import { allDiversPicked, catchUpOptionsFor, comboKey, diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
@@ -213,6 +214,11 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // already filters whatever the accepted misfortune blocks.
       const offer = pactOfferFor(state, action.playerId)
       if (!action.pactIds.every(id => offer.some(pact => pact.id === id))) {
+        return state
+      }
+      // Redundant picks never stack risk (AGENTS.md: Personal layer — pacts):
+      // a pact another pick already covers is refused outright.
+      if (action.pactIds.some(id => pactSubsumedBy(id, action.pactIds))) {
         return state
       }
       const divers = state.divers.map(candidate =>

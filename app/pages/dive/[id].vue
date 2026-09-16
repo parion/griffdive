@@ -4,7 +4,7 @@ import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
 import { difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
 import { pactName } from '~~/shared/data/pacts'
-import { pactRiskTotal } from '~~/shared/engine/pacts'
+import { applyPactToggle, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
 import {
   activeMisfortune,
   allDiversPicked,
@@ -116,15 +116,25 @@ watch(
 )
 
 function togglePact(pactId: string): void {
-  const set = new Set(pactSelection.value)
-  if (set.has(pactId)) {
-    set.delete(pactId)
-  }
-  else if (set.size < pactOffer.value.length) {
-    set.add(pactId)
-  }
-  pactSelection.value = [...set]
+  pactSelection.value = applyPactToggle(
+    pactOffer.value.map(pact => pact.id),
+    pactSelection.value,
+    pactId,
+  )
 }
+
+// Offered pacts already covered by the current selection — shown greyed with
+// the pact that covers them (pick that instead).
+const pactCoverage = computed<Record<string, string>>(() => {
+  const coverage: Record<string, string> = {}
+  for (const pact of pactOffer.value) {
+    const subsumer = pactSubsumedBy(pact.id, pactSelection.value)
+    if (subsumer) {
+      coverage[pact.id] = pactName(subsumer)
+    }
+  }
+  return coverage
+})
 
 const liveRange = computed(() =>
   session.state.value
@@ -615,6 +625,7 @@ function commitWarbonds(codes: string[]): void {
                     <PactPicker
                       :offer="pactOffer"
                       :selected="pactSelection"
+                      :covered="pactCoverage"
                       @toggle="togglePact"
                       @lock="lockPacts"
                     />

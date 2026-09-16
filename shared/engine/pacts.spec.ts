@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PACTS, pactById } from '../data/pacts'
 import { PACT_RISK, pactOptionsFor } from './config'
-import { BLOCKED_UNDER_MISFORTUNE, isPactSelectable, pactRiskTotal, rollPactOffer } from './pacts'
+import { BLOCKED_UNDER_MISFORTUNE, PACT_SUBSUMES, applyPactToggle, isPactSelectable, pactRiskTotal, pactSubsumedBy, rollPactOffer } from './pacts'
 
 describe('catalog integrity', () => {
   it('every pact has a positive risk and a unique name', () => {
@@ -31,6 +31,30 @@ describe('isPactSelectable', () => {
         expect(isPactSelectable(pactId, 'noSentries')).toBe(true)
       }
     }
+  })
+})
+
+describe('pact subsumption', () => {
+  it('names the pick that already covers a redundant pact', () => {
+    expect(pactSubsumedBy('primaryConcern', ['barebones'])).toBe('barebones')
+    expect(pactSubsumedBy('primaryConcern', ['stimAbstinent'])).toBeNull()
+    expect(pactSubsumedBy('barebones', ['barebones'])).toBeNull()
+  })
+
+  it('points every declared subsumed pact back at its subsumer', () => {
+    for (const [subsumer, subsumed] of Object.entries(PACT_SUBSUMES)) {
+      for (const pactId of subsumed) {
+        expect(pactSubsumedBy(pactId, [subsumer])).toBe(subsumer)
+      }
+    }
+  })
+
+  it('refuses a redundant pick and replaces covered picks', () => {
+    const offer = ['packLight', 'primaryConcern', 'barebones']
+    expect(applyPactToggle(offer, ['barebones'], 'primaryConcern')).toEqual(['barebones'])
+    expect(applyPactToggle(offer, ['primaryConcern', 'packLight'], 'barebones')).toEqual(['barebones'])
+    expect(applyPactToggle(offer, ['barebones'], 'barebones')).toEqual([])
+    expect(applyPactToggle(['packLight'], [], 'barebones')).toEqual([])
   })
 })
 

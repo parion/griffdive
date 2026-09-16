@@ -2,6 +2,7 @@ import type { Item, Tier } from '../data/types'
 import {
   MAX_OPTIONS,
   S_PLUS_BONUS_OPTIONS,
+  S_PLUS_UPGRADE_CAP,
   STARS_TO_OPTIONS,
   TIER_ROLL_WEIGHT_BASE,
   UPGRADE_PREVIEW_FLOOR,
@@ -15,6 +16,16 @@ import type { RewardTier } from './types'
 
 const TIER_INDEX: Readonly<Record<Tier, number>> = { c: 0, b: 1, a: 2, s: 3 }
 const CEILING_LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
+
+// One step of the ceiling ladder. The S→S+ rung is capped below the rest so
+// altitude alone can't hand out Diver's Choice; the roll, the preview and the
+// priced climb all share this so the UI never overstates the jackpot.
+function stepOdds(luck: number, bandPos: number, step: number, targetIndex: number): number {
+  const odds = upgradeOdds(luck, bandPos, step)
+  return targetIndex === CEILING_LADDER.length - 1
+    ? Math.min(S_PLUS_UPGRADE_CAP, odds)
+    : odds
+}
 
 // No catalog item carries the S+ tier, so a ceiling that breaks the scale
 // banks as Diver's Choice instead: one option to claim any item the diver's
@@ -47,7 +58,7 @@ export function rollCeiling(rng: Rng, difficulty: number, luck: number): RewardT
   const pos = bandPosition(difficulty)
   let index = CEILING_LADDER.indexOf(baseTierFor(difficulty))
   for (let step = 1; index + 1 < CEILING_LADDER.length; step++) {
-    if (rng() < upgradeOdds(luck, pos, step)) {
+    if (rng() < stepOdds(luck, pos, step, index + 1)) {
       index++
     }
     else {
@@ -63,7 +74,7 @@ export function maxCeiling(difficulty: number, luck: number): RewardTier {
   const pos = bandPosition(difficulty)
   let index = CEILING_LADDER.indexOf(baseTierFor(difficulty))
   for (let step = 1; index + 1 < CEILING_LADDER.length; step++) {
-    if (upgradeOdds(luck, pos, step) < UPGRADE_PREVIEW_FLOOR) {
+    if (stepOdds(luck, pos, step, index + 1) < UPGRADE_PREVIEW_FLOOR) {
       break
     }
     index++
@@ -77,7 +88,7 @@ export function oddsToReach(difficulty: number, luck: number, tier: RewardTier):
   const floor = CEILING_LADDER.indexOf(baseTierFor(difficulty))
   let odds = 1
   for (let step = 1; floor + step <= target; step++) {
-    odds *= upgradeOdds(luck, pos, step)
+    odds *= stepOdds(luck, pos, step, floor + step)
   }
   return odds
 }

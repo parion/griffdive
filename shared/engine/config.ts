@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 8
+export const ENGINE_VERSION = 9
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -56,7 +56,8 @@ export function pactOptionsFor(difficulty: number): number {
 export const REROLL_TOKENS_PER_OPERATION = 1
 export const ACTION_LOG_CAP = 200
 
-export const STARS_TO_OPTIONS = [1, 1, 2, 2, 3, 4] as const
+// Team performance is felt at every star: 1★=1, 2★=2, 3★=3, 4★=4, 5★=4 (cap).
+export const STARS_TO_OPTIONS = [1, 1, 2, 3, 4, 4] as const
 export const MAX_OPTIONS = 4
 export const S_PLUS_BONUS_OPTIONS = 1
 // Each pact marked failed in the field forfeits this many reward options —
@@ -75,8 +76,13 @@ export const MAX_NAME_LENGTH = 32
 // odds on each tier step, never a guarantee.
 export const UPGRADE_CAP = 0.8
 export const UPGRADE_STEP = 3
-// Tiers with per-step odds below this are too unlikely to preview.
-export const UPGRADE_PREVIEW_FLOOR = 0.2
+// The final S→S+ rung is capped far below the rest of the ladder: altitude
+// alone must never make Diver's Choice routine. Max luck (13) tops out around
+// 8% at altitude and lower in the low bands.
+export const S_PLUS_UPGRADE_CAP = 0.1
+// Tiers with per-step odds below this are too unlikely to preview. Kept at or
+// below the S+ cap so the jackpot can still preview at max luck.
+export const UPGRADE_PREVIEW_FLOOR = 0.1
 
 export function baseTierFor(difficulty: number): RewardTier {
   if (difficulty >= 8) {
