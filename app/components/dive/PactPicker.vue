@@ -3,7 +3,12 @@ import type { Pact } from '~~/shared/data/pacts'
 import { PACT_RISK } from '~~/shared/engine/config'
 import { ACCOUNTABILITY_LABELS } from '~/utils/accountability'
 
-const props = defineProps<{ offer: Pact[], selected: string[] }>()
+const props = defineProps<{
+  offer: Pact[]
+  selected: string[]
+  // Offered pacts another pick already covers: pactId → covering pact's name.
+  covered?: Record<string, string>
+}>()
 defineEmits<{ toggle: [pactId: string], lock: [] }>()
 </script>
 
@@ -11,7 +16,8 @@ defineEmits<{ toggle: [pactId: string], lock: [] }>()
   <section class="panel">
     <h2>Pacts <span class="muted small">(personal risk, personal rewards)</span></h2>
     <p class="muted small">
-      Rolled from the wheel decision — take any, all, or none of what's offered.
+      Rolled from the wheel decision — take any, all, or none. Every pact you carry raises your
+      reward ceiling; a pact you break in the field is voided and costs one reward option.
     </p>
     <ul class="pact-list">
       <li
@@ -20,7 +26,8 @@ defineEmits<{ toggle: [pactId: string], lock: [] }>()
       >
         <button
           class="pact"
-          :class="{ on: selected.includes(pact.id) }"
+          :class="{ on: selected.includes(pact.id), covered: props.covered?.[pact.id] }"
+          :disabled="Boolean(props.covered?.[pact.id])"
           type="button"
           @click="$emit('toggle', pact.id)"
         >
@@ -34,7 +41,16 @@ defineEmits<{ toggle: [pactId: string], lock: [] }>()
           <p class="small">
             {{ pact.rule }}
           </p>
-          <p class="small muted">
+          <p
+            v-if="props.covered?.[pact.id]"
+            class="small covered-note"
+          >
+            Covered by {{ props.covered[pact.id] }}
+          </p>
+          <p
+            v-else
+            class="small muted"
+          >
             {{ ACCOUNTABILITY_LABELS[pact.accountability] }}
           </p>
         </button>
@@ -80,6 +96,14 @@ defineEmits<{ toggle: [pactId: string], lock: [] }>()
 .pact:hover:not(:disabled) {
   border-color: var(--khaki);
   transform: translateY(-1px);
+}
+.pact:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.covered-note {
+  margin: 0.15rem 0 0;
+  color: var(--khaki);
 }
 .pact.on {
   border-color: var(--red);

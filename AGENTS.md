@@ -15,7 +15,7 @@ must update this file in the same commit.**
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core), Phase 2 (realtime squads) and Phase 3 (lobby) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (193 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (203 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection; open-dive lobby with filters and instant join — verified by a live two-peer smoke
@@ -98,7 +98,8 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
 3. **Pact** — each diver is dealt a personal **pact offer**: 2 pacts on difficulties 3–6, 3 on 7+,
    rolled deterministically from the wheel seed (per diver) once the decision is in. The offer
    pool filters out pacts the accepted misfortune makes redundant or impossible; a declined draw
-   offers from the full catalog. Each diver privately picks any subset of their offer (0 to all).
+   offers from the full catalog. Each diver privately picks a subset of their offer (0 to all; a
+   pick strictly implied by another is refused — see Redundant picks).
    The reward-tier preview updates live with their personal ceiling.
 4. **Dive** — play the mission in Helldivers 2. Success = main objectives complete **and** the squad
    extracts. Objectives complete + squad wipe = failure (extraction rule).
@@ -214,6 +215,13 @@ Starter catalog:
 | Barebones | I fill no stratagem slots | 3 | loadout |
 | Untouchable | I finish the mission without dying | 3 | field |
 
+**Redundant picks:** a pact strictly implied by another picked pact never stacks risk. `SET_PACTS`
+refuses it (`PACT_SUBSUMES` in `shared/engine/pacts.ts`): **Barebones** — no stratagem slots filled —
+already forbids Pack Light, Thirsty, Primary Concern, Grounded, Ship Silent and Open Field, so none
+of those may be picked alongside it. Picking the stricter pact replaces the ones it covers, and the
+UI greys a covered offer with "Covered by …". (Anti-Tank Abstinent stays independent: thermite and
+other anti-tank throwables are not stratagems.)
+
 **Failed pacts:** a broken pact is marked **failed** (`FAIL_PACT{playerId,pactId}`) while the
 mission runs — during the diving phase only, by the diver themselves or by the host refereeing the
 squad (server refuses everyone else; the UI asks for a confirm since the mark is one-way). A
@@ -236,18 +244,20 @@ ceiling roll:  start at the base tier; each step to the next tier
                (C→B→A→S→S+) succeeds with odds
                min(0.8, luck × (1 + bandPos) / 3^step)
                bandPos = position within the difficulty band (0 floor → 1 top)
+               the final S→S+ rung is capped at min(0.1, …) — the jackpot
 ```
 
 - Difficulty alone never buys S or S+; only stacked chosen risk does, and even max luck (13)
-  leaves S+ below a coin flip. A zero-luck dive always rolls its base tier.
+  leaves S+ a longshot (≤10% on every difficulty; `S_PLUS_UPGRADE_CAP` in `shared/engine/config.ts`).
+  A zero-luck dive always rolls its base tier.
 - The reward pool is personal: each diver rolls against the catalog of warbonds *they* declared
   (plus `warbondCode === 'none'` items, minus armor pieces) — never the squad's or the host's.
 - Higher difficulties inside a band climb easier: diff 5 rolls into B more readily than diff 3,
   diff 10 into S more readily than diff 8 (`bandPosition`).
 - Ceiling = the best tier that *can* appear in that diver's options; the roll is seeded from the
   offer seed (two rng streams: one ceiling, one options) so every client computes the same offer.
-  Rolls are weighted toward the tier below the ceiling; the roll still guarantees one S-tier option
-  beside it.
+  Rolls are weighted toward the tier below the ceiling; an **S+** ceiling still guarantees one rolled
+  S-tier option beside the Diver's Choice slot (a plain S ceiling makes no such promise).
 - **S+ = Diver's Choice.** No catalog item carries the S+ tier, so the S+ bonus slot is a free
   pick: the diver claims **any item from their own catalog** — same personal-pool rules as every
   reward (warbond-owned items only, armor pieces excluded, nothing already owned). The option
@@ -255,9 +265,9 @@ ceiling roll:  start at the base tier; each step to the next tier
   opens a minified codex picker for it, and `PICK_REWARD` carries the named item in
   `choiceItemId`. `pickedOptionId` always records the banked item's id.
 - Previews stay legible: the UI shows base tier → best plausible tier (`maxCeiling`, per-step odds
-  ≥ 0.2) with the odds of reaching it (`oddsToReach`).
+  ≥ `UPGRADE_PREVIEW_FLOOR`, 0.1) with the odds of reaching it (`oddsToReach`).
 - **Option count** comes from stars (team performance), lookup table `starsToOptions`:
-  `[1,1,2,2,3,4]` (index = stars), capped at 4; S+ grants +1 (cap 5). Stars themselves are
+  `[1,1,2,3,4,4]` (index = stars), capped at 4; S+ grants +1 (cap 5). Stars themselves are
   difficulty-capped per the game (wiki.gg/Missions): max 3 at diffs 3–4, 4 at 5–6, 5 at 7+; a
   completed mission never awards 0 and a failed mission awards none (`maxStarsFor` in
   `shared/engine/config.ts`).

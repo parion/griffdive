@@ -71,9 +71,12 @@ describe('maxCeiling / oddsToReach (legibility preview)', () => {
   })
 
   it('previews only plausible tiers and prices the climb', () => {
-    expect(maxCeiling(3, 11)).toBe('S')
+    // Stacked luck opens the S+ rung even in the low bands (its per-step cap
+    // clears the preview floor), but the priced climb stays a longshot.
+    expect(maxCeiling(3, 11)).toBe('S+')
     expect(oddsToReach(3, 11, 'S')).toBeGreaterThan(0)
     expect(oddsToReach(3, 11, 'S')).toBeLessThan(0.5)
+    expect(oddsToReach(3, 11, 'S+')).toBeLessThan(0.1)
     expect(oddsToReach(3, 2, 'B')).toBeLessThan(oddsToReach(5, 2, 'B'))
   })
 })
@@ -81,7 +84,7 @@ describe('maxCeiling / oddsToReach (legibility preview)', () => {
 describe('optionsForStars', () => {
   it('follows the stars lookup table', () => {
     expect([0, 1, 2, 3, 4, 5].map(stars => optionsForStars(stars, 'B')))
-      .toEqual([1, 1, 2, 2, 3, 4])
+      .toEqual([1, 1, 2, 3, 4, 4])
   })
 
   it('grants the S+ bonus option, capped at 5', () => {
