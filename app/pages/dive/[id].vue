@@ -908,25 +908,18 @@ function commitWarbonds(codes: string[]): void {
                     aria-label="Time remaining percent"
                   >
                     <template #icon>
-                      <IconClock class="range-icon" />
+                      <AppTooltip content="Time remaining">
+                        <button
+                          class="icon-tip"
+                          type="button"
+                          aria-label="Time remaining"
+                        >
+                          <IconClock />
+                        </button>
+                      </AppTooltip>
                     </template>
                   </RangeField>
                 </div>
-                <p
-                  v-if="reportMode === 'success'"
-                  class="report-performance muted small"
-                >
-                  <AppTooltip content="Samples and time remaining feed the Performance slice of your Valor — up to +0.5. Only the mission just completed counts, and it buys odds of a higher reward ceiling.">
-                    <button
-                      class="info-tip"
-                      type="button"
-                      aria-label="More info"
-                    >
-                      ?
-                    </button>
-                  </AppTooltip>
-                  Fills your Valor's performance bonus
-                </p>
                 <div class="row">
                   <button
                     class="btn primary"
@@ -1155,36 +1148,22 @@ function commitWarbonds(codes: string[]): void {
   clip-path: polygon(0 50%, 22% 0, 100% 0, 100% 100%, 22% 100%);
 }
 .wing.flip { transform: scaleX(-1); }
-.report-performance {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0;
-}
-.info-tip {
+.icon-tip {
   display: inline-grid;
   place-items: center;
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.35rem;
+  height: 1.35rem;
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 50%;
+  border: 0;
   background: none;
   color: var(--muted);
-  font: inherit;
-  font-size: 0.7rem;
-  font-weight: 700;
-  line-height: 1;
   cursor: help;
-  transition:
-    color var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out);
+  transition: color var(--dur-fast) var(--ease-out);
 }
-.info-tip:hover,
-.info-tip:focus-visible {
+.icon-tip:hover,
+.icon-tip:focus-visible {
   outline: none;
   color: var(--gold);
-  border-color: var(--gold);
 }
 
 .victory { text-align: center; align-items: center; }
