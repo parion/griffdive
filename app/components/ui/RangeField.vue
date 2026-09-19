@@ -7,9 +7,7 @@ const props = withDefaults(defineProps<{
   label?: string
   icon?: string
   ariaLabel?: string
-  // Inline: the value sits beside the bar and the pair wraps as one line.
-  inline?: boolean
-}>(), { min: 0, step: 1, label: '', icon: '', ariaLabel: '', inline: false })
+}>(), { min: 0, step: 1, label: '', icon: '', ariaLabel: '' })
 
 const emit = defineEmits<{ 'update:modelValue': [value: number] }>()
 
@@ -29,18 +27,17 @@ function onSlider(event: Event): void {
 </script>
 
 <template>
-  <div
-    class="range-field"
-    :class="{ inline: props.inline }"
-  >
+  <div class="range-field">
     <div class="range-head">
-      <img
-        v-if="icon"
-        class="range-icon"
-        :src="icon"
-        alt=""
-        draggable="false"
-      >
+      <slot name="icon">
+        <img
+          v-if="icon"
+          class="range-icon"
+          :src="icon"
+          alt=""
+          draggable="false"
+        >
+      </slot>
       <span
         v-if="label"
         class="range-label"
@@ -83,21 +80,6 @@ function onSlider(event: Event): void {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-}
-
-/* Inline variant (time): value and bar share a line, wrapping when narrow. */
-.range-field.inline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem;
-  max-width: none;
-  margin-inline: 0;
-}
-.range-field.inline .range-head { justify-content: flex-start; }
-.range-field.inline .range-slider {
-  width: auto;
-  flex: 1 1 12rem;
 }
 
 .range-icon {

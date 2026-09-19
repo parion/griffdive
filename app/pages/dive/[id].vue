@@ -819,7 +819,7 @@ function commitWarbonds(codes: string[]): void {
                 locked
               />
               <div
-                v-if="canControl"
+                v-if="canControl && reportMode === 'none'"
                 class="row"
               >
                 <button
@@ -838,7 +838,7 @@ function commitWarbonds(codes: string[]): void {
                 </button>
               </div>
               <p
-                v-else
+                v-else-if="!canControl"
                 class="muted small"
               >
                 Waiting for the host to report the mission result.
@@ -849,47 +849,66 @@ function commitWarbonds(codes: string[]): void {
               >
                 <div
                   v-if="reportMode === 'success'"
-                  class="row"
+                  class="report-victory"
                 >
-                  <span class="muted small">Stars</span>
+                  <span class="victory-banner">
+                    <span
+                      class="wing"
+                      aria-hidden="true"
+                    />
+                    Mission Completed
+                    <span
+                      class="wing flip"
+                      aria-hidden="true"
+                    />
+                  </span>
                   <StarRating
                     v-model="stars"
                     :length="maxStars"
+                    size="lg"
                   />
                   <span class="muted small">of {{ maxStars }} at this difficulty</span>
                 </div>
-                <div
-                  v-if="reportMode === 'success'"
-                  class="report-fields"
-                >
+                <div class="report-fields">
+                  <template v-if="reportMode === 'success'">
+                    <RangeField
+                      v-model="samples.common"
+                      :max="sampleMax.common"
+                      icon="/images/svgs/Common_Sample_Icon.svg"
+                      aria-label="Common samples"
+                    />
+                    <RangeField
+                      v-if="sampleMax.rare > 0"
+                      v-model="samples.rare"
+                      :max="sampleMax.rare"
+                      icon="/images/svgs/Rare_Sample_Icon.svg"
+                      aria-label="Rare samples"
+                    />
+                    <RangeField
+                      v-if="sampleMax.super > 0"
+                      v-model="samples.super"
+                      :max="sampleMax.super"
+                      icon="/images/svgs/Super_Sample_Icon.svg"
+                      aria-label="Super samples"
+                    />
+                  </template>
                   <RangeField
-                    v-model="samples.common"
-                    :max="sampleMax.common"
-                    icon="/images/svgs/Common_Sample_Icon.svg"
-                    aria-label="Common samples"
-                  />
-                  <RangeField
-                    v-if="sampleMax.rare > 0"
-                    v-model="samples.rare"
-                    :max="sampleMax.rare"
-                    icon="/images/svgs/Rare_Sample_Icon.svg"
-                    aria-label="Rare samples"
-                  />
-                  <RangeField
-                    v-if="sampleMax.super > 0"
-                    v-model="samples.super"
-                    :max="sampleMax.super"
-                    icon="/images/svgs/Super_Sample_Icon.svg"
-                    aria-label="Super samples"
-                  />
+                    v-model="timePct"
+                    :max="100"
+                    aria-label="Time remaining percent"
+                  >
+                    <template #icon>
+                      <IconClock class="range-icon" />
+                    </template>
+                  </RangeField>
                 </div>
-                <RangeField
-                  v-model="timePct"
-                  :max="100"
-                  label="Time remaining %"
-                  aria-label="Time remaining percent"
-                  inline
-                />
+                <p
+                  v-if="reportMode === 'success'"
+                  class="report-performance muted small"
+                >
+                  <InfoTip text="Samples and time remaining feed the Performance slice of your Valor — up to +0.5. Only the mission just completed counts, and it buys odds of a higher reward ceiling." />
+                  Fills your Valor's performance bonus
+                </p>
                 <div class="row">
                   <button
                     class="btn primary"
@@ -1088,6 +1107,41 @@ function commitWarbonds(codes: string[]): void {
   display: grid;
   gap: 0.75rem;
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+.report-victory {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0 0.15rem;
+}
+.victory-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.wing {
+  width: 2.4rem;
+  height: 0.95rem;
+  background: repeating-linear-gradient(
+    115deg,
+    var(--gold) 0 0.18rem,
+    transparent 0.18rem 0.42rem
+  );
+  clip-path: polygon(0 50%, 22% 0, 100% 0, 100% 100%, 22% 100%);
+}
+.wing.flip { transform: scaleX(-1); }
+.report-performance {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
 }
 
 .victory { text-align: center; align-items: center; }
