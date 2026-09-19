@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { WARBONDS } from '../data/catalog'
+import { MAX_DIFFICULTY, MIN_DIFFICULTY, SAMPLE_VALOR_CAP, TIME_VALOR_MAX } from './config'
 import { oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { activeMisfortune, ceilingRange, diverOptions, misfortuneDecision, pactOfferFor, rewardPoolFor, teamRiskOf } from './selectors'
+import { activeMisfortune, ceilingRange, diverOptions, maxValorFor, misfortuneDecision, pactOfferFor, rewardPoolFor, teamRiskOf } from './selectors'
 import { isPactSelectable } from './pacts'
 import type { DiverState, RewardTier } from './types'
 
@@ -110,6 +111,21 @@ describe('team misfortune acceptance', () => {
     const rank = (tier: RewardTier) => ['C', 'B', 'A', 'S', 'S+'].indexOf(tier)
     expect(rank(top.max)).toBeGreaterThanOrEqual(rank(floor.max))
     expect(oddsToReach(5, 4, 'A')).toBeGreaterThan(oddsToReach(3, 4, 'A'))
+  })
+})
+
+describe('maxValorFor (meter scale)', () => {
+  it('scales to the strongest eligible misfortune, top pacts and performance cap', () => {
+    // Diff 3's pool tops out at noResupplies (4) and deals two pacts (3+3).
+    expect(maxValorFor(3)).toBe(4 + 3 + 3 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
+    // Diff 10 adds pacifist (5) and a third pact slot (3+3+2).
+    expect(maxValorFor(10)).toBe(5 + 3 + 3 + 2 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
+  })
+
+  it('never shrinks as difficulty rises', () => {
+    for (let difficulty = MIN_DIFFICULTY + 1; difficulty <= MAX_DIFFICULTY; difficulty++) {
+      expect(maxValorFor(difficulty)).toBeGreaterThanOrEqual(maxValorFor(difficulty - 1))
+    }
   })
 })
 

@@ -8,15 +8,16 @@ import { applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pac
 import {
   activeMisfortune,
   allDiversPicked,
-  ceilingRange,
   ceilingRangeForDifficulty,
   currentFront,
   diverCeiling,
   diverOptions,
   pactOfferFor,
+  pactRiskOf,
   rewardPoolFor,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
+import { performanceValor } from '~~/shared/engine/rewards'
 import type { CrusadeVariant, EngineAction, ItemRef } from '~~/shared/engine/types'
 import { deriveFront, deriveMisfortune } from '~~/shared/engine/wheel'
 import { rememberDiverName } from '~/composables/useGameSocket'
@@ -157,15 +158,15 @@ const pactCoverage = computed<Record<string, string>>(() => {
   return blocked
 })
 
-const liveRange = computed(() =>
-  session.state.value
-    ? ceilingRange(session.state.value.difficulty, teamRiskOf(session.state.value), pactRiskTotal(pactSelection.value))
-    : null,
-)
-
 const lockedCeiling = computed(() =>
   session.state.value && self.value ? diverCeiling(session.state.value, self.value) : null,
 )
+
+// The diver's committed pact risk (failed pacts already voided) — the locked
+// Valor meter and the briefing both read it, so a field-failed pact visibly
+// drops the ceiling everywhere at once.
+const selfPactRisk = computed(() => (self.value ? pactRiskOf(self.value) : 0))
+const selfPerformance = computed(() => performanceValor(session.state.value?.lastReport ?? null))
 
 const wheelRange = computed(() =>
   session.state.value ? ceilingRangeForDifficulty(session.state.value.difficulty) : null,
@@ -749,6 +750,12 @@ function commitWarbonds(codes: string[]): void {
                         class="chip"
                       >{{ pactName(pactId) }}</span>
                     </p>
+                    <ValorMeter
+                      :difficulty="session.state.value.difficulty"
+                      :team-risk="teamRiskOf(session.state.value)"
+                      :pact-risk="selfPactRisk"
+                      locked
+                    />
                   </div>
                   <template v-else>
                     <PactPicker
@@ -758,26 +765,11 @@ function commitWarbonds(codes: string[]): void {
                       @toggle="togglePact"
                       @lock="lockPacts"
                     />
-                    <p
-                      v-if="liveRange"
-                      class="row small muted"
-                    >
-                      Base <TierBadge
-                        :tier="liveRange.min"
-                        size="sm"
-                      /> → up to
-                      <Motion
-                        :key="`${liveRange.max}-${liveRange.odds}`"
-                        as="span"
-                        class="badge-pop"
-                        :initial="{ opacity: 0, scale: 0.4 }"
-                        :animate="{ opacity: 1, scale: 1 }"
-                        :transition="{ type: 'spring', stiffness: 500, damping: 15 }"
-                      >
-                        <TierBadge :tier="liveRange.max" />
-                      </Motion>
-                      <span>(~{{ Math.round(liveRange.odds * 100) }}% · valor {{ teamRiskOf(session.state.value) + pactRiskTotal(pactSelection) }})</span>
-                    </p>
+                    <ValorMeter
+                      :difficulty="session.state.value.difficulty"
+                      :team-risk="teamRiskOf(session.state.value)"
+                      :pact-risk="pactRiskTotal(pactSelection)"
+                    />
                   </template>
                 </div>
               </Transition>
@@ -807,9 +799,12 @@ function commitWarbonds(codes: string[]): void {
                 :is-host="session.selfIsHost.value"
                 @fail="failPact"
               />
-              <p class="row small muted">
-                Ceiling up to <TierBadge :tier="lockedCeiling ?? 'C'" />
-              </p>
+              <ValorMeter
+                :difficulty="session.state.value.difficulty"
+                :team-risk="teamRiskOf(session.state.value)"
+                :pact-risk="selfPactRisk"
+                locked
+              />
               <div
                 v-if="canControl"
                 class="row"
@@ -918,6 +913,13 @@ function commitWarbonds(codes: string[]): void {
           </template>
 
           <template v-if="session.state.value.phase === 'rewards'">
+            <ValorMeter
+              :difficulty="session.state.value.difficulty"
+              :team-risk="teamRiskOf(session.state.value)"
+              :pact-risk="selfPactRisk"
+              :performance="selfPerformance"
+              locked
+            />
             <RewardDraft
               :options="options"
               :picked-id="self?.pickedOptionId ?? null"

@@ -4,7 +4,15 @@ import { MISFORTUNES } from '../data/misfortunes'
 import type { Misfortune } from '../data/misfortunes'
 import type { Pact } from '../data/pacts'
 import type { Item } from '../data/types'
-import { MISFORTUNE_RISK, OPTIONS_LOST_PER_FAILED_PACT, baseTierFor } from './config'
+import {
+  MISFORTUNE_RISK,
+  OPTIONS_LOST_PER_FAILED_PACT,
+  PACT_RISK,
+  SAMPLE_VALOR_CAP,
+  TIME_VALOR_MAX,
+  baseTierFor,
+  pactOptionsFor,
+} from './config'
 import { pactRiskTotal, rollPactOffer } from './pacts'
 import { performanceValor, maxCeiling, oddsToReach, optionsForStars, rollCeiling, rollRewardOptions, valorOf } from './rewards'
 import type { RewardOption } from './rewards'
@@ -149,6 +157,22 @@ export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): Cei
   const pool = eligibleMisfortunes(difficulty)
   const maxRisk = Math.max(0, ...pool.map(misfortune => MISFORTUNE_RISK[misfortune.id] ?? 0))
   return ceilingRange(difficulty, maxRisk, pactRisk)
+}
+
+// Display scale for the Valor meter: the most Valor this difficulty can
+// actually stack — the strongest eligible misfortune, the top pacts the offer
+// can deal, and the capped team-performance term. Presentation only; it never
+// gates a roll.
+export function maxValorFor(difficulty: number): number {
+  const teamMax = Math.max(
+    0,
+    ...eligibleMisfortunes(difficulty).map(misfortune => MISFORTUNE_RISK[misfortune.id] ?? 0),
+  )
+  const pactMax = Object.values(PACT_RISK)
+    .sort((a, b) => b - a)
+    .slice(0, pactOptionsFor(difficulty))
+    .reduce((sum, risk) => sum + risk, 0)
+  return teamMax + pactMax + TIME_VALOR_MAX + SAMPLE_VALOR_CAP
 }
 
 export function canRerollWheel(
