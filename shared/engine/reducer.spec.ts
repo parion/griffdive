@@ -94,7 +94,6 @@ const skeletonActions: EngineAction[] = [
   { type: 'KICK_DIVER', playerId: 'p2' },
   { type: 'SET_NAME', playerId: 'p1', name: 'Griffin' },
   { type: 'TRANSFER_HOST', playerId: 'p2' },
-  { type: 'TOGGLE_OPEN', open: true },
 ]
 
 describe('reduce (purity + no-op safety)', () => {
@@ -267,23 +266,6 @@ describe('SET_PACTS', () => {
       return
     }
     expect(reduce(accepted, { type: 'SET_PACTS', playerId: 'p1', pactIds: [blocked] })).toBe(accepted)
-  })
-
-  it('rejects a pick another pick already covers (redundant risk)', () => {
-    // Offers are derived, so search for a draw offering Barebones beside a pact
-    // it strictly covers. Difficulty 10 rolls three options from the full
-    // catalog (the draw is declined), making the pair reachable.
-    for (let seed = 0; seed < 20000; seed++) {
-      const decided: DiveState = { ...decidedState(seed, false), difficulty: 10 }
-      const offered = new Set(offerPacts(decided))
-      if (offered.has('barebones') && offered.has('primaryConcern')) {
-        expect(
-          reduce(decided, { type: 'SET_PACTS', playerId: 'p1', pactIds: ['barebones', 'primaryConcern'] }),
-        ).toBe(decided)
-        return
-      }
-    }
-    throw new Error('no draw offered a subsumed pact pair')
   })
 
   it('rejects more pacts than the offer holds, and unknown ids', () => {
@@ -585,10 +567,6 @@ describe('identity actions', () => {
     const state = reduce(freshState(), { type: 'END_DIVE' })
     expect(state.phase).toBe('complete')
     expect(reduce(state, { type: 'END_DIVE' })).toBe(state)
-  })
-
-  it('TOGGLE_OPEN flags the room for the lobby', () => {
-    expect(reduce(freshState(), { type: 'TOGGLE_OPEN', open: true }).openToLobby).toBe(true)
   })
 })
 

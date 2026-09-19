@@ -502,9 +502,5 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         divers: state.divers.map(diver => ({ ...diver, isHost: diver.id === action.playerId })),
       }, action)
     }
-
-    case 'TOGGLE_OPEN': {
-      return commit(state, { openToLobby: action.open }, action)
-    }
   }
 }

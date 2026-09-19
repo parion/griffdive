@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 9
+export const ENGINE_VERSION = 10
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -153,12 +153,11 @@ export const PACT_RISK: Readonly<Record<string, number>> = {
   emptyPockets: 1,
   antiTankAbstinent: 2,
   deadWeight: 2,
-  stimAbstinent: 2,
+  stimAbstinent: 3,
   loadoutLoyalist: 2,
   primaryConcern: 2,
   grounded: 2,
   shipSilent: 2,
   openField: 2,
-  barebones: 3,
   untouchable: 3,
 }

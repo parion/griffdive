@@ -180,7 +180,9 @@
       "misfortuneId": "noSentries",
       "misfortuneAccepted": false,
       "front": "illuminate",
-      "pactIds": [],
+      "pactIds": [
+        "stimAbstinent"
+      ],
       "outcome": "failure",
       "stars": 0,
       "optionId": null,
@@ -193,9 +195,7 @@
       "misfortuneId": "noResupplies",
       "misfortuneAccepted": true,
       "front": "illuminate",
-      "pactIds": [
-        "antiTankAbstinent"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 4,
       "optionId": "variable",
@@ -208,12 +208,10 @@
       "misfortuneId": "noSentries",
       "misfortuneAccepted": false,
       "front": "illuminate",
-      "pactIds": [
-        "deadWeight"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "eaglenapalmstrike",
+      "optionId": "eagleclusterbomb",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -288,7 +286,9 @@
       "misfortuneId": "noReserves",
       "misfortuneAccepted": true,
       "front": "illuminate",
-      "pactIds": [],
+      "pactIds": [
+        "loadoutLoyalist"
+      ],
       "outcome": "success",
       "stars": 4,
       "optionId": "flam40flamethrower",
@@ -301,7 +301,9 @@
       "misfortuneId": "noOrbitals",
       "misfortuneAccepted": false,
       "front": "terminids",
-      "pactIds": [],
+      "pactIds": [
+        "loadoutLoyalist"
+      ],
       "outcome": "success",
       "stars": 5,
       "optionId": "antitankmines",
@@ -370,7 +372,7 @@
       "misfortuneAccepted": false,
       "front": "illuminate",
       "pactIds": [
-        "deadWeight"
+        "loadoutLoyalist"
       ],
       "outcome": "success",
       "stars": 5,
@@ -558,7 +560,7 @@
       "cqc73entrenchmenttool",
       "deadsprint",
       "defoliationtool",
-      "eaglenapalmstrike",
+      "eagleclusterbomb",
       "eat12antitankemplacement",
       "electricalconduit",
       "extrapadding",

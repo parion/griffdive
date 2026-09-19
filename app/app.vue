@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const changelogOpen = ref(false)
+const codexOpen = ref(false)
 </script>
 
 <template>
@@ -23,7 +24,15 @@ const changelogOpen = ref(false)
           </button>
         </div>
         <nav>
-          <NuxtLink to="/codex">Codex</NuxtLink>
+          <button
+            type="button"
+            class="nav-link"
+            aria-haspopup="dialog"
+            :aria-expanded="codexOpen"
+            @click="codexOpen = true"
+          >
+            Codex
+          </button>
         </nav>
       </header>
       <NuxtPage />
@@ -31,7 +40,23 @@ const changelogOpen = ref(false)
         :open="changelogOpen"
         @close="changelogOpen = false"
       />
+      <CodexDrawer
+        :open="codexOpen"
+        @update:open="codexOpen = $event"
+      />
       <ToastStack />
     </div>
   </MotionConfig>
 </template>
+
+<style scoped>
+.nav-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--teal);
+  font: inherit;
+  cursor: pointer;
+}
+.nav-link:hover { text-decoration: underline; }
+</style>

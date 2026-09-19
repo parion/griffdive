@@ -15,7 +15,6 @@ export function createLobbyState(): DiveState {
     settings: null,
     divers: [],
     hostId: null,
-    openToLobby: false,
     wheel: null,
     frontId: null,
     misfortuneAccepted: false,

@@ -31,27 +31,27 @@ IDs are stable and append-only; do not renumber.
 
 | ID | Title | Type | Scope | Status | Origin |
 |----|-------|------|-------|--------|--------|
-| N1 | Booster section when none owned | UX | S | Todo | new |
+| N1 | Booster section when none owned | UX | S | Done | new |
 | N2 | Faction strains (spore Terminids, vote-snatcher Illuminate) | Design | XL | Blocked (DEC-5) | new |
 | N3 | Helldivers campaign API → MO boosts | Feature/Infra | XL | Phase 5 | new |
-| N4 | Stars default to full | UX | S | Todo | new |
-| N5 | Mandatory 4 stratagems; remove `barebones`; early-game pact trap | Rules | M | Blocked (DEC-1) | new |
+| N4 | Stars default to full | UX | S | Done | new |
+| N5 | Mandatory 4 stratagems; remove `barebones`; early-game pact trap | Rules | M | In progress (barebones removed; DEC-1 open) | new |
 | N6 | Time % + samples (common/rare/super) boost luck slightly | Rules | M | Blocked (DEC-2) | new |
 | N7 | Luck meter visual (lore-named) | UX | M | Blocked (DEC-3) | new, QA-U1 |
 | N8 | Reward ban + separate reward reroll | Rules/Design | L | Blocked (DEC-4) | new |
-| N9 | `stimAbstinent` at max risk (`untouchable` already 3) | Balance | S | Todo | new |
+| N9 | `stimAbstinent` at max risk (`untouchable` already 3) | Balance | S | Done | new |
 | N10 | Crash / host-loss resilience mid-match | Infra/UX | L | Blocked (DEC-9) | new, QA-T3 |
-| N11 | Codex kicks host + no back link | Bug | S | Todo | new |
-| N12 | Faction reroll broken + no same-result reroll | Bug | S | Todo (reroll-exclusion: DEC-3) | new, QA-T2/D1 |
+| N11 | Codex kicks host + no back link | Bug | S | Done | new |
+| N12 | Faction reroll broken + no same-result reroll | Bug | S | Done (front gate; reroll-exclusion: DEC-3) | new, QA-T2/D1 |
 | N13 | `fragileLiberty` locks out early players | Balance/Data | M | Blocked (DEC-6) | new |
 | N14 | Squad reward indicators (icon-only) | UX | M | Todo | new |
 | N15 | All incoming kits look identical | Bug? | S–M | Needs repro | new |
 | N16 | Incoming luck from current run performance | Design | M | Blocked (DEC-7) | new |
 | N17 | Onboarding for link-joiners | UX | L | Blocked (N6/N7) | new |
-| N18 | Rejoining under stored `playerId` does not reclaim legacy cache | Bug | S | Todo | QA-T1/D3 |
+| N18 | Rejoining under stored `playerId` does not reclaim legacy cache | Bug | S | Done | QA-T1/D3 |
 | N19 | S+ unpreviewable in low difficulty bands | Balance/UX | S | Todo | QA-U2 |
-| N20 | Squad strip a11y (online dot + host crown indistinguishable) | UX | S | Todo | QA-U3 |
-| N21 | `MARK FAILED` confirm has no armed cue | UX | S | Todo | QA-U4 |
+| N20 | Squad strip a11y (online dot + host crown indistinguishable) | UX | S | Done | QA-U3 |
+| N21 | `MARK FAILED` confirm has no armed cue | UX | S | Done | QA-U4 |
 | N22 | Field Promotion re-rolls its offer on every claim | UX/Design | M | Needs repro | QA-U5 |
 | N23 | Star→options is flat early (3★ = 2 options) | Balance | S | Todo | QA-B1 |
 | N24 | Pact redundancy is free luck (subsumed pacts still count) | Balance | M | Todo | QA-B2 |
@@ -59,8 +59,10 @@ IDs are stable and append-only; do not renumber.
 | N26 | Failure path rework | Design | L | Blocked (DEC-8) | QA-B4 |
 | N27 | S+ / Diver's Choice frequency at altitude | Balance | S | Todo | QA-B5 |
 | N28 | `holdingsEmpty` branch effectively unreachable | Infra | S | Accepted | QA-F1 |
-| N29 | Stale mission counter during `forfeit` | UX | S | Todo | QA-F2 |
+| N29 | Stale mission counter during `forfeit` | UX | S | Done | QA-F2 |
 | N30 | Failure cannot lower difficulty or set `achieved` | Rules | S | Accepted | QA-F4 |
+| N31 | Remove open-dive lobby / matchmaking | Feature | M | Done | new |
+| N32 | Kit ordering: stratagem role then tier | UX | S | Done | new |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -84,8 +86,10 @@ Each batch lands shippable and green.
 
 ### Batch A — Hotfixes (unblocked)
 
-N1, N4, N9, N11, N12 (faction-reroll gate), N18, N20, N21, N29. Removing `barebones` (part of N5)
-is also safe to ship here; the rest of N5 waits on DEC-1.
+Landed. N1, N4, N9, N11, N12 (faction-reroll gate), N18, N20, N21, N29, plus removing `barebones`
+(the shippable half of N5). N12's same-result reroll exclusion and the rest of N5 wait on DEC-3 and
+DEC-1 respectively. `ENGINE_VERSION` bumped 9 → 10; goldens regenerated (Barebones removal reshapes
+the pact offer draw).
 
 ### Batch B — Rules & economy (needs decisions)
 
@@ -103,6 +107,10 @@ N2, N10, N15, N17.
 
 N3.
 
+### Shipped outside the batches
+
+N31, N32 — owner-requested changes landed after Batch A.
+
 ## Item details
 
 ### Batch A
@@ -114,21 +122,24 @@ with an empty state ("No boosters available yet — rewards can unlock one").
 **N4 · Stars default to full.** `dive/[id].vue:118` hardcodes `const stars = ref(1)`. Default to
 `maxStars` when the success form opens (`dive/[id].vue:635-641`), reset on cancel.
 
-**N9 · `stimAbstinent` max risk.** `config.ts:151` `stimAbstinent: 2 → 3`. `untouchable` is already
-3 (`config.ts:157`). Regenerates goldens.
+**N9 · `stimAbstinent` max risk.** `config.ts:156` `stimAbstinent: 2 → 3`. `untouchable` is already
+3. Golden replay unchanged (Stim Abstinent is only picked on a failed mission there, which rolls no
+options), proving the bump is scoped to luck.
 
-**N11 · Codex kicks host.** Confirmed root cause: `app.vue:26` uses `<NuxtLink to="/codex">`, which
+**N11 · Codex kicks host.** Confirmed root cause: `app.vue` used `<NuxtLink to="/codex">`, which
 unmounts the dive page; `useGameSocket.ts:133` runs `onBeforeUnmount(close)`, dropping the socket,
-and the server migrates host. Immediate fix: open Codex in a new tab (`target="_blank"
-rel="noopener"`) and add a back affordance on `codex.vue`. Better long-term: Codex as an overlay or
-nested route that keeps the session mounted. Add a unit/e2e assertion that navigating to Codex does
-not transfer host.
+and the server migrates host. **Shipped as the long-term fix:** Codex is now a Reka `Drawer` slide-over
+(`ui/CodexDrawer.vue`) mounted in `app.vue` above `<NuxtPage />`, so the dive page never unmounts and
+the socket stays live. The catalog browser moved to `components/codex/CodexBrowser.vue`, shared by the
+drawer and the `/codex` page (kept for deep links). The header control is a global button
+(`aria-haspopup="dialog"`), modal with focus trap + Esc-to-close; reduced-motion guard included.
+Covered by `e2e/codex.spec.ts` and the host-preservation case in `e2e/room.spec.ts`.
 
 **N12 · Faction reroll + guaranteed different result.** Two parts:
 - The front-reroll window keys off the global `missionIndex` (`reducer.ts:174`, `selectors.ts:163`)
   instead of the per-operation `missionInOperation`, so the front is permanently unrerollable after
-  the first operation. Gate on `missionInOperation > 1`. (Also fixes AGENTS.md drift that documents
-  `missionIndex === 0`.)
+  the first operation. Gate on `missionInOperation > 1`. **Done** (gated in the reducer and
+  `canRerollWheel`; AGENTS.md already documented `missionInOperation === 1`).
 - `REROLL_WHEEL` (`reducer.ts:186-199`) accepts a client seed and never checks the new draw differs
   from the replaced one. Redraw with an advancing salt until `new !== old`; whether to exclude all
   prior results this window is DEC-3.
@@ -136,29 +147,35 @@ not transfer host.
 **N18 · Cache reclaim on rejoin.** The engine supports the reclaim (`room.ts:60-70`, `joinDiver`
 reads `state.legacyCaches[playerId]`), but the server only treats a stored id as known when it is
 still in `divers`; otherwise it mints a new id and never passes the stored id to `joinDiver`
-(`server/utils/room-sync.ts:219-236`). Fix: in `processHello`, treat a stored id present in
-`legacyCaches` as the seat id, same as the known-diver branch. Repro: create room → `START_DIVE` →
-join → `LEAVE_DIVE` → re-`hello` with the issued id → compare `welcome.selfId` and `legacyCaches`.
+(`server/utils/room-sync.ts:219-236`). **Done** (`processHello` reuses the stored id when
+`legacyCaches[storedId]` exists; covered by `room-sync.spec.ts`).
 
-**N20 · Squad strip a11y.** Diver chips flatten to one node (`name ★ (you)`); online dot and host
-crown are indistinguishable to assistive tech. Give them labels/roles.
+**N20 · Squad strip a11y.** Diver chips flattened to one node (`name ★ (you)`); online dot and host
+crown were indistinguishable to assistive tech. **Done** — `role="img"` + `aria-label` on the online
+dot ("Online"/"Offline"), the crown ("Host") and the catch-up chip.
 
-**N21 · `MARK FAILED` armed state.** First click only arms an inline confirm; with no modal it reads
-as inert. Add a visible armed state.
+**N21 · `MARK FAILED` armed state.** First click only armed an inline confirm; with no modal it read
+as inert. **Done** — the armed confirm is now a solid red pulsing button with a "can't be undone"
+hint (self row and squad chip), disabled under reduced motion.
 
 **N29 · Stale mission counter during `forfeit`.** Failure enters `forfeit` without calling
-`resetOperation` (only `FORFEIT_ITEM` does, `reducer.ts:295/313`), so the header shows the failed
-mission index and old wheel/reroll state until the item is picked. Cosmetic; either reset the
-header display or label it "failed mission".
+`resetOperation` (only `FORFEIT_ITEM` does, `reducer.ts:295/319`), so the header showed the failed
+mission index and old wheel/reroll state until the item was picked. **Done** — `MissionTrack` takes a
+`failed` prop while the phase is `forfeit`: the active segment turns red and still, and the label
+reads "Operation failed — … restarts at mission 1". Engine untouched (the failure genuinely ends the
+operation; the restart happens on forfeit).
 
 ### Batch B
 
 **N5 · Mandatory 4 stratagems; `barebones`; early-game trap.** HD2 requires 4 equipped stratagems
 to ready up, so the `barebones` pact ("I fill no stratagem slots", `data/pacts.ts:27`,
 `config.ts:157`, block-lists `pacts.ts:15-19`) is impossible without the "bring random strats and
-never call them" workaround. Remove `barebones`. The broader issue: stratagem-restricting pacts
-(`grounded`, `shipSilent`, `openField`) are about use, not equipping — DEC-1 decides whether the
-rule text becomes "equipped but never called" or we hand early players a neutral fallback list.
+never call them" workaround. **Shipped in Batch A:** `barebones` removed from the catalog, `PACT_RISK`
+and both misfortune block-lists; `PACT_SUBSUMES` is now empty (the subsumption machinery and the
+PactPicker "Covered by …" UI stay for future rules). Goldens regenerated (the offer draw reshuffles).
+The rest — stratagem-restricting pacts (`grounded`, `shipSilent`, `openField`) being about use, not
+equipping — waits on DEC-1: whether the rule text becomes "equipped but never called" or we hand
+early players a neutral fallback list.
 
 **N6 · Time/samples luck.** Add `samples?: { common, rare, super }` to `MissionReport`
 (`types.ts:54-58`; `timePct` already exists but is unused for luck). Add a third, squad-level luck
@@ -184,8 +201,9 @@ or a floor of 2.
 
 **N24 · Pact redundancy is free luck.** Misfortunes filter redundant pacts from the offer, but there
 is no pact-vs-pact (or pact-vs-team) redundancy check at pick time. Observed: `Barebones` strictly
-subsumes `Primary Concern`, and both counted. Either block subsumed picks or void their risk. Note
-this overlaps with removing `barebones` in N5.
+subsumed `Primary Concern`, and both counted. The observed case is gone with `barebones` (Batch A);
+the general check (block subsumed picks or void their risk) stays open and the subsumption machinery
+is ready for it.
 
 **N25 · Pacts are "take everything".** With no squad cost and only a failed-pact option penalty,
 optimal play is always all playable pacts. Likely intended; the "0 to all" copy undersells it.
@@ -248,6 +266,24 @@ report → reward), a persistent help drawer, and inline tooltips on luck/ceilin
 **N3 · Campaign API / MO boosts.** New server proxy route + cache (respect rate limits/ToS), with
 campaign data injected into state like seeds so the engine stays pure. Offline must degrade
 gracefully. Engine purity (invariant 1) forbids fetching inside `shared/engine/**`.
+
+### Shipped outside the batches
+
+**N31 · Remove open-dive lobby / matchmaking.** Griffdive targets an already-engaged squad (Discord,
+friends), so public matchmaking is a liability. Removed the whole feature: `openToLobby` flag and
+`TOGGLE_OPEN` action (engine + host-only list), `LobbyEntry` + `lobby` message, `LOBBY_ROOM`
+pseudo-room, `listLobby`/`lobbyEntryFor`, `GET /api/lobby`, the `/lobby` page, the "Open to lobby"
+header toggle, the "Browse open dives" link and lobby perk, the store's `lobbyRooms`, the
+`griffdive_open_rooms` gauge, and the lobby unit + E2E specs. The deploy smoke-check moved from
+`/api/lobby` to `/`. The `lobby` **phase** (a created-but-unlaunched room, `createLobbyState`)
+remains — it is not matchmaking. Rooms are invite-link/code only.
+
+**N32 · Kit ordering.** Added `shared/data/ordering.ts` (`compareKitItems` / `sortKitItems`): within
+the inventory, stratagems group by role — Eagle/Orbital, then support (`Supply`), then
+emplacements/turrets (`Defense`) — and every bucket sorts best-tier-first with display-name
+tiebreaks, so rewards slot into a stable order across catalog refreshes. `InventoryGrid` renders the
+sorted kit. Covered by `shared/data/ordering.spec.ts` (including a total-order check over the real
+stratagem catalog).
 
 ## Accepted / notes
 

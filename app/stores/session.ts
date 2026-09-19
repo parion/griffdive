@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import type { DiveState } from '~~/shared/engine/types'
-import type { LobbyEntry, ServerMessage } from '~~/shared/types/messages'
+import type { ServerMessage } from '~~/shared/types/messages'
 
 export type SocketStatus = 'connecting' | 'connected' | 'disconnected'
 
@@ -11,7 +11,6 @@ export const useSessionStore = defineStore('session', () => {
   const online = ref<string[]>([])
   const status = ref<SocketStatus>('disconnected')
   const lastError = ref<{ code: string, message: string } | null>(null)
-  const lobbyRooms = ref<LobbyEntry[]>([])
 
   function openSession(code: string): void {
     roomCode.value = code
@@ -35,9 +34,6 @@ export const useSessionStore = defineStore('session', () => {
         snapshot.value = message.snapshot
         online.value = message.online
         break
-      case 'lobby':
-        lobbyRooms.value = message.rooms
-        break
       case 'error':
         lastError.value = { code: message.code, message: message.message }
         break
@@ -55,7 +51,6 @@ export const useSessionStore = defineStore('session', () => {
     online,
     status,
     lastError,
-    lobbyRooms,
     openSession,
     applyMessage,
     dismissError,

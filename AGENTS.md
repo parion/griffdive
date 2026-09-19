@@ -14,13 +14,13 @@ must update this file in the same commit.**
 
 ## Status
 
-Phase 0 (foundation), Phase 1 (solo core), Phase 2 (realtime squads) and Phase 3 (lobby) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (203 tests incl. a deterministic golden
+Phase 0 (foundation), Phase 1 (solo core) and Phase 2 (realtime squads) are
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (206 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
-reconnection; open-dive lobby with filters and instant join — verified by a live two-peer smoke
-test and the Playwright E2E suite (solo flow, two-browser room sync, lobby join, PWA affordances)
-against the production build. Mid-crusade catch-up (Field Promotion + legacy caches, `LEAVE_DIVE`)
+reconnection — verified by a live two-peer smoke test and the Playwright E2E suite (solo flow,
+two-browser room sync, Codex slide-over,
+PWA affordances) against the production build. Mid-crusade catch-up (Field Promotion + legacy caches, `LEAVE_DIVE`)
 has landed, as has the Phase 4 PWA layer (installable manifest, generated icons, Workbox service
 worker with an offline shell + on-demand catalog art). Remaining Phase 4 polish is next. See
 [Roadmap](#roadmap).
@@ -43,7 +43,7 @@ pnpm only (`pnpm-lock.yaml` is canonical).
 | `pnpm lint:fix` | exists | Auto-fix lint/style issues |
 | `pnpm test` | exists | Vitest (engine unit + golden tests) |
 | `pnpm test:watch` | exists | Vitest watch mode |
-| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, lobby join, PWA affordances; production build on :3173) |
+| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, Codex slide-over, PWA affordances; production build on :3173) |
 | `pnpm typecheck` | exists | `nuxt typecheck` (vue-tsc) |
 
 Update this table the moment a command lands.
@@ -206,21 +206,21 @@ Starter catalog:
 | Empty Pockets | I equip no booster | 1 | loadout |
 | Anti-Tank Abstinent | I carry nothing anti-tank | 2 | loadout |
 | Dead Weight | If I die, I refuse reinforcement — I stay dead | 2 | field |
-| Stim Abstinent | I use no stims | 2 | stats |
+| Stim Abstinent | I use no stims | 3 | stats |
 | Loadout Loyalist | I use only my equipped loadout; no pickups or swaps | 2 | field |
 | Primary Concern | I bring no support weapon | 2 | loadout |
 | Grounded | I bring no Eagle stratagems | 2 | loadout |
 | Ship Silent | I bring no orbital stratagems | 2 | loadout |
 | Open Field | I bring no sentries, mines, or emplacements | 2 | loadout |
-| Barebones | I fill no stratagem slots | 3 | loadout |
 | Untouchable | I finish the mission without dying | 3 | field |
 
 **Redundant picks:** a pact strictly implied by another picked pact never stacks risk. `SET_PACTS`
-refuses it (`PACT_SUBSUMES` in `shared/engine/pacts.ts`): **Barebones** — no stratagem slots filled —
-already forbids Pack Light, Thirsty, Primary Concern, Grounded, Ship Silent and Open Field, so none
-of those may be picked alongside it. Picking the stricter pact replaces the ones it covers, and the
-UI greys a covered offer with "Covered by …". (Anti-Tank Abstinent stays independent: thermite and
-other anti-tank throwables are not stratagems.)
+refuses it via `pactSubsumedBy` / `applyPactToggle` (`PACT_SUBSUMES` in `shared/engine/pacts.ts`),
+and the UI greys a covered offer with "Covered by …". The map is currently **empty** — *Barebones*
+("I fill no stratagem slots") was the only subsuming pact, and it was removed because HD2 requires
+four equipped stratagems to ready up, so the pact was impossible without a "bring random strats and
+never call them" workaround. The machinery stays in place for future subsumption rules. (Anti-Tank
+Abstinent stays independent: thermite and other anti-tank throwables are not stratagems.)
 
 **Failed pacts:** a broken pact is marked **failed** (`FAIL_PACT{playerId,pactId}`) while the
 mission runs — during the diving phase only, by the diver themselves or by the host refereeing the
@@ -359,24 +359,25 @@ app/
                    S+ "Diver's Choice" offer card, DiversChoicePicker — its minified codex
                    modal, InventoryGrid, CrusadeSetup, WarbondPicker,
                    JoinNameGate — name gate held while joining),
+                   codex/CodexBrowser — the shared catalog browser (filter + tier grid),
                    ui/ (ItemCard, TierBadge, RiskPips, ChangelogModal — GitHub deploy log shown
-                   from the pre-alpha header chip),
+                   from the pre-alpha header chip, CodexDrawer — the right-hand Reka Drawer
+                   slide-over that keeps the dive session mounted),
   composables/     useDiveSession (unified local/room driver), useDiveEngine (local reducer +
                    persist), useGameSocket (WS, reconnect, stored playerId), useSaves,
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
                    useChangelog (GitHub deployments + commits → changelog entries, 10-min cache)
-  stores/          session.ts (Pinia: selfId, snapshot, online, lobby list)
+  stores/          session.ts (Pinia: selfId, snapshot, online)
   utils/           seed.ts (client seed generation)
   assets/css/      main.css — global HD2 theme (two-font system, see Conventions)
 server/
-  routes/ws.ts     defineWebSocketHandler — single endpoint, ?room={code|__lobby__}
-  utils/           room-sync.ts (hello/action/close/lobby core; KV + peers injected),
+  routes/ws.ts     defineWebSocketHandler — single endpoint, ?room={code}
+  utils/           room-sync.ts (hello/action/close core; KV + peers injected),
                    room-storage.ts (useStorage('rooms') adapter), peers.ts (process-wide
                    peer directory shared by the WS route and metrics),
                    metrics.ts (Prometheus registry: presence gauges + dive counter)
   plugins/         metrics.ts (binds the gauges, serves /metrics on internal :9091)
-  api/             rooms/index.post.ts (create), rooms/[code].get.ts (snapshot),
-                   lobby/index.get.ts (list)
+  api/             rooms/index.post.ts (create), rooms/[code].get.ts (snapshot)
 shared/
   engine/          config.ts, types.ts, reducer.ts, rng.ts, wheel.ts, pacts.ts,
                    rewards.ts, progression.ts, selectors.ts, saves.ts, room.ts
@@ -385,6 +386,7 @@ shared/
   utils/           room-code.ts (room-code alphabet + validator)
   data/            items (equipment.ts, stratagems.ts), warbonds.ts, fronts.ts,
                    misfortunes.ts, pacts.ts, catalog.ts (aggregation + CATALOG_VERSION),
+                   ordering.ts (kit presentation order: stratagem role → tier → name),
                    images.ts (imageURL filename → /images/<dir> URL resolver,
                    difficultyImageUrl for the 1–10 difficulty emblems)
 scripts/
@@ -396,7 +398,7 @@ public/images/        bundled item art keyed by folder: equipment/ (weapons, thr
 public/               PWA surface: icon.svg (brand source) + generated pwa-*.png /
                       maskable-icon-512x512.png / apple-touch-icon-180x180.png.
                       Regenerate with `pnpm pwa:assets` (config in pwa-assets.config.ts)
-e2e/                  Playwright specs (solo flow, room sync, lobby join, PWA affordances)
+e2e/                  Playwright specs (solo flow, room sync, Codex slide-over, PWA affordances)
 playwright.config.ts  production-build webServer on :3173 (WebSocket included)
 pwa-assets.config.ts  @vite-pwa/assets-generator presets for the brand icon set
 vitest.config.ts     mirrors Nuxt aliases (~~, ~) so engine + server tests resolve
@@ -420,7 +422,7 @@ vitest.config.ts     mirrors Nuxt aliases (~~, ~) so engine + server tests resol
 ### Sync protocol (Phase 2)
 
 Host-authoritative, room-per-dive. Nitro WebSocket via `nitro.experimental.websocket` in
-`nuxt.config.ts`; single endpoint `/ws?room={code}` (`__lobby__` = lobby listener pseudo-room).
+`nuxt.config.ts`; single endpoint `/ws?room={code}`.
 Room state lives in `useStorage('rooms')` (memory driver first; swap to Redis by config only) as
 `StoredRoom { code, state, updatedAt }`, pruned on access after a 12h TTL. Live connections live
 in an in-process peer directory (crossws pub/sub topics are global to the process — deliberately
@@ -433,11 +435,10 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 | C→S | `ping` | heartbeat — answered with `pong` |
 | S→C | `welcome` | `{ selfId, hostId, roomCode, snapshot, online }` |
 | S→C | `state` | `{ snapshot, applied (EngineAction \| null), online }` — after each applied change; also an `applied: null` presence refresh the moment a seated diver's last connection drops; `online` = diver ids with live connections |
-| S→C | `lobby` | `{ rooms: LobbyEntry[] }` — open dives with slots |
 | S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `dive-locked`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message` |
 
-REST fallbacks: `POST /api/rooms` → `{ code }`; `GET /api/rooms/:code` → `{ code, state }` (404);
-`GET /api/lobby` → `{ rooms }`. Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`,
+REST fallbacks: `POST /api/rooms` → `{ code }`; `GET /api/rooms/:code` → `{ code, state }` (404).
+Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`,
 `SET_NAME`) are
 coerced to the sender — a client can never act as another diver.
 
@@ -448,11 +449,11 @@ Canonical engine actions (the reducer union; keep names stable):
 `REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}` `LEAVE_DIVE{playerId}`
 `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
-`SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}` `TOGGLE_OPEN{open}`
+`SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
 `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `ADVANCE`, `END_DIVE`, `KICK_DIVER`,
-`TRANSFER_HOST`, `TOGGLE_OPEN`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
+`TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
 `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are self-service.
 `FAIL_PACT` is sent by the target diver or the host (server refuses everyone else). Host disconnect →
 `TRANSFER_HOST` to the earliest joiner; none left → room hibernates in storage with a TTL.
@@ -462,13 +463,13 @@ squad: their pending pact lock or reward pick stops gating progress, their perso
 leaves with them, and the host can never be kicked. It is a soft kick — the removed client
 shows a removal notice, but their invite link still seats them again as a fresh diver.
 
-### Lobby / matchmaking (Phase 3)
+### Matchmaking — none (deliberate)
 
-Rooms flagged `open` (via `TOGGLE_OPEN`, exposed as the "Open to lobby" header toggle for room
-hosts) publish a `LobbyEntry` (room code, squad size/slots free, difficulty, variant, front,
-host name) to lobby listeners and `GET /api/lobby`. The lobby page (`/lobby`) lists them with
-difficulty/variant/front filters; joining = hitting `/dive/{code}`, which the server accepts if
-slots are free. No queue infrastructure — presence only.
+Griffdive has **no open-dive lobby and no public matchmaking**. It is built for an already-engaged
+squad (voice over Discord, friends), so rooms are joined only by invite link or room code — the
+`/lobby` page, `openToLobby` flag, `TOGGLE_OPEN` action, `LobbyEntry`, `lobby` broadcast and
+`GET /api/lobby` were all removed. The `lobby` **phase** is unrelated: it is simply a room that has
+been created but has not yet launched its crusade (`createLobbyState`), and it remains.
 
 ### Deployment
 
@@ -481,8 +482,8 @@ e.g. Cloudflare Pages with a `/*` shell fallback) and keep only WS + REST on the
 
 Monitoring: `server/plugins/metrics.ts` exposes a Prometheus registry (`@prometheus-io/client`)
 on internal port 9091 (`METRICS_PORT` to override) — default Node metrics plus
-`griffdive_online_players`, `griffdive_active_rooms`, `griffdive_open_rooms` (gauges, snapshotted
-from the peer directory and lobby at scrape time) and `griffdive_dives_started_total` (counter,
+`griffdive_online_players`, `griffdive_active_rooms` (gauges, snapshotted
+from the peer directory at scrape time) and `griffdive_dives_started_total` (counter,
 reset per process — query with `increase()` across deploys). `fly.toml`'s `[metrics]` has Fly
 scrape it every 15s into the managed Grafana at fly-metrics.net; the port is never registered in
 `[http_service]`, so it is unreachable from the public internet.
@@ -495,7 +496,7 @@ accumulated batch is approved and ships as one deploy. The `environment:` refere
 creates the GitHub deployment record (this — not Fly's GitHub app integration — feeds the
 "production deployments" UI and the in-app changelog); the job runs `flyctl deploy
 --remote-only --wait-timeout 300` against the `Dockerfile` + `fly.toml` in repo using the
-`FLY_API_TOKEN` repo secret (an app-scoped deploy token), then smoke-checks `/api/lobby` before
+`FLY_API_TOKEN` repo secret (an app-scoped deploy token), then smoke-checks `/api/rooms` before
 the deployment is marked success. `.github/workflows/preview.yml` deploys a per-PR review app
 (`pr-<n>-parion-griffdive.fly.dev`, via `superfly/fly-pr-review-apps` with `fly.review.toml` and
 the org-scoped `FLY_REVIEW_TOKEN` secret) whose URL shows in the PR UI; the app is destroyed
@@ -597,12 +598,13 @@ the Redis swap lands.
   must bump the engine version + write a migration, or revert.
 - **Server tests** (Vitest, fake KV + fake peers in `server/utils/room-sync.spec.ts`): room
   join/spin/pick flows, host authority + coercion, host migration, reattachment, room-full,
-  TTL pruning, lobby list, metrics gauges/counters (`metrics.spec.ts`). (`@nuxt/test-utils` +
+  TTL pruning, metrics gauges/counters (`metrics.spec.ts`). (`@nuxt/test-utils` +
   Playwright browser flows land in Phase 3+.)
 - **E2E (Playwright, `e2e/*.spec.ts` via `@playwright/test`):** `playwright.config.ts` boots the
   production build (`pnpm build` + Nitro server, port 3173, WebSocket included). Specs: solo dive
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host
-  authority, pact lock-in), lobby join (open dive → filter → one-click join), PWA affordances
+  authority, pact lock-in), Codex slide-over (opens over the dive without dropping the session),
+  PWA affordances
   (manifest content type + icons served, SW reachable, shell head links). Chromium only;
   `pnpm exec playwright install chromium` after a fresh clone.
 
@@ -625,8 +627,10 @@ Each phase lands shippable. Update AGENTS.md (commands, status) as part of each 
   6-char nanoid), presence, host authority + validation, reconnection, host migration, Pinia session
   store. *Done when: two browsers play one synced dive; killing the host migrates it; late joiners
   get the snapshot.*
-- **Phase 3 — Lobby.** Open-room flag, lobby topic broadcast, lobby page + filters, instant join,
-  Playwright E2E. *Done when: a stranger can find an open dive and join in one click.*
+- **Phase 3 — Lobby (reverted).** Open-room flag, lobby broadcast, lobby page + filters and instant
+  join were built, then deliberately removed: Griffdive targets an already-engaged squad (voice over
+  Discord, friends), not public matchmaking. Rooms are invite-link/code only. See
+  [Matchmaking — none](#matchmaking--none-deliberate).
 - **Phase 4 — Polish + deploy (in progress).** Wheel animation juice, reward draft ceremony, theme
   pass, Fly.io deploy + CI/CD (approval-gated batch releases, PR previews, metrics) and PWA
   affordances (`@vite-pwa/nuxt`: installable manifest, generated icons, Workbox service worker with

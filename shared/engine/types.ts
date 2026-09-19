@@ -66,7 +66,6 @@ export interface DiveState {
   settings: CrusadeSettings | null
   divers: DiverState[]
   hostId: string | null
-  openToLobby: boolean
   wheel: WheelResult | null
   // The front is drawn once per operation and persists across its missions —
   // each mission draws only a fresh misfortune.
@@ -103,4 +102,3 @@ export type EngineAction
     | { type: 'KICK_DIVER', playerId: string }
     | { type: 'SET_NAME', playerId: string, name: string }
     | { type: 'TRANSFER_HOST', playerId: string }
-    | { type: 'TOGGLE_OPEN', open: boolean }

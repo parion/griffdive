@@ -1,15 +1,4 @@
-import type { CrusadeVariant, DiveState, EngineAction } from '../engine/types'
-import type { FrontId } from '../data/fronts'
-
-export interface LobbyEntry {
-  roomCode: string
-  squadSize: number
-  slotsFree: number
-  difficulty: number
-  variant: CrusadeVariant | null
-  front: FrontId | null
-  hostName: string
-}
+import type { DiveState, EngineAction } from '../engine/types'
 
 export type ClientMessage
   = | { type: 'hello', name?: string, playerId?: string }
@@ -18,15 +7,7 @@ export type ClientMessage
 export type ServerMessage
   = | { type: 'welcome', selfId: string, hostId: string | null, roomCode: string, snapshot: DiveState, online: string[] }
     | { type: 'state', snapshot: DiveState, applied: EngineAction | null, online: string[] }
-    | { type: 'lobby', rooms: LobbyEntry[] }
     | { type: 'error', code: string, message: string }
-
-// Pseudo room code for lobby listeners (never a valid room code: 9 chars).
-export const LOBBY_ROOM = '__lobby__'
-
-export function isLobbyRoom(roomCode: string): boolean {
-  return roomCode === LOBBY_ROOM
-}
 
 export const HOST_ONLY_ACTIONS = [
   'START_DIVE',
@@ -39,7 +20,6 @@ export const HOST_ONLY_ACTIONS = [
   'END_DIVE',
   'KICK_DIVER',
   'TRANSFER_HOST',
-  'TOGGLE_OPEN',
 ] as const
 
 export type HostOnlyAction = (typeof HOST_ONLY_ACTIONS)[number]

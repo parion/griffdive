@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ITEMS_BY_ID } from '~~/shared/data/catalog'
+import { sortKitItems } from '~~/shared/data/ordering'
 import type { Item, ItemCategory } from '~~/shared/data/types'
 import type { DiveState, ItemRef } from '~~/shared/engine/types'
 
-interface TypeGroup { id: string, label: string, items: Item[] }
+interface TypeGroup { id: string, label: string, items: Item[], empty?: string }
 interface DiverKit { diverId: string, diverName: string, items: Item[], groups: TypeGroup[] }
 
 const props = withDefaults(defineProps<{
@@ -24,17 +25,20 @@ function resolve(ids: readonly string[]): Item[] {
 }
 
 function typeGroupsFor(items: Item[]): TypeGroup[] {
+  const sorted = sortKitItems(items)
   const inCategories = (categories: readonly ItemCategory[]): Item[] =>
-    items.filter(item => categories.includes(item.category))
+    sorted.filter(item => categories.includes(item.category))
   const groups: TypeGroup[] = []
-  const add = (id: string, label: string, entries: Item[]) => {
-    if (entries.length) groups.push({ id, label, items: entries })
+  const add = (id: string, label: string, entries: Item[], empty?: string) => {
+    if (entries.length || empty) groups.push({ id, label, items: entries, empty })
   }
   add('weapons', 'Weapons', inCategories(['primary', 'secondary']))
   add('throwables', 'Throwables', inCategories(['throwable']))
-  add('stratagems', 'Stratagems', items.filter(item => item.type === 'stratagem'))
+  add('stratagems', 'Stratagems', sorted.filter(item => item.type === 'stratagem'))
   add('armor', 'Armor', inCategories(['armorPassive']))
-  add('boosters', 'Boosters', inCategories(['booster']))
+  // Boosters always render their group, even when empty — a boosterless diver
+  // needs to see the slot exists and that rewards can fill it.
+  add('boosters', 'Boosters', inCategories(['booster']), 'No boosters available yet — rewards can unlock one.')
   return groups
 }
 
@@ -114,7 +118,14 @@ function forfeit(ownerId: string, itemId: string): void {
           {{ group.label }}
           <span class="muted small">({{ group.items.length }})</span>
         </h3>
+        <p
+          v-if="!group.items.length"
+          class="muted small"
+        >
+          {{ group.empty }}
+        </p>
         <TransitionGroup
+          v-else
           tag="div"
           name="inv"
           class="showcase-grid"
@@ -149,7 +160,14 @@ function forfeit(ownerId: string, itemId: string): void {
             {{ group.label }}
             <span class="muted small">({{ group.items.length }})</span>
           </h4>
+          <p
+            v-if="!group.items.length"
+            class="muted small"
+          >
+            {{ group.empty }}
+          </p>
           <TransitionGroup
+            v-else
             tag="div"
             name="inv"
             class="showcase-grid"

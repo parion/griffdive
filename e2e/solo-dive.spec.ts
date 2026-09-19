@@ -23,6 +23,8 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('heading', { name: 'Briefing' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Mission complete' }).click()
+  // The report form opens at the difficulty's best result — 3 stars at Medium.
+  await expect(page.getByRole('radio', { name: '3 stars' })).toHaveAttribute('aria-checked', 'true')
   await page.getByRole('button', { name: 'Submit success' }).click()
 
   await expect(page.getByText('Rewards — choose one')).toBeVisible()
@@ -37,4 +39,26 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // awaits the squad's decision.
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await expect(page.getByText('Decision pending')).toBeVisible()
+})
+
+test('a failed mission labels the operation failed and restarts it', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Diver name').fill('Griffon')
+  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+
+  await page.getByRole('button', { name: 'Spin', exact: true }).click()
+  await page.getByRole('button', { name: 'Lock it in' }).click()
+  await page.locator('.pact:not([disabled])').first().click()
+  await page.getByRole('button', { name: 'Lock in & dive' }).click()
+
+  await page.getByRole('button', { name: 'Mission failed' }).click()
+  await page.getByRole('button', { name: 'Submit failure' }).click()
+
+  // The header track reads the failed mission, not a stale live index.
+  await expect(page.getByRole('img', { name: /Operation failed/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Operation failed' })).toBeVisible()
+
+  // Forfeiting one item restarts the operation at mission 1.
+  await page.locator('.item-card:not([disabled])').first().click()
+  await expect(page.getByRole('img', { name: /operation mission 1 of 2/i })).toBeVisible()
 })

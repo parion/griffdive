@@ -35,26 +35,21 @@ describe('isPactSelectable', () => {
 })
 
 describe('pact subsumption', () => {
-  it('names the pick that already covers a redundant pact', () => {
-    expect(pactSubsumedBy('primaryConcern', ['barebones'])).toBe('barebones')
-    expect(pactSubsumedBy('primaryConcern', ['stimAbstinent'])).toBeNull()
-    expect(pactSubsumedBy('barebones', ['barebones'])).toBeNull()
+  it('has no subsuming pacts after Barebones was removed', () => {
+    expect(Object.keys(PACT_SUBSUMES)).toHaveLength(0)
   })
 
-  it('points every declared subsumed pact back at its subsumer', () => {
-    for (const [subsumer, subsumed] of Object.entries(PACT_SUBSUMES)) {
-      for (const pactId of subsumed) {
-        expect(pactSubsumedBy(pactId, [subsumer])).toBe(subsumer)
-      }
+  it('never reports a pact as covered by another', () => {
+    for (const pact of PACTS) {
+      expect(pactSubsumedBy(pact.id, PACTS.map(entry => entry.id))).toBeNull()
     }
   })
 
-  it('refuses a redundant pick and replaces covered picks', () => {
-    const offer = ['packLight', 'primaryConcern', 'barebones']
-    expect(applyPactToggle(offer, ['barebones'], 'primaryConcern')).toEqual(['barebones'])
-    expect(applyPactToggle(offer, ['primaryConcern', 'packLight'], 'barebones')).toEqual(['barebones'])
-    expect(applyPactToggle(offer, ['barebones'], 'barebones')).toEqual([])
-    expect(applyPactToggle(['packLight'], [], 'barebones')).toEqual([])
+  it('keeps a toggle a pure membership change', () => {
+    const offer = ['packLight', 'primaryConcern']
+    expect(applyPactToggle(offer, [], 'packLight')).toEqual(['packLight'])
+    expect(applyPactToggle(offer, ['packLight'], 'packLight')).toEqual([])
+    expect(applyPactToggle(['packLight'], [], 'primaryConcern')).toEqual([])
   })
 })
 
@@ -62,8 +57,8 @@ describe('pactRiskTotal', () => {
   it('sums known pacts and ignores unknown ids', () => {
     expect(pactRiskTotal([])).toBe(0)
     expect(pactRiskTotal(['packLight'])).toBe(1)
-    expect(pactRiskTotal(['stimAbstinent', 'deadWeight'])).toBe(4)
-    expect(pactRiskTotal(['barebones', 'untouchable', 'packLight'])).toBe(7)
+    expect(pactRiskTotal(['stimAbstinent', 'deadWeight'])).toBe(5)
+    expect(pactRiskTotal(['untouchable', 'packLight'])).toBe(4)
     expect(pactRiskTotal(['ghostPact'])).toBe(0)
   })
 })

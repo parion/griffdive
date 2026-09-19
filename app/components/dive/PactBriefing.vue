@@ -91,11 +91,12 @@ function markFailed(playerId: string, pactId: string): void {
         >FAILED</span>
         <button
           v-else-if="confirming === confirmKey(self.id, entry.pactId)"
-          class="btn danger tiny"
+          class="btn danger tiny armed"
           type="button"
+          :aria-label="`Confirm voiding ${entry.pact?.name ?? entry.pactId} — this cannot be undone`"
           @click="markFailed(self.id, entry.pactId)"
         >
-          Confirm — void it?
+          Confirm — void it? <span class="armed-hint">can't be undone</span>
         </button>
         <button
           v-else
@@ -138,8 +139,9 @@ function markFailed(playerId: string, pactId: string): void {
             <template v-else-if="isHost">
               <button
                 v-if="confirming === confirmKey(diver.id, entry.pactId)"
-                class="chip-fail sure"
+                class="chip-fail sure armed"
                 type="button"
+                :aria-label="`Confirm voiding ${entry.pact?.name ?? entry.pactId} for ${diver.name} — this cannot be undone`"
                 @click="markFailed(diver.id, entry.pactId)"
               >
                 sure?
@@ -272,6 +274,28 @@ function markFailed(playerId: string, pactId: string): void {
   height: auto;
   padding: 0.05rem 0.3rem;
   border: 1px solid var(--red);
+}
+
+/* The confirm step is a one-way void: make the armed button read as a live,
+   destructive choice rather than an inert label. */
+.armed {
+  background: color-mix(in srgb, var(--red) 24%, transparent);
+  border-color: var(--red);
+  color: var(--red);
+  animation: armed-pulse 1.4s ease-in-out infinite;
+}
+.armed-hint {
+  margin-left: 0.3rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+}
+@keyframes armed-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 45%, transparent); }
+  50% { box-shadow: 0 0 0 4px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .armed { animation: none; }
 }
 
 /* Pointer devices reveal the fail affordance on chip hover; touch devices

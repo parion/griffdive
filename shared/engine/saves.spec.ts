@@ -32,7 +32,6 @@ function v1Doc(overrides: Record<string, unknown> = {}): SaveDoc {
       settings: { variant: 'standard' },
       divers: [],
       hostId: null,
-      openToLobby: false,
       wheel: null,
       frontId: null,
       misfortuneAccepted: false,
