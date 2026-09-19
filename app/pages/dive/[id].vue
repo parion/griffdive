@@ -815,6 +815,7 @@ function commitWarbonds(codes: string[]): void {
                 :difficulty="session.state.value.difficulty"
                 :team-risk="teamRiskOf(session.state.value)"
                 :pact-risk="selfPactRisk"
+                :performance="performancePreview"
                 locked
               />
               <div
@@ -887,13 +888,8 @@ function commitWarbonds(codes: string[]): void {
                   :max="100"
                   label="Time remaining %"
                   aria-label="Time remaining percent"
+                  inline
                 />
-                <p
-                  v-if="reportMode === 'success'"
-                  class="muted small valor-preview"
-                >
-                  Team performance adds <strong>+{{ performancePreview.toFixed(2) }}</strong> Valor
-                </p>
                 <div class="row">
                   <button
                     class="btn primary"
@@ -1092,12 +1088,6 @@ function commitWarbonds(codes: string[]): void {
   display: grid;
   gap: 0.75rem;
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-}
-.valor-preview {
-  margin: 0;
-}
-.valor-preview strong {
-  color: var(--gold);
 }
 
 .victory { text-align: center; align-items: center; }
