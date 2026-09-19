@@ -15,8 +15,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{ forfeit: [itemRef: ItemRef] }>()
 
-type InventoryView = 'mine' | 'squad'
-const view = ref<InventoryView>('mine')
+const view = ref('mine')
 
 function resolve(ids: readonly string[]): Item[] {
   return ids
@@ -55,6 +54,16 @@ const otherKits = computed<DiverKit[]>(() =>
 
 const allKits = computed<DiverKit[]>(() => props.state.divers.map(kitFor))
 
+const viewTabs = computed(() => otherKits.value.length
+  ? [{ value: 'mine', label: 'My kit' }, { value: 'squad', label: 'Squad' }]
+  : [{ value: 'mine', label: 'My kit' }])
+
+watch(() => otherKits.value.length, (count) => {
+  if (count === 0) {
+    view.value = 'mine'
+  }
+})
+
 function forfeit(ownerId: string, itemId: string): void {
   emit('forfeit', { ownerId, itemId })
 }
@@ -62,27 +71,90 @@ function forfeit(ownerId: string, itemId: string): void {
 
 <template>
   <div class="inventory">
-    <div
-      v-if="!selectMode && otherKits.length"
-      class="view-toggle"
+    <AppTabs
+      v-if="!selectMode"
+      v-model="view"
+      :tabs="viewTabs"
+      label="Inventory view"
     >
-      <button
-        type="button"
-        :class="{ active: view === 'mine' }"
-        @click="view = 'mine'"
-      >
-        My kit
-      </button>
-      <button
-        type="button"
-        :class="{ active: view === 'squad' }"
-        @click="view = 'squad'"
-      >
-        Squad
-      </button>
-    </div>
+      <template #mine>
+        <section
+          v-for="group in mineGroups"
+          :key="group.id"
+          class="inv-group"
+        >
+          <h3>
+            {{ group.label }}
+            <span class="muted small">({{ group.items.length }})</span>
+          </h3>
+          <p
+            v-if="!group.items.length"
+            class="muted small"
+          >
+            {{ group.empty }}
+          </p>
+          <TransitionGroup
+            v-else
+            tag="div"
+            name="inv"
+            class="showcase-grid"
+          >
+            <ItemCard
+              v-for="item in group.items"
+              :key="item.id"
+              :item="item"
+              showcase
+              disabled
+            />
+          </TransitionGroup>
+        </section>
+      </template>
 
-    <template v-if="selectMode">
+      <template #squad>
+        <section
+          v-for="kit in otherKits"
+          :key="kit.diverId"
+          class="inv-group"
+        >
+          <h3>
+            {{ kit.diverName }}'s kit
+            <span class="muted small">({{ kit.items.length }})</span>
+          </h3>
+          <div
+            v-for="group in kit.groups"
+            :key="group.id"
+            class="kit-type"
+          >
+            <h4>
+              {{ group.label }}
+              <span class="muted small">({{ group.items.length }})</span>
+            </h4>
+            <p
+              v-if="!group.items.length"
+              class="muted small"
+            >
+              {{ group.empty }}
+            </p>
+            <TransitionGroup
+              v-else
+              tag="div"
+              name="inv"
+              class="showcase-grid"
+            >
+              <ItemCard
+                v-for="item in group.items"
+                :key="item.id"
+                :item="item"
+                showcase
+                disabled
+              />
+            </TransitionGroup>
+          </div>
+        </section>
+      </template>
+    </AppTabs>
+
+    <template v-else>
       <section
         v-for="kit in allKits"
         :key="kit.diverId"
@@ -107,82 +179,6 @@ function forfeit(ownerId: string, itemId: string): void {
         </TransitionGroup>
       </section>
     </template>
-
-    <template v-else-if="view === 'mine'">
-      <section
-        v-for="group in mineGroups"
-        :key="group.id"
-        class="inv-group"
-      >
-        <h3>
-          {{ group.label }}
-          <span class="muted small">({{ group.items.length }})</span>
-        </h3>
-        <p
-          v-if="!group.items.length"
-          class="muted small"
-        >
-          {{ group.empty }}
-        </p>
-        <TransitionGroup
-          v-else
-          tag="div"
-          name="inv"
-          class="showcase-grid"
-        >
-          <ItemCard
-            v-for="item in group.items"
-            :key="item.id"
-            :item="item"
-            showcase
-            disabled
-          />
-        </TransitionGroup>
-      </section>
-    </template>
-
-    <template v-else>
-      <section
-        v-for="kit in otherKits"
-        :key="kit.diverId"
-        class="inv-group"
-      >
-        <h3>
-          {{ kit.diverName }}'s kit
-          <span class="muted small">({{ kit.items.length }})</span>
-        </h3>
-        <div
-          v-for="group in kit.groups"
-          :key="group.id"
-          class="kit-type"
-        >
-          <h4>
-            {{ group.label }}
-            <span class="muted small">({{ group.items.length }})</span>
-          </h4>
-          <p
-            v-if="!group.items.length"
-            class="muted small"
-          >
-            {{ group.empty }}
-          </p>
-          <TransitionGroup
-            v-else
-            tag="div"
-            name="inv"
-            class="showcase-grid"
-          >
-            <ItemCard
-              v-for="item in group.items"
-              :key="item.id"
-              :item="item"
-              showcase
-              disabled
-            />
-          </TransitionGroup>
-        </div>
-      </section>
-    </template>
   </div>
 </template>
 
@@ -196,28 +192,6 @@ function forfeit(ownerId: string, itemId: string): void {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted);
-}
-
-.view-toggle {
-  display: inline-flex;
-  width: max-content;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.view-toggle button {
-  font: inherit;
-  font-size: 0.78rem;
-  padding: 0.28rem 0.75rem;
-  background: transparent;
-  border: 0;
-  color: var(--muted);
-  cursor: pointer;
-}
-.view-toggle button.active {
-  background: var(--bg-raised);
-  color: var(--gold);
-  font-weight: 700;
 }
 
 .showcase-grid {

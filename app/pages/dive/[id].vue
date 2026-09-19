@@ -433,7 +433,11 @@ function commitWarbonds(codes: string[]): void {
 </script>
 
 <template>
-  <main class="page">
+  <main
+    id="main-content"
+    class="page"
+    tabindex="-1"
+  >
     <JoinNameGate
       v-if="session.awaitingName.value"
       @confirm="confirmJoinName"
@@ -599,26 +603,32 @@ function commitWarbonds(codes: string[]): void {
               v-if="diver.id === session.selfId.value"
               class="muted small"
             >(you)</span>
-            <button
+            <AppTooltip
               v-if="canTransferHost(diver.id)"
-              class="handover"
-              type="button"
-              :aria-label="`Hand host to ${diver.name}`"
-              title="Hand over host"
-              @click="transferHost(diver.id)"
+              :content="`Hand host to ${diver.name}`"
             >
-              host
-            </button>
-            <button
+              <button
+                class="handover"
+                type="button"
+                :aria-label="`Hand host to ${diver.name}`"
+                @click="transferHost(diver.id)"
+              >
+                host
+              </button>
+            </AppTooltip>
+            <AppTooltip
               v-if="canKick(diver.id)"
-              class="kick"
-              type="button"
-              :aria-label="`Kick ${diver.name} from the squad`"
-              title="Kick from squad"
-              @click="kick(diver.id)"
+              :content="`Kick ${diver.name} from the squad`"
             >
-              ×
-            </button>
+              <button
+                class="kick"
+                type="button"
+                :aria-label="`Kick ${diver.name} from the squad`"
+                @click="kick(diver.id)"
+              >
+                ×
+              </button>
+            </AppTooltip>
           </span>
         </div>
         <p

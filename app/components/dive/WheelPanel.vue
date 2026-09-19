@@ -137,15 +137,20 @@ function rerollLabel(
             v-if="state.wheel"
             class="head-tools"
           >
-            <button
+            <AppTooltip
               v-if="canControl && rerollWindow"
-              class="reroll-dice"
-              type="button"
+              :content="rerollLabel(misfortuneReroll, 'misfortune')"
               :disabled="!misfortuneReroll.allowed || misfortuneReeling"
-              :aria-label="rerollLabel(misfortuneReroll, 'misfortune')"
-              :title="rerollLabel(misfortuneReroll, 'misfortune')"
-              @click="$emit('reroll', 'misfortune')"
-            ><IconDice /></button>
+            >
+              <button
+                class="reroll-dice"
+                type="button"
+                :disabled="!misfortuneReroll.allowed || misfortuneReeling"
+                :aria-label="rerollLabel(misfortuneReroll, 'misfortune')"
+                :title="!misfortuneReroll.allowed || misfortuneReeling ? rerollLabel(misfortuneReroll, 'misfortune') : undefined"
+                @click="$emit('reroll', 'misfortune')"
+              ><IconDice /></button>
+            </AppTooltip>
             <span
               class="chip decision-stamp"
               :class="stamp.tone"
@@ -243,14 +248,19 @@ function rerollLabel(
             v-if="state.wheel && canControl"
             class="head-tools"
           >
-            <button
-              class="reroll-dice"
-              type="button"
+            <AppTooltip
+              :content="rerollLabel(frontReroll, 'front')"
               :disabled="!frontReroll.allowed || frontReeling"
-              :aria-label="rerollLabel(frontReroll, 'front')"
-              :title="rerollLabel(frontReroll, 'front')"
-              @click="$emit('reroll', 'front')"
-            ><IconDice /></button>
+            >
+              <button
+                class="reroll-dice"
+                type="button"
+                :disabled="!frontReroll.allowed || frontReeling"
+                :aria-label="rerollLabel(frontReroll, 'front')"
+                :title="!frontReroll.allowed || frontReeling ? rerollLabel(frontReroll, 'front') : undefined"
+                @click="$emit('reroll', 'front')"
+              ><IconDice /></button>
+            </AppTooltip>
           </span>
         </span>
         <template v-if="state.wheel">

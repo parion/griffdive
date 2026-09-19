@@ -397,7 +397,9 @@ app/
                    codex/CodexBrowser — the shared catalog browser (filter + tier grid),
                    ui/ (ItemCard, TierBadge, RiskPips, ChangelogModal — GitHub deploy log shown
                    from the pre-alpha header chip, CodexDrawer — the right-hand Reka Drawer
-                   slide-over that keeps the dive session mounted),
+                   slide-over that keeps the dive session mounted, AppDialog/AppTabs/AppTooltip —
+                   the themed Reka primitives every modal, tab strip and icon-only control builds
+                   on),
   composables/     useDiveSession (unified local/room driver), useDiveEngine (local reducer +
                    persist), useGameSocket (WS, reconnect, stored playerId), useSaves,
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
@@ -581,6 +583,18 @@ the Redis swap lands.
   alias.
 - **Components are dumb about rules.** They take state + emit intents. No tier math, no risk math,
   no progression logic in `app/components/**` — call engine selectors instead.
+- **Accessibility layer.** Reka UI is the primitive layer: import components explicitly from
+  `reka-ui` (never rely on auto-imports). Repeated chrome gets a themed `App*` wrapper in `ui/` —
+  `AppDialog` (modals: `v-model:open`, required `title`, optional `description`/`size`/
+  `dismissible`/`showClose`, `#title`/`#description`/`#footer` slots), `AppTabs` (segmented tab
+  strips: `v-model`, `tabs`, `label`), and `AppTooltip` (`content`, `disabled`; carries its own
+  provider). Do not hand-roll dialogs, focus traps, scroll locks or tab strips. One-off controls
+  use the Reka primitive directly (`RadioGroup` in `StarRating`/`CrusadeSetup`, `Checkbox` in
+  `PactPicker`) so the semantics live with the component. The global foundation lives in
+  `main.css` (`:focus-visible` ring, `.sr-only`, `.skip-link`) and `app.vue` (skip link →
+  `#main-content`, carried by every page `<main>` with `tabindex="-1"`). Dialogs are `aria-modal`,
+  trap focus, and restore focus to their trigger on close; `e2e/a11y.spec.ts` guards the
+  foundation.
 - **Styles:** single global theme (HD2 palette: Super Earth gold/khaki, alert red, stratagem teal)
   in `app/assets/css/`; scoped styles for specifics. Mobile-first — divers check their phone between
   missions. Typography mirrors the game's two-font system: `--font-body` (Chakra Petch, the FS
@@ -639,7 +653,8 @@ the Redis swap lands.
   production build (`pnpm build` + Nitro server, port 3173, WebSocket included). Specs: solo dive
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host
   authority, pact lock-in), Codex slide-over (opens over the dive without dropping the session),
-  PWA affordances
+  accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
+  non-dismissible name gate, star-rating keyboard navigation), PWA affordances
   (manifest content type + icons served, SW reachable, shell head links). Chromium only;
   `pnpm exec playwright install chromium` after a fresh clone.
 
