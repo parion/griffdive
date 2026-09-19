@@ -15,12 +15,12 @@ must update this file in the same commit.**
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core), Phase 2 (realtime squads) and Phase 3 (lobby) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (203 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (202 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection; open-dive lobby with filters and instant join — verified by a live two-peer smoke
-test and the Playwright E2E suite (solo flow, two-browser room sync, lobby join, PWA affordances)
-against the production build. Mid-crusade catch-up (Field Promotion + legacy caches, `LEAVE_DIVE`)
+test and the Playwright E2E suite (solo flow, two-browser room sync, lobby join, Codex slide-over,
+PWA affordances) against the production build. Mid-crusade catch-up (Field Promotion + legacy caches, `LEAVE_DIVE`)
 has landed, as has the Phase 4 PWA layer (installable manifest, generated icons, Workbox service
 worker with an offline shell + on-demand catalog art). Remaining Phase 4 polish is next. See
 [Roadmap](#roadmap).
@@ -206,21 +206,21 @@ Starter catalog:
 | Empty Pockets | I equip no booster | 1 | loadout |
 | Anti-Tank Abstinent | I carry nothing anti-tank | 2 | loadout |
 | Dead Weight | If I die, I refuse reinforcement — I stay dead | 2 | field |
-| Stim Abstinent | I use no stims | 2 | stats |
+| Stim Abstinent | I use no stims | 3 | stats |
 | Loadout Loyalist | I use only my equipped loadout; no pickups or swaps | 2 | field |
 | Primary Concern | I bring no support weapon | 2 | loadout |
 | Grounded | I bring no Eagle stratagems | 2 | loadout |
 | Ship Silent | I bring no orbital stratagems | 2 | loadout |
 | Open Field | I bring no sentries, mines, or emplacements | 2 | loadout |
-| Barebones | I fill no stratagem slots | 3 | loadout |
 | Untouchable | I finish the mission without dying | 3 | field |
 
 **Redundant picks:** a pact strictly implied by another picked pact never stacks risk. `SET_PACTS`
-refuses it (`PACT_SUBSUMES` in `shared/engine/pacts.ts`): **Barebones** — no stratagem slots filled —
-already forbids Pack Light, Thirsty, Primary Concern, Grounded, Ship Silent and Open Field, so none
-of those may be picked alongside it. Picking the stricter pact replaces the ones it covers, and the
-UI greys a covered offer with "Covered by …". (Anti-Tank Abstinent stays independent: thermite and
-other anti-tank throwables are not stratagems.)
+refuses it via `pactSubsumedBy` / `applyPactToggle` (`PACT_SUBSUMES` in `shared/engine/pacts.ts`),
+and the UI greys a covered offer with "Covered by …". The map is currently **empty** — *Barebones*
+("I fill no stratagem slots") was the only subsuming pact, and it was removed because HD2 requires
+four equipped stratagems to ready up, so the pact was impossible without a "bring random strats and
+never call them" workaround. The machinery stays in place for future subsumption rules. (Anti-Tank
+Abstinent stays independent: thermite and other anti-tank throwables are not stratagems.)
 
 **Failed pacts:** a broken pact is marked **failed** (`FAIL_PACT{playerId,pactId}`) while the
 mission runs — during the diving phase only, by the diver themselves or by the host refereeing the
@@ -359,8 +359,10 @@ app/
                    S+ "Diver's Choice" offer card, DiversChoicePicker — its minified codex
                    modal, InventoryGrid, CrusadeSetup, WarbondPicker,
                    JoinNameGate — name gate held while joining),
+                   codex/CodexBrowser — the shared catalog browser (filter + tier grid),
                    ui/ (ItemCard, TierBadge, RiskPips, ChangelogModal — GitHub deploy log shown
-                   from the pre-alpha header chip),
+                   from the pre-alpha header chip, CodexDrawer — the right-hand Reka Drawer
+                   slide-over that keeps the dive session mounted),
   composables/     useDiveSession (unified local/room driver), useDiveEngine (local reducer +
                    persist), useGameSocket (WS, reconnect, stored playerId), useSaves,
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),

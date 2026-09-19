@@ -211,6 +211,20 @@ function report(outcome: 'success' | 'failure'): void {
   reportMode.value = 'none'
 }
 
+// The stars field opens at the difficulty's best result — most clears are
+// full-star, so the common case needs no adjustment.
+function openReport(mode: 'success' | 'failure'): void {
+  reportMode.value = mode
+  stars.value = maxStars.value
+  timePct.value = null
+}
+
+function cancelReport(): void {
+  reportMode.value = 'none'
+  stars.value = maxStars.value
+  timePct.value = null
+}
+
 function pick(optionId: string, choiceItemId?: string): void {
   if (!session.selfId.value) {
     return
@@ -400,6 +414,7 @@ function commitWarbonds(codes: string[]): void {
                 :mission-in-operation="session.state.value.missionInOperation"
                 :op-length="opLength"
                 :mission-index="session.state.value.missionIndex"
+                :failed="session.state.value.phase === 'forfeit'"
               />
             </div>
           </div>
@@ -475,6 +490,8 @@ function commitWarbonds(codes: string[]): void {
             <span
               class="dot"
               :class="{ on: isOnline(diver.id) }"
+              role="img"
+              :aria-label="isOnline(diver.id) ? 'Online' : 'Offline'"
             /><input
               v-if="diver.id === session.selfId.value"
               v-model="nameDraft"
@@ -489,10 +506,14 @@ function commitWarbonds(codes: string[]): void {
             <span
               v-if="diver.id === session.state.value?.hostId"
               class="crown"
+              role="img"
+              aria-label="Host"
             >★</span>
             <span
               v-if="diver.catchUpOwed > 0"
               class="catchup-chip"
+              role="img"
+              :aria-label="`Field Promotion: ${diver.catchUpOwed} picks owed`"
               title="Field Promotion picks owed"
             >+{{ diver.catchUpOwed }}</span>
             <span
@@ -712,14 +733,14 @@ function commitWarbonds(codes: string[]): void {
                 <button
                   class="btn primary"
                   type="button"
-                  @click="reportMode = 'success'"
+                  @click="openReport('success')"
                 >
                   Mission complete
                 </button>
                 <button
                   class="btn danger"
                   type="button"
-                  @click="reportMode = 'failure'"
+                  @click="openReport('failure')"
                 >
                   Mission failed
                 </button>
@@ -766,7 +787,7 @@ function commitWarbonds(codes: string[]): void {
                   <button
                     class="btn ghost tiny"
                     type="button"
-                    @click="reportMode = 'none'"
+                    @click="cancelReport"
                   >
                     Cancel
                   </button>

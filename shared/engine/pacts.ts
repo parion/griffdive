@@ -12,8 +12,8 @@ export const BLOCKED_UNDER_MISFORTUNE: Readonly<Record<string, readonly string[]
   noEagles: ['grounded'],
   noOrbitals: ['shipSilent'],
   primaryOnly: ['primaryConcern', 'loadoutLoyalist'],
-  oopsAllOrbitals: ['packLight', 'thirsty', 'antiTankAbstinent', 'primaryConcern', 'grounded', 'shipSilent', 'openField', 'barebones'],
-  noStratagems: ['packLight', 'thirsty', 'antiTankAbstinent', 'primaryConcern', 'grounded', 'shipSilent', 'openField', 'barebones'],
+  oopsAllOrbitals: ['packLight', 'thirsty', 'antiTankAbstinent', 'primaryConcern', 'grounded', 'shipSilent', 'openField'],
+  noStratagems: ['packLight', 'thirsty', 'antiTankAbstinent', 'primaryConcern', 'grounded', 'shipSilent', 'openField'],
   zeroDeaths: ['deadWeight', 'untouchable'],
   noReserves: ['deadWeight'],
   meleeOnly: ['antiTankAbstinent', 'primaryConcern'],
@@ -30,13 +30,11 @@ export function isPactSelectable(pactId: string, misfortuneId: string | null): b
 }
 
 // A pact strictly implied by another pick is not a second restriction: picking
-// both would bank risk for a limitation already held. Barebones (no stratagem
-// slots filled) already forbids the backpack, resupply, support-weapon, Eagle,
-// orbital and sentry pacts. Anti-tank abstention stays out — thermite and other
-// anti-tank throwables are not stratagems.
-export const PACT_SUBSUMES: Readonly<Record<string, readonly string[]>> = {
-  barebones: ['packLight', 'thirsty', 'primaryConcern', 'grounded', 'shipSilent', 'openField'],
-}
+// both would bank risk for a limitation already held. The map is currently
+// empty — Barebones (the only pact that subsumed others) was removed because
+// HD2 requires four equipped stratagems to ready up. The machinery stays in
+// place for future subsumption rules.
+export const PACT_SUBSUMES: Readonly<Record<string, readonly string[]>> = {}
 
 // The picked pact that already covers `pactId`, if any — the reason a pick is
 // redundant.

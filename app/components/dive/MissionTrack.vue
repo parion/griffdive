@@ -3,15 +3,18 @@ const props = defineProps<{
   missionInOperation: number
   opLength: number
   missionIndex: number
+  failed?: boolean
 }>()
 
-const label = computed(() =>
-  `Operation mission ${props.missionInOperation} of ${props.opLength} — mission ${props.missionIndex + 1} overall`)
+const label = computed(() => props.failed
+  ? `Operation failed — mission ${props.missionInOperation} of ${props.opLength} failed. Pick one item to forfeit, then the operation restarts at mission 1`
+  : `Operation mission ${props.missionInOperation} of ${props.opLength} — mission ${props.missionIndex + 1} overall`)
 </script>
 
 <template>
   <span
     class="mission-track"
+    :class="{ failed: props.failed }"
     role="img"
     :aria-label="label"
     :title="label"
@@ -67,6 +70,19 @@ const label = computed(() =>
   border-color: var(--gold);
   color: var(--gold);
   animation: seg-pulse 1.8s ease-in-out infinite;
+}
+
+/* The failed mission is no longer progress: mark the active segment red and
+   still, so the header doesn't read as if the operation is still running. */
+.mission-track.failed .seg.active {
+  border-color: var(--red);
+  color: var(--red);
+  animation: none;
+}
+.mission-track.failed .seg.done {
+  border-color: var(--border);
+  background: none;
+  color: var(--muted);
 }
 
 .check {

@@ -24,7 +24,6 @@ export const PACTS: readonly Pact[] = [
   { id: 'grounded', name: 'Grounded', rule: 'I bring no Eagle stratagems', accountability: 'loadout' },
   { id: 'shipSilent', name: 'Ship Silent', rule: 'I bring no orbital stratagems', accountability: 'loadout' },
   { id: 'openField', name: 'Open Field', rule: 'I bring no sentries, mines, or emplacements', accountability: 'loadout' },
-  { id: 'barebones', name: 'Barebones', rule: 'I fill no stratagem slots', accountability: 'loadout' },
   { id: 'untouchable', name: 'Untouchable', rule: 'I finish the mission without dying', accountability: 'field' },
 ]
 

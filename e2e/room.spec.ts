@@ -110,3 +110,40 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   await contextA.close()
   await contextB.close()
 })
+
+test('the Codex slide-over keeps the host seated', async ({ browser }) => {
+  const contextA = await browser.newContext()
+  const contextB = await browser.newContext()
+  const pageA = await contextA.newPage()
+  const pageB = await contextB.newPage()
+
+  await pageA.goto('/')
+  await pageA.getByRole('button', { name: 'Host an online dive' }).click()
+  await pageA.getByLabel('Your name').fill('Host')
+  await pageA.getByRole('button', { name: 'Join the dive' }).click()
+  await pageA.getByRole('button', { name: 'Launch crusade' }).click()
+  await expect(pageA.getByText('Wheel of Misfortune')).toBeVisible()
+
+  await pageB.goto(pageA.url())
+  await pageB.getByLabel('Your name').fill('Duo')
+  await pageB.getByRole('button', { name: 'Join the dive' }).click()
+  await expect(pageB.locator('.diver-chip')).toHaveCount(2)
+
+  // Opening the Codex overlays the session — the socket stays mounted, so the
+  // host is never migrated away.
+  await pageA.getByRole('button', { name: 'Codex', exact: true }).click()
+  const drawer = pageA.getByRole('dialog', { name: 'Codex' })
+  await expect(drawer).toBeVisible()
+  await expect(drawer.getByText('S Tier')).toBeVisible()
+
+  await pageA.keyboard.press('Escape')
+  await expect(drawer).toBeHidden()
+
+  // Still host, still connected, still seated with the peer.
+  await expect(pageA.locator('.diver-chip')).toHaveCount(2)
+  await expect(pageA.locator('.crown')).toHaveCount(1)
+  await expect(pageA.locator('.diver-chip').filter({ hasText: 'Duo' })).toBeVisible()
+
+  await contextA.close()
+  await contextB.close()
+})
