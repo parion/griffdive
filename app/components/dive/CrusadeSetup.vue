@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
 import { STARTING_KITS, VARIANTS, difficultyName } from '~~/shared/engine/progression'
 import type { CrusadeVariant } from '~~/shared/engine/types'
 
@@ -12,27 +13,34 @@ const emit = defineEmits<{
   'update:variant': [variant: CrusadeVariant]
   'start': []
 }>()
+
+function select(value: unknown): void {
+  emit('update:variant', value as CrusadeVariant)
+}
 </script>
 
 <template>
   <div class="setup-grid">
     <div class="field">
       <span class="muted small">Variant</span>
-      <div class="variant-grid">
-        <button
+      <RadioGroupRoot
+        :model-value="variant"
+        class="variant-grid"
+        aria-label="Variant"
+        @update:model-value="select"
+      >
+        <RadioGroupItem
           v-for="entry in VARIANTS"
           :key="entry.id"
+          :value="entry.id"
           class="variant-card"
           :class="{ on: variant === entry.id }"
-          type="button"
-          :aria-pressed="variant === entry.id"
-          @click="emit('update:variant', entry.id)"
         >
           <strong>{{ entry.name }}</strong>
           <span class="muted small">{{ entry.squadSize }} · starts at {{ difficultyName(STARTING_KITS[entry.id].startDifficulty) }}</span>
           <span class="small muted">{{ entry.description }}</span>
-        </button>
-      </div>
+        </RadioGroupItem>
+      </RadioGroupRoot>
     </div>
     <button
       v-if="showStart"

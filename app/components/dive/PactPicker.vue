@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CheckboxRoot } from 'reka-ui'
 import type { Pact } from '~~/shared/data/pacts'
 import { PACT_RISK } from '~~/shared/engine/config'
 import { ACCOUNTABILITY_LABELS } from '~/utils/accountability'
@@ -19,43 +20,34 @@ defineEmits<{ toggle: [pactId: string], lock: [] }>()
       Rolled from the wheel decision — take any, all, or none. Every pact you carry raises your
       reward ceiling; a pact you break in the field is voided and costs one reward option.
     </p>
-    <ul class="pact-list">
-      <li
+    <div class="pact-list">
+      <CheckboxRoot
         v-for="pact in props.offer"
         :key="pact.id"
+        :model-value="selected.includes(pact.id)"
+        :disabled="Boolean(props.covered?.[pact.id])"
+        class="pact"
+        :class="{ on: selected.includes(pact.id) }"
+        @update:model-value="$emit('toggle', pact.id)"
       >
-        <button
-          class="pact"
-          :class="{ on: selected.includes(pact.id), covered: props.covered?.[pact.id] }"
-          :disabled="Boolean(props.covered?.[pact.id])"
-          type="button"
-          @click="$emit('toggle', pact.id)"
-        >
-          <span class="pact-head">
-            <strong>{{ pact.name }}</strong>
-            <RiskPips
-              :value="PACT_RISK[pact.id] ?? 0"
-              :max="3"
-            />
-          </span>
-          <p class="small">
-            {{ pact.rule }}
-          </p>
-          <p
-            v-if="props.covered?.[pact.id]"
-            class="small covered-note"
-          >
-            Covered by {{ props.covered[pact.id] }}
-          </p>
-          <p
-            v-else
-            class="small muted"
-          >
-            {{ ACCOUNTABILITY_LABELS[pact.accountability] }}
-          </p>
-        </button>
-      </li>
-    </ul>
+        <span class="pact-head">
+          <strong>{{ pact.name }}</strong>
+          <RiskPips
+            :value="PACT_RISK[pact.id] ?? 0"
+            :max="3"
+          />
+        </span>
+        <span class="line small">{{ pact.rule }}</span>
+        <span
+          v-if="props.covered?.[pact.id]"
+          class="line small covered-note"
+        >Covered by {{ props.covered[pact.id] }}</span>
+        <span
+          v-else
+          class="line small muted"
+        >{{ ACCOUNTABILITY_LABELS[pact.accountability] }}</span>
+      </CheckboxRoot>
+    </div>
     <div class="row spread">
       <span class="muted small">{{ selected.length }}/{{ offer.length }} offered taken</span>
       <button
@@ -71,7 +63,6 @@ defineEmits<{ toggle: [pactId: string], lock: [] }>()
 
 <style scoped>
 .pact-list {
-  list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
@@ -102,7 +93,6 @@ defineEmits<{ toggle: [pactId: string], lock: [] }>()
   cursor: not-allowed;
 }
 .covered-note {
-  margin: 0.15rem 0 0;
   color: var(--khaki);
 }
 .pact.on {
@@ -111,7 +101,7 @@ defineEmits<{ toggle: [pactId: string], lock: [] }>()
   animation: pact-pulse 320ms var(--ease-out);
 }
 .pact-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
-.pact p { margin: 0.15rem 0 0; }
+.line { display: block; margin-top: 0.15rem; }
 
 @keyframes pact-pulse {
   0% { transform: scale(1); }
