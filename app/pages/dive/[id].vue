@@ -18,6 +18,7 @@ import {
   teamRiskOf,
 } from '~~/shared/engine/selectors'
 import type { CrusadeVariant, EngineAction, ItemRef } from '~~/shared/engine/types'
+import { deriveFront, deriveMisfortune } from '~~/shared/engine/wheel'
 import { rememberDiverName } from '~/composables/useGameSocket'
 
 const route = useRoute()
@@ -174,7 +175,7 @@ const options = computed(() =>
   session.state.value && self.value ? diverOptions(session.state.value, self.value) : [],
 )
 
-// Diver's Choice picks from the diver's own catalog: their declared warbonds
+// Liberty's Cross picks from the diver's own catalog: their declared warbonds
 // minus anything already owned. Same personal-pool rule as the rolled offers.
 const rewardPool = computed(() =>
   self.value ? rewardPoolFor(self.value.warbondCodes ?? ALL_WARBOND_CODES) : [])
@@ -191,6 +192,7 @@ const phaseKey = computed(() => {
 const reportMode = ref<'none' | 'success' | 'failure'>('none')
 const stars = ref(1)
 const timePct = ref<number | null>(null)
+const samples = ref({ common: 0, rare: 0, super: 0 })
 
 const maxStars = computed(() =>
   maxStarsFor(session.state.value?.difficulty ?? MAX_DIFFICULTY))
@@ -202,7 +204,24 @@ function spin(): void {
 }
 
 function reroll(wheel: 'misfortune' | 'front'): void {
-  dispatch({ type: 'REROLL_WHEEL', wheel, seed: newSeed() })
+  const state = session.state.value
+  if (!state?.wheel) {
+    return
+  }
+  // Spins are seeds, but a reroll must actually move: draw fresh seeds until
+  // the derived result differs from the one being replaced (the reducer refuses
+  // a same-result seed too, so a hostile client can't fake it).
+  let seed = newSeed()
+  for (let attempt = 0; attempt < 32; attempt++) {
+    const same = wheel === 'misfortune'
+      ? deriveMisfortune(seed, state.difficulty).id === state.wheel.misfortuneId
+      : deriveFront(seed) === state.frontId
+    if (!same) {
+      break
+    }
+    seed = newSeed()
+  }
+  dispatch({ type: 'REROLL_WHEEL', wheel, seed })
 }
 
 function decideMisfortune(accepted: boolean): void {
@@ -222,11 +241,13 @@ function failPact(playerId: string, pactId: string): void {
 }
 
 function report(outcome: 'success' | 'failure'): void {
+  const hasSamples = samples.value.common > 0 || samples.value.rare > 0 || samples.value.super > 0
   dispatch({
     type: 'REPORT_RESULT',
     outcome,
     stars: outcome === 'success' ? stars.value : 0,
     timePct: timePct.value ?? undefined,
+    samples: hasSamples && outcome === 'success' ? { ...samples.value } : undefined,
   })
   reportMode.value = 'none'
 }
@@ -237,12 +258,14 @@ function openReport(mode: 'success' | 'failure'): void {
   reportMode.value = mode
   stars.value = maxStars.value
   timePct.value = null
+  samples.value = { common: 0, rare: 0, super: 0 }
 }
 
 function cancelReport(): void {
   reportMode.value = 'none'
   stars.value = maxStars.value
   timePct.value = null
+  samples.value = { common: 0, rare: 0, super: 0 }
 }
 
 function pick(optionId: string, choiceItemId?: string): void {
@@ -753,7 +776,7 @@ function commitWarbonds(codes: string[]): void {
                       >
                         <TierBadge :tier="liveRange.max" />
                       </Motion>
-                      <span>(~{{ Math.round(liveRange.odds * 100) }}% · luck {{ teamRiskOf(session.state.value) + pactRiskTotal(pactSelection) }})</span>
+                      <span>(~{{ Math.round(liveRange.odds * 100) }}% · valor {{ teamRiskOf(session.state.value) + pactRiskTotal(pactSelection) }})</span>
                     </p>
                   </template>
                 </div>
@@ -826,6 +849,43 @@ function commitWarbonds(codes: string[]): void {
                     :length="maxStars"
                   />
                   <span class="muted small">of {{ maxStars }} at this difficulty</span>
+                </div>
+                <div
+                  v-if="reportMode === 'success'"
+                  class="row small muted"
+                >
+                  <span>Samples</span>
+                  <label class="row small muted">
+                    Common
+                    <input
+                      v-model.number="samples.common"
+                      type="number"
+                      min="0"
+                      max="99"
+                      style="width: 3.5rem"
+                    >
+                  </label>
+                  <label class="row small muted">
+                    Rare
+                    <input
+                      v-model.number="samples.rare"
+                      type="number"
+                      min="0"
+                      max="99"
+                      style="width: 3.5rem"
+                    >
+                  </label>
+                  <label class="row small muted">
+                    Super
+                    <input
+                      v-model.number="samples.super"
+                      type="number"
+                      min="0"
+                      max="99"
+                      style="width: 3.5rem"
+                    >
+                  </label>
+                  <span>adds Valor (capped)</span>
                 </div>
                 <label class="row small muted">
                   Time remaining % (optional)

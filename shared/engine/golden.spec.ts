@@ -112,7 +112,7 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
       const option = options[0]
       record.optionId = option?.optionId ?? null
       if (option?.choice) {
-        // Diver's Choice banks a deterministic free pick: the first item in
+        // Liberty's Cross banks a deterministic free pick: the first item in
         // the diver's own pool they don't own (stable catalog order).
         const owned = new Set(state.personalInventories.host ?? [])
         const itemId = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)

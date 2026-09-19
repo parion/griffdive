@@ -175,6 +175,15 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (action.wheel === 'front' && state.missionInOperation > 1) {
         return state
       }
+      // "Spins are seeds", but a reroll must actually move: refuse a seed that
+      // lands on the result it would replace, so a paid reroll never returns
+      // the same outcome. Only the immediately replaced result is excluded.
+      const sameResult = action.wheel === 'misfortune'
+        ? deriveMisfortune(action.seed, state.difficulty).id === state.wheel.misfortuneId
+        : deriveFront(action.seed) === state.frontId
+      if (sameResult) {
+        return state
+      }
       const completed = state.completedCombos.includes(
         comboKey(state.wheel.misfortuneId, state.frontId),
       )
@@ -294,7 +303,18 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       const stars = action.outcome === 'success'
         ? Math.min(Math.max(Math.round(action.stars), 1), maxStarsFor(state.difficulty))
         : 0
-      const report = { outcome: action.outcome, stars, timePct: action.timePct }
+      // Samples are honor-system like the rest of the report, but malformed
+      // counts must not leak absurd Valor: clamp to non-negative integers.
+      const sampleCount = (value: number): number =>
+        Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
+      const samples = action.samples
+        ? {
+            common: sampleCount(action.samples.common),
+            rare: sampleCount(action.samples.rare),
+            super: sampleCount(action.samples.super),
+          }
+        : undefined
+      const report = { outcome: action.outcome, stars, timePct: action.timePct, samples }
       if (action.outcome === 'success') {
         return commit(state, {
           phase: 'rewards',
@@ -348,7 +368,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (!option) {
         return state
       }
-      // Diver's Choice banks the item the diver named; every other option is
+      // Liberty's Cross banks the item the diver named; every other option is
       // the item itself (optionId === item id). pickedOptionId always records
       // the banked item's id.
       const itemId = option.choice ? action.choiceItemId : action.optionId
@@ -451,8 +471,8 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (!diver || diver.catchUpOwed <= 0) {
         return state
       }
-      // Options roll at the base tier with zero luck, so no option is ever
-      // Diver's Choice — the item is the option.
+      // Options roll at the base tier with zero Valor, so no option is ever
+      // Liberty's Cross — the item is the option.
       const option = catchUpOptionsFor(state, diver).find(
         candidate => candidate.optionId === action.optionId,
       )

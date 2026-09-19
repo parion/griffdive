@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 11
+export const ENGINE_VERSION = 12
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -65,7 +65,7 @@ export const S_PLUS_BONUS_OPTIONS = 1
 export const OPTIONS_LOST_PER_FAILED_PACT = 1
 // Field Promotion cap: a mid-crusade joiner rolls at most this many catch-up
 // options (one per operation behind, capped). Catch-up buys altitude at the
-// current base tier with zero luck — never rarity.
+// current base tier with zero Valor — never rarity.
 export const CATCHUP_CAP = 4
 export const TIER_ROLL_WEIGHT_BASE = 2
 export const MAX_NAME_LENGTH = 32
@@ -88,17 +88,35 @@ export const RESERVE_STRATAGEMS = [
 
 // Reward scale-back: difficulty alone buys a base tier — C on diffs 3–5,
 // B on 6–7, A on 8+. S and S+ are reachable only through chosen risk
-// ("luck": an accepted team misfortune plus personal pacts), which buys
-// odds on each tier step, never a guarantee.
+// ("Valor": an accepted team misfortune plus personal pacts, plus a small
+// team-performance bonus), which buys odds on each tier step, never a guarantee.
 export const UPGRADE_CAP = 0.8
 export const UPGRADE_STEP = 3
 // The final S→S+ rung is capped far below the rest of the ladder: altitude
-// alone must never make Diver's Choice routine. Max luck (13) tops out around
-// 8% at altitude and lower in the low bands.
+// alone must never make Liberty's Cross routine. Max chosen Valor (13) tops out
+// around 8% at altitude and lower in the low bands.
 export const S_PLUS_UPGRADE_CAP = 0.1
 // Tiers with per-step odds below this are too unlikely to preview. Kept at or
-// below the S+ cap so the jackpot can still preview at max luck.
+// below the S+ cap so the jackpot can still preview at max Valor.
 export const UPGRADE_PREVIEW_FLOOR = 0.1
+
+// Team performance feeds a small third Valor term on top of chosen risk, from
+// the mission just reported. Capped so chosen risk still dominates: a perfect
+// timed clear is worth 0.2 and samples up to 0.3, so time + samples together
+// never exceed 0.5 against the 13-point chosen ceiling.
+//
+// Sample values are calibrated against wiki.gg/Sample "availability by
+// difficulty": commons 15–18 (diff 3) climb to 40, rares enter at 4 and supers
+// at 6, so the game's own mix does the difficulty scaling — a full haul ramps
+// ~0.03 (Medium) to 0.3 (Helldive+). Small per-sample values keep loads from
+// saturating the cap.
+export const TIME_VALOR_MAX = 0.2
+export const SAMPLE_VALOR_CAP = 0.3
+export const SAMPLE_VALOR_WEIGHTS: Readonly<Record<'common' | 'rare' | 'super', number>> = {
+  common: 0.0015,
+  rare: 0.004,
+  super: 0.02,
+}
 
 export function baseTierFor(difficulty: number): RewardTier {
   if (difficulty >= 8) {
@@ -123,8 +141,8 @@ export function bandPosition(difficulty: number): number {
 }
 
 // Odds of upgrading one tier on a given step (1 = C→B, 2 = B→A, …).
-export function upgradeOdds(luck: number, bandPos: number, step: number): number {
-  return Math.min(UPGRADE_CAP, (luck * (1 + bandPos)) / UPGRADE_STEP ** step)
+export function upgradeOdds(valor: number, bandPos: number, step: number): number {
+  return Math.min(UPGRADE_CAP, (valor * (1 + bandPos)) / UPGRADE_STEP ** step)
 }
 
 export const MISFORTUNE_RISK: Readonly<Record<string, number>> = {

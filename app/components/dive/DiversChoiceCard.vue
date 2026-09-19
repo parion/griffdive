@@ -25,7 +25,7 @@ function onChoose(itemId: string): void {
       >S+</span>
       <div class="choice-copy">
         <h3 class="choice-title">
-          Diver's Choice
+          Liberty’s Cross
         </h3>
         <p class="choice-sub">
           The ceiling broke the scale. Claim any item from your codex.

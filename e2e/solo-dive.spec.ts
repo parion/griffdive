@@ -13,7 +13,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByText('Decision pending')).toBeVisible()
   await expect(page.locator('.tier-badge').first()).toBeVisible()
 
-  // The team locks the drawn misfortune in — chosen risk raises everyone's luck.
+  // The team locks the drawn misfortune in — chosen risk raises everyone's Valor.
   await page.getByRole('button', { name: 'Lock it in' }).click()
   await expect(page.getByText('Locked in — team-wide')).toBeVisible()
 
