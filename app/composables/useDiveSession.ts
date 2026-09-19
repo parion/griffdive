@@ -12,6 +12,7 @@ export interface DiveSession {
   dispatch: (action: EngineAction) => void
   connect: () => void
   awaitingName: ComputedRef<boolean>
+  connectionFailed: ComputedRef<boolean>
   newSeed: () => number
   selfId: ComputedRef<string | null>
   selfIsHost: ComputedRef<boolean>
@@ -34,6 +35,7 @@ export function useDiveSession(slotId: string): DiveSession {
       dispatch: engine.dispatch,
       connect: () => {},
       awaitingName: computed(() => false),
+      connectionFailed: computed(() => false),
       newSeed: engine.newSeed,
       selfId: computed(() => engine.state.value?.hostId ?? null),
       selfIsHost: computed(() => true),
@@ -53,6 +55,7 @@ export function useDiveSession(slotId: string): DiveSession {
     dispatch,
     connect: () => socket.connect(),
     awaitingName: computed(() => socket.awaitingName.value),
+    connectionFailed: computed(() => socket.connectionFailed.value),
     newSeed,
     selfId: computed(() => store.selfId),
     selfIsHost: computed(() =>

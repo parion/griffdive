@@ -43,6 +43,9 @@ export function useGameSocket(roomCode: string) {
   const hasSeat = import.meta.client
     && !!localStorage.getItem(playerKey(roomCode))
   const awaitingName = ref(!hasSeat && !hasDiverName())
+  // Set once autoReconnect gives up. Transient CLOSED->CONNECTING churn during
+  // retries must not look like a dead end, so only the exhausted case flips this.
+  const connectionFailed = ref(false)
 
   const url = computed(() => {
     if (!import.meta.client) {
@@ -58,6 +61,7 @@ export function useGameSocket(roomCode: string) {
       retries: 8,
       delay: 1500,
       onFailed() {
+        connectionFailed.value = true
         store.status = 'disconnected'
       },
     },
@@ -68,6 +72,7 @@ export function useGameSocket(roomCode: string) {
       pongTimeout: 10_000,
     },
     onConnected() {
+      connectionFailed.value = false
       hello()
     },
     onMessage(_socket, event) {
@@ -108,6 +113,7 @@ export function useGameSocket(roomCode: string) {
 
   function connect(): void {
     awaitingName.value = false
+    connectionFailed.value = false
     store.openSession(roomCode)
     open()
   }
@@ -126,5 +132,5 @@ export function useGameSocket(roomCode: string) {
   })
   onBeforeUnmount(close)
 
-  return { store, dispatch, connect, close, awaitingName }
+  return { store, dispatch, connect, close, awaitingName, connectionFailed }
 }

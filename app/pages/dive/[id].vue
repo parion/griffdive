@@ -354,6 +354,30 @@ function commitWarbonds(codes: string[]): void {
     >
       Dive not found. <NuxtLink to="/">Back to base</NuxtLink>
     </p>
+    <section
+      v-else-if="session.mode === 'room' && !session.awaitingName.value && session.connectionFailed.value"
+      class="panel"
+    >
+      <h2>Can't reach the dive server</h2>
+      <p class="muted small">
+        Live dives sync over a WebSocket, and this browser couldn't hold a connection to
+        <span class="mono">{{ session.slotName.value }}</span>. Check your network, then retry —
+        solo crusades run fully offline.
+      </p>
+      <div class="row">
+        <button
+          class="btn primary"
+          type="button"
+          @click="session.connect()"
+        >
+          Reconnect
+        </button>
+        <NuxtLink
+          class="btn"
+          to="/"
+        >Back to base</NuxtLink>
+      </div>
+    </section>
     <template v-else-if="session.state.value">
       <header class="page-header">
         <div>
