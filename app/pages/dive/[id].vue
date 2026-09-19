@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MAX_DIFFICULTY, maxStarsFor, missionsPerOperation } from '~~/shared/engine/config'
+import { MAX_DIFFICULTY, maxStarsFor, missionsPerOperation, sampleAvailability } from '~~/shared/engine/config'
 import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
 import { difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
@@ -192,8 +192,21 @@ const phaseKey = computed(() => {
 
 const reportMode = ref<'none' | 'success' | 'failure'>('none')
 const stars = ref(1)
-const timePct = ref<number | null>(null)
+const timePct = ref(0)
 const samples = ref({ common: 0, rare: 0, super: 0 })
+
+// Slider maxima come from the game's per-difficulty sample availability.
+const sampleMax = computed(() =>
+  sampleAvailability(session.state.value?.difficulty ?? MAX_DIFFICULTY))
+
+// Live preview of the team-performance Valor this report will carry.
+const performancePreview = computed(() =>
+  performanceValor({
+    outcome: 'success',
+    stars: 0,
+    timePct: timePct.value,
+    samples: { ...samples.value },
+  }))
 
 const maxStars = computed(() =>
   maxStarsFor(session.state.value?.difficulty ?? MAX_DIFFICULTY))
@@ -242,13 +255,12 @@ function failPact(playerId: string, pactId: string): void {
 }
 
 function report(outcome: 'success' | 'failure'): void {
-  const hasSamples = samples.value.common > 0 || samples.value.rare > 0 || samples.value.super > 0
   dispatch({
     type: 'REPORT_RESULT',
     outcome,
     stars: outcome === 'success' ? stars.value : 0,
-    timePct: timePct.value ?? undefined,
-    samples: hasSamples && outcome === 'success' ? { ...samples.value } : undefined,
+    timePct: timePct.value,
+    samples: outcome === 'success' ? { ...samples.value } : undefined,
   })
   reportMode.value = 'none'
 }
@@ -258,14 +270,14 @@ function report(outcome: 'success' | 'failure'): void {
 function openReport(mode: 'success' | 'failure'): void {
   reportMode.value = mode
   stars.value = maxStars.value
-  timePct.value = null
+  timePct.value = 0
   samples.value = { common: 0, rare: 0, super: 0 }
 }
 
 function cancelReport(): void {
   reportMode.value = 'none'
   stars.value = maxStars.value
-  timePct.value = null
+  timePct.value = 0
   samples.value = { common: 0, rare: 0, super: 0 }
 }
 
@@ -630,13 +642,13 @@ function commitWarbonds(codes: string[]): void {
               </button>
             </AppTooltip>
           </span>
+          <p
+            v-if="session.mode === 'room' && session.state.value.divers.length === 1"
+            class="lone-host"
+          >
+            You're the only diver here — share the invite link to bring in your squad.
+          </p>
         </div>
-        <p
-          v-if="session.mode === 'room' && session.state.value.divers.length === 1"
-          class="muted small lone-host"
-        >
-          You're the only diver here — share the invite link to bring in your squad.
-        </p>
       </section>
 
       <p
@@ -813,10 +825,11 @@ function commitWarbonds(codes: string[]): void {
                 :difficulty="session.state.value.difficulty"
                 :team-risk="teamRiskOf(session.state.value)"
                 :pact-risk="selfPactRisk"
+                :performance="performancePreview"
                 locked
               />
               <div
-                v-if="canControl"
+                v-if="canControl && reportMode === 'none'"
                 class="row"
               >
                 <button
@@ -835,7 +848,7 @@ function commitWarbonds(codes: string[]): void {
                 </button>
               </div>
               <p
-                v-else
+                v-else-if="!canControl"
                 class="muted small"
               >
                 Waiting for the host to report the mission result.
@@ -846,62 +859,67 @@ function commitWarbonds(codes: string[]): void {
               >
                 <div
                   v-if="reportMode === 'success'"
-                  class="row"
+                  class="report-victory"
                 >
-                  <span class="muted small">Stars</span>
+                  <span class="victory-banner">
+                    <span
+                      class="wing"
+                      aria-hidden="true"
+                    />
+                    Mission Completed
+                    <span
+                      class="wing flip"
+                      aria-hidden="true"
+                    />
+                  </span>
                   <StarRating
                     v-model="stars"
                     :length="maxStars"
+                    size="lg"
                   />
                   <span class="muted small">of {{ maxStars }} at this difficulty</span>
                 </div>
-                <div
-                  v-if="reportMode === 'success'"
-                  class="row small muted"
-                >
-                  <span>Samples</span>
-                  <label class="row small muted">
-                    Common
-                    <input
-                      v-model.number="samples.common"
-                      type="number"
-                      min="0"
-                      max="99"
-                      style="width: 3.5rem"
-                    >
-                  </label>
-                  <label class="row small muted">
-                    Rare
-                    <input
-                      v-model.number="samples.rare"
-                      type="number"
-                      min="0"
-                      max="99"
-                      style="width: 3.5rem"
-                    >
-                  </label>
-                  <label class="row small muted">
-                    Super
-                    <input
-                      v-model.number="samples.super"
-                      type="number"
-                      min="0"
-                      max="99"
-                      style="width: 3.5rem"
-                    >
-                  </label>
-                  <span>adds Valor (capped)</span>
-                </div>
-                <label class="row small muted">
-                  Time remaining % (optional)
-                  <input
-                    v-model.number="timePct"
-                    type="number"
-                    min="0"
-                    max="100"
-                    style="width: 5rem"
+                <div class="report-fields">
+                  <template v-if="reportMode === 'success'">
+                    <RangeField
+                      v-model="samples.common"
+                      :max="sampleMax.common"
+                      icon="/images/svgs/Common_Sample_Icon.svg"
+                      aria-label="Common samples"
+                    />
+                    <RangeField
+                      v-if="sampleMax.rare > 0"
+                      v-model="samples.rare"
+                      :max="sampleMax.rare"
+                      icon="/images/svgs/Rare_Sample_Icon.svg"
+                      aria-label="Rare samples"
+                    />
+                    <RangeField
+                      v-if="sampleMax.super > 0"
+                      v-model="samples.super"
+                      :max="sampleMax.super"
+                      icon="/images/svgs/Super_Sample_Icon.svg"
+                      aria-label="Super samples"
+                    />
+                  </template>
+                  <RangeField
+                    v-model="timePct"
+                    :max="100"
+                    aria-label="Time remaining percent"
                   >
-                </label>
+                    <template #icon>
+                      <AppTooltip content="Time remaining">
+                        <button
+                          class="icon-tip"
+                          type="button"
+                          aria-label="Time remaining"
+                        >
+                          <IconClock />
+                        </button>
+                      </AppTooltip>
+                    </template>
+                  </RangeField>
+                </div>
                 <div class="row">
                   <button
                     class="btn primary"
@@ -1096,6 +1114,57 @@ function commitWarbonds(codes: string[]): void {
   border-top: 1px dashed var(--border);
   padding-top: 0.6rem;
 }
+.report-fields {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+.report-victory {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0 0.15rem;
+}
+.victory-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.wing {
+  width: 2.4rem;
+  height: 0.95rem;
+  background: repeating-linear-gradient(
+    115deg,
+    var(--gold) 0 0.18rem,
+    transparent 0.18rem 0.42rem
+  );
+  clip-path: polygon(0 50%, 22% 0, 100% 0, 100% 100%, 22% 100%);
+}
+.wing.flip { transform: scaleX(-1); }
+.icon-tip {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: help;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.icon-tip:hover,
+.icon-tip:focus-visible {
+  outline: none;
+  color: var(--gold);
+}
 
 .victory { text-align: center; align-items: center; }
 .victory h1 { color: var(--gold); animation: victory-glow 2.4s ease-in-out 1.2s infinite; }
@@ -1113,7 +1182,23 @@ function commitWarbonds(codes: string[]): void {
 }
 
 .squad-strip { padding: 0.6rem 0.75rem; }
-.lone-host { margin: 0.5rem 0 0; }
+.lone-host {
+  margin: 0;
+  flex: 1 1 14rem;
+  color: var(--gold);
+  font-weight: 700;
+  animation: lone-glow 2.4s ease-in-out infinite;
+}
+@keyframes lone-glow {
+  0%, 100% { text-shadow: 0 0 4px color-mix(in srgb, var(--gold) 35%, transparent); }
+  50% { text-shadow: 0 0 14px color-mix(in srgb, var(--gold) 90%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lone-host {
+    animation: none;
+    text-shadow: 0 0 8px color-mix(in srgb, var(--gold) 60%, transparent);
+  }
+}
 .title-row {
   display: inline-flex;
   align-items: center;

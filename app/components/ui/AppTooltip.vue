@@ -36,7 +36,8 @@ withDefaults(defineProps<{
 </template>
 
 <style scoped>
-.app-tooltip {
+/* Tooltip content is portaled to <body>, outside this component's scope. */
+:global(.app-tooltip) {
   z-index: 60;
   max-width: 18rem;
   padding: 0.35rem 0.55rem;

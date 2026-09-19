@@ -5,7 +5,8 @@ const props = withDefaults(defineProps<{
   modelValue: number
   length?: number
   disabled?: boolean
-}>(), { length: 5, disabled: false })
+  size?: 'md' | 'lg'
+}>(), { length: 5, disabled: false, size: 'md' })
 
 const emit = defineEmits<{ 'update:modelValue': [value: number] }>()
 
@@ -26,7 +27,7 @@ function select(value: unknown): void {
     :model-value="props.modelValue"
     :disabled="props.disabled"
     class="star-rating"
-    :class="{ disabled: props.disabled }"
+    :class="[`size-${props.size}`, { disabled: props.disabled }]"
     :aria-label="`Mission stars, ${props.length} available`"
     @update:model-value="select"
     @mouseleave="hovered = null"
@@ -69,6 +70,15 @@ function select(value: unknown): void {
 .star.filled {
   color: var(--gold);
   opacity: 1;
+}
+
+.size-lg {
+  gap: 0.4rem;
+}
+.size-lg .star {
+  font-size: 2.6rem;
+  padding: 0 0.15rem;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--gold) 55%, transparent);
 }
 
 .star:focus-visible {
