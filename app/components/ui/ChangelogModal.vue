@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import type { ChangelogEntry } from '~/composables/useChangelog'
-import { SPRING_SNAP } from '~/utils/motion'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
 const { status, entries, error, load } = useChangelog()
-
-const closeBtn = ref<HTMLButtonElement | null>(null)
 
 const ENTRY_LABELS: Record<ChangelogEntry['state'], string> = {
   pending: 'On main — not yet live',
@@ -25,191 +22,110 @@ function dateLabel(entry: ChangelogEntry): string {
 }
 
 watch(() => props.open, (open) => {
-  document.documentElement.classList.toggle('modal-open', open)
   if (open) {
     void load()
-    nextTick(() => closeBtn.value?.focus())
   }
-})
-
-function onKeydown(event: KeyboardEvent): void {
-  if (props.open && event.key === 'Escape') {
-    emit('close')
-  }
-}
-
-onMounted(() => document.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => {
-  document.removeEventListener('keydown', onKeydown)
-  document.documentElement.classList.remove('modal-open')
 })
 </script>
 
 <template>
-  <Teleport to="body">
-    <AnimatePresence>
-      <Motion
-        v-if="open"
-        key="backdrop"
-        as="div"
-        class="backdrop"
-        :initial="{ opacity: 0 }"
-        :animate="{ opacity: 1 }"
-        :exit="{ opacity: 0 }"
-        :transition="{ duration: 0.15 }"
-        @click="emit('close')"
-      />
-      <Motion
-        v-if="open"
-        key="dialog"
-        as="div"
-        class="dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="changelog-title"
-        :initial="{ opacity: 0, y: 24, scale: 0.97 }"
-        :animate="{ opacity: 1, y: 0, scale: 1 }"
-        :exit="{ opacity: 0, y: 12, scale: 0.98 }"
-        :transition="SPRING_SNAP"
+  <AppDialog
+    :open="props.open"
+    title="Changelog"
+    description="Recent deployments and commits from main."
+    size="md"
+    @update:open="value => { if (!value) emit('close') }"
+  >
+    <p
+      v-if="status === 'loading'"
+      class="muted small"
+    >
+      Reading the deployment log…
+    </p>
+    <div
+      v-else-if="status === 'error'"
+      class="failed"
+    >
+      <p class="small error-text">
+        {{ error }}
+      </p>
+      <button
+        type="button"
+        class="btn tiny"
+        @click="load(true)"
       >
-        <header class="row spread head">
-          <div>
-            <h2 id="changelog-title">
-              Changelog
-            </h2>
-          </div>
-          <button
-            ref="closeBtn"
-            type="button"
-            class="btn tiny ghost"
-            @click="emit('close')"
-          >
-            Close
-          </button>
+        Retry
+      </button>
+    </div>
+    <p
+      v-else-if="entries.length === 0"
+      class="muted small"
+    >
+      No deployments yet — the crusade hasn't shipped.
+    </p>
+    <ol
+      v-else
+      class="entries"
+    >
+      <li
+        v-for="entry in entries"
+        :key="entry.id"
+        class="entry"
+      >
+        <header class="row spread entry-head">
+          <span class="row">
+            <span
+              class="state-dot"
+              :data-state="entry.state"
+            />
+            <span>{{ ENTRY_LABELS[entry.state] }}</span>
+            <a
+              v-if="entry.state === 'pending'"
+              class="sha"
+              :href="entry.url"
+              target="_blank"
+              rel="noopener"
+            >view on main</a>
+            <a
+              v-else-if="entry.shortSha"
+              class="mono sha"
+              :href="entry.url"
+              target="_blank"
+              rel="noopener"
+            >{{ entry.shortSha }}</a>
+          </span>
+          <time
+            v-if="entry.createdAt"
+            class="muted small"
+            :datetime="entry.createdAt"
+          >{{ dateLabel(entry) }}</time>
         </header>
-
-        <p
-          v-if="status === 'loading'"
-          class="muted small"
-        >
-          Reading the deployment log…
-        </p>
-        <div
-          v-else-if="status === 'error'"
-          class="failed"
-        >
-          <p class="small error-text">
-            {{ error }}
-          </p>
-          <button
-            type="button"
-            class="btn tiny"
-            @click="load(true)"
-          >
-            Retry
-          </button>
-        </div>
-        <p
-          v-else-if="entries.length === 0"
-          class="muted small"
-        >
-          No deployments yet — the crusade hasn't shipped.
-        </p>
-        <ol
-          v-else
-          class="entries"
+        <ul
+          v-if="entry.commits.length > 0"
+          class="commits"
         >
           <li
-            v-for="entry in entries"
-            :key="entry.id"
-            class="entry"
+            v-for="commit in entry.commits"
+            :key="commit.sha"
           >
-            <header class="row spread entry-head">
-              <span class="row">
-                <span
-                  class="state-dot"
-                  :data-state="entry.state"
-                />
-                <span>{{ ENTRY_LABELS[entry.state] }}</span>
-                <a
-                  v-if="entry.state === 'pending'"
-                  class="sha"
-                  :href="entry.url"
-                  target="_blank"
-                  rel="noopener"
-                >view on main</a>
-                <a
-                  v-else-if="entry.shortSha"
-                  class="mono sha"
-                  :href="entry.url"
-                  target="_blank"
-                  rel="noopener"
-                >{{ entry.shortSha }}</a>
-              </span>
-              <time
-                v-if="entry.createdAt"
-                class="muted small"
-                :datetime="entry.createdAt"
-              >{{ dateLabel(entry) }}</time>
-            </header>
-            <ul
-              v-if="entry.commits.length > 0"
-              class="commits"
-            >
-              <li
-                v-for="commit in entry.commits"
-                :key="commit.sha"
-              >
-                <span
-                  v-if="commit.type"
-                  class="ctype"
-                  :data-type="commit.type"
-                >{{ commit.type }}</span>
-                <a
-                  :href="commit.url"
-                  target="_blank"
-                  rel="noopener"
-                >{{ commit.subject }}</a>
-              </li>
-            </ul>
+            <span
+              v-if="commit.type"
+              class="ctype"
+              :data-type="commit.type"
+            >{{ commit.type }}</span>
+            <a
+              :href="commit.url"
+              target="_blank"
+              rel="noopener"
+            >{{ commit.subject }}</a>
           </li>
-        </ol>
-      </Motion>
-    </AnimatePresence>
-  </Teleport>
+        </ul>
+      </li>
+    </ol>
+  </AppDialog>
 </template>
 
 <style scoped>
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  background: rgba(9, 10, 7, 0.72);
-}
-
-.dialog {
-  position: fixed;
-  inset: 0;
-  z-index: 41;
-  margin: auto;
-  width: min(620px, calc(100vw - 2rem));
-  height: fit-content;
-  max-height: min(82vh, 720px);
-  overflow: auto;
-  padding: 1.1rem 1.25rem 1.25rem;
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
-}
-
-.head {
-  align-items: baseline;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 0.6rem;
-  margin-bottom: 0.75rem;
-}
-
 .entries {
   list-style: none;
   margin: 0;

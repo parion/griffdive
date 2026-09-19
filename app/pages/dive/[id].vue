@@ -445,7 +445,11 @@ function commitWarbonds(codes: string[]): void {
 </script>
 
 <template>
-  <main class="page">
+  <main
+    id="main-content"
+    class="page"
+    tabindex="-1"
+  >
     <JoinNameGate
       v-if="session.awaitingName.value"
       @confirm="confirmJoinName"
@@ -611,26 +615,32 @@ function commitWarbonds(codes: string[]): void {
               v-if="diver.id === session.selfId.value"
               class="muted small"
             >(you)</span>
-            <button
+            <AppTooltip
               v-if="canTransferHost(diver.id)"
-              class="handover"
-              type="button"
-              :aria-label="`Hand host to ${diver.name}`"
-              title="Hand over host"
-              @click="transferHost(diver.id)"
+              :content="`Hand host to ${diver.name}`"
             >
-              host
-            </button>
-            <button
+              <button
+                class="handover"
+                type="button"
+                :aria-label="`Hand host to ${diver.name}`"
+                @click="transferHost(diver.id)"
+              >
+                host
+              </button>
+            </AppTooltip>
+            <AppTooltip
               v-if="canKick(diver.id)"
-              class="kick"
-              type="button"
-              :aria-label="`Kick ${diver.name} from the squad`"
-              title="Kick from squad"
-              @click="kick(diver.id)"
+              :content="`Kick ${diver.name} from the squad`"
             >
-              ×
-            </button>
+              <button
+                class="kick"
+                type="button"
+                :aria-label="`Kick ${diver.name} from the squad`"
+                @click="kick(diver.id)"
+              >
+                ×
+              </button>
+            </AppTooltip>
           </span>
           <p
             v-if="session.mode === 'room' && session.state.value.divers.length === 1"
@@ -906,7 +916,15 @@ function commitWarbonds(codes: string[]): void {
                   v-if="reportMode === 'success'"
                   class="report-performance muted small"
                 >
-                  <InfoTip text="Samples and time remaining feed the Performance slice of your Valor — up to +0.5. Only the mission just completed counts, and it buys odds of a higher reward ceiling." />
+                  <AppTooltip content="Samples and time remaining feed the Performance slice of your Valor — up to +0.5. Only the mission just completed counts, and it buys odds of a higher reward ceiling.">
+                    <button
+                      class="info-tip"
+                      type="button"
+                      aria-label="More info"
+                    >
+                      ?
+                    </button>
+                  </AppTooltip>
                   Fills your Valor's performance bonus
                 </p>
                 <div class="row">
@@ -1142,6 +1160,31 @@ function commitWarbonds(codes: string[]): void {
   align-items: center;
   gap: 0.4rem;
   margin: 0;
+}
+.info-tip {
+  display: inline-grid;
+  place-items: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.info-tip:hover,
+.info-tip:focus-visible {
+  outline: none;
+  color: var(--gold);
+  border-color: var(--gold);
 }
 
 .victory { text-align: center; align-items: center; }

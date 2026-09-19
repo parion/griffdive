@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
+
 const props = withDefaults(defineProps<{
   modelValue: number
   length?: number
@@ -13,39 +15,37 @@ const focused = ref<number | null>(null)
 
 const preview = computed(() => hovered.value ?? focused.value ?? props.modelValue)
 
-function select(value: number): void {
+function select(value: unknown): void {
   if (!props.disabled) {
-    emit('update:modelValue', value)
+    emit('update:modelValue', Number(value))
   }
 }
 </script>
 
 <template>
-  <div
+  <RadioGroupRoot
+    :model-value="props.modelValue"
+    :disabled="props.disabled"
     class="star-rating"
     :class="[`size-${props.size}`, { disabled: props.disabled }]"
-    role="radiogroup"
     :aria-label="`Mission stars, ${props.length} available`"
+    @update:model-value="select"
     @mouseleave="hovered = null"
   >
-    <button
+    <RadioGroupItem
       v-for="value in props.length"
       :key="value"
-      type="button"
+      :value="value"
       class="star"
       :class="{ filled: value <= preview }"
-      role="radio"
-      :aria-checked="value === props.modelValue"
       :aria-label="`${value} ${value === 1 ? 'star' : 'stars'}`"
-      :disabled="props.disabled"
-      @click="select(value)"
       @mouseenter="hovered = value"
       @focus="focused = value"
       @blur="focused = null"
     >
       ★
-    </button>
-  </div>
+    </RadioGroupItem>
+  </RadioGroupRoot>
 </template>
 
 <style scoped>

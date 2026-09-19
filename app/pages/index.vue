@@ -139,7 +139,11 @@ function formatSavedAt(doc: SaveDoc): string {
 </script>
 
 <template>
-  <main class="page">
+  <main
+    id="main-content"
+    class="page"
+    tabindex="-1"
+  >
     <section class="panel hero">
       <div class="row chips">
         <span class="chip">1–4 divers</span>

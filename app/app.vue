@@ -6,6 +6,10 @@ const codexOpen = ref(false)
 <template>
   <MotionConfig reduced-motion="user">
     <div>
+      <a
+        href="#main-content"
+        class="skip-link"
+      >Skip to main content</a>
       <header class="top-bar">
         <div class="row">
           <NuxtLink
@@ -23,7 +27,7 @@ const codexOpen = ref(false)
             pre-alpha
           </button>
         </div>
-        <nav>
+        <nav aria-label="Primary">
           <button
             type="button"
             class="nav-link"
