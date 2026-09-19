@@ -15,7 +15,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ pick: [optionId: string, choiceItemId?: string] }>()
 
-// Diver's Choice banks the picked item's id, which is not among the rolled
+// Liberty's Cross banks the picked item's id, which is not among the rolled
 // options — resolve it from the catalog for the banked banner.
 const pickedItem = computed(() =>
   props.options.find(option => option.optionId === props.pickedId)?.item

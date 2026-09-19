@@ -15,7 +15,7 @@ must update this file in the same commit.**
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core) and Phase 2 (realtime squads) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (206 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (218 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection — verified by a live two-peer smoke test and the Playwright E2E suite (solo flow,
@@ -93,7 +93,7 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
    Illuminate).
 2. **Decide** — before any pact exists, the squad (host executes, IRL voice vote) **accepts or
    declines** the drawn misfortune. Declining runs a zero-team-risk dive; accepting applies the
-   misfortune's **team risk** (1–5) to every diver's luck for this mission. A reroll redraws and
+   misfortune's **team risk** (1–5) to every diver's Valor for this mission. A reroll redraws and
    resets the decision.
 3. **Pact** — each diver is dealt a personal **pact offer**: 2 pacts on difficulties 3–6, 3 on 7+,
    rolled deterministically from the wheel seed (per diver) once the decision is in. The offer
@@ -134,7 +134,7 @@ from warbonds they don't own. Starting kits are not warbond-filtered.
 Exactly one misfortune per **mission**, drawn from the pool eligible at the operation's
 difficulty. The draw is an offer, not a verdict: in a dedicated **decision** phase before pacts
 roll, the squad (host executes, IRL voice vote) **accepts or declines** it. Declining runs a
-zero-team-risk dive; accepting applies the misfortune's **team risk** (1–5) to every diver's luck
+zero-team-risk dive; accepting applies the misfortune's **team risk** (1–5) to every diver's Valor
 for this mission. A reroll redraws and resets the decision.
 
 Starter catalog (all values tunable in `shared/engine/config.ts`; ids and shape are the contract):
@@ -170,10 +170,12 @@ zero-kill squad is forced into genuine support builds.
 **Rerolls:** rerolling a wheel result is free if the squad already completed that exact
 (misfortune × front) combo earlier in this crusade (the video's overrule rule). Otherwise the squad
 spends a reroll token — 1 token per operation, spendable on either wheel. Never rerollable into an
-outcome the pool doesn't allow at the current difficulty. **The front (faction) locks in for the
-whole operation**: it can only be rerolled during the operation's first mission decision window
-(`missionInOperation === 1`, enforced in the reducer and `canRerollWheel`); misfortune rerolls stay
-available in any decision or pact window (until the first pact lock).
+outcome the pool doesn't allow at the current difficulty, and never into the result it would
+replace — a reroll must actually move (`REROLL_WHEEL` refuses a same-result seed; only the
+immediately replaced result is excluded, not every prior draw this window). **The front (faction)
+locks in for the whole operation**: it can only be rerolled during the operation's first mission
+decision window (`missionInOperation === 1`, enforced in the reducer and `canRerollWheel`);
+misfortune rerolls stay available in any decision or pact window (until the first pact lock).
 
 **Fronts:** the front is drawn with the operation's first spin (one per operation) and only affects
 combo tracking (and future front-specific content). It exists for flavor and the reroll economy.
@@ -187,7 +189,7 @@ derivation of the wheel seed per diver (`pactOfferFor` in `shared/engine/selecto
 client computes the same 2–3 pacts with no extra sync; it is never stored. The pool filters out
 pacts the **accepted** misfortune makes redundant or impossible; a declined draw offers from the
 full catalog. Pacts are personal restrictions worth **pact risk** (1–3), and pact risk adds only
-to that diver's luck.
+to that diver's Valor.
 
 **Accountability rule:** every pact in the catalog must be verifiable in Helldivers 2 through one
 of three channels — the **loadout screen** (equipped gear and stratagems, visible pre-dive), the
@@ -209,23 +211,38 @@ Starter catalog:
 | Stim Abstinent | I use no stims | 3 | stats |
 | Loadout Loyalist | I use only my equipped loadout; no pickups or swaps | 2 | field |
 | Primary Concern | I bring no support weapon | 2 | loadout |
-| Grounded | I bring no Eagle stratagems | 2 | loadout |
-| Ship Silent | I bring no orbital stratagems | 2 | loadout |
-| Open Field | I bring no sentries, mines, or emplacements | 2 | loadout |
+| Grounded | I bring no offensive Eagle stratagems | 2 | loadout |
+| Ship Silent | I bring no offensive orbital stratagems | 2 | loadout |
+| Open Field | I bring no offensive sentries, mines, or emplacements | 2 | loadout |
 | Untouchable | I finish the mission without dying | 3 | field |
 
-**Redundant picks:** a pact strictly implied by another picked pact never stacks risk. `SET_PACTS`
-refuses it via `pactSubsumedBy` / `applyPactToggle` (`PACT_SUBSUMES` in `shared/engine/pacts.ts`),
-and the UI greys a covered offer with "Covered by …". The map is currently **empty** — *Barebones*
-("I fill no stratagem slots") was the only subsuming pact, and it was removed because HD2 requires
-four equipped stratagems to ready up, so the pact was impossible without a "bring random strats and
-never call them" workaround. The machinery stays in place for future subsumption rules. (Anti-Tank
-Abstinent stays independent: thermite and other anti-tank throwables are not stratagems.)
+**Redundant and conflicting picks:** a pact strictly implied by another picked pact never stacks
+risk. `SET_PACTS` refuses it via `pactSubsumedBy` / `applyPactToggle` (`PACT_SUBSUMES` in
+`shared/engine/pacts.ts`), and the UI greys a covered offer with "Covered by …". The map is
+currently **empty** — *Barebones* ("I fill no stratagem slots") was the only subsuming pact, and it
+was removed because HD2 requires four equipped stratagems to ready up, so the pact was impossible.
+The machinery stays in place for future subsumption rules. (Anti-Tank Abstinent stays independent:
+thermite and other anti-tank throwables are not stratagems.) Restrictions that tax the same
+strength are instead **mutually exclusive** (`PACT_EXCLUSIVE_GROUPS`): *Grounded*, *Ship Silent* and
+*Open Field* all tax stratagem variety, so an offer never draws two of them and `SET_PACTS` refuses
+a same-group pick (the UI greys it "Conflicts with …").
+
+**Mandatory four stratagems — reserve and the loadout floor:** HD2 requires four equipped
+stratagems to ready up, so no pact may strand a diver below four. Every diver always owns a
+non-lethal **reserve** of warbond-free utility — Orbital EMS Strike, Orbital Smoke Strike, Eagle
+Smoke Strike, EMS Mortar Sentry, Shield Generator Relay (`RESERVE_STRATAGEMS` in
+`shared/engine/config.ts`). Reserve stratagems are exempt from slot-removing *pacts*, which is why
+the category pacts read "no **offensive**": smoke, stun and shields are always legal filler, and a
+mis-call never smuggles power back into a restricted loadout. Misfortunes are squad-binding, so the
+exemption does not apply to them. `hasLegalLoadout` (pact bans + accepted misfortune + reserve,
+against `STRATAGEM_SLOTS_REQUIRED`) is the hard floor: `SET_PACTS` refuses a pick that would drop
+the diver below four, and the UI greys it "Leaves too few stratagems to ready up". A misfortune
+that strands the loadout on its own is not blamed on a pact.
 
 **Failed pacts:** a broken pact is marked **failed** (`FAIL_PACT{playerId,pactId}`) while the
 mission runs — during the diving phase only, by the diver themselves or by the host refereeing the
 squad (server refuses everyone else; the UI asks for a confirm since the mark is one-way). A
-failed pact is **voided**: its pact risk stops counting toward luck, so both the ceiling previews
+failed pact is **voided**: its pact risk stops counting toward Valor, so both the ceiling previews
 and the rolled offer drop, and it costs one reward option (`OPTIONS_LOST_PER_FAILED_PACT` in
 `shared/engine/config.ts`, floored at one so the draft always completes and never deadlocks
 ADVANCE). Failed pacts ride the diver's state (`failedPactIds`), reset with the pacts every
@@ -234,22 +251,39 @@ mission, and land in the action log for audit.
 ### Reward math
 
 ```
-luck          = teamRisk + pactRisk
+Valor         = teamRisk + pactRisk + performance
 teamRisk      = accepted misfortune (0–5, 0 when declined)
 pactRisk      = sum of the diver's picked pacts (max 8: the rolled
                 2–3-pact offer bounds what a diver can stack)
+performance   = team performance from the mission just reported, squad-level
+                and applied to every diver: time remaining (≤ 0.2) plus
+                samples (≤ 0.3), so it never exceeds 0.5
 
 base tier:     diff 3–5 → C   diff 6–7 → B   diff 8–10 → A
 ceiling roll:  start at the base tier; each step to the next tier
                (C→B→A→S→S+) succeeds with odds
-               min(0.8, luck × (1 + bandPos) / 3^step)
+               min(0.8, Valor × (1 + bandPos) / 3^step)
                bandPos = position within the difficulty band (0 floor → 1 top)
                the final S→S+ rung is capped at min(0.1, …) — the jackpot
 ```
 
-- Difficulty alone never buys S or S+; only stacked chosen risk does, and even max luck (13)
-  leaves S+ a longshot (≤10% on every difficulty; `S_PLUS_UPGRADE_CAP` in `shared/engine/config.ts`).
-  A zero-luck dive always rolls its base tier.
+- Difficulty alone never buys S or S+; only stacked chosen risk does, and even max **chosen** Valor
+  (13) leaves S+ a longshot (≤10% on every difficulty; `S_PLUS_UPGRADE_CAP` in
+  `shared/engine/config.ts`). A zero-Valor dive always rolls its base tier. Team performance is a
+  deliberate exception: it can nudge a zero-chosen-risk clear off its base tier, but caps at 0.5
+  against the 13-point chosen ceiling, so skill never carries a run (`TIME_VALOR_MAX`,
+  `SAMPLE_VALOR_CAP`, `SAMPLE_VALOR_WEIGHTS`). Sample values are calibrated to the game's own
+  rarity mix (wiki.gg/Sample availability), so the term scales with difficulty without a
+  multiplier: a Medium haul (commons only) is worth ~0.03, a Super Helldive haul with rares and
+  supers ~0.3.
+- **Valor is surfaced as the Valor meter** (`app/components/dive/ValorMeter.vue`): a live gauge
+  stacking the three sources (team risk, pacts, performance) with a tier ladder from the
+  difficulty's base tier to the previewed ceiling and the odds of reaching it. It renders in the
+  pacts window (live, reacting to pact toggles and the misfortune decision), the diving Briefing
+  (locked) and the reward draft (locked, including the performance term). Its display scale is
+  `maxValorFor(difficulty)` in `shared/engine/selectors.ts`; the meter is presentation only and
+  never gates a roll. The gauge is Reka's `ProgressRoot`/`ProgressIndicator` (accessible
+  `role="progressbar"` with `aria-valuenow/max/valuetext`).
 - The reward pool is personal: each diver rolls against the catalog of warbonds *they* declared
   (plus `warbondCode === 'none'` items, minus armor pieces) — never the squad's or the host's.
 - Higher difficulties inside a band climb easier: diff 5 rolls into B more readily than diff 3,
@@ -257,8 +291,8 @@ ceiling roll:  start at the base tier; each step to the next tier
 - Ceiling = the best tier that *can* appear in that diver's options; the roll is seeded from the
   offer seed (two rng streams: one ceiling, one options) so every client computes the same offer.
   Rolls are weighted toward the tier below the ceiling; an **S+** ceiling still guarantees one rolled
-  S-tier option beside the Diver's Choice slot (a plain S ceiling makes no such promise).
-- **S+ = Diver's Choice.** No catalog item carries the S+ tier, so the S+ bonus slot is a free
+  S-tier option beside the Liberty's Cross slot (a plain S ceiling makes no such promise).
+- **S+ = Liberty's Cross.** No catalog item carries the S+ tier, so the S+ bonus slot is a free
   pick: the diver claims **any item from their own catalog** — same personal-pool rules as every
   reward (warbond-owned items only, armor pieces excluded, nothing already owned). The option
   rides a stable sentinel id (`DIVERS_CHOICE_OPTION_ID` in `shared/engine/rewards.ts`); the UI
@@ -272,11 +306,11 @@ ceiling roll:  start at the base tier; each step to the next tier
   completed mission never awards 0 and a failed mission awards none (`maxStarsFor` in
   `shared/engine/config.ts`).
 - **Failed pacts forfeit stakes** (see Personal layer): each pact marked failed in the field voids
-  its risk — luck, previews and the rolled offer all drop — and costs one reward option, floored
+  its risk — Valor, previews and the rolled offer all drop — and costs one reward option, floored
   at one so the draft always completes.
-- Example curves: diff 3 with an intense misfortune (5) + two stacked pacts (4) → luck 9 → ceiling
-  reaches **S** about a fifth of the time, **S+** rarely. Diff 10 with zero luck → **A**, never
-  S. Risk pays at every altitude; nothing is guaranteed, but everything gets likelier.
+- Example curves: diff 3 with an intense misfortune (5) + two stacked pacts (4) → chosen Valor 9 →
+  ceiling reaches **S** about a fifth of the time, **S+** rarely. Diff 10 with zero Valor → **A**,
+  never S. Risk pays at every altitude; nothing is guaranteed, but everything gets likelier.
 
 ### Inventory model
 
@@ -301,8 +335,8 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
 
 - **Sizing:** one option per completed operation behind (`difficulty − variant start difficulty`),
   capped at `CATCHUP_CAP` (4) in `shared/engine/config.ts`.
-- **Tier:** options roll at the **current difficulty's base tier with luck 0** — the engine's own
-  "a zero-luck dive always rolls its base tier" rule. No ceiling roll, so S/S+ and Diver's Choice
+- **Tier:** options roll at the **current difficulty's base tier with Valor 0** — the engine's own
+  "a zero-Valor dive always rolls its base tier" rule. No ceiling roll, so S/S+ and Liberty's Cross
   are structurally unreachable. Risk remains the joiner's choice from their first mission; the
   promotion only buys altitude parity.
 - **Derivation:** the offer derives from the last spun seed (`catchUpOptionsFor` in
@@ -354,9 +388,10 @@ all routes; static hosts need a `/*` → shell fallback instead.
 app/
   pages/           index (new crusade / host / join / continue), dive/[id] (solo + room flow),
                    lobby (open dives), codex
-  components/      dive/ (WheelPanel, PactPicker, RewardDraft, FieldPromotionCard — the mid-crusade
+  components/      dive/ (WheelPanel, PactPicker, RewardDraft, ValorMeter — the live Valor gauge
+                   and tier-ceiling ladder, FieldPromotionCard — the mid-crusade
                    catch-up ceremony, DiversChoiceCard — the special
-                   S+ "Diver's Choice" offer card, DiversChoicePicker — its minified codex
+                   S+ "Liberty's Cross" offer card, DiversChoicePicker — its minified codex
                    modal, InventoryGrid, CrusadeSetup, WarbondPicker,
                    JoinNameGate — name gate held while joining),
                    codex/CodexBrowser — the shared catalog browser (filter + tier grid),
