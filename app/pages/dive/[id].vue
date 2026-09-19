@@ -5,7 +5,6 @@ import { difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
 import { pactName } from '~~/shared/data/pacts'
 import { applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
-import { performanceValor } from '~~/shared/engine/rewards'
 import {
   activeMisfortune,
   allDiversPicked,
