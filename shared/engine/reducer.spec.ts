@@ -7,7 +7,7 @@ import { DIVERS_CHOICE_OPTION_ID, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { allDiversPicked, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverLuck, diverOptions, pactOfferFor, pactRiskOf, rewardPoolFor, teamRiskOf } from './selectors'
+import { allDiversPicked, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverValor, diverOptions, pactOfferFor, pactRiskOf, rewardPoolFor, teamRiskOf } from './selectors'
 import type { DiveState, DiverState, EngineAction } from './types'
 
 const SETTINGS = { variant: 'standard' as const }
@@ -150,9 +150,19 @@ describe('SPIN_WHEEL / REROLL_WHEEL', () => {
 
   it('spends a token on a non-completed reroll', () => {
     const state = spunState(42)
-    const rerolled = reduce(state, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 43 })
+    const rerolled = reduce(state, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 44 })
     expect(rerolled.rerollTokens).toBe(0)
-    expect(rerolled.seedHistory).toEqual([42, 43])
+    expect(rerolled.seedHistory).toEqual([42, 44])
+  })
+
+  it('refuses a reroll that would return the replaced result', () => {
+    const state = spunState(42)
+    // Same seed, same derivation — the token is not spent on a no-op.
+    const sameRoll = reduce(state, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 42 })
+    expect(sameRoll).toBe(state)
+    expect(sameRoll.rerollTokens).toBe(1)
+    const sameFront = reduce(state, { type: 'REROLL_WHEEL', wheel: 'front', seed: 42 })
+    expect(sameFront).toBe(state)
   })
 
   it('rejects a reroll with no tokens and no completed combo', () => {
@@ -168,8 +178,9 @@ describe('SPIN_WHEEL / REROLL_WHEEL', () => {
       ...state,
       completedCombos: [comboKey(state.wheel!.misfortuneId, state.frontId!)],
     }
-    const rerolled = reduce(marked, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 43 })
+    const rerolled = reduce(marked, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 44 })
     expect(rerolled.rerollTokens).toBe(1)
+    expect(rerolled.wheel?.seed).toBe(44)
     expect(canRerollWheel(marked, 'misfortune').free).toBe(true)
   })
 
@@ -230,10 +241,10 @@ describe('ACCEPT_MISFORTUNE (optional team risk)', () => {
 
   it('resets the decision on a reroll', () => {
     const accepted = decidedState(42)
-    const rerolled = reduce(accepted, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 43 })
+    const rerolled = reduce(accepted, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 44 })
     expect(rerolled.misfortuneAccepted).toBe(false)
     expect(rerolled.phase).toBe('decision')
-    expect(rerolled.wheel?.seed).toBe(43)
+    expect(rerolled.wheel?.seed).toBe(44)
   })
 })
 
@@ -308,14 +319,14 @@ describe('FAIL_PACT (broken pacts in the field)', () => {
     expect(reduce(once, { type: 'FAIL_PACT', playerId: 'p1', pactId: pactId })).toBe(once)
   })
 
-  it('voids the failed pact\'s risk in luck and ceiling', () => {
+  it('voids the failed pact\'s risk in Valor and ceiling', () => {
     const { state, pactId } = divingWithHeldPact()
     const diver = requireDiver(state)
     expect(pactRiskOf(diver)).toBeGreaterThan(0)
     const failed = reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId })
     const failedDiver = requireDiver(failed)
     expect(pactRiskOf(failedDiver)).toBe(0)
-    expect(diverLuck(failed, failedDiver)).toBe(teamRiskOf(failed))
+    expect(diverValor(failed, failedDiver)).toBe(teamRiskOf(failed))
     expect(diverCeiling(failed, failedDiver)).toBe(maxCeiling(failed.difficulty, teamRiskOf(failed)))
   })
 
@@ -355,7 +366,7 @@ describe('FAIL_PACT (broken pacts in the field)', () => {
     expect(next.divers[0]?.pactIds).toEqual([])
   })
 
-  it('leaves a zero-luck failure at the difficulty\'s base tier', () => {
+  it('leaves a zero-Valor failure at the difficulty\'s base tier', () => {
     const { state, pactId } = divingWithHeldPact()
     const failed = reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId })
     // Declined wheel: team risk is zero too, so only the base tier remains.

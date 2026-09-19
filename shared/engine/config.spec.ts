@@ -19,7 +19,7 @@ describe('baseTierFor (reward scale-back bands)', () => {
     expect([8, 9, 10].map(bandPosition)).toEqual([0, 0.5, 1])
   })
 
-  it('upgrade odds scale with luck and band position, capped', () => {
+  it('upgrade odds scale with Valor and band position, capped', () => {
     expect(upgradeOdds(0, 0, 1)).toBe(0)
     expect(upgradeOdds(2, 0, 1)).toBeCloseTo(2 / 3, 5)
     expect(upgradeOdds(1, 1, 1)).toBeCloseTo(2 / 3, 5)

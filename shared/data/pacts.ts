@@ -21,9 +21,9 @@ export const PACTS: readonly Pact[] = [
   { id: 'stimAbstinent', name: 'Stim Abstinent', rule: 'I use no stims', accountability: 'stats' },
   { id: 'loadoutLoyalist', name: 'Loadout Loyalist', rule: 'I use only my equipped loadout; no pickups or swaps', accountability: 'field' },
   { id: 'primaryConcern', name: 'Primary Concern', rule: 'I bring no support weapon', accountability: 'loadout' },
-  { id: 'grounded', name: 'Grounded', rule: 'I bring no Eagle stratagems', accountability: 'loadout' },
-  { id: 'shipSilent', name: 'Ship Silent', rule: 'I bring no orbital stratagems', accountability: 'loadout' },
-  { id: 'openField', name: 'Open Field', rule: 'I bring no sentries, mines, or emplacements', accountability: 'loadout' },
+  { id: 'grounded', name: 'Grounded', rule: 'I bring no offensive Eagle stratagems', accountability: 'loadout' },
+  { id: 'shipSilent', name: 'Ship Silent', rule: 'I bring no offensive orbital stratagems', accountability: 'loadout' },
+  { id: 'openField', name: 'Open Field', rule: 'I bring no offensive sentries, mines, or emplacements', accountability: 'loadout' },
   { id: 'untouchable', name: 'Untouchable', rule: 'I finish the mission without dying', accountability: 'field' },
 ]
 

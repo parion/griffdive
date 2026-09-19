@@ -4,9 +4,17 @@ import { MISFORTUNES } from '../data/misfortunes'
 import type { Misfortune } from '../data/misfortunes'
 import type { Pact } from '../data/pacts'
 import type { Item } from '../data/types'
-import { MISFORTUNE_RISK, OPTIONS_LOST_PER_FAILED_PACT, baseTierFor } from './config'
+import {
+  MISFORTUNE_RISK,
+  OPTIONS_LOST_PER_FAILED_PACT,
+  PACT_RISK,
+  SAMPLE_VALOR_CAP,
+  TIME_VALOR_MAX,
+  baseTierFor,
+  pactOptionsFor,
+} from './config'
 import { pactRiskTotal, rollPactOffer } from './pacts'
-import { luckOf, maxCeiling, oddsToReach, optionsForStars, rollCeiling, rollRewardOptions } from './rewards'
+import { performanceValor, maxCeiling, oddsToReach, optionsForStars, rollCeiling, rollRewardOptions, valorOf } from './rewards'
 import type { RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -54,19 +62,21 @@ export function teamRiskOf(state: DiveState): number {
 }
 
 // A failed pact is voided: it no longer stakes risk, so its share of the
-// diver's luck disappears from previews and from the rolled offer alike.
+// diver's Valor disappears from previews and from the rolled offer alike.
 export function pactRiskOf(diver: DiverState): number {
   return pactRiskTotal(diver.pactIds.filter(id => !diver.failedPactIds.includes(id)))
 }
 
-export function diverLuck(state: DiveState, diver: DiverState): number {
-  return luckOf(teamRiskOf(state), pactRiskOf(diver))
+// Chosen risk lives on the diver and the team; team performance is squad-level
+// and rides the report. Together they are the diver's Valor.
+export function diverValor(state: DiveState, diver: DiverState): number {
+  return valorOf(teamRiskOf(state), pactRiskOf(diver), performanceValor(state.lastReport))
 }
 
-// Display ceiling: the deterministic best case the diver's luck can preview.
+// Display ceiling: the deterministic best case the diver's Valor can preview.
 // The actual offer rolls its ceiling (diverOptions).
 export function diverCeiling(state: DiveState, diver: DiverState): RewardTier {
-  return maxCeiling(state.difficulty, diverLuck(state, diver))
+  return maxCeiling(state.difficulty, diverValor(state, diver))
 }
 
 export function rewardPoolFor(codes: readonly string[]): Item[] {
@@ -94,7 +104,7 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   const ceiling = rollCeiling(
     mulberry32(deriveSeed(seed, 1)),
     state.difficulty,
-    diverLuck(state, diver),
+    diverValor(state, diver),
   )
   // The pool is the diver's own: warbonds are personal purchases, so each
   // diver rolls offers against the catalog they can actually use.
@@ -112,7 +122,7 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
 
 // The Field Promotion: a mid-crusade joiner's catch-up offer. Altitude
 // parity, never rarity — the ceiling is the difficulty's base tier at zero
-// luck (a zero-luck dive always rolls its base tier), so a late joiner buys
+// Valor (a zero-Valor dive always rolls its base tier), so a late joiner buys
 // up to the squad's altitude without ever reaching S. Derived from the last
 // spun seed like every offer — deterministic, never stored.
 export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOption[] {
@@ -131,15 +141,15 @@ export interface CeilingRange {
   odds: number
 }
 
-// Legibility preview: the base tier a zero-luck dive gets, the best tier the
-// current luck can plausibly reach, and the odds of reaching it.
-export function ceilingRange(difficulty: number, teamRisk: number, pactRisk: number): CeilingRange {
-  const luck = luckOf(teamRisk, pactRisk)
-  const max = maxCeiling(difficulty, luck)
+// Legibility preview: the base tier a zero-Valor dive gets, the best tier the
+// current Valor can plausibly reach, and the odds of reaching it.
+export function ceilingRange(difficulty: number, teamRisk: number, pactRisk: number, performance = 0): CeilingRange {
+  const valor = valorOf(teamRisk, pactRisk, performance)
+  const max = maxCeiling(difficulty, valor)
   return {
     min: baseTierFor(difficulty),
     max,
-    odds: oddsToReach(difficulty, luck, max),
+    odds: oddsToReach(difficulty, valor, max),
   }
 }
 
@@ -147,6 +157,22 @@ export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): Cei
   const pool = eligibleMisfortunes(difficulty)
   const maxRisk = Math.max(0, ...pool.map(misfortune => MISFORTUNE_RISK[misfortune.id] ?? 0))
   return ceilingRange(difficulty, maxRisk, pactRisk)
+}
+
+// Display scale for the Valor meter: the most Valor this difficulty can
+// actually stack — the strongest eligible misfortune, the top pacts the offer
+// can deal, and the capped team-performance term. Presentation only; it never
+// gates a roll.
+export function maxValorFor(difficulty: number): number {
+  const teamMax = Math.max(
+    0,
+    ...eligibleMisfortunes(difficulty).map(misfortune => MISFORTUNE_RISK[misfortune.id] ?? 0),
+  )
+  const pactMax = Object.values(PACT_RISK)
+    .sort((a, b) => b - a)
+    .slice(0, pactOptionsFor(difficulty))
+    .reduce((sum, risk) => sum + risk, 0)
+  return teamMax + pactMax + TIME_VALOR_MAX + SAMPLE_VALOR_CAP
 }
 
 export function canRerollWheel(

@@ -1,18 +1,58 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS } from '../data/catalog'
-import { DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, luckOf, maxCeiling, oddsToReach, optionsForStars, rollCeiling, rollRewardOptions, tierWeight } from './rewards'
+import { DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, maxCeiling, oddsToReach, optionsForStars, performanceValor, rollCeiling, rollRewardOptions, tierWeight, valorOf } from './rewards'
 import { mulberry32 } from './rng'
 import type { RewardTier } from './types'
 
-describe('luckOf', () => {
-  it('adds team and pact risk', () => {
-    expect(luckOf(0, 0)).toBe(0)
-    expect(luckOf(5, 6)).toBe(11)
+describe('valorOf', () => {
+  it('adds team risk, pact risk, and the team-performance term', () => {
+    expect(valorOf(0, 0)).toBe(0)
+    expect(valorOf(5, 6)).toBe(11)
+    expect(valorOf(5, 6, 0.5)).toBe(11.5)
+  })
+})
+
+describe('performanceValor', () => {
+  it('is zero with no report', () => {
+    expect(performanceValor(null)).toBe(0)
+  })
+
+  it('prices time remaining up to the time cap', () => {
+    expect(performanceValor({ outcome: 'success', stars: 3, timePct: 0 })).toBe(0)
+    expect(performanceValor({ outcome: 'success', stars: 3, timePct: 50 })).toBeCloseTo(0.1)
+    expect(performanceValor({ outcome: 'success', stars: 3, timePct: 100 })).toBeCloseTo(0.2)
+    expect(performanceValor({ outcome: 'success', stars: 3, timePct: 250 })).toBeCloseTo(0.2)
+  })
+
+  it('prices samples at the chart-calibrated per-rarity rates', () => {
+    expect(performanceValor({ outcome: 'success', stars: 3, samples: { common: 2, rare: 0, super: 0 } })).toBeCloseTo(0.003)
+    expect(performanceValor({ outcome: 'success', stars: 3, samples: { common: 0, rare: 2, super: 0 } })).toBeCloseTo(0.008)
+    expect(performanceValor({ outcome: 'success', stars: 3, samples: { common: 0, rare: 0, super: 2 } })).toBeCloseTo(0.04)
+    expect(performanceValor({ outcome: 'success', stars: 3, samples: { common: 99, rare: 99, super: 99 } })).toBeCloseTo(0.3)
+  })
+
+  it('scales with the difficulty-shaped sample mix', () => {
+    // wiki.gg/Sample midpoints: Medium is commons only; Super Helldive adds
+    // rares and supers, so the same extraction effort is worth more at altitude.
+    const medium = performanceValor({ outcome: 'success', stars: 3, samples: { common: 17, rare: 0, super: 0 } })
+    const helldive = performanceValor({ outcome: 'success', stars: 3, samples: { common: 40, rare: 38, super: 5 } })
+    expect(medium).toBeGreaterThan(0)
+    expect(medium).toBeLessThan(helldive)
+    expect(helldive).toBeCloseTo(0.3)
+  })
+
+  it('combines time and samples but never exceeds 0.5', () => {
+    expect(performanceValor({
+      outcome: 'success',
+      stars: 3,
+      timePct: 100,
+      samples: { common: 40, rare: 38, super: 5 },
+    })).toBeCloseTo(0.5)
   })
 })
 
 describe('rollCeiling (probabilistic tier ladder)', () => {
-  it('keeps zero luck at the base tier on every difficulty', () => {
+  it('keeps zero Valor at the base tier on every difficulty', () => {
     const bases: [number, RewardTier][] = [[3, 'C'], [5, 'C'], [6, 'B'], [7, 'B'], [8, 'A'], [10, 'A']]
     for (const [difficulty, base] of bases) {
       for (let seed = 0; seed < 50; seed++) {
@@ -21,13 +61,13 @@ describe('rollCeiling (probabilistic tier ladder)', () => {
     }
   })
 
-  it('never leaves S/S+ to anything but chosen luck', () => {
+  it('never leaves S/S+ to anything but chosen Valor', () => {
     for (let seed = 0; seed < 200; seed++) {
       expect(rollCeiling(mulberry32(seed), 10, 0)).toBe('A')
     }
   })
 
-  it('is monotonic in luck for the same rng seed', () => {
+  it('is monotonic in Valor for the same rng seed', () => {
     const rank = (tier: RewardTier) => ['C', 'B', 'A', 'S', 'S+'].indexOf(tier)
     for (let seed = 0; seed < 100; seed++) {
       const weak = rollCeiling(mulberry32(seed), 5, 2)
@@ -36,7 +76,7 @@ describe('rollCeiling (probabilistic tier ladder)', () => {
     }
   })
 
-  it('stacked luck can reach S and S+ but never guarantees it', () => {
+  it('stacked Valor can reach S and S+ but never guarantees it', () => {
     let sawS = false
     let sawSPlus = false
     let sawBelowS = false
@@ -52,7 +92,7 @@ describe('rollCeiling (probabilistic tier ladder)', () => {
   })
 
   it('rolls higher within a band toward the band top', () => {
-    // diff 3 (band floor) vs diff 5 (band top), same luck and seed stream:
+    // diff 3 (band floor) vs diff 5 (band top), same Valor and seed stream:
     // the top-of-band roll must never be worse.
     const rank = (tier: RewardTier) => ['C', 'B', 'A', 'S', 'S+'].indexOf(tier)
     for (let seed = 0; seed < 200; seed++) {
@@ -64,14 +104,14 @@ describe('rollCeiling (probabilistic tier ladder)', () => {
 })
 
 describe('maxCeiling / oddsToReach (legibility preview)', () => {
-  it('previews the base tier at zero luck', () => {
+  it('previews the base tier at zero Valor', () => {
     expect(maxCeiling(3, 0)).toBe('C')
     expect(maxCeiling(10, 0)).toBe('A')
     expect(oddsToReach(10, 0, 'A')).toBe(1)
   })
 
   it('previews only plausible tiers and prices the climb', () => {
-    // Stacked luck opens the S+ rung even in the low bands (its per-step cap
+    // Stacked Valor opens the S+ rung even in the low bands (its per-step cap
     // clears the preview floor), but the priced climb stays a longshot.
     expect(maxCeiling(3, 11)).toBe('S+')
     expect(oddsToReach(3, 11, 'S')).toBeGreaterThan(0)
