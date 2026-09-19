@@ -49,21 +49,24 @@ IDs are stable and append-only; do not renumber.
 | N16 | Incoming luck from current run performance | Design | M | Blocked (DEC-7) | new |
 | N17 | Onboarding for link-joiners | UX | L | Blocked (N6/N7) | new |
 | N18 | Rejoining under stored `playerId` does not reclaim legacy cache | Bug | S | Done | QA-T1/D3 |
-| N19 | S+ unpreviewable in low difficulty bands | Balance/UX | S | Todo | QA-U2 |
+| N19 | S+ unpreviewable in low difficulty bands | Balance/UX | S | Done | QA-U2 |
 | N20 | Squad strip a11y (online dot + host crown indistinguishable) | UX | S | Done | QA-U3 |
 | N21 | `MARK FAILED` confirm has no armed cue | UX | S | Done | QA-U4 |
 | N22 | Field Promotion re-rolls its offer on every claim | UX/Design | M | Needs repro | QA-U5 |
-| N23 | Star→options is flat early (3★ = 2 options) | Balance | S | Todo | QA-B1 |
+| N23 | Star→options is flat early (3★ = 2 options) | Balance | S | Done | QA-B1 |
 | N24 | Pact redundancy is free luck (subsumed pacts still count) | Balance | M | Done (exclusive groups + subsumption) | QA-B2 |
 | N25 | Pacts are strictly "take everything" | Balance | S | Todo | QA-B3 |
 | N26 | Failure path rework | Design | L | Blocked (DEC-8) | QA-B4 |
-| N27 | S+ / Diver's Choice frequency at altitude | Balance | S | Todo | QA-B5 |
+| N27 | S+ / Diver's Choice frequency at altitude | Balance | S | Done (monitor) | QA-B5 |
 | N28 | `holdingsEmpty` branch effectively unreachable | Infra | S | Accepted | QA-F1 |
 | N29 | Stale mission counter during `forfeit` | UX | S | Done | QA-F2 |
 | N30 | Failure cannot lower difficulty or set `achieved` | Rules | S | Accepted | QA-F4 |
 | N31 | Remove open-dive lobby / matchmaking | Feature | M | Done | new |
 | N32 | Kit ordering: stratagem role then tier | UX | S | Done | new |
-| N33 | Mandatory 4 slots vs equip-restricting misfortunes | Rules | M | Todo | new |
+| N33 | Reward options skew to base tiers even at a high ceiling | Balance/Bug | M | Blocked (DEC-10) | new |
+| N34 | Copy-invite icon by session ID + lone-host share aside | UX | S | Todo | new |
+| N35 | Users-list waiting indicators (pacts/rewards) | UX | S | Todo | new |
+| N36 | Mandatory 4 slots vs equip-restricting misfortunes | Rules | M | Todo | new |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -80,6 +83,7 @@ Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the re
 | DEC-7 | Incoming-player luck: cap, and the non-exploit rule (e.g. scales off the squad's banked performance, not a fresh join's). | N16 |
 | DEC-8 | Failure rework direction (owner-flagged, to be spec'd): what replaces "repeat op + forfeit one item"? | N26 |
 | DEC-9 | Mid-match crash semantics: void the mission with no forfeit, auto-pause, or keep the forfeit? | N10 |
+| DEC-10 | Target distribution for rolled reward options under a ceiling (favor near-ceiling vs uniform), and the S+ guarantee fallback when the diver's S pool is empty. | N33 |
 
 **DEC-1 — resolved (N5/N24). Landed.** Keep the stratagem pacts **loadout-checked**, not "equipped
 but never called": a stratagem call-in is team-visible but not attributed to a diver and never
@@ -96,7 +100,7 @@ slots are guaranteed instead by three rules, all in `shared/engine/`:
 - `hasLegalLoadout` (pact bans + accepted misfortune + reserve vs `STRATAGEM_SLOTS_REQUIRED`) is the
   hard floor: `SET_PACTS` refuses a pick that would drop the diver below four, and the UI greys it
   "Leaves too few stratagems to ready up". A misfortune that strands the loadout on its own is not
-  blamed on a pact — that same mandatory-slot tension for **misfortunes** is split out as **N33**.
+  blamed on a pact — that same mandatory-slot tension for **misfortunes** is split out as **N36**.
 
 ## Batches
 
@@ -109,11 +113,15 @@ Landed. N1, N4, N9, N11, N12 (faction-reroll gate), N18, N20, N21, N29, plus rem
 DEC-1 respectively. `ENGINE_VERSION` bumped 9 → 10; goldens regenerated (Barebones removal reshapes
 the pact offer draw).
 
+### Batch A2 — UX follow-ups (unblocked)
+
+N34, N35.
+
 ### Batch B — Rules & economy (needs decisions)
 
-N5, N6, N7, N19, N23, N24, N25, N27, N33. N5 and N24 landed with **DEC-1** (reserve kit, mutual
-exclusion, four-slot floor). N33 is the misfortune half of that same loadout-floor work and needs
-no new decision.
+N6, N7, N25, N33, N36. N5 and N24 landed with **DEC-1** (reserve kit, mutual exclusion,
+four-slot floor); N36 is the misfortune half of that same loadout-floor work and needs no new
+decision.
 
 ### Batch C — Rewards & catch-up
 
@@ -185,6 +193,22 @@ mission index and old wheel/reroll state until the item was picked. **Done** —
 reads "Operation failed — … restarts at mission 1". Engine untouched (the failure genuinely ends the
 operation; the restart happens on forfeit).
 
+### Batch A2
+
+**N34 · Copy-invite icon by the session ID + lone-host aside.** The header's `COPY INVITE` button
+sits far from the room code (screenshot `YK3SUN`), so the two don't read as related. Put a copy
+icon directly beside the session ID, reusing the existing clipboard logic and `ToastStack` for the
+"Invite copied" confirmation. When the host is the only seated diver, add an aside inside the
+users-list box ("You're the only diver here — share the invite link to bring in your squad") so a
+solo host knows inviting is the next step.
+
+**N35 · Users-list waiting indicators.** The squad box shows online/offline only, so a seated diver
+can't tell whether a squadmate is still deciding. Derive a status from engine state and render it
+alongside the presence dot (a11y-labelled like N20): "choosing pacts" while
+`phase === 'pacts' && !diver.pactsLocked`; "choosing reward" while `phase === 'rewards' &&
+!diver.pickedOptionId && !diver.skipsCurrentDraft`; "ready" once locked/picked (and
+"skips this draft" for `skipsCurrentDraft`). Purely presentational — no new rules.
+
 ### Batch B
 
 **N5 · Mandatory 4 stratagems; `barebones`; early-game trap.** HD2 requires 4 equipped stratagems
@@ -208,15 +232,13 @@ teaches "risk buys odds, never guarantees". Fold in QA-U1: the diving Briefing d
 entirely (`dive/[id].vue:629` shows only "Ceiling up to S") while the pacts window shows
 `~22% · luck 6` — carry the same number through.
 
-**N19 · S+ unpreviewable in low bands.** `maxCeiling` stops when a per-step odd falls below
-`UPGRADE_PREVIEW_FLOOR` (0.2); the S→S+ step is `luck/81`, needing luck ≥ 16.2 to preview (max luck
-13). At diffs 3–5 the jackpot tier is invisible even though the roll can reach it. Preview on
-`oddsToReach` instead. Also fix the AGENTS.md drift (QA-D2): "the roll still guarantees one S-tier
-option beside it" holds only for S+ / Diver's Choice (`rewards.ts:136-145`), not a plain S ceiling.
+**N19 · S+ unpreviewable in low bands.** **Done** — `stepOdds` (`rewards.ts:23-28`) caps the S→S+
+rung at `S_PLUS_UPGRADE_CAP` and `UPGRADE_PREVIEW_FLOOR` is now 0.1, so the S+ step clears the
+preview floor at max luck. AGENTS.md now states the S+ guarantee precisely (S+ / Diver's Choice
+only, never a plain S ceiling).
 
-**N23 · Star→options flat early.** `STARS_TO_OPTIONS` is indexed directly by stars
-(`config.ts:59`), so a 3★ diff-3 clear yields the same 2 options as 2★. Consider `index = stars − 1`
-or a floor of 2.
+**N23 · Star→options flat early.** **Done** — `STARS_TO_OPTIONS` is now `[1,1,2,3,4,4]`
+(`config.ts:60`), so 1★=1, 2★=2, 3★=3, 4★=4, 5★=4 (capped). Team performance is felt at every star.
 
 **N24 · Pact redundancy is free luck. Done (DEC-1).** The observed case (`Barebones` subsuming
 `Primary Concern`) went with `barebones` in Batch A. The general fix is same-axis mutual exclusion:
@@ -228,10 +250,24 @@ Directional subsumption (`PACT_SUBSUMES`) stays wired for future rules.
 optimal play is always all playable pacts. Likely intended; the "0 to all" copy undersells it.
 
 **N27 · S+ frequency at altitude.** At max pacts + accepted risk on diffs 7–10, Diver's Choice
-appeared in 7 of ~12 picks. Matches "rare-ish" but felt common; revisit once ceiling-curve data is
-aggregated.
+appeared in 7 of ~12 picks. **Done (monitor)** — the missing `S_PLUS_UPGRADE_CAP` (0.1) is now
+applied to the final rung in `stepOdds` (`rewards.ts:23-28`), so altitude alone can't make Diver's
+Choice routine (~8% at max luck). Revisit only if the live rate still feels high.
 
-**N33 · Mandatory 4 slots vs equip-restricting misfortunes.** The pact half landed with DEC-1, but
+**N33 · Reward options skew to base tiers even at a high ceiling.** Observed on room `YK3SUN`,
+Super Helldive (10), misfortune accepted and all pacts locked: the header read `ceiling S+`, but the
+draft offered just B (Oxygenator), B (Concussive Padding), C (Combat Hatchet) and C (Sterilizer).
+Cause: `tierWeight` (`rewards.ts:105-111`) returns
+`TIER_ROLL_WEIGHT_BASE ** (ceilingIndex - TIER_INDEX[tier])`, so lower tiers weigh *exponentially*
+more — at an S+ ceiling the weights are C=8, B=4, A=2, S=1 (~53% C). A high ceiling therefore buys
+a thin shot at S while flooding the draft with base-tier gear, which contradicts north star 3
+("reward scales with stakes") and makes a deep, risky run feel unrewarding. Fix direction (DEC-10):
+favor tiers near the ceiling, or clamp rolled options to a window beneath it, instead of weighting
+toward the base. Related check: the guaranteed one-S slot (`rewards.ts:149-156`) silently vanishes
+when the diver's candidate S pool is empty (everything owned, or none in their declared warbonds) —
+verify and fall back to the highest available tier rather than dropping the guarantee.
+
+**N36 · Mandatory 4 slots vs equip-restricting misfortunes.** The pact half landed with DEC-1, but
 misfortunes carry the same four-slot tension and `hasLegalLoadout` already models it (an accepted
 misfortune whose own bans strand the loadout is not blamed on a pact). Open questions: `noStratagems`
 is behavioral — four slots still equip, they just cannot be called — so it should stay out of the
