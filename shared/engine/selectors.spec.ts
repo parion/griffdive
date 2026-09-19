@@ -100,8 +100,8 @@ describe('team misfortune acceptance', () => {
     expect(teamRiskOf(state)).toBeGreaterThan(0)
   })
 
-  it('luck prices the tier climb, difficulty sets the floor', () => {
-    // Zero luck: the base tier is the whole story.
+  it('Valor prices the tier climb, difficulty sets the floor', () => {
+    // Zero Valor: the base tier is the whole story.
     expect(ceilingRange(3, 0, 0)).toMatchObject({ min: 'C', max: 'C', odds: 1 })
     expect(ceilingRange(10, 0, 0)).toMatchObject({ min: 'A', max: 'A', odds: 1 })
     // Chosen risk buys odds, and top-of-band difficulties climb easier.

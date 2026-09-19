@@ -117,7 +117,7 @@ onBeforeUnmount(() => {
               class="title"
               data-tier="S+"
             >
-              <span class="mark">S+</span> Diver's Choice
+              <span class="mark">S+</span> Liberty’s Cross
             </h2>
             <p class="muted small">
               {{ claimableCount }} of {{ pool.length }} items claimable — anything from your own

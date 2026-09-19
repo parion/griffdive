@@ -27,6 +27,8 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
   await expect(pageB.getByText('(you)')).toBeVisible()
   await expect(pageB.getByRole('button', { name: 'Spin', exact: true })).toBeDisabled()
+  // Invite copy lives beside the room code in the header.
+  await expect(pageB.getByLabel('Copy invite link')).toBeVisible()
 
   // The joiner's gate-provided name synced to the host; renaming via the
   // inline chip editor still updates the squad in real time.

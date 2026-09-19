@@ -4,7 +4,7 @@ import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
 import { difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
 import { pactName } from '~~/shared/data/pacts'
-import { applyPactToggle, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
+import { applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
 import {
   activeMisfortune,
   allDiversPicked,
@@ -18,6 +18,7 @@ import {
   teamRiskOf,
 } from '~~/shared/engine/selectors'
 import type { CrusadeVariant, EngineAction, ItemRef } from '~~/shared/engine/types'
+import { deriveFront, deriveMisfortune } from '~~/shared/engine/wheel'
 import { rememberDiverName } from '~/composables/useGameSocket'
 
 const route = useRoute()
@@ -123,17 +124,37 @@ function togglePact(pactId: string): void {
   )
 }
 
-// Offered pacts already covered by the current selection — shown greyed with
-// the pact that covers them (pick that instead).
+// Offered pacts the current selection rules out — greyed with the reason:
+// covered by a stronger pick, a same-axis conflict, or a loadout that can no
+// longer field HD2's four required stratagems.
 const pactCoverage = computed<Record<string, string>>(() => {
-  const coverage: Record<string, string> = {}
+  const state = session.state.value
+  if (!state) {
+    return {}
+  }
+  const blocked: Record<string, string> = {}
+  const misfortuneId = misfortune.value?.id ?? null
+  const owned = state.personalInventories[session.selfId.value ?? ''] ?? []
+  const baseLegal = hasLegalLoadout(misfortuneId, [], owned)
   for (const pact of pactOffer.value) {
+    if (pactSelection.value.includes(pact.id)) {
+      continue
+    }
     const subsumer = pactSubsumedBy(pact.id, pactSelection.value)
     if (subsumer) {
-      coverage[pact.id] = pactName(subsumer)
+      blocked[pact.id] = `Covered by ${pactName(subsumer)}`
+      continue
+    }
+    const conflict = pactConflictsWith(pact.id, pactSelection.value)
+    if (conflict) {
+      blocked[pact.id] = `Conflicts with ${pactName(conflict)}`
+      continue
+    }
+    if (baseLegal && !hasLegalLoadout(misfortuneId, [...pactSelection.value, pact.id], owned)) {
+      blocked[pact.id] = 'Leaves too few stratagems to ready up'
     }
   }
-  return coverage
+  return blocked
 })
 
 const liveRange = computed(() =>
@@ -154,7 +175,7 @@ const options = computed(() =>
   session.state.value && self.value ? diverOptions(session.state.value, self.value) : [],
 )
 
-// Diver's Choice picks from the diver's own catalog: their declared warbonds
+// Liberty's Cross picks from the diver's own catalog: their declared warbonds
 // minus anything already owned. Same personal-pool rule as the rolled offers.
 const rewardPool = computed(() =>
   self.value ? rewardPoolFor(self.value.warbondCodes ?? ALL_WARBOND_CODES) : [])
@@ -171,6 +192,7 @@ const phaseKey = computed(() => {
 const reportMode = ref<'none' | 'success' | 'failure'>('none')
 const stars = ref(1)
 const timePct = ref<number | null>(null)
+const samples = ref({ common: 0, rare: 0, super: 0 })
 
 const maxStars = computed(() =>
   maxStarsFor(session.state.value?.difficulty ?? MAX_DIFFICULTY))
@@ -182,7 +204,24 @@ function spin(): void {
 }
 
 function reroll(wheel: 'misfortune' | 'front'): void {
-  dispatch({ type: 'REROLL_WHEEL', wheel, seed: newSeed() })
+  const state = session.state.value
+  if (!state?.wheel) {
+    return
+  }
+  // Spins are seeds, but a reroll must actually move: draw fresh seeds until
+  // the derived result differs from the one being replaced (the reducer refuses
+  // a same-result seed too, so a hostile client can't fake it).
+  let seed = newSeed()
+  for (let attempt = 0; attempt < 32; attempt++) {
+    const same = wheel === 'misfortune'
+      ? deriveMisfortune(seed, state.difficulty).id === state.wheel.misfortuneId
+      : deriveFront(seed) === state.frontId
+    if (!same) {
+      break
+    }
+    seed = newSeed()
+  }
+  dispatch({ type: 'REROLL_WHEEL', wheel, seed })
 }
 
 function decideMisfortune(accepted: boolean): void {
@@ -202,11 +241,13 @@ function failPact(playerId: string, pactId: string): void {
 }
 
 function report(outcome: 'success' | 'failure'): void {
+  const hasSamples = samples.value.common > 0 || samples.value.rare > 0 || samples.value.super > 0
   dispatch({
     type: 'REPORT_RESULT',
     outcome,
     stars: outcome === 'success' ? stars.value : 0,
     timePct: timePct.value ?? undefined,
+    samples: hasSamples && outcome === 'success' ? { ...samples.value } : undefined,
   })
   reportMode.value = 'none'
 }
@@ -217,12 +258,14 @@ function openReport(mode: 'success' | 'failure'): void {
   reportMode.value = mode
   stars.value = maxStars.value
   timePct.value = null
+  samples.value = { common: 0, rare: 0, super: 0 }
 }
 
 function cancelReport(): void {
   reportMode.value = 'none'
   stars.value = maxStars.value
   timePct.value = null
+  samples.value = { common: 0, rare: 0, super: 0 }
 }
 
 function pick(optionId: string, choiceItemId?: string): void {
@@ -275,14 +318,46 @@ function abandonSlot(): void {
 }
 
 function copyInvite(): void {
-  if (import.meta.client) {
-    navigator.clipboard.writeText(location.href)
+  if (!import.meta.client) {
+    return
   }
+  if (!navigator.clipboard?.writeText) {
+    pushToast('Could not copy the invite')
+    return
+  }
+  navigator.clipboard
+    .writeText(location.href)
+    .then(() => pushToast('Invite copied'))
+    .catch(() => pushToast('Could not copy the invite'))
 }
 
 function isOnline(diverId: string): boolean {
   return session.online.value.includes(diverId)
 }
+
+// Waiting status per diver, from engine state — purely presentational, so the
+// squad can see who still needs to act. Absent outside the deciding phases.
+const diverStatuses = computed<Record<string, string>>(() => {
+  const state = session.state.value
+  const statuses: Record<string, string> = {}
+  if (!state) {
+    return statuses
+  }
+  for (const diver of state.divers) {
+    if (state.phase === 'pacts') {
+      statuses[diver.id] = diver.pactsLocked ? 'ready' : 'choosing pacts'
+    }
+    else if (state.phase === 'rewards') {
+      if (diver.skipsCurrentDraft) {
+        statuses[diver.id] = 'skips this draft'
+      }
+      else {
+        statuses[diver.id] = diver.pickedOptionId !== null ? 'ready' : 'choosing reward'
+      }
+    }
+  }
+  return statuses
+})
 
 // Host moderation: remove a diver who left or is blocking the squad.
 function canKick(diverId: string): boolean {
@@ -395,9 +470,21 @@ function commitWarbonds(codes: string[]): void {
     <template v-else-if="session.state.value">
       <header class="page-header">
         <div>
-          <h1 class="mono">
-            {{ session.slotName.value || 'Dive' }}
-          </h1>
+          <div class="title-row">
+            <h1 class="mono">
+              {{ session.slotName.value || 'Dive' }}
+            </h1>
+            <button
+              v-if="session.mode === 'room'"
+              class="copy-code"
+              type="button"
+              aria-label="Copy invite link"
+              title="Copy invite link"
+              @click="copyInvite"
+            >
+              <IconCopy />
+            </button>
+          </div>
           <div class="dive-meta">
             <img
               class="diff-icon"
@@ -427,14 +514,6 @@ function commitWarbonds(codes: string[]): void {
           >
             {{ session.status.value }}
           </span>
-          <button
-            v-if="session.mode === 'room'"
-            class="btn ghost tiny"
-            type="button"
-            @click="copyInvite"
-          >
-            Copy invite
-          </button>
           <span
             v-if="lockedCeiling"
             class="row small muted"
@@ -501,6 +580,14 @@ function commitWarbonds(codes: string[]): void {
               aria-label="Host"
             >★</span>
             <span
+              v-if="diverStatuses[diver.id]"
+              class="status-chip"
+              :class="{ ready: diverStatuses[diver.id] === 'ready' }"
+              role="img"
+              :aria-label="diverStatuses[diver.id]"
+              :title="diverStatuses[diver.id]"
+            >{{ diverStatuses[diver.id] }}</span>
+            <span
               v-if="diver.catchUpOwed > 0"
               class="catchup-chip"
               role="img"
@@ -533,6 +620,12 @@ function commitWarbonds(codes: string[]): void {
             </button>
           </span>
         </div>
+        <p
+          v-if="session.mode === 'room' && session.state.value.divers.length === 1"
+          class="muted small lone-host"
+        >
+          You're the only diver here — share the invite link to bring in your squad.
+        </p>
       </section>
 
       <p
@@ -661,7 +754,7 @@ function commitWarbonds(codes: string[]): void {
                     <PactPicker
                       :offer="pactOffer"
                       :selected="pactSelection"
-                      :covered="pactCoverage"
+                      :blocked="pactCoverage"
                       @toggle="togglePact"
                       @lock="lockPacts"
                     />
@@ -683,7 +776,7 @@ function commitWarbonds(codes: string[]): void {
                       >
                         <TierBadge :tier="liveRange.max" />
                       </Motion>
-                      <span>(~{{ Math.round(liveRange.odds * 100) }}% · luck {{ teamRiskOf(session.state.value) + pactRiskTotal(pactSelection) }})</span>
+                      <span>(~{{ Math.round(liveRange.odds * 100) }}% · valor {{ teamRiskOf(session.state.value) + pactRiskTotal(pactSelection) }})</span>
                     </p>
                   </template>
                 </div>
@@ -756,6 +849,43 @@ function commitWarbonds(codes: string[]): void {
                     :length="maxStars"
                   />
                   <span class="muted small">of {{ maxStars }} at this difficulty</span>
+                </div>
+                <div
+                  v-if="reportMode === 'success'"
+                  class="row small muted"
+                >
+                  <span>Samples</span>
+                  <label class="row small muted">
+                    Common
+                    <input
+                      v-model.number="samples.common"
+                      type="number"
+                      min="0"
+                      max="99"
+                      style="width: 3.5rem"
+                    >
+                  </label>
+                  <label class="row small muted">
+                    Rare
+                    <input
+                      v-model.number="samples.rare"
+                      type="number"
+                      min="0"
+                      max="99"
+                      style="width: 3.5rem"
+                    >
+                  </label>
+                  <label class="row small muted">
+                    Super
+                    <input
+                      v-model.number="samples.super"
+                      type="number"
+                      min="0"
+                      max="99"
+                      style="width: 3.5rem"
+                    >
+                  </label>
+                  <span>adds Valor (capped)</span>
                 </div>
                 <label class="row small muted">
                   Time remaining % (optional)
@@ -971,6 +1101,49 @@ function commitWarbonds(codes: string[]): void {
 }
 
 .squad-strip { padding: 0.6rem 0.75rem; }
+.lone-host { margin: 0.5rem 0 0; }
+.title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.copy-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.copy-code:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.copy-code svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+.status-chip {
+  padding: 0 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 0.65rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.status-chip.ready {
+  border-color: var(--teal);
+  color: var(--teal);
+}
 .catchup-chip {
   padding: 0 0.3rem;
   border: 1px solid var(--teal);

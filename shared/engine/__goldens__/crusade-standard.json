@@ -234,7 +234,9 @@
       "misfortuneId": "primaryOnly",
       "misfortuneAccepted": true,
       "front": "illuminate",
-      "pactIds": [],
+      "pactIds": [
+        "deadWeight"
+      ],
       "outcome": "success",
       "stars": 5,
       "optionId": "orbitalprecisionstrike",
@@ -287,7 +289,7 @@
       "misfortuneAccepted": true,
       "front": "illuminate",
       "pactIds": [
-        "loadoutLoyalist"
+        "stimAbstinent"
       ],
       "outcome": "success",
       "stars": 4,
@@ -356,8 +358,7 @@
       "misfortuneAccepted": true,
       "front": "terminids",
       "pactIds": [
-        "antiTankAbstinent",
-        "deadWeight"
+        "antiTankAbstinent"
       ],
       "outcome": "success",
       "stars": 4,

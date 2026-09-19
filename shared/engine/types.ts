@@ -51,10 +51,19 @@ export interface ItemRef {
 
 export type MissionOutcome = 'success' | 'failure'
 
+// Samples recovered on a mission, by rarity. Squad-level team performance feeds
+// a small Valor bonus on top of chosen risk.
+export interface SampleCounts {
+  common: number
+  rare: number
+  super: number
+}
+
 export interface MissionReport {
   outcome: MissionOutcome
   stars: number
   timePct?: number
+  samples?: SampleCounts
 }
 
 export interface DiveState {
@@ -91,7 +100,7 @@ export type EngineAction
     | { type: 'SET_PACTS', playerId: string, pactIds: string[] }
     | { type: 'FAIL_PACT', playerId: string, pactId: string }
     | { type: 'SET_WARBONDS', playerId: string, warbondCodes: string[] }
-    | { type: 'REPORT_RESULT', outcome: MissionOutcome, stars: number, timePct?: number }
+    | { type: 'REPORT_RESULT', outcome: MissionOutcome, stars: number, timePct?: number, samples?: SampleCounts }
     | { type: 'FORFEIT_ITEM', itemRef: ItemRef }
     | { type: 'PICK_REWARD', playerId: string, optionId: string, choiceItemId?: string }
     | { type: 'CLAIM_CATCHUP_OPTION', playerId: string, optionId: string }
