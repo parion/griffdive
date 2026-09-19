@@ -37,7 +37,7 @@ IDs are stable and append-only; do not renumber.
 | N4 | Stars default to full | UX | S | Done | new |
 | N5 | Mandatory 4 stratagems; remove `barebones`; early-game pact trap | Rules | M | Done (DEC-1: loadout-checked + reserve + exclusivity) | new |
 | N6 | Time % + samples (common/rare/super) boost Valor slightly | Rules | M | Done (DEC-2) | new |
-| N7 | Valor meter visual (lore-named) | UX | M | Todo (DEC-3 name: Valor) | new, QA-U1 |
+| N7 | Valor meter visual (lore-named) | UX | M | Done | new, QA-U1 |
 | N8 | Reward ban + separate reward reroll | Rules/Design | L | Blocked (DEC-4) | new |
 | N9 | `stimAbstinent` at max risk (`untouchable` already 3) | Balance | S | Done | new |
 | N10 | Crash / host-loss resilience mid-match | Infra/UX | L | Blocked (DEC-9) | new, QA-T3 |
@@ -138,10 +138,10 @@ Landed. N34, N35. No engine changes (presentation only) — no `ENGINE_VERSION` 
 
 ### Batch B — Rules & economy (needs decisions)
 
-N7, N25, N33, N36. N5/N24 landed with **DEC-1** (reserve kit, mutual exclusion, four-slot floor),
-N6 landed with **DEC-2** (time/samples Valor), and N12's same-result reroll landed with **DEC-3b**.
-N36 is the misfortune half of the DEC-1 loadout-floor work and needs no new decision; N7 (the Valor
-meter) is now unblocked and waiting on its own build.
+N25, N33, N36. N5/N24 landed with **DEC-1** (reserve kit, mutual exclusion, four-slot floor),
+N6 landed with **DEC-2** (time/samples Valor), N12's same-result reroll landed with **DEC-3b**, and
+N7 (the Valor meter) landed with **DEC-3a** (the name).
+N36 is the misfortune half of the DEC-1 loadout-floor work and needs no new decision.
 
 ### Batch C — Rewards & catch-up
 
@@ -251,11 +251,16 @@ boosts that draft for every diver. The report form collects samples and time wit
 fields (`ui/RangeField.vue`, number above slider, browser spinners dropped), the sample sliders sized
 to `SAMPLE_AVAILABILITY`; a live readout previews the added Valor. AGENTS.md reward math is updated.
 
-**N7 · Valor meter.** Valor is `teamRisk + pactRisk + performance` (`valorOf` in `rewards.ts`)
-surfaced today as raw `valor 6` (`dive/[id].vue`). Build the lore-named **Valor** gauge fed by
-`ceilingRange` that teaches "risk buys odds, never guarantees". Fold in QA-U1: the diving Briefing
-drops the odds entirely while the pacts window shows `~22% · valor 6` — carry the same number
-through. Unblocked now that DEC-3a fixed the name.
+**N7 · Valor meter. Done.** `ValorMeter.vue` is a lore-named gauge fed by `ceilingRange` and the
+new `maxValorFor(difficulty)` display scale (strongest eligible misfortune + top pacts + the
+performance cap). It stacks the three Valor sources as coloured segments (team gold, pacts red,
+performance teal), animates a burning tip that brightens with the fill (reduced-motion safe), and
+replaces the raw `valor 6` text with a tier ladder (base → S+, reached rungs lit) plus the odds to
+reach the top. It renders live in the pacts window (responding to pact toggles and the misfortune
+switch), locked in the diving Briefing, and locked-with-performance in the reward draft — so the
+same number and odds carry from pacts through briefing (QA-U1) and the performance term is legible.
+The gauge uses Reka's `ProgressRoot`/`ProgressIndicator` for the accessible progressbar semantics
+(`role`, `aria-valuenow/max/valuetext`).
 
 **N19 · S+ unpreviewable in low bands.** **Done** — `stepOdds` (`rewards.ts:23-28`) caps the S→S+
 rung at `S_PLUS_UPGRADE_CAP` and `UPGRADE_PREVIEW_FLOOR` is now 0.1, so the S+ step clears the

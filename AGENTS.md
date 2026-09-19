@@ -276,6 +276,14 @@ ceiling roll:  start at the base tier; each step to the next tier
   rarity mix (wiki.gg/Sample availability), so the term scales with difficulty without a
   multiplier: a Medium haul (commons only) is worth ~0.03, a Super Helldive haul with rares and
   supers ~0.3.
+- **Valor is surfaced as the Valor meter** (`app/components/dive/ValorMeter.vue`): a live gauge
+  stacking the three sources (team risk, pacts, performance) with a tier ladder from the
+  difficulty's base tier to the previewed ceiling and the odds of reaching it. It renders in the
+  pacts window (live, reacting to pact toggles and the misfortune decision), the diving Briefing
+  (locked) and the reward draft (locked, including the performance term). Its display scale is
+  `maxValorFor(difficulty)` in `shared/engine/selectors.ts`; the meter is presentation only and
+  never gates a roll. The gauge is Reka's `ProgressRoot`/`ProgressIndicator` (accessible
+  `role="progressbar"` with `aria-valuenow/max/valuetext`).
 - The reward pool is personal: each diver rolls against the catalog of warbonds *they* declared
   (plus `warbondCode === 'none'` items, minus armor pieces) — never the squad's or the host's.
 - Higher difficulties inside a band climb easier: diff 5 rolls into B more readily than diff 3,
@@ -380,7 +388,8 @@ all routes; static hosts need a `/*` → shell fallback instead.
 app/
   pages/           index (new crusade / host / join / continue), dive/[id] (solo + room flow),
                    lobby (open dives), codex
-  components/      dive/ (WheelPanel, PactPicker, RewardDraft, FieldPromotionCard — the mid-crusade
+  components/      dive/ (WheelPanel, PactPicker, RewardDraft, ValorMeter — the live Valor gauge
+                   and tier-ceiling ladder, FieldPromotionCard — the mid-crusade
                    catch-up ceremony, DiversChoiceCard — the special
                    S+ "Liberty's Cross" offer card, DiversChoicePicker — its minified codex
                    modal, InventoryGrid, CrusadeSetup, WarbondPicker,
