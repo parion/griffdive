@@ -7,8 +7,8 @@ import { ACCOUNTABILITY_LABELS } from '~/utils/accountability'
 const props = defineProps<{
   offer: Pact[]
   selected: string[]
-  // Offered pacts another pick already covers: pactId → covering pact's name.
-  covered?: Record<string, string>
+  // Offered pacts the current selection rules out: pactId → reason to show.
+  blocked?: Record<string, string>
 }>()
 defineEmits<{ toggle: [pactId: string], lock: [] }>()
 </script>
@@ -19,13 +19,15 @@ defineEmits<{ toggle: [pactId: string], lock: [] }>()
     <p class="muted small">
       Rolled from the wheel decision — take any, all, or none. Every pact you carry raises your
       reward ceiling; a pact you break in the field is voided and costs one reward option.
+      Restrictions that tax the same strength can't be stacked, and reserve utility
+      (smoke, EMS, shields) is always available as loadout filler.
     </p>
     <div class="pact-list">
       <CheckboxRoot
         v-for="pact in props.offer"
         :key="pact.id"
         :model-value="selected.includes(pact.id)"
-        :disabled="Boolean(props.covered?.[pact.id])"
+        :disabled="Boolean(props.blocked?.[pact.id])"
         class="pact"
         :class="{ on: selected.includes(pact.id) }"
         @update:model-value="$emit('toggle', pact.id)"
@@ -39,9 +41,9 @@ defineEmits<{ toggle: [pactId: string], lock: [] }>()
         </span>
         <span class="line small">{{ pact.rule }}</span>
         <span
-          v-if="props.covered?.[pact.id]"
+          v-if="props.blocked?.[pact.id]"
           class="line small covered-note"
-        >Covered by {{ props.covered[pact.id] }}</span>
+        >{{ props.blocked[pact.id] }}</span>
         <span
           v-else
           class="line small muted"

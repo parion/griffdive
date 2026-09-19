@@ -76,14 +76,14 @@ watch(() => props.open, (open) => {
 <template>
   <AppDialog
     :open="props.open"
-    title="Diver's Choice"
+    title="Liberty’s Cross"
     size="md"
     content-class="choice-dialog"
     @update:open="value => { if (!value) emit('close') }"
     @open-auto-focus="focusSearch"
   >
     <template #title>
-      <span class="choice-title"><span class="mark">S+</span> Diver's Choice</span>
+      <span class="choice-title"><span class="mark">S+</span> Liberty’s Cross</span>
     </template>
     <template #description>
       {{ claimableCount }} of {{ pool.length }} items claimable — anything from your own warbonds,

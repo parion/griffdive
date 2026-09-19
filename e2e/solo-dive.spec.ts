@@ -13,14 +13,24 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByText('Decision pending')).toBeVisible()
   await expect(page.locator('.tier-badge').first()).toBeVisible()
 
-  // The team locks the drawn misfortune in — chosen risk raises everyone's luck.
+  // The team locks the drawn misfortune in — chosen risk raises everyone's Valor.
   await page.getByRole('button', { name: 'Lock it in' }).click()
   await expect(page.getByText('Locked in — team-wide')).toBeVisible()
 
+  // The squad strip shows who still has to decide.
+  await expect(page.getByRole('img', { name: 'choosing pacts' })).toBeVisible()
+
+  // The Valor meter reflects the team risk and grows as pacts are added.
+  const valor = page.getByRole('progressbar', { name: 'Valor' })
+  await expect(valor).toBeVisible()
+  const teamValor = Number(await valor.getAttribute('aria-valuenow'))
   await page.locator('.pact:not([disabled])').first().click()
+  expect(Number(await valor.getAttribute('aria-valuenow'))).toBeGreaterThan(teamValor)
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
 
+  // The briefing carries the same locked Valor through (QA-U1).
   await expect(page.getByRole('heading', { name: 'Briefing' })).toBeVisible()
+  await expect(valor).toBeVisible()
 
   await page.getByRole('button', { name: 'Mission complete' }).click()
   // The report form opens at the difficulty's best result — 3 stars at Medium.
@@ -28,6 +38,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.getByRole('button', { name: 'Submit success' }).click()
 
   await expect(page.getByText('Rewards — choose one')).toBeVisible()
+  await expect(page.getByRole('img', { name: 'choosing reward' })).toBeVisible()
   await page.locator('.item-card:not([disabled])').first().click()
 
   await page.getByRole('button', { name: /Next mission/ }).click()
