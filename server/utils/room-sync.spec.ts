@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { pactOfferFor } from '~~/shared/engine/selectors'
-import { ROOM_TTL_MS, createPeerDirectory, createRoom, loadRoom, listLobby, lobbyEntryFor, processAction, processClose, processHello } from './room-sync'
+import { ROOM_TTL_MS, createPeerDirectory, createRoom, loadRoom, processAction, processClose, processHello } from './room-sync'
 import type { PeerLike, RoomKV, StoredRoom } from './room-sync'
 import type { ServerMessage } from '~~/shared/types/messages'
 
@@ -450,40 +450,6 @@ describe('room-sync', () => {
     await processClose(kv, peers, host)
     expect(sent(joiner)).toHaveLength(0)
     expect((await loadRoom(kv, code))?.state.hostId).toBe(hostId)
-  })
-
-  it('publishes lobby entries only for open, non-full rooms', async () => {
-    const kv = fakeKV()
-    const peers = createPeerDirectory()
-    const code = await createRoom(kv)
-
-    const listener = fakePeer('ws-lobby')
-    listener.context.roomCode = '__lobby__'
-    await processHello(kv, peers, listener, {})
-
-    const host = fakePeer('ws-a')
-    host.context.roomCode = code
-    await processHello(kv, peers, host, { name: 'Host' })
-    expect(listLobby).toBeDefined()
-
-    // Closed room: no entry.
-    expect(await listLobby(kv)).toHaveLength(0)
-
-    await processAction(kv, peers, host, { action: { type: 'TOGGLE_OPEN', open: true } })
-    expect(sent(listener).some(m => m.type === 'lobby' && m.rooms.length === 1)).toBe(true)
-
-    // Open but full: filtered out of the list.
-    for (const letter of ['b', 'c', 'd']) {
-      const peer = fakePeer(`ws-${letter}`)
-      peer.context.roomCode = code
-      await processHello(kv, peers, peer, { name: letter })
-    }
-    const full = await listLobby(kv)
-    expect(full).toHaveLength(0)
-
-    const stored = await loadRoom(kv, code)
-    expect(stored).not.toBeNull()
-    expect(lobbyEntryFor(stored as StoredRoom)).toBeNull()
   })
 
   it('prunes rooms after the TTL', async () => {

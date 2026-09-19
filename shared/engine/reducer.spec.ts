@@ -94,7 +94,6 @@ const skeletonActions: EngineAction[] = [
   { type: 'KICK_DIVER', playerId: 'p2' },
   { type: 'SET_NAME', playerId: 'p1', name: 'Griffin' },
   { type: 'TRANSFER_HOST', playerId: 'p2' },
-  { type: 'TOGGLE_OPEN', open: true },
 ]
 
 describe('reduce (purity + no-op safety)', () => {
@@ -568,10 +567,6 @@ describe('identity actions', () => {
     const state = reduce(freshState(), { type: 'END_DIVE' })
     expect(state.phase).toBe('complete')
     expect(reduce(state, { type: 'END_DIVE' })).toBe(state)
-  })
-
-  it('TOGGLE_OPEN flags the room for the lobby', () => {
-    expect(reduce(freshState(), { type: 'TOGGLE_OPEN', open: true }).openToLobby).toBe(true)
   })
 })
 

@@ -1,16 +1,11 @@
 import { createServer } from 'node:http'
 import { roomMetrics } from '../utils/metrics'
 import { peers } from '../utils/peers'
-import { roomKV } from '../utils/room-storage'
-import { listLobby } from '../utils/room-sync'
 
 // Scrape endpoint on a private port: only internal_port 8080 is publicly
 // routed on Fly, so this port is reachable by Fly's metrics scraper alone.
 export default defineNitroPlugin(() => {
-  roomMetrics.bind({
-    peers,
-    openRooms: async () => (await listLobby(roomKV())).length,
-  })
+  roomMetrics.bind({ peers })
 
   const port = Number.parseInt(process.env.METRICS_PORT ?? '9091', 10)
   const server = createServer(async (request, response) => {

@@ -1,12 +1,10 @@
 import { Counter, Gauge, Registry, collectDefaultMetrics } from '@prometheus-io/client'
-import { isLobbyRoom } from '~~/shared/types/messages'
 import type { PeerDirectory } from './room-sync'
 
 // Live signals the gauges snapshot at scrape time. Injected by the metrics
 // plugin so this module stays Nitro-free and unit-testable.
 export interface RoomMetricsSource {
   peers: PeerDirectory
-  openRooms(): Promise<number>
 }
 
 export interface RoomMetrics {
@@ -47,17 +45,8 @@ export function createRoomMetrics(): RoomMetrics {
     },
   })
 
-  new Gauge({
-    name: 'griffdive_open_rooms',
-    help: 'Rooms currently published to the open-dive lobby',
-    registers: [registry],
-    async collect() {
-      this.set(source ? await source.openRooms() : 0)
-    },
-  })
-
   // PlayerIds are unique per room, so a Set across rooms counts distinct
-  // divers. Lobby listeners and pre-hello sockets are not divers.
+  // divers. Pre-hello sockets are not divers.
   function presence(): { players: number, rooms: number } {
     const directory = source?.peers
     if (!directory) {
@@ -66,9 +55,6 @@ export function createRoomMetrics(): RoomMetrics {
     const players = new Set<string>()
     let rooms = 0
     for (const roomCode of directory.rooms()) {
-      if (isLobbyRoom(roomCode)) {
-        continue
-      }
       let seated = false
       for (const peer of directory.list(roomCode)) {
         const playerId = peer.context.playerId

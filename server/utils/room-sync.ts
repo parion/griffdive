@@ -3,8 +3,8 @@ import { SQUAD_SIZE_MAX, MAX_NAME_LENGTH } from '~~/shared/engine/config'
 import { createLobbyState, joinDiver, seatingBlocked } from '~~/shared/engine/room'
 import { reduce } from '~~/shared/engine/reducer'
 import type { DiveState, EngineAction } from '~~/shared/engine/types'
-import { LOBBY_ROOM, isHostOnlyAction, isLobbyRoom } from '~~/shared/types/messages'
-import type { LobbyEntry, ServerMessage } from '~~/shared/types/messages'
+import { isHostOnlyAction } from '~~/shared/types/messages'
+import type { ServerMessage } from '~~/shared/types/messages'
 import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, isRoomCode } from '~~/shared/utils/room-code'
 import { roomMetrics } from './metrics'
 
@@ -106,33 +106,6 @@ async function saveRoom(kv: RoomKV, room: StoredRoom): Promise<void> {
   await kv.setItem(room.code, room)
 }
 
-export function lobbyEntryFor(room: StoredRoom): LobbyEntry | null {
-  const squadSize = room.state.divers.length
-  if (!room.state.openToLobby || squadSize >= SQUAD_SIZE_MAX) {
-    return null
-  }
-  return {
-    roomCode: room.code,
-    squadSize,
-    slotsFree: SQUAD_SIZE_MAX - squadSize,
-    difficulty: room.state.difficulty,
-    variant: room.state.settings?.variant ?? null,
-    front: room.state.frontId ?? null,
-    hostName: room.state.divers.find(diver => diver.isHost)?.name ?? '',
-  }
-}
-
-export async function listLobby(kv: RoomKV): Promise<LobbyEntry[]> {
-  const keys = await kv.getKeys()
-  const entries = await Promise.all(
-    keys.map(async (code) => {
-      const room = await loadRoom(kv, code)
-      return room ? lobbyEntryFor(room) : null
-    }),
-  )
-  return entries.filter((entry): entry is LobbyEntry => entry !== null)
-}
-
 function sendError(peer: PeerLike, code: string, message: string): void {
   peer.send(JSON.stringify({ type: 'error', code, message } satisfies ServerMessage))
 }
@@ -167,13 +140,6 @@ function broadcastState(
   }
 }
 
-async function broadcastLobby(kv: RoomKV, peers: PeerDirectory): Promise<void> {
-  const message = JSON.stringify({ type: 'lobby', rooms: await listLobby(kv) } satisfies ServerMessage)
-  for (const peer of peers.list(LOBBY_ROOM)) {
-    peer.send(message)
-  }
-}
-
 function sanitizeName(name: unknown): string {
   if (typeof name !== 'string') {
     return 'Diver'
@@ -190,13 +156,6 @@ export async function processHello(
   const requested = peer.context.roomCode ?? ''
   if (!requested) {
     sendError(peer, 'bad-room', 'Missing room code')
-    return
-  }
-
-  if (isLobbyRoom(requested)) {
-    peer.context.roomCode = LOBBY_ROOM
-    peers.add(LOBBY_ROOM, peer)
-    peer.send(JSON.stringify({ type: 'lobby', rooms: await listLobby(kv) } satisfies ServerMessage))
     return
   }
 
@@ -256,9 +215,6 @@ export async function processHello(
 
   if (changed) {
     broadcastState(peers, requested, room.state, null, peer)
-    if (room.state.openToLobby) {
-      await broadcastLobby(kv, peers)
-    }
   }
 }
 
@@ -287,7 +243,7 @@ export async function processAction(
 ): Promise<void> {
   const roomCode = peer.context.roomCode
   const playerId = peer.context.playerId
-  if (!roomCode || !playerId || isLobbyRoom(roomCode)) {
+  if (!roomCode || !playerId) {
     sendError(peer, 'not-in-room', 'Join a dive before acting')
     return
   }
@@ -316,7 +272,6 @@ export async function processAction(
     return
   }
 
-  const wasOpen = room.state.openToLobby
   const enforced = enforceSelf(action, playerId)
   const next = reduce(room.state, enforced)
   if (next === room.state) {
@@ -329,16 +284,13 @@ export async function processAction(
     roomMetrics.recordDiveStarted()
   }
   broadcastState(peers, roomCode, room.state, enforced)
-  if (wasOpen || room.state.openToLobby) {
-    await broadcastLobby(kv, peers)
-  }
 }
 
 export async function processClose(kv: RoomKV, peers: PeerDirectory, peer: PeerLike): Promise<void> {
   const roomCode = peer.context.roomCode
   const playerId = peer.context.playerId
   peers.remove(peer)
-  if (!roomCode || !playerId || isLobbyRoom(roomCode)) {
+  if (!roomCode || !playerId) {
     return
   }
   const room = await loadRoom(kv, roomCode)
@@ -362,9 +314,6 @@ export async function processClose(kv: RoomKV, peers: PeerDirectory, peer: PeerL
       room.state = reduce(room.state, action)
       await saveRoom(kv, room)
       broadcastState(peers, roomCode, room.state, action)
-      if (room.state.openToLobby) {
-        await broadcastLobby(kv, peers)
-      }
       return
     }
   }

@@ -451,15 +451,6 @@ function commitWarbonds(codes: string[]): void {
           /></Motion></span>
           <span class="muted small">tokens {{ session.state.value.rerollTokens }}</span>
           <button
-            v-if="session.mode === 'room' && canControl && session.state.value.phase !== 'complete'"
-            class="btn tiny"
-            :class="session.state.value.openToLobby ? 'ghost' : 'primary'"
-            type="button"
-            @click="dispatch({ type: 'TOGGLE_OPEN', open: !session.state.value.openToLobby })"
-          >
-            {{ session.state.value.openToLobby ? 'Close to lobby' : 'Open to lobby' }}
-          </button>
-          <button
             v-if="session.mode === 'room' && session.state.value.phase !== 'complete'"
             class="btn ghost tiny"
             type="button"

@@ -61,6 +61,8 @@ IDs are stable and append-only; do not renumber.
 | N28 | `holdingsEmpty` branch effectively unreachable | Infra | S | Accepted | QA-F1 |
 | N29 | Stale mission counter during `forfeit` | UX | S | Done | QA-F2 |
 | N30 | Failure cannot lower difficulty or set `achieved` | Rules | S | Accepted | QA-F4 |
+| N31 | Remove open-dive lobby / matchmaking | Feature | M | Done | new |
+| N32 | Kit ordering: stratagem role then tier | UX | S | Done | new |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -104,6 +106,10 @@ N2, N10, N15, N17.
 ### Post-v1 / R&D
 
 N3.
+
+### Shipped outside the batches
+
+N31, N32 — owner-requested changes landed after Batch A.
 
 ## Item details
 
@@ -260,6 +266,24 @@ report → reward), a persistent help drawer, and inline tooltips on luck/ceilin
 **N3 · Campaign API / MO boosts.** New server proxy route + cache (respect rate limits/ToS), with
 campaign data injected into state like seeds so the engine stays pure. Offline must degrade
 gracefully. Engine purity (invariant 1) forbids fetching inside `shared/engine/**`.
+
+### Shipped outside the batches
+
+**N31 · Remove open-dive lobby / matchmaking.** Griffdive targets an already-engaged squad (Discord,
+friends), so public matchmaking is a liability. Removed the whole feature: `openToLobby` flag and
+`TOGGLE_OPEN` action (engine + host-only list), `LobbyEntry` + `lobby` message, `LOBBY_ROOM`
+pseudo-room, `listLobby`/`lobbyEntryFor`, `GET /api/lobby`, the `/lobby` page, the "Open to lobby"
+header toggle, the "Browse open dives" link and lobby perk, the store's `lobbyRooms`, the
+`griffdive_open_rooms` gauge, and the lobby unit + E2E specs. The deploy smoke-check moved from
+`/api/lobby` to `/`. The `lobby` **phase** (a created-but-unlaunched room, `createLobbyState`)
+remains — it is not matchmaking. Rooms are invite-link/code only.
+
+**N32 · Kit ordering.** Added `shared/data/ordering.ts` (`compareKitItems` / `sortKitItems`): within
+the inventory, stratagems group by role — Eagle/Orbital, then support (`Supply`), then
+emplacements/turrets (`Defense`) — and every bucket sorts best-tier-first with display-name
+tiebreaks, so rewards slot into a stable order across catalog refreshes. `InventoryGrid` renders the
+sorted kit. Covered by `shared/data/ordering.spec.ts` (including a total-order check over the real
+stratagem catalog).
 
 ## Accepted / notes
 

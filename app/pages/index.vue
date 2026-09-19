@@ -181,10 +181,6 @@ function formatSavedAt(doc: SaveDoc): string {
             Join
           </button>
         </form>
-        <NuxtLink
-          class="btn ghost"
-          to="/lobby"
-        >Browse open dives</NuxtLink>
       </div>
       <ul class="perks">
         <li>
@@ -196,8 +192,8 @@ function formatSavedAt(doc: SaveDoc): string {
           <span>Host drops mid-dive? Authority migrates — divers reconnect with one tap.</span>
         </li>
         <li>
-          <strong>Open lobby</strong>
-          <span>Flag your dive public and anyone can join from the lobby in one click.</span>
+          <strong>Built for friends</strong>
+          <span>Share the link with your squad — no public matchmaking, no randoms.</span>
         </li>
       </ul>
     </section>

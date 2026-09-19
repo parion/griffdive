@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ITEMS_BY_ID } from '~~/shared/data/catalog'
+import { sortKitItems } from '~~/shared/data/ordering'
 import type { Item, ItemCategory } from '~~/shared/data/types'
 import type { DiveState, ItemRef } from '~~/shared/engine/types'
 
@@ -24,15 +25,16 @@ function resolve(ids: readonly string[]): Item[] {
 }
 
 function typeGroupsFor(items: Item[]): TypeGroup[] {
+  const sorted = sortKitItems(items)
   const inCategories = (categories: readonly ItemCategory[]): Item[] =>
-    items.filter(item => categories.includes(item.category))
+    sorted.filter(item => categories.includes(item.category))
   const groups: TypeGroup[] = []
   const add = (id: string, label: string, entries: Item[], empty?: string) => {
     if (entries.length || empty) groups.push({ id, label, items: entries, empty })
   }
   add('weapons', 'Weapons', inCategories(['primary', 'secondary']))
   add('throwables', 'Throwables', inCategories(['throwable']))
-  add('stratagems', 'Stratagems', items.filter(item => item.type === 'stratagem'))
+  add('stratagems', 'Stratagems', sorted.filter(item => item.type === 'stratagem'))
   add('armor', 'Armor', inCategories(['armorPassive']))
   // Boosters always render their group, even when empty — a boosterless diver
   // needs to see the slot exists and that rewards can fill it.
