@@ -4,7 +4,7 @@ import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
 import { difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
 import { pactName } from '~~/shared/data/pacts'
-import { applyPactToggle, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
+import { applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
 import {
   activeMisfortune,
   allDiversPicked,
@@ -123,17 +123,37 @@ function togglePact(pactId: string): void {
   )
 }
 
-// Offered pacts already covered by the current selection — shown greyed with
-// the pact that covers them (pick that instead).
+// Offered pacts the current selection rules out — greyed with the reason:
+// covered by a stronger pick, a same-axis conflict, or a loadout that can no
+// longer field HD2's four required stratagems.
 const pactCoverage = computed<Record<string, string>>(() => {
-  const coverage: Record<string, string> = {}
+  const state = session.state.value
+  if (!state) {
+    return {}
+  }
+  const blocked: Record<string, string> = {}
+  const misfortuneId = misfortune.value?.id ?? null
+  const owned = state.personalInventories[session.selfId.value ?? ''] ?? []
+  const baseLegal = hasLegalLoadout(misfortuneId, [], owned)
   for (const pact of pactOffer.value) {
+    if (pactSelection.value.includes(pact.id)) {
+      continue
+    }
     const subsumer = pactSubsumedBy(pact.id, pactSelection.value)
     if (subsumer) {
-      coverage[pact.id] = pactName(subsumer)
+      blocked[pact.id] = `Covered by ${pactName(subsumer)}`
+      continue
+    }
+    const conflict = pactConflictsWith(pact.id, pactSelection.value)
+    if (conflict) {
+      blocked[pact.id] = `Conflicts with ${pactName(conflict)}`
+      continue
+    }
+    if (baseLegal && !hasLegalLoadout(misfortuneId, [...pactSelection.value, pact.id], owned)) {
+      blocked[pact.id] = 'Leaves too few stratagems to ready up'
     }
   }
-  return coverage
+  return blocked
 })
 
 const liveRange = computed(() =>
@@ -661,7 +681,7 @@ function commitWarbonds(codes: string[]): void {
                     <PactPicker
                       :offer="pactOffer"
                       :selected="pactSelection"
-                      :covered="pactCoverage"
+                      :blocked="pactCoverage"
                       @toggle="togglePact"
                       @lock="lockPacts"
                     />

@@ -35,7 +35,7 @@ IDs are stable and append-only; do not renumber.
 | N2 | Faction strains (spore Terminids, vote-snatcher Illuminate) | Design | XL | Blocked (DEC-5) | new |
 | N3 | Helldivers campaign API → MO boosts | Feature/Infra | XL | Phase 5 | new |
 | N4 | Stars default to full | UX | S | Done | new |
-| N5 | Mandatory 4 stratagems; remove `barebones`; early-game pact trap | Rules | M | In progress (barebones removed; DEC-1 open) | new |
+| N5 | Mandatory 4 stratagems; remove `barebones`; early-game pact trap | Rules | M | Done (DEC-1: loadout-checked + reserve + exclusivity) | new |
 | N6 | Time % + samples (common/rare/super) boost luck slightly | Rules | M | Blocked (DEC-2) | new |
 | N7 | Luck meter visual (lore-named) | UX | M | Blocked (DEC-3) | new, QA-U1 |
 | N8 | Reward ban + separate reward reroll | Rules/Design | L | Blocked (DEC-4) | new |
@@ -54,7 +54,7 @@ IDs are stable and append-only; do not renumber.
 | N21 | `MARK FAILED` confirm has no armed cue | UX | S | Done | QA-U4 |
 | N22 | Field Promotion re-rolls its offer on every claim | UX/Design | M | Needs repro | QA-U5 |
 | N23 | Star→options is flat early (3★ = 2 options) | Balance | S | Todo | QA-B1 |
-| N24 | Pact redundancy is free luck (subsumed pacts still count) | Balance | M | Todo | QA-B2 |
+| N24 | Pact redundancy is free luck (subsumed pacts still count) | Balance | M | Done (exclusive groups + subsumption) | QA-B2 |
 | N25 | Pacts are strictly "take everything" | Balance | S | Todo | QA-B3 |
 | N26 | Failure path rework | Design | L | Blocked (DEC-8) | QA-B4 |
 | N27 | S+ / Diver's Choice frequency at altitude | Balance | S | Todo | QA-B5 |
@@ -63,6 +63,7 @@ IDs are stable and append-only; do not renumber.
 | N30 | Failure cannot lower difficulty or set `achieved` | Rules | S | Accepted | QA-F4 |
 | N31 | Remove open-dive lobby / matchmaking | Feature | M | Done | new |
 | N32 | Kit ordering: stratagem role then tier | UX | S | Done | new |
+| N33 | Mandatory 4 slots vs equip-restricting misfortunes | Rules | M | Todo | new |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -70,7 +71,7 @@ Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the re
 
 | DEC | Question | Blocks |
 |-----|----------|--------|
-| DEC-1 | Stratagem-restricting pacts: rule text is "equipped but never called" (accountability moves to field/loadout-with-intent), or provide a neutral fallback stratagem list for early players? | N5 |
+| DEC-1 | Stratagem-restricting pacts: rule text is "equipped but never called" (accountability moves to field/loadout-with-intent), or provide a neutral fallback stratagem list for early players? | Resolved — N5, N24 |
 | DEC-2 | Time/samples → luck: target max bonus (e.g. +0.5 total, or +1.0), and sample rarity weights? | N6 |
 | DEC-3 | Luck meter name (candidates: Liberty's Favor, Dive Fortune, Providence), and do rerolls exclude only the immediately replaced result or every prior result this window? | N7, N12 |
 | DEC-4 | Reward reroll token: banked across missions or per-mission? Ban scope: personal-crusade or squad-wide, and does a ban cost the whole reward pick? | N8 |
@@ -79,6 +80,23 @@ Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the re
 | DEC-7 | Incoming-player luck: cap, and the non-exploit rule (e.g. scales off the squad's banked performance, not a fresh join's). | N16 |
 | DEC-8 | Failure rework direction (owner-flagged, to be spec'd): what replaces "repeat op + forfeit one item"? | N26 |
 | DEC-9 | Mid-match crash semantics: void the mission with no forfeit, auto-pause, or keep the forfeit? | N10 |
+
+**DEC-1 — resolved (N5/N24). Landed.** Keep the stratagem pacts **loadout-checked**, not "equipped
+but never called": a stratagem call-in is team-visible but not attributed to a diver and never
+appears on the stats screen, so "never called" fails the accountability rule. HD2's mandatory four
+slots are guaranteed instead by three rules, all in `shared/engine/`:
+- the three category bans (`grounded`/`shipSilent`/`openField`) are **mutually exclusive**
+  (`PACT_EXCLUSIVE_GROUPS`) — they tax the same strength (stratagem variety), so an offer never
+  draws two of them and `SET_PACTS` refuses a same-group pick. This is also the N24 fix: overlapping
+  restrictions can no longer bank free risk.
+- every diver always owns a non-lethal **reserve** of warbond-free utility (`RESERVE_STRATAGEMS`:
+  Orbital EMS Strike, Orbital Smoke Strike, Eagle Smoke Strike, EMS Mortar Sentry, Shield Generator
+  Relay), exempt from slot-removing *pacts*, so any pact combination still fields four. The category
+  pacts were reworded to "no **offensive** …" so the carve-out is legible.
+- `hasLegalLoadout` (pact bans + accepted misfortune + reserve vs `STRATAGEM_SLOTS_REQUIRED`) is the
+  hard floor: `SET_PACTS` refuses a pick that would drop the diver below four, and the UI greys it
+  "Leaves too few stratagems to ready up". A misfortune that strands the loadout on its own is not
+  blamed on a pact — that same mandatory-slot tension for **misfortunes** is split out as **N33**.
 
 ## Batches
 
@@ -93,7 +111,9 @@ the pact offer draw).
 
 ### Batch B — Rules & economy (needs decisions)
 
-N5, N6, N7, N19, N23, N24, N25, N27.
+N5, N6, N7, N19, N23, N24, N25, N27, N33. N5 and N24 landed with **DEC-1** (reserve kit, mutual
+exclusion, four-slot floor). N33 is the misfortune half of that same loadout-floor work and needs
+no new decision.
 
 ### Batch C — Rewards & catch-up
 
@@ -168,14 +188,13 @@ operation; the restart happens on forfeit).
 ### Batch B
 
 **N5 · Mandatory 4 stratagems; `barebones`; early-game trap.** HD2 requires 4 equipped stratagems
-to ready up, so the `barebones` pact ("I fill no stratagem slots", `data/pacts.ts:27`,
-`config.ts:157`, block-lists `pacts.ts:15-19`) is impossible without the "bring random strats and
-never call them" workaround. **Shipped in Batch A:** `barebones` removed from the catalog, `PACT_RISK`
-and both misfortune block-lists; `PACT_SUBSUMES` is now empty (the subsumption machinery and the
-PactPicker "Covered by …" UI stay for future rules). Goldens regenerated (the offer draw reshuffles).
-The rest — stratagem-restricting pacts (`grounded`, `shipSilent`, `openField`) being about use, not
-equipping — waits on DEC-1: whether the rule text becomes "equipped but never called" or we hand
-early players a neutral fallback list.
+to ready up, so the `barebones` pact ("I fill no stratagem slots") was impossible. **Shipped:**
+`barebones` removed in Batch A (from `PACT_RISK`, both misfortune block-lists; `PACT_SUBSUMES` now
+empty — the subsumption machinery and PactPicker "Covered by …" UI stay for future rules), and the
+rest with **DEC-1** (see the resolution above). The category pacts stayed **loadout-checked**, not
+"equipped but never called", reworded to "no **offensive** …"; `PACT_EXCLUSIVE_GROUPS` stops them
+stacking, `RESERVE_STRATAGEMS` guarantees four slots, and `hasLegalLoadout` enforces the floor at
+pick time. Goldens regenerated (the offer draw reshuffles).
 
 **N6 · Time/samples luck.** Add `samples?: { common, rare, super }` to `MissionReport`
 (`types.ts:54-58`; `timePct` already exists but is unused for luck). Add a third, squad-level luck
@@ -199,11 +218,11 @@ option beside it" holds only for S+ / Diver's Choice (`rewards.ts:136-145`), not
 (`config.ts:59`), so a 3★ diff-3 clear yields the same 2 options as 2★. Consider `index = stars − 1`
 or a floor of 2.
 
-**N24 · Pact redundancy is free luck.** Misfortunes filter redundant pacts from the offer, but there
-is no pact-vs-pact (or pact-vs-team) redundancy check at pick time. Observed: `Barebones` strictly
-subsumed `Primary Concern`, and both counted. The observed case is gone with `barebones` (Batch A);
-the general check (block subsumed picks or void their risk) stays open and the subsumption machinery
-is ready for it.
+**N24 · Pact redundancy is free luck. Done (DEC-1).** The observed case (`Barebones` subsuming
+`Primary Concern`) went with `barebones` in Batch A. The general fix is same-axis mutual exclusion:
+`PACT_EXCLUSIVE_GROUPS` keeps restrictions that tax one strength out of both the offer
+(`rollPactOffer`) and the pick (`SET_PACTS`, `applyPactToggle`); the UI greys "Conflicts with …".
+Directional subsumption (`PACT_SUBSUMES`) stays wired for future rules.
 
 **N25 · Pacts are "take everything".** With no squad cost and only a failed-pact option penalty,
 optimal play is always all playable pacts. Likely intended; the "0 to all" copy undersells it.
@@ -211,6 +230,15 @@ optimal play is always all playable pacts. Likely intended; the "0 to all" copy 
 **N27 · S+ frequency at altitude.** At max pacts + accepted risk on diffs 7–10, Diver's Choice
 appeared in 7 of ~12 picks. Matches "rare-ish" but felt common; revisit once ceiling-curve data is
 aggregated.
+
+**N33 · Mandatory 4 slots vs equip-restricting misfortunes.** The pact half landed with DEC-1, but
+misfortunes carry the same four-slot tension and `hasLegalLoadout` already models it (an accepted
+misfortune whose own bans strand the loadout is not blamed on a pact). Open questions: `noStratagems`
+is behavioral — four slots still equip, they just cannot be called — so it should stay out of the
+equip ban-list (it currently is); and `oopsAllOrbitals` needs four *orbital* stratagems, which an
+early player owning only the base kit's two orbitals cannot field. Consider an equip-legality guard
+at the **wheel decision** (warn before accepting, or refuse an impossible accept) with the reward
+pool taken into account. No new decision needed; scope it once N6/N7 settle.
 
 ### Batch C
 

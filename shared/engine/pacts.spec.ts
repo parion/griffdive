@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import { PACTS, pactById } from '../data/pacts'
-import { PACT_RISK, pactOptionsFor } from './config'
-import { BLOCKED_UNDER_MISFORTUNE, PACT_SUBSUMES, applyPactToggle, isPactSelectable, pactRiskTotal, pactSubsumedBy, rollPactOffer } from './pacts'
+import { PACT_RISK, RESERVE_STRATAGEMS, STRATAGEM_SLOTS_REQUIRED, pactOptionsFor } from './config'
+import { startingItemIds } from './progression'
+import {
+  BLOCKED_UNDER_MISFORTUNE,
+  PACT_EXCLUSIVE_GROUPS,
+  PACT_SUBSUMES,
+  applyPactToggle,
+  hasLegalLoadout,
+  isPactSelectable,
+  legalStratagemCount,
+  pactConflictsWith,
+  pactRiskTotal,
+  pactSubsumedBy,
+  rollPactOffer,
+} from './pacts'
 
 describe('catalog integrity', () => {
   it('every pact has a positive risk and a unique name', () => {
@@ -50,6 +63,66 @@ describe('pact subsumption', () => {
     expect(applyPactToggle(offer, [], 'packLight')).toEqual(['packLight'])
     expect(applyPactToggle(offer, ['packLight'], 'packLight')).toEqual([])
     expect(applyPactToggle(['packLight'], [], 'primaryConcern')).toEqual([])
+  })
+})
+
+describe('pact exclusivity', () => {
+  it('never offers two pacts from one exclusive group', () => {
+    for (const group of PACT_EXCLUSIVE_GROUPS) {
+      for (let seed = 0; seed < 500; seed++) {
+        for (const difficulty of [3, 7, 10]) {
+          const offered = rollPactOffer(seed, null, difficulty).map(pact => pact.id)
+          expect(offered.filter(id => group.includes(id)).length).toBeLessThanOrEqual(1)
+        }
+      }
+    }
+  })
+
+  it('refuses a same-group pick instead of stacking same-axis risk', () => {
+    const offer = ['grounded', 'shipSilent']
+    expect(pactConflictsWith('shipSilent', ['grounded'])).toBe('grounded')
+    expect(pactConflictsWith('grounded', ['shipSilent'])).toBe('shipSilent')
+    expect(pactConflictsWith('grounded', ['openField'])).toBe('openField')
+    expect(pactConflictsWith('packLight', ['grounded'])).toBeNull()
+    expect(applyPactToggle(offer, ['grounded'], 'shipSilent')).toEqual(['grounded'])
+    expect(applyPactToggle(offer, [], 'shipSilent')).toEqual(['shipSilent'])
+  })
+})
+
+describe('reserve and loadout legality', () => {
+  const baseKit = startingItemIds('standard')
+
+  it('keeps a full pact offer legal with only the baseline kit', () => {
+    expect(hasLegalLoadout(null, PACTS.map(pact => pact.id), baseKit)).toBe(true)
+    for (const pact of PACTS) {
+      expect(hasLegalLoadout(null, [pact.id], baseKit)).toBe(true)
+    }
+  })
+
+  it('treats reserve utility as always legal, so a forfeit cannot strand a diver', () => {
+    expect(hasLegalLoadout(null, PACTS.map(pact => pact.id), [])).toBe(true)
+    expect(legalStratagemCount(null, [], [])).toBeGreaterThanOrEqual(RESERVE_STRATAGEMS.length)
+  })
+
+  it('exempts reserve utility from the offensive-category pacts', () => {
+    expect(hasLegalLoadout(null, ['grounded'], baseKit)).toBe(true)
+    expect(hasLegalLoadout(null, ['shipSilent'], baseKit)).toBe(true)
+    expect(hasLegalLoadout(null, ['openField'], baseKit)).toBe(true)
+  })
+
+  it('refuses a pick the accepted misfortune makes impossible', () => {
+    // No Orbitals removes two reserve orbitals; Primary Concern removes support
+    // weapons, leaving only the three non-orbital reserve strats — under four.
+    expect(hasLegalLoadout('noOrbitals', [], baseKit)).toBe(true)
+    expect(hasLegalLoadout('noOrbitals', ['primaryConcern'], baseKit)).toBe(false)
+  })
+
+  it('never lets a pact alone drop below the four-slot floor', () => {
+    for (const pact of PACTS) {
+      expect(legalStratagemCount(null, [pact.id], baseKit)).toBeGreaterThanOrEqual(
+        STRATAGEM_SLOTS_REQUIRED,
+      )
+    }
   })
 })
 

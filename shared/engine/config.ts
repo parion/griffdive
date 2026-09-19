@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 10
+export const ENGINE_VERSION = 11
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -69,6 +69,22 @@ export const OPTIONS_LOST_PER_FAILED_PACT = 1
 export const CATCHUP_CAP = 4
 export const TIER_ROLL_WEIGHT_BASE = 2
 export const MAX_NAME_LENGTH = 32
+
+// Helldivers 2 requires four equipped stratagems to ready up. Every diver must
+// always be able to field this many, so a pact can never strand them below it.
+export const STRATAGEM_SLOTS_REQUIRED = 4
+// Baseline non-lethal surplus every diver always owns (all warbond-free, all in
+// the starting kit) and that no pact may remove. Smoke/stun/shield only: a
+// mis-call never smuggles power back into a restricted loadout, and because at
+// least four reserve stratagems survive any pact combination, no set of pacts
+// can make a loadout illegal.
+export const RESERVE_STRATAGEMS = [
+  'orbitalemsstrike',
+  'orbitalsmokestrike',
+  'eaglesmokestrike',
+  'emsmortarsentry',
+  'shieldgeneratorrelay',
+] as const
 
 // Reward scale-back: difficulty alone buys a base tier — C on diffs 3–5,
 // B on 6–7, A on 8+. S and S+ are reachable only through chosen risk

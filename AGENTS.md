@@ -15,7 +15,7 @@ must update this file in the same commit.**
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core) and Phase 2 (realtime squads) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (206 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (213 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection — verified by a live two-peer smoke test and the Playwright E2E suite (solo flow,
@@ -209,18 +209,33 @@ Starter catalog:
 | Stim Abstinent | I use no stims | 3 | stats |
 | Loadout Loyalist | I use only my equipped loadout; no pickups or swaps | 2 | field |
 | Primary Concern | I bring no support weapon | 2 | loadout |
-| Grounded | I bring no Eagle stratagems | 2 | loadout |
-| Ship Silent | I bring no orbital stratagems | 2 | loadout |
-| Open Field | I bring no sentries, mines, or emplacements | 2 | loadout |
+| Grounded | I bring no offensive Eagle stratagems | 2 | loadout |
+| Ship Silent | I bring no offensive orbital stratagems | 2 | loadout |
+| Open Field | I bring no offensive sentries, mines, or emplacements | 2 | loadout |
 | Untouchable | I finish the mission without dying | 3 | field |
 
-**Redundant picks:** a pact strictly implied by another picked pact never stacks risk. `SET_PACTS`
-refuses it via `pactSubsumedBy` / `applyPactToggle` (`PACT_SUBSUMES` in `shared/engine/pacts.ts`),
-and the UI greys a covered offer with "Covered by …". The map is currently **empty** — *Barebones*
-("I fill no stratagem slots") was the only subsuming pact, and it was removed because HD2 requires
-four equipped stratagems to ready up, so the pact was impossible without a "bring random strats and
-never call them" workaround. The machinery stays in place for future subsumption rules. (Anti-Tank
-Abstinent stays independent: thermite and other anti-tank throwables are not stratagems.)
+**Redundant and conflicting picks:** a pact strictly implied by another picked pact never stacks
+risk. `SET_PACTS` refuses it via `pactSubsumedBy` / `applyPactToggle` (`PACT_SUBSUMES` in
+`shared/engine/pacts.ts`), and the UI greys a covered offer with "Covered by …". The map is
+currently **empty** — *Barebones* ("I fill no stratagem slots") was the only subsuming pact, and it
+was removed because HD2 requires four equipped stratagems to ready up, so the pact was impossible.
+The machinery stays in place for future subsumption rules. (Anti-Tank Abstinent stays independent:
+thermite and other anti-tank throwables are not stratagems.) Restrictions that tax the same
+strength are instead **mutually exclusive** (`PACT_EXCLUSIVE_GROUPS`): *Grounded*, *Ship Silent* and
+*Open Field* all tax stratagem variety, so an offer never draws two of them and `SET_PACTS` refuses
+a same-group pick (the UI greys it "Conflicts with …").
+
+**Mandatory four stratagems — reserve and the loadout floor:** HD2 requires four equipped
+stratagems to ready up, so no pact may strand a diver below four. Every diver always owns a
+non-lethal **reserve** of warbond-free utility — Orbital EMS Strike, Orbital Smoke Strike, Eagle
+Smoke Strike, EMS Mortar Sentry, Shield Generator Relay (`RESERVE_STRATAGEMS` in
+`shared/engine/config.ts`). Reserve stratagems are exempt from slot-removing *pacts*, which is why
+the category pacts read "no **offensive**": smoke, stun and shields are always legal filler, and a
+mis-call never smuggles power back into a restricted loadout. Misfortunes are squad-binding, so the
+exemption does not apply to them. `hasLegalLoadout` (pact bans + accepted misfortune + reserve,
+against `STRATAGEM_SLOTS_REQUIRED`) is the hard floor: `SET_PACTS` refuses a pick that would drop
+the diver below four, and the UI greys it "Leaves too few stratagems to ready up". A misfortune
+that strands the loadout on its own is not blamed on a pact.
 
 **Failed pacts:** a broken pact is marked **failed** (`FAIL_PACT{playerId,pactId}`) while the
 mission runs — during the diving phase only, by the diver themselves or by the host refereeing the

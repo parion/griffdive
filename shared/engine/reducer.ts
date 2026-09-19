@@ -2,10 +2,10 @@ import { ALL_WARBOND_CODES, ITEMS_BY_ID, WARBONDS } from '../data/catalog'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction } from './types'
 import { ACTION_LOG_CAP, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, maxStarsFor, missionsPerOperation } from './config'
 import { STARTING_KITS, startingItemIds } from './progression'
-import { pactSubsumedBy } from './pacts'
+import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed } from './rng'
-import { allDiversPicked, catchUpOptionsFor, comboKey, diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
+import { activeMisfortune, allDiversPicked, catchUpOptionsFor, comboKey, diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
 import { deriveFront, deriveMisfortune } from './wheel'
 
 export function createDiveState(
@@ -219,6 +219,20 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // Redundant picks never stack risk (AGENTS.md: Personal layer — pacts):
       // a pact another pick already covers is refused outright.
       if (action.pactIds.some(id => pactSubsumedBy(id, action.pactIds))) {
+        return state
+      }
+      // Same-axis restrictions are mutually exclusive — two stratagem-category
+      // bans would tax the same strength and can strand the loadout.
+      if (action.pactIds.some(id => pactConflictsWith(id, action.pactIds))) {
+        return state
+      }
+      // HD2 requires four equipped stratagems: never accept a pick that leaves
+      // the diver unable to ready up. A misfortune that already strands the
+      // loadout on its own is not a pact's fault — fix that at the wheel.
+      const misfortuneId = activeMisfortune(state)?.id ?? null
+      const owned = state.personalInventories[diver.id] ?? []
+      if (hasLegalLoadout(misfortuneId, [], owned)
+        && !hasLegalLoadout(misfortuneId, action.pactIds, owned)) {
         return state
       }
       const divers = state.divers.map(candidate =>
