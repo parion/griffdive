@@ -15,6 +15,8 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
   await expect(pageA.getByText('Wheel of Misfortune')).toBeVisible()
+  // A lone host is nudged to share the invite (the aside sits in the squad strip).
+  await expect(pageA.locator('.lone-host')).toBeVisible()
 
   // A second browser joins through the same invite link — the name gate
   // blocks seating until they provide a name.

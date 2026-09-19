@@ -118,6 +118,27 @@ export const SAMPLE_VALOR_WEIGHTS: Readonly<Record<'common' | 'rare' | 'super', 
   super: 0.02,
 }
 
+// wiki.gg/Sample "availability by difficulty": the most of each rarity a map
+// can hold at a difficulty (ranges capped at their upper bound). Drives the
+// report form's slider maxima, and is why sample Valor scales with altitude —
+// rares are absent at 3, supers until 6.
+export const SAMPLE_AVAILABILITY: Readonly<Record<number, { common: number, rare: number, super: number }>> = {
+  3: { common: 18, rare: 0, super: 0 },
+  4: { common: 25, rare: 13, super: 0 },
+  5: { common: 29, rare: 20, super: 0 },
+  6: { common: 35, rare: 25, super: 3 },
+  7: { common: 40, rare: 30, super: 4 },
+  8: { common: 40, rare: 35, super: 5 },
+  9: { common: 40, rare: 40, super: 6 },
+  10: { common: 40, rare: 41, super: 7 },
+}
+
+export function sampleAvailability(
+  difficulty: number,
+): { common: number, rare: number, super: number } {
+  return SAMPLE_AVAILABILITY[difficulty] ?? SAMPLE_AVAILABILITY[MAX_DIFFICULTY]!
+}
+
 export function baseTierFor(difficulty: number): RewardTier {
   if (difficulty >= 8) {
     return 'A'

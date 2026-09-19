@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { MAX_DIFFICULTY, maxStarsFor, missionsPerOperation } from '~~/shared/engine/config'
+import { MAX_DIFFICULTY, maxStarsFor, missionsPerOperation, sampleAvailability } from '~~/shared/engine/config'
 import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
 import { difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
 import { pactName } from '~~/shared/data/pacts'
 import { applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
+import { performanceValor } from '~~/shared/engine/rewards'
 import {
   activeMisfortune,
   allDiversPicked,
@@ -191,8 +192,21 @@ const phaseKey = computed(() => {
 
 const reportMode = ref<'none' | 'success' | 'failure'>('none')
 const stars = ref(1)
-const timePct = ref<number | null>(null)
+const timePct = ref(0)
 const samples = ref({ common: 0, rare: 0, super: 0 })
+
+// Slider maxima come from the game's per-difficulty sample availability.
+const sampleMax = computed(() =>
+  sampleAvailability(session.state.value?.difficulty ?? MAX_DIFFICULTY))
+
+// Live preview of the team-performance Valor this report will carry.
+const performancePreview = computed(() =>
+  performanceValor({
+    outcome: 'success',
+    stars: 0,
+    timePct: timePct.value,
+    samples: { ...samples.value },
+  }))
 
 const maxStars = computed(() =>
   maxStarsFor(session.state.value?.difficulty ?? MAX_DIFFICULTY))
@@ -241,13 +255,12 @@ function failPact(playerId: string, pactId: string): void {
 }
 
 function report(outcome: 'success' | 'failure'): void {
-  const hasSamples = samples.value.common > 0 || samples.value.rare > 0 || samples.value.super > 0
   dispatch({
     type: 'REPORT_RESULT',
     outcome,
     stars: outcome === 'success' ? stars.value : 0,
-    timePct: timePct.value ?? undefined,
-    samples: hasSamples && outcome === 'success' ? { ...samples.value } : undefined,
+    timePct: timePct.value,
+    samples: outcome === 'success' ? { ...samples.value } : undefined,
   })
   reportMode.value = 'none'
 }
@@ -257,14 +270,14 @@ function report(outcome: 'success' | 'failure'): void {
 function openReport(mode: 'success' | 'failure'): void {
   reportMode.value = mode
   stars.value = maxStars.value
-  timePct.value = null
+  timePct.value = 0
   samples.value = { common: 0, rare: 0, super: 0 }
 }
 
 function cancelReport(): void {
   reportMode.value = 'none'
   stars.value = maxStars.value
-  timePct.value = null
+  timePct.value = 0
   samples.value = { common: 0, rare: 0, super: 0 }
 }
 
@@ -619,13 +632,13 @@ function commitWarbonds(codes: string[]): void {
               ×
             </button>
           </span>
+          <p
+            v-if="session.mode === 'room' && session.state.value.divers.length === 1"
+            class="lone-host"
+          >
+            You're the only diver here — share the invite link to bring in your squad.
+          </p>
         </div>
-        <p
-          v-if="session.mode === 'room' && session.state.value.divers.length === 1"
-          class="muted small lone-host"
-        >
-          You're the only diver here — share the invite link to bring in your squad.
-        </p>
       </section>
 
       <p
@@ -852,51 +865,41 @@ function commitWarbonds(codes: string[]): void {
                 </div>
                 <div
                   v-if="reportMode === 'success'"
-                  class="row small muted"
+                  class="report-fields"
                 >
-                  <span>Samples</span>
-                  <label class="row small muted">
-                    Common
-                    <input
-                      v-model.number="samples.common"
-                      type="number"
-                      min="0"
-                      max="99"
-                      style="width: 3.5rem"
-                    >
-                  </label>
-                  <label class="row small muted">
-                    Rare
-                    <input
-                      v-model.number="samples.rare"
-                      type="number"
-                      min="0"
-                      max="99"
-                      style="width: 3.5rem"
-                    >
-                  </label>
-                  <label class="row small muted">
-                    Super
-                    <input
-                      v-model.number="samples.super"
-                      type="number"
-                      min="0"
-                      max="99"
-                      style="width: 3.5rem"
-                    >
-                  </label>
-                  <span>adds Valor (capped)</span>
+                  <RangeField
+                    v-model="samples.common"
+                    :max="sampleMax.common"
+                    icon="/images/svgs/Common_Sample_Icon.svg"
+                    aria-label="Common samples"
+                  />
+                  <RangeField
+                    v-if="sampleMax.rare > 0"
+                    v-model="samples.rare"
+                    :max="sampleMax.rare"
+                    icon="/images/svgs/Rare_Sample_Icon.svg"
+                    aria-label="Rare samples"
+                  />
+                  <RangeField
+                    v-if="sampleMax.super > 0"
+                    v-model="samples.super"
+                    :max="sampleMax.super"
+                    icon="/images/svgs/Super_Sample_Icon.svg"
+                    aria-label="Super samples"
+                  />
                 </div>
-                <label class="row small muted">
-                  Time remaining % (optional)
-                  <input
-                    v-model.number="timePct"
-                    type="number"
-                    min="0"
-                    max="100"
-                    style="width: 5rem"
-                  >
-                </label>
+                <RangeField
+                  v-model="timePct"
+                  :max="100"
+                  label="Time remaining %"
+                  aria-label="Time remaining percent"
+                />
+                <p
+                  v-if="reportMode === 'success'"
+                  class="muted small valor-preview"
+                >
+                  Team performance adds <strong>+{{ performancePreview.toFixed(2) }}</strong> Valor
+                </p>
                 <div class="row">
                   <button
                     class="btn primary"
@@ -1084,6 +1087,17 @@ function commitWarbonds(codes: string[]): void {
   border-top: 1px dashed var(--border);
   padding-top: 0.6rem;
 }
+.report-fields {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+.valor-preview {
+  margin: 0;
+}
+.valor-preview strong {
+  color: var(--gold);
+}
 
 .victory { text-align: center; align-items: center; }
 .victory h1 { color: var(--gold); animation: victory-glow 2.4s ease-in-out 1.2s infinite; }
@@ -1101,7 +1115,23 @@ function commitWarbonds(codes: string[]): void {
 }
 
 .squad-strip { padding: 0.6rem 0.75rem; }
-.lone-host { margin: 0.5rem 0 0; }
+.lone-host {
+  margin: 0;
+  flex: 1 1 14rem;
+  color: var(--gold);
+  font-weight: 700;
+  animation: lone-glow 2.4s ease-in-out infinite;
+}
+@keyframes lone-glow {
+  0%, 100% { text-shadow: 0 0 4px color-mix(in srgb, var(--gold) 35%, transparent); }
+  50% { text-shadow: 0 0 14px color-mix(in srgb, var(--gold) 90%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lone-host {
+    animation: none;
+    text-shadow: 0 0 8px color-mix(in srgb, var(--gold) 60%, transparent);
+  }
+}
 .title-row {
   display: inline-flex;
   align-items: center;

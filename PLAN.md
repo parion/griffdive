@@ -220,7 +220,8 @@ operation; the restart happens on forfeit).
 out of the right header row to a copy icon (`ui/IconCopy.vue`) directly beside the room code in the
 `<h1>` (room mode only), sharing `copyInvite()` which now toasts "Invite copied" via `ToastStack`
 (and reports a failure if the clipboard API is unavailable). A lone seated host gets the aside
-"You're the only diver here — share the invite link to bring in your squad" inside the squad strip.
+"You're the only diver here — share the invite link to bring in your squad" inline in the squad
+strip, gold and pulsing (reduced-motion guarded).
 Covered by the copy-icon assertion in `e2e/room.spec.ts`.
 
 **N35 · Users-list waiting indicators. Done.** `diverStatuses` derives a per-diver status from
@@ -246,8 +247,9 @@ and `timePct`; `performanceValor` (in `rewards.ts`) prices time remaining up to 
 and samples at `common 0.0015 / rare 0.004 / super 0.02` (wiki.gg/Sample-calibrated) capped at
 `SAMPLE_VALOR_CAP` 0.3, so the squad-level term never exceeds 0.5 and scales itself with difficulty
 via the game's rarity mix. `diverValor` sources it from `lastReport`, so the mission just reported
-boosts that draft for every diver. The reward form collects samples on success; AGENTS.md reward math
-is updated.
+boosts that draft for every diver. The report form collects samples and time with icon + slider
+fields (`ui/RangeField.vue`, number above slider, browser spinners dropped), the sample sliders sized
+to `SAMPLE_AVAILABILITY`; a live readout previews the added Valor. AGENTS.md reward math is updated.
 
 **N7 · Valor meter.** Valor is `teamRisk + pactRisk + performance` (`valorOf` in `rewards.ts`)
 surfaced today as raw `valor 6` (`dive/[id].vue`). Build the lore-named **Valor** gauge fed by

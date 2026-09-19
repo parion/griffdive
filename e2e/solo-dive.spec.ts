@@ -26,6 +26,12 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('heading', { name: 'Briefing' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Mission complete' }).click()
+  // Samples and time are slider-driven, sized to the difficulty's availability.
+  const commonSlider = page.locator('input[type="range"][aria-label="Common samples"]')
+  await expect(commonSlider).toBeVisible()
+  await expect(page.locator('input[type="range"][aria-label="Time remaining percent"]')).toBeVisible()
+  await commonSlider.fill('5')
+  await expect(page.locator('input[type="number"][aria-label="Common samples"]')).toHaveValue('5')
   // The report form opens at the difficulty's best result — 3 stars at Medium.
   await expect(page.getByRole('radio', { name: '3 stars' })).toHaveAttribute('aria-checked', 'true')
   await page.getByRole('button', { name: 'Submit success' }).click()
