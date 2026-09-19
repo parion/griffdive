@@ -64,8 +64,8 @@ IDs are stable and append-only; do not renumber.
 | N31 | Remove open-dive lobby / matchmaking | Feature | M | Done | new |
 | N32 | Kit ordering: stratagem role then tier | UX | S | Done | new |
 | N33 | Reward options skew to base tiers even at a high ceiling | Balance/Bug | M | Blocked (DEC-10) | new |
-| N34 | Copy-invite icon by session ID + lone-host share aside | UX | S | Todo | new |
-| N35 | Users-list waiting indicators (pacts/rewards) | UX | S | Todo | new |
+| N34 | Copy-invite icon by session ID + lone-host share aside | UX | S | Done | new |
+| N35 | Users-list waiting indicators (pacts/rewards) | UX | S | Done | new |
 | N36 | Mandatory 4 slots vs equip-restricting misfortunes | Rules | M | Todo | new |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
@@ -115,7 +115,7 @@ the pact offer draw).
 
 ### Batch A2 — UX follow-ups (unblocked)
 
-N34, N35.
+Landed. N34, N35. No engine changes (presentation only) — no `ENGINE_VERSION` bump or golden regen.
 
 ### Batch B — Rules & economy (needs decisions)
 
@@ -195,19 +195,19 @@ operation; the restart happens on forfeit).
 
 ### Batch A2
 
-**N34 · Copy-invite icon by the session ID + lone-host aside.** The header's `COPY INVITE` button
-sits far from the room code (screenshot `YK3SUN`), so the two don't read as related. Put a copy
-icon directly beside the session ID, reusing the existing clipboard logic and `ToastStack` for the
-"Invite copied" confirmation. When the host is the only seated diver, add an aside inside the
-users-list box ("You're the only diver here — share the invite link to bring in your squad") so a
-solo host knows inviting is the next step.
+**N34 · Copy-invite icon by the session ID + lone-host aside. Done.** The `Copy invite` button moved
+out of the right header row to a copy icon (`ui/IconCopy.vue`) directly beside the room code in the
+`<h1>` (room mode only), sharing `copyInvite()` which now toasts "Invite copied" via `ToastStack`
+(and reports a failure if the clipboard API is unavailable). A lone seated host gets the aside
+"You're the only diver here — share the invite link to bring in your squad" inside the squad strip.
+Covered by the copy-icon assertion in `e2e/room.spec.ts`.
 
-**N35 · Users-list waiting indicators.** The squad box shows online/offline only, so a seated diver
-can't tell whether a squadmate is still deciding. Derive a status from engine state and render it
-alongside the presence dot (a11y-labelled like N20): "choosing pacts" while
+**N35 · Users-list waiting indicators. Done.** `diverStatuses` derives a per-diver status from
+engine state and renders it as an a11y-labelled chip in the squad strip: "choosing pacts" while
 `phase === 'pacts' && !diver.pactsLocked`; "choosing reward" while `phase === 'rewards' &&
-!diver.pickedOptionId && !diver.skipsCurrentDraft`; "ready" once locked/picked (and
-"skips this draft" for `skipsCurrentDraft`). Purely presentational — no new rules.
+!diver.pickedOptionId && !diver.skipsCurrentDraft`; "ready" once locked/picked; "skips this draft"
+for `skipsCurrentDraft`; absent outside those phases. Purely presentational — no rules touched.
+Covered by `e2e/solo-dive.spec.ts`.
 
 ### Batch B
 

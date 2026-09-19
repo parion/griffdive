@@ -295,14 +295,46 @@ function abandonSlot(): void {
 }
 
 function copyInvite(): void {
-  if (import.meta.client) {
-    navigator.clipboard.writeText(location.href)
+  if (!import.meta.client) {
+    return
   }
+  if (!navigator.clipboard?.writeText) {
+    pushToast('Could not copy the invite')
+    return
+  }
+  navigator.clipboard
+    .writeText(location.href)
+    .then(() => pushToast('Invite copied'))
+    .catch(() => pushToast('Could not copy the invite'))
 }
 
 function isOnline(diverId: string): boolean {
   return session.online.value.includes(diverId)
 }
+
+// Waiting status per diver, from engine state — purely presentational, so the
+// squad can see who still needs to act. Absent outside the deciding phases.
+const diverStatuses = computed<Record<string, string>>(() => {
+  const state = session.state.value
+  const statuses: Record<string, string> = {}
+  if (!state) {
+    return statuses
+  }
+  for (const diver of state.divers) {
+    if (state.phase === 'pacts') {
+      statuses[diver.id] = diver.pactsLocked ? 'ready' : 'choosing pacts'
+    }
+    else if (state.phase === 'rewards') {
+      if (diver.skipsCurrentDraft) {
+        statuses[diver.id] = 'skips this draft'
+      }
+      else {
+        statuses[diver.id] = diver.pickedOptionId !== null ? 'ready' : 'choosing reward'
+      }
+    }
+  }
+  return statuses
+})
 
 // Host moderation: remove a diver who left or is blocking the squad.
 function canKick(diverId: string): boolean {
@@ -415,9 +447,21 @@ function commitWarbonds(codes: string[]): void {
     <template v-else-if="session.state.value">
       <header class="page-header">
         <div>
-          <h1 class="mono">
-            {{ session.slotName.value || 'Dive' }}
-          </h1>
+          <div class="title-row">
+            <h1 class="mono">
+              {{ session.slotName.value || 'Dive' }}
+            </h1>
+            <button
+              v-if="session.mode === 'room'"
+              class="copy-code"
+              type="button"
+              aria-label="Copy invite link"
+              title="Copy invite link"
+              @click="copyInvite"
+            >
+              <IconCopy />
+            </button>
+          </div>
           <div class="dive-meta">
             <img
               class="diff-icon"
@@ -447,14 +491,6 @@ function commitWarbonds(codes: string[]): void {
           >
             {{ session.status.value }}
           </span>
-          <button
-            v-if="session.mode === 'room'"
-            class="btn ghost tiny"
-            type="button"
-            @click="copyInvite"
-          >
-            Copy invite
-          </button>
           <span
             v-if="lockedCeiling"
             class="row small muted"
@@ -521,6 +557,14 @@ function commitWarbonds(codes: string[]): void {
               aria-label="Host"
             >★</span>
             <span
+              v-if="diverStatuses[diver.id]"
+              class="status-chip"
+              :class="{ ready: diverStatuses[diver.id] === 'ready' }"
+              role="img"
+              :aria-label="diverStatuses[diver.id]"
+              :title="diverStatuses[diver.id]"
+            >{{ diverStatuses[diver.id] }}</span>
+            <span
               v-if="diver.catchUpOwed > 0"
               class="catchup-chip"
               role="img"
@@ -553,6 +597,12 @@ function commitWarbonds(codes: string[]): void {
             </button>
           </span>
         </div>
+        <p
+          v-if="session.mode === 'room' && session.state.value.divers.length === 1"
+          class="muted small lone-host"
+        >
+          You're the only diver here — share the invite link to bring in your squad.
+        </p>
       </section>
 
       <p
@@ -991,6 +1041,49 @@ function commitWarbonds(codes: string[]): void {
 }
 
 .squad-strip { padding: 0.6rem 0.75rem; }
+.lone-host { margin: 0.5rem 0 0; }
+.title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.copy-code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.copy-code:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.copy-code svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+.status-chip {
+  padding: 0 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 0.65rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.status-chip.ready {
+  border-color: var(--teal);
+  color: var(--teal);
+}
 .catchup-chip {
   padding: 0 0.3rem;
   border: 1px solid var(--teal);

@@ -17,6 +17,9 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.getByRole('button', { name: 'Lock it in' }).click()
   await expect(page.getByText('Locked in — team-wide')).toBeVisible()
 
+  // The squad strip shows who still has to decide.
+  await expect(page.getByRole('img', { name: 'choosing pacts' })).toBeVisible()
+
   await page.locator('.pact:not([disabled])').first().click()
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
 
@@ -28,6 +31,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.getByRole('button', { name: 'Submit success' }).click()
 
   await expect(page.getByText('Rewards — choose one')).toBeVisible()
+  await expect(page.getByRole('img', { name: 'choosing reward' })).toBeVisible()
   await page.locator('.item-card:not([disabled])').first().click()
 
   await page.getByRole('button', { name: /Next mission/ }).click()
