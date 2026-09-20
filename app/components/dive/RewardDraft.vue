@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
+import { ITEMS_BY_ID, TIER_RANK } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
 import type { RewardOption } from '~~/shared/engine/rewards'
-import { SPRING_SNAP, SPRING_SOFT } from '~/utils/motion'
 
 interface SquadPick {
   id: string
@@ -48,20 +47,107 @@ const emit = defineEmits<{
   ban: [optionIds: string[]]
 }>()
 
+// A reload lands on a resolved draft whose offer can no longer be re-derived
+// (the banked item is already owned), so the reels can't be rebuilt — show the
+// banner alone. A draft resolved mid-session keeps its frozen reels.
+const wasResolvedOnMount = props.resolved || props.pickedId !== null
+
+// The offer is derived, and claiming an item adds it to the diver's inventory —
+// which re-derives the offer minus the new item. Freeze the draft when it opens
+// so a pick never reshuffles the reels under the diver's finger.
+const lockedOptions = ref<RewardOption[]>(props.options.length > 0 ? [...props.options] : [])
+const settledCount = ref(0)
+const reelEpoch = ref(0)
+// Ban mode swaps the reels out for a plain selection grid; once the reels have
+// revealed, remounting them must not replay the spin.
+const reelsDone = ref(false)
+
+function sameOffer(a: RewardOption[], b: RewardOption[]): boolean {
+  return a.length === b.length && a.every((option, i) => option.optionId === b[i]?.optionId)
+}
+
+// A reroll redraws the offer: adopt it and replay the reels. Inventory churn
+// while resolved is ignored — the draft is frozen at that point.
+watch(() => props.options, (next) => {
+  if (props.resolved || props.pickedId) {
+    return
+  }
+  if (lockedOptions.value.length === 0) {
+    lockedOptions.value = [...next]
+    return
+  }
+  if (!sameOffer(lockedOptions.value, next)) {
+    lockedOptions.value = [...next]
+    settledCount.value = 0
+    reelsDone.value = false
+    reelEpoch.value++
+  }
+})
+
+// The reel that banked the reward: a rolled option matches by id, while
+// Liberty's Cross banks a named item that was never among the options.
+const pickedReelId = computed(() => {
+  if (!props.pickedId) {
+    return null
+  }
+  const match = lockedOptions.value.find(option => option.optionId === props.pickedId)
+  return match?.optionId ?? lockedOptions.value.find(option => option.choice)?.optionId ?? null
+})
+
 // Liberty's Cross banks the picked item's id, which is not among the rolled
 // options — resolve it from the catalog for the banked banner.
 const pickedItem = computed(() =>
-  props.options.find(option => option.optionId === props.pickedId)?.item
+  lockedOptions.value.find(option => option.optionId === props.pickedId)?.item
   ?? (props.pickedId ? ITEMS_BY_ID.get(props.pickedId) ?? null : null),
 )
+const pickedImage = computed(() =>
+  pickedItem.value ? itemImageUrl(pickedItem.value) : undefined)
 
-// Banning is its own flow: once open, the reward cards toggle a purge
+const reduced = import.meta.client
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const instant = computed(() => reduced || props.pickedId !== null)
+
+// Reels stop left to right; the cards only become claimable once the last one
+// has locked, so the pick always follows the full reveal.
+const allSettled = computed(() =>
+  instant.value || settledCount.value >= lockedOptions.value.length)
+function onSettled(): void {
+  settledCount.value++
+}
+
+watch(allSettled, (settled) => {
+  if (settled) {
+    reelsDone.value = true
+  }
+}, { immediate: true })
+
+// The symbols a reel rolls are the diver's own catalog, narrowed to the band
+// the offer landed in — the spin never teases gear the draft can't pay out.
+const reelPool = computed<Item[]>(() => {
+  const owned = new Set(props.ownedIds)
+  const optionIds = new Set(lockedOptions.value.map(option => option.optionId))
+  const base = props.pool.filter(item => !owned.has(item.id) && !optionIds.has(item.id))
+  const tiers = lockedOptions.value
+    .filter(option => !option.choice)
+    .map(option => TIER_RANK[option.item.tier])
+  if (tiers.length > 0) {
+    const lo = Math.min(...tiers)
+    const hi = Math.max(...tiers)
+    const band = base.filter(item => TIER_RANK[item.tier] >= lo && TIER_RANK[item.tier] <= hi)
+    if (band.length >= 4) {
+      return band
+    }
+  }
+  return base
+})
+
+// Banning is its own flow: once open, the offered rewards toggle a purge
 // selection instead of picking, and confirming spends the token and the pick.
 const banMode = ref(false)
 const selectedBanIds = ref<string[]>([])
 
 const displayOptions = computed(() =>
-  banMode.value ? props.options.filter(option => !option.choice) : props.options)
+  banMode.value ? lockedOptions.value.filter(option => !option.choice) : lockedOptions.value)
 
 function toggleBan(optionId: string): void {
   const selected = new Set(selectedBanIds.value)
@@ -101,151 +187,174 @@ function squadPickLabel(pick: SquadPick): string {
 </script>
 
 <template>
-  <section class="panel">
-    <AnimatePresence mode="wait">
-      <Motion
-        v-if="!resolved"
-        key="draft"
-        as="div"
-        :initial="{ opacity: 0 }"
-        :animate="{ opacity: 1 }"
-        :exit="{ opacity: 0, scale: 0.94 }"
-        :transition="SPRING_SOFT"
+  <section class="panel slot-machine">
+    <header class="cabinet-head">
+      <h2 class="draft-title">
+        <WaitingLight
+          v-if="!resolved"
+          label="Waiting on your reward pick"
+        />
+        {{ banMode ? 'Ban offered rewards' : 'Rewards — choose one' }}
+      </h2>
+      <p class="muted small">
+        <template v-if="banMode">
+          Pick any or all of the offered rewards to ban from your future
+          offers — this spends a token and forfeits this mission's reward.
+        </template>
+        <template v-else>
+          Every reward is yours alone — stratagems included.
+        </template>
+      </p>
+      <p
+        v-if="props.optionsLost && !banMode"
+        class="small options-lost"
       >
-        <h2 class="draft-title">
-          <WaitingLight label="Waiting on your reward pick" />
-          {{ banMode ? 'Ban offered rewards' : 'Rewards — choose one' }}
-        </h2>
-        <p class="muted small">
-          <template v-if="banMode">
-            Pick any or all of the offered rewards to ban from your future
-            offers — this spends a token and forfeits this mission's reward.
-          </template>
-          <template v-else>
-            Every reward is yours alone — stratagems included.
-          </template>
-        </p>
-        <p
-          v-if="props.optionsLost && !banMode"
-          class="small options-lost"
+        {{ props.optionsLost }} pact{{ props.optionsLost === 1 ? '' : 's' }} failed —
+        {{ props.optionsLost === 1 ? 'one reward option forfeited' : `${props.optionsLost} reward options forfeited` }}.
+      </p>
+    </header>
+
+    <div
+      v-if="squadPicks.length && !banMode && !resolved"
+      class="squad-picks"
+    >
+      <span class="muted small">Squad</span>
+      <AppTooltip
+        v-for="pick in squadPicks"
+        :key="pick.id"
+        :content="squadPickLabel(pick)"
+      >
+        <span
+          class="squad-pick"
+          :class="{ done: pick.item !== null, skipped: pick.skipped }"
+          role="img"
+          :aria-label="squadPickLabel(pick)"
         >
-          {{ props.optionsLost }} pact{{ props.optionsLost === 1 ? '' : 's' }} failed —
-          {{ props.optionsLost === 1 ? 'one reward option forfeited' : `${props.optionsLost} reward options forfeited` }}.
-        </p>
-        <div
-          v-if="squadPicks.length && !banMode"
-          class="squad-picks"
+          <img
+            v-if="pick.item"
+            :src="itemImageUrl(pick.item)"
+            alt=""
+            loading="lazy"
+            draggable="false"
+          >
+          <span
+            v-else-if="pick.skipped"
+            class="skip-mark"
+          >–</span>
+          <span
+            v-else
+            class="wait-dot"
+          />
+        </span>
+      </AppTooltip>
+    </div>
+
+    <div
+      v-if="tokenCount > 0 && !banMode && !resolved"
+      class="token-bar"
+    >
+      <span class="muted small">Reward tokens: {{ tokenCount }}</span>
+      <button
+        class="btn tiny ghost"
+        type="button"
+        :disabled="!canReroll || !allSettled"
+        @click="emit('reroll')"
+      >
+        Reroll offer
+      </button>
+      <button
+        class="btn tiny ghost"
+        type="button"
+        :disabled="!canBan || !allSettled"
+        @click="startBan"
+      >
+        Ban items
+      </button>
+    </div>
+
+    <div
+      v-if="lockedOptions.length && !banned && !wasResolvedOnMount && !banMode"
+      class="reels"
+      :class="{ settled: allSettled }"
+    >
+      <RewardReel
+        v-for="(option, index) in lockedOptions"
+        :key="`${reelEpoch}-${option.optionId}`"
+        :option="option"
+        :candidates="reelPool"
+        :choice-pool="pool"
+        :owned-ids="ownedIds"
+        :index="index"
+        :instant="instant || reelsDone"
+        :can-pick="allSettled && !resolved"
+        :picked="pickedReelId === option.optionId"
+        :dimmed="pickedReelId !== null && pickedReelId !== option.optionId"
+        @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
+        @settled="onSettled"
+      />
+    </div>
+    <p
+      v-else-if="!lockedOptions.length && !resolved"
+      class="muted small"
+    >
+      You sat out this mission's draft — the squad dives without your pick.
+    </p>
+
+    <div
+      v-if="banMode"
+      class="grid"
+    >
+      <div
+        v-for="option in displayOptions"
+        :key="option.optionId"
+        class="draft-slot"
+      >
+        <ItemCard
+          :item="option.item"
+          :selected="selectedBanIds.includes(option.optionId)"
+          :disabled="!bannableIds.includes(option.optionId)"
+          @select="toggleBan(option.optionId)"
+        />
+      </div>
+    </div>
+    <div
+      v-if="banMode"
+      class="ban-footer"
+    >
+      <div class="row">
+        <button
+          class="btn primary"
+          type="button"
+          :disabled="selectedBanIds.length === 0"
+          @click="confirmBan"
         >
-          <span class="muted small">Squad</span>
-          <AppTooltip
-            v-for="pick in squadPicks"
-            :key="pick.id"
-            :content="squadPickLabel(pick)"
-          >
-            <span
-              class="squad-pick"
-              :class="{ done: pick.item !== null, skipped: pick.skipped }"
-              role="img"
-              :aria-label="squadPickLabel(pick)"
-            >
-              <img
-                v-if="pick.item"
-                :src="itemImageUrl(pick.item)"
-                alt=""
-                loading="lazy"
-                draggable="false"
-              >
-              <span
-                v-else-if="pick.skipped"
-                class="skip-mark"
-              >–</span>
-              <span
-                v-else
-                class="wait-dot"
-              />
-            </span>
-          </AppTooltip>
-        </div>
-        <div
-          v-if="tokenCount > 0 && !banMode"
-          class="token-bar"
+          {{ selectedBanIds.length === 0
+            ? 'Ban selected items'
+            : `Ban ${selectedBanIds.length} item${selectedBanIds.length === 1 ? '' : 's'}` }}
+        </button>
+        <button
+          class="btn ghost"
+          type="button"
+          @click="cancelBan"
         >
-          <span class="muted small">Reward tokens: {{ tokenCount }}</span>
-          <button
-            class="btn tiny ghost"
-            type="button"
-            :disabled="!canReroll"
-            @click="emit('reroll')"
-          >
-            Reroll offer
-          </button>
-          <button
-            class="btn tiny ghost"
-            type="button"
-            :disabled="!canBan"
-            @click="startBan"
-          >
-            Ban items
-          </button>
-        </div>
-        <div class="grid">
-          <Motion
-            v-for="(option, index) in displayOptions"
-            :key="option.optionId"
-            as="div"
-            class="draft-slot"
-            :initial="{ opacity: 0, y: 18, scale: 0.9 }"
-            :animate="{ opacity: 1, y: 0, scale: 1 }"
-            :transition="{ ...SPRING_SNAP, delay: index * 0.07 }"
-          >
-            <DiversChoiceCard
-              v-if="option.choice"
-              :pool="pool"
-              :owned-ids="ownedIds"
-              @choose="choiceItemId => emit('pick', option.optionId, choiceItemId)"
-            />
-            <ItemCard
-              v-else
-              :item="option.item"
-              :selected="banMode && selectedBanIds.includes(option.optionId)"
-              :disabled="banMode && !bannableIds.includes(option.optionId)"
-              @select="banMode ? toggleBan(option.optionId) : emit('pick', option.optionId)"
-            />
-          </Motion>
-        </div>
-        <div
-          v-if="banMode"
-          class="ban-footer"
-        >
-          <div class="row">
-            <button
-              class="btn primary"
-              type="button"
-              :disabled="selectedBanIds.length === 0"
-              @click="confirmBan"
-            >
-              {{ selectedBanIds.length === 0
-                ? 'Ban selected items'
-                : `Ban ${selectedBanIds.length} item${selectedBanIds.length === 1 ? '' : 's'}` }}
-            </button>
-            <button
-              class="btn ghost"
-              type="button"
-              @click="cancelBan"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </Motion>
-      <Motion
-        v-else
-        key="banked"
-        as="div"
+          Cancel
+        </button>
+      </div>
+    </div>
+
+    <Transition name="phase">
+      <p
+        v-if="allSettled && !resolved && !banMode && lockedOptions.length && !wasResolvedOnMount"
+        class="hint muted small"
+      >
+        Reels locked — tap a card to claim it.
+      </p>
+    </Transition>
+
+    <Transition name="phase">
+      <div
+        v-if="resolved"
         class="banked"
-        :initial="{ opacity: 0, scale: 0.94 }"
-        :animate="{ opacity: 1, scale: 1 }"
-        :transition="SPRING_SOFT"
       >
         <template v-if="banned">
           <span class="muted small">Draft resolved</span>
@@ -253,24 +362,58 @@ function squadPickLabel(pick: SquadPick): string {
           <span class="muted small">— no reward this mission. Your future offers are cleaner.</span>
         </template>
         <template v-else>
-          <span class="muted small">Reward banked</span>
-          <strong>{{ pickedItem?.displayName }}</strong>
-          <span class="muted small">— see the squad inventory below.</span>
+          <img
+            v-if="pickedImage"
+            class="banked-art"
+            :src="pickedImage"
+            alt=""
+            draggable="false"
+          >
+          <div class="banked-copy">
+            <span class="muted small">Reward banked</span>
+            <strong>{{ pickedItem?.displayName }}</strong>
+            <span class="muted small">— see the squad inventory below.</span>
+          </div>
         </template>
-      </Motion>
-    </AnimatePresence>
+      </div>
+    </Transition>
   </section>
 </template>
 
 <style scoped>
-.draft-title { display: flex; align-items: center; gap: 0.45rem; }
+.slot-machine {
+  position: relative;
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem 0.9rem 0.9rem;
+  border-color: color-mix(in srgb, var(--gold) 35%, var(--border));
+  background:
+    radial-gradient(120% 70% at 50% -12%, color-mix(in srgb, var(--gold) 12%, transparent), transparent 62%),
+    var(--bg-raised);
+}
+
+.cabinet-head { display: grid; gap: 0.25rem; text-align: center; }
+.draft-title { display: flex; align-items: center; justify-content: center; gap: 0.45rem; }
 .options-lost {
   margin: 0.25rem 0 0;
   color: var(--red);
 }
+
+.reels {
+  display: flex;
+  justify-content: safe center;
+  gap: 0.75rem;
+  padding: 0.15rem 0.1rem 0.4rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.hint { text-align: center; margin: 0; }
+
 .token-bar {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   margin: 0.5rem 0 0.25rem;
 }
@@ -283,6 +426,7 @@ function squadPickLabel(pick: SquadPick): string {
 .squad-picks {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
   margin: 0.5rem 0 0.25rem;
 }
@@ -331,9 +475,24 @@ function squadPickLabel(pick: SquadPick): string {
 }
 .banked {
   display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--gold) 8%, transparent);
+}
+.banked-art {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: contain;
+}
+.banked-copy {
+  display: flex;
   align-items: baseline;
   gap: 0.5rem;
   flex-wrap: wrap;
-  padding: 0.25rem 0;
 }
+.banked-copy strong { color: var(--gold); }
 </style>
