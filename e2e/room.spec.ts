@@ -15,8 +15,8 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
   await expect(pageA.getByText('Wheel of Misfortune')).toBeVisible()
-  // A lone host is nudged to share the invite (the aside sits in the squad strip).
-  await expect(pageA.locator('.lone-host')).toBeVisible()
+  // A lone host is nudged to share the invite — the copy control glows.
+  await expect(pageA.getByLabel('Copy invite link')).toHaveClass(/glow/)
 
   // A second browser joins through the same invite link — the name gate
   // blocks seating until they provide a name.
@@ -29,8 +29,10 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
   await expect(pageB.getByText('(you)')).toBeVisible()
   await expect(pageB.getByRole('button', { name: 'Spin', exact: true })).toBeDisabled()
-  // Invite copy lives beside the room code in the header.
+  // Invite copy lives beside the room code in the header, and stops glowing
+  // once the host has company.
   await expect(pageB.getByLabel('Copy invite link')).toBeVisible()
+  await expect(pageA.getByLabel('Copy invite link')).not.toHaveClass(/glow/)
 
   // The joiner's gate-provided name synced to the host; renaming via the
   // inline chip editor still updates the squad in real time.
