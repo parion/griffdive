@@ -55,8 +55,9 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // host spins the stat contest (on click, like the wheel) and awards the
   // winner, who banks a reward token automatically.
   await expect(page.getByRole('heading', { name: 'Squad Honors' })).toBeVisible()
+  // Solo: the only diver is always the winner, so the spin auto-banks the
+  // token — no selection step.
   await page.locator('.slot').getByRole('button', { name: 'Spin' }).click()
-  await page.locator('.award-row').getByRole('button', { name: 'Griffon' }).click()
   await expect(page.getByText(/takes the honors and banks a reward token/)).toBeVisible()
 
   await page.getByRole('button', { name: /Next mission/ }).click()

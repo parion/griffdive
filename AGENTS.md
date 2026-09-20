@@ -351,7 +351,9 @@ click** (`SPIN_BONUS{seed}`, host-only) once every diver has picked, and the see
 `rollBonus` (stream salt 4) derives the same stat on every client. **The app never captures the
 stats**: the host reads HD2's stats screen and names the winner (`AWARD_BONUS`, host-only); ties are
 the host's call. Awarding banks the winner's **one flexible reward token** immediately (capped at
-`REWARD_TOKEN_CAP`, 3) — there is no separate claim step.
+`REWARD_TOKEN_CAP`, 3) — there is no separate claim step. When only one diver can win (solo, or a
+squad where everyone else sat the draft out), selection is redundant: the spin resolves the ceremony
+and banks the token by itself.
 
 A token is spent by its owner during a reward draft on one of:
 - **Reroll** (`REROLL_REWARDS`) — redraw the diver's own offer. A reroll must move (a seed that

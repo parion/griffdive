@@ -24,6 +24,10 @@ const spun = computed(() => props.state.bonusSeed !== null)
 const statLabels = BONUS_STATS.map(stat => stat.label)
 const winner = computed(() =>
   props.state.divers.find(diver => diver.id === props.state.bonusWinnerId) ?? null)
+// A diver seated mid-mission sat the draft out, so they have no stats to win
+// with — only the divers who dove are award candidates.
+const candidates = computed(() =>
+  props.state.divers.filter(diver => !diver.skipsCurrentDraft))
 </script>
 
 <template>
@@ -97,7 +101,7 @@ const winner = computed(() =>
       </p>
       <div class="row award-row">
         <button
-          v-for="diver in state.divers"
+          v-for="diver in candidates"
           :key="diver.id"
           class="btn ghost"
           type="button"

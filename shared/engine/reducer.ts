@@ -609,6 +609,23 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       ) {
         return state
       }
+      // Only one diver can win (solo, or a squad where everyone else sat the
+      // draft out): the selection is redundant, so the spin resolves the
+      // ceremony and banks the token immediately.
+      const candidates = state.divers.filter(diver => !diver.skipsCurrentDraft)
+      if (candidates.length === 1) {
+        const winner = candidates[0]!
+        const divers = state.divers.map(diver =>
+          diver.id === winner.id
+            ? { ...diver, rewardTokens: Math.min(REWARD_TOKEN_CAP, diver.rewardTokens + 1) }
+            : diver,
+        )
+        return commit(
+          state,
+          { bonusSeed: action.seed, bonusWinnerId: winner.id, divers },
+          action,
+        )
+      }
       return commit(state, { bonusSeed: action.seed }, action)
     }
 

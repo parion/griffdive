@@ -361,7 +361,9 @@ honors" section. No token source besides N37 (the earlier skip-a-reward idea was
 **N37 · Bonus-stat squad honors. Done (DEC-11).** Once every diver has picked, `DivePhaseRewards`
 swaps the locked Valor meter for `BonusCeremony.vue`: like the Wheel, the contest is **spun on
 click** (`SPIN_BONUS{seed}`, host-only), then the host awards the winner (`AWARD_BONUS`, host-only,
-post-spin) and the token is **banked immediately** — no claim step. A slot-machine reveal (reusing
+post-spin) and the token is **banked immediately** — no claim step. When only one diver can win
+(solo, or a squad where everyone else sat the draft out) the spin resolves the ceremony by itself,
+since the selection would be redundant. A slot-machine reveal (reusing
 `ReelText`) plays on the seed. The contest is `rollBonus(bonusSeed)` (stream salt 4) over
 `BONUS_STATS` — all 12 HD2 end-screen stats with a `most`/`least` direction, tunable in config. The
 app never captures the stats: the host reads the real end screen and picks, matching
