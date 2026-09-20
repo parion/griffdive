@@ -98,6 +98,18 @@ export function pactRiskTotal(pactIds: readonly string[]): number {
   return pactIds.reduce((sum, id) => sum + (PACT_RISK[id] ?? 0), 0)
 }
 
+// The maximal legal pick from an offer: fold every offered pact through the
+// subsumption and exclusivity rules, so a one-click "take all" can never stack
+// a conflict or a redundant restriction. Unknown ids are dropped.
+export function maximalPactSelection(offerIds: readonly string[]): string[] {
+  const offer = offerIds.filter(id => id in PACT_RISK)
+  let picked: string[] = []
+  for (const id of offer) {
+    picked = applyPactToggle(offer, picked, id)
+  }
+  return picked
+}
+
 const RESERVE_STRATAGEM_SET = new Set<string>(RESERVE_STRATAGEMS)
 
 function isReserveStratagem(item: Item): boolean {

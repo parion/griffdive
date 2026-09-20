@@ -7,6 +7,7 @@ import {
   currentFront,
   currentMisfortune,
   misfortuneDecision,
+  misfortuneStrandedDivers,
 } from '~~/shared/engine/selectors'
 import { eligibleMisfortunes } from '~~/shared/engine/wheel'
 import type { DiveState } from '~~/shared/engine/types'
@@ -42,6 +43,19 @@ const rerollWindow = computed(() =>
   (props.state.phase === 'decision' || props.state.phase === 'pacts')
   && props.state.wheel !== null
   && !props.state.divers.some(diver => diver.pactsLocked))
+
+// A squad-binding rule every diver must be able to field: a drawn misfortune
+// that strands a diver below HD2's four required stratagems can't be accepted.
+// The reducer refuses it too — this is the legible half.
+const stranded = computed(() => misfortuneStrandedDivers(props.state))
+const acceptBlocked = computed(() => stranded.value.length > 0)
+const strandedReason = computed(() => {
+  const names = stranded.value.map(diver => diver.name)
+  if (names.length === 0) {
+    return ''
+  }
+  return `${names.join(', ')} can't field four stratagems under this rule — opt out or reroll.`
+})
 
 const misfortuneNames = computed(() =>
   eligibleMisfortunes(props.state.difficulty).map(entry => entry.name),
@@ -177,6 +191,12 @@ function rerollLabel(
             :value="teamRisk"
             :rolling="misfortuneReeling"
           /></span>
+          <p
+            v-if="acceptBlocked && canControl && !decision.decided"
+            class="stranded-note small"
+          >
+            {{ strandedReason }}
+          </p>
           <div
             v-if="!decision.decided && canControl"
             class="row decision-actions"
@@ -184,7 +204,8 @@ function rerollLabel(
             <button
               class="btn primary"
               type="button"
-              :disabled="misfortuneReeling"
+              :disabled="misfortuneReeling || acceptBlocked"
+              :title="acceptBlocked ? strandedReason : undefined"
               @click="$emit('decide', true)"
             >
               Lock it in
@@ -202,6 +223,8 @@ function rerollLabel(
             v-else-if="decision.decided && canSwitch"
             class="btn tiny ghost"
             type="button"
+            :disabled="!decision.accepted && acceptBlocked"
+            :title="!decision.accepted && acceptBlocked ? strandedReason : undefined"
             @click="$emit('decide', !decision.accepted)"
           >
             {{ decision.accepted ? 'Switch — opt out' : 'Switch — lock it in' }}
@@ -434,6 +457,12 @@ function rerollLabel(
 .decision-stamp.pending { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 60%, transparent); }
 .decision-stamp.locked { color: var(--red); border-color: var(--red); }
 .decision-stamp.safe { color: var(--muted); }
+
+.stranded-note {
+  color: var(--red);
+  border-left: 2px solid var(--red);
+  padding-left: 0.5rem;
+}
 
 /* While a reel is spinning, the card's static content steps aside for it —
    the team-risk row stays put: its pips are rolling, not settling. */

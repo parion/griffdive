@@ -54,9 +54,14 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
     if (mission === 0) {
       state = reduce(state, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: seedFor(999) })
     }
-    // The squad accepts intense misfortunes and declines weak ones.
-    const accepted = (MISFORTUNE_RISK[state.wheel!.misfortuneId] ?? 0) >= 3
-    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted })
+    // The squad accepts intense misfortunes and declines weak ones. A rule the
+    // squad cannot field is refused by the engine, so the script opts out.
+    const wantsRisk = (MISFORTUNE_RISK[state.wheel!.misfortuneId] ?? 0) >= 3
+    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: wantsRisk })
+    if (state.phase === 'decision') {
+      state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })
+    }
+    const accepted = state.misfortuneAccepted
     // The diver picks a subset of what the wheel offered this mission.
     const rotation = PACT_ROTATION[mission % PACT_ROTATION.length] ?? []
     const offered = new Set(pactOfferFor(state, 'host').map(pact => pact.id))

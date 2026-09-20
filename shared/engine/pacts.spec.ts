@@ -10,6 +10,7 @@ import {
   hasLegalLoadout,
   isPactSelectable,
   legalStratagemCount,
+  maximalPactSelection,
   pactConflictsWith,
   pactRiskTotal,
   pactSubsumedBy,
@@ -124,6 +125,17 @@ describe('reserve and loadout legality', () => {
       )
     }
   })
+
+  it('flags a misfortune the base kit cannot field (Oops, All Orbitals)', () => {
+    // The standard kit fields two orbitals; the rule needs four. A kit with
+    // enough orbitals (Quickplay's extras) clears it.
+    expect(hasLegalLoadout('oopsAllOrbitals', [], baseKit)).toBe(false)
+    expect(hasLegalLoadout('oopsAllOrbitals', [], startingItemIds('quickplay'))).toBe(true)
+  })
+
+  it('keeps No Stratagems behavioral — four slots still equip', () => {
+    expect(hasLegalLoadout('noStratagems', [], baseKit)).toBe(true)
+  })
 })
 
 describe('pactRiskTotal', () => {
@@ -133,6 +145,21 @@ describe('pactRiskTotal', () => {
     expect(pactRiskTotal(['stimAbstinent', 'deadWeight'])).toBe(5)
     expect(pactRiskTotal(['untouchable', 'packLight'])).toBe(4)
     expect(pactRiskTotal(['ghostPact'])).toBe(0)
+  })
+})
+
+describe('maximalPactSelection', () => {
+  it('takes the whole offer when nothing conflicts', () => {
+    const offer = ['packLight', 'thirsty', 'stimAbstinent']
+    expect(maximalPactSelection(offer)).toEqual(offer)
+  })
+
+  it('never stacks an exclusive pair or a pact outside the offer', () => {
+    const offer = ['grounded', 'shipSilent', 'packLight']
+    const picked = maximalPactSelection(offer)
+    expect(picked).toContain('packLight')
+    expect(picked.filter(id => ['grounded', 'shipSilent'].includes(id))).toHaveLength(1)
+    expect(maximalPactSelection(['grounded', 'ghostPact'])).toEqual(['grounded'])
   })
 })
 

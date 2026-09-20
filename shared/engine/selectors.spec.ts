@@ -3,9 +3,10 @@ import { WARBONDS } from '../data/catalog'
 import { MAX_DIFFICULTY, MIN_DIFFICULTY, SAMPLE_VALOR_CAP, TIME_VALOR_MAX } from './config'
 import { oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { activeMisfortune, ceilingRange, diverOptions, maxValorFor, misfortuneDecision, pactOfferFor, rewardPoolFor, teamRiskOf } from './selectors'
+import { activeMisfortune, ceilingRange, diverOptions, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, teamRiskOf } from './selectors'
 import { isPactSelectable } from './pacts'
-import type { DiverState, RewardTier } from './types'
+import { startingItemIds } from './progression'
+import type { DiveState, DiverState, RewardTier } from './types'
 
 function spunState(seed = 42, accepted = false) {
   const spun = reduce(createDiveState({ variant: 'standard' }, 'host', 'Griffin'), {
@@ -170,5 +171,42 @@ describe('diverOptions', () => {
     for (const option of options) {
       expect(option.item.warbondCode).toBe('none')
     }
+  })
+})
+
+describe('misfortuneStrandedDivers', () => {
+  it('reports every diver the drawn rule would strand', () => {
+    const state = createDiveState({ variant: 'standard' }, 'host', 'Griffin')
+    const wheeled = { ...state, difficulty: 6, wheel: { seed: 1, misfortuneId: 'oopsAllOrbitals' } }
+    expect(misfortuneStrandedDivers(wheeled).map(diver => diver.id)).toEqual(['host'])
+    // A fieldable rule strands nobody, and so does an empty wheel.
+    expect(misfortuneStrandedDivers({ ...wheeled, wheel: { seed: 1, misfortuneId: 'noBackpacks' } })).toEqual([])
+    expect(misfortuneStrandedDivers({ ...wheeled, wheel: null })).toEqual([])
+  })
+
+  it('is squad-wide — one stranded diver blocks the rule for everyone', () => {
+    const state = createDiveState({ variant: 'standard' }, 'host', 'Griffin')
+    const guest: DiverState = {
+      id: 'guest',
+      name: 'Guest',
+      isHost: false,
+      pactsLocked: false,
+      pactIds: [],
+      failedPactIds: [],
+      pickedOptionId: null,
+      warbondCodes: [],
+      catchUpGranted: 0,
+      catchUpOwed: 0,
+      skipsCurrentDraft: false,
+    }
+    const wheeled: DiveState = {
+      ...state,
+      difficulty: 6,
+      wheel: { seed: 1, misfortuneId: 'oopsAllOrbitals' },
+      divers: [...state.divers, guest],
+      personalInventories: { ...state.personalInventories, guest: startingItemIds('quickplay') },
+    }
+    // The guest can field the rule; the host cannot, so the accept still fails.
+    expect(misfortuneStrandedDivers(wheeled).map(diver => diver.id)).toEqual(['host'])
   })
 })

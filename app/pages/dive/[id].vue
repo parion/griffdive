@@ -4,7 +4,7 @@ import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
 import { difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
 import { pactName } from '~~/shared/data/pacts'
-import { applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
+import { applyPactToggle, hasLegalLoadout, maximalPactSelection, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
 import {
   activeMisfortune,
   allDiversPicked,
@@ -123,6 +123,16 @@ function togglePact(pactId: string): void {
     pactSelection.value,
     pactId,
   )
+}
+
+// The intended play is to carry every pact you can honor: fold the whole offer
+// through the conflict rules so one click never stacks a redundant pick.
+function takeAllPacts(): void {
+  pactSelection.value = maximalPactSelection(pactOffer.value.map(pact => pact.id))
+}
+
+function clearPacts(): void {
+  pactSelection.value = []
 }
 
 // Offered pacts the current selection rules out — greyed with the reason:
@@ -795,6 +805,8 @@ function commitWarbonds(codes: string[]): void {
                       :selected="pactSelection"
                       :blocked="pactCoverage"
                       @toggle="togglePact"
+                      @take-all="takeAllPacts"
+                      @clear="clearPacts"
                       @lock="lockPacts"
                     />
                     <ValorMeter

@@ -13,7 +13,7 @@ import {
   baseTierFor,
   pactOptionsFor,
 } from './config'
-import { pactRiskTotal, rollPactOffer } from './pacts'
+import { hasLegalLoadout, pactRiskTotal, rollPactOffer } from './pacts'
 import { performanceValor, maxCeiling, oddsToReach, optionsForStars, rollCeiling, rollRewardOptions, valorOf } from './rewards'
 import type { RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
@@ -51,6 +51,19 @@ export function misfortuneDecision(state: DiveState): MisfortuneDecision {
     return { decided: false, accepted: false }
   }
   return { decided: true, accepted: state.misfortuneAccepted }
+}
+
+// A misfortune binds the whole squad, so every seated diver must still be able
+// to field HD2's four required stratagems under it — otherwise the squad can
+// never ready up. The drawn rule is the check; pacts (picked later) are the
+// pact floor's job. (AGENTS.md: Mandatory four stratagems.)
+export function misfortuneStrandedDivers(state: DiveState): DiverState[] {
+  const misfortune = currentMisfortune(state)
+  if (!misfortune) {
+    return []
+  }
+  return state.divers.filter(diver =>
+    !hasLegalLoadout(misfortune.id, [], state.personalInventories[diver.id] ?? []))
 }
 
 export function teamRiskOf(state: DiveState): number {
