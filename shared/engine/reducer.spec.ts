@@ -827,11 +827,22 @@ describe('PICK_REWARD — Diver\'s Choice (S+)', () => {
   // the real selector until one produces the choice slot — deterministic, no
   // runtime randomness, and the phase/offerSeed shape matches a real report.
   function choiceState(): DiveState {
+    // S+ is gated behind real Valor (S_PLUS_VALOR_FLOOR), so the fixture fields
+    // a heavy misfortune and two 3-risk pacts: Valor 5 + 3 + 3 = 11.
     const base = divingState(42, PACTS.map(pact => pact.id))
-    const diver = requireDiver(base)
+    const heavy: DiveState = {
+      ...base,
+      wheel: { seed: 42, misfortuneId: 'noStratagems' },
+      misfortuneAccepted: true,
+      divers: base.divers.map(entry =>
+        entry.id === base.divers[0]?.id
+          ? { ...entry, pactIds: ['stimAbstinent', 'untouchable'], failedPactIds: [] }
+          : entry),
+    }
+    const diver = requireDiver(heavy)
     for (let offerSeed = 0; offerSeed < 4000; offerSeed++) {
       const candidate: DiveState = {
-        ...base,
+        ...heavy,
         phase: 'rewards',
         offerSeed,
         lastReport: { outcome: 'success', stars: 3 },

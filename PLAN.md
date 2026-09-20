@@ -63,7 +63,7 @@ IDs are stable and append-only; do not renumber.
 | N30 | Failure cannot lower difficulty or set `achieved` | Rules | S | Accepted | QA-F4 |
 | N31 | Remove open-dive lobby / matchmaking | Feature | M | Done | new |
 | N32 | Kit ordering: stratagem role then tier | UX | S | Done | new |
-| N33 | Reward options skew to base tiers even at a high ceiling | Balance/Bug | M | Blocked (DEC-10) | new |
+| N33 | Reward options skew to base tiers even at a high ceiling | Balance/Bug | M | Done (DEC-10) | new |
 | N34 | Copy-invite icon by session ID + lone-host share aside | UX | S | Done | new |
 | N35 | Users-list waiting indicators (pacts/rewards) | UX | S | Done | new |
 | N36 | Mandatory 4 slots vs equip-restricting misfortunes | Rules | M | Done | new |
@@ -83,7 +83,7 @@ Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the re
 | DEC-7 | Incoming-player Valor: cap, and the non-exploit rule (e.g. scales off the squad's banked performance, not a fresh join's). | N16 |
 | DEC-8 | Failure rework direction (owner-flagged, to be spec'd): what replaces "repeat op + forfeit one item"? | N26 |
 | DEC-9 | Mid-match crash semantics: void the mission with no forfeit, auto-pause, or keep the forfeit? | N10 |
-| DEC-10 | Target distribution for rolled reward options under a ceiling (favor near-ceiling vs uniform), and the S+ guarantee fallback when the diver's S pool is empty. | N33 |
+| DEC-10 | Target distribution for rolled reward options under a ceiling (favor near-ceiling vs uniform), and the S+ guarantee fallback when the diver's S pool is empty. | Resolved — N33 |
 
 **DEC-1 — resolved (N5/N24). Landed.** Keep the stratagem pacts **loadout-checked**, not "equipped
 but never called": a stratagem call-in is team-visible but not attributed to a diver and never
@@ -121,6 +121,18 @@ success, so the mission just reported feeds the draft that follows.
   roll actually moves. Excluding every prior result this window was rejected: it shrinks the pool and
   fights the free-overrule rule (cycling back onto an already-completed combo is intentionally free).
 
+**DEC-10 — resolved (N33). Landed.** Reward options roll inside the band from the difficulty's
+**base tier** (a hard floor) up to the rolled ceiling: the draft **leads with one option at the
+ceiling**, then fills the rest a band down, weighted toward the top. Genre check (Enter the Gungeon
+per-floor quality tables, Dead Cells' Boss Stem Cells, Hades' boon-rarity investment) supports
+shifting the distribution up and flooring out the bottom while keeping the top a minority. First
+pass used a pure exponential toward the ceiling; playtesting at diff 6 showed low-Valor runs
+getting S-flooded drafts (3 S of 4), which exposed that the **ceiling roll** was the root — a
+single risk-2 misfortune reached S 15–80% at diffs 6–10. Retuned: **S and S+ are Valor-gated**
+(floors 4 / 8, then a ramp) so altitude can't hand out the top, and the draft lands **exactly one**
+ceiling option plus support. The S+ guarantee falls back to the highest tier still in the diver's
+pool when no S item is unowned, so it never drops a slot.
+
 ## Batches
 
 Each batch lands shippable and green.
@@ -136,14 +148,15 @@ offer draw).
 
 Landed. N34, N35. No engine changes (presentation only) — no `ENGINE_VERSION` bump or golden regen.
 
-### Batch B — Rules & economy (needs decisions)
+### Batch B — Rules & economy
 
-N33. N5/N24 landed with **DEC-1** (reserve kit, mutual exclusion, four-slot floor),
-N6 landed with **DEC-2** (time/samples Valor), N12's same-result reroll landed with **DEC-3b**,
-N7 (the Valor meter) landed with **DEC-3a** (the name), and **N36** landed (the misfortune half
-of the four-slot floor: `ACCEPT_MISFORTUNE` now refuses a rule that strands any diver).
-`ENGINE_VERSION` bumped 12 → 13; goldens regenerated (the scripted crusade now declines the
-`oopsAllOrbitals` draws it cannot field).
+**Batch B complete.** N5/N24 landed with **DEC-1** (reserve kit, mutual exclusion, four-slot
+floor), N6 with **DEC-2** (time/samples Valor), N12's same-result reroll with **DEC-3b**, N7 (the
+Valor meter) with **DEC-3a** (the name), **N36** (the misfortune half of the four-slot floor:
+`ACCEPT_MISFORTUNE` refuses a rule that strands any diver), and **N33** with **DEC-10** (reward
+options floored at the base tier and weighted toward the earned ceiling; S+ guarantee falls back to
+the highest available tier). `ENGINE_VERSION` bumped 12 → 14; goldens regenerated for N36
+(`oopsAllOrbitals` declines) and N33 (option tiers shift upward).
 
 ### Batch C — Rewards & catch-up
 
@@ -286,18 +299,26 @@ appeared in 7 of ~12 picks. **Done (monitor)** — the missing `S_PLUS_UPGRADE_C
 applied to the final rung in `stepOdds` (`rewards.ts:23-28`), so altitude alone can't make Liberty's
 Cross routine (~8% at max Valor). Revisit only if the live rate still feels high.
 
-**N33 · Reward options skew to base tiers even at a high ceiling.** Observed on room `YK3SUN`,
-Super Helldive (10), misfortune accepted and all pacts locked: the header read `ceiling S+`, but the
-draft offered just B (Oxygenator), B (Concussive Padding), C (Combat Hatchet) and C (Sterilizer).
-Cause: `tierWeight` (`rewards.ts:105-111`) returns
-`TIER_ROLL_WEIGHT_BASE ** (ceilingIndex - TIER_INDEX[tier])`, so lower tiers weigh *exponentially*
-more — at an S+ ceiling the weights are C=8, B=4, A=2, S=1 (~53% C). A high ceiling therefore buys
-a thin shot at S while flooding the draft with base-tier gear, which contradicts north star 3
-("reward scales with stakes") and makes a deep, risky run feel unrewarding. Fix direction (DEC-10):
-favor tiers near the ceiling, or clamp rolled options to a window beneath it, instead of weighting
-toward the base. Related check: the guaranteed one-S slot (`rewards.ts:149-156`) silently vanishes
-when the diver's candidate S pool is empty (everything owned, or none in their declared warbonds) —
-verify and fall back to the highest available tier rather than dropping the guarantee.
+**N33 · Reward options skew to base tiers even at a high ceiling. Done (DEC-10, retuned after
+playtest).** Observed on room `YK3SUN`, Super Helldive (10), misfortune accepted and all pacts
+locked: the header read `ceiling S+`, but the draft offered B/B/C/C. Cause: `tierWeight` weighted
+`TIER_ROLL_WEIGHT_BASE ** (ceilingIndex − tierIndex)` with no base-tier floor, so lower tiers
+weighed *exponentially* more — at an S+ ceiling, C=8, B=4, A=2, S=1 (~53% C). **First pass:**
+options rolled in `[baseTierFor(difficulty) .. ceiling]` weighted exponentially toward the ceiling
+(`rollRewardOptions` took an explicit `floor`; `diverOptions` passes the base tier,
+`catchUpOptionsFor` passes base for both ends). **Playtest retune (room `7KRDS3`):** at diff 6 with
+Valor 2 a draft showed 3 S of 4 — the exponential faithfully cashed a ceiling that was too cheap.
+Root cause was the ceiling roll: `min(0.8, Valor·(1+bandPos)/3^step)` let a single risk-2
+misfortune reach S 15% at diff 6 and **67–80% at diffs 8–10** (base A is one rung from S). Fixes:
+- **Ceiling:** S and S+ are Valor-gated — `A→S` ramps from `S_VALOR_FLOOR` 4 (`min(0.8, max(0,
+  Valor−3)·(1+bandPos)/18)`) and `S→S+` from `S_PLUS_VALOR_FLOOR` 8 (`min(0.1, max(0,
+  Valor−7)·(1+bandPos)/40)`). Below the floor the rung cannot roll, so Valor 2 never reaches S at
+  any difficulty; the preview floor dropped to 0.05 so a reachable S is never hidden.
+- **Draft:** leads with **exactly one** option at the ceiling, then fills the rest a band down,
+  weighted toward the top. No more top-tier flood.
+`ENGINE_VERSION` 13 → 14; goldens regenerated. Covered by `tierWeight` (floor + skew),
+`rollCeiling` (S/S+ gates), and `rollRewardOptions` (floor, one-ceiling guarantee, S+ fallback,
+degraded band) in `rewards.spec.ts`.
 
 **N36 · Mandatory 4 slots vs equip-restricting misfortunes. Done.** The pact half landed with
 DEC-1; this is the misfortune half. A squad-binding rule must be fieldable by **every seated

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS } from '../data/catalog'
+import { S_PLUS_VALOR_FLOOR, S_VALOR_FLOOR } from './config'
 import { DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, maxCeiling, oddsToReach, optionsForStars, performanceValor, rollCeiling, rollRewardOptions, tierWeight, valorOf } from './rewards'
 import { mulberry32 } from './rng'
 import type { RewardTier } from './types'
@@ -101,6 +102,17 @@ describe('rollCeiling (probabilistic tier ladder)', () => {
       expect(rank(high)).toBeGreaterThanOrEqual(rank(low))
     }
   })
+
+  it('gates S and S+ behind real Valor, so altitude cannot hand out the top', () => {
+    for (let seed = 0; seed < 200; seed++) {
+      // Below the floor, S is unreachable even at the top difficulty.
+      expect(rollCeiling(mulberry32(seed), 10, S_VALOR_FLOOR - 1)).toBe('A')
+      // Below the S+ floor, the jackpot is unreachable in every band.
+      for (const difficulty of [3, 6, 10]) {
+        expect(rollCeiling(mulberry32(seed), difficulty, S_PLUS_VALOR_FLOOR - 1)).not.toBe('S+')
+      }
+    }
+  })
 })
 
 describe('maxCeiling / oddsToReach (legibility preview)', () => {
@@ -139,38 +151,61 @@ describe('optionsForStars', () => {
 })
 
 describe('tierWeight', () => {
-  it('forbids tiers above the ceiling', () => {
-    expect(tierWeight('a', 'B')).toBe(0)
-    expect(tierWeight('s', 'A')).toBe(0)
+  it('forbids tiers above the ceiling and below the floor', () => {
+    expect(tierWeight('a', 'C', 'B')).toBe(0)
+    expect(tierWeight('s', 'C', 'A')).toBe(0)
+    expect(tierWeight('c', 'A', 'S')).toBe(0)
   })
 
-  it('weights the tier below the ceiling highest', () => {
-    expect(tierWeight('s', 'S')).toBe(1)
-    expect(tierWeight('a', 'S')).toBe(2)
-    expect(tierWeight('b', 'S')).toBe(4)
-    expect(tierWeight('c', 'S')).toBe(8)
+  it('weights higher tiers exponentially toward the ceiling', () => {
+    expect(tierWeight('c', 'C', 'S')).toBe(1)
+    expect(tierWeight('b', 'C', 'S')).toBe(2)
+    expect(tierWeight('a', 'C', 'S')).toBe(4)
+    expect(tierWeight('s', 'C', 'S')).toBe(8)
+  })
+
+  it('floors at the base tier and prices S+ as S', () => {
+    expect(tierWeight('a', 'A', 'S+')).toBe(1)
+    expect(tierWeight('s', 'A', 'S+')).toBe(2)
+    expect(tierWeight('b', 'A', 'S+')).toBe(0)
   })
 })
 
 describe('rollRewardOptions', () => {
   it('is deterministic per seed', () => {
-    const a = rollRewardOptions(99, 'S', 3, ALL_ITEMS, new Set())
-    const b = rollRewardOptions(99, 'S', 3, ALL_ITEMS, new Set())
+    const a = rollRewardOptions(99, 'S', 'C', 3, ALL_ITEMS, new Set())
+    const b = rollRewardOptions(99, 'S', 'C', 3, ALL_ITEMS, new Set())
     expect(a.map(option => option.optionId)).toEqual(b.map(option => option.optionId))
   })
 
   it('never offers tiers above the ceiling', () => {
     for (let seed = 0; seed < 50; seed++) {
-      const options = rollRewardOptions(seed, 'B', 3, ALL_ITEMS, new Set())
+      const options = rollRewardOptions(seed, 'B', 'C', 3, ALL_ITEMS, new Set())
       for (const option of options) {
         expect(['c', 'b']).toContain(option.item.tier)
       }
     }
   })
 
+  it('never offers tiers below the difficulty floor', () => {
+    for (let seed = 0; seed < 50; seed++) {
+      const options = rollRewardOptions(seed, 'S', 'A', 4, ALL_ITEMS, new Set())
+      for (const option of options) {
+        expect(['a', 's']).toContain(option.item.tier)
+      }
+    }
+  })
+
+  it('lands exactly one option at the rolled ceiling — no top-tier flood', () => {
+    for (let seed = 0; seed < 100; seed++) {
+      const options = rollRewardOptions(seed, 'S', 'B', 4, ALL_ITEMS, new Set())
+      expect(options.filter(option => option.item.tier === 's' && !option.choice)).toHaveLength(1)
+    }
+  })
+
   it('leads with Diver\'s Choice at S+ and still rolls a guaranteed S option', () => {
     for (let seed = 0; seed < 50; seed++) {
-      const options = rollRewardOptions(seed, 'S+', 3, ALL_ITEMS, new Set())
+      const options = rollRewardOptions(seed, 'S+', 'C', 3, ALL_ITEMS, new Set())
       // The choice slot comes first and names the sentinel, not an item.
       expect(options[0]).toMatchObject({ optionId: DIVERS_CHOICE_OPTION_ID, choice: true })
       // The bonus slot is the choice, so the remaining roll fills count - 1.
@@ -179,30 +214,41 @@ describe('rollRewardOptions', () => {
     }
   })
 
+  it('falls back to the highest available tier when the S pool is empty', () => {
+    // No S items in the pool: the S+ guarantee lands on A instead of vanishing.
+    const pool = ALL_ITEMS.filter(item => item.tier !== 's')
+    const options = rollRewardOptions(3, 'S+', 'C', 3, pool, new Set())
+    expect(options[0]).toMatchObject({ optionId: DIVERS_CHOICE_OPTION_ID, choice: true })
+    expect(options).toHaveLength(3)
+    expect(options[1]!.item.tier).toBe('a')
+  })
+
   it('offers only the choice slot when S+ leaves no room to roll', () => {
-    const options = rollRewardOptions(7, 'S+', 1, ALL_ITEMS, new Set())
+    const options = rollRewardOptions(7, 'S+', 'C', 1, ALL_ITEMS, new Set())
     expect(options).toEqual([{ optionId: DIVERS_CHOICE_OPTION_ID, item: DIVERS_CHOICE_ITEM, choice: true }])
   })
 
   it('never offers the choice slot below S+', () => {
     for (const ceiling of ['C', 'B', 'A', 'S'] as const) {
-      const options = rollRewardOptions(3, ceiling, 2, ALL_ITEMS, new Set())
+      const options = rollRewardOptions(3, ceiling, 'C', 2, ALL_ITEMS, new Set())
       expect(options.some(option => option.choice)).toBe(false)
     }
   })
 
   it('excludes owned items and dedupes within the offer', () => {
     const owned = new Set(['ar23liberator'])
-    const options = rollRewardOptions(5, 'S', 4, ALL_ITEMS, owned)
+    const options = rollRewardOptions(5, 'S', 'C', 4, ALL_ITEMS, owned)
     const ids = options.map(option => option.optionId)
     expect(ids).not.toContain('ar23liberator')
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('falls back past the ceiling when the tier pool is exhausted', () => {
-    // Exclude every c/b-tier item; an A ceiling must still offer something.
-    const lowTierIds = new Set(ALL_ITEMS.filter(item => ['c', 'b'].includes(item.tier)).map(item => item.id))
-    const options = rollRewardOptions(11, 'A', 2, ALL_ITEMS, lowTierIds)
+  it('degrades the tier filter rather than offering nothing when the band is exhausted', () => {
+    // Own every C/B/A item; an A-ceiling draft must still offer something.
+    const bandIds = new Set(
+      ALL_ITEMS.filter(item => ['c', 'b', 'a'].includes(item.tier)).map(item => item.id),
+    )
+    const options = rollRewardOptions(11, 'A', 'A', 2, ALL_ITEMS, bandIds)
     expect(options.length).toBeGreaterThan(0)
   })
 })

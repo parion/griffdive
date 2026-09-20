@@ -5,9 +5,14 @@ import {
   SAMPLE_VALOR_WEIGHTS,
   S_PLUS_BONUS_OPTIONS,
   S_PLUS_UPGRADE_CAP,
+  S_PLUS_UPGRADE_DIVISOR,
+  S_PLUS_VALOR_FLOOR,
+  S_UPGRADE_DIVISOR,
+  S_VALOR_FLOOR,
   STARS_TO_OPTIONS,
   TIER_ROLL_WEIGHT_BASE,
   TIME_VALOR_MAX,
+  UPGRADE_CAP,
   UPGRADE_PREVIEW_FLOOR,
   bandPosition,
   baseTierFor,
@@ -20,14 +25,21 @@ import type { MissionReport, RewardTier } from './types'
 const TIER_INDEX: Readonly<Record<Tier, number>> = { c: 0, b: 1, a: 2, s: 3 }
 const CEILING_LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
-// One step of the ceiling ladder. The S→S+ rung is capped below the rest so
-// altitude alone can't hand out Liberty's Cross; the roll, the preview and the
-// priced climb all share this so the UI never overstates the jackpot.
+// One step of the ceiling ladder. The top rungs (S, S+) don't use the shared
+// step curve: each has a Valor floor and its own ramp, so altitude can't hand
+// out the top tier for a trickle of risk. The roll, the preview and the priced
+// climb all share this so the UI never overstates the jackpot.
 function stepOdds(valor: number, bandPos: number, step: number, targetIndex: number): number {
-  const odds = upgradeOdds(valor, bandPos, step)
-  return targetIndex === CEILING_LADDER.length - 1
-    ? Math.min(S_PLUS_UPGRADE_CAP, odds)
-    : odds
+  const altitude = 1 + bandPos
+  if (targetIndex === CEILING_LADDER.length - 1) {
+    const ramp = Math.max(0, valor - S_PLUS_VALOR_FLOOR + 1)
+    return Math.min(S_PLUS_UPGRADE_CAP, (ramp * altitude) / S_PLUS_UPGRADE_DIVISOR)
+  }
+  if (targetIndex === CEILING_LADDER.length - 2) {
+    const ramp = Math.max(0, valor - S_VALOR_FLOOR + 1)
+    return Math.min(UPGRADE_CAP, (ramp * altitude) / S_UPGRADE_DIVISOR)
+  }
+  return upgradeOdds(valor, bandPos, step)
 }
 
 // No catalog item carries the S+ tier, so a ceiling that breaks the scale
@@ -128,12 +140,23 @@ export function optionsForStars(stars: number, ceiling: RewardTier): number {
   return count
 }
 
-export function tierWeight(tier: Tier, ceiling: RewardTier): number {
-  const ceilingIndex = ceiling === 'S+' ? TIER_INDEX.s : TIER_INDEX[ceiling.toLowerCase() as Tier]
-  if (TIER_INDEX[tier] > ceilingIndex) {
+// Reward options live in the band the difficulty guarantees (its base tier) and
+// the ceiling the diver's Valor rolled. The base is a hard floor — a Super
+// Helldive never offers C-tier gear — and within the band a higher tier is
+// exponentially likelier, so the ceiling the diver bought is actually what the
+// draft leans into. S+ has no items of its own, so it prices as S.
+export function tierWeight(tier: Tier, floor: RewardTier, ceiling: RewardTier): number {
+  const floorIndex = tierIndex(floor)
+  const ceilingIndex = tierIndex(ceiling)
+  const index = TIER_INDEX[tier]
+  if (index > ceilingIndex || index < floorIndex) {
     return 0
   }
-  return TIER_ROLL_WEIGHT_BASE ** (ceilingIndex - TIER_INDEX[tier])
+  return TIER_ROLL_WEIGHT_BASE ** (index - floorIndex)
+}
+
+function tierIndex(tier: RewardTier): number {
+  return tier === 'S+' ? TIER_INDEX.s : TIER_INDEX[tier.toLowerCase() as Tier]
 }
 
 export interface RewardOption {
@@ -147,12 +170,14 @@ export interface RewardOption {
 export function rollRewardOptions(
   seed: number,
   ceiling: RewardTier,
+  floor: RewardTier,
   count: number,
   pool: readonly Item[],
   excludeIds: ReadonlySet<string>,
 ): RewardOption[] {
   const rng = mulberry32(seed)
   const picked: RewardOption[] = []
+  const taken = new Set<string>()
 
   // S+ breaks the scale: its bonus slot is Liberty's Cross (AGENTS.md: Reward
   // math) — any item from the diver's own catalog, picked at draft time.
@@ -160,32 +185,43 @@ export function rollRewardOptions(
     picked.push({ optionId: DIVERS_CHOICE_OPTION_ID, item: DIVERS_CHOICE_ITEM, choice: true })
   }
 
-  let candidates = pool.filter(
-    item => !excludeIds.has(item.id) && tierWeight(item.tier, ceiling) > 0,
+  const itemCeiling = tierIndex(ceiling)
+  const floorIndex = tierIndex(floor)
+  const band = pool.filter(
+    item => !excludeIds.has(item.id) && tierWeight(item.tier, floor, ceiling) > 0,
   )
-  if (candidates.length === 0) {
-    // Exhausted the ceiling-tier pool (deep crusade): degrade the tier filter
-    // rather than offer nothing — an empty offer deadlocks the dive.
-    candidates = pool.filter(item => !excludeIds.has(item.id))
-  }
-  const taken = new Set<string>()
+  // Exhausted the band's pool (deep crusade): degrade the tier filter rather
+  // than offer nothing — an empty offer deadlocks the dive. The fallback rolls
+  // uniformly, since the survivors may sit outside the band.
+  const degraded = band.length === 0
+  const candidates = degraded ? pool.filter(item => !excludeIds.has(item.id)) : band
 
-  // S+ still guarantees one rolled top-tier option beside the choice
-  // (AGENTS.md: Reward math).
-  if (ceiling === 'S+' && picked.length < count) {
-    const top = candidates.filter(item => item.tier === 's')
-    const item = top.length > 0 ? top[Math.floor(rng() * top.length)] : undefined
-    if (item) {
-      picked.push({ optionId: item.id, item })
-      taken.add(item.id)
-    }
+  // The draft leads with one option at the rolled ceiling — the class the diver
+  // earned — then fills the rest a band down, so a high ceiling lands as one top
+  // pick plus support instead of flooding the offer with top-tier gear. A thin
+  // pool falls back to the highest tier it still has, so the slot never drops.
+  let fillCeiling = itemCeiling
+  if (!degraded && itemCeiling > floorIndex && picked.length < count && candidates.length > 0) {
+    const topIndex = Math.max(...candidates.map(candidate => TIER_INDEX[candidate.tier]))
+    const top = candidates.filter(candidate => TIER_INDEX[candidate.tier] === topIndex)
+    const item = top[Math.floor(rng() * top.length)]!
+    picked.push({ optionId: item.id, item })
+    taken.add(item.id)
+    fillCeiling = Math.max(floorIndex, topIndex - 1)
   }
 
   while (picked.length < count && taken.size < candidates.length) {
     const remaining = candidates.filter(item => !taken.has(item.id))
+    const inBand = remaining.filter(item => degraded || TIER_INDEX[item.tier] <= fillCeiling)
+    const roll = inBand.length > 0 ? inBand : remaining
     const item = pickWeighted(
       rng,
-      remaining.map(candidate => ({ value: candidate, weight: tierWeight(candidate.tier, ceiling) })),
+      roll.map(candidate => ({
+        value: candidate,
+        weight: degraded
+          ? 1
+          : TIER_ROLL_WEIGHT_BASE ** (TIER_INDEX[candidate.tier] - floorIndex),
+      })),
     )
     picked.push({ optionId: item.id, item })
     taken.add(item.id)
