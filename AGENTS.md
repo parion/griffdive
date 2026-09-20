@@ -396,9 +396,15 @@ all routes; static hosts need a `/*` → shell fallback instead.
 
 ```
 app/
-  pages/           index (new crusade / host / join / continue), dive/[id] (solo + room flow),
-                   lobby (open dives), codex
-  components/      dive/ (WheelPanel, PactPicker, RewardDraft, ValorMeter — the live Valor gauge
+  pages/           index (new crusade / host / join / continue), dive/[id] (solo + room flow —
+                   thin orchestrator: session driver + action handlers; shell and per-phase UI
+                   live in components/dive/), lobby (open dives), codex
+  components/      dive/ (DiveHeader — title/difficulty/mission track + session controls,
+                   SquadStrip — diver chips, presence, name, host moderation,
+                   DivePhaseLobby/DivePhaseWheel/DivePhaseDiving/DivePhaseRewards/
+                   DivePhaseForfeit/DivePhaseComplete — one panel per engine phase, each
+                   owning its local form state and emitting intents,
+                   WheelPanel, PactPicker, RewardDraft, ValorMeter — the live Valor gauge
                    and tier-ceiling ladder, FieldPromotionCard — the mid-crusade
                    catch-up ceremony, DiversChoiceCard — the special
                    S+ "Liberty's Cross" offer card, DiversChoicePicker — its minified codex
@@ -412,7 +418,8 @@ app/
                    slide-over that keeps the dive session mounted, AppDialog/AppTabs/AppTooltip —
                    the themed Reka primitives every modal, tab strip and icon-only control builds
                    on),
-  composables/     useDiveSession (unified local/room driver), useDiveEngine (local reducer +
+  composables/     useDiveSession (unified local/room driver), useDiveView (session-derived
+                   shell state: self/phase/canControl/name draft), useDiveEngine (local reducer +
                    persist), useGameSocket (WS, reconnect, stored playerId), useSaves,
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
                    useChangelog (GitHub deployments + commits → changelog entries, 10-min cache)
