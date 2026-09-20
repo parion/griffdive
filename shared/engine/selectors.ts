@@ -130,7 +130,7 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
     optionsForStars(state.lastReport.stars, ceiling)
     - diver.failedPactIds.length * OPTIONS_LOST_PER_FAILED_PACT,
   )
-  return rollRewardOptions(deriveSeed(seed, 2), ceiling, count, pool, owned)
+  return rollRewardOptions(deriveSeed(seed, 2), ceiling, baseTierFor(state.difficulty), count, pool, owned)
 }
 
 // The Field Promotion: a mid-crusade joiner's catch-up offer. Altitude
@@ -145,7 +145,8 @@ export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOp
   const seed = deriveSeed(state.seedHistory.at(-1) ?? 0, hashString(`${diver.id}:catchup`))
   const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
   const owned = new Set(state.personalInventories[diver.id] ?? [])
-  return rollRewardOptions(seed, baseTierFor(state.difficulty), diver.catchUpOwed, pool, owned)
+  // Catch-up buys altitude, never rarity: the band is the base tier alone.
+  return rollRewardOptions(seed, baseTierFor(state.difficulty), baseTierFor(state.difficulty), diver.catchUpOwed, pool, owned)
 }
 
 export interface CeilingRange {

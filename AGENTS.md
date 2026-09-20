@@ -275,6 +275,11 @@ ceiling roll:  start at the base tier; each step to the next tier
                min(0.8, Valor × (1 + bandPos) / 3^step)
                bandPos = position within the difficulty band (0 floor → 1 top)
                the final S→S+ rung is capped at min(0.1, …) — the jackpot
+
+option band:   the difficulty's base tier (hard floor) → the rolled ceiling
+option roll:   each option's tier is weighted
+               TIER_ROLL_WEIGHT_BASE^(tierIndex − baseIndex), so the ceiling
+               is likeliest and the base is the floor — never sub-base gear
 ```
 
 - Difficulty alone never buys S or S+; only stacked chosen risk does, and even max **chosen** Valor
@@ -300,8 +305,12 @@ ceiling roll:  start at the base tier; each step to the next tier
   diff 10 into S more readily than diff 8 (`bandPosition`).
 - Ceiling = the best tier that *can* appear in that diver's options; the roll is seeded from the
   offer seed (two rng streams: one ceiling, one options) so every client computes the same offer.
-  Rolls are weighted toward the tier below the ceiling; an **S+** ceiling still guarantees one rolled
-  S-tier option beside the Liberty's Cross slot (a plain S ceiling makes no such promise).
+  Options live in the band from the difficulty's **base tier** (a hard floor — a Super Helldive
+  never offers C-tier gear) up to the ceiling, weighted exponentially toward the ceiling
+  (`tierWeight`), so an earned ceiling actually pays off instead of flooding the draft with base
+  gear. An **S+** ceiling still guarantees one rolled top-tier option beside the Liberty's Cross
+  slot; when the S pool is empty it falls back to the highest tier still available (a plain S
+  ceiling makes no such promise).
 - **S+ = Liberty's Cross.** No catalog item carries the S+ tier, so the S+ bonus slot is a free
   pick: the diver claims **any item from their own catalog** — same personal-pool rules as every
   reward (warbond-owned items only, armor pieces excluded, nothing already owned). The option

@@ -128,12 +128,23 @@ export function optionsForStars(stars: number, ceiling: RewardTier): number {
   return count
 }
 
-export function tierWeight(tier: Tier, ceiling: RewardTier): number {
-  const ceilingIndex = ceiling === 'S+' ? TIER_INDEX.s : TIER_INDEX[ceiling.toLowerCase() as Tier]
-  if (TIER_INDEX[tier] > ceilingIndex) {
+// Reward options live in the band the difficulty guarantees (its base tier) and
+// the ceiling the diver's Valor rolled. The base is a hard floor — a Super
+// Helldive never offers C-tier gear — and within the band a higher tier is
+// exponentially likelier, so the ceiling the diver bought is actually what the
+// draft leans into. S+ has no items of its own, so it prices as S.
+export function tierWeight(tier: Tier, floor: RewardTier, ceiling: RewardTier): number {
+  const floorIndex = tierIndex(floor)
+  const ceilingIndex = tierIndex(ceiling)
+  const index = TIER_INDEX[tier]
+  if (index > ceilingIndex || index < floorIndex) {
     return 0
   }
-  return TIER_ROLL_WEIGHT_BASE ** (ceilingIndex - TIER_INDEX[tier])
+  return TIER_ROLL_WEIGHT_BASE ** (index - floorIndex)
+}
+
+function tierIndex(tier: RewardTier): number {
+  return tier === 'S+' ? TIER_INDEX.s : TIER_INDEX[tier.toLowerCase() as Tier]
 }
 
 export interface RewardOption {
@@ -147,6 +158,7 @@ export interface RewardOption {
 export function rollRewardOptions(
   seed: number,
   ceiling: RewardTier,
+  floor: RewardTier,
   count: number,
   pool: readonly Item[],
   excludeIds: ReadonlySet<string>,
@@ -161,31 +173,36 @@ export function rollRewardOptions(
   }
 
   let candidates = pool.filter(
-    item => !excludeIds.has(item.id) && tierWeight(item.tier, ceiling) > 0,
+    item => !excludeIds.has(item.id) && tierWeight(item.tier, floor, ceiling) > 0,
   )
-  if (candidates.length === 0) {
-    // Exhausted the ceiling-tier pool (deep crusade): degrade the tier filter
-    // rather than offer nothing — an empty offer deadlocks the dive.
+  const degraded = candidates.length === 0
+  if (degraded) {
+    // Exhausted the band's pool (deep crusade): degrade the tier filter rather
+    // than offer nothing — an empty offer deadlocks the dive. The fallback
+    // rolls uniformly, since the survivors may sit outside the band.
     candidates = pool.filter(item => !excludeIds.has(item.id))
   }
   const taken = new Set<string>()
 
-  // S+ still guarantees one rolled top-tier option beside the choice
-  // (AGENTS.md: Reward math).
-  if (ceiling === 'S+' && picked.length < count) {
-    const top = candidates.filter(item => item.tier === 's')
-    const item = top.length > 0 ? top[Math.floor(rng() * top.length)] : undefined
-    if (item) {
-      picked.push({ optionId: item.id, item })
-      taken.add(item.id)
-    }
+  // S+ still guarantees one rolled top option beside the choice (AGENTS.md:
+  // Reward math). When the S pool is empty it falls back to the highest tier
+  // still available, so the promise never silently drops a slot.
+  if (ceiling === 'S+' && picked.length < count && candidates.length > 0) {
+    const topIndex = Math.max(...candidates.map(candidate => TIER_INDEX[candidate.tier]))
+    const top = candidates.filter(candidate => TIER_INDEX[candidate.tier] === topIndex)
+    const item = top[Math.floor(rng() * top.length)]!
+    picked.push({ optionId: item.id, item })
+    taken.add(item.id)
   }
 
   while (picked.length < count && taken.size < candidates.length) {
     const remaining = candidates.filter(item => !taken.has(item.id))
     const item = pickWeighted(
       rng,
-      remaining.map(candidate => ({ value: candidate, weight: tierWeight(candidate.tier, ceiling) })),
+      remaining.map(candidate => ({
+        value: candidate,
+        weight: degraded ? 1 : tierWeight(candidate.tier, floor, ceiling),
+      })),
     )
     picked.push({ optionId: item.id, item })
     taken.add(item.id)
