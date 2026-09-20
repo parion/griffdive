@@ -55,7 +55,7 @@ IDs are stable and append-only; do not renumber.
 | N22 | Field Promotion re-rolls its offer on every claim | UX/Design | M | Needs repro | QA-U5 |
 | N23 | Star→options is flat early (3★ = 2 options) | Balance | S | Done | QA-B1 |
 | N24 | Pact redundancy is free risk (subsumed pacts still count) | Balance | M | Done (exclusive groups + subsumption) | QA-B2 |
-| N25 | Pacts are strictly "take everything" | Balance | S | Done | QA-B3 |
+| N25 | Pacts are strictly "take everything" | Balance | S | Todo | QA-B3 |
 | N26 | Failure path rework | Design | L | Blocked (DEC-8) | QA-B4 |
 | N27 | S+ / Liberty's Cross frequency at altitude | Balance | S | Done (monitor) | QA-B5 |
 | N28 | `holdingsEmpty` branch effectively unreachable | Infra | S | Accepted | QA-F1 |
@@ -140,9 +140,8 @@ Landed. N34, N35. No engine changes (presentation only) — no `ENGINE_VERSION` 
 
 N33. N5/N24 landed with **DEC-1** (reserve kit, mutual exclusion, four-slot floor),
 N6 landed with **DEC-2** (time/samples Valor), N12's same-result reroll landed with **DEC-3b**,
-N7 (the Valor meter) landed with **DEC-3a** (the name), **N36** landed (the misfortune half
-of the four-slot floor: `ACCEPT_MISFORTUNE` now refuses a rule that strands any diver), and
-**N25** landed (pacts reframed as the intended all-in play, with a one-click "Take all").
+N7 (the Valor meter) landed with **DEC-3a** (the name), and **N36** landed (the misfortune half
+of the four-slot floor: `ACCEPT_MISFORTUNE` now refuses a rule that strands any diver).
 `ENGINE_VERSION` bumped 12 → 13; goldens regenerated (the scripted crusade now declines the
 `oopsAllOrbitals` draws it cannot field).
 
@@ -279,15 +278,8 @@ only, never a plain S ceiling).
 (`rollPactOffer`) and the pick (`SET_PACTS`, `applyPactToggle`); the UI greys "Conflicts with …".
 Directional subsumption (`PACT_SUBSUMES`) stays wired for future rules.
 
-**N25 · Pacts are "take everything". Done (copy/UX, no rules change).** The observation stands
-and is intended: with no squad cost and only a failed-pact option penalty, carrying every pact you
-can honor is optimal, so the old "take any, all, or none" tooltip and the flat "N/M offered taken"
-counter sold a non-choice. `PactPicker` now leads with the trade ("Carry what you can honor — every
-pact raises your ceiling, and one broken in the field costs a reward option"), the counter reads
-"carried", and a one-click **Take all** / **Clear** pair makes the intended play explicit. The
-selection folds through the conflict rules via `maximalPactSelection` (`shared/engine/pacts.ts`),
-so "Take all" can never stack a subsumed or exclusive pick. Covered by `maximalPactSelection`
-(pacts).
+**N25 · Pacts are "take everything".** With no squad cost and only a failed-pact option penalty,
+optimal play is always all playable pacts. Likely intended; the "0 to all" copy undersells it.
 
 **N27 · S+ frequency at altitude.** At max pacts + accepted risk on diffs 7–10, Liberty's Cross
 appeared in 7 of ~12 picks. **Done (monitor)** — the missing `S_PLUS_UPGRADE_CAP` (0.1) is now

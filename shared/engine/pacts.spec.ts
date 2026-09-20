@@ -10,7 +10,6 @@ import {
   hasLegalLoadout,
   isPactSelectable,
   legalStratagemCount,
-  maximalPactSelection,
   pactConflictsWith,
   pactRiskTotal,
   pactSubsumedBy,
@@ -145,21 +144,6 @@ describe('pactRiskTotal', () => {
     expect(pactRiskTotal(['stimAbstinent', 'deadWeight'])).toBe(5)
     expect(pactRiskTotal(['untouchable', 'packLight'])).toBe(4)
     expect(pactRiskTotal(['ghostPact'])).toBe(0)
-  })
-})
-
-describe('maximalPactSelection', () => {
-  it('takes the whole offer when nothing conflicts', () => {
-    const offer = ['packLight', 'thirsty', 'stimAbstinent']
-    expect(maximalPactSelection(offer)).toEqual(offer)
-  })
-
-  it('never stacks an exclusive pair or a pact outside the offer', () => {
-    const offer = ['grounded', 'shipSilent', 'packLight']
-    const picked = maximalPactSelection(offer)
-    expect(picked).toContain('packLight')
-    expect(picked.filter(id => ['grounded', 'shipSilent'].includes(id))).toHaveLength(1)
-    expect(maximalPactSelection(['grounded', 'ghostPact'])).toEqual(['grounded'])
   })
 })
 

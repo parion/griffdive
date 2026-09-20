@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { pactName } from '~~/shared/data/pacts'
-import { applyPactToggle, hasLegalLoadout, maximalPactSelection, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
+import { applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
 import { activeMisfortune, ceilingRangeForDifficulty, pactOfferFor, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
@@ -52,16 +52,6 @@ function toggle(pactId: string): void {
     selection.value,
     pactId,
   )
-}
-
-// The intended play is to carry every pact you can honor: fold the whole offer
-// through the conflict rules so one click never stacks a redundant pick.
-function takeAll(): void {
-  selection.value = maximalPactSelection(offer.value.map(pact => pact.id))
-}
-
-function clear(): void {
-  selection.value = []
 }
 
 // Offered pacts the current selection rules out — greyed with the reason:
@@ -152,8 +142,6 @@ const coverage = computed<Record<string, string>>(() => {
             :selected="selection"
             :blocked="coverage"
             @toggle="toggle"
-            @take-all="takeAll"
-            @clear="clear"
             @lock="emit('lock', selection)"
           />
           <ValorMeter

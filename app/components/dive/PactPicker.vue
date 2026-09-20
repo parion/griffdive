@@ -10,7 +10,7 @@ const props = defineProps<{
   // Offered pacts the current selection rules out: pactId → reason to show.
   blocked?: Record<string, string>
 }>()
-defineEmits<{ 'toggle': [pactId: string], 'lock': [], 'take-all': [], 'clear': [] }>()
+defineEmits<{ toggle: [pactId: string], lock: [] }>()
 </script>
 
 <template>
@@ -18,7 +18,7 @@ defineEmits<{ 'toggle': [pactId: string], 'lock': [], 'take-all': [], 'clear': [
     <h2 class="pact-title">
       <WaitingLight label="Waiting on your pact picks" />
       <AppTooltip
-        content="Your rolled personal restrictions — carry the ones you can honor. Every pact you carry raises your reward ceiling; a pact you break in the field is voided and costs one reward option. Restrictions that tax the same strength can't be stacked, and reserve utility (smoke, EMS, shields) is always available as loadout filler."
+        content="Rolled from the wheel decision — take any, all, or none. Every pact you carry raises your reward ceiling; a pact you break in the field is voided and costs one reward option. Restrictions that tax the same strength can't be stacked, and reserve utility (smoke, EMS, shields) is always available as loadout filler."
       >
         <button
           class="pacts-term"
@@ -29,9 +29,6 @@ defineEmits<{ 'toggle': [pactId: string], 'lock': [], 'take-all': [], 'clear': [
       </AppTooltip>
       <span class="muted small">(personal risk, personal rewards)</span>
     </h2>
-    <p class="pact-hint small">
-      Carry what you can honor — every pact raises your ceiling, and one broken in the field costs a reward option.
-    </p>
     <div class="pact-list">
       <CheckboxRoot
         v-for="pact in props.offer"
@@ -61,42 +58,20 @@ defineEmits<{ 'toggle': [pactId: string], 'lock': [], 'take-all': [], 'clear': [
       </CheckboxRoot>
     </div>
     <div class="row spread">
-      <span class="muted small">{{ selected.length }}/{{ offer.length }} carried</span>
-      <span class="row">
-        <button
-          v-if="offer.length"
-          class="btn tiny ghost"
-          type="button"
-          @click="$emit('take-all')"
-        >
-          Take all
-        </button>
-        <button
-          v-if="selected.length"
-          class="btn tiny ghost"
-          type="button"
-          @click="$emit('clear')"
-        >
-          Clear
-        </button>
-        <button
-          class="btn primary"
-          type="button"
-          @click="$emit('lock')"
-        >
-          Lock in & dive
-        </button>
-      </span>
+      <span class="muted small">{{ selected.length }}/{{ offer.length }} offered taken</span>
+      <button
+        class="btn primary"
+        type="button"
+        @click="$emit('lock')"
+      >
+        Lock in & dive
+      </button>
     </div>
   </section>
 </template>
 
 <style scoped>
 .pact-title { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
-.pact-hint {
-  margin: 0.15rem 0 0.6rem;
-  color: var(--khaki);
-}
 .pacts-term {
   padding: 0;
   border: none;
