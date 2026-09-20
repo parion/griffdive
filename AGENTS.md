@@ -395,8 +395,10 @@ app/
                    modal, InventoryGrid, CrusadeSetup, WarbondPicker,
                    JoinNameGate — name gate held while joining),
                    codex/CodexBrowser — the shared catalog browser (filter + tier grid),
-                   ui/ (ItemCard, TierBadge, RiskPips, ChangelogModal — GitHub deploy log shown
-                   from the pre-alpha header chip, CodexDrawer — the right-hand Reka Drawer
+                   ui/ (ItemCard, TierBadge, RiskPips — risk dots, with a rolling back-and-forth
+                   state while a wheel draw reels, WaitingLight — the slow-pulsing gold dot that
+                   marks a section a diver still has to act on, ChangelogModal — GitHub deploy log
+                   shown from the pre-alpha header chip, CodexDrawer — the right-hand Reka Drawer
                    slide-over that keeps the dive session mounted, AppDialog/AppTabs/AppTooltip —
                    the themed Reka primitives every modal, tab strip and icon-only control builds
                    on),

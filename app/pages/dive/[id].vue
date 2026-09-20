@@ -254,6 +254,15 @@ function failPact(playerId: string, pactId: string): void {
   dispatch({ type: 'FAIL_PACT', playerId, pactId })
 }
 
+// The report fields are live local state, not engine state. Clear them the
+// moment a report lands, or the next briefing inherits the last mission's
+// performance (a stale decimal on the locked Valor meter).
+function resetReportFields(): void {
+  stars.value = maxStars.value
+  timePct.value = 0
+  samples.value = { common: 0, rare: 0, super: 0 }
+}
+
 function report(outcome: 'success' | 'failure'): void {
   dispatch({
     type: 'REPORT_RESULT',
@@ -263,22 +272,19 @@ function report(outcome: 'success' | 'failure'): void {
     samples: outcome === 'success' ? { ...samples.value } : undefined,
   })
   reportMode.value = 'none'
+  resetReportFields()
 }
 
 // The stars field opens at the difficulty's best result — most clears are
 // full-star, so the common case needs no adjustment.
 function openReport(mode: 'success' | 'failure'): void {
   reportMode.value = mode
-  stars.value = maxStars.value
-  timePct.value = 0
-  samples.value = { common: 0, rare: 0, super: 0 }
+  resetReportFields()
 }
 
 function cancelReport(): void {
   reportMode.value = 'none'
-  stars.value = maxStars.value
-  timePct.value = 0
-  samples.value = { common: 0, rare: 0, super: 0 }
+  resetReportFields()
 }
 
 function pick(optionId: string, choiceItemId?: string): void {
@@ -346,6 +352,12 @@ function copyInvite(): void {
 
 function isOnline(diverId: string): boolean {
   return session.online.value.includes(diverId)
+}
+
+// A diver still owes the squad an action — the name dot pulses gold until they act.
+function isWaiting(diverId: string): boolean {
+  const status = diverStatuses.value[diverId]
+  return status === 'choosing pacts' || status === 'choosing reward'
 }
 
 // Waiting status per diver, from engine state — purely presentational, so the
@@ -574,12 +586,16 @@ function commitWarbonds(codes: string[]): void {
             :class="{ warn: !isOnline(diver.id) }"
             :title="isOnline(diver.id) ? 'online' : 'offline'"
           >
-            <span
-              class="dot"
-              :class="{ on: isOnline(diver.id) }"
-              role="img"
-              :aria-label="isOnline(diver.id) ? 'Online' : 'Offline'"
-            /><input
+            <AppTooltip
+              :content="diverStatuses[diver.id] ?? (isOnline(diver.id) ? 'online' : 'offline')"
+            >
+              <span
+                class="dot"
+                :class="{ on: isOnline(diver.id), waiting: isWaiting(diver.id) }"
+                role="img"
+                :aria-label="diverStatuses[diver.id] ?? (isOnline(diver.id) ? 'Online' : 'Offline')"
+              />
+            </AppTooltip><input
               v-if="diver.id === session.selfId.value"
               v-model="nameDraft"
               class="self-name"
@@ -596,14 +612,6 @@ function commitWarbonds(codes: string[]): void {
               role="img"
               aria-label="Host"
             >★</span>
-            <span
-              v-if="diverStatuses[diver.id]"
-              class="status-chip"
-              :class="{ ready: diverStatuses[diver.id] === 'ready' }"
-              role="img"
-              :aria-label="diverStatuses[diver.id]"
-              :title="diverStatuses[diver.id]"
-            >{{ diverStatuses[diver.id] }}</span>
             <span
               v-if="diver.catchUpOwed > 0"
               class="catchup-chip"
@@ -642,12 +650,14 @@ function commitWarbonds(codes: string[]): void {
               </button>
             </AppTooltip>
           </span>
-          <p
+          <button
             v-if="session.mode === 'room' && session.state.value.divers.length === 1"
             class="lone-host"
+            type="button"
+            @click="copyInvite"
           >
-            You're the only diver here — share the invite link to bring in your squad.
-          </p>
+            Share the invite link
+          </button>
         </div>
       </section>
 
@@ -1128,6 +1138,9 @@ function commitWarbonds(codes: string[]): void {
 .victory-banner {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  text-align: center;
   gap: 0.7rem;
   font-family: var(--font-display);
   font-stretch: 125%;
@@ -1183,11 +1196,19 @@ function commitWarbonds(codes: string[]): void {
 
 .squad-strip { padding: 0.6rem 0.75rem; }
 .lone-host {
-  margin: 0;
-  flex: 1 1 14rem;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
   color: var(--gold);
   font-weight: 700;
+  text-align: right;
+  cursor: pointer;
   animation: lone-glow 2.4s ease-in-out infinite;
+}
+.lone-host:hover {
+  text-decoration: underline;
 }
 @keyframes lone-glow {
   0%, 100% { text-shadow: 0 0 4px color-mix(in srgb, var(--gold) 35%, transparent); }
@@ -1227,19 +1248,6 @@ function commitWarbonds(codes: string[]): void {
 .copy-code svg {
   width: 0.9rem;
   height: 0.9rem;
-}
-.status-chip {
-  padding: 0 0.3rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--muted);
-  font-size: 0.65rem;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-.status-chip.ready {
-  border-color: var(--teal);
-  color: var(--teal);
 }
 .catchup-chip {
   padding: 0 0.3rem;
@@ -1353,4 +1361,25 @@ function commitWarbonds(codes: string[]): void {
   display: inline-block;
 }
 .dot.on { background: var(--teal); }
+.dot.waiting {
+  background: var(--gold);
+  animation: dot-wait 2s ease-in-out infinite;
+}
+@keyframes dot-wait {
+  0%, 100% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 55%, transparent);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 0 4px transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dot.waiting {
+    animation: none;
+    opacity: 1;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 35%, transparent);
+  }
+}
 </style>

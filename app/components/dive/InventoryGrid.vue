@@ -78,57 +78,16 @@ function forfeit(ownerId: string, itemId: string): void {
       label="Inventory view"
     >
       <template #mine>
-        <section
-          v-for="group in mineGroups"
-          :key="group.id"
-          class="inv-group"
-        >
-          <h3>
-            {{ group.label }}
-            <span class="muted small">({{ group.items.length }})</span>
-          </h3>
-          <p
-            v-if="!group.items.length"
-            class="muted small"
-          >
-            {{ group.empty }}
-          </p>
-          <TransitionGroup
-            v-else
-            tag="div"
-            name="inv"
-            class="showcase-grid"
-          >
-            <ItemCard
-              v-for="item in group.items"
-              :key="item.id"
-              :item="item"
-              showcase
-              disabled
-            />
-          </TransitionGroup>
-        </section>
-      </template>
-
-      <template #squad>
-        <section
-          v-for="kit in otherKits"
-          :key="kit.diverId"
-          class="inv-group"
-        >
-          <h3>
-            {{ kit.diverName }}'s kit
-            <span class="muted small">({{ kit.items.length }})</span>
-          </h3>
-          <div
-            v-for="group in kit.groups"
+        <div class="kit-categories">
+          <section
+            v-for="group in mineGroups"
             :key="group.id"
-            class="kit-type"
+            class="inv-group"
           >
-            <h4>
+            <h3>
               {{ group.label }}
               <span class="muted small">({{ group.items.length }})</span>
-            </h4>
+            </h3>
             <p
               v-if="!group.items.length"
               class="muted small"
@@ -149,8 +108,53 @@ function forfeit(ownerId: string, itemId: string): void {
                 disabled
               />
             </TransitionGroup>
-          </div>
-        </section>
+          </section>
+        </div>
+      </template>
+
+      <template #squad>
+        <div class="kit-categories">
+          <section
+            v-for="kit in otherKits"
+            :key="kit.diverId"
+            class="inv-group"
+          >
+            <h3>
+              {{ kit.diverName }}'s kit
+              <span class="muted small">({{ kit.items.length }})</span>
+            </h3>
+            <div
+              v-for="group in kit.groups"
+              :key="group.id"
+              class="kit-type"
+            >
+              <h4>
+                {{ group.label }}
+                <span class="muted small">({{ group.items.length }})</span>
+              </h4>
+              <p
+                v-if="!group.items.length"
+                class="muted small"
+              >
+                {{ group.empty }}
+              </p>
+              <TransitionGroup
+                v-else
+                tag="div"
+                name="inv"
+                class="showcase-grid"
+              >
+                <ItemCard
+                  v-for="item in group.items"
+                  :key="item.id"
+                  :item="item"
+                  showcase
+                  disabled
+                />
+              </TransitionGroup>
+            </div>
+          </section>
+        </div>
       </template>
     </AppTabs>
 
@@ -184,10 +188,14 @@ function forfeit(ownerId: string, itemId: string): void {
 
 <style scoped>
 .inventory { display: grid; gap: 1rem; }
+.kit-categories { display: grid; gap: 1rem; }
 .inv-group { display: grid; gap: 0.5rem; position: relative; }
+.inv-group > h3 { margin: 0; }
+.inv-group > p { margin: 0; }
 .kit-type { display: grid; gap: 0.4rem; }
+.kit-type > p { margin: 0; }
 .kit-type h4 {
-  margin: 0.25rem 0 0;
+  margin: 0;
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
