@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS } from '../data/catalog'
+import { S_PLUS_VALOR_FLOOR, S_VALOR_FLOOR } from './config'
 import { DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, maxCeiling, oddsToReach, optionsForStars, performanceValor, rollCeiling, rollRewardOptions, tierWeight, valorOf } from './rewards'
 import { mulberry32 } from './rng'
 import type { RewardTier } from './types'
@@ -101,6 +102,17 @@ describe('rollCeiling (probabilistic tier ladder)', () => {
       expect(rank(high)).toBeGreaterThanOrEqual(rank(low))
     }
   })
+
+  it('gates S and S+ behind real Valor, so altitude cannot hand out the top', () => {
+    for (let seed = 0; seed < 200; seed++) {
+      // Below the floor, S is unreachable even at the top difficulty.
+      expect(rollCeiling(mulberry32(seed), 10, S_VALOR_FLOOR - 1)).toBe('A')
+      // Below the S+ floor, the jackpot is unreachable in every band.
+      for (const difficulty of [3, 6, 10]) {
+        expect(rollCeiling(mulberry32(seed), difficulty, S_PLUS_VALOR_FLOOR - 1)).not.toBe('S+')
+      }
+    }
+  })
 })
 
 describe('maxCeiling / oddsToReach (legibility preview)', () => {
@@ -181,6 +193,13 @@ describe('rollRewardOptions', () => {
       for (const option of options) {
         expect(['a', 's']).toContain(option.item.tier)
       }
+    }
+  })
+
+  it('lands exactly one option at the rolled ceiling — no top-tier flood', () => {
+    for (let seed = 0; seed < 100; seed++) {
+      const options = rollRewardOptions(seed, 'S', 'B', 4, ALL_ITEMS, new Set())
+      expect(options.filter(option => option.item.tier === 's' && !option.choice)).toHaveLength(1)
     }
   })
 
