@@ -80,17 +80,6 @@ const reelPool = computed<Item[]>(() => {
 
 <template>
   <section class="panel slot-machine">
-    <div
-      class="bulbs"
-      aria-hidden="true"
-    >
-      <span
-        v-for="n in 11"
-        :key="n"
-        class="bulb"
-        :style="{ animationDelay: `${(n % 3) * 0.25}s` }"
-      />
-    </div>
     <header class="cabinet-head">
       <h2 class="draft-title">
         <WaitingLight
@@ -175,34 +164,11 @@ const reelPool = computed<Item[]>(() => {
   position: relative;
   display: grid;
   gap: 0.85rem;
-  padding: 1.1rem 0.9rem 0.9rem;
+  padding: 1rem 0.9rem 0.9rem;
   border-color: color-mix(in srgb, var(--gold) 35%, var(--border));
   background:
     radial-gradient(120% 70% at 50% -12%, color-mix(in srgb, var(--gold) 12%, transparent), transparent 62%),
     var(--bg-raised);
-}
-
-/* Marquee bulbs along the cabinet's top edge. */
-.bulbs {
-  position: absolute;
-  top: -0.35rem;
-  left: 0.75rem;
-  right: 0.75rem;
-  display: flex;
-  justify-content: space-between;
-  pointer-events: none;
-}
-.bulb {
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 50%;
-  background: var(--gold);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--gold) 70%, transparent);
-  animation: bulb-blink 1.5s ease-in-out infinite;
-}
-@keyframes bulb-blink {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 1; }
 }
 
 .cabinet-head { display: grid; gap: 0.25rem; text-align: center; }
@@ -245,8 +211,4 @@ const reelPool = computed<Item[]>(() => {
   flex-wrap: wrap;
 }
 .banked-copy strong { color: var(--gold); }
-
-@media (prefers-reduced-motion: reduce) {
-  .bulb { animation: none; opacity: 0.7; }
-}
 </style>

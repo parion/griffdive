@@ -40,7 +40,9 @@ function shuffle<T>(list: readonly T[]): T[] {
 }
 
 const winner = computed(() => props.option.item)
-const finalTier = computed(() => (props.option.choice ? 'S+' : winner.value.tier))
+const tierVar = computed(() =>
+  props.option.choice ? 'var(--tier-splus)' : `var(--tier-${winner.value.tier})`)
+const winnerTier = computed(() => (props.option.choice ? 'S+' : winner.value.tier))
 
 const strip = (() => {
   const source = props.candidates.length > 0 ? props.candidates : [props.option.item]
@@ -53,7 +55,6 @@ const reduced = import.meta.client
 const instant = props.instant || reduced
 const spinDuration = instant ? 0 : BASE_SPIN + props.index * STAGGER
 
-const landed = ref(instant)
 const settled = ref(instant)
 
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -62,9 +63,6 @@ onMounted(() => {
     emit('settled')
     return
   }
-  requestAnimationFrame(() => {
-    landed.value = true
-  })
   timer = setTimeout(() => {
     settled.value = true
     emit('settled')
@@ -85,13 +83,16 @@ function imageUrl(item: Item): string | undefined {
     <div
       class="reel-window"
       :class="{ reeling: !settled && !instant, settled, picked, dimmed }"
+      :style="{ '--tier': tierVar }"
     >
       <div
         class="reel-strip"
+        :class="{ rolling: !instant }"
         aria-hidden="true"
         :style="{
-          transform: landed ? `translateY(calc(var(--cell-h) * ${-strip.length}))` : 'translateY(0)',
-          transitionDuration: `${spinDuration}ms`,
+          '--target': strip.length,
+          '--spin-dur': `${spinDuration}ms`,
+          'transform': instant ? `translateY(calc(var(--cell-h) * ${-strip.length}))` : undefined,
         }"
       >
         <div
@@ -107,12 +108,11 @@ function imageUrl(item: Item): string | undefined {
             alt=""
             draggable="false"
           >
-          <span class="sym-tier">{{ symbol.tier.toUpperCase() }}</span>
           <span class="sym-name">{{ symbol.displayName }}</span>
         </div>
         <div
           class="reel-symbol winner"
-          :data-tier="finalTier"
+          :data-tier="winnerTier"
         >
           <img
             v-if="imageUrl(winner)"
@@ -121,7 +121,6 @@ function imageUrl(item: Item): string | undefined {
             alt=""
             draggable="false"
           >
-          <span class="sym-tier">{{ finalTier }}</span>
           <span class="sym-name">{{ winner.displayName }}</span>
         </div>
       </div>
@@ -165,14 +164,14 @@ function imageUrl(item: Item): string | undefined {
   border: 1px solid var(--border);
   border-radius: 12px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--gold) 5%, transparent), transparent 30%),
+    linear-gradient(180deg, color-mix(in srgb, var(--tier, var(--gold)) 5%, transparent), transparent 30%),
     var(--bg);
   box-shadow: inset 0 0 26px rgba(0, 0, 0, 0.55);
   transition: border-color var(--dur-med) var(--ease-out), opacity var(--dur-med) var(--ease-out), filter var(--dur-med) var(--ease-out);
 }
 
 .reel-window.settled {
-  border-color: color-mix(in srgb, var(--gold) 40%, var(--border));
+  border-color: color-mix(in srgb, var(--tier, var(--gold)) 45%, var(--border));
 }
 .reel-window.picked {
   border-color: var(--gold);
@@ -193,37 +192,39 @@ function imageUrl(item: Item): string | undefined {
 .reel-strip {
   display: grid;
   grid-auto-rows: var(--cell-h);
-  transition-property: transform;
-  transition-timing-function: var(--ease-out);
   will-change: transform;
+}
+/* The roll is a keyframe, not a transition: the strip is inserted already at
+   rest, so a transition would collapse into an instant jump. */
+.reel-strip.rolling {
+  animation: reel-spin var(--spin-dur, 1500ms) var(--ease-out) forwards;
+}
+@keyframes reel-spin {
+  from { transform: translateY(0); }
+  to { transform: translateY(calc(var(--cell-h) * var(--target) * -1)); }
 }
 
 .reel-symbol {
+  box-sizing: border-box;
   height: var(--cell-h);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
   padding: 0.6rem;
   text-align: center;
+  border: 1px solid color-mix(in srgb, currentColor 28%, var(--border));
+  background:
+    linear-gradient(165deg, color-mix(in srgb, currentColor 10%, transparent), transparent 60%),
+    var(--bg);
 }
 .reel-window.reeling .reel-symbol { filter: blur(1px); }
 
 .sym-art {
-  width: 3.5rem;
-  height: 3.5rem;
+  width: 4.5rem;
+  height: 4.5rem;
   object-fit: contain;
-}
-
-.sym-tier {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: currentColor;
-  border: 1px solid currentColor;
-  border-radius: 4px;
-  padding: 0 0.3rem;
 }
 
 .sym-name {
@@ -268,32 +269,43 @@ function imageUrl(item: Item): string | undefined {
 }
 .reel-result :deep(.choice-placeholder) { display: none; }
 
-/* The prize reads as a slot symbol: tier, art, name stacked and centered, so a
-   narrow reel never shreds the item name across lines. */
+/* The prize reads as a slot symbol: a big standardized art panel over the name,
+   framed in the tier's color while the art keeps its category tint. */
 .reel-result :deep(.item-card) {
   width: 100%;
   height: 100%;
   align-content: center;
   justify-items: center;
   text-align: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   padding: 0.6rem;
+  border-color: color-mix(in srgb, var(--tier) 55%, var(--border));
+  background:
+    linear-gradient(165deg, color-mix(in srgb, var(--tier) 15%, transparent), transparent 62%),
+    var(--bg-raised);
 }
 .reel-result :deep(.item-top) {
   flex-direction: column;
-  gap: 0.35rem;
+  width: 100%;
+  gap: 0.4rem;
 }
-.reel-result :deep(.tier-dot) { order: -1; }
+.reel-result :deep(.tier-dot),
+.reel-result :deep(.item-meta),
+.reel-result :deep(.item-stats) { display: none; }
 .reel-result :deep(.item-icon) {
-  width: 3rem;
-  height: 3rem;
+  width: 100%;
+  height: 5.5rem;
+  object-fit: contain;
+  background: color-mix(in srgb, var(--cat) 14%, var(--bg));
+  border-color: color-mix(in srgb, var(--cat) 30%, var(--border));
+  border-radius: 8px;
+  padding: 0.4rem;
 }
 .reel-result :deep(.item-name) {
   text-align: center;
   line-height: 1.15;
 }
-.reel-result :deep(.item-tags),
-.reel-result :deep(.item-stats) {
+.reel-result :deep(.item-tags) {
   justify-content: center;
   text-align: center;
 }
