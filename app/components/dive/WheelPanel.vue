@@ -173,7 +173,10 @@ function rerollLabel(
           >
             {{ ACCOUNTABILITY_LABELS[misfortune.accountability] }}
           </p>
-          <span class="row small muted">Team risk <RiskPips :value="teamRisk" /></span>
+          <span class="row risk-row small muted">Team risk <RiskPips
+            :value="teamRisk"
+            :rolling="misfortuneReeling"
+          /></span>
           <div
             v-if="!decision.decided && canControl"
             class="row decision-actions"
@@ -432,9 +435,10 @@ function rerollLabel(
 .decision-stamp.locked { color: var(--red); border-color: var(--red); }
 .decision-stamp.safe { color: var(--muted); }
 
-/* While a reel is spinning, the card's static content steps aside for it. */
+/* While a reel is spinning, the card's static content steps aside for it —
+   the team-risk row stays put: its pips are rolling, not settling. */
 .wheel-card.reeling p,
-.wheel-card.reeling .row:not(:first-child),
+.wheel-card.reeling .row:not(:first-child):not(.risk-row),
 .wheel-card.reeling .btn {
   opacity: 0.2;
   transition: opacity 0.2s ease-in;

@@ -15,13 +15,20 @@ defineEmits<{ toggle: [pactId: string], lock: [] }>()
 
 <template>
   <section class="panel">
-    <h2>Pacts <span class="muted small">(personal risk, personal rewards)</span></h2>
-    <p class="muted small">
-      Rolled from the wheel decision — take any, all, or none. Every pact you carry raises your
-      reward ceiling; a pact you break in the field is voided and costs one reward option.
-      Restrictions that tax the same strength can't be stacked, and reserve utility
-      (smoke, EMS, shields) is always available as loadout filler.
-    </p>
+    <h2 class="pact-title">
+      <WaitingLight label="Waiting on your pact picks" />
+      <AppTooltip
+        content="Rolled from the wheel decision — take any, all, or none. Every pact you carry raises your reward ceiling; a pact you break in the field is voided and costs one reward option. Restrictions that tax the same strength can't be stacked, and reserve utility (smoke, EMS, shields) is always available as loadout filler."
+      >
+        <button
+          class="pacts-term"
+          type="button"
+        >
+          Pacts
+        </button>
+      </AppTooltip>
+      <span class="muted small">(personal risk, personal rewards)</span>
+    </h2>
     <div class="pact-list">
       <CheckboxRoot
         v-for="pact in props.offer"
@@ -64,6 +71,26 @@ defineEmits<{ toggle: [pactId: string], lock: [] }>()
 </template>
 
 <style scoped>
+.pact-title { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+.pacts-term {
+  padding: 0;
+  border: none;
+  border-bottom: 1px dashed color-mix(in srgb, var(--khaki) 60%, transparent);
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: help;
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.pacts-term:hover,
+.pacts-term:focus-visible {
+  border-bottom-color: var(--gold);
+  color: var(--gold);
+}
+
 .pact-list {
   margin: 0;
   padding: 0;

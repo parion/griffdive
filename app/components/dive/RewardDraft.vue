@@ -2,7 +2,7 @@
 import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import type { Item } from '~~/shared/data/types'
 import type { RewardOption } from '~~/shared/engine/rewards'
-import { SPRING_SNAP, riseIn } from '~/utils/motion'
+import { SPRING_SNAP, SPRING_SOFT } from '~/utils/motion'
 
 const props = defineProps<{
   options: RewardOption[]
@@ -25,12 +25,20 @@ const pickedItem = computed(() =>
 
 <template>
   <section class="panel">
-    <AnimatePresence>
-      <div
+    <AnimatePresence mode="wait">
+      <Motion
         v-if="!pickedId"
         key="draft"
+        as="div"
+        :initial="{ opacity: 0 }"
+        :animate="{ opacity: 1 }"
+        :exit="{ opacity: 0, scale: 0.94 }"
+        :transition="SPRING_SOFT"
       >
-        <h2>Rewards — choose one</h2>
+        <h2 class="draft-title">
+          <WaitingLight label="Waiting on your reward pick" />
+          Rewards — choose one
+        </h2>
         <p class="muted small">
           Every reward is yours alone — stratagems included.
         </p>
@@ -49,7 +57,6 @@ const pickedItem = computed(() =>
             class="draft-slot"
             :initial="{ opacity: 0, y: 18, scale: 0.9 }"
             :animate="{ opacity: 1, y: 0, scale: 1 }"
-            :exit="{ opacity: 0, y: -12, scale: 0.92 }"
             :transition="{ ...SPRING_SNAP, delay: index * 0.07 }"
           >
             <DiversChoiceCard
@@ -65,13 +72,15 @@ const pickedItem = computed(() =>
             />
           </Motion>
         </div>
-      </div>
+      </Motion>
       <Motion
         v-else
         key="banked"
         as="div"
         class="banked"
-        v-bind="riseIn(0)"
+        :initial="{ opacity: 0, scale: 0.94 }"
+        :animate="{ opacity: 1, scale: 1 }"
+        :transition="SPRING_SOFT"
       >
         <span class="muted small">Reward banked</span>
         <strong>{{ pickedItem?.displayName }}</strong>
@@ -82,6 +91,7 @@ const pickedItem = computed(() =>
 </template>
 
 <style scoped>
+.draft-title { display: flex; align-items: center; gap: 0.45rem; }
 .options-lost {
   margin: 0.25rem 0 0;
   color: var(--red);
