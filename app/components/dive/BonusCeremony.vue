@@ -12,26 +12,25 @@ const props = withDefaults(defineProps<{
 }>(), { canControl: true })
 
 const emit = defineEmits<{
+  spin: []
   award: [playerId: string]
-  claim: []
 }>()
 
-// The contest is a deterministic derivation of the mission's offer seed, so
-// every client reels to the same stat. The host resolves the winner by reading
-// HD2's end screen; the app never captures the stats.
+// The contest is a host-spun seed like the Wheel — nothing is revealed until
+// the spin lands. The host resolves the winner by reading HD2's end screen;
+// the app never captures the stats, and awarding banks the token immediately.
 const contest = computed(() => bonusFor(props.state))
+const spun = computed(() => props.state.bonusSeed !== null)
 const statLabels = BONUS_STATS.map(stat => stat.label)
 const winner = computed(() =>
   props.state.divers.find(diver => diver.id === props.state.bonusWinnerId) ?? null)
-const isWinner = computed(() =>
-  props.state.bonusWinnerId !== null && props.state.bonusWinnerId === props.selfId)
 </script>
 
 <template>
   <section class="panel bonus">
     <h2 class="bonus-title">
       <WaitingLight
-        v-if="contest && !state.bonusWinnerId"
+        v-if="!state.bonusWinnerId"
         label="Waiting on the host's award"
       />
       Squad Honors
@@ -47,17 +46,43 @@ const isWinner = computed(() =>
       :class="{ settled: !!state.bonusWinnerId }"
       v-bind="riseIn(0)"
     >
-      <span class="muted small">Who has the</span>
-      <strong class="slot-label">
-        <ReelText
-          :final="contest?.label ?? '—'"
-          :candidates="statLabels"
-          :reel-id="state.offerSeed"
-        />
-      </strong>
+      <template v-if="spun">
+        <span class="muted small">Who has the</span>
+        <strong class="slot-label">
+          <ReelText
+            :final="contest?.label ?? '—'"
+            :candidates="statLabels"
+            :reel-id="state.bonusSeed"
+          />
+        </strong>
+      </template>
+      <button
+        v-else
+        class="spin-overlay"
+        type="button"
+        :disabled="!canControl"
+        @click="emit('spin')"
+      >
+        <strong>Spin</strong>
+      </button>
     </Motion>
 
-    <template v-if="!winner">
+    <template v-if="!spun">
+      <p
+        v-if="canControl"
+        class="muted small"
+      >
+        Spin to draw the honors contest.
+      </p>
+      <p
+        v-else
+        class="muted small"
+      >
+        Waiting for the host to spin…
+      </p>
+    </template>
+
+    <template v-else-if="!winner">
       <p
         v-if="canControl"
         class="muted small"
@@ -84,31 +109,12 @@ const isWinner = computed(() =>
       </div>
     </template>
 
-    <template v-else>
-      <p class="winner-line">
-        <strong>{{ winner.name }}</strong> takes the honors.
-      </p>
-      <button
-        v-if="isWinner && !state.bonusTokenClaimed"
-        class="btn primary"
-        type="button"
-        @click="emit('claim')"
-      >
-        Claim a reward token
-      </button>
-      <p
-        v-else-if="state.bonusTokenClaimed"
-        class="muted small"
-      >
-        Reward token banked.
-      </p>
-      <p
-        v-else
-        class="muted small"
-      >
-        Waiting on {{ winner.name }} to claim…
-      </p>
-    </template>
+    <p
+      v-else
+      class="winner-line"
+    >
+      <strong>{{ winner.name }}</strong> takes the honors and banks a reward token.
+    </p>
   </section>
 </template>
 
@@ -136,6 +142,35 @@ const isWinner = computed(() =>
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gold);
+}
+.spin-overlay {
+  display: grid;
+  place-content: center;
+  min-height: 3.5rem;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--gold);
+  font: inherit;
+  cursor: pointer;
+  animation: spin-pulse 1.6s ease-in-out infinite;
+}
+.spin-overlay strong {
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.spin-overlay:hover:not(:disabled) strong {
+  text-shadow: 0 0 18px color-mix(in srgb, var(--gold) 65%, transparent);
+}
+.spin-overlay:disabled { cursor: default; opacity: 0.55; animation: none; }
+@keyframes spin-pulse {
+  0%, 100% { text-shadow: 0 0 0 color-mix(in srgb, var(--gold) 40%, transparent); }
+  50% { text-shadow: 0 0 18px color-mix(in srgb, var(--gold) 55%, transparent); }
 }
 .award-row { flex-wrap: wrap; }
 .winner-line { margin: 0.25rem 0; }

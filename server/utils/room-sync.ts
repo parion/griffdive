@@ -229,8 +229,7 @@ function enforceSelf(action: EngineAction, playerId: string): EngineAction {
     || action.type === 'CLAIM_CATCHUP_OPTION'
     || action.type === 'CLAIM_CACHE'
     || action.type === 'REROLL_REWARDS'
-    || action.type === 'BAN_REWARD'
-    || action.type === 'CLAIM_BONUS_TOKEN'
+    || action.type === 'BAN_REWARDS'
     || action.type === 'LEAVE_DIVE'
   ) {
     return { ...action, playerId }

@@ -22,22 +22,30 @@ const props = withDefaults(defineProps<{
   // The rest of the squad's draft state: what they banked or that they are
   // still choosing. Presentation only — the squad strip owns moderation.
   squadPicks?: SquadPick[]
-  // Bonus-honors reward tokens: spend one to reroll this offer or ban an
-  // offered item. `bannableIds` is the parent's engine-gated allow-list.
+  // Bonus-honors reward tokens: spend one to reroll this offer, or to ban
+  // offered items (which forfeits the reward pick). `bannableIds` is the
+  // parent's engine-gated allow-list.
   tokenCount?: number
   canReroll?: boolean
+  canBan?: boolean
   bannableIds?: string[]
+  // The draft is resolved when the diver picked or spent it on bans.
+  resolved?: boolean
+  banned?: boolean
 }>(), {
   squadPicks: () => [],
   tokenCount: 0,
   canReroll: false,
+  canBan: false,
   bannableIds: () => [],
+  resolved: false,
+  banned: false,
 })
 
 const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
   reroll: []
-  ban: [optionId: string]
+  ban: [optionIds: string[]]
 }>()
 
 // Liberty's Cross banks the picked item's id, which is not among the rolled
@@ -46,6 +54,43 @@ const pickedItem = computed(() =>
   props.options.find(option => option.optionId === props.pickedId)?.item
   ?? (props.pickedId ? ITEMS_BY_ID.get(props.pickedId) ?? null : null),
 )
+
+// Banning is its own flow: once open, the reward cards toggle a purge
+// selection instead of picking, and confirming spends the token and the pick.
+const banMode = ref(false)
+const selectedBanIds = ref<string[]>([])
+
+const displayOptions = computed(() =>
+  banMode.value ? props.options.filter(option => !option.choice) : props.options)
+
+function toggleBan(optionId: string): void {
+  const selected = new Set(selectedBanIds.value)
+  if (selected.has(optionId)) {
+    selected.delete(optionId)
+  }
+  else {
+    selected.add(optionId)
+  }
+  selectedBanIds.value = [...selected]
+}
+
+function startBan(): void {
+  banMode.value = true
+  selectedBanIds.value = []
+}
+
+function cancelBan(): void {
+  banMode.value = false
+  selectedBanIds.value = []
+}
+
+function confirmBan(): void {
+  if (selectedBanIds.value.length === 0) {
+    return
+  }
+  emit('ban', [...selectedBanIds.value])
+  cancelBan()
+}
 
 function squadPickLabel(pick: SquadPick): string {
   if (pick.skipped) {
@@ -59,7 +104,7 @@ function squadPickLabel(pick: SquadPick): string {
   <section class="panel">
     <AnimatePresence mode="wait">
       <Motion
-        v-if="!pickedId"
+        v-if="!resolved"
         key="draft"
         as="div"
         :initial="{ opacity: 0 }"
@@ -69,20 +114,26 @@ function squadPickLabel(pick: SquadPick): string {
       >
         <h2 class="draft-title">
           <WaitingLight label="Waiting on your reward pick" />
-          Rewards — choose one
+          {{ banMode ? 'Ban offered rewards' : 'Rewards — choose one' }}
         </h2>
         <p class="muted small">
-          Every reward is yours alone — stratagems included.
+          <template v-if="banMode">
+            Pick any or all of the offered rewards to ban from your future
+            offers — this spends a token and forfeits this mission's reward.
+          </template>
+          <template v-else>
+            Every reward is yours alone — stratagems included.
+          </template>
         </p>
         <p
-          v-if="props.optionsLost"
+          v-if="props.optionsLost && !banMode"
           class="small options-lost"
         >
           {{ props.optionsLost }} pact{{ props.optionsLost === 1 ? '' : 's' }} failed —
           {{ props.optionsLost === 1 ? 'one reward option forfeited' : `${props.optionsLost} reward options forfeited` }}.
         </p>
         <div
-          v-if="squadPicks.length"
+          v-if="squadPicks.length && !banMode"
           class="squad-picks"
         >
           <span class="muted small">Squad</span>
@@ -116,7 +167,7 @@ function squadPickLabel(pick: SquadPick): string {
           </AppTooltip>
         </div>
         <div
-          v-if="tokenCount > 0"
+          v-if="tokenCount > 0 && !banMode"
           class="token-bar"
         >
           <span class="muted small">Reward tokens: {{ tokenCount }}</span>
@@ -128,10 +179,18 @@ function squadPickLabel(pick: SquadPick): string {
           >
             Reroll offer
           </button>
+          <button
+            class="btn tiny ghost"
+            type="button"
+            :disabled="!canBan"
+            @click="startBan"
+          >
+            Ban items
+          </button>
         </div>
         <div class="grid">
           <Motion
-            v-for="(option, index) in options"
+            v-for="(option, index) in displayOptions"
             :key="option.optionId"
             as="div"
             class="draft-slot"
@@ -148,17 +207,35 @@ function squadPickLabel(pick: SquadPick): string {
             <ItemCard
               v-else
               :item="option.item"
-              @select="emit('pick', option.optionId)"
+              :selected="banMode && selectedBanIds.includes(option.optionId)"
+              :disabled="banMode && !bannableIds.includes(option.optionId)"
+              @select="banMode ? toggleBan(option.optionId) : emit('pick', option.optionId)"
             />
-            <button
-              v-if="bannableIds.includes(option.optionId)"
-              class="ban-btn"
-              type="button"
-              @click="emit('ban', option.optionId)"
-            >
-              Ban from future offers
-            </button>
           </Motion>
+        </div>
+        <div
+          v-if="banMode"
+          class="ban-footer"
+        >
+          <div class="row">
+            <button
+              class="btn primary"
+              type="button"
+              :disabled="selectedBanIds.length === 0"
+              @click="confirmBan"
+            >
+              {{ selectedBanIds.length === 0
+                ? 'Ban selected items'
+                : `Ban ${selectedBanIds.length} item${selectedBanIds.length === 1 ? '' : 's'}` }}
+            </button>
+            <button
+              class="btn ghost"
+              type="button"
+              @click="cancelBan"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </Motion>
       <Motion
@@ -170,9 +247,16 @@ function squadPickLabel(pick: SquadPick): string {
         :animate="{ opacity: 1, scale: 1 }"
         :transition="SPRING_SOFT"
       >
-        <span class="muted small">Reward banked</span>
-        <strong>{{ pickedItem?.displayName }}</strong>
-        <span class="muted small">— see the squad inventory below.</span>
+        <template v-if="banned">
+          <span class="muted small">Draft resolved</span>
+          <strong>Rewards banned</strong>
+          <span class="muted small">— no reward this mission. Your future offers are cleaner.</span>
+        </template>
+        <template v-else>
+          <span class="muted small">Reward banked</span>
+          <strong>{{ pickedItem?.displayName }}</strong>
+          <span class="muted small">— see the squad inventory below.</span>
+        </template>
       </Motion>
     </AnimatePresence>
   </section>
@@ -191,22 +275,10 @@ function squadPickLabel(pick: SquadPick): string {
   margin: 0.5rem 0 0.25rem;
 }
 .draft-slot { display: grid; gap: 0.3rem; }
-.ban-btn {
-  padding: 0.15rem 0.4rem;
-  border: 1px dashed color-mix(in srgb, var(--red) 45%, var(--border));
-  border-radius: 4px;
-  background: none;
-  color: var(--red);
-  font: inherit;
-  font-size: 0.65rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.ban-btn:hover,
-.ban-btn:focus-visible {
-  border-color: var(--red);
-  background: color-mix(in srgb, var(--red) 12%, transparent);
+.ban-footer {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed color-mix(in srgb, var(--red) 40%, var(--border));
 }
 .squad-picks {
   display: flex;

@@ -152,20 +152,18 @@ function rerollRewards(): void {
   dispatch({ type: 'REROLL_REWARDS', playerId: diver.id, seed })
 }
 
-function banReward(optionId: string): void {
+function banRewards(optionIds: string[]): void {
   if (selfId.value) {
-    dispatch({ type: 'BAN_REWARD', playerId: selfId.value, optionId })
+    dispatch({ type: 'BAN_REWARDS', playerId: selfId.value, optionIds })
   }
+}
+
+function spinBonus(): void {
+  dispatch({ type: 'SPIN_BONUS', seed: session.newSeed() })
 }
 
 function awardBonus(playerId: string): void {
   dispatch({ type: 'AWARD_BONUS', playerId })
-}
-
-function claimBonus(): void {
-  if (selfId.value) {
-    dispatch({ type: 'CLAIM_BONUS_TOKEN', playerId: selfId.value })
-  }
 }
 
 function claimCatchUpOption(optionId: string): void {
@@ -413,9 +411,9 @@ function commitWarbonds(codes: string[]): void {
             :op-length="opLength"
             @pick="pick"
             @reroll="rerollRewards"
-            @ban="banReward"
+            @ban="banRewards"
+            @spin-bonus="spinBonus"
             @award-bonus="awardBonus"
-            @claim-bonus="claimBonus"
             @advance="advance"
           />
 

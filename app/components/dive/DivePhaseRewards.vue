@@ -2,7 +2,7 @@
 import { ALL_WARBOND_CODES, ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { performanceValor } from '~~/shared/engine/rewards'
-import { allDiversPicked, canBanReward, canRerollRewards, diverOptions, pactRiskOf, rewardPoolFor, teamRiskOf } from '~~/shared/engine/selectors'
+import { allDiversPicked, canBanAnyReward, canBanReward, canRerollRewards, diverOptions, pactRiskOf, rewardPoolFor, teamRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -16,9 +16,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
   reroll: []
-  ban: [optionId: string]
+  ban: [optionIds: string[]]
+  spinBonus: []
   awardBonus: [playerId: string]
-  claimBonus: []
   advance: []
 }>()
 
@@ -47,11 +47,13 @@ const squadPicks = computed(() =>
 )
 
 // Bonus-honors token spenders: the engine owns the rules (token cost, an open
-// pick, a non-choice option, never emptying the offer) — this is the legible
-// half. The allow-list drives the draft's ban affordances.
+// draft, non-choice targets) — this is the legible half. The allow-list drives
+// the draft's ban affordances.
 const rewardTokens = computed(() => props.self?.rewardTokens ?? 0)
 const canReroll = computed(() =>
   props.self ? canRerollRewards(props.state, props.self).allowed : false)
+const canBan = computed(() =>
+  props.self ? canBanAnyReward(props.state, props.self) : false)
 const bannableIds = computed(() => {
   const self = props.self
   if (!self) {
@@ -63,6 +65,9 @@ const bannableIds = computed(() => {
 })
 
 const ready = computed(() => allDiversPicked(props.state))
+const draftResolved = computed(() =>
+  props.self !== null && (props.self.pickedOptionId !== null || props.self.rewardBanned))
+const draftBanned = computed(() => props.self?.rewardBanned ?? false)
 </script>
 
 <template>
@@ -80,8 +85,8 @@ const ready = computed(() => allDiversPicked(props.state))
     :self-id="selfId"
     :self="self"
     :can-control="canControl"
+    @spin="emit('spinBonus')"
     @award="playerId => emit('awardBonus', playerId)"
-    @claim="emit('claimBonus')"
   />
   <RewardDraft
     :options="options"
@@ -92,10 +97,13 @@ const ready = computed(() => allDiversPicked(props.state))
     :squad-picks="squadPicks"
     :token-count="rewardTokens"
     :can-reroll="canReroll"
+    :can-ban="canBan"
     :bannable-ids="bannableIds"
+    :resolved="draftResolved"
+    :banned="draftBanned"
     @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
     @reroll="emit('reroll')"
-    @ban="optionId => emit('ban', optionId)"
+    @ban="optionIds => emit('ban', optionIds)"
   />
   <Transition name="phase">
     <div

@@ -171,13 +171,11 @@ export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOp
   return rolled.filter(option => !owned.has(option.item.id))
 }
 
-// The mission's spun bonus-honors contest. Derived from the offer seed like
-// every other roll; null until a successful report opens the draft.
+// The mission's spun bonus-honors contest. Like the Wheel, the contest only
+// exists once the host spins it; null before that (and after the mission
+// reset).
 export function bonusFor(state: DiveState): BonusStat | null {
-  if (state.offerSeed === null || !state.lastReport || state.lastReport.outcome !== 'success') {
-    return null
-  }
-  return rollBonus(state.offerSeed)
+  return state.bonusSeed === null ? null : rollBonus(state.bonusSeed)
 }
 
 // A reward reroll costs one banked token and must actually move: the reducer
@@ -198,8 +196,9 @@ export function canRerollRewards(
   return { allowed: true, reason: null }
 }
 
-// A ban costs one banked token, targets an offered non-choice option, and may
-// never leave the diver with nothing left to pick.
+// A ban action costs one banked token and targets offered non-choice options.
+// It forfeits the draft's reward pick, so the diver may ban any or all of the
+// offered items without leaving anything behind.
 export function canBanReward(
   state: DiveState,
   diver: DiverState,
@@ -208,24 +207,30 @@ export function canBanReward(
   if (state.phase !== 'rewards') {
     return { allowed: false, reason: 'Not in the reward draft' }
   }
-  if (diver.pickedOptionId !== null) {
-    return { allowed: false, reason: 'Reward already banked' }
+  if (diver.pickedOptionId !== null || diver.rewardBanned) {
+    return { allowed: false, reason: 'Draft already resolved' }
   }
   if (diver.rewardTokens < 1) {
     return { allowed: false, reason: 'No reward tokens' }
   }
-  const options = diverOptions(state, diver)
-  const option = options.find(entry => entry.optionId === optionId)
+  const option = diverOptions(state, diver).find(entry => entry.optionId === optionId)
   if (!option) {
     return { allowed: false, reason: 'Not in your offer' }
   }
   if (option.choice) {
     return { allowed: false, reason: 'Liberty’s Cross cannot be banned' }
   }
-  if (options.length < 2) {
-    return { allowed: false, reason: 'You must keep at least one option' }
-  }
   return { allowed: true, reason: null }
+}
+
+// Whether a diver can open the ban flow at all: a token, an unresolved draft,
+// and at least one bannable (non-choice) offered item.
+export function canBanAnyReward(
+  state: DiveState,
+  diver: DiverState,
+): boolean {
+  return diverOptions(state, diver)
+    .some(option => canBanReward(state, diver, option.optionId).allowed)
 }
 
 export interface CeilingRange {
@@ -296,7 +301,7 @@ export function canRerollWheel(
 
 export function allDiversPicked(state: DiveState): boolean {
   return state.divers.every(
-    diver => diver.pickedOptionId !== null || diver.skipsCurrentDraft,
+    diver => diver.pickedOptionId !== null || diver.rewardBanned || diver.skipsCurrentDraft,
   )
 }
 

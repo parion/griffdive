@@ -201,6 +201,7 @@ describe('misfortuneStrandedDivers', () => {
       rewardTokens: 0,
       bannedItemIds: [],
       rewardRerollSeed: null,
+      rewardBanned: false,
     }
     const wheeled: DiveState = {
       ...state,

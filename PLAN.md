@@ -327,23 +327,26 @@ reward draft:
 - `REROLL_REWARDS{seed}` redraws the diver's own offer. The per-diver `rewardRerollSeed` folds a
   fresh client seed into `diverOptions`, turning both the ceiling and option streams; the reducer
   refuses a seed that re-derives the offer in hand, so a token always moves the draft.
-- `BAN_REWARD{optionId}` adds one offered non-choice item to the diver's `bannedItemIds`, which
-  `diverOptions` and `catchUpOptionsFor` exclude for the rest of the crusade. A ban may not empty
-  the offer, and Liberty's Cross cannot be banned.
+- `BAN_REWARDS{optionIds}` is a separate multi-select flow: the diver picks any/all offered
+  non-choice items to add to `bannedItemIds`, which `diverOptions` and `catchUpOptionsFor` exclude
+  for the rest of the crusade. Banning **forfeits that mission's reward pick** (`rewardBanned`
+  resolves the draft with no item), so the whole offer may be cleared; Liberty's Cross cannot be
+  banned.
 Both are self-service; `enforceSelf` coerces `playerId`. AGENTS.md gained the "Reward tokens & squad
 honors" section. No token source besides N37 (the earlier skip-a-reward idea was dropped).
 
 **N37 · Bonus-stat squad honors. Done (DEC-11).** Once every diver has picked, `DivePhaseRewards`
-swaps the locked Valor meter for `BonusCeremony.vue`: a slot-machine reveal (reusing `ReelText`)
-of a random end-of-mission stat contest, then the host awards the winner (`AWARD_BONUS`, host-only,
-post-draft) and the winner banks a token (`CLAIM_BONUS_TOKEN`, self-service, once). The contest is
-`rollBonus(offerSeed)` (stream salt 4) over `BONUS_STATS` — all 12 HD2 end-screen stats with a
-`most`/`least` direction, tunable in config. The app never captures the stats: the host reads the
-real end screen and picks, matching `REPORT_RESULT`'s honor-system boundary. Per mission, soft gate
-(`ADVANCE` never waits; an unawarded contest dies with the mission reset). `DiverState` carries
-`rewardTokens`/`bannedItemIds`/`rewardRerollSeed`; `DiveState` carries `bonusWinnerId`/
-`bonusTokenClaimed`, reset each mission. `ENGINE_VERSION` 13 → 14; goldens unchanged. Covered by
-reducer tests (award/claim/reroll/ban/reset) and the solo E2E ceremony.
+swaps the locked Valor meter for `BonusCeremony.vue`: like the Wheel, the contest is **spun on
+click** (`SPIN_BONUS{seed}`, host-only), then the host awards the winner (`AWARD_BONUS`, host-only,
+post-spin) and the token is **banked immediately** — no claim step. A slot-machine reveal (reusing
+`ReelText`) plays on the seed. The contest is `rollBonus(bonusSeed)` (stream salt 4) over
+`BONUS_STATS` — all 12 HD2 end-screen stats with a `most`/`least` direction, tunable in config. The
+app never captures the stats: the host reads the real end screen and picks, matching
+`REPORT_RESULT`'s honor-system boundary. Per mission, soft gate (`ADVANCE` never waits; an
+unspun/unawarded contest dies with the mission reset). `DiverState` carries `rewardTokens`/
+`bannedItemIds`/`rewardRerollSeed`/`rewardBanned`; `DiveState` carries `bonusSeed`/`bonusWinnerId`,
+reset each mission. `ENGINE_VERSION` 13 → 14; goldens unchanged. Covered by reducer tests
+(spin/award/reroll/ban/reset) and the solo E2E ceremony + ban flow.
 
 **N14 · Squad reward indicators. Done.** `DivePhaseRewards` derives the other divers' draft state
 (banked item or still choosing, plus `skipsCurrentDraft`) and `RewardDraft` renders an icon-only

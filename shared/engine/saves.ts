@@ -18,6 +18,7 @@ type LegacyDiver = Omit<
   | 'rewardTokens'
   | 'bannedItemIds'
   | 'rewardRerollSeed'
+  | 'rewardBanned'
 >
 & Partial<Pick<
   DiverState,
@@ -28,6 +29,7 @@ type LegacyDiver = Omit<
   | 'rewardTokens'
   | 'bannedItemIds'
   | 'rewardRerollSeed'
+  | 'rewardBanned'
 >>
 
 export function createSaveDoc(state: DiveState, slotName: string, savedAt: string): SaveDoc {
@@ -87,8 +89,8 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
     state: {
       ...migrated.state,
       legacyCaches: migrated.state.legacyCaches ?? {},
+      bonusSeed: migrated.state.bonusSeed ?? null,
       bonusWinnerId: migrated.state.bonusWinnerId ?? null,
-      bonusTokenClaimed: migrated.state.bonusTokenClaimed ?? false,
       divers: (migrated.state.divers ?? []).map((diver) => {
         const legacy = diver as LegacyDiver
         return {
@@ -102,6 +104,7 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
           rewardTokens: legacy.rewardTokens ?? 0,
           bannedItemIds: legacy.bannedItemIds ?? [],
           rewardRerollSeed: legacy.rewardRerollSeed ?? null,
+          rewardBanned: legacy.rewardBanned ?? false,
         }
       }),
     },

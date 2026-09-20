@@ -52,11 +52,12 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.locator('.item-card:not([disabled])').first().click()
 
   // Bonus honors replaces the locked Valor meter once the draft completes: the
-  // host awards the spun stat contest and the winner banks a reward token.
+  // host spins the stat contest (on click, like the wheel) and awards the
+  // winner, who banks a reward token automatically.
   await expect(page.getByRole('heading', { name: 'Squad Honors' })).toBeVisible()
+  await page.locator('.slot').getByRole('button', { name: 'Spin' }).click()
   await page.locator('.award-row').getByRole('button', { name: 'Griffon' }).click()
-  await page.getByRole('button', { name: 'Claim a reward token' }).click()
-  await expect(page.getByText('Reward token banked.')).toBeVisible()
+  await expect(page.getByText(/takes the honors and banks a reward token/)).toBeVisible()
 
   await page.getByRole('button', { name: /Next mission/ }).click()
   // Medium runs 2-mission operations. The tracker advances to the second
@@ -67,6 +68,22 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // awaits the squad's decision.
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await expect(page.getByText('Decision pending')).toBeVisible()
+
+  // Play mission 2 out so the banked honors token can be spent.
+  await page.getByRole('button', { name: 'Opt out' }).click()
+  await page.locator('.pact:not([disabled])').first().click()
+  await page.getByRole('button', { name: 'Lock in & dive' }).click()
+  await page.getByRole('button', { name: 'Mission complete' }).click()
+  await page.getByRole('button', { name: 'Submit success' }).click()
+
+  // Banning is a separate flow alongside reroll, and it forfeits the reward
+  // pick: select items, confirm, and the draft resolves with no reward.
+  await expect(page.getByText('Reward tokens: 1')).toBeVisible()
+  await page.getByRole('button', { name: 'Ban items' }).click()
+  await expect(page.getByText('Ban offered rewards')).toBeVisible()
+  await page.locator('.item-card:not([disabled])').first().click()
+  await page.getByRole('button', { name: 'Ban 1 item' }).click()
+  await expect(page.getByText('Rewards banned')).toBeVisible()
 })
 
 test('a failed mission labels the operation failed and restarts it', async ({ page }) => {

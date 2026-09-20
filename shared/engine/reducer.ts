@@ -56,6 +56,7 @@ function resetDivers(state: DiveState): DiverState[] {
     pickedOptionId: null,
     skipsCurrentDraft: false,
     rewardRerollSeed: null,
+    rewardBanned: false,
   }))
 }
 
@@ -63,8 +64,8 @@ function resetForNextMission(state: DiveState): Partial<DiveState> {
   return {
     offerSeed: null,
     lastReport: null,
+    bonusSeed: null,
     bonusWinnerId: null,
-    bonusTokenClaimed: false,
     divers: resetDivers(state),
   }
 }
@@ -369,7 +370,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         return state
       }
       const diver = state.divers.find(candidate => candidate.id === action.playerId)
-      if (!diver || diver.pickedOptionId) {
+      if (!diver || diver.pickedOptionId || diver.rewardBanned) {
         return state
       }
       const option = diverOptions(state, diver).find(
@@ -535,7 +536,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         return state
       }
       const diver = state.divers.find(candidate => candidate.id === action.playerId)
-      if (!diver || diver.pickedOptionId || diver.rewardTokens < 1) {
+      if (!diver || diver.pickedOptionId || diver.rewardBanned || diver.rewardTokens < 1) {
         return state
       }
       // "Spins are seeds", but a reroll must actually move: refuse a seed that
@@ -559,52 +560,65 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       return commit(state, { divers }, action)
     }
 
-    case 'BAN_REWARD': {
+    case 'BAN_REWARDS': {
       if (state.phase !== 'rewards' || state.offerSeed === null) {
         return state
       }
       const diver = state.divers.find(candidate => candidate.id === action.playerId)
-      if (!diver || diver.pickedOptionId || diver.rewardTokens < 1) {
+      if (!diver || diver.pickedOptionId || diver.rewardBanned || diver.rewardTokens < 1) {
         return state
       }
       const options = diverOptions(state, diver)
-      const option = options.find(candidate => candidate.optionId === action.optionId)
-      // Liberty's Cross is a free pick, not an item, so it cannot be banned —
-      // and a ban may never leave the diver with nothing left to pick.
-      if (!option || option.choice || options.length < 2) {
+      const requested = [...new Set(action.optionIds)]
+      if (requested.length === 0) {
         return state
       }
+      // Every target must be an offered non-choice option: Liberty's Cross is
+      // a free pick, not an item, so it can never be banned.
+      const targets = requested.map(id => options.find(option => option.optionId === id))
+      if (targets.some(target => !target || target.choice)) {
+        return state
+      }
+      // Banning forfeits the draft's reward pick: the diver may purge any or
+      // all of the offered items and banks no reward this mission.
       const divers = state.divers.map(candidate =>
         candidate.id === diver.id
           ? {
               ...candidate,
               rewardTokens: candidate.rewardTokens - 1,
-              bannedItemIds: [...candidate.bannedItemIds, option.item.id],
+              bannedItemIds: [
+                ...candidate.bannedItemIds,
+                ...targets.map(target => target!.item.id),
+              ],
+              rewardBanned: true,
             }
           : candidate,
       )
       return commit(state, { divers }, action)
     }
 
+    case 'SPIN_BONUS': {
+      // Host-only, like the Wheel: the contest is spun on click once the draft
+      // completes, and the seed is what syncs (spins are seeds).
+      if (state.phase !== 'rewards' || state.bonusSeed !== null || !allDiversPicked(state)) {
+        return state
+      }
+      return commit(state, { bonusSeed: action.seed }, action)
+    }
+
     case 'AWARD_BONUS': {
       // Host-only: the host reads HD2's end screen and names the winner of the
-      // spun contest. Resolved once per mission, after the draft completes.
-      if (state.phase !== 'rewards' || !allDiversPicked(state) || state.bonusWinnerId) {
+      // spun contest. Awarding banks the winner's token immediately — there is
+      // no separate claim step.
+      if (
+        state.phase !== 'rewards'
+        || state.bonusSeed === null
+        || !allDiversPicked(state)
+        || state.bonusWinnerId
+      ) {
         return state
       }
       if (!state.divers.some(diver => diver.id === action.playerId)) {
-        return state
-      }
-      return commit(state, { bonusWinnerId: action.playerId }, action)
-    }
-
-    case 'CLAIM_BONUS_TOKEN': {
-      // Self-service: only the named winner banks their token, and only once.
-      if (
-        state.phase !== 'rewards'
-        || state.bonusWinnerId !== action.playerId
-        || state.bonusTokenClaimed
-      ) {
         return state
       }
       const divers = state.divers.map(diver =>
@@ -612,7 +626,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           ? { ...diver, rewardTokens: Math.min(REWARD_TOKEN_CAP, diver.rewardTokens + 1) }
           : diver,
       )
-      return commit(state, { divers, bonusTokenClaimed: true }, action)
+      return commit(state, { divers, bonusWinnerId: action.playerId }, action)
     }
 
     case 'SET_NAME': {

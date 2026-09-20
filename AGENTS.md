@@ -329,24 +329,27 @@ ceiling roll:  start at the base tier; each step to the next tier
 After a successful mission's reward draft completes, the squad spins one **bonus honors** contest (a
 Mario-Party bonus star): a random stat from HD2's end-of-mission screen — kills, accuracy, deaths,
 stims, samples, friendly fire, … — with a winning direction (*most* or *least*), each entry in
-`BONUS_STATS` (`shared/engine/config.ts`). The contest is a deterministic derivation of the mission's
-offer seed (`rollBonus`, stream salt 4), so every client reels to the same stat. **The app never
-captures the stats**: the host reads HD2's stats screen and names the winner (`AWARD_BONUS`,
-host-only); ties are the host's call. The winner banks **one flexible reward token**
-(`CLAIM_BONUS_TOKEN`, self-service, once), capped at `REWARD_TOKEN_CAP` (3).
+`BONUS_STATS` (`shared/engine/config.ts`). Like the Wheel, the contest is **spun on click**
+(`SPIN_BONUS{seed}`, host-only) once every diver has picked, and the seed is what syncs: `rollBonus`
+(stream salt 4) derives the same stat on every client. **The app never captures the stats**: the host
+reads HD2's stats screen and names the winner (`AWARD_BONUS`, host-only); ties are the host's call.
+Awarding banks the winner's **one flexible reward token** immediately (capped at `REWARD_TOKEN_CAP`,
+3) — there is no separate claim step.
 
 A token is spent by its owner during a reward draft on one of:
 - **Reroll** (`REROLL_REWARDS`) — redraw the diver's own offer. A reroll must move (a seed that
   re-derives the same offer is refused, mirroring `REROLL_WHEEL`), and both the ceiling and option
   streams turn.
-- **Ban** (`BAN_REWARD`) — remove one offered non-choice item from the diver's personal reward and
-  catch-up pools for the rest of the crusade (`bannedItemIds`). A ban may not empty the offer, and
-  Liberty's Cross is a free pick, not an item, so it cannot be banned.
+- **Ban** (`BAN_REWARDS`) — a separate flow: the diver selects any or all of the offered non-choice
+  items to purge from their personal reward and catch-up pools for the rest of the crusade
+  (`bannedItemIds`). Banning **forfeits that mission's reward pick** (`rewardBanned` resolves the
+  draft with no item), so the diver may clear the whole offer. Liberty's Cross is a free pick, not an
+  item, so it cannot be banned.
 
-The ceremony is a **soft gate**: `ADVANCE` never waits on it, and an unawarded contest dies with the
-mission reset. Tokens and bans are personal and persist across missions; reroll seeds reset with the
-pacts. Negative targeting (bans) does not violate "guarantee rarity class, never specific items" — it
-narrows a pool, it never names a reward.
+The ceremony is a **soft gate**: `ADVANCE` never waits on it, and an unspun/unawarded contest dies
+with the mission reset. Tokens and bans are personal and persist across missions; reroll seeds and
+the ban flag reset with the pacts. Negative targeting (bans) does not violate "guarantee rarity
+class, never specific items" — it narrows a pool, it never names a reward.
 
 ### Inventory model
 
@@ -533,15 +536,15 @@ Canonical engine actions (the reducer union; keep names stable):
 `START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}`
 `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
-`REROLL_REWARDS{playerId,seed}` `BAN_REWARD{playerId,optionId}` `AWARD_BONUS{playerId}`
-`CLAIM_BONUS_TOKEN{playerId}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
+`REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
+`AWARD_BONUS{playerId}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
 `LEAVE_DIVE{playerId}` `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
-`REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`, `KICK_DIVER`,
-`TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`, `REROLL_REWARDS`,
-`BAN_REWARD`, `CLAIM_BONUS_TOKEN`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are
+`REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
+`KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
+`REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are
 self-service.
 `FAIL_PACT` is sent by the target diver or the host (server refuses everyone else). Host disconnect →
 `TRANSFER_HOST` to the earliest joiner; none left → room hibernates in storage with a TTL.
