@@ -63,6 +63,52 @@ export const S_PLUS_BONUS_OPTIONS = 1
 // Each pact marked failed in the field forfeits this many reward options —
 // the stake the diver never actually carried (AGENTS.md: Reward math).
 export const OPTIONS_LOST_PER_FAILED_PACT = 1
+
+// Bonus honors: after every reward draft the squad spins one end-of-mission
+// stat contest; the host names the winner, who banks one flexible reward
+// token. A token rerolls the diver's own offer or bans one offered item from
+// their personal pools. Capped so a long crusade can't bank unlimited bans.
+export const REWARD_TOKEN_CAP = 3
+
+// Honors are a limited prize: a token only lands on a full-star clear, and
+// only at a cadence that scales with squad size — a smaller squad earns rarer
+// honors. Values are missions between awards (1 = every mission).
+export const BONUS_TOKEN_INTERVAL: Readonly<Record<number, number>> = {
+  1: 3,
+  2: 2,
+  3: 2,
+  4: 1,
+}
+
+export function bonusIntervalFor(squadSize: number): number {
+  const clamped = Math.min(Math.max(Math.round(squadSize), 1), SQUAD_SIZE_MAX)
+  return BONUS_TOKEN_INTERVAL[clamped] ?? 1
+}
+
+export interface BonusStat {
+  id: string
+  // The contest as shown on the slot machine, e.g. "most kills". Direction
+  // only matters to the host reading HD2's stats screen.
+  label: string
+  direction: 'most' | 'least'
+}
+
+// Every stat on HD2's end-of-mission screen, with its winning direction.
+// Tunable: dropping a stat just removes it from the slot machine.
+export const BONUS_STATS: readonly BonusStat[] = [
+  { id: 'kills', label: 'most kills', direction: 'most' },
+  { id: 'accuracy', label: 'best accuracy', direction: 'most' },
+  { id: 'shotsFired', label: 'most shots fired', direction: 'most' },
+  { id: 'shotsHit', label: 'most shots hit', direction: 'most' },
+  { id: 'deaths', label: 'fewest deaths', direction: 'least' },
+  { id: 'stimsUsed', label: 'fewest stims used', direction: 'least' },
+  { id: 'accidentals', label: 'fewest accidentals', direction: 'least' },
+  { id: 'samplesExtracted', label: 'most samples extracted', direction: 'most' },
+  { id: 'stratagemsUsed', label: 'most stratagems used', direction: 'most' },
+  { id: 'meleeKills', label: 'most melee kills', direction: 'most' },
+  { id: 'timesReinforcing', label: 'fewest times reinforcing', direction: 'least' },
+  { id: 'friendlyFireDamage', label: 'least friendly fire damage', direction: 'least' },
+]
 // Field Promotion cap: a mid-crusade joiner rolls at most this many catch-up
 // options (one per operation behind, capped). Catch-up buys altitude at the
 // current base tier with zero Valor — never rarity.

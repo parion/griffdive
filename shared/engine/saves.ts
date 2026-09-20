@@ -7,9 +7,30 @@ import { resetOperation } from './reducer'
 import type { DiveState, DiverState } from './types'
 
 // Divers from pre-v7 docs predate the Field Promotion bookkeeping; pre-v8
-// docs predate failed-pact marks.
-type LegacyDiver = Omit<DiverState, 'catchUpGranted' | 'catchUpOwed' | 'skipsCurrentDraft' | 'failedPactIds'>
-  & Partial<Pick<DiverState, 'catchUpGranted' | 'catchUpOwed' | 'skipsCurrentDraft' | 'failedPactIds'>>
+// docs predate failed-pact marks; pre-v9 docs predate reward tokens, bans and
+// the bonus-honors ceremony.
+type LegacyDiver = Omit<
+  DiverState,
+  | 'catchUpGranted'
+  | 'catchUpOwed'
+  | 'skipsCurrentDraft'
+  | 'failedPactIds'
+  | 'rewardTokens'
+  | 'bannedItemIds'
+  | 'rewardRerollSeed'
+  | 'rewardBanned'
+>
+& Partial<Pick<
+  DiverState,
+  | 'catchUpGranted'
+  | 'catchUpOwed'
+  | 'skipsCurrentDraft'
+  | 'failedPactIds'
+  | 'rewardTokens'
+  | 'bannedItemIds'
+  | 'rewardRerollSeed'
+  | 'rewardBanned'
+>>
 
 export function createSaveDoc(state: DiveState, slotName: string, savedAt: string): SaveDoc {
   return {
@@ -68,6 +89,8 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
     state: {
       ...migrated.state,
       legacyCaches: migrated.state.legacyCaches ?? {},
+      bonusSeed: migrated.state.bonusSeed ?? null,
+      bonusWinnerId: migrated.state.bonusWinnerId ?? null,
       divers: (migrated.state.divers ?? []).map((diver) => {
         const legacy = diver as LegacyDiver
         return {
@@ -78,6 +101,10 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
           // Saves from before pacts could be marked failed carry no marks —
           // an empty list is the truthful default for them.
           failedPactIds: legacy.failedPactIds ?? [],
+          rewardTokens: legacy.rewardTokens ?? 0,
+          bannedItemIds: legacy.bannedItemIds ?? [],
+          rewardRerollSeed: legacy.rewardRerollSeed ?? null,
+          rewardBanned: legacy.rewardBanned ?? false,
         }
       }),
     },

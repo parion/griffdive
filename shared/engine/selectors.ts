@@ -11,10 +11,14 @@ import {
   SAMPLE_VALOR_CAP,
   TIME_VALOR_MAX,
   baseTierFor,
+  bonusIntervalFor,
+  maxStarsFor,
   pactOptionsFor,
 } from './config'
+import type { BonusStat } from './config'
 import { hasLegalLoadout, pactRiskTotal, rollPactOffer } from './pacts'
-import { performanceValor, maxCeiling, oddsToReach, optionsForStars, rollCeiling, rollRewardOptions, valorOf } from './rewards'
+import { startingItemIds } from './progression'
+import { performanceValor, maxCeiling, oddsToReach, optionsForStars, rollBonus, rollCeiling, rollRewardOptions, valorOf } from './rewards'
 import type { RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -111,7 +115,10 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   if (diver.skipsCurrentDraft) {
     return []
   }
-  const seed = deriveSeed(state.offerSeed, hashString(diver.id))
+  const base = deriveSeed(state.offerSeed, hashString(diver.id))
+  // A reward reroll folds a fresh client seed into the derivation, moving both
+  // streams (ceiling and options) at once.
+  const seed = diver.rewardRerollSeed === null ? base : deriveSeed(base, diver.rewardRerollSeed)
   // Two rng streams derived from the offer seed: one rolls the tier ceiling,
   // one rolls the options — every client computes the same offer.
   const ceiling = rollCeiling(
@@ -123,6 +130,8 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   // diver rolls offers against the catalog they can actually use.
   const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
   const owned = new Set(state.personalInventories[diver.id] ?? [])
+  // Banned items never come back: a ban removes them from every future offer.
+  const exclude = new Set([...owned, ...diver.bannedItemIds])
   // Every failed pact forfeits one reward option (AGENTS.md: Reward math) —
   // floored at one so the draft can always complete and never deadlock ADVANCE.
   const count = Math.max(
@@ -130,7 +139,14 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
     optionsForStars(state.lastReport.stars, ceiling)
     - diver.failedPactIds.length * OPTIONS_LOST_PER_FAILED_PACT,
   )
-  return rollRewardOptions(deriveSeed(seed, 2), ceiling, baseTierFor(state.difficulty), count, pool, owned)
+  return rollRewardOptions(
+    deriveSeed(seed, 2),
+    ceiling,
+    baseTierFor(state.difficulty),
+    count,
+    pool,
+    exclude,
+  )
 }
 
 // The Field Promotion: a mid-crusade joiner's catch-up offer. Altitude
@@ -138,15 +154,125 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
 // Valor (a zero-Valor dive always rolls its base tier), so a late joiner buys
 // up to the squad's altitude without ever reaching S. Derived from the last
 // spun seed like every offer — deterministic, never stored.
+//
+// The full grant is rolled once (against the joiner's starting kit, the
+// inventory they were seated with) and the claimed items are filtered out, so
+// the draft is stable: claiming a pick never re-rolls a new candidate into
+// view. Rolling against the shrinking owed count instead let three picks
+// expose up to six candidates (N22).
 export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOption[] {
   if (!state.settings || diver.catchUpOwed <= 0) {
     return []
   }
   const seed = deriveSeed(state.seedHistory.at(-1) ?? 0, hashString(`${diver.id}:catchup`))
   const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
+  // Bans are personal and crusade-long, so a promotion never re-offers a
+  // banned item either.
+  const exclude = new Set([...startingItemIds(state.settings.variant), ...diver.bannedItemIds])
   const owned = new Set(state.personalInventories[diver.id] ?? [])
   // Catch-up buys altitude, never rarity: the band is the base tier alone.
-  return rollRewardOptions(seed, baseTierFor(state.difficulty), baseTierFor(state.difficulty), diver.catchUpOwed, pool, owned)
+  const rolled = rollRewardOptions(
+    seed,
+    baseTierFor(state.difficulty),
+    baseTierFor(state.difficulty),
+    diver.catchUpGranted,
+    pool,
+    exclude,
+  )
+  return rolled.filter(option => !owned.has(option.item.id))
+}
+
+// Honors are a limited prize: the squad only plays for a token on a full-star
+// clear, and only when the squad-size cadence is due (fewer divers, rarer
+// honors). Both must hold before the ceremony can spin or award.
+export function bonusEligible(state: DiveState): boolean {
+  const report = state.lastReport
+  if (!report || report.outcome !== 'success') {
+    return false
+  }
+  if (report.stars < maxStarsFor(state.difficulty)) {
+    return false
+  }
+  return state.missionIndex % bonusIntervalFor(state.divers.length) === 0
+}
+
+// Why this mission has no honors, for the UI — null when it does (or when the
+// draft hasn't been reported yet).
+export function bonusIneligibilityReason(state: DiveState): string | null {
+  const report = state.lastReport
+  if (!report || report.outcome !== 'success') {
+    return null
+  }
+  if (report.stars < maxStarsFor(state.difficulty)) {
+    return 'Squad honors need a full-star clear.'
+  }
+  const interval = bonusIntervalFor(state.divers.length)
+  if (state.missionIndex % interval !== 0) {
+    return `Squad honors are due every ${interval} mission${interval === 1 ? '' : 's'} for a squad of ${state.divers.length}.`
+  }
+  return null
+}
+
+// The mission's spun bonus-honors contest. Like the Wheel, the contest only
+// exists once the host spins it; null before that (and after the mission
+// reset).
+export function bonusFor(state: DiveState): BonusStat | null {
+  return state.bonusSeed === null ? null : rollBonus(state.bonusSeed)
+}
+
+// A reward reroll costs one banked token and must actually move: the reducer
+// recomputes the offer under the candidate seed and refuses a same-offer seed.
+export function canRerollRewards(
+  state: DiveState,
+  diver: DiverState,
+): { allowed: boolean, reason: string | null } {
+  if (state.phase !== 'rewards') {
+    return { allowed: false, reason: 'Not in the reward draft' }
+  }
+  if (diver.pickedOptionId !== null) {
+    return { allowed: false, reason: 'Reward already banked' }
+  }
+  if (diver.rewardTokens < 1) {
+    return { allowed: false, reason: 'No reward tokens' }
+  }
+  return { allowed: true, reason: null }
+}
+
+// A ban action costs one banked token and targets offered non-choice options.
+// It forfeits the draft's reward pick, so the diver may ban any or all of the
+// offered items without leaving anything behind.
+export function canBanReward(
+  state: DiveState,
+  diver: DiverState,
+  optionId: string,
+): { allowed: boolean, reason: string | null } {
+  if (state.phase !== 'rewards') {
+    return { allowed: false, reason: 'Not in the reward draft' }
+  }
+  if (diver.pickedOptionId !== null || diver.rewardBanned) {
+    return { allowed: false, reason: 'Draft already resolved' }
+  }
+  if (diver.rewardTokens < 1) {
+    return { allowed: false, reason: 'No reward tokens' }
+  }
+  const option = diverOptions(state, diver).find(entry => entry.optionId === optionId)
+  if (!option) {
+    return { allowed: false, reason: 'Not in your offer' }
+  }
+  if (option.choice) {
+    return { allowed: false, reason: 'Liberty’s Cross cannot be banned' }
+  }
+  return { allowed: true, reason: null }
+}
+
+// Whether a diver can open the ban flow at all: a token, an unresolved draft,
+// and at least one bannable (non-choice) offered item.
+export function canBanAnyReward(
+  state: DiveState,
+  diver: DiverState,
+): boolean {
+  return diverOptions(state, diver)
+    .some(option => canBanReward(state, diver, option.optionId).allowed)
 }
 
 export interface CeilingRange {
@@ -217,7 +343,7 @@ export function canRerollWheel(
 
 export function allDiversPicked(state: DiveState): boolean {
   return state.divers.every(
-    diver => diver.pickedOptionId !== null || diver.skipsCurrentDraft,
+    diver => diver.pickedOptionId !== null || diver.rewardBanned || diver.skipsCurrentDraft,
   )
 }
 

@@ -15,7 +15,7 @@ const emit = defineEmits<{
 }>()
 
 // The offer is derived like every other roll — same seed, same options on
-// every client. It re-derives against the remaining owed count.
+// every client. The grant is a fixed draft; claimed picks drop out of it.
 const options = computed(() => catchUpOptionsFor(props.state, props.diver))
 const caches = computed(() => availableCaches(props.state))
 const untouched = computed(() => props.diver.catchUpOwed === props.diver.catchUpGranted)
