@@ -15,7 +15,6 @@ const emit = defineEmits<{
   'commit': []
   'transferHost': [diverId: string]
   'kick': [diverId: string]
-  'copyInvite': []
 }>()
 
 const name = computed({
@@ -64,118 +63,83 @@ function canModerate(diverId: string): boolean {
 </script>
 
 <template>
-  <section class="panel squad-strip">
-    <div class="row">
+  <div class="row squad-strip">
+    <span
+      v-for="diver in state.divers"
+      :key="diver.id"
+      class="chip diver-chip"
+      :class="{ warn: !isOnline(diver.id) }"
+      :title="isOnline(diver.id) ? 'online' : 'offline'"
+    >
+      <AppTooltip
+        :content="statuses[diver.id] ?? (isOnline(diver.id) ? 'online' : 'offline')"
+      >
+        <span
+          class="dot"
+          :class="{ on: isOnline(diver.id), waiting: isWaiting(diver.id) }"
+          role="img"
+          :aria-label="statuses[diver.id] ?? (isOnline(diver.id) ? 'Online' : 'Offline')"
+        />
+      </AppTooltip><input
+        v-if="diver.id === selfId"
+        v-model="name"
+        class="self-name"
+        type="text"
+        maxlength="32"
+        title="Your name"
+        aria-label="Your name"
+        @change="$emit('commit')"
+      >
+      <template v-else>{{ diver.name }}</template>
       <span
-        v-for="diver in state.divers"
-        :key="diver.id"
-        class="chip diver-chip"
-        :class="{ warn: !isOnline(diver.id) }"
-        :title="isOnline(diver.id) ? 'online' : 'offline'"
+        v-if="diver.id === state.hostId"
+        class="crown"
+        role="img"
+        aria-label="Host"
+      >★</span>
+      <span
+        v-if="diver.catchUpOwed > 0"
+        class="catchup-chip"
+        role="img"
+        :aria-label="`Field Promotion: ${diver.catchUpOwed} picks owed`"
+        title="Field Promotion picks owed"
+      >+{{ diver.catchUpOwed }}</span>
+      <span
+        v-if="diver.id === selfId"
+        class="muted small"
+      >(you)</span>
+      <AppTooltip
+        v-if="canModerate(diver.id)"
+        :content="`Hand host to ${diver.name}`"
       >
-        <AppTooltip
-          :content="statuses[diver.id] ?? (isOnline(diver.id) ? 'online' : 'offline')"
+        <button
+          class="handover"
+          type="button"
+          :aria-label="`Hand host to ${diver.name}`"
+          @click="$emit('transferHost', diver.id)"
         >
-          <span
-            class="dot"
-            :class="{ on: isOnline(diver.id), waiting: isWaiting(diver.id) }"
-            role="img"
-            :aria-label="statuses[diver.id] ?? (isOnline(diver.id) ? 'Online' : 'Offline')"
-          />
-        </AppTooltip><input
-          v-if="diver.id === selfId"
-          v-model="name"
-          class="self-name"
-          type="text"
-          maxlength="32"
-          title="Your name"
-          aria-label="Your name"
-          @change="$emit('commit')"
-        >
-        <template v-else>{{ diver.name }}</template>
-        <span
-          v-if="diver.id === state.hostId"
-          class="crown"
-          role="img"
-          aria-label="Host"
-        >★</span>
-        <span
-          v-if="diver.catchUpOwed > 0"
-          class="catchup-chip"
-          role="img"
-          :aria-label="`Field Promotion: ${diver.catchUpOwed} picks owed`"
-          title="Field Promotion picks owed"
-        >+{{ diver.catchUpOwed }}</span>
-        <span
-          v-if="diver.id === selfId"
-          class="muted small"
-        >(you)</span>
-        <AppTooltip
-          v-if="canModerate(diver.id)"
-          :content="`Hand host to ${diver.name}`"
-        >
-          <button
-            class="handover"
-            type="button"
-            :aria-label="`Hand host to ${diver.name}`"
-            @click="$emit('transferHost', diver.id)"
-          >
-            host
-          </button>
-        </AppTooltip>
-        <AppTooltip
-          v-if="canModerate(diver.id)"
-          :content="`Kick ${diver.name} from the squad`"
-        >
-          <button
-            class="kick"
-            type="button"
-            :aria-label="`Kick ${diver.name} from the squad`"
-            @click="$emit('kick', diver.id)"
-          >
-            ×
-          </button>
-        </AppTooltip>
-      </span>
-      <button
-        v-if="mode === 'room' && state.divers.length === 1"
-        class="lone-host"
-        type="button"
-        @click="$emit('copyInvite')"
+          host
+        </button>
+      </AppTooltip>
+      <AppTooltip
+        v-if="canModerate(diver.id)"
+        :content="`Kick ${diver.name} from the squad`"
       >
-        Share the invite link
-      </button>
-    </div>
-  </section>
+        <button
+          class="kick"
+          type="button"
+          :aria-label="`Kick ${diver.name} from the squad`"
+          @click="$emit('kick', diver.id)"
+        >
+          ×
+        </button>
+      </AppTooltip>
+    </span>
+  </div>
 </template>
 
 <style scoped>
-.squad-strip { padding: 0.6rem 0.75rem; }
-.lone-host {
-  margin: 0 0 0 auto;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  color: var(--gold);
-  font-weight: 700;
-  text-align: right;
-  cursor: pointer;
-  animation: lone-glow 2.4s ease-in-out infinite;
-}
-.lone-host:hover {
-  text-decoration: underline;
-}
-@keyframes lone-glow {
-  0%, 100% { text-shadow: 0 0 4px color-mix(in srgb, var(--gold) 35%, transparent); }
-  50% { text-shadow: 0 0 14px color-mix(in srgb, var(--gold) 90%, transparent); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .lone-host {
-    animation: none;
-    text-shadow: 0 0 8px color-mix(in srgb, var(--gold) 60%, transparent);
-  }
-}
+.squad-strip { justify-content: flex-end; }
 .catchup-chip {
   padding: 0 0.3rem;
   border: 1px solid var(--teal);

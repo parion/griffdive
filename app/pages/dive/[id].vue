@@ -260,25 +260,18 @@ function commitWarbonds(codes: string[]): void {
         :status="session.status.value"
         :self-id="selfId"
         :can-control="canControl"
+        :is-host="session.selfIsHost.value"
         :op-length="opLength"
         :slot-name="session.slotName.value"
+        :online="session.online.value"
+        :name-draft="nameDraft"
         @copy-invite="copyInvite"
         @leave="leaveDive"
         @end="endDive"
-      />
-
-      <SquadStrip
-        :state="state"
-        :self-id="selfId"
-        :online="session.online.value"
-        :mode="session.mode"
-        :is-host="session.selfIsHost.value"
-        :name-draft="nameDraft"
         @update:name-draft="setNameDraft"
         @commit="commitName"
         @transfer-host="transferHost"
         @kick="kick"
-        @copy-invite="copyInvite"
       />
 
       <p

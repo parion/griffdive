@@ -11,11 +11,22 @@ const props = defineProps<{
   status: DiveSessionStatus
   selfId: string | null
   canControl: boolean
+  isHost: boolean
   opLength: number
   slotName: string
+  online: string[]
+  nameDraft: string
 }>()
 
-defineEmits<{ copyInvite: [], leave: [], end: [] }>()
+defineEmits<{
+  'copyInvite': []
+  'leave': []
+  'end': []
+  'update:nameDraft': [name: string]
+  'commit': []
+  'transferHost': [diverId: string]
+  'kick': [diverId: string]
+}>()
 
 const lockedCeiling = computed(() => {
   const self = props.selfId
@@ -23,11 +34,15 @@ const lockedCeiling = computed(() => {
     : null
   return self ? diverCeiling(props.state, self) : null
 })
+
+// A lone host in a room has nobody to play with yet — the invite copy control
+// pulses to draw the eye, replacing the old "Share the invite link" nudge.
+const loneHost = computed(() => props.mode === 'room' && props.state.divers.length === 1)
 </script>
 
 <template>
-  <header class="page-header">
-    <div>
+  <header class="page-header dive-header">
+    <div class="head-title">
       <div class="title-row">
         <h1 class="mono">
           {{ slotName || 'Dive' }}
@@ -35,6 +50,7 @@ const lockedCeiling = computed(() => {
         <button
           v-if="mode === 'room'"
           class="copy-code"
+          :class="{ glow: loneHost }"
           type="button"
           aria-label="Copy invite link"
           title="Copy invite link"
@@ -43,28 +59,8 @@ const lockedCeiling = computed(() => {
           <IconCopy />
         </button>
       </div>
-      <div class="dive-meta">
-        <img
-          class="diff-icon"
-          :src="difficultyImageUrl(state.difficulty)"
-          alt=""
-          draggable="false"
-        >
-        <div class="meta-stack">
-          <span class="diff-descriptor">
-            <span class="diff-name">{{ difficultyName(state.difficulty) }}</span>
-            <span class="diff-num">{{ state.difficulty }}</span>
-          </span>
-          <MissionTrack
-            :mission-in-operation="state.missionInOperation"
-            :op-length="opLength"
-            :mission-index="state.missionIndex"
-            :failed="state.phase === 'forfeit'"
-          />
-        </div>
-      </div>
     </div>
-    <div class="row">
+    <div class="head-actions row">
       <span
         v-if="mode === 'room'"
         class="chip"
@@ -104,13 +100,82 @@ const lockedCeiling = computed(() => {
         End dive
       </button>
     </div>
+    <div class="dive-meta">
+      <img
+        class="diff-icon"
+        :src="difficultyImageUrl(state.difficulty)"
+        alt=""
+        draggable="false"
+      >
+      <div class="meta-stack">
+        <span class="diff-descriptor">
+          <span class="diff-name">{{ difficultyName(state.difficulty) }}</span>
+          <span class="diff-num">{{ state.difficulty }}</span>
+        </span>
+        <MissionTrack
+          :mission-in-operation="state.missionInOperation"
+          :op-length="opLength"
+          :mission-index="state.missionIndex"
+          :failed="state.phase === 'forfeit'"
+        />
+      </div>
+    </div>
+    <SquadStrip
+      class="head-squad"
+      :state="state"
+      :self-id="selfId"
+      :online="online"
+      :mode="mode"
+      :is-host="isHost"
+      :name-draft="nameDraft"
+      @update:name-draft="$emit('update:nameDraft', $event)"
+      @commit="$emit('commit')"
+      @transfer-host="$emit('transferHost', $event)"
+      @kick="$emit('kick', $event)"
+    />
   </header>
 </template>
 
 <style scoped>
 .badge-pop { display: inline-grid; }
 
+.dive-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0.4rem;
+}
+
+.head-title {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.head-actions {
+  grid-area: 1 / 2;
+  justify-self: end;
+}
+
+.head-squad {
+  grid-area: 2 / 2;
+  justify-self: end;
+}
+
+@media (max-width: 640px) {
+  .dive-header { grid-template-columns: minmax(0, 1fr); }
+
+  .head-title,
+  .head-actions,
+  .dive-meta,
+  .head-squad {
+    grid-area: auto;
+    justify-self: stretch;
+  }
+}
+
 .dive-meta {
+  grid-area: 2 / 1;
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -183,6 +248,27 @@ const lockedCeiling = computed(() => {
 .copy-code:hover {
   border-color: var(--gold);
   color: var(--gold);
+}
+.copy-code.glow {
+  border-color: var(--gold);
+  color: var(--gold);
+  animation: copy-glow 2.4s ease-in-out infinite;
+}
+@keyframes copy-glow {
+  0%, 100% {
+    box-shadow: 0 0 4px color-mix(in srgb, var(--gold) 30%, transparent);
+    border-color: color-mix(in srgb, var(--gold) 55%, var(--border));
+  }
+  50% {
+    box-shadow: 0 0 14px color-mix(in srgb, var(--gold) 85%, transparent);
+    border-color: var(--gold);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .copy-code.glow {
+    animation: none;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 60%, transparent);
+  }
 }
 .copy-code svg {
   width: 0.9rem;
