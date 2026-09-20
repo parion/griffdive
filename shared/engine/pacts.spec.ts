@@ -124,6 +124,17 @@ describe('reserve and loadout legality', () => {
       )
     }
   })
+
+  it('flags a misfortune the base kit cannot field (Oops, All Orbitals)', () => {
+    // The standard kit fields two orbitals; the rule needs four. A kit with
+    // enough orbitals (Quickplay's extras) clears it.
+    expect(hasLegalLoadout('oopsAllOrbitals', [], baseKit)).toBe(false)
+    expect(hasLegalLoadout('oopsAllOrbitals', [], startingItemIds('quickplay'))).toBe(true)
+  })
+
+  it('keeps No Stratagems behavioral — four slots still equip', () => {
+    expect(hasLegalLoadout('noStratagems', [], baseKit)).toBe(true)
+  })
 })
 
 describe('pactRiskTotal', () => {

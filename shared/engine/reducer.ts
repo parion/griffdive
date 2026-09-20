@@ -5,7 +5,7 @@ import { STARTING_KITS, startingItemIds } from './progression'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed } from './rng'
-import { activeMisfortune, allDiversPicked, catchUpOptionsFor, comboKey, diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
+import { activeMisfortune, allDiversPicked, catchUpOptionsFor, comboKey, diverOptions, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor } from './selectors'
 import { deriveFront, deriveMisfortune } from './wheel'
 
 export function createDiveState(
@@ -156,6 +156,13 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         return state
       }
       if (switching && action.accepted === state.misfortuneAccepted) {
+        return state
+      }
+      // A misfortune the squad cannot field is not a risk, it is a dead end:
+      // accepting it would strand a diver below HD2's four required stratagems
+      // and nobody could ready up. Refuse the accept; opting out and rerolling
+      // stay open. (AGENTS.md: Mandatory four stratagems.)
+      if (action.accepted && misfortuneStrandedDivers(state).length > 0) {
         return state
       }
       return commit(state, {

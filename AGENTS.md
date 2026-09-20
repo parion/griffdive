@@ -94,7 +94,8 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
 2. **Decide** — before any pact exists, the squad (host executes, IRL voice vote) **accepts or
    declines** the drawn misfortune. Declining runs a zero-team-risk dive; accepting applies the
    misfortune's **team risk** (1–5) to every diver's Valor for this mission. A reroll redraws and
-   resets the decision.
+   resets the decision. A rule the squad cannot field (one that would strand a diver below HD2's
+   four required stratagems) cannot be accepted — see Mandatory four stratagems.
 3. **Pact** — each diver is dealt a personal **pact offer**: 2 pacts on difficulties 3–6, 3 on 7+,
    rolled deterministically from the wheel seed (per diver) once the decision is in. The offer
    pool filters out pacts the accepted misfortune makes redundant or impossible; a declined draw
@@ -135,7 +136,10 @@ Exactly one misfortune per **mission**, drawn from the pool eligible at the oper
 difficulty. The draw is an offer, not a verdict: in a dedicated **decision** phase before pacts
 roll, the squad (host executes, IRL voice vote) **accepts or declines** it. Declining runs a
 zero-team-risk dive; accepting applies the misfortune's **team risk** (1–5) to every diver's Valor
-for this mission. A reroll redraws and resets the decision.
+for this mission. A reroll redraws and resets the decision. A squad-binding rule must be
+fieldable by **every seated diver**: if accepting would strand even one diver below HD2's four
+required stratagems, the engine refuses the accept (the UI disables "Lock it in" and names who
+can't field it; opting out and rerolling stay open) — see Mandatory four stratagems.
 
 Starter catalog (all values tunable in `shared/engine/config.ts`; ids and shape are the contract):
 
@@ -236,8 +240,14 @@ the category pacts read "no **offensive**": smoke, stun and shields are always l
 mis-call never smuggles power back into a restricted loadout. Misfortunes are squad-binding, so the
 exemption does not apply to them. `hasLegalLoadout` (pact bans + accepted misfortune + reserve,
 against `STRATAGEM_SLOTS_REQUIRED`) is the hard floor: `SET_PACTS` refuses a pick that would drop
-the diver below four, and the UI greys it "Leaves too few stratagems to ready up". A misfortune
-that strands the loadout on its own is not blamed on a pact.
+the diver below four, and the UI greys it "Leaves too few stratagems to ready up". The floor is
+enforced at **both** ends: a pact that would strand the diver is refused at pick time, and a
+misfortune that would strand **any** seated diver on its own is refused at the wheel decision
+(`ACCEPT_MISFORTUNE`, via `misfortuneStrandedDivers` in `shared/engine/selectors.ts`) — the squad
+could otherwise never ready up. `No Stratagems` is behavioral (four slots still equip, they just
+cannot be called), so it stays out of the equip ban-list; `Oops, All Orbitals` is the loadout rule
+that most often strands an early squad, since the base kit fields only two orbitals and reserve
+adds no more.
 
 **Failed pacts:** a broken pact is marked **failed** (`FAIL_PACT{playerId,pactId}`) while the
 mission runs — during the diving phase only, by the diver themselves or by the host refereeing the

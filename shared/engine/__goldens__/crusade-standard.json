@@ -400,12 +400,12 @@
       "mission": 29,
       "seed": 3964193037,
       "misfortuneId": "oopsAllOrbitals",
-      "misfortuneAccepted": true,
+      "misfortuneAccepted": false,
       "front": "illuminate",
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "mg43machinegun",
+      "optionId": "m105stalwart",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -439,10 +439,10 @@
       "mission": 32,
       "seed": 3337565728,
       "misfortuneId": "oopsAllOrbitals",
-      "misfortuneAccepted": true,
+      "misfortuneAccepted": false,
       "front": "terminids",
       "pactIds": [
-        "deadWeight"
+        "antiTankAbstinent"
       ],
       "outcome": "success",
       "stars": 5,
@@ -482,7 +482,7 @@
       "mission": 35,
       "seed": 2710938419,
       "misfortuneId": "oopsAllOrbitals",
-      "misfortuneAccepted": true,
+      "misfortuneAccepted": false,
       "front": "terminids",
       "pactIds": [
         "deadWeight"
@@ -574,8 +574,8 @@
       "g89smokescreen",
       "k2throwingknife",
       "las7dagger",
+      "m105stalwart",
       "m90a",
-      "mg43machinegun",
       "orbitalprecisionstrike",
       "oxygenator",
       "p113verdict",

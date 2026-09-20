@@ -66,7 +66,7 @@ IDs are stable and append-only; do not renumber.
 | N33 | Reward options skew to base tiers even at a high ceiling | Balance/Bug | M | Blocked (DEC-10) | new |
 | N34 | Copy-invite icon by session ID + lone-host share aside | UX | S | Done | new |
 | N35 | Users-list waiting indicators (pacts/rewards) | UX | S | Done | new |
-| N36 | Mandatory 4 slots vs equip-restricting misfortunes | Rules | M | Todo | new |
+| N36 | Mandatory 4 slots vs equip-restricting misfortunes | Rules | M | Done | new |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -138,10 +138,12 @@ Landed. N34, N35. No engine changes (presentation only) — no `ENGINE_VERSION` 
 
 ### Batch B — Rules & economy (needs decisions)
 
-N25, N33, N36. N5/N24 landed with **DEC-1** (reserve kit, mutual exclusion, four-slot floor),
-N6 landed with **DEC-2** (time/samples Valor), N12's same-result reroll landed with **DEC-3b**, and
-N7 (the Valor meter) landed with **DEC-3a** (the name).
-N36 is the misfortune half of the DEC-1 loadout-floor work and needs no new decision.
+N33. N5/N24 landed with **DEC-1** (reserve kit, mutual exclusion, four-slot floor),
+N6 landed with **DEC-2** (time/samples Valor), N12's same-result reroll landed with **DEC-3b**,
+N7 (the Valor meter) landed with **DEC-3a** (the name), and **N36** landed (the misfortune half
+of the four-slot floor: `ACCEPT_MISFORTUNE` now refuses a rule that strands any diver).
+`ENGINE_VERSION` bumped 12 → 13; goldens regenerated (the scripted crusade now declines the
+`oopsAllOrbitals` draws it cannot field).
 
 ### Batch C — Rewards & catch-up
 
@@ -297,14 +299,18 @@ toward the base. Related check: the guaranteed one-S slot (`rewards.ts:149-156`)
 when the diver's candidate S pool is empty (everything owned, or none in their declared warbonds) —
 verify and fall back to the highest available tier rather than dropping the guarantee.
 
-**N36 · Mandatory 4 slots vs equip-restricting misfortunes.** The pact half landed with DEC-1, but
-misfortunes carry the same four-slot tension and `hasLegalLoadout` already models it (an accepted
-misfortune whose own bans strand the loadout is not blamed on a pact). Open questions: `noStratagems`
-is behavioral — four slots still equip, they just cannot be called — so it should stay out of the
-equip ban-list (it currently is); and `oopsAllOrbitals` needs four *orbital* stratagems, which an
-early player owning only the base kit's two orbitals cannot field. Consider an equip-legality guard
-at the **wheel decision** (warn before accepting, or refuse an impossible accept) with the reward
-pool taken into account. No new decision needed; scope it once N6/N7 settle.
+**N36 · Mandatory 4 slots vs equip-restricting misfortunes. Done.** The pact half landed with
+DEC-1; this is the misfortune half. A squad-binding rule must be fieldable by **every seated
+diver**, so `misfortuneStrandedDivers` (`selectors.ts`) reports the divers a drawn rule would
+strand below `STRATAGEM_SLOTS_REQUIRED`, and `ACCEPT_MISFORTUNE` refuses an accept when any diver
+is stranded (`reducer.ts`) — the squad could otherwise never ready up. Declining and rerolling
+stay open. `WheelPanel` disables "Lock it in", names who can't field it, and greys the switch to
+accept, so the floor is legible before the vote. `No Stratagems` stays out of the equip ban-list
+(behavioral: four slots still equip, they just can't be called); `Oops, All Orbitals` is the rule
+that most often strands an early squad (the base kit fields two orbitals, reserve adds no more).
+Covered by `misfortuneStrandedDivers` (selectors), the accept-refusal/allowed cases (reducer), and
+the `oopsAllOrbitals` / `noStratagems` legality checks (pacts). `ENGINE_VERSION` 12 → 13; goldens
+regenerated (the scripted crusade declines `oopsAllOrbitals` draws it can't field).
 
 ### Batch C
 
