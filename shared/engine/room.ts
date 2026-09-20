@@ -24,6 +24,8 @@ export function createLobbyState(): DiveState {
     legacyCaches: {},
     offerSeed: null,
     lastReport: null,
+    bonusWinnerId: null,
+    bonusTokenClaimed: false,
     actionLog: [],
     seedHistory: [],
   }
@@ -90,6 +92,9 @@ export function joinDiver(state: DiveState, playerId: string, name: string): Div
     catchUpGranted,
     catchUpOwed: catchUpGranted,
     skipsCurrentDraft: state.phase === 'diving',
+    rewardTokens: 0,
+    bannedItemIds: [],
+    rewardRerollSeed: null,
   }
   return {
     ...state,

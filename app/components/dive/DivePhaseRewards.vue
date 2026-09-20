@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
+import { ALL_WARBOND_CODES, ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { performanceValor } from '~~/shared/engine/rewards'
-import { allDiversPicked, diverOptions, pactRiskOf, rewardPoolFor, teamRiskOf } from '~~/shared/engine/selectors'
+import { allDiversPicked, canBanReward, canRerollRewards, diverOptions, pactRiskOf, rewardPoolFor, teamRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -15,6 +15,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
+  reroll: []
+  ban: [optionId: string]
+  awardBonus: [playerId: string]
+  claimBonus: []
   advance: []
 }>()
 
@@ -29,16 +33,55 @@ const rewardPool = computed(() =>
   props.self ? rewardPoolFor(props.self.warbondCodes ?? ALL_WARBOND_CODES) : [])
 const ownedIds = computed(() => props.state.personalInventories[props.selfId ?? ''] ?? [])
 
+// The rest of the squad's draft state for the icon-only indicators: what each
+// other diver banked, or that they are still choosing.
+const squadPicks = computed(() =>
+  props.state.divers
+    .filter(diver => diver.id !== props.selfId)
+    .map(diver => ({
+      id: diver.id,
+      name: diver.name,
+      item: diver.pickedOptionId ? ITEMS_BY_ID.get(diver.pickedOptionId) ?? null : null,
+      skipped: diver.skipsCurrentDraft,
+    })),
+)
+
+// Bonus-honors token spenders: the engine owns the rules (token cost, an open
+// pick, a non-choice option, never emptying the offer) — this is the legible
+// half. The allow-list drives the draft's ban affordances.
+const rewardTokens = computed(() => props.self?.rewardTokens ?? 0)
+const canReroll = computed(() =>
+  props.self ? canRerollRewards(props.state, props.self).allowed : false)
+const bannableIds = computed(() => {
+  const self = props.self
+  if (!self) {
+    return []
+  }
+  return diverOptions(props.state, self)
+    .filter(option => canBanReward(props.state, self, option.optionId).allowed)
+    .map(option => option.optionId)
+})
+
 const ready = computed(() => allDiversPicked(props.state))
 </script>
 
 <template>
   <ValorMeter
+    v-if="!ready"
     :difficulty="state.difficulty"
     :team-risk="teamRisk"
     :pact-risk="selfPactRisk"
     :performance="selfPerformance"
     locked
+  />
+  <BonusCeremony
+    v-else
+    :state="state"
+    :self-id="selfId"
+    :self="self"
+    :can-control="canControl"
+    @award="playerId => emit('awardBonus', playerId)"
+    @claim="emit('claimBonus')"
   />
   <RewardDraft
     :options="options"
@@ -46,7 +89,13 @@ const ready = computed(() => allDiversPicked(props.state))
     :pool="rewardPool"
     :owned-ids="ownedIds"
     :options-lost="self?.failedPactIds.length ?? 0"
+    :squad-picks="squadPicks"
+    :token-count="rewardTokens"
+    :can-reroll="canReroll"
+    :bannable-ids="bannableIds"
     @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
+    @reroll="emit('reroll')"
+    @ban="optionId => emit('ban', optionId)"
   />
   <Transition name="phase">
     <div

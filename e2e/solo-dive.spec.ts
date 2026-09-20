@@ -51,6 +51,13 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('img', { name: 'choosing reward' })).toBeVisible()
   await page.locator('.item-card:not([disabled])').first().click()
 
+  // Bonus honors replaces the locked Valor meter once the draft completes: the
+  // host awards the spun stat contest and the winner banks a reward token.
+  await expect(page.getByRole('heading', { name: 'Squad Honors' })).toBeVisible()
+  await page.locator('.award-row').getByRole('button', { name: 'Griffon' }).click()
+  await page.getByRole('button', { name: 'Claim a reward token' }).click()
+  await expect(page.getByText('Reward token banked.')).toBeVisible()
+
   await page.getByRole('button', { name: /Next mission/ }).click()
   // Medium runs 2-mission operations. The tracker advances to the second
   // segment; the overall mission count lives in its accessible label.

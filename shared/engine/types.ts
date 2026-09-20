@@ -37,6 +37,15 @@ export interface DiverState {
   // Seated mid-mission (phase 'diving'): the squad already dove the current
   // mission, so the joiner skips its reward draft instead of blocking on it.
   skipsCurrentDraft: boolean
+  // Bonus-honors reward tokens: banked across the crusade, spent to reroll
+  // this diver's offer or ban one offered item from their personal pools.
+  rewardTokens: number
+  // Offered items this diver has banned from their personal reward and
+  // catch-up pools for the rest of the crusade — never re-offered.
+  bannedItemIds: string[]
+  // Client seed of the current mission's reward reroll, if the diver spent a
+  // token on one. Reset with the pacts every mission.
+  rewardRerollSeed: number | null
 }
 
 export interface WheelResult {
@@ -88,6 +97,11 @@ export interface DiveState {
   legacyCaches: Record<string, string[]>
   offerSeed: number | null
   lastReport: MissionReport | null
+  // Bonus honors for the current mission's reward window: the host-selected
+  // winner of the spun stat contest, and whether they have claimed the token.
+  // Both reset every mission; the ceremony is a soft gate on ADVANCE.
+  bonusWinnerId: string | null
+  bonusTokenClaimed: boolean
   actionLog: EngineAction[]
   seedHistory: number[]
 }
@@ -105,6 +119,10 @@ export type EngineAction
     | { type: 'PICK_REWARD', playerId: string, optionId: string, choiceItemId?: string }
     | { type: 'CLAIM_CATCHUP_OPTION', playerId: string, optionId: string }
     | { type: 'CLAIM_CACHE', playerId: string, cacheOwnerId: string }
+    | { type: 'REROLL_REWARDS', playerId: string, seed: number }
+    | { type: 'BAN_REWARD', playerId: string, optionId: string }
+    | { type: 'AWARD_BONUS', playerId: string }
+    | { type: 'CLAIM_BONUS_TOKEN', playerId: string }
     | { type: 'LEAVE_DIVE', playerId: string }
     | { type: 'ADVANCE' }
     | { type: 'END_DIVE' }

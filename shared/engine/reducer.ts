@@ -1,6 +1,6 @@
 import { ALL_WARBOND_CODES, ITEMS_BY_ID, WARBONDS } from '../data/catalog'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction } from './types'
-import { ACTION_LOG_CAP, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, maxStarsFor, missionsPerOperation } from './config'
+import { ACTION_LOG_CAP, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, REWARD_TOKEN_CAP, maxStarsFor, missionsPerOperation } from './config'
 import { STARTING_KITS, startingItemIds } from './progression'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
@@ -55,6 +55,7 @@ function resetDivers(state: DiveState): DiverState[] {
     failedPactIds: [],
     pickedOptionId: null,
     skipsCurrentDraft: false,
+    rewardRerollSeed: null,
   }))
 }
 
@@ -62,6 +63,8 @@ function resetForNextMission(state: DiveState): Partial<DiveState> {
   return {
     offerSeed: null,
     lastReport: null,
+    bonusWinnerId: null,
+    bonusTokenClaimed: false,
     divers: resetDivers(state),
   }
 }
@@ -388,10 +391,15 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }
       if (option.choice) {
         // The free pick still honors the personal-catalog rules: only items
-        // from the diver's own warbonds, never armor pieces, nothing owned.
+        // from the diver's own warbonds, never armor pieces, nothing owned or
+        // banned.
         const owned = new Set(state.personalInventories[diver.id] ?? [])
         const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
-        if (owned.has(item.id) || !pool.some(entry => entry.id === item.id)) {
+        if (
+          owned.has(item.id)
+          || diver.bannedItemIds.includes(item.id)
+          || !pool.some(entry => entry.id === item.id)
+        ) {
           return state
         }
       }
@@ -520,6 +528,91 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         [diver.id]: [...(state.personalInventories[diver.id] ?? []), ...cache],
       }
       return commit(state, { divers, legacyCaches, personalInventories }, action)
+    }
+
+    case 'REROLL_REWARDS': {
+      if (state.phase !== 'rewards' || state.offerSeed === null) {
+        return state
+      }
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      if (!diver || diver.pickedOptionId || diver.rewardTokens < 1) {
+        return state
+      }
+      // "Spins are seeds", but a reroll must actually move: refuse a seed that
+      // re-derives the offer it would replace (mirrors REROLL_WHEEL).
+      const current = diverOptions(state, diver).map(option => option.optionId).join('|')
+      const rerolled = diverOptions(state, { ...diver, rewardRerollSeed: action.seed })
+        .map(option => option.optionId)
+        .join('|')
+      if (rerolled === current) {
+        return state
+      }
+      const divers = state.divers.map(candidate =>
+        candidate.id === diver.id
+          ? {
+              ...candidate,
+              rewardTokens: candidate.rewardTokens - 1,
+              rewardRerollSeed: action.seed,
+            }
+          : candidate,
+      )
+      return commit(state, { divers }, action)
+    }
+
+    case 'BAN_REWARD': {
+      if (state.phase !== 'rewards' || state.offerSeed === null) {
+        return state
+      }
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      if (!diver || diver.pickedOptionId || diver.rewardTokens < 1) {
+        return state
+      }
+      const options = diverOptions(state, diver)
+      const option = options.find(candidate => candidate.optionId === action.optionId)
+      // Liberty's Cross is a free pick, not an item, so it cannot be banned —
+      // and a ban may never leave the diver with nothing left to pick.
+      if (!option || option.choice || options.length < 2) {
+        return state
+      }
+      const divers = state.divers.map(candidate =>
+        candidate.id === diver.id
+          ? {
+              ...candidate,
+              rewardTokens: candidate.rewardTokens - 1,
+              bannedItemIds: [...candidate.bannedItemIds, option.item.id],
+            }
+          : candidate,
+      )
+      return commit(state, { divers }, action)
+    }
+
+    case 'AWARD_BONUS': {
+      // Host-only: the host reads HD2's end screen and names the winner of the
+      // spun contest. Resolved once per mission, after the draft completes.
+      if (state.phase !== 'rewards' || !allDiversPicked(state) || state.bonusWinnerId) {
+        return state
+      }
+      if (!state.divers.some(diver => diver.id === action.playerId)) {
+        return state
+      }
+      return commit(state, { bonusWinnerId: action.playerId }, action)
+    }
+
+    case 'CLAIM_BONUS_TOKEN': {
+      // Self-service: only the named winner banks their token, and only once.
+      if (
+        state.phase !== 'rewards'
+        || state.bonusWinnerId !== action.playerId
+        || state.bonusTokenClaimed
+      ) {
+        return state
+      }
+      const divers = state.divers.map(diver =>
+        diver.id === action.playerId
+          ? { ...diver, rewardTokens: Math.min(REWARD_TOKEN_CAP, diver.rewardTokens + 1) }
+          : diver,
+      )
+      return commit(state, { divers, bonusTokenClaimed: true }, action)
     }
 
     case 'SET_NAME': {

@@ -198,6 +198,9 @@ describe('misfortuneStrandedDivers', () => {
       catchUpGranted: 0,
       catchUpOwed: 0,
       skipsCurrentDraft: false,
+      rewardTokens: 0,
+      bannedItemIds: [],
+      rewardRerollSeed: null,
     }
     const wheeled: DiveState = {
       ...state,
