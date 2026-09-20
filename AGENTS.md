@@ -107,7 +107,9 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
 5. **Report** — squad records outcome: success (stars 1–max, optional time %) or failure (no stars).
 6. **Rewards** (success only) — each diver is offered N options rolled against their personal tier
    ceiling and picks one. All rewards go to the diver's personal inventory — stratagems included.
-   Armor rewards are **passives**, never armor pieces (see inventory model).
+   Armor rewards are **passives**, never armor pieces (see inventory model). On a full-star clear,
+   once every diver has picked, the squad spins **bonus honors** — a random end-screen stat the host
+   resolves to a winner, who banks a reward token (see Reward tokens & squad honors).
 7. **Advance** — next mission, which draws a fresh misfortune. Completing all missions of an
    operation bumps the crusade difficulty by +1. Failure restarts the operation (mission 1) at the
    same difficulty, keeps the front, and the squad forfeits one item.
@@ -154,7 +156,7 @@ Starter catalog (all values tunable in `shared/engine/config.ts`; ids and shape 
 | No Orbitals | No orbital stratagems | 2 | diff 5 | loadout |
 | Primary Only | Primaries only — no support weapons, no pickups or swaps (stratagems allowed) | 3 | diff 5 | field |
 | Stealth | No raised alarms or bot detections | 3 | diff 5 | field |
-| Oops, All Orbitals | Orbital stratagems only | 3 | diff 6 | loadout |
+| Oops, All Airstrikes | Eagle and orbital ("red") stratagems only | 3 | diff 6 | loadout |
 | Zero Deaths | Any diver death = mission failure | 4 | diff 7 | field |
 | No Reserves | No one gets reinforced this mission | 4 | diff 7 | field |
 | No Stratagems | No stratagems at all, not even resupply | 5 | diff 9 | loadout |
@@ -245,9 +247,9 @@ enforced at **both** ends: a pact that would strand the diver is refused at pick
 misfortune that would strand **any** seated diver on its own is refused at the wheel decision
 (`ACCEPT_MISFORTUNE`, via `misfortuneStrandedDivers` in `shared/engine/selectors.ts`) — the squad
 could otherwise never ready up. `No Stratagems` is behavioral (four slots still equip, they just
-cannot be called), so it stays out of the equip ban-list; `Oops, All Orbitals` is the loadout rule
-that most often strands an early squad, since the base kit fields only two orbitals and reserve
-adds no more.
+cannot be called), so it stays out of the equip ban-list; `Oops, All Airstrikes` is the loadout rule
+that most often strands an early squad, since the base kit fields only three red stratagems (Eagle
+Smoke Strike plus Orbital EMS/Smoke Strike) and reserve adds no more.
 
 **Failed pacts:** a broken pact is marked **failed** (`FAIL_PACT{playerId,pactId}`) while the
 mission runs — during the diving phase only, by the diver themselves or by the host refereeing the
@@ -335,6 +337,39 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   ceiling reaches **S** about a fifth of the time, **S+** rarely. Diff 10 with zero Valor → **A**,
   never S. Risk pays at every altitude; nothing is guaranteed, but everything gets likelier.
 
+### Reward tokens & squad honors
+
+After a successful mission's reward draft completes, the squad spins one **bonus honors** contest (a
+Mario-Party bonus star): a random stat from HD2's end-of-mission screen — kills, accuracy, deaths,
+stims, samples, friendly fire, … — with a winning direction (*most* or *least*), each entry in
+`BONUS_STATS` (`shared/engine/config.ts`). Honors are a **limited prize** (`bonusEligible`): a token
+only lands on a **full-star clear** (`stars === maxStarsFor(difficulty)`) and only when the
+**squad-size cadence** is due — `BONUS_TOKEN_INTERVAL` awards a four-diver squad every mission, a
+three- or two-diver squad every other mission, and a solo diver every third. Off the cadence or short
+of full stars, the reward phase skips the ceremony entirely. When due, the contest is **spun on
+click** (`SPIN_BONUS{seed}`, host-only) once every diver has picked, and the seed is what syncs:
+`rollBonus` (stream salt 4) derives the same stat on every client. **The app never captures the
+stats**: the host reads HD2's stats screen and names the winner (`AWARD_BONUS`, host-only); ties are
+the host's call. Awarding banks the winner's **one flexible reward token** immediately (capped at
+`REWARD_TOKEN_CAP`, 3) — there is no separate claim step. When only one diver can win (solo, or a
+squad where everyone else sat the draft out), selection is redundant: the spin resolves the ceremony
+and banks the token by itself.
+
+A token is spent by its owner during a reward draft on one of:
+- **Reroll** (`REROLL_REWARDS`) — redraw the diver's own offer. A reroll must move (a seed that
+  re-derives the same offer is refused, mirroring `REROLL_WHEEL`), and both the ceiling and option
+  streams turn.
+- **Ban** (`BAN_REWARDS`) — a separate flow: the diver selects any or all of the offered non-choice
+  items to purge from their personal reward and catch-up pools for the rest of the crusade
+  (`bannedItemIds`). Banning **forfeits that mission's reward pick** (`rewardBanned` resolves the
+  draft with no item), so the diver may clear the whole offer. Liberty's Cross is a free pick, not an
+  item, so it cannot be banned.
+
+The ceremony is a **soft gate**: `ADVANCE` never waits on it, and an unspun/unawarded contest dies
+with the mission reset. Tokens and bans are personal and persist across missions; reroll seeds and
+the ban flag reset with the pacts. Negative targeting (bans) does not violate "guarantee rarity
+class, never specific items" — it narrows a pool, it never names a reward.
+
 ### Inventory model
 
 - **Personal:** primaries, secondaries, throwables, boosters, armor **passives**, and
@@ -363,7 +398,9 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   are structurally unreachable. Risk remains the joiner's choice from their first mission; the
   promotion only buys altitude parity.
 - **Derivation:** the offer derives from the last spun seed (`catchUpOptionsFor` in
-  `shared/engine/selectors.ts`) — deterministic, never stored, no reroll surface.
+  `shared/engine/selectors.ts`) — deterministic, never stored, no reroll surface. The full grant
+  rolls once against the joiner's starting kit and claimed items drop out of the draft, so a
+  promotion never exposes more candidates than it granted.
 - **Ceremony is soft:** the joiner claims picks whenever it suits them (`CLAIM_CATCHUP_OPTION`,
   self-service, one per pick). It never gates squad progress — unlike the reward draft, where
   `allDiversPicked` blocks `ADVANCE`.
@@ -420,7 +457,9 @@ app/
                    WheelPanel, PactPicker, RewardDraft — the slot-machine reward
                    draft (staggered reels that lock left to right), RewardReel — one
                    rolling reel, ValorMeter — the live Valor gauge
-                   and tier-ceiling ladder, FieldPromotionCard — the mid-crusade
+                   and tier-ceiling ladder, BonusCeremony — the end-of-mission stat
+                   contest that replaces the locked Valor meter and pays a reward token,
+                   FieldPromotionCard — the mid-crusade
                    catch-up ceremony, DiversChoiceCard — the special
                    S+ "Liberty's Cross" offer card, DiversChoicePicker — its minified codex
                    modal, InventoryGrid, CrusadeSetup, WarbondPicker,
@@ -518,14 +557,16 @@ Canonical engine actions (the reducer union; keep names stable):
 `START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}`
 `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
-`CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}` `LEAVE_DIVE{playerId}`
-`ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
+`REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
+`AWARD_BONUS{playerId}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
+`LEAVE_DIVE{playerId}` `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
-`REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `ADVANCE`, `END_DIVE`, `KICK_DIVER`,
-`TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
-`CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are self-service.
+`REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
+`KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
+`REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are
+self-service.
 `FAIL_PACT` is sent by the target diver or the host (server refuses everyone else). Host disconnect →
 `TRANSFER_HOST` to the earliest joiner; none left → room hibernates in storage with a TTL.
 Reconnect = re-`hello` with stored playerId → server replays snapshot.

@@ -177,7 +177,7 @@ describe('diverOptions', () => {
 describe('misfortuneStrandedDivers', () => {
   it('reports every diver the drawn rule would strand', () => {
     const state = createDiveState({ variant: 'standard' }, 'host', 'Griffin')
-    const wheeled = { ...state, difficulty: 6, wheel: { seed: 1, misfortuneId: 'oopsAllOrbitals' } }
+    const wheeled = { ...state, difficulty: 6, wheel: { seed: 1, misfortuneId: 'oopsAllAirstrikes' } }
     expect(misfortuneStrandedDivers(wheeled).map(diver => diver.id)).toEqual(['host'])
     // A fieldable rule strands nobody, and so does an empty wheel.
     expect(misfortuneStrandedDivers({ ...wheeled, wheel: { seed: 1, misfortuneId: 'noBackpacks' } })).toEqual([])
@@ -198,11 +198,15 @@ describe('misfortuneStrandedDivers', () => {
       catchUpGranted: 0,
       catchUpOwed: 0,
       skipsCurrentDraft: false,
+      rewardTokens: 0,
+      bannedItemIds: [],
+      rewardRerollSeed: null,
+      rewardBanned: false,
     }
     const wheeled: DiveState = {
       ...state,
       difficulty: 6,
-      wheel: { seed: 1, misfortuneId: 'oopsAllOrbitals' },
+      wheel: { seed: 1, misfortuneId: 'oopsAllAirstrikes' },
       divers: [...state.divers, guest],
       personalInventories: { ...state.personalInventories, guest: startingItemIds('quickplay') },
     }

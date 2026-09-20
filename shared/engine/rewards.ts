@@ -1,5 +1,6 @@
 import type { Item, Tier } from '../data/types'
 import {
+  BONUS_STATS,
   MAX_OPTIONS,
   SAMPLE_VALOR_CAP,
   SAMPLE_VALOR_WEIGHTS,
@@ -18,7 +19,8 @@ import {
   baseTierFor,
   upgradeOdds,
 } from './config'
-import { mulberry32, pickWeighted } from './rng'
+import type { BonusStat } from './config'
+import { deriveSeed, mulberry32, pickIndex, pickWeighted } from './rng'
 import type { Rng } from './rng'
 import type { MissionReport, RewardTier } from './types'
 
@@ -129,6 +131,16 @@ export function oddsToReach(difficulty: number, valor: number, tier: RewardTier)
     odds *= stepOdds(valor, pos, step, floor + step)
   }
   return odds
+}
+
+// Bonus honors: after every reward draft the squad spins one end-of-mission
+// stat contest. Like the wheel and the pact offer, it is a deterministic
+// derivation of a seed — stream salt 4 (wheel uses 1/2, pacts 3) — so every
+// client animates to the same result. The host resolves the winner by reading
+// HD2's stats screen; the app never captures the stats.
+export function rollBonus(seed: number): BonusStat {
+  const rng = mulberry32(deriveSeed(seed, 4))
+  return BONUS_STATS[pickIndex(rng, BONUS_STATS.length)]!
 }
 
 export function optionsForStars(stars: number, ceiling: RewardTier): number {

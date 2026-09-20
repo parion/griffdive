@@ -20,7 +20,7 @@ export const MISFORTUNES: readonly Misfortune[] = [
   { id: 'noOrbitals', name: 'No Orbitals', rule: 'No orbital stratagems', accountability: 'loadout' },
   { id: 'primaryOnly', name: 'Primary Only', rule: 'Primaries only — no support weapons, no pickups or swaps (stratagems allowed)', accountability: 'field' },
   { id: 'stealth', name: 'Stealth', rule: 'No raised alarms or bot detections', accountability: 'field' },
-  { id: 'oopsAllOrbitals', name: 'Oops, All Orbitals', rule: 'Orbital stratagems only', accountability: 'loadout' },
+  { id: 'oopsAllAirstrikes', name: 'Oops, All Airstrikes', rule: 'Eagle and orbital stratagems only', accountability: 'loadout' },
   { id: 'zeroDeaths', name: 'Zero Deaths', rule: 'Any diver death = mission failure', accountability: 'field' },
   { id: 'noReserves', name: 'No Reserves', rule: 'No one gets reinforced this mission', accountability: 'field' },
   { id: 'noStratagems', name: 'No Stratagems', rule: 'No stratagems at all, not even resupply', accountability: 'loadout' },

@@ -37,6 +37,18 @@ export interface DiverState {
   // Seated mid-mission (phase 'diving'): the squad already dove the current
   // mission, so the joiner skips its reward draft instead of blocking on it.
   skipsCurrentDraft: boolean
+  // Bonus-honors reward tokens: banked across the crusade, spent to reroll
+  // this diver's offer or to ban offered items from their personal pools.
+  rewardTokens: number
+  // Offered items this diver has banned from their personal reward and
+  // catch-up pools for the rest of the crusade — never re-offered.
+  bannedItemIds: string[]
+  // Client seed of the current mission's reward reroll, if the diver spent a
+  // token on one. Reset with the pacts every mission.
+  rewardRerollSeed: number | null
+  // The diver spent this draft on bans instead of a reward: the draft counts
+  // as complete without a pick. Reset with the pacts every mission.
+  rewardBanned: boolean
 }
 
 export interface WheelResult {
@@ -88,6 +100,12 @@ export interface DiveState {
   legacyCaches: Record<string, string[]>
   offerSeed: number | null
   lastReport: MissionReport | null
+  // Bonus honors for the current mission's reward window: the host-spun
+  // contest seed (like the Wheel, spun on click) and the diver the host
+  // awarded. Awarding banks the token immediately. Both reset every mission;
+  // the ceremony is a soft gate on ADVANCE.
+  bonusSeed: number | null
+  bonusWinnerId: string | null
   actionLog: EngineAction[]
   seedHistory: number[]
 }
@@ -105,6 +123,10 @@ export type EngineAction
     | { type: 'PICK_REWARD', playerId: string, optionId: string, choiceItemId?: string }
     | { type: 'CLAIM_CATCHUP_OPTION', playerId: string, optionId: string }
     | { type: 'CLAIM_CACHE', playerId: string, cacheOwnerId: string }
+    | { type: 'REROLL_REWARDS', playerId: string, seed: number }
+    | { type: 'BAN_REWARDS', playerId: string, optionIds: string[] }
+    | { type: 'SPIN_BONUS', seed: number }
+    | { type: 'AWARD_BONUS', playerId: string }
     | { type: 'LEAVE_DIVE', playerId: string }
     | { type: 'ADVANCE' }
     | { type: 'END_DIVE' }

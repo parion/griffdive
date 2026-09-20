@@ -38,25 +38,25 @@ IDs are stable and append-only; do not renumber.
 | N5 | Mandatory 4 stratagems; remove `barebones`; early-game pact trap | Rules | M | Done (DEC-1: loadout-checked + reserve + exclusivity) | new |
 | N6 | Time % + samples (common/rare/super) boost Valor slightly | Rules | M | Done (DEC-2) | new |
 | N7 | Valor meter visual (lore-named) | UX | M | Done | new, QA-U1 |
-| N8 | Reward ban + separate reward reroll | Rules/Design | L | Blocked (DEC-4) | new |
+| N8 | Reward ban + separate reward reroll | Rules/Design | L | Done | new |
 | N9 | `stimAbstinent` at max risk (`untouchable` already 3) | Balance | S | Done | new |
 | N10 | Crash / host-loss resilience mid-match | Infra/UX | L | Blocked (DEC-9) | new, QA-T3 |
 | N11 | Codex kicks host + no back link | Bug | S | Done | new |
 | N12 | Faction reroll broken + no same-result reroll | Bug | S | Done (front gate + same-result refusal) | new, QA-T2/D1 |
 | N13 | `fragileLiberty` locks out early players | Balance/Data | M | Blocked (DEC-6) | new |
-| N14 | Squad reward indicators (icon-only) | UX | M | Todo | new |
+| N14 | Squad reward indicators (icon-only) | UX | M | Done | new |
 | N15 | All incoming kits look identical | Bug? | S–M | Needs repro | new |
-| N16 | Incoming Valor from current run performance | Design | M | Blocked (DEC-7) | new |
+| N16 | Incoming Valor from current run performance | Design | M | Done (DEC-7: closed) | new |
 | N17 | Onboarding for link-joiners | UX | L | Blocked (N6/N7) | new |
 | N18 | Rejoining under stored `playerId` does not reclaim legacy cache | Bug | S | Done | QA-T1/D3 |
 | N19 | S+ unpreviewable in low difficulty bands | Balance/UX | S | Done | QA-U2 |
 | N20 | Squad strip a11y (online dot + host crown indistinguishable) | UX | S | Done | QA-U3 |
 | N21 | `MARK FAILED` confirm has no armed cue | UX | S | Done | QA-U4 |
-| N22 | Field Promotion re-rolls its offer on every claim | UX/Design | M | Needs repro | QA-U5 |
+| N22 | Field Promotion re-rolls its offer on every claim | UX/Design | M | Done | QA-U5 |
 | N23 | Star→options is flat early (3★ = 2 options) | Balance | S | Done | QA-B1 |
 | N24 | Pact redundancy is free risk (subsumed pacts still count) | Balance | M | Done (exclusive groups + subsumption) | QA-B2 |
 | N25 | Pacts are strictly "take everything" | Balance | S | Todo | QA-B3 |
-| N26 | Failure path rework | Design | L | Blocked (DEC-8) | QA-B4 |
+| N26 | Failure path rework | Design | L | Accepted (DEC-8: keep current) | QA-B4 |
 | N27 | S+ / Liberty's Cross frequency at altitude | Balance | S | Done (monitor) | QA-B5 |
 | N28 | `holdingsEmpty` branch effectively unreachable | Infra | S | Accepted | QA-F1 |
 | N29 | Stale mission counter during `forfeit` | UX | S | Done | QA-F2 |
@@ -67,6 +67,8 @@ IDs are stable and append-only; do not renumber.
 | N34 | Copy-invite icon by session ID + lone-host share aside | UX | S | Done | new |
 | N35 | Users-list waiting indicators (pacts/rewards) | UX | S | Done | new |
 | N36 | Mandatory 4 slots vs equip-restricting misfortunes | Rules | M | Done | new |
+| N37 | Oops, All Orbitals too narrow (rename to Airstrikes, include Eagles) | Rules | S | Done | new |
+| N38 | Bonus-stat squad honors (slot-machine stat → token prize) | Feature/Design | L | Done | new |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -77,13 +79,14 @@ Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the re
 | DEC-1 | Stratagem-restricting pacts: rule text is "equipped but never called" (accountability moves to field/loadout-with-intent), or provide a neutral fallback stratagem list for early players? | Resolved — N5, N24 |
 | DEC-2 | Time/samples → Valor: target max bonus (e.g. +0.5 total, or +1.0), and sample rarity weights? | Resolved — N6 |
 | DEC-3 | Luck meter name (candidates: Liberty's Favor, Dive Fortune, Providence), and do rerolls exclude only the immediately replaced result or every prior result this window? | Resolved — split: DEC-3a naming (N7), DEC-3b reroll scope (N12) |
-| DEC-4 | Reward reroll token: banked across missions or per-mission? Ban scope: personal-crusade or squad-wide, and does a ban cost the whole reward pick? | N8 |
+| DEC-4 | Reward reroll token: banked across missions or per-mission? Ban scope: personal-crusade or squad-wide, and does a ban cost the whole reward pick? | Resolved — N8/N38 (one flexible token from bonus honors; spend to reroll your own offer or ban one offered item from your personal pools for the crusade) |
 | DEC-5 | Strains: drawn per operation (with the front) or per mission? Flavor-only or rule-bearing modifiers? Which front/strains ship first? | N2 |
 | DEC-6 | Light-armor fix: add a light starter passive, reword `fragileLiberty` to "no heavy armor", or gate the misfortune? | N13 |
-| DEC-7 | Incoming-player Valor: cap, and the non-exploit rule (e.g. scales off the squad's banked performance, not a fresh join's). | N16 |
-| DEC-8 | Failure rework direction (owner-flagged, to be spec'd): what replaces "repeat op + forfeit one item"? | N26 |
+| DEC-7 | Incoming-player Valor: cap, and the non-exploit rule (e.g. scales off the squad's banked performance, not a fresh join's). | Resolved — N16 closed (conflicts with "Field Promotion restores altitude, never rarity") |
+| DEC-8 | Failure rework direction (owner-flagged, to be spec'd): what replaces "repeat op + forfeit one item"? | Resolved — N26 accepted (keep current rule) |
 | DEC-9 | Mid-match crash semantics: void the mission with no forfeit, auto-pause, or keep the forfeit? | N10 |
 | DEC-10 | Target distribution for rolled reward options under a ceiling (favor near-ceiling vs uniform), and the S+ guarantee fallback when the diver's S pool is empty. | Resolved — N33 |
+| DEC-11 | Bonus honors (N38): prize shape (one flexible token vs choose ban/reroll at award), stat pool + directions, per-mission vs per-operation cadence, whether the skip-a-reward source survives, and whether ADVANCE waits on the ceremony. | Resolved — N38 (one flexible token; all 12 stats with directions; per mission; bonus is the only token source; soft gate) |
 
 **DEC-1 — resolved (N5/N24). Landed.** Keep the stratagem pacts **loadout-checked**, not "equipped
 but never called": a stratagem call-in is team-visible but not attributed to a diver and never
@@ -160,7 +163,13 @@ the highest available tier). `ENGINE_VERSION` bumped 12 → 14; goldens regenera
 
 ### Batch C — Rewards & catch-up
 
-N8, N14, N16, N22, N26.
+N8, N14, N16, N22, N26, plus **N38** (bonus-stat honors, the token source). **All landed or
+closed.** N14 and N22 landed (presentation + a catch-up derivation fix; no engine-version bump — the
+promotion's rules are unchanged). N16 closed (DEC-7) and N26 accepted (DEC-8: keep current rule) — no
+code. **N8 + N38 landed together** under DEC-4/DEC-11: the reward-token economy and the end-of-mission
+bonus ceremony, limited to full-star clears on a squad-size cadence. `ENGINE_VERSION` is 15 after the
+N37 (Airstrikes) merge; the token work needed no further bump, and goldens are unchanged for it (no
+scripted crusade spends a token).
 
 ### Batch D — Content, resilience, onboarding
 
@@ -333,30 +342,75 @@ Covered by `misfortuneStrandedDivers` (selectors), the accept-refusal/allowed ca
 the `oopsAllOrbitals` / `noStratagems` legality checks (pacts). `ENGINE_VERSION` 12 → 13; goldens
 regenerated (the scripted crusade declines `oopsAllOrbitals` draws it can't field).
 
+**N37 · Oops, All Orbitals too narrow. Done.** Playtest report: a diver holding 13 stratagems could
+not accept the rule because only two of them were orbitals — the other eleven were Eagles, sentries,
+support and emplacements, none of them legal. The category was broadened to the game's **red**
+stratagems: `oopsAllOrbitals` → **`oopsAllAirstrikes`** (name "Oops, All Airstrikes", rule "Eagle and
+orbital stratagems only"). `isAirstrikeStratagem` (`Eagle` or `Orbital`) replaces the orbital-only
+filter in `legalStratagemCount`, and `BLOCKED_UNDER_MISFORTUNE` now only blocks the pacts that stay
+redundant under the wider rule (`packLight`, `thirsty`, `primaryConcern`, `openField` — *Grounded*,
+*Ship Silent* and *Anti-Tank Abstinent* are meaningful again since Eagles/Orbitals can still be
+chosen). `ENGINE_VERSION` 14 → 15; goldens regenerated.
+
 ### Batch C
 
-**N8 · Reward ban + reroll.** Separate reward reroll (earned over mission successes) plus a way to
-spend your reward pick to ban offered item(s). Needs new actions (`REROLL_REWARDS`, ban), exclusion
-support in `rollRewardOptions` (`rewards.ts:110`), `DiveState` fields, config, and an AGENTS.md
-economy section. Negative targeting (bans) does not violate "guarantee rarity class, never specific
-items", but scope must be defined (DEC-4).
+**N8 · Reward reroll + ban (the token economy). Done (DEC-4).** One flexible reward token per
+bonus-honors win (`rewardTokens`, capped at `REWARD_TOKEN_CAP` 3), spent by its owner during a
+reward draft:
+- `REROLL_REWARDS{seed}` redraws the diver's own offer. The per-diver `rewardRerollSeed` folds a
+  fresh client seed into `diverOptions`, turning both the ceiling and option streams; the reducer
+  refuses a seed that re-derives the offer in hand, so a token always moves the draft.
+- `BAN_REWARDS{optionIds}` is a separate multi-select flow: the diver picks any/all offered
+  non-choice items to add to `bannedItemIds`, which `diverOptions` and `catchUpOptionsFor` exclude
+  for the rest of the crusade. Banning **forfeits that mission's reward pick** (`rewardBanned`
+  resolves the draft with no item), so the whole offer may be cleared; Liberty's Cross cannot be
+  banned.
+Both are self-service; `enforceSelf` coerces `playerId`. AGENTS.md gained the "Reward tokens & squad
+honors" section. No token source besides N38 (the earlier skip-a-reward idea was dropped).
 
-**N14 · Squad reward indicators.** `RewardDraft.vue` already receives per-diver `pickedOptionId`;
-render icon-only chips for other divers, plus a "picked" dot while waiting.
+**N38 · Bonus-stat squad honors. Done (DEC-11).** Once every diver has picked, `DivePhaseRewards`
+swaps the locked Valor meter for `BonusCeremony.vue`: like the Wheel, the contest is **spun on
+click** (`SPIN_BONUS{seed}`, host-only), then the host awards the winner (`AWARD_BONUS`, host-only,
+post-spin) and the token is **banked immediately** — no claim step. When only one diver can win
+(solo, or a squad where everyone else sat the draft out) the spin resolves the ceremony by itself,
+since the selection would be redundant. A slot-machine reveal (reusing
+`ReelText`) plays on the seed. The contest is `rollBonus(bonusSeed)` (stream salt 4) over
+`BONUS_STATS` — all 12 HD2 end-screen stats with a `most`/`least` direction, tunable in config. The
+app never captures the stats: the host reads the real end screen and picks, matching
+`REPORT_RESULT`'s honor-system boundary. **Honors are limited** (`bonusEligible`): a token only
+lands on a full-star clear, and only on the squad-size cadence (`BONUS_TOKEN_INTERVAL`: 4 divers
+every mission, 3 or 2 every other, solo every third) — otherwise the reward phase skips the
+ceremony and shows why. Per mission, soft gate (`ADVANCE` never waits; an unspun/unawarded contest
+dies with the mission reset). `DiverState` carries `rewardTokens`/
+`bannedItemIds`/`rewardRerollSeed`/`rewardBanned`; `DiveState` carries `bonusSeed`/`bonusWinnerId`,
+reset each mission. `ENGINE_VERSION` 13 → 14; goldens unchanged. Covered by reducer tests
+(spin/award/reroll/ban/reset) and the solo E2E ceremony + ban flow.
 
-**N16 · Incoming-player Valor from run performance.** Conflicts with the canon "Field Promotion
-restores altitude, never rarity" (`selectors.ts:118-126`). Any "average-ly on current run
-performance" term must be a deliberate, capped, non-exploitable exception (DEC-7), and AGENTS.md
-must be updated.
+**N14 · Squad reward indicators. Done.** `DivePhaseRewards` derives the other divers' draft state
+(banked item or still choosing, plus `skipsCurrentDraft`) and `RewardDraft` renders an icon-only
+chip per diver: the banked item's art when picked, a pulsing gold dot while choosing, a muted dash
+for a skipped draft. Each chip is `role="img"` with a tooltip/`aria-label` naming the diver and
+their pick; reduced-motion guarded. Purely presentational — no rules touched. Covered by the
+two-diver assertion in `e2e/room.spec.ts`.
 
-**N22 · Field Promotion re-rolls on every claim.** Claiming `catchUpOwed = N` shows N options, then
-re-derives N−1, N−2, … so 3 picks can expose up to 6 candidates rather than one 3-item draft
-(`selectors.ts:118-126`, `FieldPromotionCard.vue:19`). Verify intent; if a single draft was meant,
-store the rolled options for the grant instead of re-deriving.
+**N16 · Incoming-player Valor from run performance. Closed (DEC-7).** Rejected as conflicting with
+the canon "Field Promotion restores altitude, never rarity" (`selectors.ts`): a joiner already
+inherits the current mission's squad-level performance through `lastReport`, and any additional
+run-performance term would let a fresh diver reach S/S+ without taking risk. No code. Reopen only if
+live play shows joiners are meaningfully behind.
 
-**N26 · Failure path rework.** Owner-flagged during play; the current rule (repeat op + forfeit one
-item, `reducer.ts:289-314`) is to be re-spec'd (DEC-8). Keep the good parts confirmed in QA: one-item
-rule, owner-scoping, host-only enforcement, "front carries over / fresh misfortune" copy.
+**N22 · Field Promotion re-rolls on every claim. Done (repro confirmed).** Reproduced: a joiner with
+`catchUpGranted = 4` saw 7 unique candidates across four claims. Cause: `catchUpOptionsFor` rolled
+`catchUpOwed` options against the shrinking owed count and growing owned set, so each claim re-rolled
+a fresh slot. Fixed without storing state (invariant 4): the full `catchUpGranted` grant rolls once
+against the joiner's starting kit (the inventory they were seated with) and claimed items are
+filtered out of the returned draft, so a promotion is a fixed N-item draft. No `ENGINE_VERSION` bump
+— the rules (base tier, zero Valor, N picks) are unchanged, only the offer's stability is.
+
+**N26 · Failure path rework. Accepted (DEC-8: keep current rule).** The owner reviewed the
+alternatives (first-failure-free, difficulty drop, squad choice) and kept the current rule: repeat
+the operation at the same difficulty, forfeit one item (owner-scoped, host-only), front carries over,
+fresh misfortune. The confirmed-good parts from QA stay as the regression baseline. No code.
 
 ### Batch D
 

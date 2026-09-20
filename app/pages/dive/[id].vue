@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { diverOptions } from '~~/shared/engine/selectors'
 import { deriveFront, deriveMisfortune } from '~~/shared/engine/wheel'
-import type { CrusadeVariant, EngineAction, ItemRef, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
+import type { CrusadeVariant, DiverState, EngineAction, ItemRef, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
 import { rememberDiverName } from '~/composables/useGameSocket'
 
 const route = useRoute()
@@ -128,6 +129,41 @@ function pick(optionId: string, choiceItemId?: string): void {
   dispatch(choiceItemId
     ? { type: 'PICK_REWARD', playerId: selfId.value, optionId, choiceItemId }
     : { type: 'PICK_REWARD', playerId: selfId.value, optionId })
+}
+
+// A reward reroll spends a token and must move: draw fresh seeds until the
+// offer actually changes (the reducer refuses a same-offer seed too).
+function rerollRewards(): void {
+  const current = state.value
+  const diver = self.value
+  if (!current || !diver) {
+    return
+  }
+  const offerKey = (entry: DiverState): string =>
+    diverOptions(current, entry).map(option => option.optionId).join('|')
+  const currentKey = offerKey(diver)
+  let seed = session.newSeed()
+  for (let attempt = 0; attempt < 32; attempt++) {
+    if (offerKey({ ...diver, rewardRerollSeed: seed }) !== currentKey) {
+      break
+    }
+    seed = session.newSeed()
+  }
+  dispatch({ type: 'REROLL_REWARDS', playerId: diver.id, seed })
+}
+
+function banRewards(optionIds: string[]): void {
+  if (selfId.value) {
+    dispatch({ type: 'BAN_REWARDS', playerId: selfId.value, optionIds })
+  }
+}
+
+function spinBonus(): void {
+  dispatch({ type: 'SPIN_BONUS', seed: session.newSeed() })
+}
+
+function awardBonus(playerId: string): void {
+  dispatch({ type: 'AWARD_BONUS', playerId })
 }
 
 function claimCatchUpOption(optionId: string): void {
@@ -260,25 +296,18 @@ function commitWarbonds(codes: string[]): void {
         :status="session.status.value"
         :self-id="selfId"
         :can-control="canControl"
+        :is-host="session.selfIsHost.value"
         :op-length="opLength"
         :slot-name="session.slotName.value"
+        :online="session.online.value"
+        :name-draft="nameDraft"
         @copy-invite="copyInvite"
         @leave="leaveDive"
         @end="endDive"
-      />
-
-      <SquadStrip
-        :state="state"
-        :self-id="selfId"
-        :online="session.online.value"
-        :mode="session.mode"
-        :is-host="session.selfIsHost.value"
-        :name-draft="nameDraft"
         @update:name-draft="setNameDraft"
         @commit="commitName"
         @transfer-host="transferHost"
         @kick="kick"
-        @copy-invite="copyInvite"
       />
 
       <p
@@ -374,6 +403,10 @@ function commitWarbonds(codes: string[]): void {
             :can-control="canControl"
             :op-length="opLength"
             @pick="pick"
+            @reroll="rerollRewards"
+            @ban="banRewards"
+            @spin-bonus="spinBonus"
+            @award-bonus="awardBonus"
             @advance="advance"
           />
 
