@@ -417,7 +417,9 @@ app/
                    DivePhaseLobby/DivePhaseWheel/DivePhaseDiving/DivePhaseRewards/
                    DivePhaseForfeit/DivePhaseComplete — one panel per engine phase, each
                    owning its local form state and emitting intents,
-                   WheelPanel, PactPicker, RewardDraft, ValorMeter — the live Valor gauge
+                   WheelPanel, PactPicker, RewardDraft — the slot-machine reward
+                   draft (staggered reels that lock left to right), RewardReel — one
+                   rolling reel, ValorMeter — the live Valor gauge
                    and tier-ceiling ladder, FieldPromotionCard — the mid-crusade
                    catch-up ceremony, DiversChoiceCard — the special
                    S+ "Liberty's Cross" offer card, DiversChoicePicker — its minified codex
