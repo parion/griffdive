@@ -123,13 +123,22 @@ export const RESERVE_STRATAGEMS = [
 // team-performance bonus), which buys odds on each tier step, never a guarantee.
 export const UPGRADE_CAP = 0.8
 export const UPGRADE_STEP = 3
+// S and S+ are earned, never bought by altitude: the top rungs only open once
+// the diver's Valor clears a floor, then ramp toward the cap. Without this a
+// single low-risk misfortune reached S ~80% of the time at difficulties 8–10
+// (base tier A is one rung from S).
+export const S_VALOR_FLOOR = 4
+export const S_UPGRADE_DIVISOR = 18
+export const S_PLUS_VALOR_FLOOR = 8
+export const S_PLUS_UPGRADE_DIVISOR = 40
 // The final S→S+ rung is capped far below the rest of the ladder: altitude
 // alone must never make Liberty's Cross routine. Max chosen Valor (13) tops out
 // around 8% at altitude and lower in the low bands.
 export const S_PLUS_UPGRADE_CAP = 0.1
 // Tiers with per-step odds below this are too unlikely to preview. Kept at or
-// below the S+ cap so the jackpot can still preview at max Valor.
-export const UPGRADE_PREVIEW_FLOOR = 0.1
+// below the S+ cap so the jackpot can still preview at max Valor, and at or
+// below the S floor's opening odds so a reachable S is never hidden.
+export const UPGRADE_PREVIEW_FLOOR = 0.05
 
 // Team performance feeds a small third Valor term on top of chosen risk, from
 // the mission just reported. Capped so chosen risk still dominates: a perfect

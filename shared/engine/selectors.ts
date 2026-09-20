@@ -137,7 +137,14 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
     optionsForStars(state.lastReport.stars, ceiling)
     - diver.failedPactIds.length * OPTIONS_LOST_PER_FAILED_PACT,
   )
-  return rollRewardOptions(deriveSeed(seed, 2), ceiling, count, pool, exclude)
+  return rollRewardOptions(
+    deriveSeed(seed, 2),
+    ceiling,
+    baseTierFor(state.difficulty),
+    count,
+    pool,
+    exclude,
+  )
 }
 
 // The Field Promotion: a mid-crusade joiner's catch-up offer. Altitude
@@ -161,8 +168,10 @@ export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOp
   // banned item either.
   const exclude = new Set([...startingItemIds(state.settings.variant), ...diver.bannedItemIds])
   const owned = new Set(state.personalInventories[diver.id] ?? [])
+  // Catch-up buys altitude, never rarity: the band is the base tier alone.
   const rolled = rollRewardOptions(
     seed,
+    baseTierFor(state.difficulty),
     baseTierFor(state.difficulty),
     diver.catchUpGranted,
     pool,

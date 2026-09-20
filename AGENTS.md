@@ -272,22 +272,31 @@ performance   = team performance from the mission just reported, squad-level
                 samples (≤ 0.3), so it never exceeds 0.5
 
 base tier:     diff 3–5 → C   diff 6–7 → B   diff 8–10 → A
-ceiling roll:  start at the base tier; each step to the next tier
-               (C→B→A→S→S+) succeeds with odds
-               min(0.8, Valor × (1 + bandPos) / 3^step)
+ceiling roll:  start at the base tier; each step to the next tier succeeds:
+                 C→B, B→A   min(0.8, Valor × (1 + bandPos) / 3^step)
+                 A→S        min(0.8, max(0, Valor − 3) × (1 + bandPos) / 18)
+                 S→S+       min(0.1, max(0, Valor − 7) × (1 + bandPos) / 40)
                bandPos = position within the difficulty band (0 floor → 1 top)
-               the final S→S+ rung is capped at min(0.1, …) — the jackpot
+               S and S+ are gated behind Valor 4 / 8 — a trickle of risk can't
+               buy the top at altitude, and the S→S+ rung stays capped at 0.1
+
+option band:   the difficulty's base tier (hard floor) → the rolled ceiling
+option roll:   the draft leads with one option at the ceiling (or the highest
+               tier the pool still has), then fills the rest a band down,
+               weighted TIER_ROLL_WEIGHT_BASE^(tierIndex − baseIndex) — one top
+               pick plus support, never a flood of top-tier gear
 ```
 
-- Difficulty alone never buys S or S+; only stacked chosen risk does, and even max **chosen** Valor
-  (13) leaves S+ a longshot (≤10% on every difficulty; `S_PLUS_UPGRADE_CAP` in
-  `shared/engine/config.ts`). A zero-Valor dive always rolls its base tier. Team performance is a
-  deliberate exception: it can nudge a zero-chosen-risk clear off its base tier, but caps at 0.5
-  against the 13-point chosen ceiling, so skill never carries a run (`TIME_VALOR_MAX`,
-  `SAMPLE_VALOR_CAP`, `SAMPLE_VALOR_WEIGHTS`). Sample values are calibrated to the game's own
-  rarity mix (wiki.gg/Sample availability), so the term scales with difficulty without a
-  multiplier: a Medium haul (commons only) is worth ~0.03, a Super Helldive haul with rares and
-  supers ~0.3.
+- Difficulty alone never buys S or S+; only stacked chosen risk does. The top rungs are **Valor
+  gated** (`S_VALOR_FLOOR` 4, `S_PLUS_VALOR_FLOOR` 8 in `shared/engine/config.ts`): below the floor
+  the rung simply cannot roll, so a single low-risk misfortune never reaches S at altitude. Even
+  max **chosen** Valor (13) leaves S+ a longshot (≤10% on every difficulty; `S_PLUS_UPGRADE_CAP`).
+  A zero-Valor dive always rolls its base tier. Team performance is a deliberate exception: it can
+  nudge a zero-chosen-risk clear off its base tier, but caps at 0.5 against the 13-point chosen
+  ceiling, so skill never carries a run (`TIME_VALOR_MAX`, `SAMPLE_VALOR_CAP`,
+  `SAMPLE_VALOR_WEIGHTS`). Sample values are calibrated to the game's own rarity mix (wiki.gg/Sample
+  availability), so the term scales with difficulty without a multiplier: a Medium haul (commons
+  only) is worth ~0.03, a Super Helldive haul with rares and supers ~0.3.
 - **Valor is surfaced as the Valor meter** (`app/components/dive/ValorMeter.vue`): a live gauge
   stacking the three sources (team risk, pacts, performance) with a tier ladder from the
   difficulty's base tier to the previewed ceiling and the odds of reaching it. It renders in the
@@ -302,8 +311,12 @@ ceiling roll:  start at the base tier; each step to the next tier
   diff 10 into S more readily than diff 8 (`bandPosition`).
 - Ceiling = the best tier that *can* appear in that diver's options; the roll is seeded from the
   offer seed (two rng streams: one ceiling, one options) so every client computes the same offer.
-  Rolls are weighted toward the tier below the ceiling; an **S+** ceiling still guarantees one rolled
-  S-tier option beside the Liberty's Cross slot (a plain S ceiling makes no such promise).
+  Options live in the band from the difficulty's **base tier** (a hard floor — a Super Helldive
+  never offers C-tier gear) up to the ceiling. The draft **leads with one option at the ceiling**
+  — the class the diver earned — then fills the rest a band down, weighted toward the top
+  (`tierWeight`), so a high ceiling lands as one top pick plus support rather than a flood of
+  top-tier gear. A thin pool falls back to the highest tier it still has, so the slot never drops;
+  an **S+** ceiling adds the Liberty's Cross slot on top.
 - **S+ = Liberty's Cross.** No catalog item carries the S+ tier, so the S+ bonus slot is a free
   pick: the diver claims **any item from their own catalog** — same personal-pool rules as every
   reward (warbond-owned items only, armor pieces excluded, nothing already owned). The option
@@ -311,7 +324,7 @@ ceiling roll:  start at the base tier; each step to the next tier
   opens a minified codex picker for it, and `PICK_REWARD` carries the named item in
   `choiceItemId`. `pickedOptionId` always records the banked item's id.
 - Previews stay legible: the UI shows base tier → best plausible tier (`maxCeiling`, per-step odds
-  ≥ `UPGRADE_PREVIEW_FLOOR`, 0.1) with the odds of reaching it (`oddsToReach`).
+  ≥ `UPGRADE_PREVIEW_FLOOR`, 0.05) with the odds of reaching it (`oddsToReach`).
 - **Option count** comes from stars (team performance), lookup table `starsToOptions`:
   `[1,1,2,3,4,4]` (index = stars), capped at 4; S+ grants +1 (cap 5). Stars themselves are
   difficulty-capped per the game (wiki.gg/Missions): max 3 at diffs 3–4, 4 at 5–6, 5 at 7+; a
