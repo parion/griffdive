@@ -156,7 +156,7 @@ Starter catalog (all values tunable in `shared/engine/config.ts`; ids and shape 
 | No Orbitals | No orbital stratagems | 2 | diff 5 | loadout |
 | Primary Only | Primaries only — no support weapons, no pickups or swaps (stratagems allowed) | 3 | diff 5 | field |
 | Stealth | No raised alarms or bot detections | 3 | diff 5 | field |
-| Oops, All Orbitals | Orbital stratagems only | 3 | diff 6 | loadout |
+| Oops, All Airstrikes | Eagle and orbital ("red") stratagems only | 3 | diff 6 | loadout |
 | Zero Deaths | Any diver death = mission failure | 4 | diff 7 | field |
 | No Reserves | No one gets reinforced this mission | 4 | diff 7 | field |
 | No Stratagems | No stratagems at all, not even resupply | 5 | diff 9 | loadout |
@@ -247,9 +247,9 @@ enforced at **both** ends: a pact that would strand the diver is refused at pick
 misfortune that would strand **any** seated diver on its own is refused at the wheel decision
 (`ACCEPT_MISFORTUNE`, via `misfortuneStrandedDivers` in `shared/engine/selectors.ts`) — the squad
 could otherwise never ready up. `No Stratagems` is behavioral (four slots still equip, they just
-cannot be called), so it stays out of the equip ban-list; `Oops, All Orbitals` is the loadout rule
-that most often strands an early squad, since the base kit fields only two orbitals and reserve
-adds no more.
+cannot be called), so it stays out of the equip ban-list; `Oops, All Airstrikes` is the loadout rule
+that most often strands an early squad, since the base kit fields only three red stratagems (Eagle
+Smoke Strike plus Orbital EMS/Smoke Strike) and reserve adds no more.
 
 **Failed pacts:** a broken pact is marked **failed** (`FAIL_PACT{playerId,pactId}`) while the
 mission runs — during the diving phase only, by the diver themselves or by the host refereeing the

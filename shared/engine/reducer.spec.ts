@@ -248,12 +248,12 @@ describe('ACCEPT_MISFORTUNE (optional team risk)', () => {
   })
 
   it('refuses a misfortune that would strand a diver below four stratagems', () => {
-    // The standard kit fields two orbitals; Oops, All Orbitals needs four, so
-    // accepting is impossible — declining and rerolling stay open.
+    // The standard kit fields three airstrikes; Oops, All Airstrikes needs
+    // four, so accepting is impossible — declining and rerolling stay open.
     const state: DiveState = {
       ...freshState(),
       difficulty: 6,
-      wheel: { seed: 1, misfortuneId: 'oopsAllOrbitals' },
+      wheel: { seed: 1, misfortuneId: 'oopsAllAirstrikes' },
       phase: 'decision',
     }
     expect(reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })).toBe(state)
@@ -263,11 +263,11 @@ describe('ACCEPT_MISFORTUNE (optional team risk)', () => {
   })
 
   it('accepts a misfortune the squad can field', () => {
-    // Quickplay's extra orbitals clear the four-orbital floor.
+    // Quickplay's extra red stratagems clear the four-airstrike floor.
     const state: DiveState = {
       ...createDiveState({ variant: 'quickplay' }, 'p1', 'Griffin'),
       difficulty: 6,
-      wheel: { seed: 1, misfortuneId: 'oopsAllOrbitals' },
+      wheel: { seed: 1, misfortuneId: 'oopsAllAirstrikes' },
       phase: 'decision',
     }
     const accepted = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })

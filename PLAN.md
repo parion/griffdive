@@ -67,7 +67,8 @@ IDs are stable and append-only; do not renumber.
 | N34 | Copy-invite icon by session ID + lone-host share aside | UX | S | Done | new |
 | N35 | Users-list waiting indicators (pacts/rewards) | UX | S | Done | new |
 | N36 | Mandatory 4 slots vs equip-restricting misfortunes | Rules | M | Done | new |
-| N37 | Bonus-stat squad honors (slot-machine stat → token prize) | Feature/Design | L | Done | new |
+| N37 | Oops, All Orbitals too narrow (rename to Airstrikes, include Eagles) | Rules | S | Done | new |
+| N38 | Bonus-stat squad honors (slot-machine stat → token prize) | Feature/Design | L | Done | new |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -78,14 +79,14 @@ Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the re
 | DEC-1 | Stratagem-restricting pacts: rule text is "equipped but never called" (accountability moves to field/loadout-with-intent), or provide a neutral fallback stratagem list for early players? | Resolved — N5, N24 |
 | DEC-2 | Time/samples → Valor: target max bonus (e.g. +0.5 total, or +1.0), and sample rarity weights? | Resolved — N6 |
 | DEC-3 | Luck meter name (candidates: Liberty's Favor, Dive Fortune, Providence), and do rerolls exclude only the immediately replaced result or every prior result this window? | Resolved — split: DEC-3a naming (N7), DEC-3b reroll scope (N12) |
-| DEC-4 | Reward reroll token: banked across missions or per-mission? Ban scope: personal-crusade or squad-wide, and does a ban cost the whole reward pick? | Resolved — N8/N37 (one flexible token from bonus honors; spend to reroll your own offer or ban one offered item from your personal pools for the crusade) |
+| DEC-4 | Reward reroll token: banked across missions or per-mission? Ban scope: personal-crusade or squad-wide, and does a ban cost the whole reward pick? | Resolved — N8/N38 (one flexible token from bonus honors; spend to reroll your own offer or ban one offered item from your personal pools for the crusade) |
 | DEC-5 | Strains: drawn per operation (with the front) or per mission? Flavor-only or rule-bearing modifiers? Which front/strains ship first? | N2 |
 | DEC-6 | Light-armor fix: add a light starter passive, reword `fragileLiberty` to "no heavy armor", or gate the misfortune? | N13 |
 | DEC-7 | Incoming-player Valor: cap, and the non-exploit rule (e.g. scales off the squad's banked performance, not a fresh join's). | Resolved — N16 closed (conflicts with "Field Promotion restores altitude, never rarity") |
 | DEC-8 | Failure rework direction (owner-flagged, to be spec'd): what replaces "repeat op + forfeit one item"? | Resolved — N26 accepted (keep current rule) |
 | DEC-9 | Mid-match crash semantics: void the mission with no forfeit, auto-pause, or keep the forfeit? | N10 |
 | DEC-10 | Target distribution for rolled reward options under a ceiling (favor near-ceiling vs uniform), and the S+ guarantee fallback when the diver's S pool is empty. | Resolved — N33 |
-| DEC-11 | Bonus honors (N37): prize shape (one flexible token vs choose ban/reroll at award), stat pool + directions, per-mission vs per-operation cadence, whether the skip-a-reward source survives, and whether ADVANCE waits on the ceremony. | Resolved — N37 (one flexible token; all 12 stats with directions; per mission; bonus is the only token source; soft gate) |
+| DEC-11 | Bonus honors (N38): prize shape (one flexible token vs choose ban/reroll at award), stat pool + directions, per-mission vs per-operation cadence, whether the skip-a-reward source survives, and whether ADVANCE waits on the ceremony. | Resolved — N38 (one flexible token; all 12 stats with directions; per mission; bonus is the only token source; soft gate) |
 
 **DEC-1 — resolved (N5/N24). Landed.** Keep the stratagem pacts **loadout-checked**, not "equipped
 but never called": a stratagem call-in is team-visible but not attributed to a diver and never
@@ -162,14 +163,13 @@ the highest available tier). `ENGINE_VERSION` bumped 12 → 14; goldens regenera
 
 ### Batch C — Rewards & catch-up
 
-N8, N14, N16, N22, N26, plus **N37** (bonus-stat honors, the token source). **All landed or
+N8, N14, N16, N22, N26, plus **N38** (bonus-stat honors, the token source). **All landed or
 closed.** N14 and N22 landed (presentation + a catch-up derivation fix; no engine-version bump — the
 promotion's rules are unchanged). N16 closed (DEC-7) and N26 accepted (DEC-8: keep current rule) — no
-code. **N8 + N37 landed together** under DEC-4/DEC-11: the reward-token economy and the end-of-mission
-bonus ceremony, limited to full-star clears on a squad-size cadence. Batch C and Batch B both bumped
-`ENGINE_VERSION` 13 → 14 independently, so the merge
-lands a single version 14; goldens are unchanged for the token work (no scripted crusade spends a
-token).
+code. **N8 + N38 landed together** under DEC-4/DEC-11: the reward-token economy and the end-of-mission
+bonus ceremony, limited to full-star clears on a squad-size cadence. `ENGINE_VERSION` is 15 after the
+N37 (Airstrikes) merge; the token work needed no further bump, and goldens are unchanged for it (no
+scripted crusade spends a token).
 
 ### Batch D — Content, resilience, onboarding
 
@@ -342,6 +342,16 @@ Covered by `misfortuneStrandedDivers` (selectors), the accept-refusal/allowed ca
 the `oopsAllOrbitals` / `noStratagems` legality checks (pacts). `ENGINE_VERSION` 12 → 13; goldens
 regenerated (the scripted crusade declines `oopsAllOrbitals` draws it can't field).
 
+**N37 · Oops, All Orbitals too narrow. Done.** Playtest report: a diver holding 13 stratagems could
+not accept the rule because only two of them were orbitals — the other eleven were Eagles, sentries,
+support and emplacements, none of them legal. The category was broadened to the game's **red**
+stratagems: `oopsAllOrbitals` → **`oopsAllAirstrikes`** (name "Oops, All Airstrikes", rule "Eagle and
+orbital stratagems only"). `isAirstrikeStratagem` (`Eagle` or `Orbital`) replaces the orbital-only
+filter in `legalStratagemCount`, and `BLOCKED_UNDER_MISFORTUNE` now only blocks the pacts that stay
+redundant under the wider rule (`packLight`, `thirsty`, `primaryConcern`, `openField` — *Grounded*,
+*Ship Silent* and *Anti-Tank Abstinent* are meaningful again since Eagles/Orbitals can still be
+chosen). `ENGINE_VERSION` 14 → 15; goldens regenerated.
+
 ### Batch C
 
 **N8 · Reward reroll + ban (the token economy). Done (DEC-4).** One flexible reward token per
@@ -356,9 +366,9 @@ reward draft:
   resolves the draft with no item), so the whole offer may be cleared; Liberty's Cross cannot be
   banned.
 Both are self-service; `enforceSelf` coerces `playerId`. AGENTS.md gained the "Reward tokens & squad
-honors" section. No token source besides N37 (the earlier skip-a-reward idea was dropped).
+honors" section. No token source besides N38 (the earlier skip-a-reward idea was dropped).
 
-**N37 · Bonus-stat squad honors. Done (DEC-11).** Once every diver has picked, `DivePhaseRewards`
+**N38 · Bonus-stat squad honors. Done (DEC-11).** Once every diver has picked, `DivePhaseRewards`
 swaps the locked Valor meter for `BonusCeremony.vue`: like the Wheel, the contest is **spun on
 click** (`SPIN_BONUS{seed}`, host-only), then the host awards the winner (`AWARD_BONUS`, host-only,
 post-spin) and the token is **banked immediately** — no claim step. When only one diver can win
