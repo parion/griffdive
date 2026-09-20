@@ -11,6 +11,8 @@ import {
   SAMPLE_VALOR_CAP,
   TIME_VALOR_MAX,
   baseTierFor,
+  bonusIntervalFor,
+  maxStarsFor,
   pactOptionsFor,
 } from './config'
 import type { BonusStat } from './config'
@@ -178,6 +180,37 @@ export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOp
     exclude,
   )
   return rolled.filter(option => !owned.has(option.item.id))
+}
+
+// Honors are a limited prize: the squad only plays for a token on a full-star
+// clear, and only when the squad-size cadence is due (fewer divers, rarer
+// honors). Both must hold before the ceremony can spin or award.
+export function bonusEligible(state: DiveState): boolean {
+  const report = state.lastReport
+  if (!report || report.outcome !== 'success') {
+    return false
+  }
+  if (report.stars < maxStarsFor(state.difficulty)) {
+    return false
+  }
+  return state.missionIndex % bonusIntervalFor(state.divers.length) === 0
+}
+
+// Why this mission has no honors, for the UI — null when it does (or when the
+// draft hasn't been reported yet).
+export function bonusIneligibilityReason(state: DiveState): string | null {
+  const report = state.lastReport
+  if (!report || report.outcome !== 'success') {
+    return null
+  }
+  if (report.stars < maxStarsFor(state.difficulty)) {
+    return 'Squad honors need a full-star clear.'
+  }
+  const interval = bonusIntervalFor(state.divers.length)
+  if (state.missionIndex % interval !== 0) {
+    return `Squad honors are due every ${interval} mission${interval === 1 ? '' : 's'} for a squad of ${state.divers.length}.`
+  }
+  return null
 }
 
 // The mission's spun bonus-honors contest. Like the Wheel, the contest only

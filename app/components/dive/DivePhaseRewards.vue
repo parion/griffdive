@@ -2,7 +2,7 @@
 import { ALL_WARBOND_CODES, ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { performanceValor } from '~~/shared/engine/rewards'
-import { allDiversPicked, canBanAnyReward, canBanReward, canRerollRewards, diverOptions, pactRiskOf, rewardPoolFor, teamRiskOf } from '~~/shared/engine/selectors'
+import { allDiversPicked, bonusEligible, bonusIneligibilityReason, canBanAnyReward, canBanReward, canRerollRewards, diverOptions, pactRiskOf, rewardPoolFor, teamRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -65,6 +65,10 @@ const bannableIds = computed(() => {
 })
 
 const ready = computed(() => allDiversPicked(props.state))
+// Honors are a limited prize: no ceremony unless a full-star clear landed on
+// the squad-size cadence. Otherwise the phase goes straight to Next Mission.
+const bonusUp = computed(() => ready.value && bonusEligible(props.state))
+const bonusNote = computed(() => bonusIneligibilityReason(props.state))
 const draftResolved = computed(() =>
   props.self !== null && (props.self.pickedOptionId !== null || props.self.rewardBanned))
 const draftBanned = computed(() => props.self?.rewardBanned ?? false)
@@ -80,7 +84,7 @@ const draftBanned = computed(() => props.self?.rewardBanned ?? false)
     locked
   />
   <BonusCeremony
-    v-else
+    v-else-if="bonusUp"
     :state="state"
     :self-id="selfId"
     :self="self"
@@ -88,6 +92,12 @@ const draftBanned = computed(() => props.self?.rewardBanned ?? false)
     @spin="emit('spinBonus')"
     @award="playerId => emit('awardBonus', playerId)"
   />
+  <p
+    v-else-if="bonusNote"
+    class="muted small honor-note"
+  >
+    {{ bonusNote }}
+  </p>
   <RewardDraft
     :options="options"
     :picked-id="self?.pickedOptionId ?? null"
@@ -127,3 +137,7 @@ const draftBanned = computed(() => props.self?.rewardBanned ?? false)
     </div>
   </Transition>
 </template>
+
+<style scoped>
+.honor-note { margin: 0.25rem 0; }
+</style>

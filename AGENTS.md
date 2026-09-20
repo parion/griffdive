@@ -107,9 +107,9 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
 5. **Report** — squad records outcome: success (stars 1–max, optional time %) or failure (no stars).
 6. **Rewards** (success only) — each diver is offered N options rolled against their personal tier
    ceiling and picks one. All rewards go to the diver's personal inventory — stratagems included.
-   Armor rewards are **passives**, never armor pieces (see inventory model). Once every diver has
-   picked, the squad spins **bonus honors** — a random end-screen stat the host resolves to a
-   winner, who banks a reward token (see Reward tokens & squad honors).
+   Armor rewards are **passives**, never armor pieces (see inventory model). On a full-star clear,
+   once every diver has picked, the squad spins **bonus honors** — a random end-screen stat the host
+   resolves to a winner, who banks a reward token (see Reward tokens & squad honors).
 7. **Advance** — next mission, which draws a fresh misfortune. Completing all missions of an
    operation bumps the crusade difficulty by +1. Failure restarts the operation (mission 1) at the
    same difficulty, keeps the front, and the squad forfeits one item.
@@ -342,12 +342,16 @@ option roll:   the draft leads with one option at the ceiling (or the highest
 After a successful mission's reward draft completes, the squad spins one **bonus honors** contest (a
 Mario-Party bonus star): a random stat from HD2's end-of-mission screen — kills, accuracy, deaths,
 stims, samples, friendly fire, … — with a winning direction (*most* or *least*), each entry in
-`BONUS_STATS` (`shared/engine/config.ts`). Like the Wheel, the contest is **spun on click**
-(`SPIN_BONUS{seed}`, host-only) once every diver has picked, and the seed is what syncs: `rollBonus`
-(stream salt 4) derives the same stat on every client. **The app never captures the stats**: the host
-reads HD2's stats screen and names the winner (`AWARD_BONUS`, host-only); ties are the host's call.
-Awarding banks the winner's **one flexible reward token** immediately (capped at `REWARD_TOKEN_CAP`,
-3) — there is no separate claim step.
+`BONUS_STATS` (`shared/engine/config.ts`). Honors are a **limited prize** (`bonusEligible`): a token
+only lands on a **full-star clear** (`stars === maxStarsFor(difficulty)`) and only when the
+**squad-size cadence** is due — `BONUS_TOKEN_INTERVAL` awards a four-diver squad every mission, a
+three- or two-diver squad every other mission, and a solo diver every third. Off the cadence or short
+of full stars, the reward phase skips the ceremony entirely. When due, the contest is **spun on
+click** (`SPIN_BONUS{seed}`, host-only) once every diver has picked, and the seed is what syncs:
+`rollBonus` (stream salt 4) derives the same stat on every client. **The app never captures the
+stats**: the host reads HD2's stats screen and names the winner (`AWARD_BONUS`, host-only); ties are
+the host's call. Awarding banks the winner's **one flexible reward token** immediately (capped at
+`REWARD_TOKEN_CAP`, 3) — there is no separate claim step.
 
 A token is spent by its owner during a reward draft on one of:
 - **Reroll** (`REROLL_REWARDS`) — redraw the diver's own offer. A reroll must move (a seed that

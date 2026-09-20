@@ -166,7 +166,8 @@ N8, N14, N16, N22, N26, plus **N37** (bonus-stat honors, the token source). **Al
 closed.** N14 and N22 landed (presentation + a catch-up derivation fix; no engine-version bump — the
 promotion's rules are unchanged). N16 closed (DEC-7) and N26 accepted (DEC-8: keep current rule) — no
 code. **N8 + N37 landed together** under DEC-4/DEC-11: the reward-token economy and the end-of-mission
-bonus ceremony. Batch C and Batch B both bumped `ENGINE_VERSION` 13 → 14 independently, so the merge
+bonus ceremony, limited to full-star clears on a squad-size cadence. Batch C and Batch B both bumped
+`ENGINE_VERSION` 13 → 14 independently, so the merge
 lands a single version 14; goldens are unchanged for the token work (no scripted crusade spends a
 token).
 
@@ -364,8 +365,11 @@ post-spin) and the token is **banked immediately** — no claim step. A slot-mac
 `ReelText`) plays on the seed. The contest is `rollBonus(bonusSeed)` (stream salt 4) over
 `BONUS_STATS` — all 12 HD2 end-screen stats with a `most`/`least` direction, tunable in config. The
 app never captures the stats: the host reads the real end screen and picks, matching
-`REPORT_RESULT`'s honor-system boundary. Per mission, soft gate (`ADVANCE` never waits; an
-unspun/unawarded contest dies with the mission reset). `DiverState` carries `rewardTokens`/
+`REPORT_RESULT`'s honor-system boundary. **Honors are limited** (`bonusEligible`): a token only
+lands on a full-star clear, and only on the squad-size cadence (`BONUS_TOKEN_INTERVAL`: 4 divers
+every mission, 3 or 2 every other, solo every third) — otherwise the reward phase skips the
+ceremony and shows why. Per mission, soft gate (`ADVANCE` never waits; an unspun/unawarded contest
+dies with the mission reset). `DiverState` carries `rewardTokens`/
 `bannedItemIds`/`rewardRerollSeed`/`rewardBanned`; `DiveState` carries `bonusSeed`/`bonusWinnerId`,
 reset each mission. `ENGINE_VERSION` 13 → 14; goldens unchanged. Covered by reducer tests
 (spin/award/reroll/ban/reset) and the solo E2E ceremony + ban flow.

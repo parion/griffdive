@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_DIFFICULTY, MIN_DIFFICULTY, bandPosition, baseTierFor, maxStarsFor, missionsPerOperation, upgradeOdds } from './config'
+import { MAX_DIFFICULTY, MIN_DIFFICULTY, bandPosition, baseTierFor, bonusIntervalFor, maxStarsFor, missionsPerOperation, upgradeOdds } from './config'
 
 describe('baseTierFor (reward scale-back bands)', () => {
   it.each([
@@ -66,5 +66,21 @@ describe('maxStarsFor (wiki.gg/Missions, Mission Result)', () => {
       expect(maxStarsFor(difficulty)).toBeGreaterThanOrEqual(1)
       expect(maxStarsFor(difficulty)).toBeLessThanOrEqual(5)
     }
+  })
+})
+
+describe('bonusIntervalFor (honors cadence by squad size)', () => {
+  it.each([
+    [1, 3],
+    [2, 2],
+    [3, 2],
+    [4, 1],
+  ])('squad of %i → every %i missions', (squadSize, interval) => {
+    expect(bonusIntervalFor(squadSize)).toBe(interval)
+  })
+
+  it('clamps out-of-range sizes', () => {
+    expect(bonusIntervalFor(0)).toBe(3)
+    expect(bonusIntervalFor(9)).toBe(1)
   })
 })

@@ -5,7 +5,7 @@ import { STARTING_KITS, startingItemIds } from './progression'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed } from './rng'
-import { activeMisfortune, allDiversPicked, catchUpOptionsFor, comboKey, diverOptions, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor } from './selectors'
+import { activeMisfortune, allDiversPicked, bonusEligible, catchUpOptionsFor, comboKey, diverOptions, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor } from './selectors'
 import { deriveFront, deriveMisfortune } from './wheel'
 
 export function createDiveState(
@@ -599,8 +599,14 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
 
     case 'SPIN_BONUS': {
       // Host-only, like the Wheel: the contest is spun on click once the draft
-      // completes, and the seed is what syncs (spins are seeds).
-      if (state.phase !== 'rewards' || state.bonusSeed !== null || !allDiversPicked(state)) {
+      // completes, and the seed is what syncs (spins are seeds). Honors only
+      // exist on a full-star clear at the squad-size cadence.
+      if (
+        state.phase !== 'rewards'
+        || state.bonusSeed !== null
+        || !allDiversPicked(state)
+        || !bonusEligible(state)
+      ) {
         return state
       }
       return commit(state, { bonusSeed: action.seed }, action)
@@ -609,12 +615,14 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
     case 'AWARD_BONUS': {
       // Host-only: the host reads HD2's end screen and names the winner of the
       // spun contest. Awarding banks the winner's token immediately — there is
-      // no separate claim step.
+      // no separate claim step. Eligibility is re-checked so a hostile client
+      // can't award on a mission that never earned honors.
       if (
         state.phase !== 'rewards'
         || state.bonusSeed === null
         || !allDiversPicked(state)
         || state.bonusWinnerId
+        || !bonusEligible(state)
       ) {
         return state
       }

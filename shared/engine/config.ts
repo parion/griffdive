@@ -70,6 +70,21 @@ export const OPTIONS_LOST_PER_FAILED_PACT = 1
 // their personal pools. Capped so a long crusade can't bank unlimited bans.
 export const REWARD_TOKEN_CAP = 3
 
+// Honors are a limited prize: a token only lands on a full-star clear, and
+// only at a cadence that scales with squad size — a smaller squad earns rarer
+// honors. Values are missions between awards (1 = every mission).
+export const BONUS_TOKEN_INTERVAL: Readonly<Record<number, number>> = {
+  1: 3,
+  2: 2,
+  3: 2,
+  4: 1,
+}
+
+export function bonusIntervalFor(squadSize: number): number {
+  const clamped = Math.min(Math.max(Math.round(squadSize), 1), SQUAD_SIZE_MAX)
+  return BONUS_TOKEN_INTERVAL[clamped] ?? 1
+}
+
 export interface BonusStat {
   id: string
   // The contest as shown on the slot machine, e.g. "most kills". Direction

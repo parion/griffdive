@@ -7,7 +7,7 @@ import { DIVERS_CHOICE_OPTION_ID, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { allDiversPicked, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverValor, diverOptions, pactOfferFor, pactRiskOf, rewardPoolFor, teamRiskOf } from './selectors'
+import { allDiversPicked, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverValor, diverOptions, pactOfferFor, pactRiskOf, rewardPoolFor, teamRiskOf } from './selectors'
 import type { DiveState, DiverState, EngineAction } from './types'
 
 const SETTINGS = { variant: 'standard' as const }
@@ -975,6 +975,33 @@ describe('reward tokens + bonus honors', () => {
     expect(bonusFor(spunState)).toEqual(contest)
     // One spin per mission.
     expect(reduce(spunState, { type: 'SPIN_BONUS', seed: 8 })).toBe(spunState)
+  })
+
+  it('withholds honors unless a full-star clear lands on the cadence', () => {
+    // Solo cadence is every third mission: mission 1 (index 0) is due.
+    const due = rewardsState()
+    expect(bonusEligible(due)).toBe(true)
+    // A non-perfect clear earns no honors.
+    const imperfect: DiveState = {
+      ...due,
+      lastReport: { outcome: 'success', stars: 1 },
+    }
+    expect(bonusEligible(imperfect)).toBe(false)
+    expect(reduce(imperfect, { type: 'SPIN_BONUS', seed: 7 })).toBe(imperfect)
+    // Off-cadence: solo index 1 is not due, index 3 is again.
+    expect(bonusEligible({ ...due, missionIndex: 1 })).toBe(false)
+    expect(reduce({ ...due, missionIndex: 1 }, { type: 'SPIN_BONUS', seed: 7 }))
+      .toEqual({ ...due, missionIndex: 1 })
+    expect(bonusEligible({ ...due, missionIndex: 3 })).toBe(true)
+  })
+
+  it('refuses to award on a mission that no longer qualifies', () => {
+    const spunState = spun(pickFirst(rewardsState()))
+    const lapsed: DiveState = {
+      ...spunState,
+      lastReport: { outcome: 'success', stars: 1 },
+    }
+    expect(reduce(lapsed, { type: 'AWARD_BONUS', playerId: 'p1' })).toBe(lapsed)
   })
 
   it('awards the spun contest to a seated diver and banks the token at once', () => {
