@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 14
+export const ENGINE_VERSION = 15
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -184,7 +184,7 @@ export const MISFORTUNE_RISK: Readonly<Record<string, number>> = {
   noOrbitals: 2,
   primaryOnly: 3,
   stealth: 3,
-  oopsAllOrbitals: 3,
+  oopsAllAirstrikes: 3,
   noResupplies: 4,
   zeroDeaths: 4,
   noReserves: 4,
@@ -203,7 +203,7 @@ export const MISFORTUNE_MIN_DIFFICULTY: Readonly<Record<string, number>> = {
   noOrbitals: 5,
   primaryOnly: 5,
   stealth: 5,
-  oopsAllOrbitals: 6,
+  oopsAllAirstrikes: 6,
   zeroDeaths: 7,
   noReserves: 7,
   noStratagems: 9,

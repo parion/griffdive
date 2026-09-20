@@ -125,11 +125,12 @@ describe('reserve and loadout legality', () => {
     }
   })
 
-  it('flags a misfortune the base kit cannot field (Oops, All Orbitals)', () => {
-    // The standard kit fields two orbitals; the rule needs four. A kit with
-    // enough orbitals (Quickplay's extras) clears it.
-    expect(hasLegalLoadout('oopsAllOrbitals', [], baseKit)).toBe(false)
-    expect(hasLegalLoadout('oopsAllOrbitals', [], startingItemIds('quickplay'))).toBe(true)
+  it('flags a misfortune the base kit cannot field (Oops, All Airstrikes)', () => {
+    // The standard kit fields three airstrikes (Eagle Smoke + two orbitals);
+    // the rule needs four. A kit with enough red stratagems (Quickplay's
+    // extras) clears it.
+    expect(hasLegalLoadout('oopsAllAirstrikes', [], baseKit)).toBe(false)
+    expect(hasLegalLoadout('oopsAllAirstrikes', [], startingItemIds('quickplay'))).toBe(true)
   })
 
   it('keeps No Stratagems behavioral — four slots still equip', () => {

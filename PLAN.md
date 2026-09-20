@@ -67,6 +67,7 @@ IDs are stable and append-only; do not renumber.
 | N34 | Copy-invite icon by session ID + lone-host share aside | UX | S | Done | new |
 | N35 | Users-list waiting indicators (pacts/rewards) | UX | S | Done | new |
 | N36 | Mandatory 4 slots vs equip-restricting misfortunes | Rules | M | Done | new |
+| N37 | Oops, All Orbitals too narrow (rename to Airstrikes, include Eagles) | Rules | S | Done | new |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -332,6 +333,16 @@ that most often strands an early squad (the base kit fields two orbitals, reserv
 Covered by `misfortuneStrandedDivers` (selectors), the accept-refusal/allowed cases (reducer), and
 the `oopsAllOrbitals` / `noStratagems` legality checks (pacts). `ENGINE_VERSION` 12 → 13; goldens
 regenerated (the scripted crusade declines `oopsAllOrbitals` draws it can't field).
+
+**N37 · Oops, All Orbitals too narrow. Done.** Playtest report: a diver holding 13 stratagems could
+not accept the rule because only two of them were orbitals — the other eleven were Eagles, sentries,
+support and emplacements, none of them legal. The category was broadened to the game's **red**
+stratagems: `oopsAllOrbitals` → **`oopsAllAirstrikes`** (name "Oops, All Airstrikes", rule "Eagle and
+orbital stratagems only"). `isAirstrikeStratagem` (`Eagle` or `Orbital`) replaces the orbital-only
+filter in `legalStratagemCount`, and `BLOCKED_UNDER_MISFORTUNE` now only blocks the pacts that stay
+redundant under the wider rule (`packLight`, `thirsty`, `primaryConcern`, `openField` — *Grounded*,
+*Ship Silent* and *Anti-Tank Abstinent* are meaningful again since Eagles/Orbitals can still be
+chosen). `ENGINE_VERSION` 14 → 15; goldens regenerated.
 
 ### Batch C
 

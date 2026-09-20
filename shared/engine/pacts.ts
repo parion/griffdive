@@ -14,7 +14,7 @@ export const BLOCKED_UNDER_MISFORTUNE: Readonly<Record<string, readonly string[]
   noEagles: ['grounded'],
   noOrbitals: ['shipSilent'],
   primaryOnly: ['primaryConcern', 'loadoutLoyalist'],
-  oopsAllOrbitals: ['packLight', 'thirsty', 'antiTankAbstinent', 'primaryConcern', 'grounded', 'shipSilent', 'openField'],
+  oopsAllAirstrikes: ['packLight', 'thirsty', 'primaryConcern', 'openField'],
   noStratagems: ['packLight', 'thirsty', 'antiTankAbstinent', 'primaryConcern', 'grounded', 'shipSilent', 'openField'],
   zeroDeaths: ['deadWeight', 'untouchable'],
   noReserves: ['deadWeight'],
@@ -108,6 +108,13 @@ function isBackpackStratagem(item: Item): boolean {
   return item.tags.includes('Backpacks')
 }
 
+// The game's "red" stratagems: Eagle and Orbital strikes. A misfortune that
+// restricts the loadout to them (Oops, All Airstrikes) still leaves enough
+// choices to ready up.
+function isAirstrikeStratagem(item: Item): boolean {
+  return item.category === 'Eagle' || item.category === 'Orbital'
+}
+
 function isSupportWeaponStratagem(item: Item): boolean {
   return item.category === 'Supply' && item.tags.includes('Weapons')
 }
@@ -145,13 +152,13 @@ export function legalStratagemCount(
 ): number {
   const owned = new Set(ownedIds)
   const misfortuneBans = misfortuneId ? MISFORTUNE_BANS_STRATAGEM[misfortuneId] : undefined
-  const orbitalsOnly = misfortuneId === 'oopsAllOrbitals'
+  const airstrikesOnly = misfortuneId === 'oopsAllAirstrikes'
   let count = 0
   for (const item of stratagems) {
     if (!owned.has(item.id) && !isReserveStratagem(item)) {
       continue
     }
-    if (orbitalsOnly && item.category !== 'Orbital') {
+    if (airstrikesOnly && !isAirstrikeStratagem(item)) {
       continue
     }
     if (misfortuneBans?.(item)) {

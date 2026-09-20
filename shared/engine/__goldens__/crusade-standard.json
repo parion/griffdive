@@ -399,7 +399,7 @@
     {
       "mission": 29,
       "seed": 3964193037,
-      "misfortuneId": "oopsAllOrbitals",
+      "misfortuneId": "oopsAllAirstrikes",
       "misfortuneAccepted": false,
       "front": "illuminate",
       "pactIds": [],
@@ -438,15 +438,16 @@
     {
       "mission": 32,
       "seed": 3337565728,
-      "misfortuneId": "oopsAllOrbitals",
-      "misfortuneAccepted": false,
+      "misfortuneId": "oopsAllAirstrikes",
+      "misfortuneAccepted": true,
       "front": "terminids",
       "pactIds": [
-        "antiTankAbstinent"
+        "antiTankAbstinent",
+        "deadWeight"
       ],
       "outcome": "success",
       "stars": 5,
-      "optionId": "democracyprotects",
+      "optionId": "experimentalinfusion",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -474,15 +475,15 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "smg203gallant",
+      "optionId": "r4hyena",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
       "mission": 35,
       "seed": 2710938419,
-      "misfortuneId": "oopsAllOrbitals",
-      "misfortuneAccepted": false,
+      "misfortuneId": "oopsAllAirstrikes",
+      "misfortuneAccepted": true,
       "front": "terminids",
       "pactIds": [
         "deadWeight"
@@ -542,9 +543,9 @@
       "noSentries:automatons",
       "noSentries:illuminate",
       "noSentries:terminids",
-      "oopsAllOrbitals:illuminate",
-      "oopsAllOrbitals:terminids",
-      "oopsAllOrbitals:terminids",
+      "oopsAllAirstrikes:illuminate",
+      "oopsAllAirstrikes:terminids",
+      "oopsAllAirstrikes:terminids",
       "primaryOnly:illuminate",
       "primaryOnly:terminids",
       "primaryOnly:terminids",
@@ -559,10 +560,10 @@
       "cqc30stunbaton",
       "cqc42machete",
       "cqc73entrenchmenttool",
-      "democracyprotects",
       "doublefreedom",
       "electricalconduit",
       "epoch",
+      "experimentalinfusion",
       "extrapadding",
       "firebombhellpods",
       "flexiblereinforcementbudget",
@@ -583,6 +584,7 @@
       "p2peacemaker",
       "p33missilepistol",
       "r2124constitution",
+      "r4hyena",
       "r6deadeye",
       "r72censor",
       "reinforcedepaulettes",
@@ -591,7 +593,6 @@
       "sg20halt",
       "sg225iebreakerincendiary",
       "sg8punisher",
-      "smg203gallant",
       "sta52assaultrifle"
     ],
     "seedHistory": [
