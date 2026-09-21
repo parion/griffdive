@@ -19,12 +19,12 @@ const { codexOpen, warbondsOpen } = useDrawers()
           <button
             type="button"
             class="chip warn"
-            title="Pre-alpha — click for the changelog"
+            title="Alpha — click for the changelog"
             aria-haspopup="dialog"
             :aria-expanded="changelogOpen"
             @click="changelogOpen = true"
           >
-            pre-alpha
+            alpha
           </button>
         </div>
         <nav aria-label="Primary">

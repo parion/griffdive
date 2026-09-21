@@ -4,7 +4,7 @@ import type { Item } from '~~/shared/data/types'
 import type { RewardOption } from '~~/shared/engine/rewards'
 import { SPRING_POP } from '~/utils/motion'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   option: RewardOption
   candidates: readonly Item[]
   choicePool: Item[]
@@ -16,10 +16,16 @@ const props = defineProps<{
   canPick: boolean
   picked: boolean
   dimmed: boolean
-}>()
+  // Ban flow: the settled reels toggle a purge selection instead of picking.
+  // `bannable` is the engine's allow-list (Liberty's Cross is never bannable).
+  banMode?: boolean
+  bannable?: boolean
+  selected?: boolean
+}>(), { banMode: false, bannable: true, selected: false })
 
 const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
+  ban: [optionId: string]
   settled: []
 }>()
 
@@ -43,6 +49,12 @@ const winner = computed(() => props.option.item)
 const tierVar = computed(() =>
   props.option.choice ? 'var(--tier-splus)' : `var(--tier-${winner.value.tier})`)
 const winnerTier = computed(() => (props.option.choice ? 'S+' : winner.value.tier))
+
+// Whether the settled card can still be acted on: in pick mode a stopped reel
+// that has not been dimmed by another pick; in ban mode only engine-bannable
+// options (the choice card is present but inert).
+const selectable = computed(() =>
+  props.canPick && (props.banMode ? props.bannable : !props.dimmed))
 
 const strip = (() => {
   const source = props.candidates.length > 0 ? props.candidates : [props.option.item]
@@ -82,7 +94,12 @@ function imageUrl(item: Item): string | undefined {
   >
     <div
       class="reel-window"
-      :class="{ reeling: !settled && !instant, settled, picked, dimmed }"
+      :class="{
+        reeling: !settled && !instant,
+        settled,
+        picked: banMode ? selected : picked,
+        dimmed: banMode ? !bannable : dimmed,
+      }"
       :style="{ '--tier': tierVar }"
     >
       <div
@@ -128,7 +145,7 @@ function imageUrl(item: Item): string | undefined {
         v-if="settled"
         as="div"
         class="reel-result"
-        :class="{ locked: dimmed || !canPick }"
+        :class="{ locked: !selectable }"
         :initial="{ opacity: 0, scale: 0.96 }"
         :animate="{ opacity: 1, scale: 1 }"
         :transition="SPRING_POP"
@@ -137,14 +154,15 @@ function imageUrl(item: Item): string | undefined {
           v-if="option.choice"
           :pool="choicePool"
           :owned-ids="ownedIds"
+          :disabled="!selectable"
           @choose="itemId => emit('pick', option.optionId, itemId)"
         />
         <ItemCard
           v-else
           :item="winner"
-          :selected="picked"
-          :disabled="dimmed || !canPick"
-          @select="emit('pick', option.optionId)"
+          :selected="banMode ? selected : picked"
+          :disabled="!selectable"
+          @select="banMode ? emit('ban', option.optionId) : emit('pick', option.optionId)"
         />
       </Motion>
     </div>

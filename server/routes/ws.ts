@@ -1,7 +1,16 @@
 import { processAction, processClose, processHello } from '../utils/room-sync'
-import type { PeerLike } from '../utils/room-sync'
+import type { PeerLike, RoomLimits } from '../utils/room-sync'
 import { roomKV } from '../utils/room-storage'
 import { peers as directory } from '../utils/peers'
+import { createRateLimiter } from '../utils/rate-limit'
+
+// Process-wide throttles: joins are the room-code brute-force surface, actions
+// the storage-write flood surface. Generous enough that real play never sees
+// them (a diver cannot click 120 times in 10 seconds).
+const limits: RoomLimits = {
+  hello: createRateLimiter(20, 60_000),
+  action: createRateLimiter(120, 10_000),
+}
 
 function asPeerLike(peer: unknown): PeerLike {
   return peer as PeerLike
@@ -28,18 +37,31 @@ export default defineWebSocketHandler({
     }
     const like = asPeerLike(peer)
     const kv = roomKV()
-    if (payload.type === 'hello') {
-      await processHello(kv, directory, like, payload)
+    try {
+      if (payload.type === 'hello') {
+        await processHello(kv, directory, like, payload, limits)
+      }
+      else if (payload.type === 'action') {
+        await processAction(kv, directory, like, payload, limits)
+      }
+      else {
+        like.send(JSON.stringify({ type: 'error', code: 'bad-message', message: 'Unknown message type' }))
+      }
     }
-    else if (payload.type === 'action') {
-      await processAction(kv, directory, like, payload)
-    }
-    else {
-      like.send(JSON.stringify({ type: 'error', code: 'bad-message', message: 'Unknown message type' }))
+    catch (error) {
+      // One bad message must never take down the process-wide room server:
+      // answer with an error and keep serving everyone else.
+      console.error(`[ws] message handler failed: ${error instanceof Error ? error.message : error}`)
+      like.send(JSON.stringify({ type: 'error', code: 'bad-message', message: 'Message could not be processed' }))
     }
   },
 
   async close(peer) {
-    await processClose(roomKV(), directory, asPeerLike(peer))
+    try {
+      await processClose(roomKV(), directory, asPeerLike(peer))
+    }
+    catch (error) {
+      console.error(`[ws] close handler failed: ${error instanceof Error ? error.message : error}`)
+    }
   },
 })

@@ -1186,3 +1186,11 @@ describe('reward tokens + bonus honors', () => {
     expect(advanced.divers[0]?.rewardBanned).toBe(false)
   })
 })
+
+describe('unknown actions', () => {
+  it('are no-ops, never corrupting state', () => {
+    const state = freshState()
+    const bogus = { type: 'NOT_AN_ACTION' } as unknown as EngineAction
+    expect(reduce(state, bogus)).toBe(state)
+  })
+})

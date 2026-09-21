@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { pactOfferFor } from '~~/shared/engine/selectors'
-import { ROOM_TTL_MS, createPeerDirectory, createRoom, loadRoom, processAction, processClose, processHello } from './room-sync'
+import { ROOM_TTL_MS, RoomLimitError, createPeerDirectory, createRoom, loadRoom, processAction, processClose, processHello, sweepRooms } from './room-sync'
 import type { PeerLike, RoomKV, StoredRoom } from './room-sync'
+import { createRateLimiter } from './rate-limit'
 import type { ServerMessage } from '~~/shared/types/messages'
 
 function fakeKV(): RoomKV & { dump(): Map<string, unknown> } {
@@ -463,5 +464,71 @@ describe('room-sync', () => {
     late.context.roomCode = code
     await processHello(kv, peers, late, { name: 'Late' })
     expect(sent(late).some(m => m.type === 'error' && m.code === 'room-not-found')).toBe(true)
+  })
+
+  it('rejects unknown and malformed actions without corrupting the room', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    sent(host).length = 0
+
+    // Unknown action type: whitelisted out before the engine is reached.
+    await processAction(kv, peers, host, { action: { type: 'WAT' } })
+    expect(sent(host).some(m => m.type === 'error' && m.code === 'bad-action')).toBe(true)
+    expect(sent(host).some(m => m.type === 'state')).toBe(false)
+
+    // Known type, malformed shape: the reducer throws, is caught, and nothing
+    // is persisted or broadcast.
+    sent(host).length = 0
+    await processAction(kv, peers, host, { action: { type: 'START_DIVE' } })
+    expect(sent(host).some(m => m.type === 'error' && m.code === 'bad-action')).toBe(true)
+    expect(sent(host).some(m => m.type === 'state')).toBe(false)
+
+    const stored = await loadRoom(kv, code)
+    expect(stored?.state.phase).toBe('lobby')
+    expect(stored?.state.settings).toBeNull()
+    expect(stored?.state.divers).toHaveLength(1)
+  })
+
+  it('rate-limits join attempts per address', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+    const limits = { hello: createRateLimiter(1, 60_000) }
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    host.remoteAddress = '203.0.113.7'
+    await processHello(kv, peers, host, { name: 'Host' }, limits)
+    expect(sent(host).some(m => m.type === 'welcome')).toBe(true)
+
+    const flood = fakePeer('ws-b')
+    flood.context.roomCode = code
+    flood.remoteAddress = '203.0.113.7'
+    await processHello(kv, peers, flood, { name: 'Flood' }, limits)
+    expect(sent(flood).some(m => m.type === 'error' && m.code === 'rate-limited')).toBe(true)
+    expect((await loadRoom(kv, code))?.state.divers).toHaveLength(1)
+  })
+
+  it('refuses room creation past capacity', async () => {
+    const kv = fakeKV()
+    await createRoom(kv, 1)
+    await expect(createRoom(kv, 1)).rejects.toBeInstanceOf(RoomLimitError)
+  })
+
+  it('sweeps expired rooms and keeps live ones', async () => {
+    const kv = fakeKV()
+    const stale = await createRoom(kv)
+    const live = await createRoom(kv)
+    const raw = await kv.getItem(stale) as StoredRoom
+    raw.updatedAt = Date.now() - ROOM_TTL_MS - 1
+
+    expect(await sweepRooms(kv)).toBe(1)
+    expect(await kv.getItem(stale)).toBeUndefined()
+    expect(await kv.getItem(live)).toBeDefined()
   })
 })

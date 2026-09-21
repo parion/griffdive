@@ -675,5 +675,11 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         divers: state.divers.map(diver => ({ ...diver, isHost: diver.id === action.playerId })),
       }, action)
     }
+
+    // The union is exhaustive, but a malformed message can reach the reducer
+    // at runtime (the server also whitelists): unknown actions are no-ops, not
+    // undefined — never let a bad message corrupt state.
+    default:
+      return state
   }
 }

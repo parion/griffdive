@@ -32,7 +32,7 @@ watch(() => props.open, (open) => {
   <AppDialog
     :open="props.open"
     title="Changelog"
-    description="Recent deployments and commits from main."
+    description="Notable changes from recent releases."
     size="md"
     @update:open="value => { if (!value) emit('close') }"
   >

@@ -464,12 +464,16 @@ function rerollLabel(
   padding-left: 0.5rem;
 }
 
-/* While a reel is spinning, the card's static content steps aside for it —
-   the team-risk row stays put: its pips are rolling, not settling. */
+/* While a reel is spinning, the card's static content steps aside for it.
+   The misfortune's rule and accountability would spoil the draw if merely
+   dimmed, so they are hidden outright (visibility also keeps them out of the
+   a11y tree and unselectable); the team-risk row stays put — its pips are
+   rolling, not settling. */
 .wheel-card.reeling p,
 .wheel-card.reeling .row:not(:first-child):not(.risk-row),
 .wheel-card.reeling .btn {
-  opacity: 0.2;
+  opacity: 0;
+  visibility: hidden;
   transition: opacity 0.2s ease-in;
 }
 .wheel-card p,
