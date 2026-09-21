@@ -3,16 +3,32 @@ import { SQUAD_SIZE_MAX, MAX_NAME_LENGTH } from '~~/shared/engine/config'
 import { createLobbyState, joinDiver, seatingBlocked } from '~~/shared/engine/room'
 import { reduce } from '~~/shared/engine/reducer'
 import type { DiveState, EngineAction } from '~~/shared/engine/types'
-import { isHostOnlyAction } from '~~/shared/types/messages'
+import { isEngineActionType, isHostOnlyAction } from '~~/shared/types/messages'
 import type { ServerMessage } from '~~/shared/types/messages'
 import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, isRoomCode } from '~~/shared/utils/room-code'
 import { roomMetrics } from './metrics'
+import type { RateLimiter } from './rate-limit'
 
 const newRoomCode = customAlphabet(ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH)
 const newPlayerId = () => nanoid(12)
 
 // Rooms idle in storage this long before they are pruned on access.
 export const ROOM_TTL_MS = 12 * 60 * 60 * 1000
+
+// A backstop against unbounded room growth on the single 256 MB machine, in
+// case rate-limited creation is still sustained. The sweeper below reaps
+// expired rooms so the ceiling rarely matters in normal play.
+export const MAX_ROOMS = 2000
+
+export class RoomLimitError extends Error {}
+
+// Optional transport-level throttles, injected by the WS route so the sync
+// core stays unit-testable. Keyed by address for joins (brute-force guard) and
+// by player id for actions (flood guard).
+export interface RoomLimits {
+  hello?: RateLimiter
+  action?: RateLimiter
+}
 
 export interface StoredRoom {
   code: string
@@ -31,6 +47,7 @@ export interface RoomKV {
 export interface PeerLike {
   id: string
   context: { roomCode?: string, playerId?: string }
+  remoteAddress?: string
   send(text: string): void
 }
 
@@ -80,13 +97,30 @@ function isStoredRoom(raw: unknown): raw is StoredRoom {
     && typeof room.updatedAt === 'number'
 }
 
-export async function createRoom(kv: RoomKV): Promise<string> {
+export async function createRoom(kv: RoomKV, maxRooms: number = MAX_ROOMS): Promise<string> {
+  if ((await kv.getKeys()).length >= maxRooms) {
+    throw new RoomLimitError('Room capacity reached')
+  }
   let code = newRoomCode()
   while (await kv.getItem(code) != null) {
     code = newRoomCode()
   }
   await kv.setItem(code, { code, state: createLobbyState(), updatedAt: Date.now() } satisfies StoredRoom)
   return code
+}
+
+// Reap idle rooms in the background so they do not sit in memory until the
+// next access (loadRoom only prunes the room it is asked for).
+export async function sweepRooms(kv: RoomKV, now: number = Date.now()): Promise<number> {
+  let removed = 0
+  for (const code of await kv.getKeys()) {
+    const raw = await kv.getItem(code)
+    if (isStoredRoom(raw) && now - raw.updatedAt > ROOM_TTL_MS) {
+      await kv.removeItem(code)
+      removed += 1
+    }
+  }
+  return removed
 }
 
 export async function loadRoom(kv: RoomKV, code: string): Promise<StoredRoom | null> {
@@ -152,6 +186,7 @@ export async function processHello(
   peers: PeerDirectory,
   peer: PeerLike,
   payload: { name?: unknown, playerId?: unknown },
+  limits?: RoomLimits,
 ): Promise<void> {
   const requested = peer.context.roomCode ?? ''
   if (!requested) {
@@ -161,6 +196,13 @@ export async function processHello(
 
   if (!isRoomCode(requested)) {
     sendError(peer, 'bad-room', 'Invalid room code')
+    return
+  }
+
+  // Throttle joins before any storage work: this is the room-code brute-force
+  // guard as much as a connection-flood guard.
+  if (limits?.hello && !limits.hello.take(peer.remoteAddress ?? 'unknown')) {
+    sendError(peer, 'rate-limited', 'Too many join attempts — try again shortly')
     return
   }
 
@@ -242,11 +284,17 @@ export async function processAction(
   peers: PeerDirectory,
   peer: PeerLike,
   payload: { action?: unknown },
+  limits?: RoomLimits,
 ): Promise<void> {
   const roomCode = peer.context.roomCode
   const playerId = peer.context.playerId
   if (!roomCode || !playerId) {
     sendError(peer, 'not-in-room', 'Join a dive before acting')
+    return
+  }
+  // Drop action floods silently: every rejected action that answered with an
+  // error would be its own amplification. 120 per 10s is far above any human.
+  if (limits?.action && !limits.action.take(playerId)) {
     return
   }
   const room = await loadRoom(kv, roomCode)
@@ -255,7 +303,9 @@ export async function processAction(
     return
   }
   const action = payload.action as EngineAction | undefined
-  if (!action || typeof action.type !== 'string') {
+  // Whitelist the union: an unknown type has no reducer case and would return
+  // undefined, which used to be persisted and then crash the broadcast.
+  if (!action || typeof action.type !== 'string' || !isEngineActionType(action.type)) {
     sendError(peer, 'bad-action', 'Unknown action')
     return
   }
@@ -275,7 +325,16 @@ export async function processAction(
   }
 
   const enforced = enforceSelf(action, playerId)
-  const next = reduce(room.state, enforced)
+  let next: DiveState
+  try {
+    next = reduce(room.state, enforced)
+  }
+  catch {
+    // A malformed field (missing settings, a non-array pact list) must never
+    // reach storage: it would be persisted and rebroadcast to the whole room.
+    sendError(peer, 'bad-action', 'Malformed action')
+    return
+  }
   if (next === room.state) {
     return
   }

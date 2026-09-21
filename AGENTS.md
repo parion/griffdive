@@ -528,11 +528,13 @@ app/
   assets/css/      main.css — global HD2 theme (two-font system, see Conventions)
 server/
   routes/ws.ts     defineWebSocketHandler — single endpoint, ?room={code}
-  utils/           room-sync.ts (hello/action/close core; KV + peers injected),
-                   room-storage.ts (useStorage('rooms') adapter), peers.ts (process-wide
-                   peer directory shared by the WS route and metrics),
+  utils/           room-sync.ts (hello/action/close core; KV + peers injected; TTL sweep +
+                   room-cap backstop), room-storage.ts (useStorage('rooms') adapter),
+                   peers.ts (process-wide peer directory shared by the WS route and metrics),
+                   rate-limit.ts (in-memory sliding-window limiter for joins/actions),
                    metrics.ts (Prometheus registry: presence gauges + dive counter)
-  plugins/         metrics.ts (binds the gauges, serves /metrics on internal :9091)
+  plugins/         metrics.ts (binds the gauges, serves /metrics on internal :9091),
+                   room-sweeper.ts (reaps idle rooms every 15 min)
   api/             rooms/index.post.ts (create), rooms/[code].get.ts (snapshot)
 shared/
   engine/          config.ts, types.ts, reducer.ts, rng.ts, wheel.ts, pacts.ts,
@@ -591,12 +593,20 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 | C→S | `ping` | heartbeat — answered with `pong` |
 | S→C | `welcome` | `{ selfId, hostId, roomCode, snapshot, online }` |
 | S→C | `state` | `{ snapshot, applied (EngineAction \| null), online }` — after each applied change; also an `applied: null` presence refresh the moment a seated diver's last connection drops; `online` = diver ids with live connections |
-| S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `dive-locked`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message` |
+| S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `dive-locked`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message`, `rate-limited` |
 
 REST fallbacks: `POST /api/rooms` → `{ code }`; `GET /api/rooms/:code` → `{ code, state }` (404).
 Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`,
 `SET_NAME`) are
 coerced to the sender — a client can never act as another diver.
+
+**Transport hardening:** the server whitelists `action.type` against the reducer union and guards
+`reduce`, so an unknown or malformed action is rejected (`bad-action`) instead of persisting
+`undefined` state; the reducer defaults unknown actions to a no-op and the WS handler catches
+anything else, so one bad message never stops the process-wide server. Joins are rate-limited per
+address (20/min → `rate-limited`), actions per diver (120/10s, silently dropped), and room creation
+per address (10/min → 429) with a `MAX_ROOMS` cap (503). `server/plugins/room-sweeper.ts` reaps idle
+rooms every 15 min so the `MAX_ROOMS` backstop rarely matters.
 
 Canonical engine actions (the reducer union; keep names stable):
 
