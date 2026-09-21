@@ -32,7 +32,7 @@ IDs are stable and append-only; do not renumber.
 | ID | Title | Type | Scope | Status | Origin |
 |----|-------|------|-------|--------|--------|
 | N1 | Booster section when none owned | UX | S | Done | new |
-| N2 | Faction strains (spore Terminids, vote-snatcher Illuminate) | Design | XL | Blocked (DEC-5) | new |
+| N2 | Faction strains (optional operation-long team risk) | Design | L | Todo (DEC-5) | new |
 | N3 | Helldivers campaign API → MO boosts | Feature/Infra | XL | Phase 5 | new |
 | N4 | Stars default to full | UX | S | Done | new |
 | N5 | Mandatory 4 stratagems; remove `barebones`; early-game pact trap | Rules | M | Done (DEC-1: loadout-checked + reserve + exclusivity) | new |
@@ -69,6 +69,7 @@ IDs are stable and append-only; do not renumber.
 | N36 | Mandatory 4 slots vs equip-restricting misfortunes | Rules | M | Done | new |
 | N37 | Oops, All Orbitals too narrow (rename to Airstrikes, include Eagles) | Rules | S | Done | new |
 | N38 | Bonus-stat squad honors (slot-machine stat → token prize) | Feature/Design | L | Done | new |
+| N39 | Team reroll-token economy (more sources for the shared pool) | Balance/Design | M | Todo (DEC-5 follow-on) | new |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -80,7 +81,7 @@ Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the re
 | DEC-2 | Time/samples → Valor: target max bonus (e.g. +0.5 total, or +1.0), and sample rarity weights? | Resolved — N6 |
 | DEC-3 | Luck meter name (candidates: Liberty's Favor, Dive Fortune, Providence), and do rerolls exclude only the immediately replaced result or every prior result this window? | Resolved — split: DEC-3a naming (N7), DEC-3b reroll scope (N12) |
 | DEC-4 | Reward reroll token: banked across missions or per-mission? Ban scope: personal-crusade or squad-wide, and does a ban cost the whole reward pick? | Resolved — N8/N38 (one flexible token from bonus honors; spend to reroll your own offer or ban one offered item from your personal pools for the crusade) |
-| DEC-5 | Strains: drawn per operation (with the front) or per mission? Flavor-only or rule-bearing modifiers? Which front/strains ship first? | N2 |
+| DEC-5 | Strains: drawn per operation (with the front) or per mission? Flavor-only or rule-bearing modifiers? Which front/strains ship first? | Resolved — N2 |
 | DEC-6 | Light-armor fix: add a light starter passive, reword `fragileLiberty` to "no heavy armor", or gate the misfortune? | N13 |
 | DEC-7 | Incoming-player Valor: cap, and the non-exploit rule (e.g. scales off the squad's banked performance, not a fresh join's). | Resolved — N16 closed (conflicts with "Field Promotion restores altitude, never rarity") |
 | DEC-8 | Failure rework direction (owner-flagged, to be spec'd): what replaces "repeat op + forfeit one item"? | Resolved — N26 accepted (keep current rule) |
@@ -123,6 +124,26 @@ success, so the mission just reported feeds the draft that follows.
   refuses a seed that re-derives the result it would replace, and the UI draws fresh seeds until the
   roll actually moves. Excluding every prior result this window was rejected: it shrinks the pool and
   fights the free-overrule rule (cycling back onto an already-completed combo is intentionally free).
+
+**DEC-5 — resolved (N2).** Strains ship as an **optional, operation-long team-risk commitment**,
+never a forced modifier. The front is drawn at the operation's first spin as today, and a **strain
+is rolled with it** (a subfaction of that front, gated per-strain by `minDifficulty` like
+misfortunes). In the mission-1 decision window the squad **accepts or declines** the strain exactly
+like the misfortune — declining is free and zero-risk (principle 1: risk is chosen, never forced),
+which also protects a surplus-kit squad from being handed an unfieldable op. Accepting commits the
+squad for the whole operation: the strain's **team risk is added to every mission's Valor**
+(compounding over the op's 2–3 missions — a deliberately different scope from the per-mission
+misfortune). The lock holds until the operation ends: a **win** rolls a fresh front+strain on
+`ADVANCE`; a **failure** restarts at mission 1, keeps the front, and **reopens the strain decision**
+(same draw, re-decidable, so the squad may drop it). Rerolling the strain is a mission-1-only token
+sink mirroring the front gate. Strains are **flavor + risk, never rule-bearing**: the app never
+observes enemy composition, so no unverifiable restriction is attached — the real subfaction
+reshapes loadout decisions in-game and the app only prices the risk. Carrot is **extra Valor only**
+(no themed reward pool). Implementation adds `shared/data/strains.ts`, a `strainId` on `DiveState`
+(save schema v8 → v9 migration), a three-part `(misfortune × front × strain)` combo key,
+strain-aware reroll guards, an `ENGINE_VERSION` bump + goldens, and a WheelPanel front-card
+accept/decline treatment. The strain is a second operation-long token sink, so the shared reroll
+pool needs more sources — split out as **N39**.
 
 **DEC-10 — resolved (N33). Landed.** Reward options roll inside the band from the difficulty's
 **base tier** (a hard floor) up to the rolled ceiling: the draft **leads with one option at the
@@ -173,7 +194,7 @@ scripted crusade spends a token).
 
 ### Batch D — Content, resilience, onboarding
 
-N2, N10, N15, N17.
+N2, N10, N15, N17, N39.
 
 ### Post-v1 / R&D
 
@@ -414,11 +435,22 @@ fresh misfortune. The confirmed-good parts from QA stay as the regression baseli
 
 ### Batch D
 
-**N2 · Faction strains.** Spore Terminids and vote-snatcher Illuminate differ enough to be modeled.
-Proposed: `Strain { id, frontId, name, rule, minDifficulty, riskDelta }`, drawn with the front at
-the operation's first spin (`wheel.ts:22`) and persisting for the op. The front wheel becomes
-front+strain; combo tracking and the reroll economy must account for it. Cadence and rule-bearing
-depth are DEC-5.
+**N2 · Faction strains. Resolved (DEC-5).** Strains are an **optional, operation-long team-risk
+commitment**. A strain is a subfaction of the drawn front, rolled with the front at the operation's
+first spin (`deriveFront`, `wheel.ts:22`) and gated per-strain by `minDifficulty` like misfortunes.
+In the mission-1 decision window the squad accepts/declines it exactly like the misfortune —
+declining is free and zero-risk. Accepting adds the strain's **team risk to every mission** of the
+operation (compounding over its 2–3 missions) and locks until the operation ends: a **win** rolls a
+fresh front+strain on `ADVANCE`; a **failure** restarts at mission 1, keeps the front, and **reopens
+the strain decision** (same draw, re-decidable). Strain reroll is a mission-1-only token sink
+mirroring the front gate. Strains are **flavor + risk, never rule-bearing** — the app cannot observe
+enemy composition, so no unverifiable restriction is attached; the real subfaction reshapes loadout
+decisions in-game and the app only prices the risk. Carrot is **extra Valor only**. Implementation
+surface: `shared/data/strains.ts` (`Strain { id, frontId, name, blurb, risk, minDifficulty }`),
+strain into `teamRiskOf` / `maxValorFor` / the Valor meter, `strainId` on `DiveState` (save schema
+v8 → v9 migration), a three-part `(misfortune × front × strain)` combo key, strain-aware
+`REROLL_WHEEL` same-result guards, `ENGINE_VERSION` bump + goldens, and a `WheelPanel` front-card
+accept/decline treatment.
 
 **N10 · Crash / host-loss resilience.** Host migration exists (`removeDiver`, `reducer.ts:85`;
 server migration), but there is no mid-match void/abort path, no presence/host-change toast, and no
@@ -435,6 +467,12 @@ caches must differ it is really N16 territory.
 **N17 · Onboarding.** First-run / link-join "How a dive works" primer (spin → decide → pact → dive →
 report → reward), a persistent help drawer, and inline tooltips on Valor/ceiling. Reuse
 `PactBriefing` and the accountability labels. Depends on N6/N7 so the explanation is stable.
+
+**N39 · Team reroll-token economy.** The strain (N2) adds a second operation-long token sink beside
+the front, so the shared reroll pool needs more sources. Audit the current supply
+(`REROLL_TOKENS_PER_OPERATION` 1/op plus the free overrule on already-completed combos) against the
+new demand; candidate sources: a full-star clear on a strain-accepted operation, an
+operation-complete bonus, or a bonus-honors team award. Design pass, no code yet.
 
 ### Post-v1 / R&D
 
