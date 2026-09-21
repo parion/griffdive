@@ -9,6 +9,9 @@ const slotId = computed(() => String(route.params.id))
 const session = useDiveSession(slotId.value)
 const saves = useSaves()
 const { push: pushToast } = useToasts()
+const { ownedWarbonds, setOwned } = useOwnedWarbonds()
+const { openWarbonds } = useDrawers()
+const { hasSeenWarbondIntro, markWarbondIntroSeen } = useWarbondIntro()
 
 const {
   state,
@@ -26,6 +29,50 @@ const {
 } = useDiveView(session)
 
 const dispatch = (action: EngineAction) => session.dispatch(action)
+
+// Warbonds are what each diver actually owns — declared per diver, any phase,
+// and driven by the global Warbonds drawer. A local save seeds the working list
+// from its own draft; a room join pushes the browser's declared list to the
+// server instead of clobbering it with the seated default.
+const warbondsInitialized = ref(false)
+watch([self, selfId], ([diver, id]) => {
+  if (!diver || !id || warbondsInitialized.value) {
+    return
+  }
+  warbondsInitialized.value = true
+  if (session.mode === 'local') {
+    setOwned([...diver.warbondCodes])
+    return
+  }
+  const local = [...ownedWarbonds.value]
+  const same = local.length === diver.warbondCodes.length
+    && local.every(code => diver.warbondCodes.includes(code))
+  if (!same) {
+    dispatch({ type: 'SET_WARBONDS', playerId: id, warbondCodes: local })
+  }
+})
+
+watch(ownedWarbonds, (codes) => {
+  if (!warbondsInitialized.value || !selfId.value) {
+    return
+  }
+  const current = self.value?.warbondCodes ?? []
+  const same = current.length === codes.length && current.every(code => codes.includes(code))
+  if (!same) {
+    dispatch({ type: 'SET_WARBONDS', playerId: selfId.value, warbondCodes: [...codes] })
+  }
+})
+
+// The Warbonds panel is part of dive startup — a fresh solo dive opens it on
+// mount, and a room join opens it the moment the diver is seated (which is
+// right after the name gate). It fires once ever, like the remembered name.
+watch(self, (diver) => {
+  if (!diver || hasSeenWarbondIntro.value) {
+    return
+  }
+  markWarbondIntroSeen()
+  openWarbonds()
+}, { immediate: true })
 
 // Hostship moves under the squad's feet (disconnect migration) with no other
 // signal — announce the crown's arrival and departure.
@@ -240,13 +287,6 @@ function launchCrusade(variant: CrusadeVariant): void {
   commitName()
   dispatch({ type: 'START_DIVE', settings: { variant } })
 }
-
-// Warbonds are what each diver actually owns — declared per diver, any phase.
-function commitWarbonds(codes: string[]): void {
-  if (selfId.value) {
-    dispatch({ type: 'SET_WARBONDS', playerId: selfId.value, warbondCodes: codes })
-  }
-}
 </script>
 
 <template>
@@ -328,8 +368,8 @@ function commitWarbonds(codes: string[]): void {
           Each diver declares their own; the host doesn't set these.
         </p>
         <WarbondPicker
-          :warbond-codes="self.warbondCodes"
-          @update:warbond-codes="commitWarbonds"
+          :warbond-codes="ownedWarbonds"
+          @update:warbond-codes="setOwned"
         />
       </details>
 

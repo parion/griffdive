@@ -465,16 +465,25 @@ app/
                    modal, InventoryGrid, CrusadeSetup, WarbondPicker,
                    JoinNameGate — name gate held while joining),
                    codex/CodexBrowser — the shared catalog browser (filter + tier grid),
+                   warbonds/WarbondBrowser — the shared warbond owner list (single column,
+                   rows expand on hover/focus and fade in the warbond's art, click toggles),
                    ui/ (ItemCard, TierBadge, RiskPips — risk dots, with a rolling back-and-forth
                    state while a wheel draw reels, WaitingLight — the slow-pulsing gold dot that
                    marks a section a diver still has to act on, ChangelogModal — GitHub deploy log
-                   shown from the pre-alpha header chip, CodexDrawer — the right-hand Reka Drawer
-                   slide-over that keeps the dive session mounted, AppDialog/AppTabs/AppTooltip —
+                   shown from the pre-alpha header chip, AppDrawer — the themed right-hand Reka
+                   Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer — its
+                   two slide-overs, IconBook/IconWarbond — the nav leading icons,
+                   AppDialog/AppTabs/AppTooltip —
                    the themed Reka primitives every modal, tab strip and icon-only control builds
                    on),
   composables/     useDiveSession (unified local/room driver), useDiveView (session-derived
                    shell state: self/phase/canControl/name draft), useDiveEngine (local reducer +
-                   persist), useGameSocket (WS, reconnect, stored playerId), useSaves,
+                   persist),                    useGameSocket (WS, reconnect, stored playerId), useSaves,
+                   useDrawers (global Codex/Warbonds slide-over visibility, so the dive can
+                   open the Warbonds panel without unmounting), useWarbondIntro (one-shot
+                   dive-start Warbonds prompt memory), useOwnedWarbonds (localStorage-backed
+                   warbond declaration shared by the Warbonds drawer, the home setup and every
+                   seated dive),
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
                    useChangelog (GitHub deployments + commits → changelog entries, 10-min cache)
   stores/          session.ts (Pinia: selfId, snapshot, online)

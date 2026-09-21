@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { dismissWarbondIntro } from './helpers'
 
 test('the skip link moves focus to the main landmark', async ({ page }) => {
   await page.goto('/')
@@ -34,6 +35,7 @@ test('the star rating is a keyboard-navigable radio group', async ({ page }) => 
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
   await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await dismissWarbondIntro(page)
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await page.getByRole('button', { name: 'Lock it in' }).click()
   await page.locator('.pact:not([disabled])').first().click()

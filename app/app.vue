@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const changelogOpen = ref(false)
-const codexOpen = ref(false)
+const { codexOpen, warbondsOpen } = useDrawers()
 </script>
 
 <template>
@@ -35,7 +35,18 @@ const codexOpen = ref(false)
             :aria-expanded="codexOpen"
             @click="codexOpen = true"
           >
+            <IconBook class="nav-icon" />
             Codex
+          </button>
+          <button
+            type="button"
+            class="nav-link"
+            aria-haspopup="dialog"
+            :aria-expanded="warbondsOpen"
+            @click="warbondsOpen = true"
+          >
+            <IconWarbond class="nav-icon" />
+            Warbonds
           </button>
         </nav>
       </header>
@@ -48,6 +59,10 @@ const codexOpen = ref(false)
         :open="codexOpen"
         @update:open="codexOpen = $event"
       />
+      <WarbondDrawer
+        :open="warbondsOpen"
+        @update:open="warbondsOpen = $event"
+      />
       <ToastStack />
     </div>
   </MotionConfig>
@@ -55,6 +70,9 @@ const codexOpen = ref(false)
 
 <style scoped>
 .nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   padding: 0;
   border: none;
   background: none;
@@ -63,4 +81,5 @@ const codexOpen = ref(false)
   cursor: pointer;
 }
 .nav-link:hover { text-decoration: underline; }
+.nav-icon { opacity: 0.85; }
 </style>
