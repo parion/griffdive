@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ProgressIndicator, ProgressRoot } from 'reka-ui'
-import { baseTierFor } from '~~/shared/engine/config'
-import { ceilingRange, maxValorFor } from '~~/shared/engine/selectors'
+import { VALOR_METER_MAX, baseTierFor } from '~~/shared/engine/config'
+import { ceilingRange } from '~~/shared/engine/selectors'
 import { valorOf } from '~~/shared/engine/rewards'
 import type { RewardTier } from '~~/shared/engine/types'
 
@@ -20,13 +20,14 @@ const props = withDefaults(defineProps<{
 const LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
 const valor = computed(() => valorOf(props.teamRisk, props.pactRisk, props.performance))
-// The scale is the most Valor this difficulty can actually stack, so the gauge
-// fills toward a real ceiling rather than an arbitrary max.
-const scale = computed(() => Math.max(1, maxValorFor(props.difficulty)))
+// The gauge is fixed at the meter top (11): Valor past it can't be shown, it
+// "breaks" the gauge and banks as Luck that lifts the top-rung odds.
+const scale = VALOR_METER_MAX
+const overflow = computed(() => Math.max(0, valor.value - VALOR_METER_MAX))
 const range = computed(() =>
   ceilingRange(props.difficulty, props.teamRisk, props.pactRisk, props.performance))
 
-const ratio = computed(() => Math.min(1, valor.value / scale.value))
+const ratio = computed(() => Math.min(1, valor.value / scale))
 const fill = computed(() => Math.max(0, valor.value))
 // Segments are laid out inside the filled indicator, so their widths are
 // shares of the current Valor (not of the full scale).
@@ -44,7 +45,10 @@ function format(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
 }
 
-const valueText = computed(() => `${format(valor.value)} of ${format(scale.value)} Valor`)
+const valueText = computed(() =>
+  overflow.value > 0
+    ? `${format(valor.value)} Valor — meter broken, +${format(overflow.value)} Luck`
+    : `${format(valor.value)} of ${format(scale)} Valor`)
 
 const baseTier = computed(() => baseTierFor(props.difficulty))
 const baseIndex = computed(() => LADDER.indexOf(baseTier.value))
@@ -118,6 +122,10 @@ const ceilingLabel = computed(() =>
         v-if="props.performance"
         class="tag performance"
       >Performance +{{ format(props.performance) }}</span>
+      <span
+        v-if="overflow > 0"
+        class="chip break-chip"
+      >Meter broken · +{{ format(overflow) }} Luck</span>
       <span
         v-if="!valor"
         class="muted"
@@ -260,6 +268,15 @@ const ceilingLabel = computed(() =>
 .tag.pact { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
 .tag.performance { color: var(--teal); background: color-mix(in srgb, var(--teal) 14%, transparent); }
 .locked-chip { color: var(--muted); }
+.break-chip {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 18%, transparent);
+  animation: break-pulse 1.1s ease-in-out infinite;
+}
+@keyframes break-pulse {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
 
 .ceiling { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .rungs { display: inline-flex; align-items: center; gap: 0.28rem; }

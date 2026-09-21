@@ -272,13 +272,29 @@ performance   = team performance from the mission just reported, squad-level
                 samples (≤ 0.3), so it never exceeds 0.5
 
 base tier:     diff 3–5 → C   diff 6–7 → B   diff 8–10 → A
+meter:         the Valor gauge tops out at 11; Valor past it is Luck
+effective:     E = min(Valor, 11),  Luck = max(0, Valor − 11)
 ceiling roll:  start at the base tier; each step to the next tier succeeds:
-                 C→B, B→A   min(0.8, Valor × (1 + bandPos) / 3^step)
-                 A→S        min(0.8, max(0, Valor − 3) × (1 + bandPos) / 18)
-                 S→S+       min(0.1, max(0, Valor − 7) × (1 + bandPos) / 40)
-               bandPos = position within the difficulty band (0 floor → 1 top)
-               S and S+ are gated behind Valor 4 / 8 — a trickle of risk can't
-               buy the top at altitude, and the S→S+ rung stays capped at 0.1
+                 C→B, B→A   min(0.8, E × (1 + bandPos) / 3^step)
+                 A→S        min(0.95, min(0.8, max(0, E − sFloor + 1)
+                                               × topAlt / 18) + Luck × 0.05)
+                 S→S+       min(0.2, min(sPlusCap, max(0, E − sPlusFloor + 1)
+                                               × topAlt / 40) + Luck × 0.015)
+               bandPos = position within the difficulty band (0 floor → 1 top);
+                         the ordinary C→B / B→A steps use it
+               topAlt = the smooth ladder altitude, 1.0 at diff 3 → 2.0 at
+                        diff 10; the top rungs use it instead of bandPos so S/S+
+                        scale with difficulty without sawtoothing at band edges
+               sFloor / sPlusFloor = the S / S+ Valor floors, constant per band:
+                        C / B / A → 1.5 / 2.6 / 4 and 5 / 6.5 / 8. The lower
+                        the base tier the more the floor gives back, because the
+                        climb to S there costs extra rungs (the chain, not the
+                        odds, is what punishes an early squad)
+               sPlusCap = the S+ per-step cap, 0.1 below diff 6 then climbing
+                        from 0.12 at diff 6 to 0.172 at diff 10 — Liberty's Cross
+                        becomes a real chase where super samples appear
+               A trickle of risk still can't buy the top at altitude, and
+               neither top rung is ever guaranteed.
 
 option band:   the difficulty's base tier (hard floor) → the rolled ceiling
 option roll:   the draft leads with one option at the ceiling (or the highest
@@ -288,10 +304,19 @@ option roll:   the draft leads with one option at the ceiling (or the highest
 ```
 
 - Difficulty alone never buys S or S+; only stacked chosen risk does. The top rungs are **Valor
-  gated** (`S_VALOR_FLOOR` 4, `S_PLUS_VALOR_FLOOR` 8 in `shared/engine/config.ts`): below the floor
-  the rung simply cannot roll, so a single low-risk misfortune never reaches S at altitude. Even
-  max **chosen** Valor (13) leaves S+ a longshot (≤10% on every difficulty; `S_PLUS_UPGRADE_CAP`).
-  A zero-Valor dive always rolls its base tier. Team performance is a deliberate exception: it can
+  gated** (`sValorFloorFor` / `sPlusValorFloorFor` in `shared/engine/config.ts`): the S / S+ floors
+  are constant per difficulty band (`C / B / A → 1.5 / 2.6 / 4` and `5 / 6.5 / 8`). The lower the
+  base tier, the more the floor gives back — but the chain to reach S there is two rungs longer, so
+  the discount is what keeps an early squad competitive rather than overpowered. The top rungs also
+  use a smooth ladder altitude (`topRungAltitude`, 1.0 at diff 3 → 2.0 at diff 10) instead of the
+  per-band `bandPosition`, so S+ climbs steadily with difficulty instead of dipping at every band
+  boundary. **S+ scales with altitude**: its per-step cap rises from 0.12 at the super-sample
+  threshold (diff 6) to 0.172 at diff 10, so Liberty's Cross is a real chase where super samples
+  appear instead of a flat longshot. **The Valor meter tops out at 11** (`VALOR_METER_MAX`): Valor
+  past it "breaks" the gauge and banks as **Luck**, which adds flat odds to the S / S+ rungs
+  (`OVERFLOW_S_LUCK` / `OVERFLOW_S_PLUS_LUCK`), so overstacking is never wasted. Even absolute max
+  overstack (Valor 13.5) leaves S+ a longshot (≤20% at altitude; `S_PLUS_OVERFLOW_CAP`). A
+  zero-Valor dive always rolls its base tier. Team performance is a deliberate exception: it can
   nudge a zero-chosen-risk clear off its base tier, but caps at 0.5 against the 13-point chosen
   ceiling, so skill never carries a run (`TIME_VALOR_MAX`, `SAMPLE_VALOR_CAP`,
   `SAMPLE_VALOR_WEIGHTS`). Sample values are calibrated to the game's own rarity mix (wiki.gg/Sample
@@ -301,10 +326,13 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   stacking the three sources (team risk, pacts, performance) with a tier ladder from the
   difficulty's base tier to the previewed ceiling and the odds of reaching it. It renders in the
   pacts window (live, reacting to pact toggles and the misfortune decision), the diving Briefing
-  (locked) and the reward draft (locked, including the performance term). Its display scale is
-  `maxValorFor(difficulty)` in `shared/engine/selectors.ts`; the meter is presentation only and
-  never gates a roll. The gauge is Reka's `ProgressRoot`/`ProgressIndicator` (accessible
-  `role="progressbar"` with `aria-valuenow/max/valuetext`).
+  (locked) and the reward draft (locked, including the performance term). Its display scale is the
+  fixed `VALOR_METER_MAX` (11) in `shared/engine/config.ts`; once Valor exceeds it the gauge reads
+  "Meter broken" and shows the banked Luck. `maxValorFor(difficulty)` in
+  `shared/engine/selectors.ts` still reports the most a difficulty *could* stack, i.e. its overflow
+  potential. The meter is presentation only and never gates a roll. The gauge is Reka's
+  `ProgressRoot`/`ProgressIndicator` (accessible `role="progressbar"` with
+  `aria-valuenow/max/valuetext`).
 - The reward pool is personal: each diver rolls against the catalog of warbonds *they* declared
   (plus `warbondCode === 'none'` items, minus armor pieces) — never the squad's or the host's.
 - Higher difficulties inside a band climb easier: diff 5 rolls into B more readily than diff 3,
@@ -333,9 +361,12 @@ option roll:   the draft leads with one option at the ceiling (or the highest
 - **Failed pacts forfeit stakes** (see Personal layer): each pact marked failed in the field voids
   its risk — Valor, previews and the rolled offer all drop — and costs one reward option, floored
   at one so the draft always completes.
-- Example curves: diff 3 with an intense misfortune (5) + two stacked pacts (4) → chosen Valor 9 →
-  ceiling reaches **S** about a fifth of the time, **S+** rarely. Diff 10 with zero Valor → **A**,
-  never S. Risk pays at every altitude; nothing is guaranteed, but everything gets likelier.
+- Example curves: at diff 3 a single strong pact (Valor 3) reaches **S** ~4% of the time and two
+  (Valor 6) ~18%; the strongest early stack (Valor 10) reaches **S** about a third of the time,
+  **S+** rarely. Diff 10 with zero Valor → **A**, never S. At diff 6 (where super samples appear) a
+  strong build (Valor 10–11) reaches **S+** ~6–7%, climbing to ~12–14% at diff 10; max overstack
+  (Valor 13.5) reaches **S+** ~18% there. Risk pays at every altitude; nothing is guaranteed, but
+  everything gets likelier.
 
 ### Reward tokens & squad honors
 

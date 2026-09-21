@@ -299,10 +299,11 @@ export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): Cei
   return ceilingRange(difficulty, maxRisk, pactRisk)
 }
 
-// Display scale for the Valor meter: the most Valor this difficulty can
-// actually stack — the strongest eligible misfortune, the top pacts the offer
-// can deal, and the capped team-performance term. Presentation only; it never
-// gates a roll.
+// The most Valor this difficulty can actually stack — the strongest eligible
+// misfortune, the top pacts the offer can deal, and the capped team-performance
+// term. The meter itself is scaled to VALOR_METER_MAX (11), so anything this
+// returns above that is potential overflow Luck (AGENTS.md: Reward math).
+// Presentation only; it never gates a roll.
 export function maxValorFor(difficulty: number): number {
   const teamMax = Math.max(
     0,

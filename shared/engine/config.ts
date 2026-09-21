@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 15
+export const ENGINE_VERSION = 16
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -147,9 +147,64 @@ export const S_UPGRADE_DIVISOR = 18
 export const S_PLUS_VALOR_FLOOR = 8
 export const S_PLUS_UPGRADE_DIVISOR = 40
 // The final S→S+ rung is capped far below the rest of the ladder: altitude
-// alone must never make Liberty's Cross routine. Max chosen Valor (13) tops out
-// around 8% at altitude and lower in the low bands.
+// alone must never make Liberty's Cross routine. Below the super-sample bands
+// (diff < 6) this flat cap applies; from diff 6 the cap climbs with difficulty
+// (sPlusUpgradeCapFor), so the Cross is a real chase at altitude.
 export const S_PLUS_UPGRADE_CAP = 0.1
+
+// The Valor meter tops out at 11: the strongest build a squad can realistically
+// stack (the absolute max is ~13.5). Valor past the top is banked as Luck — the
+// gauge "breaks" and each extra point buys flat odds on the S and S+ rungs, so
+// overstacking risk is never wasted. Overflow can push S near certainty but
+// never guarantees either top rung. (AGENTS.md: Reward math.)
+export const VALOR_METER_MAX = 11
+export const OVERFLOW_S_LUCK = 0.05
+export const OVERFLOW_S_PLUS_LUCK = 0.015
+export const S_OVERFLOW_CAP = 0.95
+export const S_PLUS_OVERFLOW_CAP = 0.2
+
+// Liberty's Cross scales with altitude instead of being a flat longshot: once
+// super samples appear (diff 6) the S+ per-step ceiling climbs with difficulty,
+// so the Cross is a real chase at the super-sample bands and a better one at
+// altitude. Below diff 6 it stays the base jackpot cap.
+export const S_PLUS_CAP_DIFF6 = 0.12
+export const S_PLUS_CAP_PER_DIFFICULTY = 0.013
+export const S_PLUS_UNLOCK_DIFFICULTY = 6
+
+export function sPlusUpgradeCapFor(difficulty: number): number {
+  if (difficulty < S_PLUS_UNLOCK_DIFFICULTY) {
+    return S_PLUS_UPGRADE_CAP
+  }
+  return Math.min(
+    S_PLUS_OVERFLOW_CAP,
+    S_PLUS_CAP_DIFF6 + (difficulty - S_PLUS_UNLOCK_DIFFICULTY) * S_PLUS_CAP_PER_DIFFICULTY,
+  )
+}
+
+// The top-rung Valor floors are constant within a difficulty band and step up
+// as the base tier rises: the lower the base, the more the floor gives back,
+// because the climb to S there costs extra rungs. Within a band the smooth
+// ladder altitude (below) supplies the easier climb, so the top rungs scale
+// with difficulty instead of sawtoothing at band boundaries.
+const S_FLOOR_BY_BAND: Readonly<Record<string, number>> = { C: 1.5, B: 2.6, A: S_VALOR_FLOOR }
+const S_PLUS_FLOOR_BY_BAND: Readonly<Record<string, number>> = { C: 5, B: 6.5, A: S_PLUS_VALOR_FLOOR }
+
+export function sValorFloorFor(difficulty: number): number {
+  return S_FLOOR_BY_BAND[baseTierFor(difficulty)] ?? S_VALOR_FLOOR
+}
+
+export function sPlusValorFloorFor(difficulty: number): number {
+  return S_PLUS_FLOOR_BY_BAND[baseTierFor(difficulty)] ?? S_PLUS_VALOR_FLOOR
+}
+
+// The top rungs scale with a single altitude ramp across the whole ladder
+// (1.0 at diff 3 → 2.0 at diff 10) rather than the per-band bandPosition, whose
+// reset at each band boundary made S+ sawtooth (harder at a band's floor than
+// the previous band's top). The ordinary C→B / B→A steps keep bandPosition.
+export function topRungAltitude(difficulty: number): number {
+  const span = MAX_DIFFICULTY - MIN_DIFFICULTY
+  return 1 + (difficulty - MIN_DIFFICULTY) / span
+}
 // Tiers with per-step odds below this are too unlikely to preview. Kept at or
 // below the S+ cap so the jackpot can still preview at max Valor, and at or
 // below the S floor's opening odds so a reachable S is never hidden.
