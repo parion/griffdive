@@ -129,8 +129,11 @@ difficulty 10. The run may then end, or continue in endless mode (post-v1).
 
 Warbonds are premium, per-player purchases, so ownership is declared **per diver**, never by the
 host: each diver self-declares their owned warbonds (`SET_WARBONDS`, self-service, any phase;
-default all). Reward offers roll against the diver's own catalog — a diver is never offered items
-from warbonds they don't own. Starting kits are not warbond-filtered.
+default every progression warbond). The acquisition specials — the Super Citizen bundle
+(`warbond0`) and the Superstore (`warbond1`) — sort last and are declared unowned; the Pre-Order
+Bonus is dropped entirely (unobtainable, no reward-pool bearing — its pieces were armor, which
+rewards never offer). Reward offers roll against the diver's own catalog — a diver is never
+offered items from warbonds they don't own. Starting kits are not warbond-filtered.
 
 ### Team layer — misfortunes (Wheel)
 
@@ -466,7 +469,8 @@ app/
                    JoinNameGate — name gate held while joining),
                    codex/CodexBrowser — the shared catalog browser (filter + tier grid),
                    warbonds/WarbondBrowser — the shared warbond owner list (single column,
-                   rows expand on hover/focus and fade in the warbond's art, click toggles),
+                   acquisition specials last; each banner starts blurred and dimmed, then
+                   resolves on scroll/hover/tap, click toggles),
                    ui/ (ItemCard, TierBadge, RiskPips — risk dots, with a rolling back-and-forth
                    state while a wheel draw reels, WaitingLight — the slow-pulsing gold dot that
                    marks a section a diver still has to act on, ChangelogModal — GitHub deploy log

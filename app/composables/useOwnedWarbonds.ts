@@ -1,9 +1,9 @@
-import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
+import { ALL_WARBOND_CODES, DEFAULT_OWNED_WARBOND_CODES } from '~~/shared/data/catalog'
 
-const STORAGE_KEY = 'griffdive:warbonds:v1'
+const STORAGE_KEY = 'griffdive:warbonds:v2'
 
 // Module scope keeps one owned list per tab; SPA mode means no SSR bleed.
-const owned = ref<string[]>([...ALL_WARBOND_CODES])
+const owned = ref<string[]>([...DEFAULT_OWNED_WARBOND_CODES])
 let loaded = false
 
 function load(): void {

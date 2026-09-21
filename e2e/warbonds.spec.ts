@@ -9,6 +9,10 @@ test('the Warbonds drawer toggles ownership and persists it', async ({ page }) =
 
   const row = drawer.getByRole('button', { name: /Helldivers Mobilize/ })
   await expect(row).toHaveAttribute('aria-pressed', 'true')
+  // Acquisition specials sort last and start unowned; the pre-order bonus is gone.
+  await expect(drawer.getByRole('button', { name: /Super Citizen/ })).toHaveAttribute('aria-pressed', 'false')
+  await expect(drawer.getByRole('button', { name: /Superstore/ })).toHaveAttribute('aria-pressed', 'false')
+  await expect(drawer.getByRole('button', { name: /Pre-Order/ })).toHaveCount(0)
   await row.click()
   await expect(row).toHaveAttribute('aria-pressed', 'false')
 

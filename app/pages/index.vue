@@ -203,8 +203,8 @@ function formatSavedAt(doc: SaveDoc): string {
     <section class="panel">
       <h2>Solo crusade</h2>
       <p class="muted small">
-        Prefer diving alone? Hop in with sensible defaults — Standard variant, every warbond
-        owned. Customize below if you like.
+        Prefer diving alone? Hop in with sensible defaults — Standard variant, every progression
+        warbond owned. Customize below if you like.
       </p>
       <div class="row">
         <label class="field">

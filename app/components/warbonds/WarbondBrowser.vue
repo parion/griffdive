@@ -16,7 +16,12 @@ interface WarbondRow {
   items: number
 }
 
+// Hover / focus / tap spotlight, plus a scroll spotlight for the row nearest
+// the drawer's centre.
 const activeCode = ref('')
+const centeredCodes = ref<Set<string>>(new Set())
+const rowElements = new Map<string, HTMLElement>()
+let observer: IntersectionObserver | null = null
 
 const rows = computed<WarbondRow[]>(() => WARBONDS.map((warbond: Warbond) => ({
   code: warbond.code,
@@ -31,6 +36,45 @@ const allOwned = computed(() => ownedWarbonds.value.length === WARBONDS.length)
 function toggleAll(): void {
   setOwned(allOwned.value ? [] : WARBONDS.map(warbond => warbond.code))
 }
+
+function registerRow(el: unknown, code: string): void {
+  if (el instanceof HTMLElement) {
+    rowElements.set(code, el)
+  }
+  else {
+    rowElements.delete(code)
+  }
+}
+
+onMounted(() => {
+  if (!import.meta.client || typeof IntersectionObserver === 'undefined') {
+    return
+  }
+  observer = new IntersectionObserver((entries) => {
+    const next = new Set(centeredCodes.value)
+    for (const entry of entries) {
+      const code = (entry.target as HTMLElement).dataset.code
+      if (!code) {
+        continue
+      }
+      if (entry.isIntersecting) {
+        next.add(code)
+      }
+      else {
+        next.delete(code)
+      }
+    }
+    centeredCodes.value = next
+  }, { rootMargin: '-42% 0px -42% 0px', threshold: 0.01 })
+  for (const el of rowElements.values()) {
+    observer.observe(el)
+  }
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  observer = null
+})
 </script>
 
 <template>
@@ -55,12 +99,14 @@ function toggleAll(): void {
         :key="row.code"
       >
         <button
+          :ref="el => registerRow(el, row.code)"
           type="button"
           class="warbond"
           :class="{
             selected: ownedWarbonds.includes(row.code),
-            active: activeCode === row.code,
+            focused: activeCode === row.code || centeredCodes.has(row.code),
           }"
+          :data-code="row.code"
           :aria-pressed="ownedWarbonds.includes(row.code)"
           @click="toggle(row.code)"
           @pointerenter="activeCode = row.code"
@@ -110,8 +156,8 @@ function toggleAll(): void {
   align-items: center;
   gap: 0.75rem;
   width: 100%;
-  min-height: 3.3rem;
-  padding: 0.65rem 0.9rem;
+  min-height: 3.4rem;
+  padding: 0.8rem 0.9rem;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
@@ -120,17 +166,7 @@ function toggleAll(): void {
   text-align: left;
   cursor: pointer;
   overflow: hidden;
-  transition:
-    min-height 220ms var(--ease-out),
-    border-color 160ms ease,
-    background 160ms ease,
-    transform 160ms var(--ease-out);
-}
-
-.warbond:hover,
-.warbond.active {
-  min-height: 4.6rem;
-  transform: translateX(2px);
+  transition: border-color 160ms ease, background 160ms ease;
 }
 
 .warbond.selected {
@@ -145,25 +181,30 @@ function toggleAll(): void {
   background: var(--gold);
 }
 
+/* The banner starts obscured — soft blur, low light — and resolves as the row
+   is scrolled to the centre, hovered, focused or tapped. */
 .warbond-bg {
   position: absolute;
-  inset: 0;
+  inset: -8%;
   z-index: 0;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.05;
-  transform: scale(1.06);
+  opacity: 0.08;
+  filter: blur(11px) saturate(0.45) brightness(0.7);
+  transform: scale(1.12);
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 62%);
-  mask-image: linear-gradient(90deg, transparent 0%, #000 62%);
-  transition: opacity 260ms var(--ease-out), transform 400ms var(--ease-out);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 65%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 65%);
+  transition:
+    opacity 420ms var(--ease-out),
+    filter 420ms var(--ease-out),
+    transform 620ms var(--ease-out);
 }
 
-.warbond:hover .warbond-bg,
-.warbond.active .warbond-bg,
-.warbond.selected .warbond-bg {
-  opacity: 0.22;
+.warbond.focused .warbond-bg {
+  opacity: 0.34;
+  filter: blur(0) saturate(1) brightness(1);
   transform: scale(1);
 }
 
@@ -206,7 +247,5 @@ function toggleAll(): void {
   .warbond,
   .warbond-bg,
   .warbond-check { transition: none; }
-  .warbond:hover,
-  .warbond.active { transform: none; }
 }
 </style>
