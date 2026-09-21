@@ -58,8 +58,8 @@ const wasResolvedOnMount = props.resolved || props.pickedId !== null
 const lockedOptions = ref<RewardOption[]>(props.options.length > 0 ? [...props.options] : [])
 const settledCount = ref(0)
 const reelEpoch = ref(0)
-// Ban mode swaps the reels out for a plain selection grid; once the reels have
-// revealed, remounting them must not replay the spin.
+// Ban mode keeps the settled reels and turns them into a purge selector; once
+// the reels have revealed, remounting them must not replay the spin.
 const reelsDone = ref(false)
 
 function sameOffer(a: RewardOption[], b: RewardOption[]): boolean {
@@ -146,9 +146,6 @@ const reelPool = computed<Item[]>(() => {
 const banMode = ref(false)
 const selectedBanIds = ref<string[]>([])
 
-const displayOptions = computed(() =>
-  banMode.value ? lockedOptions.value.filter(option => !option.choice) : lockedOptions.value)
-
 function toggleBan(optionId: string): void {
   const selected = new Set(selectedBanIds.value)
   if (selected.has(optionId)) {
@@ -191,7 +188,7 @@ function squadPickLabel(pick: SquadPick): string {
     <header class="cabinet-head">
       <h2 class="draft-title">
         <WaitingLight
-          v-if="!resolved"
+          v-if="!resolved && !banMode"
           label="Waiting on your reward pick"
         />
         {{ banMode ? 'Ban offered rewards' : 'Rewards — choose one' }}
@@ -273,7 +270,7 @@ function squadPickLabel(pick: SquadPick): string {
     </div>
 
     <div
-      v-if="lockedOptions.length && !banned && !wasResolvedOnMount && !banMode"
+      v-if="lockedOptions.length && !banned && !wasResolvedOnMount"
       class="reels"
       :class="{ settled: allSettled }"
     >
@@ -289,7 +286,11 @@ function squadPickLabel(pick: SquadPick): string {
         :can-pick="allSettled && !resolved"
         :picked="pickedReelId === option.optionId"
         :dimmed="pickedReelId !== null && pickedReelId !== option.optionId"
+        :ban-mode="banMode"
+        :bannable="bannableIds.includes(option.optionId)"
+        :selected="selectedBanIds.includes(option.optionId)"
         @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
+        @ban="toggleBan"
         @settled="onSettled"
       />
     </div>
@@ -300,23 +301,6 @@ function squadPickLabel(pick: SquadPick): string {
       You sat out this mission's draft — the squad dives without your pick.
     </p>
 
-    <div
-      v-if="banMode"
-      class="grid"
-    >
-      <div
-        v-for="option in displayOptions"
-        :key="option.optionId"
-        class="draft-slot"
-      >
-        <ItemCard
-          :item="option.item"
-          :selected="selectedBanIds.includes(option.optionId)"
-          :disabled="!bannableIds.includes(option.optionId)"
-          @select="toggleBan(option.optionId)"
-        />
-      </div>
-    </div>
     <div
       v-if="banMode"
       class="ban-footer"
@@ -417,7 +401,6 @@ function squadPickLabel(pick: SquadPick): string {
   gap: 0.5rem;
   margin: 0.5rem 0 0.25rem;
 }
-.draft-slot { display: grid; gap: 0.3rem; }
 .ban-footer {
   margin-top: 0.6rem;
   padding-top: 0.6rem;

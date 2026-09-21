@@ -1,14 +1,22 @@
 <script setup lang="ts">
 import type { Item } from '~~/shared/data/types'
 
-defineProps<{
+const props = withDefaults(defineProps<{
   pool: Item[]
   ownedIds: string[]
-}>()
+  disabled?: boolean
+}>(), { disabled: false })
 
 const emit = defineEmits<{ choose: [itemId: string] }>()
 
 const open = ref(false)
+
+function openPicker(): void {
+  if (props.disabled) {
+    return
+  }
+  open.value = true
+}
 
 function onChoose(itemId: string): void {
   open.value = false
@@ -36,7 +44,8 @@ function onChoose(itemId: string): void {
       type="button"
       class="choice-input"
       aria-haspopup="dialog"
-      @click="open = true"
+      :disabled="props.disabled"
+      @click="openPicker"
     >
       <span class="choice-placeholder">Search the codex…</span>
       <span class="choice-go">Claim any item ⌕</span>
@@ -133,12 +142,14 @@ function onChoose(itemId: string): void {
   transition: border-color var(--dur-fast) ease, color var(--dur-fast) ease;
 }
 
-.choice-input:hover,
-.choice-input:focus-visible {
+.choice-input:hover:not(:disabled),
+.choice-input:focus-visible:not(:disabled) {
   border-color: var(--tier-splus);
   border-style: solid;
   color: var(--text);
 }
+
+.choice-input:disabled { cursor: default; opacity: 0.6; }
 
 .choice-go {
   flex-shrink: 0;
