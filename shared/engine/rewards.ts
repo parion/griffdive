@@ -8,7 +8,6 @@ import {
   SAMPLE_VALOR_WEIGHTS,
   S_PLUS_BONUS_OPTIONS,
   S_PLUS_OVERFLOW_CAP,
-  S_PLUS_UPGRADE_CAP,
   S_PLUS_UPGRADE_DIVISOR,
   S_OVERFLOW_CAP,
   S_UPGRADE_DIVISOR,
@@ -20,8 +19,10 @@ import {
   VALOR_METER_MAX,
   bandPosition,
   baseTierFor,
+  sPlusUpgradeCapFor,
   sPlusValorFloorFor,
   sValorFloorFor,
+  topRungAltitude,
   upgradeOdds,
 } from './config'
 import type { BonusStat } from './config'
@@ -33,19 +34,21 @@ const TIER_INDEX: Readonly<Record<Tier, number>> = { c: 0, b: 1, a: 2, s: 3 }
 const CEILING_LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
 // One step of the ceiling ladder. The top rungs (S, S+) don't use the shared
-// step curve: each has a Valor floor (easing in the low bands) and its own
-// ramp, so altitude can't hand out the top tier for a trickle of risk. Valor
-// past the meter top is banked as Luck and adds flat odds to both rungs. The
-// roll, the preview and the priced climb all share this so the UI never
-// overstates the jackpot.
+// step curve: each has a Valor floor (easing in the low bands), its own ramp
+// and the smooth ladder altitude, so the top scales with difficulty instead of
+// sawtoothing at band boundaries — and altitude still can't hand out the top
+// tier for a trickle of risk. Valor past the meter top is banked as Luck and
+// adds flat odds to both rungs. The roll, the preview and the priced climb all
+// share this so the UI never overstates the jackpot.
 function stepOdds(difficulty: number, valor: number, step: number, targetIndex: number): number {
   const bandPos = bandPosition(difficulty)
-  const altitude = 1 + bandPos
+  const altitude = topRungAltitude(difficulty)
   const metered = Math.min(valor, VALOR_METER_MAX)
   const overflow = Math.max(0, valor - VALOR_METER_MAX)
   if (targetIndex === CEILING_LADDER.length - 1) {
     const ramp = Math.max(0, metered - sPlusValorFloorFor(difficulty) + 1)
-    const base = Math.min(S_PLUS_UPGRADE_CAP, (ramp * altitude) / S_PLUS_UPGRADE_DIVISOR)
+    const cap = sPlusUpgradeCapFor(difficulty)
+    const base = Math.min(cap, (ramp * altitude) / S_PLUS_UPGRADE_DIVISOR)
     return Math.min(S_PLUS_OVERFLOW_CAP, base + overflow * OVERFLOW_S_PLUS_LUCK)
   }
   if (targetIndex === CEILING_LADDER.length - 2) {
