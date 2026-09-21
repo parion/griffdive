@@ -48,8 +48,8 @@ function v1Doc(overrides: Record<string, unknown> = {}): SaveDoc {
   }
 }
 
-describe('save defaulting (v7 catch-up fields)', () => {
-  it('defaults legacy caches and diver catch-up bookkeeping on old docs', () => {
+describe('save migration v7 → v8 (alpha baseline freeze)', () => {
+  it('defaults the pre-alpha fields into the frozen shape', () => {
     const doc = v1Doc({
       divers: [
         {
@@ -64,12 +64,28 @@ describe('save defaulting (v7 catch-up fields)', () => {
       ],
     })
     const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.schemaVersion).toBe(8)
     expect(migrated.state.legacyCaches).toEqual({})
+    expect(migrated.state.bonusSeed).toBeNull()
+    expect(migrated.state.bonusWinnerId).toBeNull()
     expect(migrated.state.divers[0]).toMatchObject({
       catchUpGranted: 0,
       catchUpOwed: 0,
       skipsCurrentDraft: false,
+      failedPactIds: [],
+      rewardTokens: 0,
+      bannedItemIds: [],
+      rewardRerollSeed: null,
+      rewardBanned: false,
     })
+  })
+
+  it('defaults a v7 doc without re-running the legacy chain', () => {
+    const doc: SaveDoc = { ...v1Doc(), schemaVersion: 7, engineVersion: 16 }
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
+    expect(migrated.engineVersion).toBe(ENGINE_VERSION)
+    expect(migrated.state.divers).toEqual([])
   })
 })
 

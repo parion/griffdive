@@ -22,7 +22,8 @@ reconnection — verified by a live two-peer smoke test and the Playwright E2E s
 two-browser room sync, Codex slide-over,
 PWA affordances) against the production build. Mid-crusade catch-up (Field Promotion + legacy caches, `LEAVE_DIVE`)
 has landed, as has the Phase 4 PWA layer (installable manifest, generated icons, Workbox service
-worker with an offline shell + on-demand catalog art). Remaining Phase 4 polish is next. See
+worker with an offline shell + on-demand catalog art). Remaining Phase 4 polish is next. **Alpha has
+landed:** the save schema is frozen at v8 and the migration chain is open (see Save model). See
 [Roadmap](#roadmap).
 
 ---
@@ -456,11 +457,12 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
 
 Anonymous/local-first. Named save slots in `localStorage` (`SaveDoc` in `shared/types/save.ts`,
 stamped with save-schema + engine + catalog versions), normalized on load via
-`shared/engine/saves.ts`, plus JSON export/import (Penitent Crusade parity). **Pre-alpha policy:
-saves are not migratable.** Mechanics are still being established, so schema/engine changes may
-freely break old saves — version stamps exist for diagnostics only, normalization drops
-incompatible docs, and no new migration steps get written. The migration chain reopens at the
-alpha release, when the schema freezes. No accounts in v1 —
+`shared/engine/saves.ts`, plus JSON export/import (Penitent Crusade parity). **Alpha policy: the
+schema is frozen and saves migrate.** From the alpha release (save schema v8) the shape is frozen:
+every later breaking change bumps `SAVE_SCHEMA_VERSION` and adds a version-gated migration step, or
+is reverted. `migrateV7toV8` is the alpha baseline — it defaults the fields whose shapes landed
+during pre-alpha (Field Promotion bookkeeping, failed-pact marks, reward tokens, bans, bonus
+honors). Normalization drops only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
 `achieved` flag, `frontId`, inventories, per-diver warbond declarations,
 `completedCombos` (misfortune × front), reroll tokens, action log (capped), RNG seed history,
@@ -505,7 +507,7 @@ app/
                    ui/ (ItemCard, TierBadge, RiskPips — risk dots, with a rolling back-and-forth
                    state while a wheel draw reels, WaitingLight — the slow-pulsing gold dot that
                    marks a section a diver still has to act on, ChangelogModal — GitHub deploy log
-                   shown from the pre-alpha header chip, AppDrawer — the themed right-hand Reka
+                   shown from the alpha header chip, AppDrawer — the themed right-hand Reka
                    Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer — its
                    two slide-overs, IconBook/IconWarbond — the nav leading icons,
                    AppDialog/AppTabs/AppTooltip —
@@ -682,9 +684,9 @@ the Redis swap lands.
   equipment images from [helldivers.wiki.gg](https://helldivers.wiki.gg/wiki/Helldivers_2). Asset
   licensing: respect upstream terms; hot-link or bundle only what the licenses allow.
 - **Versioning:** `CATALOG_VERSION` bumped whenever items/warbonds change (Helldivers 2 patches add
-  warbonds). Saves record catalog + engine versions as diagnostics only; pre-alpha they buy no
-  compatibility — incompatible saves are dropped, not migrated. Migration machinery returns at the
-  alpha release.
+  warbonds). Saves record catalog + engine versions as diagnostics; the save-schema version drives
+  the migration chain (see Save model). From alpha the schema is frozen — shape changes migrate
+  rather than dropping docs.
 
 ---
 
@@ -761,9 +763,9 @@ the Redis swap lands.
   mid-crusade catch-up (promotion sizing/rolls, cache claims, departure parking, seating window).
 - **Golden tests:** seeded runs (`mulberry32`) recorded as JSON snapshots — spin results, reward
   option sets, full crusade replays. Goldens live in `shared/engine/__goldens__/`; regenerate with
-  `GRIFFDIVE_UPDATE_GOLDENS=1 pnpm test`. Pre-alpha, a reducer change that breaks goldens just
-  regenerates them (saves are not migratable — see Save model); from alpha on, breaking changes
-  must bump the engine version + write a migration, or revert.
+  `GRIFFDIVE_UPDATE_GOLDENS=1 pnpm test`. From alpha on, a reducer change that breaks goldens must
+  bump the engine version + write a save migration (see Save model), or revert; during pre-alpha
+  they were simply regenerated.
 - **Server tests** (Vitest, fake KV + fake peers in `server/utils/room-sync.spec.ts`): room
   join/spin/pick flows, host authority + coercion, host migration, reattachment, room-full,
   TTL pruning, metrics gauges/counters (`metrics.spec.ts`). (`@nuxt/test-utils` +

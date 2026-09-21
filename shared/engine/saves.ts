@@ -6,9 +6,10 @@ import { ENGINE_VERSION } from './config'
 import { resetOperation } from './reducer'
 import type { DiveState, DiverState } from './types'
 
-// Divers from pre-v7 docs predate the Field Promotion bookkeeping; pre-v8
-// docs predate failed-pact marks; pre-v9 docs predate reward tokens, bans and
-// the bonus-honors ceremony.
+// Pre-v8 (pre-alpha) divers may be missing any field whose shape landed after
+// their save was written — Field Promotion bookkeeping, failed-pact marks,
+// reward tokens, bans and the bonus-honors ceremony all default in
+// migrateV7toV8.
 type LegacyDiver = Omit<
   DiverState,
   | 'catchUpGranted'
@@ -64,12 +65,13 @@ export function normalizeSaveDoc(raw: unknown): SaveDoc | null {
   return migrateSaveDoc(doc as SaveDoc)
 }
 
-// Legacy chain (v1→v4), frozen pre-alpha: saves are not migratable while
-// mechanics are in flux (see AGENTS.md, Save model). The chain reopens at the
-// alpha release, when the schema freezes. v5 moved warbond ownership to each
-// diver; v6 dropped the shared stratagem pool (all stratagems are personal) —
-// no migration steps: pre-v6 divers read their personal inventories only, and
-// stratagems that lived in the old shared pool are gone.
+// The save schema is frozen from alpha (v8) on: every later shape change adds
+// a version-gated step here (see AGENTS.md, Save model). The chain resumes at
+// v7 → v8, the alpha baseline, which defaults the fields whose shapes landed
+// during pre-alpha. v5 moved warbond ownership to each diver; v6 dropped the
+// shared stratagem pool (all stratagems are personal) — no migration steps:
+// pre-v6 divers read their personal inventories only, and stratagems that
+// lived in the old shared pool are gone.
 export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   let migrated = doc
   if (migrated.schemaVersion < 2) {
@@ -81,25 +83,34 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 4) {
     migrated = migrateV3toV4(migrated)
   }
-  // v7/v8 fields (Field Promotion + legacy caches, failed pacts) default on
-  // older docs — shape defaulting, not a migration step (pre-alpha policy,
-  // Save model).
-  migrated = {
-    ...migrated,
+  if (migrated.schemaVersion < 8) {
+    migrated = migrateV7toV8(migrated)
+  }
+  migrated.schemaVersion = SAVE_SCHEMA_VERSION
+  migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
+  return migrated
+}
+
+// v8 (alpha baseline): the schema freezes here. Pre-alpha docs predate the
+// Field Promotion bookkeeping, failed-pact marks, reward tokens, bans and the
+// bonus-honors ceremony; this step defaults them into the frozen shape.
+function migrateV7toV8(doc: SaveDoc): SaveDoc {
+  return {
+    ...doc,
     state: {
-      ...migrated.state,
-      legacyCaches: migrated.state.legacyCaches ?? {},
-      bonusSeed: migrated.state.bonusSeed ?? null,
-      bonusWinnerId: migrated.state.bonusWinnerId ?? null,
-      divers: (migrated.state.divers ?? []).map((diver) => {
+      ...doc.state,
+      legacyCaches: doc.state.legacyCaches ?? {},
+      bonusSeed: doc.state.bonusSeed ?? null,
+      bonusWinnerId: doc.state.bonusWinnerId ?? null,
+      divers: (doc.state.divers ?? []).map((diver) => {
         const legacy = diver as LegacyDiver
         return {
           ...legacy,
           catchUpGranted: legacy.catchUpGranted ?? 0,
           catchUpOwed: legacy.catchUpOwed ?? 0,
           skipsCurrentDraft: legacy.skipsCurrentDraft ?? false,
-          // Saves from before pacts could be marked failed carry no marks —
-          // an empty list is the truthful default for them.
+          // Pre-v8 saves carry no failed-pact marks — an empty list is the
+          // truthful default for them.
           failedPactIds: legacy.failedPactIds ?? [],
           rewardTokens: legacy.rewardTokens ?? 0,
           bannedItemIds: legacy.bannedItemIds ?? [],
@@ -109,9 +120,6 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
       }),
     },
   }
-  migrated.schemaVersion = SAVE_SCHEMA_VERSION
-  migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
-  return migrated
 }
 
 // v2: armor rewards became passives — armor pieces are free shells, so any

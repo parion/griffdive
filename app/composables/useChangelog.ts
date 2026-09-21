@@ -102,11 +102,32 @@ function bucketCommits(deployments: GhDeployment[], commits: ChangelogCommit[]) 
   return { pending, buckets }
 }
 
+// Release notes, not a git log: only diver-meaningful conventional commits are
+// listed. Merges, CI, chores and version bumps are plumbing. Bucketing still
+// runs over the full history (a deployment's sha is often a merge commit), then
+// each bucket is filtered, so boundaries stay correct.
+const NOTABLE_COMMIT_TYPES = new Set(['feat', 'fix', 'perf', 'refactor'])
+
+function isNotableCommit(commit: ChangelogCommit): boolean {
+  return commit.type !== null && NOTABLE_COMMIT_TYPES.has(commit.type)
+}
+
+// A failed or cancelled CI batch is not a release — listing it as a regression
+// reads as chaos on what is really a steady deploy history. Its commits roll
+// into the next release boundary (or the pending block), never disappear.
+function isReleaseState(state: ChangelogEntry['state']): boolean {
+  return state !== 'failure' && state !== 'error'
+}
+
 function buildEntries(deployments: GhDeployment[], states: ChangelogEntry['state'][], commits: ChangelogCommit[]): ChangelogEntry[] {
-  const { pending, buckets } = bucketCommits(deployments, commits)
+  const releases = deployments
+    .map((deployment, index) => ({ deployment, state: states[index] ?? 'unknown' }))
+    .filter(release => isReleaseState(release.state))
+  const { pending, buckets } = bucketCommits(releases.map(release => release.deployment), commits)
   const entries: ChangelogEntry[] = []
-  if (pending.length > 0) {
-    const head = deployments[0]
+  const pendingNotable = pending.filter(isNotableCommit)
+  if (pendingNotable.length > 0) {
+    const head = releases[0]?.deployment
     entries.push({
       id: -1,
       sha: null,
@@ -116,22 +137,28 @@ function buildEntries(deployments: GhDeployment[], states: ChangelogEntry['state
         : `https://github.com/${GITHUB_REPO}/commits/main`,
       createdAt: null,
       state: 'pending',
-      commits: pending,
+      commits: pendingNotable,
     })
   }
-  for (let index = deployments.length - 1; index >= 0; index--) {
-    const deployment = deployments[index]
-    if (!deployment) {
+  // Newest first: GitHub lists deployments newest→oldest, so walk forward and
+  // keep the pending block (commits past the newest release) at the very top.
+  for (let index = 0; index < releases.length; index++) {
+    const release = releases[index]
+    if (!release) {
+      continue
+    }
+    const notable = (buckets.get(index) ?? []).filter(isNotableCommit)
+    if (notable.length === 0) {
       continue
     }
     entries.push({
-      id: deployment.id,
-      sha: deployment.sha,
-      shortSha: deployment.sha.slice(0, 7),
-      url: `https://github.com/${GITHUB_REPO}/commit/${deployment.sha}`,
-      createdAt: deployment.created_at,
-      state: states[index] ?? 'unknown',
-      commits: buckets.get(index) ?? [],
+      id: release.deployment.id,
+      sha: release.deployment.sha,
+      shortSha: release.deployment.sha.slice(0, 7),
+      url: `https://github.com/${GITHUB_REPO}/commit/${release.deployment.sha}`,
+      createdAt: release.deployment.created_at,
+      state: release.state,
+      commits: notable,
     })
   }
   return entries

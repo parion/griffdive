@@ -12,7 +12,7 @@ test('the skip link moves focus to the main landmark', async ({ page }) => {
 
 test('the changelog dialog traps focus, closes on Escape, and restores focus', async ({ page }) => {
   await page.goto('/')
-  const trigger = page.getByRole('button', { name: 'pre-alpha' })
+  const trigger = page.getByRole('button', { name: 'alpha' })
   await trigger.click()
 
   const dialog = page.getByRole('dialog', { name: 'Changelog' })

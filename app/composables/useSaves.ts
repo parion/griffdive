@@ -56,10 +56,7 @@ export function useSaves() {
     if (!existing) {
       return
     }
-    index[id] = {
-      ...createSaveDoc(state, slotName ?? existing.slotName, new Date().toISOString()),
-      schemaVersion: existing.schemaVersion,
-    }
+    index[id] = createSaveDoc(state, slotName ?? existing.slotName, new Date().toISOString())
     writeIndex(index)
   }
 

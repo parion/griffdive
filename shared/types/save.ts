@@ -1,6 +1,8 @@
 import type { DiveState } from '../engine/types'
 
-export const SAVE_SCHEMA_VERSION = 7
+// Frozen from alpha (v8) on: every later shape change adds a version-gated
+// migration in shared/engine/saves.ts (see AGENTS.md, Save model).
+export const SAVE_SCHEMA_VERSION = 8
 
 export interface SaveDoc {
   schemaVersion: number
