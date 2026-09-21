@@ -129,8 +129,11 @@ difficulty 10. The run may then end, or continue in endless mode (post-v1).
 
 Warbonds are premium, per-player purchases, so ownership is declared **per diver**, never by the
 host: each diver self-declares their owned warbonds (`SET_WARBONDS`, self-service, any phase;
-default all). Reward offers roll against the diver's own catalog — a diver is never offered items
-from warbonds they don't own. Starting kits are not warbond-filtered.
+default every progression warbond). The acquisition specials — the Super Citizen bundle
+(`warbond0`) and the Superstore (`warbond1`) — sort last and are declared unowned; the Pre-Order
+Bonus is dropped entirely (unobtainable, no reward-pool bearing — its pieces were armor, which
+rewards never offer). Reward offers roll against the diver's own catalog — a diver is never
+offered items from warbonds they don't own. Starting kits are not warbond-filtered.
 
 ### Team layer — misfortunes (Wheel)
 
@@ -496,16 +499,26 @@ app/
                    modal, InventoryGrid, CrusadeSetup, WarbondPicker,
                    JoinNameGate — name gate held while joining),
                    codex/CodexBrowser — the shared catalog browser (filter + tier grid),
+                   warbonds/WarbondBrowser — the shared warbond owner list (single column,
+                   acquisition specials last; each banner starts blurred and dimmed, then
+                   resolves on hover/focus/tap, click toggles),
                    ui/ (ItemCard, TierBadge, RiskPips — risk dots, with a rolling back-and-forth
                    state while a wheel draw reels, WaitingLight — the slow-pulsing gold dot that
                    marks a section a diver still has to act on, ChangelogModal — GitHub deploy log
-                   shown from the pre-alpha header chip, CodexDrawer — the right-hand Reka Drawer
-                   slide-over that keeps the dive session mounted, AppDialog/AppTabs/AppTooltip —
+                   shown from the pre-alpha header chip, AppDrawer — the themed right-hand Reka
+                   Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer — its
+                   two slide-overs, IconBook/IconWarbond — the nav leading icons,
+                   AppDialog/AppTabs/AppTooltip —
                    the themed Reka primitives every modal, tab strip and icon-only control builds
                    on),
   composables/     useDiveSession (unified local/room driver), useDiveView (session-derived
                    shell state: self/phase/canControl/name draft), useDiveEngine (local reducer +
-                   persist), useGameSocket (WS, reconnect, stored playerId), useSaves,
+                   persist),                    useGameSocket (WS, reconnect, stored playerId), useSaves,
+                   useDrawers (global Codex/Warbonds slide-over visibility, so the dive can
+                   open the Warbonds panel without unmounting), useWarbondIntro (one-shot
+                   dive-start Warbonds prompt memory), useOwnedWarbonds (localStorage-backed
+                   warbond declaration shared by the Warbonds drawer, the home setup and every
+                   seated dive),
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
                    useChangelog (GitHub deployments + commits → changelog entries, 10-min cache)
   stores/          session.ts (Pinia: selfId, snapshot, online)

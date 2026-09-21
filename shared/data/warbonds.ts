@@ -2,23 +2,11 @@
 // Source: Selenestica/hd2-random-strat (MIT), vendored at scripts/upstream/.
 // Upstream snapshot: 9c4a8aaffd83385a2ca85d1105adfe9c9afe430b.
 
-// Warbonds, in upstream release order.
+// Warbonds, in upstream release order (acquisition specials last).
 
 import type { Warbond } from './types'
 
 export const warbonds: Warbond[] = [
-  {
-    code: 'warbond0',
-    displayName: 'Super Citizen Edition',
-  },
-  {
-    code: 'warbond1',
-    displayName: 'Superstore',
-  },
-  {
-    code: 'warbond2',
-    displayName: 'Pre-Order Bonus',
-  },
   {
     code: 'warbond3',
     displayName: 'Helldivers Mobilize',
@@ -186,5 +174,13 @@ export const warbonds: Warbond[] = [
     internalName: '40kWB',
     imageURL: '40kWB.webp',
     tier: 'b',
+  },
+  {
+    code: 'warbond0',
+    displayName: 'Super Citizen Edition',
+  },
+  {
+    code: 'warbond1',
+    displayName: 'Superstore',
   },
 ]

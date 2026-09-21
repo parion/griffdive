@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { dismissWarbondIntro } from './helpers'
 
 test('solo dive flow: spin → pacts → report → rewards → advance', async ({ page }) => {
   await page.goto('/')
@@ -6,6 +7,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.getByRole('button', { name: 'Start solo crusade' }).click()
 
   await expect(page).toHaveURL(/\/dive\/[0-9a-f-]{36}/)
+  await dismissWarbondIntro(page)
   await expect(page.getByText('Medium', { exact: true })).toBeVisible()
   await expect(page.locator('.diff-icon')).toBeVisible()
 
@@ -91,6 +93,7 @@ test('a failed mission labels the operation failed and restarts it', async ({ pa
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
   await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await dismissWarbondIntro(page)
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await page.getByRole('button', { name: 'Lock it in' }).click()

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
 import { difficultyName } from '~~/shared/engine/progression'
 import { createDiveState } from '~~/shared/engine/reducer'
 import { isRoomCode } from '~~/shared/utils/room-code'
@@ -8,10 +7,10 @@ import type { SaveDoc } from '~~/shared/types/save'
 
 const saves = useSaves()
 const recentRooms = useRecentRooms()
+const { ownedWarbonds: myWarbonds, setOwned: setMyWarbonds } = useOwnedWarbonds()
 
 const diverName = ref('Griffin')
 const variant = ref<CrusadeVariant>('standard')
-const myWarbonds = ref<string[]>([])
 const slotList = ref<{ id: string, doc: SaveDoc }[]>([])
 const joinCode = ref('')
 const hosting = ref(false)
@@ -22,7 +21,6 @@ const onlineDives = ref<OnlineDive[]>([])
 const onlineLoading = ref(true)
 
 onMounted(() => {
-  myWarbonds.value = [...ALL_WARBOND_CODES]
   slotList.value = saves.listSaves()
   refreshOnlineDives()
 })
@@ -205,8 +203,8 @@ function formatSavedAt(doc: SaveDoc): string {
     <section class="panel">
       <h2>Solo crusade</h2>
       <p class="muted small">
-        Prefer diving alone? Hop in with sensible defaults — Standard variant, every warbond
-        owned. Customize below if you like.
+        Prefer diving alone? Hop in with sensible defaults — Standard variant, every progression
+        warbond owned. Customize below if you like.
       </p>
       <div class="row">
         <label class="field">
@@ -235,7 +233,8 @@ function formatSavedAt(doc: SaveDoc): string {
           Warbonds are personal — reward offers only include items you own.
         </p>
         <WarbondPicker
-          v-model:warbond-codes="myWarbonds"
+          :warbond-codes="myWarbonds"
+          @update:warbond-codes="setMyWarbonds"
         />
       </details>
     </section>

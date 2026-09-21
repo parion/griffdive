@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { dismissWarbondIntro } from './helpers'
 
 test('two divers sync one dive; late joiner gets the snapshot', async ({ browser }) => {
   const contextA = await browser.newContext()
@@ -13,6 +14,7 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   // The name gate holds the host until they introduce themselves.
   await pageA.getByLabel('Your name').fill('Host')
   await pageA.getByRole('button', { name: 'Join the dive' }).click()
+  await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
   await expect(pageA.getByText('Wheel of Misfortune')).toBeVisible()
   // A lone host is nudged to share the invite — the copy control glows.
@@ -25,6 +27,7 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await expect(pageB.locator('.diver-chip')).toHaveCount(0)
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
+  await dismissWarbondIntro(pageB)
 
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
   await expect(pageB.getByText('(you)')).toBeVisible()
@@ -96,12 +99,14 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   await pageA.getByRole('button', { name: 'Host an online dive' }).click()
   await pageA.getByLabel('Your name').fill('Host')
   await pageA.getByRole('button', { name: 'Join the dive' }).click()
+  await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
   await expect(pageA.getByText('Wheel of Misfortune')).toBeVisible()
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Sidekick')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
+  await dismissWarbondIntro(pageB)
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
 
   // Host spins and locks the misfortune in; the joiner stalls before locking
@@ -136,12 +141,14 @@ test('the Codex slide-over keeps the host seated', async ({ browser }) => {
   await pageA.getByRole('button', { name: 'Host an online dive' }).click()
   await pageA.getByLabel('Your name').fill('Host')
   await pageA.getByRole('button', { name: 'Join the dive' }).click()
+  await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
   await expect(pageA.getByText('Wheel of Misfortune')).toBeVisible()
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
+  await dismissWarbondIntro(pageB)
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
 
   // Opening the Codex overlays the session — the socket stays mounted, so the

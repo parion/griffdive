@@ -102,13 +102,17 @@ function toWarbond(raw) {
   }
 }
 
-// warbond0/1/2 have no WARBONDS entry upstream; the code -> name mapping lives
+// warbond0/1 have no WARBONDS entry upstream; the code -> name mapping lives
 // in upstream genWarbondCheckboxes.js (acquisition channels, not warbonds).
+// warbond2 (Pre-Order Bonus) is dropped entirely: it is permanently
+// unobtainable and has no bearing on reward pools.
 const SPECIAL_WARBONDS = {
   warbond0: 'Super Citizen Edition',
   warbond1: 'Superstore',
-  warbond2: 'Pre-Order Bonus',
 }
+
+// Codes excluded from the catalog — their items are dropped with them.
+const EXCLUDED_WARBOND_CODES = new Set(['warbond2'])
 
 function emitFile(fileName, headerLines, importLine, bodyLines) {
   const content = [HEADER, '', ...headerLines, '', importLine, '', ...bodyLines].join('\n')
@@ -121,7 +125,9 @@ const converted = []
 
 for (const source of SOURCES) {
   const rawItems = readRaw(source.file, source.constName)
-  const items = rawItems.map(raw => toItem(raw, source.category))
+  const items = rawItems
+    .filter(raw => !EXCLUDED_WARBOND_CODES.has(raw.warbondCode))
+    .map(raw => toItem(raw, source.category))
   converted.push({ source, items })
   report.counts[source.exportName] = items.length
   for (const item of items) {
@@ -138,8 +144,8 @@ for (const source of SOURCES) {
 
 const rawWarbonds = readRaw('warbonds.js', 'WARBONDS')
 const warbondList = [
-  ...Object.entries(SPECIAL_WARBONDS).map(([code, displayName]) => ({ code, displayName })),
   ...rawWarbonds.map(toWarbond),
+  ...Object.entries(SPECIAL_WARBONDS).map(([code, displayName]) => ({ code, displayName })),
 ]
 report.counts.warbonds = warbondList.length
 const warbondCodes = new Set(warbondList.map(w => w.code))
@@ -197,7 +203,7 @@ emitFile(
 
 emitFile(
   'warbonds.ts',
-  ['// Warbonds, in upstream release order.'],
+  ['// Warbonds, in upstream release order (acquisition specials last).'],
   'import type { Warbond } from \'./types\'',
   [
     `export const warbonds: Warbond[] = ${JSON.stringify(warbondList, null, 2)}`,

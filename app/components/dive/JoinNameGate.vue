@@ -23,7 +23,8 @@ function join(): void {
     :show-close="false"
   >
     <template #description>
-      Your name is how the squad sees you. You join the dive the moment you confirm it.
+      Your name is how the squad sees you. You'll declare your warbonds next — the panel opens the
+      moment you join.
     </template>
     <div class="gate">
       <form
