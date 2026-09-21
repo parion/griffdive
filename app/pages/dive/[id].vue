@@ -358,21 +358,6 @@ function launchCrusade(variant: CrusadeVariant): void {
         <NuxtLink to="/">Back to base</NuxtLink>
       </p>
 
-      <details
-        v-if="self"
-        class="panel self-warbonds"
-      >
-        <summary>Your warbonds</summary>
-        <p class="muted small">
-          Warbonds are personal purchases — your reward offers only include items you own.
-          Each diver declares their own; the host doesn't set these.
-        </p>
-        <WarbondPicker
-          :warbond-codes="ownedWarbonds"
-          @update:warbond-codes="setOwned"
-        />
-      </details>
-
       <p
         v-if="session.lastError.value"
         class="panel error-banner"
@@ -496,16 +481,6 @@ function launchCrusade(variant: CrusadeVariant): void {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.self-warbonds { padding: 0.6rem 0.8rem; }
-.self-warbonds summary {
-  cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--khaki);
 }
 
 .kicked { border-color: var(--red); }

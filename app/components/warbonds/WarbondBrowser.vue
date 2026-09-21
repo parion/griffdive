@@ -16,12 +16,8 @@ interface WarbondRow {
   items: number
 }
 
-// Hover / focus / tap spotlight, plus a scroll spotlight for the row nearest
-// the drawer's centre.
+// Hover / focus / tap spotlight only — the banner stays obscured otherwise.
 const activeCode = ref('')
-const centeredCodes = ref<Set<string>>(new Set())
-const rowElements = new Map<string, HTMLElement>()
-let observer: IntersectionObserver | null = null
 
 const rows = computed<WarbondRow[]>(() => WARBONDS.map((warbond: Warbond) => ({
   code: warbond.code,
@@ -36,45 +32,6 @@ const allOwned = computed(() => ownedWarbonds.value.length === WARBONDS.length)
 function toggleAll(): void {
   setOwned(allOwned.value ? [] : WARBONDS.map(warbond => warbond.code))
 }
-
-function registerRow(el: unknown, code: string): void {
-  if (el instanceof HTMLElement) {
-    rowElements.set(code, el)
-  }
-  else {
-    rowElements.delete(code)
-  }
-}
-
-onMounted(() => {
-  if (!import.meta.client || typeof IntersectionObserver === 'undefined') {
-    return
-  }
-  observer = new IntersectionObserver((entries) => {
-    const next = new Set(centeredCodes.value)
-    for (const entry of entries) {
-      const code = (entry.target as HTMLElement).dataset.code
-      if (!code) {
-        continue
-      }
-      if (entry.isIntersecting) {
-        next.add(code)
-      }
-      else {
-        next.delete(code)
-      }
-    }
-    centeredCodes.value = next
-  }, { rootMargin: '-42% 0px -42% 0px', threshold: 0.01 })
-  for (const el of rowElements.values()) {
-    observer.observe(el)
-  }
-})
-
-onBeforeUnmount(() => {
-  observer?.disconnect()
-  observer = null
-})
 </script>
 
 <template>
@@ -99,14 +56,12 @@ onBeforeUnmount(() => {
         :key="row.code"
       >
         <button
-          :ref="el => registerRow(el, row.code)"
           type="button"
           class="warbond"
           :class="{
             selected: ownedWarbonds.includes(row.code),
-            focused: activeCode === row.code || centeredCodes.has(row.code),
+            focused: activeCode === row.code,
           }"
-          :data-code="row.code"
           :aria-pressed="ownedWarbonds.includes(row.code)"
           @click="toggle(row.code)"
           @pointerenter="activeCode = row.code"
@@ -181,8 +136,8 @@ onBeforeUnmount(() => {
   background: var(--gold);
 }
 
-/* The banner starts obscured — soft blur, low light — and resolves as the row
-   is scrolled to the centre, hovered, focused or tapped. */
+/* The banner starts obscured — soft blur, low light — and resolves while the
+   row is hovered, focused or tapped. */
 .warbond-bg {
   position: absolute;
   inset: -8%;

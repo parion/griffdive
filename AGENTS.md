@@ -470,7 +470,7 @@ app/
                    codex/CodexBrowser — the shared catalog browser (filter + tier grid),
                    warbonds/WarbondBrowser — the shared warbond owner list (single column,
                    acquisition specials last; each banner starts blurred and dimmed, then
-                   resolves on scroll/hover/tap, click toggles),
+                   resolves on hover/focus/tap, click toggles),
                    ui/ (ItemCard, TierBadge, RiskPips — risk dots, with a rolling back-and-forth
                    state while a wheel draw reels, WaitingLight — the slow-pulsing gold dot that
                    marks a section a diver still has to act on, ChangelogModal — GitHub deploy log
