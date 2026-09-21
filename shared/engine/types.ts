@@ -12,6 +12,7 @@ export type DivePhase
   = | 'lobby'
     | 'spin'
     | 'decision'
+    | 'strain'
     | 'pacts'
     | 'diving'
     | 'rewards'
@@ -92,6 +93,12 @@ export interface DiveState {
   // each mission draws only a fresh misfortune.
   frontId: FrontId | null
   misfortuneAccepted: boolean
+  // The strain is a subfaction rolled with the front and persisting with it.
+  // It is optional: the squad accepts or declines it on the operation's first
+  // mission (phase 'strain'), and an accepted strain adds its team risk to
+  // every mission of the operation.
+  strainId: string | null
+  strainAccepted: boolean
   rerollTokens: number
   completedCombos: string[]
   personalInventories: Record<string, string[]>
@@ -114,7 +121,8 @@ export type EngineAction
   = | { type: 'START_DIVE', settings: CrusadeSettings }
     | { type: 'SPIN_WHEEL', seed: number }
     | { type: 'ACCEPT_MISFORTUNE', accepted: boolean }
-    | { type: 'REROLL_WHEEL', wheel: 'misfortune' | 'front', seed: number }
+    | { type: 'ACCEPT_STRAIN', accepted: boolean }
+    | { type: 'REROLL_WHEEL', wheel: 'misfortune' | 'front' | 'strain', seed: number }
     | { type: 'SET_PACTS', playerId: string, pactIds: string[] }
     | { type: 'FAIL_PACT', playerId: string, pactId: string }
     | { type: 'SET_WARBONDS', playerId: string, warbondCodes: string[] }

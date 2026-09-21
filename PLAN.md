@@ -32,7 +32,7 @@ IDs are stable and append-only; do not renumber.
 | ID | Title | Type | Scope | Status | Origin |
 |----|-------|------|-------|--------|--------|
 | N1 | Booster section when none owned | UX | S | Done | new |
-| N2 | Faction strains (optional operation-long team risk) | Design | L | Todo (DEC-5) | new |
+| N2 | Faction strains (optional operation-long team risk) | Design | L | Done | new |
 | N3 | Helldivers campaign API → MO boosts | Feature/Infra | XL | Phase 5 | new |
 | N4 | Stars default to full | UX | S | Done | new |
 | N5 | Mandatory 4 stratagems; remove `barebones`; early-game pact trap | Rules | M | Done (DEC-1: loadout-checked + reserve + exclusivity) | new |
@@ -139,8 +139,10 @@ misfortune). The lock holds until the operation ends: a **win** rolls a fresh fr
 sink mirroring the front gate. Strains are **flavor + risk, never rule-bearing**: the app never
 observes enemy composition, so no unverifiable restriction is attached — the real subfaction
 reshapes loadout decisions in-game and the app only prices the risk. Carrot is **extra Valor only**
-(no themed reward pool). Implementation adds `shared/data/strains.ts`, a `strainId` on `DiveState`
-(save schema v8 → v9 migration), a three-part `(misfortune × front × strain)` combo key,
+(no themed reward pool). Implementation adds `shared/data/strains.ts` (flavor: id, frontId, name,
+blurb) with `STRAIN_RISK` / `STRAIN_MIN_DIFFICULTY` in `shared/engine/config.ts` (invariant 5: risk
+values are tunables), a `strainId` + `strainAccepted` on `DiveState` and a dedicated `strain`
+phase (save schema v8 → v9 migration), a three-part `(misfortune × front × strain)` combo key,
 strain-aware reroll guards, an `ENGINE_VERSION` bump + goldens, and a WheelPanel front-card
 accept/decline treatment. The strain is a second operation-long token sink, so the shared reroll
 pool needs more sources — split out as **N39**.
@@ -194,7 +196,8 @@ scripted crusade spends a token).
 
 ### Batch D — Content, resilience, onboarding
 
-N2, N10, N15, N17, N39.
+N2, N10, N15, N17, N39. **N2 landed** (faction strains, below). Remaining: N10 (crash semantics,
+DEC-9), N15 (repro), N17 (onboarding), N39 (token economy).
 
 ### Post-v1 / R&D
 
@@ -435,30 +438,39 @@ fresh misfortune. The confirmed-good parts from QA stay as the regression baseli
 
 ### Batch D
 
-**N2 · Faction strains. Resolved (DEC-5).** Strains are an **optional, operation-long team-risk
+**N2 · Faction strains. Done (DEC-5).** Strains landed as an **optional, operation-long team-risk
 commitment**. A strain is a subfaction of the drawn front, rolled with the front at the operation's
-first spin (`deriveFront`, `wheel.ts:22`) and gated per-strain by `minDifficulty` like misfortunes.
-In the mission-1 decision window the squad accepts/declines it exactly like the misfortune —
-declining is free and zero-risk. Accepting adds the strain's **team risk to every mission** of the
-operation (compounding over its 2–3 missions) and locks until the operation ends: a **win** rolls a
-fresh front+strain on `ADVANCE`; a **failure** restarts at mission 1, keeps the front, and **reopens
-the strain decision** (same draw, re-decidable). Strain reroll is a mission-1-only token sink
-mirroring the front gate. Strains are **flavor + risk, never rule-bearing** — the app cannot observe
-enemy composition, so no unverifiable restriction is attached; the real subfaction reshapes loadout
-decisions in-game and the app only prices the risk. Carrot is **extra Valor only**. Implementation
-surface: `shared/data/strains.ts` (`Strain { id, frontId, name, blurb, risk, minDifficulty }`),
-strain into `teamRiskOf` / `maxValorFor` / the Valor meter, `strainId` on `DiveState` (save schema
-v8 → v9 migration), a three-part `(misfortune × front × strain)` combo key, strain-aware
-`REROLL_WHEEL` same-result guards, `ENGINE_VERSION` bump + goldens, and a `WheelPanel` front-card
-accept/decline treatment.
+first spin (`deriveStrain`, `wheel.ts`) and gated per-strain by `STRAIN_MIN_DIFFICULTY` like
+misfortunes. The spin opens the misfortune decision, then a dedicated **`strain` phase** where the
+squad (host-only, like the misfortune) accepts or declines — declining is free and zero-risk.
+Accepting adds the strain's **team risk to every mission** of the operation (compounding over its
+2–3 missions) and locks until the operation ends: a **win** rolls a fresh front+strain on `ADVANCE`;
+a **failure** restarts at mission 1, keeps the front, and **reopens the strain decision** (same
+draw, re-decidable). The call may still flip in the pact window until the first pact lock. Strain
+reroll is a mission-1-only token sink mirroring the front gate, and a front reroll redraws the
+strain with it. Strains are **flavor + risk, never rule-bearing** — the app cannot observe enemy
+composition, so no unverifiable restriction is attached; the real subfaction reshapes loadout
+decisions in-game and the app only prices the risk. Carrot is **extra Valor only**. Implementation:
+`shared/data/strains.ts` (nine subfactions, three per front) with `STRAIN_RISK` (2–3) /
+`STRAIN_MIN_DIFFICULTY` in config; strain into `teamRiskOf` / `maxValorFor` /
+`ceilingRangeForDifficulty`; `strainId` + `strainAccepted` on `DiveState`; a three-part
+`(misfortune × front × strain)` combo key; strain-aware `REROLL_WHEEL` guards; host-only
+`ACCEPT_STRAIN` (whitelist + `HOST_ONLY_ACTIONS`); the `strain` phase in the seatable set, the
+phase key and the home phase labels; a WheelPanel front-card accept/decline treatment with its own
+reel and reroll dice; the diving briefing names the active strain. `SAVE_SCHEMA_VERSION` 8 → 9
+(`migrateV8toV9` defaults the fields and widens legacy combo keys), `ENGINE_VERSION` 16 → 17,
+goldens regenerated (the scripted crusade now decides strains — accepting on even operations and
+risk-3 draws). Covered by strain catalog/derivation tests, reducer tests (compounding, decline,
+failure reopen, op-completion clear, reroll/redraw/refusal), selector tests, the v8→v9 migration
+tests, and the updated solo/room/a11y E2E flows.
 
 **N10 · Crash / host-loss resilience.** Host migration exists (`removeDiver`, `reducer.ts:85`;
-server migration), but there is no mid-match void/abort path, no presence/host-change toast, and no
-in-app host transfer control (QA-T3; `TRANSFER_HOST` exists in the reducer but is unreachable from
-the UI). Mid-game HD2 crashes and host leaves throw off the operation. Needs the void semantics
-(DEC-9), toasts ("You are now host", "Connection lost"), and a host-only "Hand over host" control.
-Note: the worktree currently has uncommitted `connectionFailed` handling in `useGameSocket.ts` /
-`useDiveSession.ts` that is a first step here — finish and commit it.
+server migration). **Most of the listed gaps have since landed** (verified while starting Batch D):
+`connectionFailed` handling + a reconnect panel, "You are now host" / "Host moved to …" /
+"Connection lost — reconnecting…" toasts, presence dots, and a reachable host-only "Hand over host"
+control in `SquadStrip` (so the old "`TRANSFER_HOST` is unreachable" note is stale). What remains is
+the **mid-match void/abort path** (DEC-9): there is still no way to cancel the current mission with
+no forfeit, so a crash forces playing/reporting it or a full `END_DIVE`.
 
 **N15 · Identical incoming kits.** Likely expected, not aliasing: every mid-crusade joiner gets the
 same surplus kit (`room.ts:72`), and an untouched cache is exactly that kit. Verify with a repro; if

@@ -19,6 +19,12 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.getByRole('button', { name: 'Lock it in' }).click()
   await expect(page.getByText('Locked in — team-wide')).toBeVisible()
 
+  // The operation's first mission also draws a strain: an optional, op-long
+  // team risk. Declining keeps the dive at the misfortune's risk alone.
+  await expect(page.getByText('Strain call pending')).toBeVisible()
+  await page.getByRole('button', { name: 'Decline' }).click()
+  await expect(page.getByText('Standard forces — no strain')).toBeVisible()
+
   // The squad strip shows who still has to decide.
   await expect(page.getByRole('img', { name: 'choosing pacts' })).toBeVisible()
 
@@ -100,6 +106,7 @@ test('a failed mission labels the operation failed and restarts it', async ({ pa
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await page.getByRole('button', { name: 'Lock it in' }).click()
+  await page.getByRole('button', { name: 'Decline' }).click()
   await page.locator('.pact:not([disabled])').first().click()
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
 

@@ -127,8 +127,11 @@ describe('room-sync', () => {
     const snapshot = await lastSnapshot(joiner)
     expect(snapshot.wheel?.seed).toBe(42)
 
-    // The decision precedes pacts: the host locks the misfortune in.
+    // The decision precedes pacts: the host locks the misfortune in, then
+    // answers the strain call that opens on the operation's first mission.
     await processAction(kv, peers, host, { action: { type: 'ACCEPT_MISFORTUNE', accepted: true } })
+    expect((await lastSnapshot(joiner)).phase).toBe('strain')
+    await processAction(kv, peers, host, { action: { type: 'ACCEPT_STRAIN', accepted: false } })
     const decided = await lastSnapshot(joiner)
     expect(decided.phase).toBe('pacts')
 
@@ -185,6 +188,7 @@ describe('room-sync', () => {
     await processAction(kv, peers, host, { action: { type: 'START_DIVE', settings: { variant: 'standard' } } })
     await processAction(kv, peers, host, { action: { type: 'SPIN_WHEEL', seed: 42 } })
     await processAction(kv, peers, host, { action: { type: 'ACCEPT_MISFORTUNE', accepted: true } })
+    await processAction(kv, peers, host, { action: { type: 'ACCEPT_STRAIN', accepted: false } })
     const decided = await lastSnapshot(joiner)
     const offer = pactOfferFor(decided, joinerId).map(pact => pact.id)
     if (offer.length < 2) {
@@ -335,6 +339,7 @@ describe('room-sync', () => {
     await processAction(kv, peers, host, { action: { type: 'START_DIVE', settings: { variant: 'standard' } } })
     await processAction(kv, peers, host, { action: { type: 'SPIN_WHEEL', seed: 42 } })
     await processAction(kv, peers, host, { action: { type: 'ACCEPT_MISFORTUNE', accepted: true } })
+    await processAction(kv, peers, host, { action: { type: 'ACCEPT_STRAIN', accepted: false } })
     await processAction(kv, peers, host, { action: { type: 'SET_PACTS', playerId: 'x', pactIds: [] } })
     await processAction(kv, peers, host, { action: { type: 'REPORT_RESULT', outcome: 'success', stars: 3 } })
     const rewards = await lastSnapshot(host)

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { maxStarsFor, sampleAvailability } from '~~/shared/engine/config'
 import { performanceValor } from '~~/shared/engine/rewards'
-import { activeMisfortune, currentFront, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
+import { activeMisfortune, activeStrain, currentFront, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -19,6 +19,7 @@ const emit = defineEmits<{
 
 const misfortune = computed(() => activeMisfortune(props.state))
 const front = computed(() => currentFront(props.state))
+const strain = computed(() => activeStrain(props.state))
 const selfPactRisk = computed(() => (props.self ? pactRiskOf(props.self) : 0))
 const teamRisk = computed(() => teamRiskOf(props.state))
 
@@ -79,15 +80,17 @@ function cancelReport(): void {
     <p>
       <template v-if="misfortune">
         <strong>{{ misfortune.name }}</strong> — {{ misfortune.rule }}
-        · vs <strong
-          :style="front ? { color: front.accent } : undefined"
-        >{{ front?.displayName }}</strong>
       </template>
       <template v-else>
         No team misfortune — safe dive
-        · vs <strong
+      </template>
+      · vs <strong
+        :style="front ? { color: front.accent } : undefined"
+      >{{ front?.displayName }}</strong>
+      <template v-if="strain">
+        · <strong
           :style="front ? { color: front.accent } : undefined"
-        >{{ front?.displayName }}</strong>
+        >{{ strain.name }}</strong>
       </template>
     </p>
     <PactBriefing

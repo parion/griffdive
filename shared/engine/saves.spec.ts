@@ -64,7 +64,7 @@ describe('save migration v7 → v8 (alpha baseline freeze)', () => {
       ],
     })
     const migrated = normalizeSaveDoc(doc)!
-    expect(migrated.schemaVersion).toBe(8)
+    expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
     expect(migrated.state.legacyCaches).toEqual({})
     expect(migrated.state.bonusSeed).toBeNull()
     expect(migrated.state.bonusWinnerId).toBeNull()
@@ -86,6 +86,40 @@ describe('save migration v7 → v8 (alpha baseline freeze)', () => {
     expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
     expect(migrated.engineVersion).toBe(ENGINE_VERSION)
     expect(migrated.state.divers).toEqual([])
+  })
+})
+
+describe('save migration v8 → v9 (strains)', () => {
+  it('defaults the strain fields and widens legacy combo keys', () => {
+    const doc: SaveDoc = {
+      ...v1Doc(),
+      schemaVersion: 8,
+      state: {
+        ...v1Doc().state,
+        completedCombos: ['noBackpacks:terminids', 'stealth:automatons'],
+      },
+    }
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
+    expect(migrated.state.strainId).toBeNull()
+    expect(migrated.state.strainAccepted).toBe(false)
+    expect(migrated.state.completedCombos).toEqual([
+      'noBackpacks:terminids:none',
+      'stealth:automatons:none',
+    ])
+  })
+
+  it('leaves already-widened combo keys untouched', () => {
+    const doc: SaveDoc = {
+      ...v1Doc(),
+      schemaVersion: 8,
+      state: {
+        ...v1Doc().state,
+        completedCombos: ['pacifist:illuminate:voteSnatchers'],
+      },
+    }
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.state.completedCombos).toEqual(['pacifist:illuminate:voteSnatchers'])
   })
 })
 

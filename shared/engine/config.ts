@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 16
+export const ENGINE_VERSION = 17
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -153,7 +153,8 @@ export const S_PLUS_UPGRADE_DIVISOR = 40
 export const S_PLUS_UPGRADE_CAP = 0.1
 
 // The Valor meter tops out at 11: the strongest build a squad can realistically
-// stack (the absolute max is ~13.5). Valor past the top is banked as Luck — the
+// stack (the absolute max is ~16.5, a strain included). Valor past the top is
+// banked as Luck — the
 // gauge "breaks" and each extra point buys flat odds on the S and S+ rungs, so
 // overstacking risk is never wasted. Overflow can push S near certainty but
 // never guarantees either top rung. (AGENTS.md: Reward math.)
@@ -213,7 +214,7 @@ export const UPGRADE_PREVIEW_FLOOR = 0.05
 // Team performance feeds a small third Valor term on top of chosen risk, from
 // the mission just reported. Capped so chosen risk still dominates: a perfect
 // timed clear is worth 0.2 and samples up to 0.3, so time + samples together
-// never exceed 0.5 against the 13-point chosen ceiling.
+// never exceed 0.5 against the 16-point chosen ceiling.
 //
 // Sample values are calibrated against wiki.gg/Sample "availability by
 // difficulty": commons 15–18 (diff 3) climb to 40, rares enter at 4 and supers
@@ -292,6 +293,34 @@ export const MISFORTUNE_RISK: Readonly<Record<string, number>> = {
   noStratagems: 5,
   meleeOnly: 5,
   pacifist: 5,
+}
+
+// Strains are an optional, operation-long commitment: the squad accepts or
+// declines the drawn subfaction in the operation's first decision window.
+// Accepting adds the risk to every mission of the operation (it compounds over
+// the op's 2–3 missions), so the values stay below the misfortune scale.
+export const STRAIN_RISK: Readonly<Record<string, number>> = {
+  predatorStrain: 2,
+  ruptureStrain: 2,
+  sporeBurstStrain: 3,
+  jetBrigade: 2,
+  incinerationCorps: 3,
+  cyborgLegion: 3,
+  mindlessMasses: 2,
+  appropriators: 2,
+  voteSnatchers: 3,
+}
+
+export const STRAIN_MIN_DIFFICULTY: Readonly<Record<string, number>> = {
+  predatorStrain: 3,
+  ruptureStrain: 3,
+  sporeBurstStrain: 6,
+  jetBrigade: 3,
+  incinerationCorps: 3,
+  cyborgLegion: 6,
+  mindlessMasses: 3,
+  appropriators: 3,
+  voteSnatchers: 5,
 }
 
 export const MISFORTUNE_MIN_DIFFICULTY: Readonly<Record<string, number>> = {

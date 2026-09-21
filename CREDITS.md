@@ -25,6 +25,12 @@ Griffdive stands on the work of the Helldivers community. Thank you.
 - These are Arrowhead/Sony game renders reproduced for non-commercial fan use; see Intellectual
   property below.
 
+## Faction strains
+
+- Subfaction names and flavor: [helldivers.wiki.gg/Factions](https://helldivers.wiki.gg/wiki/Factions)
+  (CC BY-NC-SA 4.0) — paraphrased into `shared/data/strains.ts`. Griffdive is non-commercial, so the
+  license's non-commercial term is satisfied.
+
 ## Fonts
 
 - Body/UI typeface: [Chakra Petch](https://fonts.google.com/specimen/Chakra+Petch) by Cadson Demak —

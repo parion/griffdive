@@ -3,12 +3,14 @@ import type { Front } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
 import type { Misfortune } from '../data/misfortunes'
 import type { Pact } from '../data/pacts'
+import type { Strain } from '../data/strains'
 import type { Item } from '../data/types'
 import {
   MISFORTUNE_RISK,
   OPTIONS_LOST_PER_FAILED_PACT,
   PACT_RISK,
   SAMPLE_VALOR_CAP,
+  STRAIN_RISK,
   TIME_VALOR_MAX,
   baseTierFor,
   bonusIntervalFor,
@@ -22,10 +24,18 @@ import { performanceValor, maxCeiling, oddsToReach, optionsForStars, rollBonus, 
 import type { RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
 import type { DiveState, DiverState, RewardTier } from './types'
-import { eligibleMisfortunes, frontById } from './wheel'
+import { eligibleMisfortunes, eligibleStrains, frontById, strainById } from './wheel'
 
-export function comboKey(misfortuneId: string, front: string): string {
-  return `${misfortuneId}:${front}`
+// A completed run is tracked by its full draw — misfortune, front and strain —
+// so the free-overrule reroll only fires on the exact same challenge. The
+// strain is always part of the key once drawn ('none' when a front has no
+// eligible strain).
+export function comboKey(
+  misfortuneId: string,
+  front: string,
+  strainId: string | null,
+): string {
+  return `${misfortuneId}:${front}:${strainId ?? 'none'}`
 }
 
 export function currentMisfortune(state: DiveState): Misfortune | null {
@@ -40,6 +50,16 @@ export function activeMisfortune(state: DiveState): Misfortune | null {
 
 export function currentFront(state: DiveState): Front | null {
   return state.frontId ? frontById(state.frontId) : null
+}
+
+export function currentStrain(state: DiveState): Strain | null {
+  return strainById(state.strainId)
+}
+
+// The strain only binds the squad once accepted; a declined draw is flavor on
+// the front card, not a rule.
+export function activeStrain(state: DiveState): Strain | null {
+  return state.strainAccepted ? currentStrain(state) : null
 }
 
 export interface MisfortuneDecision {
@@ -70,12 +90,38 @@ export function misfortuneStrandedDivers(state: DiveState): DiverState[] {
     !hasLegalLoadout(misfortune.id, [], state.personalInventories[diver.id] ?? []))
 }
 
+// Team risk stacks the per-mission misfortune (when accepted) and the
+// operation-long strain (when accepted): a strain is felt on every mission of
+// its operation, so it compounds over the op's 2–3 missions.
 export function teamRiskOf(state: DiveState): number {
-  if (!state.misfortuneAccepted) {
-    return 0
+  const misfortuneRisk = state.misfortuneAccepted
+    ? MISFORTUNE_RISK[currentMisfortune(state)?.id ?? ''] ?? 0
+    : 0
+  const strainRisk = state.strainAccepted
+    ? STRAIN_RISK[state.strainId ?? ''] ?? 0
+    : 0
+  return misfortuneRisk + strainRisk
+}
+
+export interface StrainDecision {
+  decided: boolean
+  accepted: boolean
+}
+
+// The strain decision is open on the operation's first mission (phase
+// 'decision' leads into 'strain'); later missions inherit it, and a failure
+// restart reopens it by resetting missionInOperation.
+export function strainDecision(state: DiveState): StrainDecision {
+  if (!state.strainId) {
+    return { decided: true, accepted: false }
   }
-  const misfortune = currentMisfortune(state)
-  return misfortune ? (MISFORTUNE_RISK[misfortune.id] ?? 0) : 0
+  if (state.missionInOperation > 1) {
+    return { decided: true, accepted: state.strainAccepted }
+  }
+  if (state.phase === 'spin' || state.phase === 'decision' || state.phase === 'strain') {
+    return { decided: false, accepted: false }
+  }
+  return { decided: true, accepted: state.strainAccepted }
 }
 
 // A failed pact is voided: it no longer stakes risk, so its share of the
@@ -294,31 +340,42 @@ export function ceilingRange(difficulty: number, teamRisk: number, pactRisk: num
 }
 
 export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): CeilingRange {
-  const pool = eligibleMisfortunes(difficulty)
-  const maxRisk = Math.max(0, ...pool.map(misfortune => MISFORTUNE_RISK[misfortune.id] ?? 0))
-  return ceilingRange(difficulty, maxRisk, pactRisk)
+  const misfortuneMax = Math.max(
+    0,
+    ...eligibleMisfortunes(difficulty).map(misfortune => MISFORTUNE_RISK[misfortune.id] ?? 0),
+  )
+  const strainMax = Math.max(
+    0,
+    ...eligibleStrains(difficulty).map(strain => STRAIN_RISK[strain.id] ?? 0),
+  )
+  return ceilingRange(difficulty, misfortuneMax + strainMax, pactRisk)
 }
 
 // The most Valor this difficulty can actually stack — the strongest eligible
-// misfortune, the top pacts the offer can deal, and the capped team-performance
-// term. The meter itself is scaled to VALOR_METER_MAX (11), so anything this
-// returns above that is potential overflow Luck (AGENTS.md: Reward math).
-// Presentation only; it never gates a roll.
+// misfortune, the strongest eligible strain, the top pacts the offer can deal,
+// and the capped team-performance term. The meter itself is scaled to
+// VALOR_METER_MAX (11), so anything this returns above that is potential
+// overflow Luck (AGENTS.md: Reward math). Presentation only; it never gates a
+// roll.
 export function maxValorFor(difficulty: number): number {
-  const teamMax = Math.max(
+  const misfortuneMax = Math.max(
     0,
     ...eligibleMisfortunes(difficulty).map(misfortune => MISFORTUNE_RISK[misfortune.id] ?? 0),
+  )
+  const strainMax = Math.max(
+    0,
+    ...eligibleStrains(difficulty).map(strain => STRAIN_RISK[strain.id] ?? 0),
   )
   const pactMax = Object.values(PACT_RISK)
     .sort((a, b) => b - a)
     .slice(0, pactOptionsFor(difficulty))
     .reduce((sum, risk) => sum + risk, 0)
-  return teamMax + pactMax + TIME_VALOR_MAX + SAMPLE_VALOR_CAP
+  return misfortuneMax + strainMax + pactMax + TIME_VALOR_MAX + SAMPLE_VALOR_CAP
 }
 
 export function canRerollWheel(
   state: DiveState,
-  wheel: 'misfortune' | 'front',
+  wheel: 'misfortune' | 'front' | 'strain',
 ): { allowed: boolean, free: boolean, reason: string | null } {
   if (!state.wheel || !state.frontId) {
     return { allowed: false, free: false, reason: 'Spin the wheel first' }
@@ -326,12 +383,23 @@ export function canRerollWheel(
   if (state.divers.some(diver => diver.pactsLocked)) {
     return { allowed: false, free: false, reason: 'Pacts already locked' }
   }
-  // The front locks in with its operation — rerolls are mission-1 business.
-  if (wheel === 'front' && state.missionInOperation > 1) {
+  // The front and its strain lock in with the operation — rerolls are
+  // mission-1 business.
+  if (wheel !== 'misfortune' && state.missionInOperation > 1) {
     return { allowed: false, free: false, reason: 'The front locks in for the whole operation' }
   }
+  if (wheel === 'strain') {
+    if (!state.strainId) {
+      return { allowed: false, free: false, reason: 'No strain drawn' }
+    }
+    // A reroll must be able to move: with a single eligible subfaction the
+    // draw is fixed for the operation.
+    if (eligibleStrains(state.difficulty, state.frontId).length < 2) {
+      return { allowed: false, free: false, reason: 'Only one strain on this front' }
+    }
+  }
   const completed = state.completedCombos.includes(
-    comboKey(state.wheel.misfortuneId, state.frontId),
+    comboKey(state.wheel.misfortuneId, state.frontId, state.strainId),
   )
   if (completed) {
     return { allowed: true, free: true, reason: null }

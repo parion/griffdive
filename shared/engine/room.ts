@@ -18,6 +18,8 @@ export function createLobbyState(): DiveState {
     wheel: null,
     frontId: null,
     misfortuneAccepted: false,
+    strainId: null,
+    strainAccepted: false,
     rerollTokens: REROLL_TOKENS_PER_OPERATION,
     completedCombos: [],
     personalInventories: {},
@@ -34,7 +36,7 @@ export function createLobbyState(): DiveState {
 // Rewards and forfeit resolve the mission that just ended: seating there
 // would grant a draft (or stall forfeit) for a mission the joiner never
 // dove. Complete crusades have nothing left to join.
-const SEATABLE_PHASES: readonly DivePhase[] = ['lobby', 'spin', 'decision', 'pacts', 'diving']
+const SEATABLE_PHASES: readonly DivePhase[] = ['lobby', 'spin', 'decision', 'strain', 'pacts', 'diving']
 
 // Human-readable reason a fresh join cannot seat right now, or null when it
 // can. The server sends this verbatim; joinDiver enforces the same rule.

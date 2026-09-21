@@ -38,6 +38,7 @@ test('the star rating is a keyboard-navigable radio group', async ({ page }) => 
   await dismissWarbondIntro(page)
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await page.getByRole('button', { name: 'Lock it in' }).click()
+  await page.getByRole('button', { name: 'Decline' }).click()
   await page.locator('.pact:not([disabled])').first().click()
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
   await page.getByRole('button', { name: 'Mission complete' }).click()

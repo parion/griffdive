@@ -1,31 +1,55 @@
 <script setup lang="ts">
 import { FRONTS } from '~~/shared/data/fronts'
 import { factionImageUrl } from '~~/shared/data/images'
-import { MISFORTUNE_RISK } from '~~/shared/engine/config'
+import { MISFORTUNE_RISK, STRAIN_RISK } from '~~/shared/engine/config'
 import {
   canRerollWheel,
   currentFront,
   currentMisfortune,
+  currentStrain,
   misfortuneDecision,
   misfortuneStrandedDivers,
+  strainDecision,
 } from '~~/shared/engine/selectors'
-import { eligibleMisfortunes } from '~~/shared/engine/wheel'
+import { eligibleMisfortunes, eligibleStrains } from '~~/shared/engine/wheel'
 import type { DiveState } from '~~/shared/engine/types'
 import { ACCOUNTABILITY_LABELS } from '~/utils/accountability'
 import { riseIn } from '~/utils/motion'
 
 const props = withDefaults(defineProps<{ state: DiveState, canControl?: boolean }>(), { canControl: true })
-defineEmits<{ spin: [], decide: [accepted: boolean], reroll: [wheel: 'misfortune' | 'front'] }>()
+defineEmits<{
+  spin: []
+  decide: [accepted: boolean]
+  decideStrain: [accepted: boolean]
+  reroll: [wheel: 'misfortune' | 'front' | 'strain']
+}>()
 
 // The card shows the drawn misfortune — the squad decides on what it can see.
 // (activeMisfortune is the accepted-only variant, used by briefing/pacts.)
 const misfortune = computed(() => currentMisfortune(props.state))
 const front = computed(() => currentFront(props.state))
+const strain = computed(() => currentStrain(props.state))
 const misfortuneReroll = computed(() => canRerollWheel(props.state, 'misfortune'))
 const frontReroll = computed(() => canRerollWheel(props.state, 'front'))
+const strainReroll = computed(() => canRerollWheel(props.state, 'strain'))
 const teamRisk = computed(() =>
   props.state.wheel ? (MISFORTUNE_RISK[props.state.wheel.misfortuneId] ?? 0) : 0,
 )
+const strainRisk = computed(() =>
+  strain.value ? (STRAIN_RISK[strain.value.id] ?? 0) : 0,
+)
+
+// The strain is an operation-long commitment decided after the misfortune, on
+// the operation's first mission only (phase 'strain'); later missions inherit
+// it. In 'pacts' it may still flip until the first pact lock, like the
+// misfortune.
+const strainCall = computed(() => strainDecision(props.state))
+const strainDeciding = computed(() => props.state.phase === 'strain' && strain.value !== null)
+const strainSwitchable = computed(() =>
+  props.state.phase === 'pacts'
+  && strain.value !== null
+  && props.state.missionInOperation === 1
+  && !props.state.divers.some(diver => diver.pactsLocked))
 
 // The decision is its own phase: the spin leaves the squad in 'decision', and
 // only the accepted-or-declined call moves them on to pacts. A switch is still
@@ -40,7 +64,9 @@ const canSwitch = computed(() =>
   && props.state.wheel !== null
   && !props.state.divers.some(diver => diver.pactsLocked))
 const rerollWindow = computed(() =>
-  (props.state.phase === 'decision' || props.state.phase === 'pacts')
+  (props.state.phase === 'decision'
+    || props.state.phase === 'strain'
+    || props.state.phase === 'pacts')
   && props.state.wheel !== null
   && !props.state.divers.some(diver => diver.pactsLocked))
 
@@ -61,9 +87,19 @@ const misfortuneNames = computed(() =>
   eligibleMisfortunes(props.state.difficulty).map(entry => entry.name),
 )
 const frontNames = computed(() => FRONTS.map(entry => entry.displayName))
+const strainNames = computed(() =>
+  props.state.frontId
+    ? eligibleStrains(props.state.difficulty, props.state.frontId).map(entry => entry.name)
+    : [],
+)
 
 const misfortuneReeling = ref(false)
 const frontReeling = ref(false)
+const strainReeling = ref(false)
+// The front card hides its static content (blurb, risk, buttons) while any of
+// its reels runs, so a roll never spoils its own draw.
+const cardReeling = computed(() =>
+  misfortuneReeling.value || frontReeling.value || strainReeling.value)
 
 // Faction colors keyed by display name, so the reel rolls its candidates in
 // their own colors and never shows the winner's before it lands.
@@ -105,6 +141,35 @@ watch(() => props.state.frontId, (id, prev) => {
   frontSettled.value = false
 })
 
+// The strain rides the same spin as the front; a strain reroll replays only
+// its own reel.
+const strainReelId = ref<string | null>(null)
+let strainTick = 0
+watch(() => props.state.strainId, (id, prev) => {
+  if (id === null || misfortuneReelId.value === null) {
+    return
+  }
+  if (prev !== undefined) {
+    strainTick++
+  }
+  strainReelId.value = `${misfortuneReelId.value}:strain:${strainTick}`
+})
+
+const strainStamp = computed(() => {
+  if (!strain.value) {
+    return { text: 'Standard forces', tone: 'safe' }
+  }
+  if (!strainCall.value.decided) {
+    return {
+      text: props.canControl ? 'Strain call pending' : 'Strain call — awaiting host',
+      tone: 'pending',
+    }
+  }
+  return strainCall.value.accepted
+    ? { text: 'Strain active — team-wide', tone: 'locked' }
+    : { text: 'Standard forces — no strain', tone: 'safe' }
+})
+
 const cardTone = computed(() =>
   decision.value.decided
     ? decision.value.accepted ? 'locked' : 'safe'
@@ -124,7 +189,7 @@ const stamp = computed(() => {
 
 function rerollLabel(
   info: { allowed: boolean, free: boolean, reason: string | null },
-  wheel: 'misfortune' | 'front',
+  wheel: 'misfortune' | 'front' | 'strain',
 ): string {
   if (!info.allowed) {
     return info.reason ?? `Reroll ${wheel}`
@@ -249,7 +314,7 @@ function rerollLabel(
       <Motion
         as="div"
         class="wheel-card front-card"
-        :class="{ reeling: frontReeling, accented: !!front && frontSettled }"
+        :class="{ reeling: cardReeling, accented: !!front && frontSettled }"
         :style="front ? { '--front-accent': front.accent } : undefined"
         v-bind="riseIn(1)"
       >
@@ -300,13 +365,111 @@ function rerollLabel(
               @reeling="onFrontReeling"
             />
           </strong>
+          <div
+            v-if="strain"
+            class="strain"
+          >
+            <span class="strain-head">
+              <span class="muted small">Strain</span>
+              <span class="head-tools">
+                <AppTooltip
+                  v-if="canControl && rerollWindow"
+                  :content="rerollLabel(strainReroll, 'strain')"
+                  :disabled="!strainReroll.allowed || cardReeling"
+                >
+                  <button
+                    class="reroll-dice"
+                    type="button"
+                    :disabled="!strainReroll.allowed || cardReeling"
+                    :aria-label="rerollLabel(strainReroll, 'strain')"
+                    :title="!strainReroll.allowed || cardReeling ? rerollLabel(strainReroll, 'strain') : undefined"
+                    @click="$emit('reroll', 'strain')"
+                  ><IconDice /></button>
+                </AppTooltip>
+                <span
+                  class="chip decision-stamp"
+                  :class="strainStamp.tone"
+                >{{ strainStamp.text }}</span>
+              </span>
+            </span>
+            <strong class="strain-name">
+              <ReelText
+                :final="strain.name"
+                :candidates="strainNames"
+                :reel-id="strainReelId"
+                @reeling="strainReeling = $event"
+              />
+            </strong>
+            <p class="small muted">
+              {{ strain.blurb }}
+            </p>
+            <span class="row risk-row small muted">Team risk <RiskPips
+              :value="strainRisk"
+              :rolling="strainReeling"
+            /></span>
+            <div
+              v-if="strainDeciding && canControl"
+              class="row decision-actions"
+            >
+              <button
+                class="btn primary"
+                type="button"
+                :disabled="cardReeling"
+                @click="$emit('decideStrain', true)"
+              >
+                Accept strain
+              </button>
+              <button
+                class="btn ghost"
+                type="button"
+                :disabled="cardReeling"
+                @click="$emit('decideStrain', false)"
+              >
+                Decline
+              </button>
+            </div>
+            <button
+              v-else-if="strainSwitchable && canControl"
+              class="btn tiny ghost"
+              type="button"
+              @click="$emit('decideStrain', !strainCall.accepted)"
+            >
+              {{ strainCall.accepted ? 'Switch — decline' : 'Switch — accept' }}
+            </button>
+            <p
+              v-else-if="strainDeciding && !canControl"
+              class="muted small"
+            >
+              The host decides before pacts roll.
+            </p>
+          </div>
+          <p
+            v-else
+            class="muted small"
+          >
+            Standard forces — no strain drawn.
+          </p>
           <p class="muted small">
-            Tracks completed (misfortune × front) combos. The front locks in for
-            the whole operation.
+            Tracks completed (misfortune × front × strain) combos. The front locks
+            in for the whole operation.
           </p>
         </template>
         <template v-else-if="state.frontId">
           <strong class="misfortune-name">{{ front?.displayName }}</strong>
+          <div
+            v-if="strain"
+            class="strain"
+          >
+            <span class="strain-head">
+              <span class="muted small">Strain</span>
+              <span
+                class="chip decision-stamp"
+                :class="strainStamp.tone"
+              >{{ strainStamp.text }}</span>
+            </span>
+            <strong class="strain-name">{{ strain.name }}</strong>
+            <span class="row risk-row small muted">Team risk <RiskPips :value="strainRisk" /></span>
+          </div>
           <p class="muted small">
             Fixed for the whole operation.
           </p>
@@ -343,6 +506,19 @@ function rerollLabel(
 .misfortune-name { font-size: 1.1rem; color: var(--gold); }
 .front-card { position: relative; overflow: hidden; isolation: isolate; }
 .front-card .misfortune-name { color: var(--front-accent, var(--gold)); }
+
+/* The strain is a subfaction of the front: same card, its own divider. */
+.strain {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed color-mix(in srgb, var(--front-accent, var(--border)) 35%, var(--border));
+}
+.strain-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.strain-name { font-size: 0.98rem; color: var(--front-accent, var(--gold)); }
+/* The decision stamp must not spoil a live roll. */
+.wheel-card.reeling .strain .decision-stamp { opacity: 0; visibility: hidden; }
 
 /* Faction emblem watermark: behind the card text (isolation keeps z-index -1
    above the card's own background), slides in from the right edge on settle
