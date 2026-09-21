@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_DIFFICULTY, MIN_DIFFICULTY, S_PLUS_UPGRADE_CAP } from './config'
+import { MAX_DIFFICULTY, MIN_DIFFICULTY, S_PLUS_OVERFLOW_CAP, S_PLUS_UPGRADE_CAP, VALOR_METER_MAX } from './config'
 import { oddsToReach, rollCeiling } from './rewards'
 import { mulberry32 } from './rng'
 import type { RewardTier } from './types'
@@ -24,10 +24,17 @@ function empiricalShare(difficulty: number, valor: number, tier: RewardTier, tri
 }
 
 describe('S+ (Diver\'s Choice) rarity', () => {
-  it('stays under 10% at max Valor on every difficulty', () => {
+  it('stays under 10% at the meter top on every difficulty', () => {
     for (let difficulty = MIN_DIFFICULTY; difficulty <= MAX_DIFFICULTY; difficulty++) {
-      expect(oddsToReach(difficulty, MAX_VALOR, 'S+')).toBeLessThanOrEqual(0.1)
+      expect(oddsToReach(difficulty, VALOR_METER_MAX, 'S+')).toBeLessThanOrEqual(0.1)
     }
+  })
+
+  it('lets overflow Luck lift the jackpot without handing it out', () => {
+    // Overstacking past the meter's top is the point: max Valor (13) is over
+    // the 11 cap, so it buys extra S+ odds — still under the overflow ceiling.
+    expect(oddsToReach(MAX_DIFFICULTY, MAX_VALOR, 'S+')).toBeGreaterThan(0.1)
+    expect(oddsToReach(MAX_DIFFICULTY, MAX_VALOR, 'S+')).toBeLessThanOrEqual(S_PLUS_OVERFLOW_CAP)
   })
 
   it('stays reachable at altitude, so the jackpot is real', () => {

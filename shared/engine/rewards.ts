@@ -2,21 +2,26 @@ import type { Item, Tier } from '../data/types'
 import {
   BONUS_STATS,
   MAX_OPTIONS,
+  OVERFLOW_S_LUCK,
+  OVERFLOW_S_PLUS_LUCK,
   SAMPLE_VALOR_CAP,
   SAMPLE_VALOR_WEIGHTS,
   S_PLUS_BONUS_OPTIONS,
+  S_PLUS_OVERFLOW_CAP,
   S_PLUS_UPGRADE_CAP,
   S_PLUS_UPGRADE_DIVISOR,
-  S_PLUS_VALOR_FLOOR,
+  S_OVERFLOW_CAP,
   S_UPGRADE_DIVISOR,
-  S_VALOR_FLOOR,
   STARS_TO_OPTIONS,
   TIER_ROLL_WEIGHT_BASE,
   TIME_VALOR_MAX,
   UPGRADE_CAP,
   UPGRADE_PREVIEW_FLOOR,
+  VALOR_METER_MAX,
   bandPosition,
   baseTierFor,
+  sPlusValorFloorFor,
+  sValorFloorFor,
   upgradeOdds,
 } from './config'
 import type { BonusStat } from './config'
@@ -28,20 +33,27 @@ const TIER_INDEX: Readonly<Record<Tier, number>> = { c: 0, b: 1, a: 2, s: 3 }
 const CEILING_LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
 // One step of the ceiling ladder. The top rungs (S, S+) don't use the shared
-// step curve: each has a Valor floor and its own ramp, so altitude can't hand
-// out the top tier for a trickle of risk. The roll, the preview and the priced
-// climb all share this so the UI never overstates the jackpot.
-function stepOdds(valor: number, bandPos: number, step: number, targetIndex: number): number {
+// step curve: each has a Valor floor (easing in the low bands) and its own
+// ramp, so altitude can't hand out the top tier for a trickle of risk. Valor
+// past the meter top is banked as Luck and adds flat odds to both rungs. The
+// roll, the preview and the priced climb all share this so the UI never
+// overstates the jackpot.
+function stepOdds(difficulty: number, valor: number, step: number, targetIndex: number): number {
+  const bandPos = bandPosition(difficulty)
   const altitude = 1 + bandPos
+  const metered = Math.min(valor, VALOR_METER_MAX)
+  const overflow = Math.max(0, valor - VALOR_METER_MAX)
   if (targetIndex === CEILING_LADDER.length - 1) {
-    const ramp = Math.max(0, valor - S_PLUS_VALOR_FLOOR + 1)
-    return Math.min(S_PLUS_UPGRADE_CAP, (ramp * altitude) / S_PLUS_UPGRADE_DIVISOR)
+    const ramp = Math.max(0, metered - sPlusValorFloorFor(difficulty) + 1)
+    const base = Math.min(S_PLUS_UPGRADE_CAP, (ramp * altitude) / S_PLUS_UPGRADE_DIVISOR)
+    return Math.min(S_PLUS_OVERFLOW_CAP, base + overflow * OVERFLOW_S_PLUS_LUCK)
   }
   if (targetIndex === CEILING_LADDER.length - 2) {
-    const ramp = Math.max(0, valor - S_VALOR_FLOOR + 1)
-    return Math.min(UPGRADE_CAP, (ramp * altitude) / S_UPGRADE_DIVISOR)
+    const ramp = Math.max(0, metered - sValorFloorFor(difficulty) + 1)
+    const base = Math.min(UPGRADE_CAP, (ramp * altitude) / S_UPGRADE_DIVISOR)
+    return Math.min(S_OVERFLOW_CAP, base + overflow * OVERFLOW_S_LUCK)
   }
-  return upgradeOdds(valor, bandPos, step)
+  return upgradeOdds(metered, bandPos, step)
 }
 
 // No catalog item carries the S+ tier, so a ceiling that breaks the scale
@@ -95,10 +107,9 @@ export function performanceValor(report: MissionReport | null): number {
 // position, and the chain stops on the first miss. A zero-Valor dive always
 // rolls its base tier; S/S+ need stacked Valor and even then are never sure.
 export function rollCeiling(rng: Rng, difficulty: number, valor: number): RewardTier {
-  const pos = bandPosition(difficulty)
   let index = CEILING_LADDER.indexOf(baseTierFor(difficulty))
   for (let step = 1; index + 1 < CEILING_LADDER.length; step++) {
-    if (rng() < stepOdds(valor, pos, step, index + 1)) {
+    if (rng() < stepOdds(difficulty, valor, step, index + 1)) {
       index++
     }
     else {
@@ -111,10 +122,9 @@ export function rollCeiling(rng: Rng, difficulty: number, valor: number): Reward
 // Deterministic best case for previews: the highest tier whose per-step odds
 // clear the legibility floor.
 export function maxCeiling(difficulty: number, valor: number): RewardTier {
-  const pos = bandPosition(difficulty)
   let index = CEILING_LADDER.indexOf(baseTierFor(difficulty))
   for (let step = 1; index + 1 < CEILING_LADDER.length; step++) {
-    if (stepOdds(valor, pos, step, index + 1) < UPGRADE_PREVIEW_FLOOR) {
+    if (stepOdds(difficulty, valor, step, index + 1) < UPGRADE_PREVIEW_FLOOR) {
       break
     }
     index++
@@ -123,12 +133,11 @@ export function maxCeiling(difficulty: number, valor: number): RewardTier {
 }
 
 export function oddsToReach(difficulty: number, valor: number, tier: RewardTier): number {
-  const pos = bandPosition(difficulty)
   const target = CEILING_LADDER.indexOf(tier)
   const floor = CEILING_LADDER.indexOf(baseTierFor(difficulty))
   let odds = 1
   for (let step = 1; floor + step <= target; step++) {
-    odds *= stepOdds(valor, pos, step, floor + step)
+    odds *= stepOdds(difficulty, valor, step, floor + step)
   }
   return odds
 }

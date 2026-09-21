@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 15
+export const ENGINE_VERSION = 16
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -147,9 +147,36 @@ export const S_UPGRADE_DIVISOR = 18
 export const S_PLUS_VALOR_FLOOR = 8
 export const S_PLUS_UPGRADE_DIVISOR = 40
 // The final S→S+ rung is capped far below the rest of the ladder: altitude
-// alone must never make Liberty's Cross routine. Max chosen Valor (13) tops out
-// around 8% at altitude and lower in the low bands.
+// alone must never make Liberty's Cross routine. Even absolute max overstack
+// tops out around 13% at altitude and lower in the low bands.
 export const S_PLUS_UPGRADE_CAP = 0.1
+
+// The Valor meter tops out at 11: the strongest build a squad can realistically
+// stack (the absolute max is ~13.5). Valor past the top is banked as Luck — the
+// gauge "breaks" and each extra point buys flat odds on the S and S+ rungs, so
+// overstacking risk is never wasted. Overflow can push S near certainty but
+// never guarantees either top rung. (AGENTS.md: Reward math.)
+export const VALOR_METER_MAX = 11
+export const OVERFLOW_S_LUCK = 0.05
+export const OVERFLOW_S_PLUS_LUCK = 0.015
+export const S_OVERFLOW_CAP = 0.95
+export const S_PLUS_OVERFLOW_CAP = 0.15
+
+// The low bands pay the top rungs for less Valor: their base tier sits two
+// rungs down, so the climb already compounds against the diver. The S and S+
+// Valor floors ease linearly from the band floor (diff 3) to their full value
+// once the base tier reaches A (diff 8), giving an early squad a fair shot at
+// special gear instead of an unreachable cliff.
+const TOP_RUNG_FULL_DIFFICULTY = 8
+export const TOP_RUNG_FLOOR_EASE = 0.6
+
+export function sValorFloorFor(difficulty: number): number {
+  return S_VALOR_FLOOR - Math.max(0, TOP_RUNG_FULL_DIFFICULTY - difficulty) * TOP_RUNG_FLOOR_EASE
+}
+
+export function sPlusValorFloorFor(difficulty: number): number {
+  return S_PLUS_VALOR_FLOOR - Math.max(0, TOP_RUNG_FULL_DIFFICULTY - difficulty) * TOP_RUNG_FLOOR_EASE
+}
 // Tiers with per-step odds below this are too unlikely to preview. Kept at or
 // below the S+ cap so the jackpot can still preview at max Valor, and at or
 // below the S floor's opening odds so a reachable S is never hidden.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS } from '../data/catalog'
-import { S_PLUS_VALOR_FLOOR, S_VALOR_FLOOR } from './config'
+import { VALOR_METER_MAX, sPlusValorFloorFor, sValorFloorFor } from './config'
 import { DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, maxCeiling, oddsToReach, optionsForStars, performanceValor, rollCeiling, rollRewardOptions, tierWeight, valorOf } from './rewards'
 import { mulberry32 } from './rng'
 import type { RewardTier } from './types'
@@ -92,6 +92,13 @@ describe('rollCeiling (probabilistic tier ladder)', () => {
     expect(sawBelowS).toBe(true)
   })
 
+  it('gives the early bands a fair shot at S', () => {
+    // A strong pact plus a risk-1 misfortune (Valor 4) at diff 3 now clears
+    // real, if modest, odds at the top rung instead of a cliff.
+    expect(oddsToReach(3, 4, 'S')).toBeGreaterThan(0.05)
+    expect(maxCeiling(3, 4)).toBe('S')
+  })
+
   it('rolls higher within a band toward the band top', () => {
     // diff 3 (band floor) vs diff 5 (band top), same Valor and seed stream:
     // the top-of-band roll must never be worse.
@@ -103,13 +110,15 @@ describe('rollCeiling (probabilistic tier ladder)', () => {
     }
   })
 
-  it('gates S and S+ behind real Valor, so altitude cannot hand out the top', () => {
+  it('gates S and S+ behind the difficulty-scaled Valor floors', () => {
     for (let seed = 0; seed < 200; seed++) {
-      // Below the floor, S is unreachable even at the top difficulty.
-      expect(rollCeiling(mulberry32(seed), 10, S_VALOR_FLOOR - 1)).toBe('A')
-      // Below the S+ floor, the jackpot is unreachable in every band.
       for (const difficulty of [3, 6, 10]) {
-        expect(rollCeiling(mulberry32(seed), difficulty, S_PLUS_VALOR_FLOOR - 1)).not.toBe('S+')
+        // Below the S floor, S is unreachable.
+        expect(rollCeiling(mulberry32(seed), difficulty, sValorFloorFor(difficulty) - 1))
+          .not.toBe('S')
+        // Below the S+ floor, the jackpot is unreachable.
+        expect(rollCeiling(mulberry32(seed), difficulty, sPlusValorFloorFor(difficulty) - 1))
+          .not.toBe('S+')
       }
     }
   })
@@ -130,6 +139,24 @@ describe('maxCeiling / oddsToReach (legibility preview)', () => {
     expect(oddsToReach(3, 11, 'S')).toBeLessThan(0.5)
     expect(oddsToReach(3, 11, 'S+')).toBeLessThan(0.1)
     expect(oddsToReach(3, 2, 'B')).toBeLessThan(oddsToReach(5, 2, 'B'))
+  })
+})
+
+describe('meter overflow luck', () => {
+  it('turns Valor past the meter top into top-rung odds', () => {
+    for (const difficulty of [6, 8, 10]) {
+      expect(oddsToReach(difficulty, VALOR_METER_MAX + 1, 'S'))
+        .toBeGreaterThan(oddsToReach(difficulty, VALOR_METER_MAX, 'S'))
+      expect(oddsToReach(difficulty, VALOR_METER_MAX + 1, 'S+'))
+        .toBeGreaterThan(oddsToReach(difficulty, VALOR_METER_MAX, 'S+'))
+    }
+  })
+
+  it('never guarantees the top rungs, even at absolute max overstack', () => {
+    for (const difficulty of [3, 6, 8, 10]) {
+      expect(oddsToReach(difficulty, 13.5, 'S')).toBeLessThan(1)
+      expect(oddsToReach(difficulty, 13.5, 'S+')).toBeLessThan(1)
+    }
   })
 })
 
