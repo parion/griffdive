@@ -76,7 +76,12 @@ const ceilingLabel = computed(() =>
     :style="{ '--heat': ratio }"
   >
     <div class="valor-head">
-      <span class="valor-title">Valor</span>
+      <AppTooltip content="Valor stacks the risk you chose: team risk, your pacts, and a small performance bonus. More Valor raises the reward-tier odds.">
+        <span
+          class="valor-title"
+          tabindex="0"
+        >Valor</span>
+      </AppTooltip>
       <span class="valor-value">{{ format(valor) }}</span>
     </div>
     <ProgressRoot
@@ -135,34 +140,37 @@ const ceilingLabel = computed(() =>
         class="chip locked-chip"
       >Locked in</span>
     </div>
-    <div
-      class="ceiling"
-      role="img"
-      :aria-label="ceilingLabel"
-    >
-      <span class="rungs">
-        <template
-          v-for="(rung, index) in rungs"
-          :key="rung.tier"
-        >
-          <span
-            v-if="index > 0"
-            class="link"
-            :class="{ lit: rung.lit }"
-          />
-          <TierBadge
-            :tier="rung.tier"
-            size="sm"
-            class="rung"
-            :class="{ lit: rung.lit, top: rung.top }"
-          />
-        </template>
-      </span>
-      <span class="odds small">
-        <template v-if="reaching">~{{ oddsPct }}% to reach {{ range.max }}</template>
-        <template v-else>guaranteed</template>
-      </span>
-    </div>
+    <AppTooltip content="Your reward ceiling is the best tier this Valor can roll — risk buys odds, never a guarantee.">
+      <div
+        class="ceiling"
+        role="img"
+        :aria-label="ceilingLabel"
+        tabindex="0"
+      >
+        <span class="rungs">
+          <template
+            v-for="(rung, index) in rungs"
+            :key="rung.tier"
+          >
+            <span
+              v-if="index > 0"
+              class="link"
+              :class="{ lit: rung.lit }"
+            />
+            <TierBadge
+              :tier="rung.tier"
+              size="sm"
+              class="rung"
+              :class="{ lit: rung.lit, top: rung.top }"
+            />
+          </template>
+        </span>
+        <span class="odds small">
+          <template v-if="reaching">~{{ oddsPct }}% to reach {{ range.max }}</template>
+          <template v-else>guaranteed</template>
+        </span>
+      </div>
+    </AppTooltip>
     <p
       v-if="!props.locked"
       class="hint muted small"

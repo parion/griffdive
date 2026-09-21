@@ -10,8 +10,9 @@ const session = useDiveSession(slotId.value)
 const saves = useSaves()
 const { push: pushToast } = useToasts()
 const { ownedWarbonds, setOwned } = useOwnedWarbonds()
-const { openWarbonds } = useDrawers()
+const { openWarbonds, guideOpen, openGuide } = useDrawers()
 const { hasSeenWarbondIntro, markWarbondIntroSeen } = useWarbondIntro()
+const { hasSeenDiveIntro, markDiveIntroSeen } = useDiveIntro()
 
 const {
   state,
@@ -63,16 +64,33 @@ watch(ownedWarbonds, (codes) => {
   }
 })
 
-// The Warbonds panel is part of dive startup — a fresh solo dive opens it on
-// mount, and a room join opens it the moment the diver is seated (which is
-// right after the name gate). It fires once ever, like the remembered name.
+// Dive startup is part of the ritual — a fresh solo dive opens the guide on
+// mount, and a room join opens it the moment the diver is seated (right after
+// the name gate). It fires once ever, like the remembered name.
 watch(self, (diver) => {
-  if (!diver || hasSeenWarbondIntro.value) {
+  if (!diver) {
+    return
+  }
+  if (!hasSeenDiveIntro.value) {
+    markDiveIntroSeen()
+    openGuide()
+    return
+  }
+  if (!hasSeenWarbondIntro.value && !guideOpen.value) {
+    markWarbondIntroSeen()
+    openWarbonds()
+  }
+}, { immediate: true })
+
+// The guide goes first; the Warbonds panel (declare what you own) follows it so
+// a first-timer reads one panel at a time, never both at once.
+watch(guideOpen, (open) => {
+  if (open || !self.value || hasSeenWarbondIntro.value) {
     return
   }
   markWarbondIntroSeen()
   openWarbonds()
-}, { immediate: true })
+})
 
 // Hostship moves under the squad's feet (disconnect migration) with no other
 // signal — announce the crown's arrival and departure.

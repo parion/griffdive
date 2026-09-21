@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const changelogOpen = ref(false)
-const { codexOpen, warbondsOpen } = useDrawers()
+const { codexOpen, warbondsOpen, guideOpen } = useDrawers()
 </script>
 
 <template>
@@ -32,6 +32,16 @@ const { codexOpen, warbondsOpen } = useDrawers()
             type="button"
             class="nav-link"
             aria-haspopup="dialog"
+            :aria-expanded="guideOpen"
+            @click="guideOpen = true"
+          >
+            <IconGuide class="nav-icon" />
+            Guide
+          </button>
+          <button
+            type="button"
+            class="nav-link"
+            aria-haspopup="dialog"
             :aria-expanded="codexOpen"
             @click="codexOpen = true"
           >
@@ -54,6 +64,10 @@ const { codexOpen, warbondsOpen } = useDrawers()
       <ChangelogModal
         :open="changelogOpen"
         @close="changelogOpen = false"
+      />
+      <GuideDrawer
+        :open="guideOpen"
+        @update:open="guideOpen = $event"
       />
       <CodexDrawer
         :open="codexOpen"

@@ -68,20 +68,25 @@ const loneHost = computed(() => props.mode === 'room' && props.state.divers.leng
       >
         {{ status }}
       </span>
-      <span
+      <AppTooltip
         v-if="lockedCeiling"
-        class="row small muted"
-      >ceiling <Motion
-        :key="lockedCeiling"
-        as="span"
-        class="badge-pop"
-        :initial="{ opacity: 0, scale: 0.4 }"
-        :animate="{ opacity: 1, scale: 1 }"
-        :transition="{ type: 'spring', stiffness: 500, damping: 15 }"
-      ><TierBadge
-        :tier="lockedCeiling"
-        size="sm"
-      /></Motion></span>
+        content="Your locked reward ceiling — the best tier your next draft can roll."
+      >
+        <span
+          class="row small muted"
+          tabindex="0"
+        >ceiling <Motion
+          :key="lockedCeiling"
+          as="span"
+          class="badge-pop"
+          :initial="{ opacity: 0, scale: 0.4 }"
+          :animate="{ opacity: 1, scale: 1 }"
+          :transition="{ type: 'spring', stiffness: 500, damping: 15 }"
+        ><TierBadge
+          :tier="lockedCeiling"
+          size="sm"
+        /></Motion></span>
+      </AppTooltip>
       <span class="muted small">tokens {{ state.rerollTokens }}</span>
       <button
         v-if="mode === 'room' && state.phase !== 'complete'"
