@@ -86,6 +86,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 8) {
     migrated = migrateV7toV8(migrated)
   }
+  if (migrated.schemaVersion < 9) {
+    migrated = migrateV8toV9(migrated)
+  }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
   return migrated
@@ -117,6 +120,27 @@ function migrateV7toV8(doc: SaveDoc): SaveDoc {
           rewardRerollSeed: legacy.rewardRerollSeed ?? null,
           rewardBanned: legacy.rewardBanned ?? false,
         }
+      }),
+    },
+  }
+}
+
+// v9: strains landed. A front now draws an optional subfaction whose risk can
+// be accepted for the whole operation; pre-v9 saves have no strain, and the
+// completed-combo key gained a strain segment. Legacy two-part keys are
+// rewritten with the 'none' suffix — they can never match a drawn strain, so
+// the stricter combo economy applies from here on (intended).
+function migrateV8toV9(doc: SaveDoc): SaveDoc {
+  return {
+    ...doc,
+    state: {
+      ...doc.state,
+      strainId: null,
+      strainAccepted: false,
+      strainDecided: false,
+      completedCombos: (doc.state.completedCombos ?? []).map((key) => {
+        const parts = key.split(':')
+        return parts.length >= 3 ? key : `${key}:none`
       }),
     },
   }

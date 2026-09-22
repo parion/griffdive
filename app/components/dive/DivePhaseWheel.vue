@@ -14,7 +14,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   spin: []
   decide: [accepted: boolean]
-  reroll: [wheel: 'misfortune' | 'front']
+  decideStrain: [accepted: boolean]
+  reroll: [wheel: 'misfortune' | 'front' | 'strain']
   lock: [pactIds: string[]]
 }>()
 
@@ -90,6 +91,7 @@ const coverage = computed<Record<string, string>>(() => {
     :can-control="canControl"
     @spin="emit('spin')"
     @decide="emit('decide', $event)"
+    @decide-strain="emit('decideStrain', $event)"
     @reroll="emit('reroll', $event)"
   />
   <p

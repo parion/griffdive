@@ -56,3 +56,22 @@ const FACTION_ICON_FILES: Readonly<Record<FrontId, string>> = {
 export function factionImageUrl(front: FrontId): string {
   return `/images/faction/${FACTION_ICON_FILES[front]}`
 }
+
+// Strain emblems live outside the item catalog, like difficulty/faction
+// emblems; keyed by strain id. A strain with no emblem renders without one.
+const STRAIN_ICON_FILES: Readonly<Record<string, string>> = {
+  predatorStrain: 'Predator_Strain_Icon.svg',
+  sporeBurstStrain: 'Spore_Burst_Strain_Icon.svg',
+  ruptureStrain: 'Rupture_Strain_Icon.svg',
+  jetBrigade: 'Jet_Brigade_Icon.svg',
+  incinerationCorps: 'Incineration_Corps_Icon.svg',
+  cyborgLegion: 'Cyborgs_Icon.svg',
+  mindlessMasses: 'Mindless_Masses_Icon.svg',
+  appropriators: 'Appropriators_Icon.svg',
+  voteSnatchers: 'Vote_Snatchers_Icon.svg',
+}
+
+export function strainImageUrl(strain: string): string | undefined {
+  const file = STRAIN_ICON_FILES[strain]
+  return file ? `/images/strains/${file}` : undefined
+}

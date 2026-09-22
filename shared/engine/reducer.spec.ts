@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS, ITEMS_BY_ID } from '../data/catalog'
 import { PACTS } from '../data/pacts'
-import { BONUS_STATS, REWARD_TOKEN_CAP, baseTierFor } from './config'
+import { BONUS_STATS, MISFORTUNE_RISK, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor } from './config'
 import { startingItemIds } from './progression'
 import { DIVERS_CHOICE_OPTION_ID, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
 import { allDiversPicked, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverValor, diverOptions, pactOfferFor, pactRiskOf, rewardPoolFor, teamRiskOf } from './selectors'
+import { deriveFront, deriveStrain } from './wheel'
 import type { DiveState, DiverState, EngineAction } from './types'
 
 const SETTINGS = { variant: 'standard' as const }
@@ -20,8 +21,14 @@ function spunState(seed = 42): DiveState {
   return reduce(freshState(), { type: 'SPIN_WHEEL', seed })
 }
 
+// The strain decision follows the misfortune on the operation's first mission.
+// These tests are about the misfortune/pact economy, so the helper declines
+// the strain and leaves team risk to the misfortune alone.
 function decidedState(seed = 42, accepted = true): DiveState {
-  return reduce(spunState(seed), { type: 'ACCEPT_MISFORTUNE', accepted })
+  const decided = reduce(spunState(seed), { type: 'ACCEPT_MISFORTUNE', accepted })
+  return decided.phase === 'strain'
+    ? reduce(decided, { type: 'ACCEPT_STRAIN', accepted: false })
+    : decided
 }
 
 function offerPacts(state: DiveState, diverId = 'p1'): string[] {
@@ -176,7 +183,7 @@ describe('SPIN_WHEEL / REROLL_WHEEL', () => {
     const state = spunState(42)
     const marked: DiveState = {
       ...state,
-      completedCombos: [comboKey(state.wheel!.misfortuneId, state.frontId!)],
+      completedCombos: [comboKey(state.wheel!.misfortuneId, state.frontId!, state.strainId)],
     }
     const rerolled = reduce(marked, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 44 })
     expect(rerolled.rerollTokens).toBe(1)
@@ -223,15 +230,28 @@ describe('SPIN_WHEEL / REROLL_WHEEL', () => {
 })
 
 describe('ACCEPT_MISFORTUNE (optional team risk)', () => {
-  it('moves the squad from decision to pacts, and accepts or declines', () => {
+  it('moves the squad from decision to the strain call, then to pacts', () => {
     const state = spunState(42)
     expect(state.phase).toBe('decision')
+    // The operation's first mission hands over to the strain decision, which
+    // carries the operation-long commitment.
     const accepted = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     expect(accepted.misfortuneAccepted).toBe(true)
-    expect(accepted.phase).toBe('pacts')
-    const declined = reduce(accepted, { type: 'ACCEPT_MISFORTUNE', accepted: false })
-    expect(declined.misfortuneAccepted).toBe(false)
+    expect(accepted.phase).toBe('strain')
+    expect(accepted.strainId).not.toBeNull()
+    const declined = reduce(accepted, { type: 'ACCEPT_STRAIN', accepted: false })
+    expect(declined.strainAccepted).toBe(false)
     expect(declined.phase).toBe('pacts')
+    // The misfortune can still be flipped in the strain window.
+    const flipped = reduce(accepted, { type: 'ACCEPT_MISFORTUNE', accepted: false })
+    expect(flipped.misfortuneAccepted).toBe(false)
+    expect(flipped.phase).toBe('strain')
+  })
+
+  it('skips the strain call when no subfaction was drawn', () => {
+    const state: DiveState = { ...spunState(42), strainId: null }
+    const decided = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    expect(decided.phase).toBe('pacts')
   })
 
   it('freezes the decision once any pact is locked', () => {
@@ -273,6 +293,154 @@ describe('ACCEPT_MISFORTUNE (optional team risk)', () => {
     const accepted = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     expect(accepted.misfortuneAccepted).toBe(true)
     expect(accepted.phase).toBe('pacts')
+  })
+})
+
+describe('ACCEPT_STRAIN (optional operation-long team risk)', () => {
+  function strainDrawn(seed = 42): DiveState {
+    const state = spunState(seed)
+    if (!state.strainId) {
+      throw new Error('expected a strain draw')
+    }
+    return state
+  }
+
+  function strainDecided(seed = 42, accepted = true): DiveState {
+    return reduce(
+      reduce(strainDrawn(seed), { type: 'ACCEPT_MISFORTUNE', accepted: true }),
+      { type: 'ACCEPT_STRAIN', accepted },
+    )
+  }
+
+  it('adds its team risk to every mission of the operation', () => {
+    const decided = strainDecided(42, true)
+    expect(decided.phase).toBe('pacts')
+    const strainRisk = STRAIN_RISK[decided.strainId!] ?? 0
+    const misfortuneRisk = MISFORTUNE_RISK[decided.wheel!.misfortuneId] ?? 0
+    expect(strainRisk).toBeGreaterThan(0)
+    expect(teamRiskOf(decided)).toBe(misfortuneRisk + strainRisk)
+
+    let state = reduce(decided, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+    state = reduce(state, {
+      type: 'PICK_REWARD',
+      playerId: 'p1',
+      optionId: requireId(diverOptions(state, requireDiver(state))[0]?.optionId),
+    })
+    state = reduce(state, { type: 'ADVANCE' })
+    expect(state.missionInOperation).toBe(2)
+
+    // Mission 2 inherits the accepted strain: same draw, same risk.
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 60 })
+    const missionTwo = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })
+    expect(missionTwo.strainId).toBe(decided.strainId)
+    expect(missionTwo.strainAccepted).toBe(true)
+    expect(teamRiskOf(missionTwo)).toBe(strainRisk)
+    // Later missions never reopen the strain call.
+    expect(reduce(missionTwo, { type: 'ACCEPT_STRAIN', accepted: false })).toBe(missionTwo)
+  })
+
+  it('declines for free: only the misfortune keeps staking risk', () => {
+    const declined = strainDecided(42, false)
+    expect(declined.phase).toBe('pacts')
+    expect(declined.strainAccepted).toBe(false)
+    expect(teamRiskOf(declined)).toBe(MISFORTUNE_RISK[declined.wheel!.misfortuneId] ?? 0)
+  })
+
+  it('reopens on a failure restart with the same draw', () => {
+    let state = reduce(strainDecided(42, true), { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+    const strainId = state.strainId
+    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1 })
+    state = reduce(state, {
+      type: 'FORFEIT_ITEM',
+      itemRef: { ownerId: 'p1', itemId: requireId(state.personalInventories.p1?.[0]) },
+    })
+    expect(state.phase).toBe('spin')
+    expect(state.strainAccepted).toBe(false)
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 60 })
+    expect(state.strainId).toBe(strainId)
+    const redecided = reduce(
+      reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false }),
+      { type: 'ACCEPT_STRAIN', accepted: true },
+    )
+    expect(redecided.strainAccepted).toBe(true)
+  })
+
+  it('clears the strain when the operation completes', () => {
+    let state = reduce(strainDecided(42, true), { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+    // Medium runs two-mission operations.
+    for (let mission = 0; mission < 2; mission++) {
+      state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+      state = reduce(state, {
+        type: 'PICK_REWARD',
+        playerId: 'p1',
+        optionId: requireId(diverOptions(state, requireDiver(state))[0]?.optionId),
+      })
+      state = reduce(state, { type: 'ADVANCE' })
+      if (mission === 0) {
+        expect(state.strainId).not.toBeNull()
+        expect(state.strainAccepted).toBe(true)
+        state = reduce(state, { type: 'SPIN_WHEEL', seed: 60 })
+        state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })
+        state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+      }
+    }
+    expect(state.difficulty).toBe(4)
+    expect(state.frontId).toBeNull()
+    expect(state.strainId).toBeNull()
+    expect(state.strainAccepted).toBe(false)
+  })
+
+  it('rerolls the strain for a token and reopens the call', () => {
+    const state = strainDrawn(42)
+    let seed = 0
+    while (deriveStrain(seed, state.difficulty, state.frontId!)?.id === state.strainId) {
+      seed++
+    }
+    const rerolled = reduce(state, { type: 'REROLL_WHEEL', wheel: 'strain', seed })
+    expect(rerolled.strainId).not.toBe(state.strainId)
+    expect(rerolled.strainId).toBe(deriveStrain(seed, state.difficulty, state.frontId!)?.id)
+    expect(rerolled.strainAccepted).toBe(false)
+    expect(rerolled.rerollTokens).toBe(0)
+    expect(rerolled.phase).toBe('decision')
+  })
+
+  it('refuses a strain reroll that would return the same subfaction', () => {
+    const state = strainDrawn(42)
+    expect(reduce(state, { type: 'REROLL_WHEEL', wheel: 'strain', seed: 42 })).toBe(state)
+    expect(state.rerollTokens).toBe(1)
+  })
+
+  it('redraws the strain when the front rerolls', () => {
+    const state = strainDrawn(42)
+    let seed = 0
+    while (deriveFront(seed) === state.frontId) {
+      seed++
+    }
+    const rerolled = reduce(state, { type: 'REROLL_WHEEL', wheel: 'front', seed })
+    expect(rerolled.frontId).not.toBe(state.frontId)
+    expect(rerolled.strainAccepted).toBe(false)
+    expect(rerolled.strainId)
+      .toBe(deriveStrain(seed, state.difficulty, rerolled.frontId!)?.id ?? null)
+  })
+
+  it('refuses the call once pacts are locked', () => {
+    const locked = divingState(42)
+    expect(reduce(locked, { type: 'ACCEPT_STRAIN', accepted: true })).toBe(locked)
+  })
+
+  it('answers the strain before the misfortune when it is locked first', () => {
+    const state = strainDrawn(42)
+    const strainFirst = reduce(state, { type: 'ACCEPT_STRAIN', accepted: true })
+    // The strain call is answered, but the misfortune still gates pacts.
+    expect(strainFirst.phase).toBe('decision')
+    expect(strainFirst.strainDecided).toBe(true)
+    expect(strainFirst.strainAccepted).toBe(true)
+    expect(strainFirst.misfortuneAccepted).toBe(false)
+
+    const both = reduce(strainFirst, { type: 'ACCEPT_MISFORTUNE', accepted: false })
+    expect(both.phase).toBe('pacts')
+    expect(teamRiskOf(both)).toBe(STRAIN_RISK[both.strainId!] ?? 0)
   })
 })
 
@@ -454,7 +622,9 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
     expect(state.phase).toBe('rewards')
     expect(state.lastReport?.stars).toBe(3)
     expect(state.offerSeed).not.toBeNull()
-    expect(state.completedCombos).toContain(comboKey(state.wheel!.misfortuneId, state.frontId!))
+    expect(state.completedCombos).toContain(
+      comboKey(state.wheel!.misfortuneId, state.frontId!, state.strainId),
+    )
 
     const options = diverOptions(state, requireDiver(state))
     expect(options.length).toBeGreaterThan(0)
@@ -517,6 +687,7 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
     for (let i = 0; i < 2; i++) {
       state = reduce(state, { type: 'SPIN_WHEEL', seed: 50 + i })
       state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+      state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
       state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
       state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
       const options = diverOptions(state, requireDiver(state))
@@ -638,7 +809,10 @@ describe('KICK_DIVER', () => {
 
   it('a kicked diver no longer blocks the pact window', () => {
     const spun = reduce(twoDiverState(), { type: 'SPIN_WHEEL', seed: 42 })
-    const decided = reduce(spun, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    const decided = reduce(
+      reduce(spun, { type: 'ACCEPT_MISFORTUNE', accepted: true }),
+      { type: 'ACCEPT_STRAIN', accepted: false },
+    )
     const halfLocked = reduce(decided, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     expect(halfLocked.phase).toBe('pacts')
     const kicked = reduce(halfLocked, { type: 'KICK_DIVER', playerId: 'p2' })
@@ -651,6 +825,7 @@ describe('KICK_DIVER', () => {
   it('a kicked diver no longer blocks the reward draft', () => {
     let state = reduce(twoDiverState(), { type: 'SPIN_WHEEL', seed: 42 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p2', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
@@ -800,6 +975,7 @@ describe('Field Promotion (mid-crusade catch-up)', () => {
     let state = twoDiverState()
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p2', pactIds: [] })
     // 'late' arrives while the squad is diving — the mission is not theirs.
@@ -1000,6 +1176,7 @@ describe('reward tokens + bonus honors', () => {
     let state = twoDiverState()
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p2', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
