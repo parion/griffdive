@@ -47,7 +47,7 @@ IDs are stable and append-only; do not renumber.
 | N14 | Squad reward indicators (icon-only) | UX | M | Done | new |
 | N15 | All incoming kits look identical | Bug? | S–M | Needs repro | new |
 | N16 | Incoming Valor from current run performance | Design | M | Done (DEC-7: closed) | new |
-| N17 | Onboarding for link-joiners | UX | L | Blocked (N6/N7) | new |
+| N17 | Onboarding for link-joiners | UX | L | Done | new |
 | N18 | Rejoining under stored `playerId` does not reclaim legacy cache | Bug | S | Done | QA-T1/D3 |
 | N19 | S+ unpreviewable in low difficulty bands | Balance/UX | S | Done | QA-U2 |
 | N20 | Squad strip a11y (online dot + host crown indistinguishable) | UX | S | Done | QA-U3 |
@@ -196,8 +196,9 @@ scripted crusade spends a token).
 
 ### Batch D — Content, resilience, onboarding
 
-N2, N10, N15, N17, N39. **N2 landed** (faction strains, below). Remaining: N10 (crash semantics,
-DEC-9), N15 (repro), N17 (onboarding), N39 (token economy).
+N2, N10, N15, N17, N39. **N2 landed** (faction strains, below) and **N17 landed** (guide primer +
+persistent Help drawer + Valor/ceiling tooltips; presentation only, no engine bump). Remaining:
+N10 (crash semantics, DEC-9), N15 (repro), N39 (token economy).
 
 ### Post-v1 / R&D
 
@@ -481,9 +482,19 @@ no forfeit, so a crash forces playing/reporting it or a full `END_DIVE`.
 same surplus kit (`room.ts:72`), and an untouched cache is exactly that kit. Verify with a repro; if
 caches must differ it is really N16 territory.
 
-**N17 · Onboarding.** First-run / link-join "How a dive works" primer (spin → decide → pact → dive →
-report → reward), a persistent help drawer, and inline tooltips on Valor/ceiling. Reuse
-`PactBriefing` and the accountability labels. Depends on N6/N7 so the explanation is stable.
+**N17 · Onboarding. Done.** The loop primer ships as `DiveGuide.vue` (six beats: spin → decide →
+pact → dive → report → reward, plus a Valor/ceiling explainer and the three accountability tells
+from `ACCOUNTABILITY_LABELS`), shared by two surfaces:
+- a persistent **Guide** slide-over (`GuideDrawer.vue`, nav `IconGuide`), mounted globally in
+  `app.vue` like the Codex/Warbonds drawers so it never unmounts the dive session;
+- a one-shot **first-run / link-join primer**: `useDiveIntro` (`griffdive:dive-intro:v1`) marks it
+  seen per browser, and the dive opens the guide the moment a diver is seated. The Warbonds intro
+  now follows it (`watch(guideOpen)` hands off once the primer closes) so first-timers read one
+  panel at a time instead of two stacked modals.
+Inline `AppTooltip`s on the Valor meter title, its ceiling ladder, and the header ceiling badge
+explain the term and the odds. Presentation + a localStorage flag only — no engine, schema, or
+rule change, so no `ENGINE_VERSION` bump and goldens untouched (per the rule-change checklist).
+Covered by `e2e/guide.spec.ts` and the updated one-shot assertions in `e2e/warbonds.spec.ts`.
 
 **N39 · Team reroll-token economy.** The strain (N2) adds a second operation-long token sink beside
 the front, so the shared reroll pool needs more sources. Audit the current supply

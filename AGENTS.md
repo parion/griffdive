@@ -19,7 +19,7 @@ complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (285 tests incl. a de
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection — verified by a live two-peer smoke test and the Playwright E2E suite (solo flow,
-two-browser room sync, Codex slide-over,
+two-browser room sync, Codex slide-over, Guide slide-over,
 PWA affordances) against the production build. Mid-crusade catch-up (Field Promotion + legacy caches, `LEAVE_DIVE`)
 has landed, as has the Phase 4 PWA layer (installable manifest, generated icons, Workbox service
 worker with an offline shell + on-demand catalog art) and the operation-long **faction strains**
@@ -45,7 +45,7 @@ pnpm only (`pnpm-lock.yaml` is canonical).
 | `pnpm lint:fix` | exists | Auto-fix lint/style issues |
 | `pnpm test` | exists | Vitest (engine unit + golden tests) |
 | `pnpm test:watch` | exists | Vitest watch mode |
-| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, Codex slide-over, PWA affordances; production build on :3173) |
+| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, Codex slide-over, Guide slide-over, PWA affordances; production build on :3173) |
 | `pnpm typecheck` | exists | `nuxt typecheck` (vue-tsc) |
 
 Update this table the moment a command lands.
@@ -531,7 +531,9 @@ app/
                    catch-up ceremony, DiversChoiceCard — the special
                    S+ "Liberty's Cross" offer card, DiversChoicePicker — its minified codex
                    modal, InventoryGrid, CrusadeSetup, WarbondPicker,
-                   JoinNameGate — name gate held while joining),
+                   JoinNameGate — name gate held while joining,
+                   DiveGuide — the "How a dive works" primer content,
+                   shared by the first-run slide-over and the Guide button),
                    codex/CodexBrowser — the shared catalog browser (filter + tier grid),
                    warbonds/WarbondBrowser — the shared warbond owner list (single column,
                    acquisition specials last; each banner starts blurred and dimmed, then
@@ -540,17 +542,18 @@ app/
                    state while a wheel draw reels, WaitingLight — the slow-pulsing gold dot that
                    marks a section a diver still has to act on, ChangelogModal — GitHub deploy log
                    shown from the alpha header chip, AppDrawer — the themed right-hand Reka
-                   Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer — its
-                   two slide-overs, IconBook/IconWarbond — the nav leading icons,
+                   Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer/GuideDrawer —
+                   its three slide-overs, IconBook/IconWarbond/IconGuide — the nav leading icons,
                    AppDialog/AppTabs/AppTooltip —
                    the themed Reka primitives every modal, tab strip and icon-only control builds
                    on),
   composables/     useDiveSession (unified local/room driver), useDiveView (session-derived
                    shell state: self/phase/canControl/name draft), useDiveEngine (local reducer +
                    persist),                    useGameSocket (WS, reconnect, stored playerId), useSaves,
-                   useDrawers (global Codex/Warbonds slide-over visibility, so the dive can
+                   useDrawers (global Guide/Codex/Warbonds slide-over visibility, so the dive can
                    open the Warbonds panel without unmounting), useWarbondIntro (one-shot
-                   dive-start Warbonds prompt memory), useOwnedWarbonds (localStorage-backed
+                   dive-start Warbonds prompt memory), useDiveIntro (one-shot dive-start
+                   "How a dive works" primer memory), useOwnedWarbonds (localStorage-backed
                    warbond declaration shared by the Warbonds drawer, the home setup and every
                    seated dive),
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
@@ -588,7 +591,8 @@ public/images/        bundled item art keyed by folder: equipment/ (weapons, thr
 public/               PWA surface: icon.svg (brand source) + generated pwa-*.png /
                       maskable-icon-512x512.png / apple-touch-icon-180x180.png.
                       Regenerate with `pnpm pwa:assets` (config in pwa-assets.config.ts)
-e2e/                  Playwright specs (solo flow, room sync, Codex slide-over, PWA affordances)
+e2e/                  Playwright specs (solo flow, room sync, Codex slide-over, Guide slide-over,
+                      PWA affordances)
 playwright.config.ts  production-build webServer on :3173 (WebSocket included)
 pwa-assets.config.ts  @vite-pwa/assets-generator presets for the brand icon set
 vitest.config.ts     mirrors Nuxt aliases (~~, ~) so engine + server tests resolve
@@ -816,6 +820,7 @@ the Redis swap lands.
   production build (`pnpm build` + Nitro server, port 3173, WebSocket included). Specs: solo dive
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host
   authority, pact lock-in), Codex slide-over (opens over the dive without dropping the session),
+  Guide slide-over (the "How a dive works" primer reachable from the header),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
   non-dismissible name gate, star-rating keyboard navigation), PWA affordances
   (manifest content type + icons served, SW reachable, shell head links). Chromium only;
