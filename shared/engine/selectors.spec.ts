@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { WARBONDS } from '../data/catalog'
-import { MAX_DIFFICULTY, MIN_DIFFICULTY, SAMPLE_VALOR_CAP, TIME_VALOR_MAX } from './config'
+import { MAX_DIFFICULTY, MIN_DIFFICULTY, MISFORTUNE_RISK, SAMPLE_VALOR_CAP, STRAIN_RISK, TIME_VALOR_MAX } from './config'
 import { oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { activeMisfortune, ceilingRange, diverOptions, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, teamRiskOf } from './selectors'
+import { activeMisfortune, activeStrain, canRerollWheel, ceilingRange, diverOptions, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
 import { isPactSelectable } from './pacts'
 import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -102,6 +102,48 @@ describe('team misfortune acceptance', () => {
     expect(teamRiskOf(state)).toBeGreaterThan(0)
   })
 
+  it('an accepted strain stacks on top of the accepted misfortune', () => {
+    const drawn = spunState(42, false)
+    expect(drawn.strainId).not.toBeNull()
+    expect(activeStrain(drawn)).toBeNull()
+
+    const accepted = reduce(
+      reduce(drawn, { type: 'ACCEPT_MISFORTUNE', accepted: true }),
+      { type: 'ACCEPT_STRAIN', accepted: true },
+    )
+    expect(activeStrain(accepted)?.id).toBe(accepted.strainId)
+    const expected = (MISFORTUNE_RISK[accepted.wheel!.misfortuneId] ?? 0)
+      + (STRAIN_RISK[accepted.strainId!] ?? 0)
+    expect(teamRiskOf(accepted)).toBe(expected)
+    // Declining the strain leaves only the misfortune's risk.
+    const declined = reduce(accepted, { type: 'ACCEPT_STRAIN', accepted: false })
+    expect(teamRiskOf(declined)).toBe(MISFORTUNE_RISK[accepted.wheel!.misfortuneId] ?? 0)
+  })
+
+  it('strainDecision follows the phase, and later missions inherit it', () => {
+    const drawn = spunState(42, false)
+    expect(strainDecision(drawn)).toMatchObject({ decided: false, accepted: false })
+
+    const deciding = reduce(drawn, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    expect(deciding.phase).toBe('strain')
+    expect(strainDecision(deciding)).toMatchObject({ decided: false, accepted: false })
+
+    const decided = reduce(deciding, { type: 'ACCEPT_STRAIN', accepted: true })
+    expect(strainDecision(decided)).toMatchObject({ decided: true, accepted: true })
+    // Mission 2's misfortune decision does not reopen the strain call.
+    expect(strainDecision({ ...decided, missionInOperation: 2, phase: 'decision' }))
+      .toMatchObject({ decided: true, accepted: true })
+  })
+
+  it('canRerollWheel locks the strain after the operation\'s first mission', () => {
+    const drawn = spunState(42, false)
+    expect(canRerollWheel(drawn, 'strain').allowed).toBe(true)
+    expect(canRerollWheel({ ...drawn, missionInOperation: 2 }, 'strain')).toMatchObject({
+      allowed: false,
+      reason: 'The front locks in for the whole operation',
+    })
+  })
+
   it('Valor prices the tier climb, difficulty sets the floor', () => {
     // Zero Valor: the base tier is the whole story.
     expect(ceilingRange(3, 0, 0)).toMatchObject({ min: 'C', max: 'C', odds: 1 })
@@ -116,11 +158,11 @@ describe('team misfortune acceptance', () => {
 })
 
 describe('maxValorFor (meter scale)', () => {
-  it('scales to the strongest eligible misfortune, top pacts and performance cap', () => {
-    // Diff 3's pool tops out at noResupplies (4) and deals two pacts (3+3).
-    expect(maxValorFor(3)).toBe(4 + 3 + 3 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
-    // Diff 10 adds pacifist (5) and a third pact slot (3+3+2).
-    expect(maxValorFor(10)).toBe(5 + 3 + 3 + 2 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
+  it('scales to the strongest eligible misfortune, strain, top pacts and performance cap', () => {
+    // Diff 3's pools top out at noResupplies (4) and a risk-3 strain; two pacts (3+3).
+    expect(maxValorFor(3)).toBe(4 + 3 + 3 + 3 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
+    // Diff 10 adds pacifist (5), a risk-3 strain and a third pact slot (3+3+2).
+    expect(maxValorFor(10)).toBe(5 + 3 + 3 + 3 + 2 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
   })
 
   it('never shrinks as difficulty rises', () => {
@@ -148,6 +190,7 @@ describe('diverOptions', () => {
     let state = createDiveState({ variant: 'standard' }, 'host', 'Griffin')
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 1234 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'host', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
     const diver = state.divers.find((candidate): candidate is DiverState => candidate.id === 'host')!
@@ -163,6 +206,7 @@ describe('diverOptions', () => {
     state = reduce(state, { type: 'SET_WARBONDS', playerId: 'host', warbondCodes: [] })
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 1234 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'host', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
     const diver = state.divers.find((candidate): candidate is DiverState => candidate.id === 'host')!

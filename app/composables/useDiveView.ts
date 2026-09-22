@@ -12,8 +12,8 @@ export interface DiveView {
   canControl: ComputedRef<boolean>
   kicked: ComputedRef<boolean>
   opLength: ComputedRef<number>
-  // spin/decision/pacts share one key so the wheel reveal isn't interrupted by
-  // the phase flips that follow the spin.
+  // spin/decision/strain/pacts share one key so the wheel reveal isn't
+  // interrupted by the phase flips that follow the spin.
   phaseKey: ComputedRef<DivePhase | 'spin-pacts' | undefined>
   diverName: (id: string | null) => string
   nameDraft: Ref<string>
@@ -45,7 +45,10 @@ export function useDiveView(session: DiveSession): DiveView {
     if (current === null) {
       return undefined
     }
-    return current === 'spin' || current === 'decision' || current === 'pacts'
+    return current === 'spin'
+      || current === 'decision'
+      || current === 'strain'
+      || current === 'pacts'
       ? 'spin-pacts'
       : current
   })

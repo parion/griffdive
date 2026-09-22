@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { ALL_WARBOND_CODES } from '../data/catalog'
-import { MISFORTUNE_RISK } from './config'
+import { MISFORTUNE_RISK, STRAIN_RISK } from './config'
 import { createDiveState, reduce } from './reducer'
 import { diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
 import type { DiveState } from './types'
@@ -40,6 +40,8 @@ interface MissionRecord {
   choiceItemId: string | null
   forfeitedItemId: string | null
   front: string | null
+  strainId: string | null
+  strainAccepted: boolean
 }
 
 function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptions: string[] } {
@@ -61,7 +63,15 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
     if (state.phase === 'decision') {
       state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })
     }
+    // The strain is the operation-long commitment: the script takes the brutal
+    // subfactions, and every other operation otherwise, so both sides of the
+    // decision are exercised across the crusade.
+    if (state.phase === 'strain') {
+      const strainRisk = state.strainId ? (STRAIN_RISK[state.strainId] ?? 0) : 0
+      state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: strainRisk >= 3 || mission % 2 === 0 })
+    }
     const accepted = state.misfortuneAccepted
+    const strainAccepted = state.strainAccepted
     // The diver picks a subset of what the wheel offered this mission.
     const rotation = PACT_ROTATION[mission % PACT_ROTATION.length] ?? []
     const offered = new Set(pactOfferFor(state, 'host').map(pact => pact.id))
@@ -76,6 +86,8 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
       misfortuneId: state.wheel!.misfortuneId,
       misfortuneAccepted: accepted,
       front: state.frontId,
+      strainId: state.strainId,
+      strainAccepted,
       pactIds,
       outcome: failure ? 'failure' : 'success',
       stars,

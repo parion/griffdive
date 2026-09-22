@@ -1,31 +1,55 @@
 <script setup lang="ts">
 import { FRONTS } from '~~/shared/data/fronts'
-import { factionImageUrl } from '~~/shared/data/images'
-import { MISFORTUNE_RISK } from '~~/shared/engine/config'
+import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
+import { MISFORTUNE_RISK, STRAIN_RISK } from '~~/shared/engine/config'
 import {
   canRerollWheel,
   currentFront,
   currentMisfortune,
+  currentStrain,
   misfortuneDecision,
   misfortuneStrandedDivers,
+  strainDecision,
 } from '~~/shared/engine/selectors'
-import { eligibleMisfortunes } from '~~/shared/engine/wheel'
+import { eligibleMisfortunes, eligibleStrains } from '~~/shared/engine/wheel'
 import type { DiveState } from '~~/shared/engine/types'
 import { ACCOUNTABILITY_LABELS } from '~/utils/accountability'
 import { riseIn } from '~/utils/motion'
 
 const props = withDefaults(defineProps<{ state: DiveState, canControl?: boolean }>(), { canControl: true })
-defineEmits<{ spin: [], decide: [accepted: boolean], reroll: [wheel: 'misfortune' | 'front'] }>()
+defineEmits<{
+  spin: []
+  decide: [accepted: boolean]
+  decideStrain: [accepted: boolean]
+  reroll: [wheel: 'misfortune' | 'front' | 'strain']
+}>()
 
 // The card shows the drawn misfortune — the squad decides on what it can see.
 // (activeMisfortune is the accepted-only variant, used by briefing/pacts.)
 const misfortune = computed(() => currentMisfortune(props.state))
 const front = computed(() => currentFront(props.state))
+const strain = computed(() => currentStrain(props.state))
 const misfortuneReroll = computed(() => canRerollWheel(props.state, 'misfortune'))
 const frontReroll = computed(() => canRerollWheel(props.state, 'front'))
+const strainReroll = computed(() => canRerollWheel(props.state, 'strain'))
 const teamRisk = computed(() =>
   props.state.wheel ? (MISFORTUNE_RISK[props.state.wheel.misfortuneId] ?? 0) : 0,
 )
+const strainRisk = computed(() =>
+  strain.value ? (STRAIN_RISK[strain.value.id] ?? 0) : 0,
+)
+
+// The strain is an operation-long commitment, answered on the operation's
+// first mission independently of the misfortune (either call may come first).
+// In 'pacts' it may still flip until the first pact lock, like the misfortune.
+const strainIcon = computed(() => (strain.value ? strainImageUrl(strain.value.id) : undefined))
+const strainCall = computed(() => strainDecision(props.state))
+const strainDeciding = computed(() => strain.value !== null && !strainCall.value.decided)
+const strainSwitchable = computed(() =>
+  props.state.phase === 'pacts'
+  && strain.value !== null
+  && props.state.missionInOperation === 1
+  && !props.state.divers.some(diver => diver.pactsLocked))
 
 // The decision is its own phase: the spin leaves the squad in 'decision', and
 // only the accepted-or-declined call moves them on to pacts. A switch is still
@@ -40,7 +64,9 @@ const canSwitch = computed(() =>
   && props.state.wheel !== null
   && !props.state.divers.some(diver => diver.pactsLocked))
 const rerollWindow = computed(() =>
-  (props.state.phase === 'decision' || props.state.phase === 'pacts')
+  (props.state.phase === 'decision'
+    || props.state.phase === 'strain'
+    || props.state.phase === 'pacts')
   && props.state.wheel !== null
   && !props.state.divers.some(diver => diver.pactsLocked))
 
@@ -61,9 +87,19 @@ const misfortuneNames = computed(() =>
   eligibleMisfortunes(props.state.difficulty).map(entry => entry.name),
 )
 const frontNames = computed(() => FRONTS.map(entry => entry.displayName))
+const strainNames = computed(() =>
+  props.state.frontId
+    ? eligibleStrains(props.state.difficulty, props.state.frontId).map(entry => entry.name)
+    : [],
+)
 
 const misfortuneReeling = ref(false)
 const frontReeling = ref(false)
+const strainReeling = ref(false)
+// The front card hides its static content (blurb, risk, buttons) while any of
+// its reels runs, so a roll never spoils its own draw.
+const cardReeling = computed(() =>
+  misfortuneReeling.value || frontReeling.value || strainReeling.value)
 
 // Faction colors keyed by display name, so the reel rolls its candidates in
 // their own colors and never shows the winner's before it lands.
@@ -83,6 +119,17 @@ watch(() => props.state.wheel?.seed ?? null, (seed) => {
 const frontReelId = ref<string | null>(null)
 let frontTick = 0
 
+// The strain is a subfaction of the front, so it reels only after the front
+// settles — never alongside it. A spin or front reroll queues the strain roll;
+// a strain-only reroll has no front reel to wait for and runs at once.
+const strainReelId = ref<string | null>(null)
+let strainTick = 0
+let strainQueued = false
+function startStrainReel(): void {
+  strainTick++
+  strainReelId.value = `${misfortuneReelId.value}:strain:${strainTick}`
+}
+
 // The card frame stays neutral until the drawn front actually settles — the
 // reel has a start delay, so keying the frame to the state change alone makes
 // the border flash before the roll begins.
@@ -91,6 +138,10 @@ function onFrontReeling(rolling: boolean): void {
   frontReeling.value = rolling
   if (!rolling) {
     frontSettled.value = true
+    if (strainQueued) {
+      strainQueued = false
+      startStrainReel()
+    }
   }
 }
 
@@ -105,6 +156,34 @@ watch(() => props.state.frontId, (id, prev) => {
   frontSettled.value = false
 })
 
+watch(() => props.state.strainId, (id, prev) => {
+  if (id === null || misfortuneReelId.value === null || prev === undefined) {
+    return
+  }
+  // The front changed in the same tick and is reeling: wait for it to settle.
+  if (!frontSettled.value) {
+    strainQueued = true
+    return
+  }
+  startStrainReel()
+})
+
+const strainStamp = computed(() => {
+  if (!strain.value) {
+    return { locked: false, text: 'Standard forces', tone: 'safe' }
+  }
+  if (!strainCall.value.decided) {
+    return {
+      locked: false,
+      text: props.canControl ? 'Strain call pending' : 'Strain call — awaiting host',
+      tone: 'pending',
+    }
+  }
+  return strainCall.value.accepted
+    ? { locked: true, text: 'Strain active — team-wide', tone: 'locked' }
+    : { locked: false, text: 'Standard forces — no strain', tone: 'safe' }
+})
+
 const cardTone = computed(() =>
   decision.value.decided
     ? decision.value.accepted ? 'locked' : 'safe'
@@ -113,18 +192,22 @@ const cardTone = computed(() =>
 const stamp = computed(() => {
   if (decision.value.decided) {
     return decision.value.accepted
-      ? { text: 'Locked in — team-wide', tone: 'locked' }
-      : { text: 'Opted out — safe dive', tone: 'safe' }
+      ? { locked: true, text: 'Locked in — team-wide', tone: 'locked' }
+      : { locked: false, text: 'Opted out — safe dive', tone: 'safe' }
   }
   if (decisionOpen.value) {
-    return { text: props.canControl ? 'Decision pending' : 'Awaiting host', tone: 'pending' }
+    return {
+      locked: false,
+      text: props.canControl ? 'Decision pending' : 'Awaiting host',
+      tone: 'pending',
+    }
   }
-  return { text: 'Undecided — safe dive', tone: 'safe' }
+  return { locked: false, text: 'Undecided — safe dive', tone: 'safe' }
 })
 
 function rerollLabel(
   info: { allowed: boolean, free: boolean, reason: string | null },
-  wheel: 'misfortune' | 'front',
+  wheel: 'misfortune' | 'front' | 'strain',
 ): string {
   if (!info.allowed) {
     return info.reason ?? `Reroll ${wheel}`
@@ -165,10 +248,14 @@ function rerollLabel(
                 @click="$emit('reroll', 'misfortune')"
               ><IconDice /></button>
             </AppTooltip>
-            <span
-              class="chip decision-stamp"
-              :class="stamp.tone"
-            >{{ stamp.text }}</span>
+            <AppTooltip :content="stamp.text">
+              <span
+                class="lock"
+                :class="stamp.tone"
+                role="img"
+                :aria-label="stamp.text"
+              ><IconLock :open="!stamp.locked" /></span>
+            </AppTooltip>
           </span>
         </span>
         <template v-if="state.wheel">
@@ -249,7 +336,7 @@ function rerollLabel(
       <Motion
         as="div"
         class="wheel-card front-card"
-        :class="{ reeling: frontReeling, accented: !!front && frontSettled }"
+        :class="{ reeling: cardReeling, accented: !!front && frontSettled }"
         :style="front ? { '--front-accent': front.accent } : undefined"
         v-bind="riseIn(1)"
       >
@@ -300,13 +387,123 @@ function rerollLabel(
               @reeling="onFrontReeling"
             />
           </strong>
-          <p class="muted small">
-            Tracks completed (misfortune × front) combos. The front locks in for
-            the whole operation.
-          </p>
+          <div
+            v-if="strain"
+            class="strain"
+          >
+            <span class="strain-head">
+              <span class="muted small">Strain</span>
+              <span class="head-tools">
+                <AppTooltip
+                  v-if="canControl && rerollWindow"
+                  :content="rerollLabel(strainReroll, 'strain')"
+                  :disabled="!strainReroll.allowed || cardReeling"
+                >
+                  <button
+                    class="reroll-dice"
+                    type="button"
+                    :disabled="!strainReroll.allowed || cardReeling"
+                    :aria-label="rerollLabel(strainReroll, 'strain')"
+                    :title="!strainReroll.allowed || cardReeling ? rerollLabel(strainReroll, 'strain') : undefined"
+                    @click="$emit('reroll', 'strain')"
+                  ><IconDice /></button>
+                </AppTooltip>
+                <AppTooltip :content="strainStamp.text">
+                  <span
+                    class="lock"
+                    :class="strainStamp.tone"
+                    role="img"
+                    :aria-label="strainStamp.text"
+                  ><IconLock :open="!strainStamp.locked" /></span>
+                </AppTooltip>
+              </span>
+            </span>
+            <strong
+              class="strain-name"
+              :class="{ waiting: cardReeling && !strainReeling }"
+            >
+              <span
+                v-if="strainIcon && !cardReeling"
+                class="strain-icon"
+                :style="{ maskImage: `url(${strainIcon})`, WebkitMaskImage: `url(${strainIcon})` }"
+                aria-hidden="true"
+              />
+              <ReelText
+                :final="strain.name"
+                :candidates="strainNames"
+                :reel-id="strainReelId"
+                @reeling="strainReeling = $event"
+              />
+            </strong>
+            <span class="row risk-row small muted">Team risk <RiskPips
+              :value="strainRisk"
+              :rolling="strainReeling"
+            /></span>
+            <div
+              v-if="strainDeciding && canControl"
+              class="row decision-actions"
+            >
+              <button
+                class="btn primary"
+                type="button"
+                :disabled="cardReeling"
+                @click="$emit('decideStrain', true)"
+              >
+                Lock it in
+              </button>
+              <button
+                class="btn ghost"
+                type="button"
+                :disabled="cardReeling"
+                @click="$emit('decideStrain', false)"
+              >
+                Opt out
+              </button>
+            </div>
+            <button
+              v-else-if="strainSwitchable && canControl"
+              class="btn tiny ghost"
+              type="button"
+              @click="$emit('decideStrain', !strainCall.accepted)"
+            >
+              {{ strainCall.accepted ? 'Switch — opt out' : 'Switch — lock it in' }}
+            </button>
+            <p
+              v-else-if="strainDeciding && !canControl"
+              class="muted small"
+            >
+              The host decides before pacts roll.
+            </p>
+          </div>
         </template>
         <template v-else-if="state.frontId">
           <strong class="misfortune-name">{{ front?.displayName }}</strong>
+          <div
+            v-if="strain"
+            class="strain"
+          >
+            <span class="strain-head">
+              <span class="muted small">Strain</span>
+              <AppTooltip :content="strainStamp.text">
+                <span
+                  class="lock"
+                  :class="strainStamp.tone"
+                  role="img"
+                  :aria-label="strainStamp.text"
+                ><IconLock :open="!strainStamp.locked" /></span>
+              </AppTooltip>
+            </span>
+            <strong class="strain-name">
+              <span
+                v-if="strainIcon"
+                class="strain-icon"
+                :style="{ maskImage: `url(${strainIcon})`, WebkitMaskImage: `url(${strainIcon})` }"
+                aria-hidden="true"
+              />
+              {{ strain.name }}
+            </strong>
+            <span class="row risk-row small muted">Team risk <RiskPips :value="strainRisk" /></span>
+          </div>
           <p class="muted small">
             Fixed for the whole operation.
           </p>
@@ -343,6 +540,41 @@ function rerollLabel(
 .misfortune-name { font-size: 1.1rem; color: var(--gold); }
 .front-card { position: relative; overflow: hidden; isolation: isolate; }
 .front-card .misfortune-name { color: var(--front-accent, var(--gold)); }
+
+/* The strain is a subfaction of the front: same card, its own divider. */
+.strain {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed color-mix(in srgb, var(--front-accent, var(--border)) 35%, var(--border));
+}
+.strain-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.strain-name {
+  font-size: 0.98rem;
+  color: var(--front-accent, var(--gold));
+  transition: opacity 0.35s var(--ease-out);
+}
+/* While the front (or the misfortune) reels, the strain waits its turn: hold
+   its name back so the queued draw can't spoil itself. */
+.strain-name.waiting { opacity: 0; visibility: hidden; }
+
+/* The strain emblem is tinted to the front's accent with a mask, so one
+   monochrome emblem set reads in faction colors. */
+.strain-icon {
+  display: inline-block;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-right: 0.4rem;
+  vertical-align: -0.3rem;
+  background-color: var(--front-accent, var(--gold));
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
 
 /* Faction emblem watermark: behind the card text (isolation keeps z-index -1
    above the card's own background), slides in from the right edge on settle
@@ -454,9 +686,34 @@ function rerollLabel(
 .reroll-dice:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
 .reroll-dice:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.decision-stamp.pending { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 60%, transparent); }
-.decision-stamp.locked { color: var(--red); border-color: var(--red); }
-.decision-stamp.safe { color: var(--muted); }
+/* The decision state is an icon, not a chip: a closed lock when the call is
+   locked in, an open one otherwise, with the tone carrying pending/safe. The
+   tooltip and aria-label spell out the state the old chip used to print. */
+.lock {
+  display: inline-grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+}
+.lock svg { width: 1.05rem; height: 1.05rem; }
+.lock.pending {
+  color: var(--gold);
+  border-color: color-mix(in srgb, var(--gold) 60%, transparent);
+  animation: lock-pulse 2s ease-in-out infinite;
+}
+.lock.locked { color: var(--red); border-color: var(--red); }
+.lock.safe { color: var(--muted); }
+@keyframes lock-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lock.pending { animation: none; }
+}
 
 .stranded-note {
   color: var(--red);

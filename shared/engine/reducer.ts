@@ -6,7 +6,7 @@ import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed } from './rng'
 import { activeMisfortune, allDiversPicked, bonusEligible, catchUpOptionsFor, comboKey, diverOptions, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor } from './selectors'
-import { deriveFront, deriveMisfortune } from './wheel'
+import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 
 export function createDiveState(
   settings: CrusadeSettings,
@@ -43,6 +43,9 @@ function applyStart(state: DiveState, settings: CrusadeSettings): Partial<DiveSt
     phase: 'spin',
     rerollTokens: REROLL_TOKENS_PER_OPERATION,
     frontId: null,
+    strainId: null,
+    strainAccepted: false,
+    strainDecided: false,
     personalInventories,
   }
 }
@@ -75,12 +78,22 @@ export function resetOperation(state: DiveState): Partial<DiveState> {
     ...resetForNextMission(state),
     missionInOperation: 1,
     rerollTokens: REROLL_TOKENS_PER_OPERATION,
-    // A restarted operation keeps its front but draws a fresh misfortune per
-    // mission — the retry begins at the spin, like every mission.
+    // A restarted operation keeps its front and strain but draws a fresh
+    // misfortune per mission, and the strain decision reopens — the retry
+    // begins at the spin, like every mission.
     wheel: null,
     misfortuneAccepted: false,
+    strainAccepted: false,
+    strainDecided: false,
     phase: 'spin',
   }
+}
+
+// The strain is an operation-long commitment: it is decided once, on the
+// operation's first mission, before pacts roll. It may be answered before or
+// after the misfortune; the phase only advances once both calls are in.
+function needsStrainDecision(state: DiveState): boolean {
+  return state.missionInOperation === 1 && state.strainId !== null && !state.strainDecided
 }
 
 // A departed diver (kicked or left) parks their inventory as a legacy cache:
@@ -134,14 +147,20 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (state.phase !== 'spin' || !state.settings) {
         return state
       }
-      // Every mission draws its own misfortune; the front is drawn once per
-      // operation, with the first spin, and persists across its missions.
+      // Every mission draws its own misfortune; the front and its strain are
+      // drawn once per operation, with the first spin, and persist across its
+      // missions.
+      const frontId = state.frontId ?? deriveFront(action.seed)
+      const drawingOperation = state.frontId === null
       return commit(state, {
         wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed, state.difficulty).id },
-        frontId: state.frontId ?? deriveFront(action.seed),
+        frontId,
+        strainId: state.strainId ?? deriveStrain(action.seed, state.difficulty, frontId)?.id ?? null,
         // The misfortune is a draw, not a verdict — the squad decides before
-        // any pact offer exists.
+        // any pact offer exists. A fresh operation reopens the strain decision
+        // too (a failure restart has already reset it).
         misfortuneAccepted: false,
+        ...(drawingOperation ? { strainAccepted: false, strainDecided: false } : {}),
         phase: 'decision',
         seedHistory: [...state.seedHistory, action.seed],
       }, action)
@@ -151,11 +170,13 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (!state.wheel) {
         return state
       }
-      // The first call decides (the spin leaves the squad in 'decision');
-      // afterwards the call may still flip while nobody has locked pacts —
-      // team risk is shared, so the decision freezes at the first pact lock.
+      // The first call decides (the spin leaves the squad in 'decision'), and
+      // on the operation's first mission it hands over to the strain decision
+      // before pacts roll. Afterwards the call may still flip while nobody has
+      // locked pacts — team risk is shared, so it freezes at the first lock.
       const deciding = state.phase === 'decision'
-      const switching = state.phase === 'pacts' && !state.divers.some(diver => diver.pactsLocked)
+      const switching = (state.phase === 'strain' || state.phase === 'pacts')
+        && !state.divers.some(diver => diver.pactsLocked)
       if (!deciding && !switching) {
         return state
       }
@@ -171,19 +192,55 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }
       return commit(state, {
         misfortuneAccepted: action.accepted,
-        ...(deciding ? { phase: 'pacts' } : {}),
+        ...(deciding ? { phase: needsStrainDecision(state) ? 'strain' : 'pacts' } : {}),
+      }, action)
+    }
+
+    case 'ACCEPT_STRAIN': {
+      // The strain is an optional, operation-long commitment: accepting it
+      // adds its team risk to every mission of the operation. It carries no
+      // loadout rule, so there is no strand check — declining is always safe.
+      // It is answered on the operation's first mission, independently of the
+      // misfortune (either call may come first); the phase only advances once
+      // both are in. Like the misfortune it may still flip until the first
+      // pact lock.
+      if (!state.strainId || state.missionInOperation > 1) {
+        return state
+      }
+      const deciding = state.phase === 'decision' || state.phase === 'strain'
+      const switching = state.phase === 'pacts' && !state.divers.some(diver => diver.pactsLocked)
+      if (!deciding && !switching) {
+        return state
+      }
+      if (switching && action.accepted === state.strainAccepted) {
+        return state
+      }
+      return commit(state, {
+        strainAccepted: action.accepted,
+        strainDecided: true,
+        // Answering the strain from the strain phase completes the wheel
+        // decision; from the decision phase the misfortune still gates it.
+        ...(state.phase === 'strain' ? { phase: 'pacts' } : {}),
       }, action)
     }
 
     case 'REROLL_WHEEL': {
-      if ((state.phase !== 'decision' && state.phase !== 'pacts') || !state.wheel || !state.frontId) {
+      if (
+        (state.phase !== 'decision' && state.phase !== 'strain' && state.phase !== 'pacts')
+        || !state.wheel
+        || !state.frontId
+      ) {
         return state
       }
       if (state.divers.some(diver => diver.pactsLocked)) {
         return state
       }
-      // The front locks in with its operation — mission-1 decision window only.
-      if (action.wheel === 'front' && state.missionInOperation > 1) {
+      // The front and its strain lock in with the operation — mission-1
+      // decision window only.
+      if (action.wheel !== 'misfortune' && state.missionInOperation > 1) {
+        return state
+      }
+      if (action.wheel === 'strain' && !state.strainId) {
         return state
       }
       // "Spins are seeds", but a reroll must actually move: refuse a seed that
@@ -191,32 +248,49 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // the same outcome. Only the immediately replaced result is excluded.
       const sameResult = action.wheel === 'misfortune'
         ? deriveMisfortune(action.seed, state.difficulty).id === state.wheel.misfortuneId
-        : deriveFront(action.seed) === state.frontId
+        : action.wheel === 'front'
+          ? deriveFront(action.seed) === state.frontId
+          : deriveStrain(action.seed, state.difficulty, state.frontId)?.id === state.strainId
       if (sameResult) {
         return state
       }
       const completed = state.completedCombos.includes(
-        comboKey(state.wheel.misfortuneId, state.frontId),
+        comboKey(state.wheel.misfortuneId, state.frontId, state.strainId),
       )
       if (!completed && state.rerollTokens < 1) {
         return state
       }
+      const rerollTokens = completed ? state.rerollTokens : state.rerollTokens - 1
+      const seedHistory = [...state.seedHistory, action.seed]
       // A misfortune reroll redraws that mission's draw and reopens its
-      // decision; a front reroll (mission 1 only) swaps the operation's front
-      // and leaves the misfortune decision standing.
+      // decision; a front or strain reroll (mission 1 only) reopens the strain
+      // decision — a new front brings a new subfaction.
       if (action.wheel === 'misfortune') {
         return commit(state, {
           wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed, state.difficulty).id },
           misfortuneAccepted: false,
           phase: 'decision',
-          rerollTokens: completed ? state.rerollTokens : state.rerollTokens - 1,
-          seedHistory: [...state.seedHistory, action.seed],
+          rerollTokens,
+          seedHistory,
+        }, action)
+      }
+      if (action.wheel === 'front') {
+        const frontId = deriveFront(action.seed)
+        return commit(state, {
+          frontId,
+          strainId: deriveStrain(action.seed, state.difficulty, frontId)?.id ?? null,
+          strainAccepted: false,
+          strainDecided: false,
+          rerollTokens,
+          seedHistory,
         }, action)
       }
       return commit(state, {
-        frontId: deriveFront(action.seed),
-        rerollTokens: completed ? state.rerollTokens : state.rerollTokens - 1,
-        seedHistory: [...state.seedHistory, action.seed],
+        strainId: deriveStrain(action.seed, state.difficulty, state.frontId)?.id ?? null,
+        strainAccepted: false,
+        strainDecided: false,
+        rerollTokens,
+        seedHistory,
       }, action)
     }
 
@@ -333,7 +407,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           offerSeed: deriveSeed(state.wheel.seed, state.missionIndex),
           completedCombos: [
             ...state.completedCombos,
-            comboKey(state.wheel.misfortuneId, state.frontId),
+            comboKey(state.wheel.misfortuneId, state.frontId, state.strainId),
           ],
         }, action)
       }
@@ -432,10 +506,13 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
             ...resetForNextMission(state),
             wheel: null,
             frontId: null,
+            strainId: null,
+            strainAccepted: false,
+            strainDecided: false,
           }, action)
         }
-        // Operation completed: a fresh operation draws a new front with its
-        // first spin.
+        // Operation completed: a fresh operation draws a new front and strain
+        // with its first spin.
         return commit(state, {
           missionIndex,
           difficulty: nextDifficulty,
@@ -444,12 +521,15 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           ...resetForNextMission(state),
           wheel: null,
           frontId: null,
+          strainId: null,
+          strainAccepted: false,
+          strainDecided: false,
           misfortuneAccepted: false,
           phase: 'spin',
         }, action)
       }
-      // Same operation: the front persists, but every mission draws a fresh
-      // misfortune — the next mission begins at the spin.
+      // Same operation: the front and its strain persist, but every mission
+      // draws a fresh misfortune — the next mission begins at the spin.
       return commit(state, {
         missionIndex,
         missionInOperation,

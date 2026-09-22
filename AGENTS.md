@@ -15,15 +15,16 @@ must update this file in the same commit.**
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core) and Phase 2 (realtime squads) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (218 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (285 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection — verified by a live two-peer smoke test and the Playwright E2E suite (solo flow,
 two-browser room sync, Codex slide-over, Guide slide-over,
 PWA affordances) against the production build. Mid-crusade catch-up (Field Promotion + legacy caches, `LEAVE_DIVE`)
 has landed, as has the Phase 4 PWA layer (installable manifest, generated icons, Workbox service
-worker with an offline shell + on-demand catalog art). Remaining Phase 4 polish is next. **Alpha has
-landed:** the save schema is frozen at v8 and the migration chain is open (see Save model). See
+worker with an offline shell + on-demand catalog art) and the operation-long **faction strains**
+(N2: optional, accept/decline, compounding team risk). Remaining Phase 4 polish is next. **Alpha
+has landed:** the save schema is frozen at v9 and the migration chain is open (see Save model). See
 [Roadmap](#roadmap).
 
 ---
@@ -91,12 +92,14 @@ operation**, with the operation's first spin, and persists across its missions �
 restart keeps it. Every mission begins with a fresh misfortune draw. Per mission:
 1. **Spin** — the squad spins the Wheel of Misfortune: one **misfortune** (team-wide restriction)
    for this mission; the operation's first spin also draws the **front** (Terminids / Automatons /
-   Illuminate).
+   Illuminate) and its **strain** (an optional subfaction).
 2. **Decide** — before any pact exists, the squad (host executes, IRL voice vote) **accepts or
    declines** the drawn misfortune. Declining runs a zero-team-risk dive; accepting applies the
    misfortune's **team risk** (1–5) to every diver's Valor for this mission. A reroll redraws and
    resets the decision. A rule the squad cannot field (one that would strand a diver below HD2's
-   four required stratagems) cannot be accepted — see Mandatory four stratagems.
+   four required stratagems) cannot be accepted — see Mandatory four stratagems. On the operation's
+   first mission the call then passes to the **strain**: accepting commits the squad for the whole
+   operation and adds the strain's team risk to every mission of it — see Faction strains.
 3. **Pact** — each diver is dealt a personal **pact offer**: 2 pacts on difficulties 3–6, 3 on 7+,
    rolled deterministically from the wheel seed (per diver) once the decision is in. The offer
    pool filters out pacts the accepted misfortune makes redundant or impossible; a declined draw
@@ -111,9 +114,10 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
    Armor rewards are **passives**, never armor pieces (see inventory model). On a full-star clear,
    once every diver has picked, the squad spins **bonus honors** — a random end-screen stat the host
    resolves to a winner, who banks a reward token (see Reward tokens & squad honors).
-7. **Advance** — next mission, which draws a fresh misfortune. Completing all missions of an
-   operation bumps the crusade difficulty by +1. Failure restarts the operation (mission 1) at the
-   same difficulty, keeps the front, and the squad forfeits one item.
+7. **Advance** — next mission, which draws a fresh misfortune (the front and strain persist).
+   Completing all missions of an operation bumps the crusade difficulty by +1 and the next
+   operation draws a fresh front+strain. Failure restarts the operation (mission 1) at the same
+   difficulty, keeps the front, reopens the strain decision, and the squad forfeits one item.
 
 The crusade is **achieved** ("Griffdive achieved") when the squad completes an operation at
 difficulty 10. The run may then end, or continue in endless mode (post-v1).
@@ -178,17 +182,41 @@ absent. *Pacifist* is the clean stats-channel rule — stratagem kills count to 
 zero-kill squad is forced into genuine support builds.
 
 **Rerolls:** rerolling a wheel result is free if the squad already completed that exact
-(misfortune × front) combo earlier in this crusade (the video's overrule rule). Otherwise the squad
-spends a reroll token — 1 token per operation, spendable on either wheel. Never rerollable into an
-outcome the pool doesn't allow at the current difficulty, and never into the result it would
-replace — a reroll must actually move (`REROLL_WHEEL` refuses a same-result seed; only the
-immediately replaced result is excluded, not every prior draw this window). **The front (faction)
-locks in for the whole operation**: it can only be rerolled during the operation's first mission
-decision window (`missionInOperation === 1`, enforced in the reducer and `canRerollWheel`);
-misfortune rerolls stay available in any decision or pact window (until the first pact lock).
+(misfortune × front × strain) combo earlier in this crusade (the video's overrule rule). Otherwise
+the squad spends a reroll token — 1 token per operation, spendable on any wheel result. Never
+rerollable into an outcome the pool doesn't allow at the current difficulty, and never into the
+result it would replace — a reroll must actually move (`REROLL_WHEEL` refuses a same-result seed;
+only the immediately replaced result is excluded, not every prior draw this window). **The front
+and its strain lock in for the whole operation**: they can only be rerolled during the operation's
+first mission decision window (`missionInOperation === 1`, enforced in the reducer and
+`canRerollWheel`); a front reroll redraws the strain with it, and a strain reroll needs at least
+two eligible subfactions on that front. Misfortune rerolls stay available in any decision or pact
+window (until the first pact lock).
 
-**Fronts:** the front is drawn with the operation's first spin (one per operation) and only affects
-combo tracking (and future front-specific content). It exists for flavor and the reroll economy.
+**Fronts:** the front is drawn with the operation's first spin (one per operation) and drives combo
+tracking and its strain roster. It exists for flavor and the reroll economy.
+
+### Team layer — faction strains
+
+The front's **strain** is drawn with it at the operation's first spin — a subfaction of that front
+(wiki.gg/Factions), gated per-strain by `STRAIN_MIN_DIFFICULTY` like misfortunes. It is an
+**optional, operation-long team-risk commitment**, never a forced modifier. The spin opens the wheel
+decision, and the squad (host executes, IRL voice vote) answers the misfortune and the strain call
+**independently** — either may be locked first, and the phase only advances to pacts once both are
+in (a dedicated `strain` phase carries the strain call when the misfortune is locked first).
+Declining is free and zero-risk — principle 1 (risk is chosen, never forced) stays intact, and a
+surplus-kit squad is never handed an unfieldable operation. Accepting
+commits the squad for the whole operation: the strain's **team risk** (2–3) is added to **every
+mission's** Valor, compounding over the operation's 2–3 missions — a deliberately different scope
+from the per-mission misfortune. The lock holds until the operation ends: a **win** rolls a fresh
+front+strain with the next operation; a **failure** restarts at mission 1, keeps the front, and
+**reopens the strain decision** (same draw, re-decidable). Like the misfortune, the call may still
+flip in the pact window until the first pact lock.
+
+Strains are **flavor + risk, never rule-bearing**: the app never observes enemy composition, so no
+checkable restriction is attached — the real subfaction reshapes loadout decisions in-game and the
+engine only prices the risk (`STRAIN_RISK` / `STRAIN_MIN_DIFFICULTY` in `shared/engine/config.ts`;
+catalog in `shared/data/strains.ts`). The carrot is extra Valor only.
 
 ### Personal layer — pacts
 
@@ -268,7 +296,8 @@ mission, and land in the action log for audit.
 
 ```
 Valor         = teamRisk + pactRisk + performance
-teamRisk      = accepted misfortune (0–5, 0 when declined)
+teamRisk      = accepted misfortune (0–5) plus the accepted strain (2–3,
+                felt on every mission of its operation); 0 when declined
 pactRisk      = sum of the diver's picked pacts (max 8: the rolled
                 2–3-pact offer bounds what a diver can stack)
 performance   = team performance from the mission just reported, squad-level
@@ -319,18 +348,19 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   appear instead of a flat longshot. **The Valor meter tops out at 11** (`VALOR_METER_MAX`): Valor
   past it "breaks" the gauge and banks as **Luck**, which adds flat odds to the S / S+ rungs
   (`OVERFLOW_S_LUCK` / `OVERFLOW_S_PLUS_LUCK`), so overstacking is never wasted. Even absolute max
-  overstack (Valor 13.5) leaves S+ a longshot (≤20% at altitude; `S_PLUS_OVERFLOW_CAP`). A
-  zero-Valor dive always rolls its base tier. Team performance is a deliberate exception: it can
-  nudge a zero-chosen-risk clear off its base tier, but caps at 0.5 against the 13-point chosen
-  ceiling, so skill never carries a run (`TIME_VALOR_MAX`, `SAMPLE_VALOR_CAP`,
+  overstack (Valor 16.5, strain included) leaves S+ a longshot (≤20% at altitude;
+  `S_PLUS_OVERFLOW_CAP`). A zero-Valor dive always rolls its base tier. Team performance is a
+  deliberate exception: it can nudge a zero-chosen-risk clear off its base tier, but caps at 0.5
+  against the 16-point chosen ceiling, so skill never carries a run (`TIME_VALOR_MAX`, `SAMPLE_VALOR_CAP`,
   `SAMPLE_VALOR_WEIGHTS`). Sample values are calibrated to the game's own rarity mix (wiki.gg/Sample
   availability), so the term scales with difficulty without a multiplier: a Medium haul (commons
   only) is worth ~0.03, a Super Helldive haul with rares and supers ~0.3.
 - **Valor is surfaced as the Valor meter** (`app/components/dive/ValorMeter.vue`): a live gauge
-  stacking the three sources (team risk, pacts, performance) with a tier ladder from the
-  difficulty's base tier to the previewed ceiling and the odds of reaching it. It renders in the
-  pacts window (live, reacting to pact toggles and the misfortune decision), the diving Briefing
-  (locked) and the reward draft (locked, including the performance term). Its display scale is the
+  stacking the three sources (team risk — misfortune plus strain — pacts, performance) with a tier
+  ladder from the difficulty's base tier to the previewed ceiling and the odds of reaching it. It
+  renders in the pacts window (live, reacting to pact toggles and the misfortune decision), the
+  diving Briefing (locked) and the reward draft (locked, including the performance term). Its
+  display scale is the
   fixed `VALOR_METER_MAX` (11) in `shared/engine/config.ts`; once Valor exceeds it the gauge reads
   "Meter broken" and shows the banked Luck. `maxValorFor(difficulty)` in
   `shared/engine/selectors.ts` still reports the most a difficulty *could* stack, i.e. its overflow
@@ -366,11 +396,12 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   its risk — Valor, previews and the rolled offer all drop — and costs one reward option, floored
   at one so the draft always completes.
 - Example curves: at diff 3 a single strong pact (Valor 3) reaches **S** ~4% of the time and two
-  (Valor 6) ~18%; the strongest early stack (Valor 10) reaches **S** about a third of the time,
-  **S+** rarely. Diff 10 with zero Valor → **A**, never S. At diff 6 (where super samples appear) a
-  strong build (Valor 10–11) reaches **S+** ~6–7%, climbing to ~12–14% at diff 10; max overstack
-  (Valor 13.5) reaches **S+** ~18% there. Risk pays at every altitude; nothing is guaranteed, but
-  everything gets likelier.
+  (Valor 6) ~16%; the strongest early stack without a strain (Valor 10) reaches **S** about a third
+  of the time, **S+** rarely (a maxed early stack, Valor 15.5 with a strain, reaches S ~52%, S+
+  ~9%). Diff 10 with zero Valor → **A**, never S. At diff 6 (where super samples appear) a strong
+  build (Valor 10–11) reaches **S+** ~6–7%, climbing to ~12–14% at diff 10; max overstack (Valor
+  16.5, strain included) reaches **S+** ~19% there. Risk pays at every altitude; nothing is
+  guaranteed, but everything gets likelier.
 
 ### Reward tokens & squad honors
 
@@ -462,11 +493,12 @@ schema is frozen and saves migrate.** From the alpha release (save schema v8) th
 every later breaking change bumps `SAVE_SCHEMA_VERSION` and adds a version-gated migration step, or
 is reverted. `migrateV7toV8` is the alpha baseline — it defaults the fields whose shapes landed
 during pre-alpha (Field Promotion bookkeeping, failed-pact marks, reward tokens, bans, bonus
-honors). Normalization drops only docs it cannot make sense of. No accounts in v1 —
+honors); `migrateV8toV9` adds the strain fields and widens legacy combo keys. Normalization drops
+only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
-`achieved` flag, `frontId`, inventories, per-diver warbond declarations,
-`completedCombos` (misfortune × front), reroll tokens, action log (capped), RNG seed history,
-legacy caches parked by departed divers, per-diver catch-up bookkeeping.
+`achieved` flag, `frontId`, `strainId`, inventories, per-diver warbond declarations,
+`completedCombos` (misfortune × front × strain), reroll tokens, action log (capped), RNG seed
+history, legacy caches parked by departed divers, per-diver catch-up bookkeeping.
 
 ---
 
@@ -546,7 +578,7 @@ shared/
                    host-only action list)
   utils/           room-code.ts (room-code alphabet + validator)
   data/            items (equipment.ts, stratagems.ts), warbonds.ts, fronts.ts,
-                   misfortunes.ts, pacts.ts, catalog.ts (aggregation + CATALOG_VERSION),
+                   misfortunes.ts, strains.ts, pacts.ts, catalog.ts (aggregation + CATALOG_VERSION),
                    ordering.ts (kit presentation order: stratagem role → tier → name),
                    images.ts (imageURL filename → /images/<dir> URL resolver,
                    difficultyImageUrl for the 1–10 difficulty emblems)
@@ -614,7 +646,7 @@ rooms every 15 min so the `MAX_ROOMS` backstop rarely matters.
 
 Canonical engine actions (the reducer union; keep names stable):
 
-`START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}`
+`START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
 `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
@@ -623,7 +655,7 @@ Canonical engine actions (the reducer union; keep names stable):
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
-`REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
+`ACCEPT_STRAIN`, `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are
 self-service.

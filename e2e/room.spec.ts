@@ -49,9 +49,15 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   // Host spins; the seeded result syncs to the joiner. The joiner's card shows
   // the pending decision — only the host can lock the misfortune in.
   await pageA.getByRole('button', { name: 'Spin', exact: true }).click()
-  await expect(pageB.getByText('Awaiting host')).toBeVisible()
-  await pageA.getByRole('button', { name: 'Lock it in' }).click()
-  await expect(pageB.getByText('Locked in — team-wide')).toBeVisible()
+  await expect(pageB.getByRole('img', { name: 'Awaiting host', exact: true })).toBeVisible()
+  await pageA.locator('.misfortune').getByRole('button', { name: 'Lock it in' }).click()
+  await expect(pageB.getByRole('img', { name: 'Locked in — team-wide' })).toBeVisible()
+
+  // The operation's first mission also draws a strain — an optional, op-long
+  // team risk. The host declines it; the call syncs to the joiner.
+  await expect(pageB.getByRole('img', { name: 'Strain call — awaiting host' })).toBeVisible()
+  await pageA.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
+  await expect(pageB.getByRole('img', { name: 'Standard forces — no strain' })).toBeVisible()
 
   // Both lock pacts — the dive only starts once the whole squad is in.
   await pageB.locator('.pact:not([disabled])').first().click()
@@ -109,10 +115,11 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   await dismissWarbondIntro(pageB)
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
 
-  // Host spins and locks the misfortune in; the joiner stalls before locking
-  // pacts.
+  // Host spins, locks the misfortune in and declines the operation's strain;
+  // the joiner stalls before locking pacts.
   await pageA.getByRole('button', { name: 'Spin', exact: true }).click()
-  await pageA.getByRole('button', { name: 'Lock it in' }).click()
+  await pageA.locator('.misfortune').getByRole('button', { name: 'Lock it in' }).click()
+  await pageA.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
   await expect(pageB.getByRole('button', { name: 'Lock in & dive' })).toBeVisible()
 
   // Hovering the joiner's chip reveals the kick affordance.

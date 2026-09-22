@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { diverOptions } from '~~/shared/engine/selectors'
-import { deriveFront, deriveMisfortune } from '~~/shared/engine/wheel'
+import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
 import type { CrusadeVariant, DiverState, EngineAction, ItemRef, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
 import { rememberDiverName } from '~/composables/useGameSocket'
 
@@ -146,7 +146,7 @@ function spin(): void {
   dispatch({ type: 'SPIN_WHEEL', seed: session.newSeed() })
 }
 
-function reroll(wheel: 'misfortune' | 'front'): void {
+function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   const current = state.value
   if (!current?.wheel) {
     return
@@ -158,7 +158,9 @@ function reroll(wheel: 'misfortune' | 'front'): void {
   for (let attempt = 0; attempt < 32; attempt++) {
     const same = wheel === 'misfortune'
       ? deriveMisfortune(seed, current.difficulty).id === current.wheel.misfortuneId
-      : deriveFront(seed) === current.frontId
+      : wheel === 'front'
+        ? deriveFront(seed) === current.frontId
+        : deriveStrain(seed, current.difficulty, current.frontId!)?.id === current.strainId
     if (!same) {
       break
     }
@@ -169,6 +171,10 @@ function reroll(wheel: 'misfortune' | 'front'): void {
 
 function decideMisfortune(accepted: boolean): void {
   dispatch({ type: 'ACCEPT_MISFORTUNE', accepted })
+}
+
+function decideStrain(accepted: boolean): void {
+  dispatch({ type: 'ACCEPT_STRAIN', accepted })
 }
 
 function lockPacts(pactIds: string[]): void {
@@ -416,13 +422,14 @@ function launchCrusade(variant: CrusadeVariant): void {
           />
 
           <DivePhaseWheel
-            v-if="phase === 'spin' || phase === 'decision' || phase === 'pacts'"
+            v-if="phase === 'spin' || phase === 'decision' || phase === 'strain' || phase === 'pacts'"
             :state="state"
             :self-id="selfId"
             :self="self"
             :can-control="canControl"
             @spin="spin"
             @decide="decideMisfortune"
+            @decide-strain="decideStrain"
             @reroll="reroll"
             @lock="lockPacts"
           />
