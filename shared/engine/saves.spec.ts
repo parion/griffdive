@@ -103,6 +103,7 @@ describe('save migration v8 → v9 (strains)', () => {
     expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
     expect(migrated.state.strainId).toBeNull()
     expect(migrated.state.strainAccepted).toBe(false)
+    expect(migrated.state.strainDecided).toBe(false)
     expect(migrated.state.completedCombos).toEqual([
       'noBackpacks:terminids:none',
       'stealth:automatons:none',

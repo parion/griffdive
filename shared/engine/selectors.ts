@@ -108,20 +108,15 @@ export interface StrainDecision {
   accepted: boolean
 }
 
-// The strain decision is open on the operation's first mission (phase
-// 'decision' leads into 'strain'); later missions inherit it, and a failure
-// restart reopens it by resetting missionInOperation.
+// The strain call is answered on the operation's first mission, before pacts
+// roll. It is tracked by its own flag rather than the phase, so it can be
+// answered before or after the misfortune; later missions inherit it, and a
+// failure restart reopens it (the flag resets with the operation).
 export function strainDecision(state: DiveState): StrainDecision {
-  if (!state.strainId) {
-    return { decided: true, accepted: false }
-  }
-  if (state.missionInOperation > 1) {
+  if (!state.strainId || state.missionInOperation > 1) {
     return { decided: true, accepted: state.strainAccepted }
   }
-  if (state.phase === 'spin' || state.phase === 'decision' || state.phase === 'strain') {
-    return { decided: false, accepted: false }
-  }
-  return { decided: true, accepted: state.strainAccepted }
+  return { decided: state.strainDecided, accepted: state.strainAccepted }
 }
 
 // A failed pact is voided: it no longer stakes risk, so its share of the

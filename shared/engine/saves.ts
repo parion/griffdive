@@ -137,6 +137,7 @@ function migrateV8toV9(doc: SaveDoc): SaveDoc {
       ...doc.state,
       strainId: null,
       strainAccepted: false,
+      strainDecided: false,
       completedCombos: (doc.state.completedCombos ?? []).map((key) => {
         const parts = key.split(':')
         return parts.length >= 3 ? key : `${key}:none`

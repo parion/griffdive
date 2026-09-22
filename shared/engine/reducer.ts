@@ -45,6 +45,7 @@ function applyStart(state: DiveState, settings: CrusadeSettings): Partial<DiveSt
     frontId: null,
     strainId: null,
     strainAccepted: false,
+    strainDecided: false,
     personalInventories,
   }
 }
@@ -83,15 +84,16 @@ export function resetOperation(state: DiveState): Partial<DiveState> {
     wheel: null,
     misfortuneAccepted: false,
     strainAccepted: false,
+    strainDecided: false,
     phase: 'spin',
   }
 }
 
 // The strain is an operation-long commitment: it is decided once, on the
-// operation's first mission, after the misfortune call and before pacts roll.
-// A failure restart resets missionInOperation, reopening it.
+// operation's first mission, before pacts roll. It may be answered before or
+// after the misfortune; the phase only advances once both calls are in.
 function needsStrainDecision(state: DiveState): boolean {
-  return state.missionInOperation === 1 && state.strainId !== null
+  return state.missionInOperation === 1 && state.strainId !== null && !state.strainDecided
 }
 
 // A departed diver (kicked or left) parks their inventory as a legacy cache:
@@ -158,7 +160,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         // any pact offer exists. A fresh operation reopens the strain decision
         // too (a failure restart has already reset it).
         misfortuneAccepted: false,
-        ...(drawingOperation ? { strainAccepted: false } : {}),
+        ...(drawingOperation ? { strainAccepted: false, strainDecided: false } : {}),
         phase: 'decision',
         seedHistory: [...state.seedHistory, action.seed],
       }, action)
@@ -198,11 +200,14 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // The strain is an optional, operation-long commitment: accepting it
       // adds its team risk to every mission of the operation. It carries no
       // loadout rule, so there is no strand check — declining is always safe.
-      // Like the misfortune it may still flip until the first pact lock.
+      // It is answered on the operation's first mission, independently of the
+      // misfortune (either call may come first); the phase only advances once
+      // both are in. Like the misfortune it may still flip until the first
+      // pact lock.
       if (!state.strainId || state.missionInOperation > 1) {
         return state
       }
-      const deciding = state.phase === 'strain'
+      const deciding = state.phase === 'decision' || state.phase === 'strain'
       const switching = state.phase === 'pacts' && !state.divers.some(diver => diver.pactsLocked)
       if (!deciding && !switching) {
         return state
@@ -212,7 +217,10 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }
       return commit(state, {
         strainAccepted: action.accepted,
-        ...(deciding ? { phase: 'pacts' } : {}),
+        strainDecided: true,
+        // Answering the strain from the strain phase completes the wheel
+        // decision; from the decision phase the misfortune still gates it.
+        ...(state.phase === 'strain' ? { phase: 'pacts' } : {}),
       }, action)
     }
 
@@ -272,6 +280,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           frontId,
           strainId: deriveStrain(action.seed, state.difficulty, frontId)?.id ?? null,
           strainAccepted: false,
+          strainDecided: false,
           rerollTokens,
           seedHistory,
         }, action)
@@ -279,6 +288,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       return commit(state, {
         strainId: deriveStrain(action.seed, state.difficulty, state.frontId)?.id ?? null,
         strainAccepted: false,
+        strainDecided: false,
         rerollTokens,
         seedHistory,
       }, action)
@@ -498,6 +508,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
             frontId: null,
             strainId: null,
             strainAccepted: false,
+            strainDecided: false,
           }, action)
         }
         // Operation completed: a fresh operation draws a new front and strain
@@ -512,6 +523,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           frontId: null,
           strainId: null,
           strainAccepted: false,
+          strainDecided: false,
           misfortuneAccepted: false,
           phase: 'spin',
         }, action)

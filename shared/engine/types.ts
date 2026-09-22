@@ -99,6 +99,10 @@ export interface DiveState {
   // every mission of the operation.
   strainId: string | null
   strainAccepted: boolean
+  // Whether the strain call has been answered this operation. Separate from
+  // `strainAccepted` so the call can be answered before the misfortune without
+  // the phase having to carry it.
+  strainDecided: boolean
   rerollTokens: number
   completedCombos: string[]
   personalInventories: Record<string, string[]>

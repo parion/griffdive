@@ -428,6 +428,20 @@ describe('ACCEPT_STRAIN (optional operation-long team risk)', () => {
     const locked = divingState(42)
     expect(reduce(locked, { type: 'ACCEPT_STRAIN', accepted: true })).toBe(locked)
   })
+
+  it('answers the strain before the misfortune when it is locked first', () => {
+    const state = strainDrawn(42)
+    const strainFirst = reduce(state, { type: 'ACCEPT_STRAIN', accepted: true })
+    // The strain call is answered, but the misfortune still gates pacts.
+    expect(strainFirst.phase).toBe('decision')
+    expect(strainFirst.strainDecided).toBe(true)
+    expect(strainFirst.strainAccepted).toBe(true)
+    expect(strainFirst.misfortuneAccepted).toBe(false)
+
+    const both = reduce(strainFirst, { type: 'ACCEPT_MISFORTUNE', accepted: false })
+    expect(both.phase).toBe('pacts')
+    expect(teamRiskOf(both)).toBe(STRAIN_RISK[both.strainId!] ?? 0)
+  })
 })
 
 describe('SET_PACTS', () => {

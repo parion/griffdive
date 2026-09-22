@@ -12,18 +12,18 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.locator('.diff-icon')).toBeVisible()
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
-  await expect(page.getByText('Decision pending')).toBeVisible()
+  await expect(page.getByRole('img', { name: 'Decision pending' })).toBeVisible()
   await expect(page.locator('.tier-badge').first()).toBeVisible()
 
   // The team locks the drawn misfortune in — chosen risk raises everyone's Valor.
-  await page.getByRole('button', { name: 'Lock it in' }).click()
-  await expect(page.getByText('Locked in — team-wide')).toBeVisible()
+  await page.locator('.misfortune').getByRole('button', { name: 'Lock it in' }).click()
+  await expect(page.getByRole('img', { name: 'Locked in — team-wide' })).toBeVisible()
 
   // The operation's first mission also draws a strain: an optional, op-long
   // team risk. Declining keeps the dive at the misfortune's risk alone.
-  await expect(page.getByText('Strain call pending')).toBeVisible()
-  await page.getByRole('button', { name: 'Decline' }).click()
-  await expect(page.getByText('Standard forces — no strain')).toBeVisible()
+  await expect(page.getByRole('img', { name: 'Strain call pending' })).toBeVisible()
+  await page.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
+  await expect(page.getByRole('img', { name: 'Standard forces — no strain' })).toBeVisible()
 
   // The squad strip shows who still has to decide.
   await expect(page.getByRole('img', { name: 'choosing pacts' })).toBeVisible()
@@ -76,10 +76,10 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // The front persists, but mission 2 begins at the spin: a fresh misfortune
   // awaits the squad's decision.
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
-  await expect(page.getByText('Decision pending')).toBeVisible()
+  await expect(page.getByRole('img', { name: 'Decision pending' })).toBeVisible()
 
   // Play mission 2 out so the banked honors token can be spent.
-  await page.getByRole('button', { name: 'Opt out' }).click()
+  await page.locator('.misfortune').getByRole('button', { name: 'Opt out' }).click()
   await page.locator('.pact:not([disabled])').first().click()
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
   await page.getByRole('button', { name: 'Mission complete' }).click()
@@ -105,8 +105,8 @@ test('a failed mission labels the operation failed and restarts it', async ({ pa
   await dismissWarbondIntro(page)
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
-  await page.getByRole('button', { name: 'Lock it in' }).click()
-  await page.getByRole('button', { name: 'Decline' }).click()
+  await page.locator('.misfortune').getByRole('button', { name: 'Lock it in' }).click()
+  await page.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
   await page.locator('.pact:not([disabled])').first().click()
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
 

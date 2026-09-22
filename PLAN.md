@@ -441,8 +441,10 @@ fresh misfortune. The confirmed-good parts from QA stay as the regression baseli
 **N2 · Faction strains. Done (DEC-5).** Strains landed as an **optional, operation-long team-risk
 commitment**. A strain is a subfaction of the drawn front, rolled with the front at the operation's
 first spin (`deriveStrain`, `wheel.ts`) and gated per-strain by `STRAIN_MIN_DIFFICULTY` like
-misfortunes. The spin opens the misfortune decision, then a dedicated **`strain` phase** where the
-squad (host-only, like the misfortune) accepts or declines — declining is free and zero-risk.
+misfortunes. The spin opens the wheel decision: the squad (host-only, like the misfortune) answers
+the misfortune and the strain call **independently** — either may be locked first, and a dedicated
+`strain` phase carries the strain when the misfortune is locked first. The phase only advances to
+pacts once both calls are in; declining is free and zero-risk.
 Accepting adds the strain's **team risk to every mission** of the operation (compounding over its
 2–3 missions) and locks until the operation ends: a **win** rolls a fresh front+strain on `ADVANCE`;
 a **failure** restarts at mission 1, keeps the front, and **reopens the strain decision** (same
@@ -453,11 +455,14 @@ composition, so no unverifiable restriction is attached; the real subfaction res
 decisions in-game and the app only prices the risk. Carrot is **extra Valor only**. Implementation:
 `shared/data/strains.ts` (nine subfactions, three per front) with `STRAIN_RISK` (2–3) /
 `STRAIN_MIN_DIFFICULTY` in config; strain into `teamRiskOf` / `maxValorFor` /
-`ceilingRangeForDifficulty`; `strainId` + `strainAccepted` on `DiveState`; a three-part
-`(misfortune × front × strain)` combo key; strain-aware `REROLL_WHEEL` guards; host-only
+`ceilingRangeForDifficulty`; `strainId` + `strainAccepted` + `strainDecided` on `DiveState`; a
+three-part `(misfortune × front × strain)` combo key; strain-aware `REROLL_WHEEL` guards; host-only
 `ACCEPT_STRAIN` (whitelist + `HOST_ONLY_ACTIONS`); the `strain` phase in the seatable set, the
 phase key and the home phase labels; a WheelPanel front-card accept/decline treatment with its own
-reel and reroll dice; the diving briefing names the active strain. `SAVE_SCHEMA_VERSION` 8 → 9
+reel and reroll dice (the strain reels **after** the front settles, since it is a subfaction of
+it), strain emblems tinted to the front accent (`public/images/strains/` + `strainImageUrl`), and a
+lock-icon decision indicator (open/closed + tooltip) replacing the old text stamp; the diving
+briefing names the active strain. `SAVE_SCHEMA_VERSION` 8 → 9
 (`migrateV8toV9` defaults the fields and widens legacy combo keys), `ENGINE_VERSION` 16 → 17,
 goldens regenerated (the scripted crusade now decides strains — accepting on even operations and
 risk-3 draws). Covered by strain catalog/derivation tests, reducer tests (compounding, decline,

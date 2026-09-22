@@ -15,7 +15,7 @@ must update this file in the same commit.**
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core) and Phase 2 (realtime squads) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (284 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (285 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection — verified by a live two-peer smoke test and the Playwright E2E suite (solo flow,
@@ -200,10 +200,12 @@ tracking and its strain roster. It exists for flavor and the reroll economy.
 
 The front's **strain** is drawn with it at the operation's first spin — a subfaction of that front
 (wiki.gg/Factions), gated per-strain by `STRAIN_MIN_DIFFICULTY` like misfortunes. It is an
-**optional, operation-long team-risk commitment**, never a forced modifier: the spin opens the
-misfortune decision, then a dedicated `strain` phase where the squad (host executes, IRL voice vote)
-**accepts or declines** it. Declining is free and zero-risk — principle 1 (risk is chosen, never
-forced) stays intact, and a surplus-kit squad is never handed an unfieldable operation. Accepting
+**optional, operation-long team-risk commitment**, never a forced modifier. The spin opens the wheel
+decision, and the squad (host executes, IRL voice vote) answers the misfortune and the strain call
+**independently** — either may be locked first, and the phase only advances to pacts once both are
+in (a dedicated `strain` phase carries the strain call when the misfortune is locked first).
+Declining is free and zero-risk — principle 1 (risk is chosen, never forced) stays intact, and a
+surplus-kit squad is never handed an unfieldable operation. Accepting
 commits the squad for the whole operation: the strain's **team risk** (2–3) is added to **every
 mission's** Valor, compounding over the operation's 2–3 missions — a deliberately different scope
 from the per-mission misfortune. The lock holds until the operation ends: a **win** rolls a fresh
