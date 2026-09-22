@@ -11,12 +11,12 @@ const STEPS: GuideStep[] = [
   {
     key: 'spin',
     title: 'Spin',
-    body: 'The Wheel of Misfortune draws one team-wide restriction for the mission. The operation\'s first spin also draws the front — Terminids, Automatons or Illuminate.',
+    body: 'The Wheel of Misfortune draws one team-wide restriction for the mission. The operation\'s first spin also draws the front — Terminids, Automatons or Illuminate — and a strain, a subfaction of that front.',
   },
   {
     key: 'decide',
     title: 'Decide',
-    body: 'The squad accepts the rule — adding its team risk to everyone\'s Valor — or opts out for a safe dive. A drawn rule that would strand any diver below four stratagems cannot be accepted.',
+    body: 'The squad accepts the rule — adding its team risk to everyone\'s Valor — or opts out for a safe dive. On the operation\'s first mission the strain gets its own separate call (see below). A drawn rule that would strand any diver below four stratagems cannot be accepted.',
   },
   {
     key: 'pact',
@@ -73,6 +73,24 @@ const CHECKS = Object.values(ACCOUNTABILITY_LABELS)
         misfortune, your pact risk, plus a small performance bonus. Your
         <strong>ceiling</strong> is the best reward tier that Valor can roll — risk
         buys odds, never a guarantee.
+      </p>
+    </section>
+
+    <section class="guide-note">
+      <h3>Faction strains</h3>
+      <p>
+        A strain is a subfaction of the drawn front — Predator Strain Terminids, Jet
+        Brigade Automatons, Vote Snatchers Illuminate.
+      </p>
+      <p>
+        It is an <strong>optional, operation-long</strong> commitment. Accepting adds
+        its team risk to <strong>every mission</strong> of the operation, compounding
+        over its two or three dives, and it locks until the operation ends. Declining
+        is free.
+      </p>
+      <p class="muted small">
+        Strains are flavor and risk only — the real subfaction reshapes your loadout
+        in-game; the app just prices the extra Valor.
       </p>
     </section>
 
