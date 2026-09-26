@@ -24,6 +24,27 @@ function fakeKV(): RoomKV & { dump(): Map<string, unknown> } {
   }
 }
 
+// A KV that returns deep copies, like a real (fs/Redis) driver — the plain
+// fakeKV hands back the same object reference, which hides lost updates.
+function cloningKV(): RoomKV {
+  const map = new Map<string, unknown>()
+  return {
+    async getItem(code: string) {
+      const value = map.get(code)
+      return value === undefined ? undefined : structuredClone(value)
+    },
+    async setItem(code: string, value: unknown) {
+      map.set(code, structuredClone(value))
+    },
+    async removeItem(code: string) {
+      map.delete(code)
+    },
+    async getKeys() {
+      return [...map.keys()]
+    },
+  }
+}
+
 interface FakePeer extends PeerLike {
   inbox: ServerMessage[]
 }
@@ -593,6 +614,33 @@ describe('room-sync', () => {
 
     expect(await sweepRooms(kv)).toBe(1)
     expect(await kv.getItem(code)).toBeUndefined()
+  })
+
+  it('serializes concurrent writes to one room so neither is lost', async () => {
+    const kv = cloningKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    const hostId = welcomeOf(host).selfId
+
+    // Two read-modify-writes race on the same room (the client sends SET_WARBONDS
+    // on seat and START_DIVE on launch). Without the per-room lock the second
+    // write clobbers the first; with it both land.
+    await Promise.all([
+      processAction(kv, peers, host, {
+        action: { type: 'START_DIVE', settings: { variant: 'standard' } },
+      }),
+      processAction(kv, peers, host, {
+        action: { type: 'SET_WARBONDS', playerId: hostId, warbondCodes: ['warbond3'] },
+      }),
+    ])
+
+    const room = await loadRoom(kv, code)
+    expect(room?.state.settings).toEqual({ variant: 'standard' })
+    expect(room?.state.divers.find(diver => diver.id === hostId)?.warbondCodes).toEqual(['warbond3'])
   })
 
   it('caps the pinned set by unpinning the oldest save', async () => {

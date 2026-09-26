@@ -648,7 +648,11 @@ Host-authoritative, room-per-dive. Nitro WebSocket via `nitro.experimental.webso
 Room state lives in `useStorage('rooms')` — Nitro `fs-lite` writing to `./.data/rooms` (the
 `griffdive_data` Fly volume in production), a fake in-memory KV in tests — as
 `StoredRoom { code, state, updatedAt, saved? }`, pruned on access after a 12h TTL unless `saved`
-pins it (see Saved dives). Live connections live
+pins it (see Saved dives). Storage is read-modify-write, so `room-sync.ts` serializes every
+mutation of a room behind an in-process per-room lock (`withRoomLock`): the process is
+single-threaded but `await` interleaves handlers, and without the lock a joiner's `SET_WARBONDS`
+and the host's `START_DIVE` clobber each other (the memory driver hid this by sharing one object).
+Multi-machine needs a distributed lock alongside the storage swap. Live connections live
 in an in-process peer directory (crossws pub/sub topics are global to the process — deliberately
 unused); horizontal scale later means a Redis-backed directory or sticky sessions.
 

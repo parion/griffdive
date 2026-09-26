@@ -96,6 +96,28 @@ export function createPeerDirectory(): PeerDirectory {
   }
 }
 
+// Storage is read-modify-write: each handler loads its own parsed copy, mutates
+// it and writes it back. The process is single-threaded but `await` lets two
+// handlers on one room interleave, so without this the second write clobbers
+// the first (a joiner's SET_WARBONDS overwriting the host's START_DIVE). The
+// memory driver hid this because every handler shared one object; a real
+// storage driver does not. This per-room promise chain serializes mutations.
+// Single machine only — horizontal scale needs a distributed lock (Redis).
+const roomLocks = new Map<string, Promise<void>>()
+
+function withRoomLock<T>(roomCode: string, task: () => Promise<T>): Promise<T> {
+  const prior = roomLocks.get(roomCode) ?? Promise.resolve()
+  const result = prior.then(task, task)
+  const tail = result.then(() => undefined, () => undefined)
+  roomLocks.set(roomCode, tail)
+  void tail.then(() => {
+    if (roomLocks.get(roomCode) === tail) {
+      roomLocks.delete(roomCode)
+    }
+  })
+  return result
+}
+
 function isStoredRoom(raw: unknown): raw is StoredRoom {
   if (!raw || typeof raw !== 'object') {
     return false
@@ -229,11 +251,14 @@ export async function enforceSaveCap(kv: RoomKV, keepCode: string, cap: number =
     .sort((a, b) => a.savedAt - b.savedAt)
     .slice(0, overflow)
   for (const entry of evictable) {
-    const raw = await kv.getItem(entry.code)
-    if (isStoredRoom(raw)) {
-      raw.saved = null
-      await kv.setItem(entry.code, raw)
-    }
+    // Lock the target so unpinning never clobbers a concurrent action's write.
+    await withRoomLock(entry.code, async () => {
+      const raw = await kv.getItem(entry.code)
+      if (isStoredRoom(raw) && raw.saved) {
+        raw.saved = null
+        await kv.setItem(entry.code, raw)
+      }
+    })
   }
 }
 
@@ -262,59 +287,61 @@ export async function processHello(
     return
   }
 
-  const room = await loadRoom(kv, requested)
-  if (!room) {
-    sendError(peer, 'room-not-found', `No dive found for code ${requested}`)
-    return
-  }
-
-  const storedId = typeof payload.playerId === 'string' ? payload.playerId : null
-  const known = storedId ? room.state.divers.find(diver => diver.id === storedId) : undefined
-  // A stored id whose seat is gone but whose inventory sits in legacyCaches is
-  // the same diver rejoining: reuse the id so joinDiver reclaims the cache.
-  const reclaiming = !!storedId && !known && !!room.state.legacyCaches[storedId]
-  let playerId: string
-  let changed = false
-
-  if (known) {
-    playerId = known.id
-  }
-  else {
-    const blocked = seatingBlocked(room.state)
-    if (blocked) {
-      sendError(peer, room.state.divers.length >= SQUAD_SIZE_MAX ? 'room-full' : 'dive-locked', blocked)
+  await withRoomLock(requested, async () => {
+    const room = await loadRoom(kv, requested)
+    if (!room) {
+      sendError(peer, 'room-not-found', `No dive found for code ${requested}`)
       return
     }
-    playerId = reclaiming ? storedId! : newPlayerId()
-    const joined = joinDiver(room.state, playerId, sanitizeName(payload.name))
-    if (!joined) {
-      sendError(peer, 'room-full', 'Dive squad is full')
-      return
+
+    const storedId = typeof payload.playerId === 'string' ? payload.playerId : null
+    const known = storedId ? room.state.divers.find(diver => diver.id === storedId) : undefined
+    // A stored id whose seat is gone but whose inventory sits in legacyCaches is
+    // the same diver rejoining: reuse the id so joinDiver reclaims the cache.
+    const reclaiming = !!storedId && !known && !!room.state.legacyCaches[storedId]
+    let playerId: string
+    let changed = false
+
+    if (known) {
+      playerId = known.id
     }
-    room.state = joined
-    changed = true
-  }
+    else {
+      const blocked = seatingBlocked(room.state)
+      if (blocked) {
+        sendError(peer, room.state.divers.length >= SQUAD_SIZE_MAX ? 'room-full' : 'dive-locked', blocked)
+        return
+      }
+      playerId = reclaiming ? storedId! : newPlayerId()
+      const joined = joinDiver(room.state, playerId, sanitizeName(payload.name))
+      if (!joined) {
+        sendError(peer, 'room-full', 'Dive squad is full')
+        return
+      }
+      room.state = joined
+      changed = true
+    }
 
-  peer.context.roomCode = requested
-  peer.context.playerId = playerId
-  peers.add(requested, peer)
+    peer.context.roomCode = requested
+    peer.context.playerId = playerId
+    peers.add(requested, peer)
 
-  if (changed) {
-    await saveRoom(kv, room)
-  }
-  peer.send(JSON.stringify({
-    type: 'welcome',
-    selfId: playerId,
-    hostId: room.state.hostId,
-    roomCode: requested,
-    snapshot: room.state,
-    online: onlineIds(peers, requested, room.state),
-    saved: room.saved ?? null,
-  } satisfies ServerMessage))
+    if (changed) {
+      await saveRoom(kv, room)
+    }
+    peer.send(JSON.stringify({
+      type: 'welcome',
+      selfId: playerId,
+      hostId: room.state.hostId,
+      roomCode: requested,
+      snapshot: room.state,
+      online: onlineIds(peers, requested, room.state),
+      saved: room.saved ?? null,
+    } satisfies ServerMessage))
 
-  if (changed) {
-    broadcastState(peers, requested, room.state, null, room.saved ?? null, peer)
-  }
+    if (changed) {
+      broadcastState(peers, requested, room.state, null, room.saved ?? null, peer)
+    }
+  })
 }
 
 // Self-service actions are coerced to the sender — a client can never act as
@@ -354,54 +381,56 @@ export async function processAction(
   if (limits?.action && !limits.action.take(playerId)) {
     return
   }
-  const room = await loadRoom(kv, roomCode)
-  if (!room) {
-    sendError(peer, 'room-not-found', 'Dive not found')
-    return
-  }
-  const action = payload.action as EngineAction | undefined
-  // Whitelist the union: an unknown type has no reducer case and would return
-  // undefined, which used to be persisted and then crash the broadcast.
-  if (!action || typeof action.type !== 'string' || !isEngineActionType(action.type)) {
-    sendError(peer, 'bad-action', 'Unknown action')
-    return
-  }
-  if (!room.state.divers.some(diver => diver.id === playerId)) {
-    sendError(peer, 'not-in-room', 'You are not in this dive')
-    return
-  }
-  if (isHostOnlyAction(action.type) && room.state.hostId !== playerId) {
-    sendError(peer, 'not-host', 'Only the host can do that')
-    return
-  }
-  // FAIL_PACT is neither host-only nor self-service: the diver owns their
-  // pact, but the host referees the squad — so sender = target or host.
-  if (action.type === 'FAIL_PACT' && action.playerId !== playerId && room.state.hostId !== playerId) {
-    sendError(peer, 'bad-action', 'Only the diver or the host can mark a pact failed')
-    return
-  }
+  await withRoomLock(roomCode, async () => {
+    const room = await loadRoom(kv, roomCode)
+    if (!room) {
+      sendError(peer, 'room-not-found', 'Dive not found')
+      return
+    }
+    const action = payload.action as EngineAction | undefined
+    // Whitelist the union: an unknown type has no reducer case and would return
+    // undefined, which used to be persisted and then crash the broadcast.
+    if (!action || typeof action.type !== 'string' || !isEngineActionType(action.type)) {
+      sendError(peer, 'bad-action', 'Unknown action')
+      return
+    }
+    if (!room.state.divers.some(diver => diver.id === playerId)) {
+      sendError(peer, 'not-in-room', 'You are not in this dive')
+      return
+    }
+    if (isHostOnlyAction(action.type) && room.state.hostId !== playerId) {
+      sendError(peer, 'not-host', 'Only the host can do that')
+      return
+    }
+    // FAIL_PACT is neither host-only nor self-service: the diver owns their
+    // pact, but the host referees the squad — so sender = target or host.
+    if (action.type === 'FAIL_PACT' && action.playerId !== playerId && room.state.hostId !== playerId) {
+      sendError(peer, 'bad-action', 'Only the diver or the host can mark a pact failed')
+      return
+    }
 
-  const enforced = enforceSelf(action, playerId)
-  let next: DiveState
-  try {
-    next = reduce(room.state, enforced)
-  }
-  catch {
-    // A malformed field (missing settings, a non-array pact list) must never
-    // reach storage: it would be persisted and rebroadcast to the whole room.
-    sendError(peer, 'bad-action', 'Malformed action')
-    return
-  }
-  if (next === room.state) {
-    return
-  }
+    const enforced = enforceSelf(action, playerId)
+    let next: DiveState
+    try {
+      next = reduce(room.state, enforced)
+    }
+    catch {
+      // A malformed field (missing settings, a non-array pact list) must never
+      // reach storage: it would be persisted and rebroadcast to the whole room.
+      sendError(peer, 'bad-action', 'Malformed action')
+      return
+    }
+    if (next === room.state) {
+      return
+    }
 
-  room.state = next
-  await saveRoom(kv, room)
-  if (enforced.type === 'START_DIVE') {
-    roomMetrics.recordDiveStarted()
-  }
-  broadcastState(peers, roomCode, room.state, enforced, room.saved ?? null)
+    room.state = next
+    await saveRoom(kv, room)
+    if (enforced.type === 'START_DIVE') {
+      roomMetrics.recordDiveStarted()
+    }
+    broadcastState(peers, roomCode, room.state, enforced, room.saved ?? null)
+  })
 }
 
 // Saving pins the shared room any seated diver is looking at; it is a
@@ -423,20 +452,27 @@ export async function processSave(
   if (limits?.action && !limits.action.take(playerId)) {
     return
   }
-  const room = await loadRoom(kv, roomCode)
-  if (!room) {
-    sendError(peer, 'room-not-found', 'Dive not found')
-    return
+  let pinned = false
+  await withRoomLock(roomCode, async () => {
+    const room = await loadRoom(kv, roomCode)
+    if (!room) {
+      sendError(peer, 'room-not-found', 'Dive not found')
+      return
+    }
+    if (!room.state.divers.some(diver => diver.id === playerId)) {
+      sendError(peer, 'not-in-room', 'You are not in this dive')
+      return
+    }
+    const name = sanitizeSaveName(payload.name) ?? room.saved?.name ?? defaultSaveName(room)
+    room.saved = { name, savedAt: Date.now(), savedBy: playerId }
+    await saveRoom(kv, room)
+    broadcastState(peers, roomCode, room.state, null, room.saved)
+    pinned = true
+  })
+  // Outside the lock: the cap touches other rooms and must not nest locks.
+  if (pinned) {
+    await enforceSaveCap(kv, roomCode)
   }
-  if (!room.state.divers.some(diver => diver.id === playerId)) {
-    sendError(peer, 'not-in-room', 'You are not in this dive')
-    return
-  }
-  const name = sanitizeSaveName(payload.name) ?? room.saved?.name ?? defaultSaveName(room)
-  room.saved = { name, savedAt: Date.now(), savedBy: playerId }
-  await saveRoom(kv, room)
-  await enforceSaveCap(kv, room.code)
-  broadcastState(peers, roomCode, room.state, null, room.saved)
 }
 
 // Unpinning is host moderation (AGENTS.md authority rules): it returns the
@@ -456,25 +492,27 @@ export async function processUnsave(
   if (limits?.action && !limits.action.take(playerId)) {
     return
   }
-  const room = await loadRoom(kv, roomCode)
-  if (!room) {
-    sendError(peer, 'room-not-found', 'Dive not found')
-    return
-  }
-  if (!room.state.divers.some(diver => diver.id === playerId)) {
-    sendError(peer, 'not-in-room', 'You are not in this dive')
-    return
-  }
-  if (room.state.hostId !== playerId) {
-    sendError(peer, 'not-host', 'Only the host can remove a save')
-    return
-  }
-  if (!room.saved) {
-    return
-  }
-  room.saved = null
-  await saveRoom(kv, room)
-  broadcastState(peers, roomCode, room.state, null, null)
+  await withRoomLock(roomCode, async () => {
+    const room = await loadRoom(kv, roomCode)
+    if (!room) {
+      sendError(peer, 'room-not-found', 'Dive not found')
+      return
+    }
+    if (!room.state.divers.some(diver => diver.id === playerId)) {
+      sendError(peer, 'not-in-room', 'You are not in this dive')
+      return
+    }
+    if (room.state.hostId !== playerId) {
+      sendError(peer, 'not-host', 'Only the host can remove a save')
+      return
+    }
+    if (!room.saved) {
+      return
+    }
+    room.saved = null
+    await saveRoom(kv, room)
+    broadcastState(peers, roomCode, room.state, null, null)
+  })
 }
 
 export async function processClose(kv: RoomKV, peers: PeerDirectory, peer: PeerLike): Promise<void> {
@@ -484,32 +522,34 @@ export async function processClose(kv: RoomKV, peers: PeerDirectory, peer: PeerL
   if (!roomCode || !playerId) {
     return
   }
-  const room = await loadRoom(kv, roomCode)
-  if (!room) {
-    return
-  }
-
-  // A diver can hold several live sockets (extra tabs, reconnect races): the
-  // seat — and the host role with it — only leaves with the last one.
-  const stillConnected = peers.list(roomCode).some(other => other.context.playerId === playerId)
-  if (stillConnected || !room.state.divers.some(diver => diver.id === playerId)) {
-    return
-  }
-
-  // Host connection dropped: transfer to the earliest joiner still seated
-  // (AGENTS.md: host migration). The diver stays seated for reconnect.
-  if (room.state.hostId === playerId && room.state.divers.length > 1) {
-    const earliest = room.state.divers.find(diver => diver.id !== playerId)
-    if (earliest) {
-      const action: EngineAction = { type: 'TRANSFER_HOST', playerId: earliest.id }
-      room.state = reduce(room.state, action)
-      await saveRoom(kv, room)
-      broadcastState(peers, roomCode, room.state, action, room.saved ?? null)
+  await withRoomLock(roomCode, async () => {
+    const room = await loadRoom(kv, roomCode)
+    if (!room) {
       return
     }
-  }
 
-  // Presence-only refresh: remaining peers must drop the departed diver from
-  // their online list immediately, not at the next action.
-  broadcastState(peers, roomCode, room.state, null, room.saved ?? null)
+    // A diver can hold several live sockets (extra tabs, reconnect races): the
+    // seat — and the host role with it — only leaves with the last one.
+    const stillConnected = peers.list(roomCode).some(other => other.context.playerId === playerId)
+    if (stillConnected || !room.state.divers.some(diver => diver.id === playerId)) {
+      return
+    }
+
+    // Host connection dropped: transfer to the earliest joiner still seated
+    // (AGENTS.md: host migration). The diver stays seated for reconnect.
+    if (room.state.hostId === playerId && room.state.divers.length > 1) {
+      const earliest = room.state.divers.find(diver => diver.id !== playerId)
+      if (earliest) {
+        const action: EngineAction = { type: 'TRANSFER_HOST', playerId: earliest.id }
+        room.state = reduce(room.state, action)
+        await saveRoom(kv, room)
+        broadcastState(peers, roomCode, room.state, action, room.saved ?? null)
+        return
+      }
+    }
+
+    // Presence-only refresh: remaining peers must drop the departed diver from
+    // their online list immediately, not at the next action.
+    broadcastState(peers, roomCode, room.state, null, room.saved ?? null)
+  })
 }
