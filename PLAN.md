@@ -510,9 +510,12 @@ still randomizes within a multi-front order but never leaves it (a single-front 
 and its front reroll is refused — "Only one front on this Major Order"). A chosen order draws **no
 strain** (the front is the order). The commitment is re-chosen each operation and kept on a failure
 restart with the locked front; it lives on `DiveState.majorOrder`
-(`{ fronts, title?, planets?, expiresAt? }`, metadata pass-through for the panel). The carrot is
-`MAJOR_ORDER_REROLL_BONUS` (1): completing an MO-aligned operation banks an extra reroll token for the
-next operation — Valor, tiers and rewards are untouched (principle 1). `SET_MAJOR_ORDER` added to the
+(`{ fronts, live?, title?, planets?, expiresAt? }`, metadata pass-through for the panel). The carrot
+is `MAJOR_ORDER_REROLL_BONUS` (1): completing a **live** MO-aligned operation banks an extra reroll
+token for the next operation and carries `MAJOR_ORDER_RISK` (2) team risk on every mission — the
+strain Valor the order replaces. A **manual** front pick (the optional override when no live order
+is running) pins the front but banks nothing; with no order the operation runs the standard random
+draw. Tiers and rewards are untouched (principle 1). `SET_MAJOR_ORDER` added to the
 reducer union, `HOST_ONLY_ACTIONS` and `ENGINE_ACTION_TYPES`; `MajorOrderPicker` renders in the spin
 phase and a Major Order tag rides the WheelPanel front card. `SAVE_SCHEMA_VERSION` 9 → 10
 (`migrateV9toV10` defaults `majorOrder: null`), `ENGINE_VERSION` 17 → 18; goldens unchanged (the

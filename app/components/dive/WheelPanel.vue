@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { FRONTS } from '~~/shared/data/fronts'
 import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
-import { MISFORTUNE_RISK, MAJOR_ORDER_REROLL_BONUS, STRAIN_RISK } from '~~/shared/engine/config'
+import { MISFORTUNE_RISK, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, STRAIN_RISK } from '~~/shared/engine/config'
 import {
   canRerollWheel,
   currentFront,
@@ -402,11 +402,11 @@ function rerollLabel(
             />
           </strong>
           <span
-            v-if="majorOrder"
+            v-if="majorOrder?.live"
             class="mo-tag"
             :title="majorOrder.title ?? undefined"
           >
-            Major Order · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll on completion
+            Major Order · +{{ MAJOR_ORDER_RISK }} risk · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll
           </span>
           <div
             v-if="strain"
@@ -500,11 +500,11 @@ function rerollLabel(
         <template v-else-if="state.frontId">
           <strong class="misfortune-name">{{ front?.displayName }}</strong>
           <span
-            v-if="majorOrder"
+            v-if="majorOrder?.live"
             class="mo-tag"
             :title="majorOrder.title ?? undefined"
           >
-            Major Order · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll on completion
+            Major Order · +{{ MAJOR_ORDER_RISK }} risk · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll
           </span>
           <div
             v-if="strain"

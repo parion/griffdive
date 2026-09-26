@@ -62,6 +62,12 @@ export const ACTION_LOG_CAP = 200
 // stays the only thing that buys rarity.
 export const MAJOR_ORDER_REROLL_BONUS = 1
 
+// A live Major Order is an operation-long team-risk commitment: it pins the
+// front and replaces the strain, so it carries a fixed risk on every mission —
+// the Valor a squad gives up by not drawing a strain. Only a live order pays it;
+// a manual front pick is a preference with no risk and no carrot.
+export const MAJOR_ORDER_RISK = 2
+
 // Team performance is felt at every star: 1★=1, 2★=2, 3★=3, 4★=4, 5★=4 (cap).
 export const STARS_TO_OPTIONS = [1, 1, 2, 3, 4, 4] as const
 export const MAX_OPTIONS = 4

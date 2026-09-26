@@ -73,6 +73,10 @@ export interface MajorOrderPlanet {
 
 export interface MajorOrderSelection {
   fronts: FrontId[]
+  // True only for a selection that came from the live war API. The reroll-token
+  // carrot pays for playing the actual order, so a manual front pick (live
+  // unset) pins the front but banks nothing.
+  live?: boolean
   title?: string
   planets?: MajorOrderPlanet[]
   expiresAt?: string

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { FRONTS } from '~~/shared/data/fronts'
+import { MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK } from '~~/shared/engine/config'
 import type { MajorOrderSelection } from '~~/shared/engine/types'
 
 const props = withDefaults(defineProps<{
@@ -129,6 +130,12 @@ const frontsLabel = computed(() =>
     >
       Play this order — {{ frontsLabel }}
     </button>
+    <p
+      v-if="playable"
+      class="mo-play-note muted small"
+    >
+      +{{ MAJOR_ORDER_RISK }} team risk · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll token on completion
+    </p>
   </article>
 </template>
 
@@ -275,6 +282,9 @@ const frontsLabel = computed(() =>
   text-shadow: 0 1px 0 color-mix(in srgb, #ffffff 35%, transparent);
 }
 .mo-play {
+  margin: 0 0.75rem 0.35rem;
+}
+.mo-play-note {
   margin: 0 0.75rem 0.75rem;
 }
 </style>

@@ -250,6 +250,11 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         return commit(state, { majorOrder: null }, action)
       }
       const selection: MajorOrderSelection = { fronts }
+      // Only a live-war selection earns the completion token; a manual front
+      // pick pins the front but banks nothing.
+      if (action.order.live === true) {
+        selection.live = true
+      }
       // Display metadata is pass-through (Phase B fills it from the war API):
       // sanitized to bounded strings so a hostile client can't bloat the room.
       if (typeof action.order.title === 'string' && action.order.title.trim()) {
@@ -576,7 +581,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           difficulty: nextDifficulty,
           missionInOperation: 1,
           rerollTokens: REROLL_TOKENS_PER_OPERATION
-            + (state.majorOrder ? MAJOR_ORDER_REROLL_BONUS : 0),
+            + (state.majorOrder?.live ? MAJOR_ORDER_REROLL_BONUS : 0),
           ...resetForNextMission(state),
           wheel: null,
           frontId: null,

@@ -213,8 +213,14 @@ single-front order does, and its front reroll is refused. A chosen order draws *
 front *is* the order, so there is no random subfaction and no operation-long subfaction risk. The
 front locks in for the operation exactly as before, and the commitment is re-chosen each operation
 (a failure restart keeps it with the locked front, like the front itself). Playing toward an MO is
-an **opt-in carrot, never a tax**: an MO-aligned operation banks `MAJOR_ORDER_REROLL_BONUS` (1)
-extra reroll token when it completes, so the next operation starts with two. Valor, tiers and
+an **opt-in carrot, never a tax**: a **live** MO-aligned operation banks `MAJOR_ORDER_REROLL_BONUS`
+(1) extra reroll token when it completes, so the next operation starts with two, and carries a fixed
+`MAJOR_ORDER_RISK` (2) team risk on **every mission** of the operation — the operation-long risk the
+strain would otherwise have supplied, so a live MO does not forfeit the operation's Valor potential.
+A **manual** front pick — the picker's optional override when no live order is running — pins the
+front but carries no risk and no carrot, so only playing the actual war objective pays. When no order
+is running the operation simply follows the standard process (the wheel draws the front, and a strain
+with it); the picker never directs the squad to pick one. Tiers and
 rewards are untouched — risk stays the only thing that buys rarity (principle 1: risk is chosen).
 
 The MO's front(s) and display metadata (`title`, `planets` — index, name, front and current
@@ -336,7 +342,8 @@ mission, and land in the action log for audit.
 ```
 Valor         = teamRisk + pactRisk + performance
 teamRisk      = accepted misfortune (0–5) plus the accepted strain (2–3,
-                felt on every mission of its operation); 0 when declined
+                felt on every mission of its operation) or the live Major
+                Order commitment (2, same scope); 0 when declined/unset
 pactRisk      = sum of the diver's picked pacts (max 8: the rolled
                 2–3-pact offer bounds what a diver can stack)
 performance   = team performance from the mission just reported, squad-level

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS, ITEMS_BY_ID } from '../data/catalog'
 import type { FrontId } from '../data/fronts'
 import { PACTS } from '../data/pacts'
-import { BONUS_STATS, MAJOR_ORDER_REROLL_BONUS, MISFORTUNE_RISK, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor } from './config'
+import { BONUS_STATS, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, MISFORTUNE_RISK, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor } from './config'
 import { startingItemIds } from './progression'
 import { DIVERS_CHOICE_OPTION_ID, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
@@ -1378,6 +1378,13 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
     return reduce(freshState(), { type: 'SET_MAJOR_ORDER', order: { fronts: [front] } })
   }
 
+  function withLiveOrder(front: FrontId): DiveState {
+    return reduce(freshState(), {
+      type: 'SET_MAJOR_ORDER',
+      order: { fronts: [front], live: true },
+    })
+  }
+
   function playOperation(state: DiveState, seeds: number[]): DiveState {
     let next = state
     for (const seed of seeds) {
@@ -1418,6 +1425,14 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
     expect(decided.phase).toBe('pacts')
   })
 
+  it('adds its team risk only for a live order', () => {
+    const live = reduce(withLiveOrder('terminids'), { type: 'SPIN_WHEEL', seed: 5 })
+    expect(teamRiskOf(live)).toBe(MAJOR_ORDER_RISK)
+    // A manual front pick pins the front but carries no risk (and no carrot).
+    const manual = reduce(withOrder('terminids'), { type: 'SPIN_WHEEL', seed: 5 })
+    expect(teamRiskOf(manual)).toBe(0)
+  })
+
   it('refuses a Major Order once the front is drawn', () => {
     const spun = spunState(42)
     expect(reduce(spun, { type: 'SET_MAJOR_ORDER', order: { fronts: ['terminids'] } })).toBe(spun)
@@ -1447,12 +1462,18 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
     expect(canRerollWheel(wideSpun, 'front').allowed).toBe(true)
   })
 
-  it('banks an extra reroll token when an order operation completes, then clears', () => {
-    const completed = playOperation(withOrder('terminids'), [11, 22])
+  it('banks an extra reroll token when a live order operation completes, then clears', () => {
+    const completed = playOperation(withLiveOrder('terminids'), [11, 22])
     expect(completed.difficulty).toBe(4)
     expect(completed.missionInOperation).toBe(1)
     expect(completed.rerollTokens).toBe(1 + MAJOR_ORDER_REROLL_BONUS)
     expect(completed.majorOrder).toBeNull()
+  })
+
+  it('banks no token for a manual front pick', () => {
+    const completed = playOperation(withOrder('terminids'), [11, 22])
+    expect(completed.difficulty).toBe(4)
+    expect(completed.rerollTokens).toBe(1)
   })
 
   it('keeps the baseline token count without an order', () => {

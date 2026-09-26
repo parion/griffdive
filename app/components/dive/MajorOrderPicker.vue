@@ -2,7 +2,6 @@
 import { FRONTS } from '~~/shared/data/fronts'
 import type { FrontId } from '~~/shared/data/fronts'
 import { factionImageUrl } from '~~/shared/data/images'
-import { MAJOR_ORDER_REROLL_BONUS } from '~~/shared/engine/config'
 import type { DiveState, MajorOrderSelection } from '~~/shared/engine/types'
 
 // Lives inside the faction card before the roll (the slot the wheel leaves open
@@ -20,6 +19,8 @@ const emit = defineEmits<{
 const { order: suggestion, status, pending: suggestionPending, refresh } = useMajorOrder()
 
 const selected = computed(() => props.state.majorOrder?.fronts ?? [])
+// A pinned front the host picked by hand: it carries no reroll carrot.
+const manual = computed(() => Boolean(props.state.majorOrder) && !props.state.majorOrder?.live)
 
 function isSelected(frontId: FrontId): boolean {
   return selected.value.includes(frontId)
@@ -55,7 +56,9 @@ function playSuggestion(): void {
       v-else
       class="row small muted mo-empty"
     >
-      {{ status === 'none' ? 'No active Major Order' : 'Failed to retrieve active MO' }}
+      {{ status === 'none'
+        ? 'No active Major Order — the wheel draws the front as usual.'
+        : 'Failed to retrieve active MO' }}
       <button
         class="mo-refresh"
         type="button"
@@ -65,6 +68,10 @@ function playSuggestion(): void {
       >
         <IconRefresh />
       </button>
+    </p>
+
+    <p class="muted small mo-pick-label">
+      {{ suggestion ? 'Or pin a front manually' : 'Pin a faction (optional)' }}
     </p>
 
     <div
@@ -112,10 +119,10 @@ function playSuggestion(): void {
       The host sets the Major Order before the first spin.
     </p>
     <p
-      v-else
+      v-else-if="manual"
       class="muted small mo-hint"
     >
-      Complete an ordered operation for +{{ MAJOR_ORDER_REROLL_BONUS }} reroll token.
+      Manual front pick — no reroll bonus.
     </p>
   </div>
 </template>
@@ -158,5 +165,6 @@ function playSuggestion(): void {
   background: color-mix(in srgb, var(--mo-accent, var(--gold)) 14%, transparent);
 }
 .mo-option:disabled { opacity: 0.55; cursor: default; }
+.mo-pick-label { margin: 0; }
 .mo-hint { margin: 0; }
 </style>

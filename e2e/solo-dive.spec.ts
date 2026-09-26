@@ -98,28 +98,63 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByText('Rewards banned')).toBeVisible()
 })
 
-test('a Major Order pins the operation front and tags the card', async ({ page }) => {
+test('a live Major Order renders the panel, pins the front, and tags the card', async ({ page }) => {
+  // Deterministic live order: the real war may have none running.
+  await page.route('**/api/war/major-order', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      status: 'active',
+      order: {
+        fronts: ['automatons'],
+        live: true,
+        title: 'Liberate the designated planets.',
+        planets: [{ index: 198, name: 'Marfark', front: 'automatons', liberation: 89.7 }],
+        expiresAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
+      },
+    }),
+  }))
+
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
   await page.getByRole('button', { name: 'Start solo crusade' }).click()
   await dismissWarbondIntro(page)
 
-  // The host can pin the operation to the live Major Order's front before the
-  // first spin; the picker starts on "No order".
-  const picker = page.getByRole('group', { name: 'Major Order front' })
-  await expect(picker).toBeVisible()
-  await expect(picker.getByRole('button', { name: 'No order' })).toHaveAttribute('aria-pressed', 'true')
-  await picker.getByRole('button', { name: 'Automatons', exact: true }).click()
-  await expect(picker.getByRole('button', { name: 'Automatons', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  // The in-game-style panel renders in the faction card's pre-roll slot.
+  await expect(page.getByRole('heading', { name: 'Major Order' })).toBeVisible()
+  await expect(page.getByText('Marfark')).toBeVisible()
+  await page.getByRole('button', { name: /Play this order/ }).click()
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
-
-  // The draw is pinned: the front card lands on the ordered front, and the MO
-  // tag rides it for the operation. The picker is gone once the front is drawn.
   const frontCard = page.locator('.front-card')
   await expect(frontCard.getByText('Automatons')).toBeVisible()
+  // A live order tags the front card for the operation.
   await expect(frontCard.getByText(/Major Order/)).toBeVisible()
-  await expect(picker).toBeHidden()
+})
+
+test('a manual faction pick pins the front without a Major Order tag', async ({ page }) => {
+  // Force the no-order state so the manual prompt is deterministic.
+  await page.route('**/api/war/major-order', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ status: 'none', order: null }),
+  }))
+
+  await page.goto('/')
+  await page.getByLabel('Diver name').fill('Griffon')
+  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await dismissWarbondIntro(page)
+
+  await expect(page.getByText(/No active Major Order/)).toBeVisible()
+  const picker = page.getByRole('group', { name: 'Major Order front' })
+  await picker.getByRole('button', { name: 'Automatons', exact: true }).click()
+  await expect(page.getByText('Manual front pick — no reroll bonus.')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Spin', exact: true }).click()
+  const frontCard = page.locator('.front-card')
+  await expect(frontCard.getByText('Automatons')).toBeVisible()
+  // Manual picks carry no carrot, so no Major Order tag.
+  await expect(frontCard.getByText(/Major Order/)).toHaveCount(0)
 })
 
 test('a failed mission labels the operation failed and restarts it', async ({ page }) => {

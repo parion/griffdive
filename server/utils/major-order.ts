@@ -117,6 +117,7 @@ export function normalizeMajorOrder(assignments: unknown, campaign: unknown): Ma
     || 'Major Order'
   return {
     fronts,
+    live: true,
     title: title.slice(0, 120),
     planets: ordered.slice(0, 8),
     expiresAt: typeof assignment.expiration === 'string' ? assignment.expiration : undefined,

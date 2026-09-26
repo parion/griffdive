@@ -7,6 +7,7 @@ import type { Pact } from '../data/pacts'
 import type { Strain } from '../data/strains'
 import type { Item } from '../data/types'
 import {
+  MAJOR_ORDER_RISK,
   MISFORTUNE_RISK,
   OPTIONS_LOST_PER_FAILED_PACT,
   PACT_RISK,
@@ -104,9 +105,11 @@ export function misfortuneStrandedDivers(state: DiveState): DiverState[] {
     !hasLegalLoadout(misfortune.id, [], state.personalInventories[diver.id] ?? []))
 }
 
-// Team risk stacks the per-mission misfortune (when accepted) and the
-// operation-long strain (when accepted): a strain is felt on every mission of
-// its operation, so it compounds over the op's 2–3 missions.
+// Team risk stacks the per-mission misfortune (when accepted), the
+// operation-long strain (when accepted) and the live Major Order commitment:
+// the latter two are felt on every mission of the operation, so they compound
+// over the op's 2–3 missions. A live MO replaces the strain, so its fixed risk
+// is what keeps the operation's Valor potential intact.
 export function teamRiskOf(state: DiveState): number {
   const misfortuneRisk = state.misfortuneAccepted
     ? MISFORTUNE_RISK[currentMisfortune(state)?.id ?? ''] ?? 0
@@ -114,7 +117,8 @@ export function teamRiskOf(state: DiveState): number {
   const strainRisk = state.strainAccepted
     ? STRAIN_RISK[state.strainId ?? ''] ?? 0
     : 0
-  return misfortuneRisk + strainRisk
+  const majorOrderRisk = state.majorOrder?.live ? MAJOR_ORDER_RISK : 0
+  return misfortuneRisk + strainRisk + majorOrderRisk
 }
 
 export interface StrainDecision {

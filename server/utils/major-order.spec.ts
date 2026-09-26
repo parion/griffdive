@@ -76,6 +76,7 @@ describe('resolveMajorOrder (no order vs unavailable)', () => {
     const result = resolveMajorOrder([assignment()], CAMPAIGN)
     expect(result.status).toBe('active')
     expect(result.order?.fronts).toEqual(['automatons'])
+    expect(result.order?.live).toBe(true)
   })
 
   it('reads a malformed payload as unavailable', () => {
