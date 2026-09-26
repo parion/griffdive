@@ -225,10 +225,12 @@ API (Phase B) only fills the host's choice:** a cached server proxy
 (`server/api/war/major-order.get.ts` → `server/utils/major-order.ts`) normalizes the community war
 API — `api.helldivers2.dev/api/v1/assignments` joined to
 `helldiverstrainingmanual.com/api/v1/war/campaign` for planet→faction and liberation — into a
-`MajorOrderSelection` the picker offers as one click (`useMajorOrder`, refetched on mount);
-offline/static builds, a failed fetch, or the `GRIFFDIVE_DISABLE_MO_API=1` kill switch all fall
-back to the manual picker. The proxy caches for 10 minutes, retries once with a 6s timeout, and
-serves its last good order (stale) when a refresh fails — it never caches a failure.
+`MajorOrderSelection` the picker offers as one click (`useMajorOrder`, refetched on mount). The
+chooser renders inside the faction card's pre-roll slot — the front is drawn with the first spin
+anyway, so that space is idle before the roll; the front card then carries the MO tag for the
+operation. Offline/static builds, a failed fetch, or the `GRIFFDIVE_DISABLE_MO_API=1` kill switch
+all fall back to the manual picker. The proxy caches for 10 minutes, retries once with a 6s
+timeout, and serves its last good order (stale) when a refresh fails — it never caches a failure.
 
 ### Team layer — faction strains
 
@@ -557,7 +559,8 @@ app/
                    DivePhaseLobby/DivePhaseWheel/DivePhaseDiving/DivePhaseRewards/
                    DivePhaseForfeit/DivePhaseComplete — one panel per engine phase, each
                    owning its local form state and emitting intents,
-                   WheelPanel, MajorOrderPicker — the pre-spin live MO front commitment,
+                   WheelPanel, MajorOrderPicker — the pre-spin MO chooser, rendered in
+                   the faction card's pre-roll slot,
                    MajorOrderCard — the in-game-style MO panel (emblem, countdown,
                    order overview, planet liberation bars),
                    PactPicker, RewardDraft — the slot-machine reward

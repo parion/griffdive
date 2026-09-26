@@ -71,6 +71,10 @@ const rerollWindow = computed(() =>
   && props.state.wheel !== null
   && !props.state.divers.some(diver => diver.pactsLocked))
 
+// Pre-roll the faction card carries the Major Order chooser: on narrow screens
+// it leads, so the squad picks where to fight before hitting Spin.
+const preRoll = computed(() => !props.state.wheel && !props.state.frontId)
+
 // A squad-binding rule every diver must be able to field: a drawn misfortune
 // that strands a diver below HD2's four required stratagems can't be accepted.
 // The reducer refuses it too — this is the legible half.
@@ -228,7 +232,10 @@ function rerollLabel(
 <template>
   <section class="panel">
     <h2>Wheel of Misfortune</h2>
-    <div class="wheel-result">
+    <div
+      class="wheel-result"
+      :class="{ 'pre-roll': preRoll }"
+    >
       <Motion
         as="div"
         class="wheel-card misfortune"
@@ -529,12 +536,13 @@ function rerollLabel(
             Fixed for the whole operation.
           </p>
         </template>
-        <p
-          v-else
-          class="front-pending muted small"
-        >
-          Drawn with the first spin
-        </p>
+        <template v-else>
+          <slot name="front-before-roll">
+            <p class="front-pending muted small">
+              Drawn with the first spin
+            </p>
+          </slot>
+        </template>
       </Motion>
     </div>
     <div class="row">
@@ -769,6 +777,12 @@ function rerollLabel(
 .wheel-card .row,
 .wheel-card .btn {
   transition: opacity 0.35s var(--ease-out);
+}
+
+@media (max-width: 639px) {
+  /* Pre-roll the faction card holds the Major Order chooser: lead with it so the
+     squad picks where to fight before the Spin button below it. */
+  .wheel-result.pre-roll .front-card { order: -1; }
 }
 
 @media (min-width: 640px) {

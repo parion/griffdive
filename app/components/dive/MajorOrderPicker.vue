@@ -4,6 +4,9 @@ import type { FrontId } from '~~/shared/data/fronts'
 import { MAJOR_ORDER_REROLL_BONUS } from '~~/shared/engine/config'
 import type { DiveState, MajorOrderSelection } from '~~/shared/engine/types'
 
+// Lives inside the faction card before the roll (the slot the wheel leaves open
+// pre-spin). The live order is fetched here; the manual buttons are the offline
+// fallback.
 const props = defineProps<{
   state: DiveState
   canControl: boolean
@@ -13,9 +16,6 @@ const emit = defineEmits<{
   select: [order: MajorOrderSelection | null]
 }>()
 
-// The live war, when the server proxy can reach it. Null offline/static or on a
-// failed fetch — the manual picker is the fallback. Always refetched on mount so
-// a fresh order shows without a full page reload.
 const { order: suggestion, pending: suggestionPending, refresh } = useMajorOrder()
 
 const selected = computed(() => props.state.majorOrder?.fronts ?? [])
@@ -36,15 +36,7 @@ function playSuggestion(): void {
 </script>
 
 <template>
-  <section class="panel mo">
-    <h2>Major Order</h2>
-    <p class="muted small">
-      Fight where the war is: pin this operation to the live Major Order's front.
-      Complete the operation to bank
-      <strong>{{ MAJOR_ORDER_REROLL_BONUS }}</strong>
-      extra reroll token{{ MAJOR_ORDER_REROLL_BONUS === 1 ? '' : 's' }}.
-    </p>
-
+  <div class="mo">
     <MajorOrderCard
       v-if="suggestion"
       :order="suggestion"
@@ -107,11 +99,17 @@ function playSuggestion(): void {
     >
       The host sets the Major Order before the first spin.
     </p>
-  </section>
+    <p
+      v-else
+      class="muted small mo-hint"
+    >
+      Complete an ordered operation for +{{ MAJOR_ORDER_REROLL_BONUS }} reroll token.
+    </p>
+  </div>
 </template>
 
 <style scoped>
-.mo { display: grid; gap: 0.6rem; }
+.mo { display: grid; gap: 0.5rem; }
 .mo-options { flex-wrap: wrap; }
 .mo-option {
   border-color: color-mix(in srgb, var(--mo-accent, var(--border)) 45%, var(--border));
@@ -123,4 +121,5 @@ function playSuggestion(): void {
   background: color-mix(in srgb, var(--mo-accent, var(--gold)) 14%, transparent);
 }
 .mo-option:disabled { opacity: 0.55; cursor: default; }
+.mo-hint { margin: 0; }
 </style>

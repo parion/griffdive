@@ -87,12 +87,6 @@ const coverage = computed<Record<string, string>>(() => {
 </script>
 
 <template>
-  <MajorOrderPicker
-    v-if="state.phase === 'spin' && state.frontId === null"
-    :state="state"
-    :can-control="canControl"
-    @select="emit('setMajorOrder', $event)"
-  />
   <WheelPanel
     :state="state"
     :can-control="canControl"
@@ -100,7 +94,15 @@ const coverage = computed<Record<string, string>>(() => {
     @decide="emit('decide', $event)"
     @decide-strain="emit('decideStrain', $event)"
     @reroll="emit('reroll', $event)"
-  />
+  >
+    <template #front-before-roll>
+      <MajorOrderPicker
+        :state="state"
+        :can-control="canControl"
+        @select="emit('setMajorOrder', $event)"
+      />
+    </template>
+  </WheelPanel>
   <p
     v-if="wheelRange && !state.wheel"
     class="row small muted"
