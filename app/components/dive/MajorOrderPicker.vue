@@ -17,7 +17,7 @@ const emit = defineEmits<{
   select: [order: MajorOrderSelection | null]
 }>()
 
-const { order: suggestion, pending: suggestionPending, refresh } = useMajorOrder()
+const { order: suggestion, status, pending: suggestionPending, refresh } = useMajorOrder()
 
 const selected = computed(() => props.state.majorOrder?.fronts ?? [])
 
@@ -55,7 +55,7 @@ function playSuggestion(): void {
       v-else
       class="row small muted mo-empty"
     >
-      Failed to retrieve active MO
+      {{ status === 'none' ? 'No active Major Order' : 'Failed to retrieve active MO' }}
       <button
         class="mo-refresh"
         type="button"

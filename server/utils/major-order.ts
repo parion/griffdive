@@ -138,11 +138,31 @@ async function fetchJson(url: string, headers: Record<string, string>): Promise<
   throw lastError
 }
 
-// Best-effort live fetch. A kill switch (`GRIFFDIVE_DISABLE_MO_API=1`) resolves
-// to null; a transport failure throws so the route can fall back to its cache.
-export async function fetchMajorOrder(): Promise<MajorOrderSelection | null> {
+// The three outcomes the picker needs to tell apart: a live order, a clean "no
+// active order" (the API answered with an empty list), or a failed/garbled
+// response. Kept separate from normalizeMajorOrder so the distinction is
+// testable without a network call.
+export type MajorOrderFetch
+  = | { status: 'active', order: MajorOrderSelection }
+    | { status: 'none', order: null }
+    | { status: 'unavailable', order: null }
+
+export function resolveMajorOrder(assignments: unknown, campaign: unknown): MajorOrderFetch {
+  if (!Array.isArray(assignments)) {
+    return { status: 'unavailable', order: null }
+  }
+  if (assignments.length === 0) {
+    return { status: 'none', order: null }
+  }
+  const order = normalizeMajorOrder(assignments, campaign)
+  return order ? { status: 'active', order } : { status: 'unavailable', order: null }
+}
+
+// Best-effort live fetch. A kill switch (`GRIFFDIVE_DISABLE_MO_API=1`) reads as
+// unavailable; a transport failure throws so the route can fall back to cache.
+export async function fetchMajorOrder(): Promise<MajorOrderFetch> {
   if (process.env.GRIFFDIVE_DISABLE_MO_API === '1') {
-    return null
+    return { status: 'unavailable', order: null }
   }
   const headers = {
     'X-Super-Client': 'griffdive',
@@ -153,5 +173,5 @@ export async function fetchMajorOrder(): Promise<MajorOrderSelection | null> {
     fetchJson(ASSIGNMENTS_URL, headers),
     fetchJson(CAMPAIGN_URL, { Accept: 'application/json' }),
   ])
-  return normalizeMajorOrder(assignments, campaign)
+  return resolveMajorOrder(assignments, campaign)
 }

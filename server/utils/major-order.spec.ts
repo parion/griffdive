@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeMajorOrder } from './major-order'
+import { normalizeMajorOrder, resolveMajorOrder } from './major-order'
 
 function assignment(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -64,5 +64,26 @@ describe('normalizeMajorOrder', () => {
   it('ignores unknown factions', () => {
     const unknown = [{ planetIndex: 198, name: 'Marfark', faction: 'Humans', percentage: 5 }]
     expect(normalizeMajorOrder([assignment()], unknown)).toBeNull()
+  })
+})
+
+describe('resolveMajorOrder (no order vs unavailable)', () => {
+  it('reads an empty assignment list as a clean no-order', () => {
+    expect(resolveMajorOrder([], CAMPAIGN)).toEqual({ status: 'none', order: null })
+  })
+
+  it('reads a resolvable assignment as active', () => {
+    const result = resolveMajorOrder([assignment()], CAMPAIGN)
+    expect(result.status).toBe('active')
+    expect(result.order?.fronts).toEqual(['automatons'])
+  })
+
+  it('reads a malformed payload as unavailable', () => {
+    expect(resolveMajorOrder(null, CAMPAIGN).status).toBe('unavailable')
+    expect(resolveMajorOrder({}, CAMPAIGN).status).toBe('unavailable')
+  })
+
+  it('reads an assignment whose planets do not resolve as unavailable', () => {
+    expect(resolveMajorOrder([assignment()], []).status).toBe('unavailable')
   })
 })

@@ -1,11 +1,20 @@
 import type { MajorOrderSelection } from '~~/shared/engine/types'
 
+// 'active' has an order; 'none' is a clean empty response (no MO running right
+// now); 'unavailable' is a failed or unreadable fetch.
+export type MajorOrderStatus = 'active' | 'none' | 'unavailable'
+
+export interface MajorOrderResponse {
+  order: MajorOrderSelection | null
+  status: MajorOrderStatus
+}
+
 // The live Major Order, offered to the host's picker. The server proxies and
 // caches the fan war API (server/api/war/major-order.get.ts); a failed fetch,
-// the kill switch, or a static build simply resolves to null and the manual
+// the kill switch, or a static build resolves to 'unavailable' and the manual
 // picker stands alone. Never fetched inside the engine — this is presentation.
 export function useMajorOrder() {
-  const { data, pending, error, refresh } = useFetch<{ order: MajorOrderSelection | null }>(
+  const { data, pending, error, refresh } = useFetch<MajorOrderResponse>(
     '/api/war/major-order',
     {
       key: 'major-order',
@@ -14,9 +23,10 @@ export function useMajorOrder() {
       // on an earlier mount would hide the order for the rest of the session
       // (the "only shows up on a full refresh" bug). Always fetch on mount.
       getCachedData: () => undefined,
-      default: () => ({ order: null }),
+      default: () => ({ order: null, status: 'unavailable' as const }),
     },
   )
   const order = computed(() => data.value?.order ?? null)
-  return { order, pending, error, refresh }
+  const status = computed<MajorOrderStatus>(() => data.value?.status ?? 'unavailable')
+  return { order, status, pending, error, refresh }
 }

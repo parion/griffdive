@@ -520,9 +520,11 @@ scripted crusade sets no MO). Covered by reducer tests (front pin across seeds, 
 unknown/empty normalization, single-front reroll refusal, bonus token + clear, failure-restart
 retention), `deriveFront` pool tests, the v9→v10 migration test, and `majorOrderFronts`.
 **Phase B (live API) also landed:** `server/api/war/major-order.get.ts` (10-minute cache, retries
-once with a 6s timeout, serves its last good order when a refresh fails, never caches a failure) →
-`server/utils/major-order.ts` (`normalizeMajorOrder`, pure + unit-tested) normalizes
-`api.helldivers2.dev/api/v1/assignments` joined to
+once with a 6s timeout, serves its last good order when a refresh fails, never caches a failure,
+and answers `{ order, status }` — `active` / `none` / `unavailable` so an empty response reads as
+"No active Major Order" and only a real failure reads as "Failed to retrieve") →
+`server/utils/major-order.ts` (`normalizeMajorOrder` + `resolveMajorOrder`, pure + unit-tested)
+normalizes `api.helldivers2.dev/api/v1/assignments` joined to
 `helldiverstrainingmanual.com/api/v1/war/campaign` for planet→faction + liberation into a
 `MajorOrderSelection`; `useMajorOrder` (refetched on mount, no cached null) feeds the picker, and
 `MajorOrderCard` renders the in-game-style panel (emblem, "Ends in" countdown, briefing, Order

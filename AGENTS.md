@@ -230,7 +230,10 @@ chooser renders inside the faction card's pre-roll slot — the front is drawn w
 anyway, so that space is idle before the roll; the front card then carries the MO tag for the
 operation. Offline/static builds, a failed fetch, or the `GRIFFDIVE_DISABLE_MO_API=1` kill switch
 all fall back to the manual picker. The proxy caches for 10 minutes, retries once with a 6s
-timeout, and serves its last good order (stale) when a refresh fails — it never caches a failure.
+timeout, and serves its last good order (stale) when a refresh fails — it never caches a failure. It
+answers `{ order, status }` — `active`, `none` (the API replied with an empty list), or
+`unavailable` (a failed or garbled fetch) — so the picker can say "No active Major Order" apart from
+"Failed to retrieve active MO".
 
 ### Team layer — faction strains
 
