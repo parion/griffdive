@@ -22,9 +22,11 @@ reconnection — verified by a live two-peer smoke test and the Playwright E2E s
 two-browser room sync, Codex slide-over, Guide slide-over,
 PWA affordances) against the production build. Mid-crusade catch-up (Field Promotion + legacy caches, `LEAVE_DIVE`)
 has landed, as has the Phase 4 PWA layer (installable manifest, generated icons, Workbox service
-worker with an offline shell + on-demand catalog art) and the operation-long **faction strains**
-(N2: optional, accept/decline, compounding team risk). Remaining Phase 4 polish is next. **Alpha
-has landed:** the save schema is frozen at v9 and the migration chain is open (see Save model). See
+worker with an offline shell + on-demand catalog art), the operation-long **faction strains**
+(N2: optional, accept/decline, compounding team risk) and the operation-long **Major Orders**
+(host-set front commitment, +1 reroll token on completion — manual picker plus the live war API).
+Remaining Phase 4 polish is next. **Alpha
+has landed:** the save schema is frozen at v10 and the migration chain is open (see Save model). See
 [Roadmap](#roadmap).
 
 ---
@@ -92,7 +94,8 @@ operation**, with the operation's first spin, and persists across its missions �
 restart keeps it. Every mission begins with a fresh misfortune draw. Per mission:
 1. **Spin** — the squad spins the Wheel of Misfortune: one **misfortune** (team-wide restriction)
    for this mission; the operation's first spin also draws the **front** (Terminids / Automatons /
-   Illuminate) and its **strain** (an optional subfaction).
+   Illuminate) and its **strain** (an optional subfaction). Before the operation's first spin the
+   host may set the **Major Order**, pinning the front draw to it — see Operation layer.
 2. **Decide** — before any pact exists, the squad (host executes, IRL voice vote) **accepts or
    declines** the drawn misfortune. Declining runs a zero-team-risk dive; accepting applies the
    misfortune's **team risk** (1–5) to every diver's Valor for this mission. A reroll redraws and
@@ -183,18 +186,60 @@ zero-kill squad is forced into genuine support builds.
 
 **Rerolls:** rerolling a wheel result is free if the squad already completed that exact
 (misfortune × front × strain) combo earlier in this crusade (the video's overrule rule). Otherwise
-the squad spends a reroll token — 1 token per operation, spendable on any wheel result. Never
+the squad spends a reroll token — 1 token per operation (`REROLL_TOKENS_PER_OPERATION`), plus
+`MAJOR_ORDER_REROLL_BONUS` (1) banked by completing a Major Order operation, spendable on any wheel
+result. Never
 rerollable into an outcome the pool doesn't allow at the current difficulty, and never into the
 result it would replace — a reroll must actually move (`REROLL_WHEEL` refuses a same-result seed;
 only the immediately replaced result is excluded, not every prior draw this window). **The front
 and its strain lock in for the whole operation**: they can only be rerolled during the operation's
 first mission decision window (`missionInOperation === 1`, enforced in the reducer and
 `canRerollWheel`); a front reroll redraws the strain with it, and a strain reroll needs at least
-two eligible subfactions on that front. Misfortune rerolls stay available in any decision or pact
-window (until the first pact lock).
+two eligible subfactions on that front. A **Major Order** that pins a single front leaves nothing
+to reroll into, so the front reroll is refused ("Only one front on this Major Order"). Misfortune
+rerolls stay available in any decision or pact window (until the first pact lock).
 
 **Fronts:** the front is drawn with the operation's first spin (one per operation) and drives combo
-tracking and its strain roster. It exists for flavor and the reroll economy.
+tracking and its strain roster. It exists for flavor and the reroll economy. A **Major Order**
+narrows that draw to the live war's front(s) — see Operation layer.
+
+### Operation layer — Major Orders
+
+Griffdive tracks the live Helldivers 2 **Major Order** without ever fetching from the engine. The
+host sets the operation's MO before its first spin (`SET_MAJOR_ORDER`, host-only; valid only in the
+`spin` phase while `frontId === null`): it **pins the operation's front draw** to the MO's
+front(s). The spin still randomizes within them, so a multi-front order never locks one front; a
+single-front order does, and its front reroll is refused. A chosen order draws **no strain** — the
+front *is* the order, so there is no random subfaction and no operation-long subfaction risk. The
+front locks in for the operation exactly as before, and the commitment is re-chosen each operation
+(a failure restart keeps it with the locked front, like the front itself). Playing toward an MO is
+an **opt-in carrot, never a tax**: a **live** MO-aligned operation banks `MAJOR_ORDER_REROLL_BONUS`
+(1) extra reroll token when it completes, so the next operation starts with two, and carries a fixed
+`MAJOR_ORDER_RISK` (2) team risk on **every mission** of the operation — the operation-long risk the
+strain would otherwise have supplied, so a live MO does not forfeit the operation's Valor potential.
+A **manual** front pick — the picker's optional override when no live order is running — pins the
+front but carries no risk and no carrot, so only playing the actual war objective pays. When no order
+is running the operation simply follows the standard process (the wheel draws the front, and a strain
+with it); the picker never directs the squad to pick one. Tiers and
+rewards are untouched — risk stays the only thing that buys rarity (principle 1: risk is chosen).
+
+The MO's front(s) and display metadata (`title`, `planets` — index, name, front and current
+liberation % — and `expiresAt`) live on `state.majorOrder`; the metadata is pass-through for the
+in-game-style panel (`MajorOrderCard`) and syncs with the snapshot. **The
+engine is pure** — it consumes a front list it was handed and never knows about HTTP. **The live
+API (Phase B) only fills the host's choice:** a cached server proxy
+(`server/api/war/major-order.get.ts` → `server/utils/major-order.ts`) normalizes the community war
+API — `api.helldivers2.dev/api/v1/assignments` joined to
+`helldiverstrainingmanual.com/api/v1/war/campaign` for planet→faction and liberation — into a
+`MajorOrderSelection` the picker offers as one click (`useMajorOrder`, refetched on mount). The
+chooser renders inside the faction card's pre-roll slot — the front is drawn with the first spin
+anyway, so that space is idle before the roll; the front card then carries the MO tag for the
+operation. Offline/static builds, a failed fetch, or the `GRIFFDIVE_DISABLE_MO_API=1` kill switch
+all fall back to the manual picker. The proxy caches for 10 minutes, retries once with a 6s
+timeout, and serves its last good order (stale) when a refresh fails — it never caches a failure. It
+answers `{ order, status }` — `active`, `none` (the API replied with an empty list), or
+`unavailable` (a failed or garbled fetch) — so the picker can say "No active Major Order" apart from
+"Failed to retrieve active MO".
 
 ### Team layer — faction strains
 
@@ -297,7 +342,8 @@ mission, and land in the action log for audit.
 ```
 Valor         = teamRisk + pactRisk + performance
 teamRisk      = accepted misfortune (0–5) plus the accepted strain (2–3,
-                felt on every mission of its operation); 0 when declined
+                felt on every mission of its operation) or the live Major
+                Order commitment (2, same scope); 0 when declined/unset
 pactRisk      = sum of the diver's picked pacts (max 8: the rolled
                 2–3-pact offer bounds what a diver can stack)
 performance   = team performance from the mission just reported, squad-level
@@ -493,10 +539,11 @@ schema is frozen and saves migrate.** From the alpha release (save schema v8) th
 every later breaking change bumps `SAVE_SCHEMA_VERSION` and adds a version-gated migration step, or
 is reverted. `migrateV7toV8` is the alpha baseline — it defaults the fields whose shapes landed
 during pre-alpha (Field Promotion bookkeeping, failed-pact marks, reward tokens, bans, bonus
-honors); `migrateV8toV9` adds the strain fields and widens legacy combo keys. Normalization drops
+honors); `migrateV8toV9` adds the strain fields and widens legacy combo keys; `migrateV9toV10`
+adds the Major Order commitment (`majorOrder: null`). Normalization drops
 only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
-`achieved` flag, `frontId`, `strainId`, inventories, per-diver warbond declarations,
+`achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, inventories, per-diver warbond declarations,
 `completedCombos` (misfortune × front × strain), reroll tokens, action log (capped), RNG seed
 history, legacy caches parked by departed divers, per-diver catch-up bookkeeping.
 
@@ -522,7 +569,11 @@ app/
                    DivePhaseLobby/DivePhaseWheel/DivePhaseDiving/DivePhaseRewards/
                    DivePhaseForfeit/DivePhaseComplete — one panel per engine phase, each
                    owning its local form state and emitting intents,
-                   WheelPanel, PactPicker, RewardDraft — the slot-machine reward
+                   WheelPanel, MajorOrderPicker — the pre-spin MO chooser, rendered in
+                   the faction card's pre-roll slot,
+                   MajorOrderCard — the in-game-style MO panel (emblem, countdown,
+                   order overview, planet liberation bars),
+                   PactPicker, RewardDraft — the slot-machine reward
                    draft (staggered reels that lock left to right), RewardReel — one
                    rolling reel, ValorMeter — the live Valor gauge
                    and tier-ceiling ladder, BonusCeremony — the end-of-mission stat
@@ -557,6 +608,7 @@ app/
                    warbond declaration shared by the Warbonds drawer, the home setup and every
                    seated dive),
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
+                   useMajorOrder (live war proxy → the picker's suggestion; null offline),
                    useChangelog (GitHub deployments + commits → changelog entries, 10-min cache)
   stores/          session.ts (Pinia: selfId, snapshot, online)
   utils/           seed.ts (client seed generation)
@@ -567,10 +619,13 @@ server/
                    room-cap backstop), room-storage.ts (useStorage('rooms') adapter),
                    peers.ts (process-wide peer directory shared by the WS route and metrics),
                    rate-limit.ts (in-memory sliding-window limiter for joins/actions),
-                   metrics.ts (Prometheus registry: presence gauges + dive counter)
+                   metrics.ts (Prometheus registry: presence gauges + dive counter),
+                   major-order.ts (live war API → MajorOrderSelection; pure normalizer +
+                   best-effort fetch)
   plugins/         metrics.ts (binds the gauges, serves /metrics on internal :9091),
                    room-sweeper.ts (reaps idle rooms every 15 min)
-  api/             rooms/index.post.ts (create), rooms/[code].get.ts (snapshot)
+  api/             rooms/index.post.ts (create), rooms/[code].get.ts (snapshot),
+                   war/major-order.get.ts (cached live MO proxy)
 shared/
   engine/          config.ts, types.ts, reducer.ts, rng.ts, wheel.ts, pacts.ts,
                    rewards.ts, progression.ts, selectors.ts, saves.ts, room.ts
@@ -647,7 +702,7 @@ rooms every 15 min so the `MAX_ROOMS` backstop rarely matters.
 Canonical engine actions (the reducer union; keep names stable):
 
 `START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
-`REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `SET_WARBONDS{playerId,warbondCodes}`
+`SET_MAJOR_ORDER{order}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
 `AWARD_BONUS{playerId}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
@@ -655,7 +710,7 @@ Canonical engine actions (the reducer union; keep names stable):
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
-`ACCEPT_STRAIN`, `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
+`ACCEPT_STRAIN`, `SET_MAJOR_ORDER`, `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are
 self-service.
@@ -852,7 +907,9 @@ Each phase lands shippable. Update AGENTS.md (commands, status) as part of each 
 - **Phase 4 — Polish + deploy (in progress).** Wheel animation juice, reward draft ceremony, theme
   pass, Fly.io deploy + CI/CD (approval-gated batch releases, PR previews, metrics) and PWA
   affordances (`@vite-pwa/nuxt`: installable manifest, generated icons, Workbox service worker with
-  an offline app shell + on-demand catalog art) have landed. Remaining: final polish pass. *Done
+  an offline app shell + on-demand catalog art) have landed, as have **Major Orders** (host-set
+  front commitment + reroll bonus, manual picker plus the live war API; see Operation layer).
+  Remaining: the final polish pass. *Done
   when: production URL serves a full multiplayer dive.*
 - **Phase 5 — Post-v1 backlog.** Specialists (PC parity), tier-maker custom rarity tables, heat
   ladders/bounties (clear risk N to claim N+1), endless mode, accounts + cloud saves, i18n.

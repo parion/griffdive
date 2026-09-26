@@ -95,6 +95,20 @@ const CHECKS = Object.values(ACCOUNTABILITY_LABELS)
     </section>
 
     <section class="guide-note">
+      <h3>Major Orders</h3>
+      <p>
+        Before an operation's first spin the host can pin its front to the live
+        <strong>Major Order</strong>, so the squad fights where the war is. The
+        picker offers the current order when it can reach the war API.
+      </p>
+      <p>
+        It is opt-in: completing an operation played toward the order banks an
+        <strong>extra reroll token</strong>. Valor, tiers and rewards are untouched —
+        risk still buys rarity.
+      </p>
+    </section>
+
+    <section class="guide-note">
       <h3>Where rules are checked</h3>
       <p class="muted small">
         Every misfortune and pact has an observable tell, so the squad can hold each

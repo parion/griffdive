@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { FRONTS } from '~~/shared/data/fronts'
 import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
-import { MISFORTUNE_RISK, STRAIN_RISK } from '~~/shared/engine/config'
+import { MISFORTUNE_RISK, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, STRAIN_RISK } from '~~/shared/engine/config'
 import {
   canRerollWheel,
   currentFront,
@@ -29,6 +29,7 @@ defineEmits<{
 const misfortune = computed(() => currentMisfortune(props.state))
 const front = computed(() => currentFront(props.state))
 const strain = computed(() => currentStrain(props.state))
+const majorOrder = computed(() => props.state.majorOrder)
 const misfortuneReroll = computed(() => canRerollWheel(props.state, 'misfortune'))
 const frontReroll = computed(() => canRerollWheel(props.state, 'front'))
 const strainReroll = computed(() => canRerollWheel(props.state, 'strain'))
@@ -69,6 +70,10 @@ const rerollWindow = computed(() =>
     || props.state.phase === 'pacts')
   && props.state.wheel !== null
   && !props.state.divers.some(diver => diver.pactsLocked))
+
+// Pre-roll the faction card carries the Major Order chooser: on narrow screens
+// it leads, so the squad picks where to fight before hitting Spin.
+const preRoll = computed(() => !props.state.wheel && !props.state.frontId)
 
 // A squad-binding rule every diver must be able to field: a drawn misfortune
 // that strands a diver below HD2's four required stratagems can't be accepted.
@@ -149,6 +154,12 @@ watch(() => props.state.frontId, (id, prev) => {
   if (id === null || misfortuneReelId.value === null) {
     return
   }
+  // A Major Order pins the front: it is known, not drawn — show it settled
+  // instead of rolling through the roster.
+  if (props.state.majorOrder) {
+    frontSettled.value = true
+    return
+  }
   if (prev !== undefined) {
     frontTick++
   }
@@ -221,7 +232,10 @@ function rerollLabel(
 <template>
   <section class="panel">
     <h2>Wheel of Misfortune</h2>
-    <div class="wheel-result">
+    <div
+      class="wheel-result"
+      :class="{ 'pre-roll': preRoll }"
+    >
       <Motion
         as="div"
         class="wheel-card misfortune"
@@ -387,6 +401,13 @@ function rerollLabel(
               @reeling="onFrontReeling"
             />
           </strong>
+          <span
+            v-if="majorOrder?.live"
+            class="mo-tag"
+            :title="majorOrder.title ?? undefined"
+          >
+            Major Order · +{{ MAJOR_ORDER_RISK }} risk · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll
+          </span>
           <div
             v-if="strain"
             class="strain"
@@ -478,6 +499,13 @@ function rerollLabel(
         </template>
         <template v-else-if="state.frontId">
           <strong class="misfortune-name">{{ front?.displayName }}</strong>
+          <span
+            v-if="majorOrder?.live"
+            class="mo-tag"
+            :title="majorOrder.title ?? undefined"
+          >
+            Major Order · +{{ MAJOR_ORDER_RISK }} risk · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll
+          </span>
           <div
             v-if="strain"
             class="strain"
@@ -508,12 +536,13 @@ function rerollLabel(
             Fixed for the whole operation.
           </p>
         </template>
-        <p
-          v-else
-          class="front-pending muted small"
-        >
-          Drawn with the first spin
-        </p>
+        <template v-else>
+          <slot name="front-before-roll">
+            <p class="front-pending muted small">
+              Drawn with the first spin
+            </p>
+          </slot>
+        </template>
       </Motion>
     </div>
     <div class="row">
@@ -540,6 +569,17 @@ function rerollLabel(
 .misfortune-name { font-size: 1.1rem; color: var(--gold); }
 .front-card { position: relative; overflow: hidden; isolation: isolate; }
 .front-card .misfortune-name { color: var(--front-accent, var(--gold)); }
+.mo-tag {
+  justify-self: start;
+  align-self: start;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--front-accent, var(--gold));
+  border: 1px solid color-mix(in srgb, var(--front-accent, var(--gold)) 45%, var(--border));
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
 
 /* The strain is a subfaction of the front: same card, its own divider. */
 .strain {
@@ -737,6 +777,12 @@ function rerollLabel(
 .wheel-card .row,
 .wheel-card .btn {
   transition: opacity 0.35s var(--ease-out);
+}
+
+@media (max-width: 639px) {
+  /* Pre-roll the faction card holds the Major Order chooser: lead with it so the
+     squad picks where to fight before the Spin button below it. */
+  .wheel-result.pre-roll .front-card { order: -1; }
 }
 
 @media (min-width: 640px) {

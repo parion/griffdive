@@ -57,6 +57,31 @@ export interface WheelResult {
   misfortuneId: string
 }
 
+// A Major Order is the live war's operation-long commitment, set by the host
+// before the operation's first spin. It pins the operation's front draw to the
+// MO's front(s) — the squad plays where Super Earth needs them — and banks an
+// extra reroll token when the operation completes. The metadata fields are
+// display-only (Phase B fills them from the war API; manual entry leaves them
+// unset). The engine reads `fronts` alone.
+export interface MajorOrderPlanet {
+  index: number
+  name: string
+  front: FrontId
+  // Liberation progress, 0–100, for the order-overview bar.
+  liberation: number
+}
+
+export interface MajorOrderSelection {
+  fronts: FrontId[]
+  // True only for a selection that came from the live war API. The reroll-token
+  // carrot pays for playing the actual order, so a manual front pick (live
+  // unset) pins the front but banks nothing.
+  live?: boolean
+  title?: string
+  planets?: MajorOrderPlanet[]
+  expiresAt?: string
+}
+
 export interface ItemRef {
   ownerId: string
   itemId: string
@@ -103,6 +128,11 @@ export interface DiveState {
   // `strainAccepted` so the call can be answered before the misfortune without
   // the phase having to carry it.
   strainDecided: boolean
+  // The operation's Major Order commitment, host-set before the first spin: it
+  // pins the front draw to the MO's front(s) for the operation and banks an
+  // extra reroll token on completion. null = no Major Order. Chosen fresh each
+  // operation; a failure restart keeps it with the locked front.
+  majorOrder: MajorOrderSelection | null
   rerollTokens: number
   completedCombos: string[]
   personalInventories: Record<string, string[]>
@@ -126,6 +156,7 @@ export type EngineAction
     | { type: 'SPIN_WHEEL', seed: number }
     | { type: 'ACCEPT_MISFORTUNE', accepted: boolean }
     | { type: 'ACCEPT_STRAIN', accepted: boolean }
+    | { type: 'SET_MAJOR_ORDER', order: MajorOrderSelection | null }
     | { type: 'REROLL_WHEEL', wheel: 'misfortune' | 'front' | 'strain', seed: number }
     | { type: 'SET_PACTS', playerId: string, pactIds: string[] }
     | { type: 'FAIL_PACT', playerId: string, pactId: string }
