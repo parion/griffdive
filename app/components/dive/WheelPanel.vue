@@ -150,6 +150,12 @@ watch(() => props.state.frontId, (id, prev) => {
   if (id === null || misfortuneReelId.value === null) {
     return
   }
+  // A Major Order pins the front: it is known, not drawn — show it settled
+  // instead of rolling through the roster.
+  if (props.state.majorOrder) {
+    frontSettled.value = true
+    return
+  }
   if (prev !== undefined) {
     frontTick++
   }

@@ -1,5 +1,5 @@
 import type { FrontId } from '~~/shared/data/fronts'
-import type { MajorOrderSelection } from '~~/shared/engine/types'
+import type { MajorOrderPlanet, MajorOrderSelection } from '~~/shared/engine/types'
 
 // Live Major Order proxy. The engine never fetches (invariant 1); this server
 // util normalizes the community war API into the same MajorOrderSelection the
@@ -7,13 +7,14 @@ import type { MajorOrderSelection } from '~~/shared/engine/types'
 //
 // Sources (both unofficial, unauthenticated, and best-effort):
 //  - assignments: api.helldivers2.dev — active MO, tasks carry target planets
-//  - campaign: helldiverstrainingmanual.com — active planet index → faction
+//  - campaign: helldiverstrainingmanual.com — active planet index → faction + %
 // The two are joined on the planet index; an MO whose planets aren't active
 // resolves to no front and degrades to the manual picker.
 
 const ASSIGNMENTS_URL = 'https://api.helldivers2.dev/api/v1/assignments'
 const CAMPAIGN_URL = 'https://helldiverstrainingmanual.com/api/v1/war/campaign'
-const FETCH_TIMEOUT_MS = 4000
+const FETCH_TIMEOUT_MS = 6000
+const FETCH_ATTEMPTS = 2
 
 interface RawTask {
   type?: number
@@ -32,6 +33,13 @@ interface RawCampaignPlanet {
   planetIndex?: number
   name?: string
   faction?: string
+  percentage?: number
+}
+
+interface PlanetInfo {
+  name: string
+  front: FrontId
+  liberation: number
 }
 
 const FACTION_TO_FRONT: Readonly<Record<string, FrontId>> = {
@@ -59,15 +67,18 @@ function targetPlanetIndices(assignment: RawAssignment): number[] {
   ))]
 }
 
-function planetIndex(campaign: unknown): Map<number, { name: string, front: FrontId }> {
-  const map = new Map<number, { name: string, front: FrontId }>()
+function planetIndex(campaign: unknown): Map<number, PlanetInfo> {
+  const map = new Map<number, PlanetInfo>()
   if (!Array.isArray(campaign)) {
     return map
   }
   for (const raw of campaign as RawCampaignPlanet[]) {
     const front = FACTION_TO_FRONT[raw.faction?.toLowerCase() ?? '']
     if (typeof raw.planetIndex === 'number' && typeof raw.name === 'string' && front) {
-      map.set(raw.planetIndex, { name: raw.name, front })
+      const liberation = typeof raw.percentage === 'number' && Number.isFinite(raw.percentage)
+        ? Math.min(100, Math.max(0, raw.percentage))
+        : 0
+      map.set(raw.planetIndex, { name: raw.name, front, liberation })
     }
   }
   return map
@@ -82,18 +93,21 @@ export function normalizeMajorOrder(assignments: unknown, campaign: unknown): Ma
   const assignment = assignments[0] as RawAssignment
   const planets = planetIndex(campaign)
   const fronts: FrontId[] = []
-  const planetNames: string[] = []
+  const ordered: MajorOrderPlanet[] = []
   for (const index of targetPlanetIndices(assignment)) {
     const planet = planets.get(index)
-    if (!planet) {
+    if (!planet || ordered.some(entry => entry.index === index)) {
       continue
     }
     if (!fronts.includes(planet.front)) {
       fronts.push(planet.front)
     }
-    if (!planetNames.includes(planet.name)) {
-      planetNames.push(planet.name)
-    }
+    ordered.push({
+      index,
+      name: planet.name,
+      front: planet.front,
+      liberation: planet.liberation,
+    })
   }
   if (fronts.length === 0) {
     return null
@@ -104,13 +118,28 @@ export function normalizeMajorOrder(assignments: unknown, campaign: unknown): Ma
   return {
     fronts,
     title: title.slice(0, 120),
-    planetNames: planetNames.slice(0, 8),
+    planets: ordered.slice(0, 8),
     expiresAt: typeof assignment.expiration === 'string' ? assignment.expiration : undefined,
   }
 }
 
-// Best-effort live fetch. A kill switch (`GRIFFDIVE_DISABLE_MO_API=1`) and a
-// failure both resolve to null so the manual picker always remains available.
+// One JSON fetch with a bounded timeout and a single retry. Throws on failure so
+// the caller can serve its last good snapshot instead of blanking the panel.
+async function fetchJson(url: string, headers: Record<string, string>): Promise<unknown> {
+  let lastError: unknown
+  for (let attempt = 0; attempt < FETCH_ATTEMPTS; attempt++) {
+    try {
+      return await $fetch<unknown>(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+    }
+    catch (error) {
+      lastError = error
+    }
+  }
+  throw lastError
+}
+
+// Best-effort live fetch. A kill switch (`GRIFFDIVE_DISABLE_MO_API=1`) resolves
+// to null; a transport failure throws so the route can fall back to its cache.
 export async function fetchMajorOrder(): Promise<MajorOrderSelection | null> {
   if (process.env.GRIFFDIVE_DISABLE_MO_API === '1') {
     return null
@@ -121,11 +150,8 @@ export async function fetchMajorOrder(): Promise<MajorOrderSelection | null> {
     'Accept': 'application/json',
   }
   const [assignments, campaign] = await Promise.all([
-    $fetch<unknown>(ASSIGNMENTS_URL, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }),
-    $fetch<unknown>(CAMPAIGN_URL, {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    }).catch(() => null),
+    fetchJson(ASSIGNMENTS_URL, headers),
+    fetchJson(CAMPAIGN_URL, { Accept: 'application/json' }),
   ])
   return normalizeMajorOrder(assignments, campaign)
 }

@@ -6,6 +6,9 @@ import { fetchMajorOrder } from '../../utils/major-order'
 const CACHE_TTL_MS = 10 * 60 * 1000
 
 let cache: { at: number, order: MajorOrderSelection | null } | null = null
+// The last non-null order ever fetched: served (stale) when a refresh fails, so
+// a flaky upstream never blanks the panel mid-operation.
+let lastGood: MajorOrderSelection | null = null
 
 export default defineEventHandler(async () => {
   const now = Date.now()
@@ -15,11 +18,14 @@ export default defineEventHandler(async () => {
   try {
     const order = await fetchMajorOrder()
     cache = { at: now, order }
+    if (order) {
+      lastGood = order
+    }
     return { order }
   }
   catch {
-    // Degrade gracefully: a failed fetch is not cached, and the client falls
-    // back to the manual Major Order picker (offline/static builds do too).
-    return { order: null }
+    // Degrade gracefully: a failed fetch is not cached and falls back to the
+    // last good order (or null, which leaves the manual picker).
+    return { order: lastGood }
   }
 })

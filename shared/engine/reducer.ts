@@ -153,13 +153,16 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // Every mission draws its own misfortune; the front and its strain are
       // drawn once per operation, with the first spin, and persist across its
       // missions. A Major Order pins the front pool to the fronts the host set
-      // before this spin.
+      // before this spin — and a chosen order has no random subfaction: the
+      // front is the order, so no strain is drawn (or offered) for it.
       const frontId = state.frontId ?? deriveFront(action.seed, majorOrderFronts(state))
       const drawingOperation = state.frontId === null
       return commit(state, {
         wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed, state.difficulty).id },
         frontId,
-        strainId: state.strainId ?? deriveStrain(action.seed, state.difficulty, frontId)?.id ?? null,
+        strainId: state.majorOrder
+          ? null
+          : state.strainId ?? deriveStrain(action.seed, state.difficulty, frontId)?.id ?? null,
         // The misfortune is a draw, not a verdict — the squad decides before
         // any pact offer exists. A fresh operation reopens the strain decision
         // too (a failure restart has already reset it).
@@ -252,9 +255,20 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (typeof action.order.title === 'string' && action.order.title.trim()) {
         selection.title = action.order.title.trim().slice(0, 120)
       }
-      if (Array.isArray(action.order.planetNames)) {
-        selection.planetNames = action.order.planetNames
-          .filter(name => typeof name === 'string' && name.trim())
+      if (Array.isArray(action.order.planets)) {
+        selection.planets = action.order.planets
+          .filter(planet =>
+            planet
+            && typeof planet.name === 'string'
+            && planet.name.trim().length > 0
+            && Number.isInteger(planet.index)
+            && known.has(planet.front))
+          .map(planet => ({
+            index: planet.index,
+            name: planet.name.trim().slice(0, 60),
+            front: planet.front,
+            liberation: Math.min(100, Math.max(0, Number.isFinite(planet.liberation) ? planet.liberation : 0)),
+          }))
           .slice(0, 8)
       }
       if (typeof action.order.expiresAt === 'string') {
@@ -317,7 +331,10 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         const frontId = deriveFront(action.seed, majorOrderFronts(state))
         return commit(state, {
           frontId,
-          strainId: deriveStrain(action.seed, state.difficulty, frontId)?.id ?? null,
+          // A Major Order front carries no strain; only an unordered front draws one.
+          strainId: state.majorOrder
+            ? null
+            : deriveStrain(action.seed, state.difficulty, frontId)?.id ?? null,
           strainAccepted: false,
           strainDecided: false,
           rerollTokens,

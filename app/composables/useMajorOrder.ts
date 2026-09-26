@@ -10,6 +10,10 @@ export function useMajorOrder() {
     {
       key: 'major-order',
       server: false,
+      // The war API is dynamic, so never reuse a cached payload: a null cached
+      // on an earlier mount would hide the order for the rest of the session
+      // (the "only shows up on a full refresh" bug). Always fetch on mount.
+      getCachedData: () => undefined,
       default: () => ({ order: null }),
     },
   )

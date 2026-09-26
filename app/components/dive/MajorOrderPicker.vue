@@ -14,8 +14,9 @@ const emit = defineEmits<{
 }>()
 
 // The live war, when the server proxy can reach it. Null offline/static or on a
-// failed fetch — the manual picker is the fallback.
-const { order: suggestion, pending: suggestionPending } = useMajorOrder()
+// failed fetch — the manual picker is the fallback. Always refetched on mount so
+// a fresh order shows without a full page reload.
+const { order: suggestion, pending: suggestionPending, refresh } = useMajorOrder()
 
 const selected = computed(() => props.state.majorOrder?.fronts ?? [])
 
@@ -27,15 +28,11 @@ function chooseFront(frontId: FrontId | null): void {
   emit('select', frontId ? { fronts: [frontId] } : null)
 }
 
-const suggestionFronts = computed(() => {
-  const order = suggestion.value
-  if (!order) {
-    return ''
+function playSuggestion(): void {
+  if (suggestion.value) {
+    emit('select', suggestion.value)
   }
-  return order.fronts
-    .map(id => FRONTS.find(front => front.id === id)?.displayName ?? id)
-    .join(' / ')
-})
+}
 </script>
 
 <template>
@@ -47,31 +44,34 @@ const suggestionFronts = computed(() => {
       <strong>{{ MAJOR_ORDER_REROLL_BONUS }}</strong>
       extra reroll token{{ MAJOR_ORDER_REROLL_BONUS === 1 ? '' : 's' }}.
     </p>
-    <div
+
+    <MajorOrderCard
       v-if="suggestion"
-      class="mo-suggestion"
-    >
-      <span class="muted small">Live Major Order</span>
-      <strong class="mo-suggestion-title">{{ suggestion.title }}</strong>
-      <span
-        v-if="suggestion.planetNames?.length"
-        class="muted small"
-      >{{ suggestion.planetNames.join(', ') }}</span>
-      <button
-        class="btn primary"
-        type="button"
-        :disabled="!canControl"
-        @click="emit('select', suggestion)"
-      >
-        Play it — {{ suggestionFronts }}
-      </button>
-    </div>
+      :order="suggestion"
+      playable
+      :can-control="canControl"
+      @play="playSuggestion"
+    />
     <p
-      v-else-if="suggestionPending && canControl"
+      v-else-if="suggestionPending"
       class="muted small"
     >
       Checking the live war…
     </p>
+    <p
+      v-else
+      class="row small muted"
+    >
+      No live order right now.
+      <button
+        class="btn tiny ghost"
+        type="button"
+        @click="refresh()"
+      >
+        Retry
+      </button>
+    </p>
+
     <div
       class="row mo-options"
       role="group"
@@ -111,16 +111,7 @@ const suggestionFronts = computed(() => {
 </template>
 
 <style scoped>
-.mo { display: grid; gap: 0.5rem; }
-.mo-suggestion {
-  display: grid;
-  gap: 0.3rem;
-  padding: 0.6rem;
-  border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--border));
-  border-radius: 8px;
-  background: linear-gradient(165deg, color-mix(in srgb, var(--gold) 10%, transparent), transparent 60%);
-}
-.mo-suggestion-title { color: var(--gold); }
+.mo { display: grid; gap: 0.6rem; }
 .mo-options { flex-wrap: wrap; }
 .mo-option {
   border-color: color-mix(in srgb, var(--mo-accent, var(--border)) 45%, var(--border));

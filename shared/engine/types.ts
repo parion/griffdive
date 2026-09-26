@@ -63,10 +63,18 @@ export interface WheelResult {
 // extra reroll token when the operation completes. The metadata fields are
 // display-only (Phase B fills them from the war API; manual entry leaves them
 // unset). The engine reads `fronts` alone.
+export interface MajorOrderPlanet {
+  index: number
+  name: string
+  front: FrontId
+  // Liberation progress, 0–100, for the order-overview bar.
+  liberation: number
+}
+
 export interface MajorOrderSelection {
   fronts: FrontId[]
   title?: string
-  planetNames?: string[]
+  planets?: MajorOrderPlanet[]
   expiresAt?: string
 }
 

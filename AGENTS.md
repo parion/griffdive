@@ -209,23 +209,26 @@ Griffdive tracks the live Helldivers 2 **Major Order** without ever fetching fro
 host sets the operation's MO before its first spin (`SET_MAJOR_ORDER`, host-only; valid only in the
 `spin` phase while `frontId === null`): it **pins the operation's front draw** to the MO's
 front(s). The spin still randomizes within them, so a multi-front order never locks one front; a
-single-front order does, and its front reroll is refused. The front and its strain then lock in for
-the operation exactly as before, and the commitment is re-chosen each operation (a failure restart
-keeps it with the locked front, like the front itself). Playing toward an MO is an **opt-in
-carrot, never a tax**: an MO-aligned operation banks `MAJOR_ORDER_REROLL_BONUS` (1) extra reroll
-token when it completes, so the next operation starts with two. Valor, tiers and rewards are
-untouched — risk stays the only thing that buys rarity (principle 1: risk is chosen).
+single-front order does, and its front reroll is refused. A chosen order draws **no strain** — the
+front *is* the order, so there is no random subfaction and no operation-long subfaction risk. The
+front locks in for the operation exactly as before, and the commitment is re-chosen each operation
+(a failure restart keeps it with the locked front, like the front itself). Playing toward an MO is
+an **opt-in carrot, never a tax**: an MO-aligned operation banks `MAJOR_ORDER_REROLL_BONUS` (1)
+extra reroll token when it completes, so the next operation starts with two. Valor, tiers and
+rewards are untouched — risk stays the only thing that buys rarity (principle 1: risk is chosen).
 
-The MO's front(s) and display metadata (`title`, `planetNames`, `expiresAt`) live on
-`state.majorOrder`; the metadata is pass-through for the banner and syncs with the snapshot. **The
+The MO's front(s) and display metadata (`title`, `planets` — index, name, front and current
+liberation % — and `expiresAt`) live on `state.majorOrder`; the metadata is pass-through for the
+in-game-style panel (`MajorOrderCard`) and syncs with the snapshot. **The
 engine is pure** — it consumes a front list it was handed and never knows about HTTP. **The live
 API (Phase B) only fills the host's choice:** a cached server proxy
 (`server/api/war/major-order.get.ts` → `server/utils/major-order.ts`) normalizes the community war
 API — `api.helldivers2.dev/api/v1/assignments` joined to
-`helldiverstrainingmanual.com/api/v1/war/campaign` for planet→faction — into a
-`MajorOrderSelection` the picker offers as one click (`useMajorOrder`); offline/static builds, a
-failed fetch, or the `GRIFFDIVE_DISABLE_MO_API=1` kill switch all fall back to the manual picker.
-The proxy caches for 10 minutes and never caches a failure.
+`helldiverstrainingmanual.com/api/v1/war/campaign` for planet→faction and liberation — into a
+`MajorOrderSelection` the picker offers as one click (`useMajorOrder`, refetched on mount);
+offline/static builds, a failed fetch, or the `GRIFFDIVE_DISABLE_MO_API=1` kill switch all fall
+back to the manual picker. The proxy caches for 10 minutes, retries once with a 6s timeout, and
+serves its last good order (stale) when a refresh fails — it never caches a failure.
 
 ### Team layer — faction strains
 
@@ -555,6 +558,8 @@ app/
                    DivePhaseForfeit/DivePhaseComplete — one panel per engine phase, each
                    owning its local form state and emitting intents,
                    WheelPanel, MajorOrderPicker — the pre-spin live MO front commitment,
+                   MajorOrderCard — the in-game-style MO panel (emblem, countdown,
+                   order overview, planet liberation bars),
                    PactPicker, RewardDraft — the slot-machine reward
                    draft (staggered reels that lock left to right), RewardReel — one
                    rolling reel, ValorMeter — the live Valor gauge

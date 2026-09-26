@@ -1408,6 +1408,16 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
     }
   })
 
+  it('draws no strain for a Major Order operation', () => {
+    const spun = reduce(withOrder('terminids'), { type: 'SPIN_WHEEL', seed: 5 })
+    expect(spun.strainId).toBeNull()
+    expect(spun.phase).toBe('decision')
+    // No strain means no strain call: the misfortune decision goes straight to
+    // pacts, and the operation carries no subfaction risk.
+    const decided = reduce(spun, { type: 'ACCEPT_MISFORTUNE', accepted: false })
+    expect(decided.phase).toBe('pacts')
+  })
+
   it('refuses a Major Order once the front is drawn', () => {
     const spun = spunState(42)
     expect(reduce(spun, { type: 'SET_MAJOR_ORDER', order: { fronts: ['terminids'] } })).toBe(spun)

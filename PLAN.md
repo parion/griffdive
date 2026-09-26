@@ -507,9 +507,10 @@ bonus (N40) is the first such source to land.
 Major Order. Before the operation's first spin the host sets `SET_MAJOR_ORDER` (host-only, phase
 `spin`, `frontId === null`) with the MO's front(s): `deriveFront` takes an eligible pool, so the spin
 still randomizes within a multi-front order but never leaves it (a single-front order fixes the draw,
-and its front reroll is refused — "Only one front on this Major Order"). The commitment is re-chosen
-each operation and kept on a failure restart with the locked front; it lives on `DiveState.majorOrder`
-(`{ fronts, title?, planetNames?, expiresAt? }`, metadata pass-through for the banner). The carrot is
+and its front reroll is refused — "Only one front on this Major Order"). A chosen order draws **no
+strain** (the front is the order). The commitment is re-chosen each operation and kept on a failure
+restart with the locked front; it lives on `DiveState.majorOrder`
+(`{ fronts, title?, planets?, expiresAt? }`, metadata pass-through for the panel). The carrot is
 `MAJOR_ORDER_REROLL_BONUS` (1): completing an MO-aligned operation banks an extra reroll token for the
 next operation — Valor, tiers and rewards are untouched (principle 1). `SET_MAJOR_ORDER` added to the
 reducer union, `HOST_ONLY_ACTIONS` and `ENGINE_ACTION_TYPES`; `MajorOrderPicker` renders in the spin
@@ -518,12 +519,15 @@ phase and a Major Order tag rides the WheelPanel front card. `SAVE_SCHEMA_VERSIO
 scripted crusade sets no MO). Covered by reducer tests (front pin across seeds, late-order refusal,
 unknown/empty normalization, single-front reroll refusal, bonus token + clear, failure-restart
 retention), `deriveFront` pool tests, the v9→v10 migration test, and `majorOrderFronts`.
-**Phase B (live API) also landed:** `server/api/war/major-order.get.ts` (10-minute cache, never
-caches a failure) → `server/utils/major-order.ts` (`normalizeMajorOrder`, pure + unit-tested)
-normalizes `api.helldivers2.dev/api/v1/assignments` joined to
-`helldiverstrainingmanual.com/api/v1/war/campaign` for planet→faction into a `MajorOrderSelection`;
-`useMajorOrder` feeds the picker's one-click "Play it" suggestion. Offline/static builds, a failed
-fetch, or `GRIFFDIVE_DISABLE_MO_API=1` all fall back to the manual picker. Covered by
+**Phase B (live API) also landed:** `server/api/war/major-order.get.ts` (10-minute cache, retries
+once with a 6s timeout, serves its last good order when a refresh fails, never caches a failure) →
+`server/utils/major-order.ts` (`normalizeMajorOrder`, pure + unit-tested) normalizes
+`api.helldivers2.dev/api/v1/assignments` joined to
+`helldiverstrainingmanual.com/api/v1/war/campaign` for planet→faction + liberation into a
+`MajorOrderSelection`; `useMajorOrder` (refetched on mount, no cached null) feeds the picker, and
+`MajorOrderCard` renders the in-game-style panel (emblem, "Ends in" countdown, briefing, Order
+overview, per-planet liberation bars). Offline/static builds, a failed fetch, or
+`GRIFFDIVE_DISABLE_MO_API=1` all fall back to the manual picker. Covered by
 `server/utils/major-order.spec.ts` and the solo-dive E2E MO flow.
 
 ### Post-v1 / R&D
