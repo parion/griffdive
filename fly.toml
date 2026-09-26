@@ -27,9 +27,17 @@ primary_region = 'ams'
   port = 9091
   path = "/metrics"
 
-# Single instance only: room state is an in-memory KV (`useStorage('rooms')`)
-# and live peers live in an in-process directory. Scaling beyond one machine
-# splits squads across processes — deploy a Redis-backed storage driver first.
+# Room state + saved dives live on this volume (Nitro `fs-lite` mount at /data),
+# so sessions survive deploys. Create it once before the first deploy that
+# declares the mount:
+#   fly volumes create griffdive_data --region ams --size 1
+[[mounts]]
+  source = 'griffdive_data'
+  destination = '/data'
+
+# Single instance only: a volume binds to one machine, and live peers live in an
+# in-process directory. Scaling beyond one machine splits squads across
+# processes — move both storage and the peer directory to Redis first.
 [[vm]]
   size = 'shared-cpu-1x'
   memory = '256mb'

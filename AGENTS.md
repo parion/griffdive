@@ -523,9 +523,10 @@ reducer.
   parked **legacy cache** and their **Field Promotion** (see Mid-crusade joining) — "pick up
   previous equipment or roll".
 - **Durability is the storage driver's.** Saved dives live in the same `useStorage('rooms')`
-  namespace. The memory driver survives TTL and browser clears but not a process restart; swap to a
-  persistent driver (Redis, or a filesystem mount on a Fly volume) for cross-deploy persistence.
-  Same single-machine constraint as live rooms (see Deployment).
+  namespace, which production mounts to the `griffdive_data` Fly volume via Nitro's `fs-lite`
+  driver (`nuxt.config.ts`; `/data/rooms`), so saves — and live rooms — survive deploys. Dev writes
+  to `./.data/rooms`; tests use a fake in-memory KV. The same single-machine constraint as live
+  rooms applies (see Deployment); Redis remains the swap for horizontal scale.
 
 ---
 
@@ -644,7 +645,8 @@ vitest.config.ts     mirrors Nuxt aliases (~~, ~) so engine + server tests resol
 
 Host-authoritative, room-per-dive. Nitro WebSocket via `nitro.experimental.websocket` in
 `nuxt.config.ts`; single endpoint `/ws?room={code}`.
-Room state lives in `useStorage('rooms')` (memory driver first; swap to Redis by config only) as
+Room state lives in `useStorage('rooms')` — Nitro `fs-lite` on the `griffdive_data` Fly volume in
+production (`/data/rooms`), `./.data/rooms` in dev, a fake in-memory KV in tests — as
 `StoredRoom { code, state, updatedAt, saved? }`, pruned on access after a 12h TTL unless `saved`
 pins it (see Saved dives). Live connections live
 in an in-process peer directory (crossws pub/sub topics are global to the process — deliberately
@@ -712,8 +714,9 @@ One Node service (Nitro) on Fly.io (`griffdive.fly.dev`, `ams` region), WebSocke
 app together — per-page HTML is a fixed ~2.6 KB gzip shell, so client assets, not rendered pages,
 dominate bandwidth. To cut egress further, serve the static app from a CDN (unmetered free egress,
 e.g. Cloudflare Pages with a `/*` shell fallback) and keep only WS + REST on the Node service.
-`pnpm generate` remains supported for a static, offline, solo-only build. Storage driver swap
-(memory → Redis) is config-only for horizontal scale later.
+`pnpm generate` remains supported for a static, offline, solo-only build. Room state persists on the
+`griffdive_data` Fly volume (Nitro `fs-lite`, `/data/rooms`); swapping to Redis for horizontal scale
+is config-only, though multi-machine also requires moving the in-process peer directory.
 
 Monitoring: `server/plugins/metrics.ts` exposes a Prometheus registry (`@prometheus-io/client`)
 on internal port 9091 (`METRICS_PORT` to override) — default Node metrics plus
@@ -737,11 +740,12 @@ the deployment is marked success. `.github/workflows/preview.yml` deploys a per-
 the org-scoped `FLY_REVIEW_TOKEN` secret) whose URL shows in the PR UI; the app is destroyed
 when the PR closes. The image
 runs `node .output/server/index.mjs` on internal port 8080. `fly.toml` pins one machine
-(`min_machines_running = 1`, `auto_stop_machines = false`): room state is an in-memory KV and live
-peers live in an in-process directory — more than one machine splits squads across processes, and
-every deploy restarts the process, wiping in-flight rooms (the approval gate's batching directly
-reduces wipe frequency). Don't touch those two settings until
-the Redis swap lands.
+(`min_machines_running = 1`, `auto_stop_machines = false`) and mounts the `griffdive_data` volume at
+`/data`: a volume binds to one machine, and live peers live in an in-process directory — more than
+one machine splits squads across processes. Room state persists across deploys (the volume), so
+restarts no longer wipe in-flight rooms; don't touch those two settings until storage and the peer
+directory both move to Redis. Create the volume once before the first deploy that declares the
+mount: `fly volumes create griffdive_data --region ams --size 1`.
 
 ---
 
