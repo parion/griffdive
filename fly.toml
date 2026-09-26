@@ -27,13 +27,13 @@ primary_region = 'ams'
   port = 9091
   path = "/metrics"
 
-# Room state + saved dives live on this volume (Nitro `fs-lite` mount at /data),
-# so sessions survive deploys. Create it once before the first deploy that
-# declares the mount:
+# Room state + saved dives live on this volume (Nitro `fs-lite` writes to
+# `.data/rooms` under the app's /app workdir), so sessions survive deploys.
+# Create it once before the first deploy that declares the mount:
 #   fly volumes create griffdive_data --region ams --size 1
 [[mounts]]
   source = 'griffdive_data'
-  destination = '/data'
+  destination = '/app/.data'
 
 # Single instance only: a volume binds to one machine, and live peers live in an
 # in-process directory. Scaling beyond one machine splits squads across
