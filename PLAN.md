@@ -70,6 +70,8 @@ IDs are stable and append-only; do not renumber.
 | N37 | Oops, All Orbitals too narrow (rename to Airstrikes, include Eagles) | Rules | S | Done | new |
 | N38 | Bonus-stat squad honors (slot-machine stat → token prize) | Feature/Design | L | Done | new |
 | N39 | Team reroll-token economy (more sources for the shared pool) | Balance/Design | M | Todo (DEC-5 follow-on) | new |
+| N41 | Rate limits trust spoofable `X-Forwarded-For` | Infra/Security | S | Todo | new |
+| N42 | Session-abuse bounds: per-IP caps, fast lobby reaping, save TTL | Infra/Security | M | Todo | new |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -534,6 +536,29 @@ normalizes `api.helldivers2.dev/api/v1/assignments` joined to
 overview, per-planet liberation bars). Offline/static builds, a failed fetch, or
 `GRIFFDIVE_DISABLE_MO_API=1` all fall back to the manual picker. Covered by
 `server/utils/major-order.spec.ts` and the solo-dive E2E MO flow.
+
+### Hardening backlog (deferred)
+
+Recorded after the Fly-volume persistence swap; not scheduled.
+
+**N41 · Trusted client IP for rate limits.** `server/api/rooms/index.post.ts` keys the 10/min
+create limit on `getRequestIP(event, { xForwardedFor: true })`, which takes the **first**
+`X-Forwarded-For` hop. On Fly the proxy appends the real client IP after any client-supplied value,
+so a request with `X-Forwarded-For: 1.2.3.4` bypasses the limit — the room-code brute-force guard
+is only as strong as an attacker lets it be. Key on `Fly-Client-IP` (proxy-set, not
+client-controllable) with a socket fallback. The WS join limiter has the same gap: `processHello`
+keys on `peer.remoteAddress`, which behind Fly's proxy may be the proxy address for every client,
+turning the 20/min join limit into a global one. Also note `withRoomLock` is **in-process only**;
+horizontal scale needs a distributed lock alongside the storage swap.
+
+**N42 · Session-abuse bounds.** Storage cost is already bounded (`MAX_ROOMS` 2000, `MAX_SAVED_DIVES`
+500; a save is the room's JSON, tens of KB), so the risks are availability and save-slot fairness,
+not bytes. A flood can fill `MAX_ROOMS` and 503 legitimate squads for up to the 12h `ROOM_TTL_MS`,
+and a seated attacker (first joiner = host) can pin saves to churn legitimate ones out past the cap.
+Candidate mitigations to decide between: per-IP caps on concurrent rooms and saved dives; a short
+TTL (or eviction-first) for never-launched lobby rooms (`settings === null`); a long save TTL
+backstop so abandoned saves self-expire; and metrics/alerts for room/save counts and 429/503
+rejections so an attack is visible in Grafana. Policy decision first, then code.
 
 ### Post-v1 / R&D
 

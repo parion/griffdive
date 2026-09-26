@@ -37,6 +37,13 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   compatibilityDate: '2025-07-15',
   nitro: {
+    // Room state (and saved dives) live on disk, not process memory, so sessions
+    // survive deploys. The base is relative so dev, CI and the container all
+    // resolve the same writable path (`/app/.data/rooms` at runtime, where the
+    // Fly volume is mounted); `fs-lite` uses only node:fs — no runtime dep.
+    storage: {
+      rooms: { driver: 'fs-lite', base: './.data/rooms' },
+    },
     experimental: {
       websocket: true,
     },

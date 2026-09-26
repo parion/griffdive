@@ -25,9 +25,10 @@ has landed, as has the Phase 4 PWA layer (installable manifest, generated icons,
 worker with an offline shell + on-demand catalog art), the operation-long **faction strains**
 (N2: optional, accept/decline, compounding team risk) and the operation-long **Major Orders**
 (host-set front commitment, +1 reroll token on completion — manual picker plus the live war API).
-Remaining Phase 4 polish is next. **Alpha
-has landed:** the save schema is frozen at v10 and the migration chain is open (see Save model). See
-[Roadmap](#roadmap).
+Remaining Phase 4 polish is next. Hybrid **saved dives** have landed: any seated diver can pin a
+room server-side so it outlives the idle TTL and a browser clearing its storage, resuming through
+the existing rejoin path (see Saved dives). **Alpha has landed:** the save schema is frozen at v10
+and the migration chain is open (see Save model). See [Roadmap](#roadmap).
 
 ---
 
@@ -547,6 +548,32 @@ session link is the identity. Crusade state includes: settings, difficulty, miss
 `completedCombos` (misfortune × front × strain), reroll tokens, action log (capped), RNG seed
 history, legacy caches parked by departed divers, per-diver catch-up bookkeeping.
 
+### Saved dives
+
+A **saved dive** is a server-side pin on the shared room record — `StoredRoom.saved`
+(`DiveSaveInfo { name, savedAt, savedBy }` in `shared/types/messages.ts`). It is a hybrid of the
+local-save and live-room models: the local recent-rooms index is the cache, the pinned room is the
+durable copy. It is **not** per-diver state and never enters `DiveState`, the save schema or the
+reducer.
+
+- **Any seated diver saves, only the host removes** (`save-dive` / `unsave-dive` client messages,
+  handled in `server/utils/room-sync.ts`, not the engine union). Saving pins the one authoritative
+  room; unsaving returns it to the ordinary idle TTL.
+- **TTL exemption.** `loadRoom` and `sweepRooms` skip the `ROOM_TTL_MS` prune while `saved` is set,
+  so a squad can pause for as long as it likes. The pinned set is capped at `MAX_SAVED_DIVES`
+  (500): saving past the cap unpins the oldest other save, which then ages out normally. The cap —
+  not the save itself — bounds storage cost (a save is just the room's JSON, ~tens of KB).
+- **Resume is the existing rejoin path.** Reopen `/dive/:code` (the code/link is the anchor, so a
+  cleared `localStorage` loses only the convenience list, not the dive). Known `playerId`s
+  reattach; a fresh or identity-less joiner seats as a mid-crusade joiner and chooses between a
+  parked **legacy cache** and their **Field Promotion** (see Mid-crusade joining) — "pick up
+  previous equipment or roll".
+- **Durability is the storage driver's.** Saved dives live in the same `useStorage('rooms')`
+  namespace, which Nitro's `fs-lite` driver writes to `./.data/rooms` (`nuxt.config.ts`) — the
+  `griffdive_data` Fly volume in production — so saves and live rooms survive deploys. Tests use a
+  fake in-memory KV. The same single-machine constraint as live rooms applies (see Deployment);
+  Redis remains the swap for horizontal scale.
+
 ---
 
 ## Architecture
@@ -672,8 +699,14 @@ vitest.config.ts     mirrors Nuxt aliases (~~, ~) so engine + server tests resol
 
 Host-authoritative, room-per-dive. Nitro WebSocket via `nitro.experimental.websocket` in
 `nuxt.config.ts`; single endpoint `/ws?room={code}`.
-Room state lives in `useStorage('rooms')` (memory driver first; swap to Redis by config only) as
-`StoredRoom { code, state, updatedAt }`, pruned on access after a 12h TTL. Live connections live
+Room state lives in `useStorage('rooms')` — Nitro `fs-lite` writing to `./.data/rooms` (the
+`griffdive_data` Fly volume in production), a fake in-memory KV in tests — as
+`StoredRoom { code, state, updatedAt, saved? }`, pruned on access after a 12h TTL unless `saved`
+pins it (see Saved dives). Storage is read-modify-write, so `room-sync.ts` serializes every
+mutation of a room behind an in-process per-room lock (`withRoomLock`): the process is
+single-threaded but `await` interleaves handlers, and without the lock a joiner's `SET_WARBONDS`
+and the host's `START_DIVE` clobber each other (the memory driver hid this by sharing one object).
+Multi-machine needs a distributed lock alongside the storage swap. Live connections live
 in an in-process peer directory (crossws pub/sub topics are global to the process — deliberately
 unused); horizontal scale later means a Redis-backed directory or sticky sessions.
 
@@ -681,9 +714,11 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 | --- | --- | --- |
 | C→S | `hello` | `{ name?, playerId? }` — stored playerId reattaches (reconnect) |
 | C→S | `action` | `{ action: EngineAction }` (validated server-side) |
+| C→S | `save-dive` | `{ name? }` — any seated diver pins the room past the idle TTL (see Saved dives) |
+| C→S | `unsave-dive` | host-only: returns the room to the ordinary idle TTL |
 | C→S | `ping` | heartbeat — answered with `pong` |
-| S→C | `welcome` | `{ selfId, hostId, roomCode, snapshot, online }` |
-| S→C | `state` | `{ snapshot, applied (EngineAction \| null), online }` — after each applied change; also an `applied: null` presence refresh the moment a seated diver's last connection drops; `online` = diver ids with live connections |
+| S→C | `welcome` | `{ selfId, hostId, roomCode, snapshot, online, saved }` |
+| S→C | `state` | `{ snapshot, applied (EngineAction \| null), online, saved }` — after each applied change; also an `applied: null` presence refresh the moment a seated diver's last connection drops; `online` = diver ids with live connections |
 | S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `dive-locked`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message`, `rate-limited` |
 
 REST fallbacks: `POST /api/rooms` → `{ code }`; `GET /api/rooms/:code` → `{ code, state }` (404).
@@ -713,7 +748,8 @@ Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFO
 `ACCEPT_STRAIN`, `SET_MAJOR_ORDER`, `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are
-self-service.
+self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated
+diver, `unsave-dive` is host-only.
 `FAIL_PACT` is sent by the target diver or the host (server refuses everyone else). Host disconnect →
 `TRANSFER_HOST` to the earliest joiner; none left → room hibernates in storage with a TTL.
 Reconnect = re-`hello` with stored playerId → server replays snapshot.
@@ -736,8 +772,10 @@ One Node service (Nitro) on Fly.io (`griffdive.fly.dev`, `ams` region), WebSocke
 app together — per-page HTML is a fixed ~2.6 KB gzip shell, so client assets, not rendered pages,
 dominate bandwidth. To cut egress further, serve the static app from a CDN (unmetered free egress,
 e.g. Cloudflare Pages with a `/*` shell fallback) and keep only WS + REST on the Node service.
-`pnpm generate` remains supported for a static, offline, solo-only build. Storage driver swap
-(memory → Redis) is config-only for horizontal scale later.
+`pnpm generate` remains supported for a static, offline, solo-only build. Room state persists on the
+`griffdive_data` Fly volume (Nitro `fs-lite`, `.data/rooms` under the app workdir); swapping to
+Redis for horizontal scale is config-only, though multi-machine also requires moving the in-process
+peer directory.
 
 Monitoring: `server/plugins/metrics.ts` exposes a Prometheus registry (`@prometheus-io/client`)
 on internal port 9091 (`METRICS_PORT` to override) — default Node metrics plus
@@ -761,11 +799,12 @@ the deployment is marked success. `.github/workflows/preview.yml` deploys a per-
 the org-scoped `FLY_REVIEW_TOKEN` secret) whose URL shows in the PR UI; the app is destroyed
 when the PR closes. The image
 runs `node .output/server/index.mjs` on internal port 8080. `fly.toml` pins one machine
-(`min_machines_running = 1`, `auto_stop_machines = false`): room state is an in-memory KV and live
-peers live in an in-process directory — more than one machine splits squads across processes, and
-every deploy restarts the process, wiping in-flight rooms (the approval gate's batching directly
-reduces wipe frequency). Don't touch those two settings until
-the Redis swap lands.
+(`min_machines_running = 1`, `auto_stop_machines = false`) and mounts the `griffdive_data` volume at
+`/app/.data`: a volume binds to one machine, and live peers live in an in-process directory — more
+than one machine splits squads across processes. Room state persists across deploys (the volume), so
+restarts no longer wipe in-flight rooms; don't touch those two settings until storage and the peer
+directory both move to Redis. Create the volume once before the first deploy that declares the
+mount: `fly volumes create griffdive_data --region ams --size 1`.
 
 ---
 

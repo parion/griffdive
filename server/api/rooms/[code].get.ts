@@ -7,5 +7,5 @@ export default defineEventHandler(async (event) => {
   if (!room) {
     throw createError({ statusCode: 404, statusMessage: 'Dive not found' })
   }
-  return { code: room.code, state: room.state }
+  return { code: room.code, state: room.state, saved: room.saved ?? null }
 })

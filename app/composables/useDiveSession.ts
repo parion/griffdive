@@ -1,5 +1,6 @@
 import type { ComputedRef } from 'vue'
 import type { DiveState, EngineAction } from '~~/shared/engine/types'
+import type { DiveSaveInfo } from '~~/shared/types/messages'
 import { isRoomCode } from '~~/shared/utils/room-code'
 import { useDiveEngine } from './useDiveEngine'
 import { useGameSocket } from './useGameSocket'
@@ -17,6 +18,9 @@ export interface DiveSession {
   selfId: ComputedRef<string | null>
   selfIsHost: ComputedRef<boolean>
   online: ComputedRef<string[]>
+  saved: ComputedRef<DiveSaveInfo | null>
+  saveDive: (name?: string) => void
+  unsaveDive: () => void
   status: ComputedRef<DiveSessionStatus>
   lastError: ComputedRef<{ code: string, message: string } | null>
   dismissError: () => void
@@ -40,6 +44,9 @@ export function useDiveSession(slotId: string): DiveSession {
       selfId: computed(() => engine.state.value?.hostId ?? null),
       selfIsHost: computed(() => true),
       online: computed(() => engine.state.value?.divers.map(diver => diver.id) ?? []),
+      saved: computed(() => null),
+      saveDive: () => {},
+      unsaveDive: () => {},
       status: computed(() => 'local' as const),
       lastError: computed(() => null),
       dismissError: () => {},
@@ -48,11 +55,13 @@ export function useDiveSession(slotId: string): DiveSession {
     }
   }
 
-  const { store, dispatch, ...socket } = useGameSocket(slotId)
+  const { store, dispatch, saveDive, unsaveDive, ...socket } = useGameSocket(slotId)
   return {
     mode: 'room',
     state: computed(() => store.snapshot),
     dispatch,
+    saveDive,
+    unsaveDive,
     connect: () => socket.connect(),
     awaitingName: computed(() => socket.awaitingName.value),
     connectionFailed: computed(() => socket.connectionFailed.value),
@@ -61,6 +70,7 @@ export function useDiveSession(slotId: string): DiveSession {
     selfIsHost: computed(() =>
       !!store.snapshot && store.snapshot.hostId !== null && store.snapshot.hostId === store.selfId),
     online: computed(() => store.online),
+    saved: computed(() => store.saved),
     status: computed(() => store.status),
     lastError: computed(() => store.lastError),
     dismissError: () => store.dismissError(),

@@ -3,6 +3,7 @@ import { difficultyName } from '~~/shared/engine/progression'
 import { createDiveState } from '~~/shared/engine/reducer'
 import { isRoomCode } from '~~/shared/utils/room-code'
 import type { CrusadeSettings, CrusadeVariant, DiveState } from '~~/shared/engine/types'
+import type { DiveSaveInfo } from '~~/shared/types/messages'
 import type { SaveDoc } from '~~/shared/types/save'
 
 const saves = useSaves()
@@ -15,7 +16,7 @@ const slotList = ref<{ id: string, doc: SaveDoc }[]>([])
 const joinCode = ref('')
 const hosting = ref(false)
 
-interface OnlineDive { code: string, state: DiveState | null }
+interface OnlineDive { code: string, state: DiveState | null, saved: DiveSaveInfo | null }
 
 const onlineDives = ref<OnlineDive[]>([])
 const onlineLoading = ref(true)
@@ -31,10 +32,10 @@ async function refreshOnlineDives(): Promise<void> {
     onlineLoading.value = false
     return
   }
-  const results = await Promise.all(rooms.map(async ({ code }) => {
+  const results = await Promise.all(rooms.map(async ({ code }): Promise<OnlineDive | null> => {
     try {
-      const res = await $fetch<{ code: string, state: DiveState }>(`/api/rooms/${code}`)
-      return { code, state: res.state }
+      const res = await $fetch<{ code: string, state: DiveState, saved: DiveSaveInfo | null }>(`/api/rooms/${code}`)
+      return { code, state: res.state, saved: res.saved }
     }
     catch (error) {
       const err = error as { status?: number, statusCode?: number }
@@ -43,7 +44,7 @@ async function refreshOnlineDives(): Promise<void> {
         recentRooms.forgetRoom(code)
         return null
       }
-      return { code, state: null }
+      return { code, state: null, saved: null }
     }
   }))
   onlineDives.value = results.filter((entry): entry is OnlineDive => entry !== null)
@@ -268,6 +269,11 @@ function formatSavedAt(doc: SaveDoc): string {
                       v-if="dive.state?.settings"
                       class="chip"
                     >{{ VARIANTS_LABELS[dive.state.settings.variant] }}</span>
+                    <span
+                      v-if="dive.saved"
+                      class="chip saved"
+                      :title="`Saved as “${dive.saved.name}” — kept past the idle timeout`"
+                    >saved</span>
                   </div>
                   <p
                     v-if="dive.state"
@@ -424,6 +430,11 @@ function formatSavedAt(doc: SaveDoc): string {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--khaki);
+}
+
+.chip.saved {
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--border));
+  color: var(--gold);
 }
 
 .slot-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
