@@ -277,6 +277,27 @@ function abandonSlot(): void {
   navigateTo('/')
 }
 
+// Saving pins the shared room server-side so the squad can resume after the
+// idle timeout — and after a browser clears its own storage. Any diver may pin;
+// removing the pin is host moderation.
+function saveDive(): void {
+  if (session.status.value !== 'connected') {
+    pushToast('Reconnect before saving', 'warn')
+    return
+  }
+  session.saveDive()
+  pushToast('Dive saved')
+}
+
+function unsaveDive(): void {
+  if (session.status.value !== 'connected') {
+    pushToast('Reconnect first', 'warn')
+    return
+  }
+  session.unsaveDive()
+  pushToast('Save removed')
+}
+
 function copyInvite(): void {
   if (!import.meta.client) {
     return
@@ -365,9 +386,12 @@ function launchCrusade(variant: CrusadeVariant): void {
         :slot-name="session.slotName.value"
         :online="session.online.value"
         :name-draft="nameDraft"
+        :saved="session.saved.value"
         @copy-invite="copyInvite"
         @leave="leaveDive"
         @end="endDive"
+        @save-dive="saveDive"
+        @unsave-dive="unsaveDive"
         @update:name-draft="setNameDraft"
         @commit="commitName"
         @transfer-host="transferHost"

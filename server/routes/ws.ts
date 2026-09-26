@@ -1,4 +1,4 @@
-import { processAction, processClose, processHello } from '../utils/room-sync'
+import { processAction, processClose, processHello, processSave, processUnsave } from '../utils/room-sync'
 import type { PeerLike, RoomLimits } from '../utils/room-sync'
 import { roomKV } from '../utils/room-storage'
 import { peers as directory } from '../utils/peers'
@@ -43,6 +43,12 @@ export default defineWebSocketHandler({
       }
       else if (payload.type === 'action') {
         await processAction(kv, directory, like, payload, limits)
+      }
+      else if (payload.type === 'save-dive') {
+        await processSave(kv, directory, like, payload, limits)
+      }
+      else if (payload.type === 'unsave-dive') {
+        await processUnsave(kv, directory, like, limits)
       }
       else {
         like.send(JSON.stringify({ type: 'error', code: 'bad-message', message: 'Unknown message type' }))

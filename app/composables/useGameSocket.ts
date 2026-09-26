@@ -111,6 +111,16 @@ export function useGameSocket(roomCode: string) {
     send(JSON.stringify(message))
   }
 
+  function saveDive(name?: string): void {
+    const message: ClientMessage = name ? { type: 'save-dive', name } : { type: 'save-dive' }
+    send(JSON.stringify(message))
+  }
+
+  function unsaveDive(): void {
+    const message: ClientMessage = { type: 'unsave-dive' }
+    send(JSON.stringify(message))
+  }
+
   function connect(): void {
     awaitingName.value = false
     connectionFailed.value = false
@@ -132,5 +142,5 @@ export function useGameSocket(roomCode: string) {
   })
   onBeforeUnmount(close)
 
-  return { store, dispatch, connect, close, awaitingName, connectionFailed }
+  return { store, dispatch, saveDive, unsaveDive, connect, close, awaitingName, connectionFailed }
 }

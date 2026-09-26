@@ -3,6 +3,7 @@ import { difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
 import { diverCeiling } from '~~/shared/engine/selectors'
 import type { DiveState } from '~~/shared/engine/types'
+import type { DiveSaveInfo } from '~~/shared/types/messages'
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
 
 const props = defineProps<{
@@ -16,17 +17,28 @@ const props = defineProps<{
   slotName: string
   online: string[]
   nameDraft: string
+  saved: DiveSaveInfo | null
 }>()
 
 defineEmits<{
   'copyInvite': []
   'leave': []
   'end': []
+  'saveDive': []
+  'unsaveDive': []
   'update:nameDraft': [name: string]
   'commit': []
   'transferHost': [diverId: string]
   'kick': [diverId: string]
 }>()
+
+const savedLabel = computed(() => {
+  const saved = props.saved
+  if (!saved) {
+    return ''
+  }
+  return `Saved as “${saved.name}” on ${new Date(saved.savedAt).toLocaleString()} — kept past the idle timeout.`
+})
 
 const lockedCeiling = computed(() => {
   const self = props.selfId
@@ -68,6 +80,31 @@ const loneHost = computed(() => props.mode === 'room' && props.state.divers.leng
       >
         {{ status }}
       </span>
+      <AppTooltip
+        v-if="mode === 'room' && saved"
+        :content="savedLabel"
+      >
+        <span
+          class="chip saved"
+          tabindex="0"
+        >saved</span>
+      </AppTooltip>
+      <button
+        v-else-if="mode === 'room'"
+        class="btn ghost tiny"
+        type="button"
+        @click="$emit('saveDive')"
+      >
+        Save dive
+      </button>
+      <button
+        v-if="mode === 'room' && saved && isHost"
+        class="btn ghost tiny"
+        type="button"
+        @click="$emit('unsaveDive')"
+      >
+        Remove save
+      </button>
       <AppTooltip
         v-if="lockedCeiling"
         content="Your locked reward ceiling — the best tier your next draft can roll."
@@ -143,6 +180,11 @@ const loneHost = computed(() => props.mode === 'room' && props.state.divers.leng
 
 <style scoped>
 .badge-pop { display: inline-grid; }
+
+.chip.saved {
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--border));
+  color: var(--gold);
+}
 
 .dive-header {
   display: grid;

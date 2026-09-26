@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { pactOfferFor } from '~~/shared/engine/selectors'
-import { ROOM_TTL_MS, RoomLimitError, createPeerDirectory, createRoom, loadRoom, processAction, processClose, processHello, sweepRooms } from './room-sync'
+import { ROOM_TTL_MS, RoomLimitError, createPeerDirectory, createRoom, enforceSaveCap, loadRoom, processAction, processClose, processHello, processSave, processUnsave, sweepRooms } from './room-sync'
 import type { PeerLike, RoomKV, StoredRoom } from './room-sync'
 import { createRateLimiter } from './rate-limit'
 import type { ServerMessage } from '~~/shared/types/messages'
@@ -535,5 +535,84 @@ describe('room-sync', () => {
     expect(await sweepRooms(kv)).toBe(1)
     expect(await kv.getItem(stale)).toBeUndefined()
     expect(await kv.getItem(live)).toBeDefined()
+  })
+
+  it('lets any diver save the dive and only the host remove it', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    await processHello(kv, peers, joiner, { name: 'B' })
+    sent(host).length = 0
+
+    // The non-host pins the shared dive; both peers see the save.
+    await processSave(kv, peers, joiner, { name: 'Operation Nightfall' })
+    const pinned = sent(host).find(message => message.type === 'state')
+    if (pinned?.type !== 'state') {
+      throw new Error('no state message received')
+    }
+    expect(pinned.saved?.name).toBe('Operation Nightfall')
+    expect((await loadRoom(kv, code))?.saved?.name).toBe('Operation Nightfall')
+
+    // Removing the pin is host moderation.
+    sent(joiner).length = 0
+    await processUnsave(kv, peers, joiner)
+    expect(sent(joiner).some(m => m.type === 'error' && m.code === 'not-host')).toBe(true)
+    expect((await loadRoom(kv, code))?.saved).toBeTruthy()
+
+    await processUnsave(kv, peers, host)
+    expect((await loadRoom(kv, code))?.saved ?? null).toBeNull()
+  })
+
+  it('keeps a saved dive past the TTL and lets it expire once unpinned', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+
+    await processSave(kv, peers, host, { name: 'Keep me' })
+    const pinned = await kv.getItem(code) as StoredRoom
+    pinned.updatedAt = Date.now() - ROOM_TTL_MS - 1
+    await kv.setItem(code, pinned)
+
+    expect(await sweepRooms(kv)).toBe(0)
+    expect((await loadRoom(kv, code))?.saved?.name).toBe('Keep me')
+
+    await processUnsave(kv, peers, host)
+    const stale = await kv.getItem(code) as StoredRoom
+    stale.updatedAt = Date.now() - ROOM_TTL_MS - 1
+    await kv.setItem(code, stale)
+
+    expect(await sweepRooms(kv)).toBe(1)
+    expect(await kv.getItem(code)).toBeUndefined()
+  })
+
+  it('caps the pinned set by unpinning the oldest save', async () => {
+    const kv = fakeKV()
+    const oldest = await createRoom(kv)
+    const middle = await createRoom(kv)
+    const newest = await createRoom(kv)
+    const pin = async (code: string, savedAt: number): Promise<void> => {
+      const raw = await kv.getItem(code) as StoredRoom
+      raw.saved = { name: code, savedAt, savedBy: 'x' }
+      await kv.setItem(code, raw)
+    }
+    await pin(oldest, 1)
+    await pin(middle, 2)
+    await pin(newest, 3)
+
+    await enforceSaveCap(kv, newest, 2)
+
+    expect((await kv.getItem(oldest) as StoredRoom).saved).toBeNull()
+    expect((await kv.getItem(middle) as StoredRoom).saved?.name).toBe(middle)
+    expect((await kv.getItem(newest) as StoredRoom).saved?.name).toBe(newest)
   })
 })

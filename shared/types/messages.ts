@@ -1,12 +1,23 @@
 import type { DiveState, EngineAction } from '../engine/types'
 
+// A saved dive is a server-side pin on the shared room record: it keeps the one
+// authoritative room past the idle TTL so a squad can pick the crusade back up.
+// It is not per-diver state and never lives in DiveState.
+export interface DiveSaveInfo {
+  name: string
+  savedAt: number
+  savedBy: string
+}
+
 export type ClientMessage
   = | { type: 'hello', name?: string, playerId?: string }
     | { type: 'action', action: EngineAction }
+    | { type: 'save-dive', name?: string }
+    | { type: 'unsave-dive' }
 
 export type ServerMessage
-  = | { type: 'welcome', selfId: string, hostId: string | null, roomCode: string, snapshot: DiveState, online: string[] }
-    | { type: 'state', snapshot: DiveState, applied: EngineAction | null, online: string[] }
+  = | { type: 'welcome', selfId: string, hostId: string | null, roomCode: string, snapshot: DiveState, online: string[], saved: DiveSaveInfo | null }
+    | { type: 'state', snapshot: DiveState, applied: EngineAction | null, online: string[], saved: DiveSaveInfo | null }
     | { type: 'error', code: string, message: string }
 
 export const HOST_ONLY_ACTIONS = [
