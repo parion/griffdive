@@ -1,4 +1,5 @@
 import { ALL_ITEMS, ALL_WARBOND_CODES } from '../data/catalog'
+import { FRONTS } from '../data/fronts'
 import type { Front } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
 import type { Misfortune } from '../data/misfortunes'
@@ -6,6 +7,7 @@ import type { Pact } from '../data/pacts'
 import type { Strain } from '../data/strains'
 import type { Item } from '../data/types'
 import {
+  MAJOR_ORDER_RISK,
   MISFORTUNE_RISK,
   OPTIONS_LOST_PER_FAILED_PACT,
   PACT_RISK,
@@ -52,6 +54,19 @@ export function currentFront(state: DiveState): Front | null {
   return state.frontId ? frontById(state.frontId) : null
 }
 
+// The fronts a Major Order pins the operation's draw to. No MO (or one that
+// names no known front) leaves the full roster, so the draw is unrestricted.
+// With an MO the pool is exactly its fronts — the squad chose where to fight,
+// so the spin randomizes within the order but never leaves it.
+export function majorOrderFronts(state: DiveState): readonly Front[] {
+  const ids = state.majorOrder?.fronts
+  if (!ids?.length) {
+    return FRONTS
+  }
+  const pool = FRONTS.filter(front => ids.includes(front.id))
+  return pool.length > 0 ? pool : FRONTS
+}
+
 export function currentStrain(state: DiveState): Strain | null {
   return strainById(state.strainId)
 }
@@ -90,9 +105,11 @@ export function misfortuneStrandedDivers(state: DiveState): DiverState[] {
     !hasLegalLoadout(misfortune.id, [], state.personalInventories[diver.id] ?? []))
 }
 
-// Team risk stacks the per-mission misfortune (when accepted) and the
-// operation-long strain (when accepted): a strain is felt on every mission of
-// its operation, so it compounds over the op's 2–3 missions.
+// Team risk stacks the per-mission misfortune (when accepted), the
+// operation-long strain (when accepted) and the live Major Order commitment:
+// the latter two are felt on every mission of the operation, so they compound
+// over the op's 2–3 missions. A live MO replaces the strain, so its fixed risk
+// is what keeps the operation's Valor potential intact.
 export function teamRiskOf(state: DiveState): number {
   const misfortuneRisk = state.misfortuneAccepted
     ? MISFORTUNE_RISK[currentMisfortune(state)?.id ?? ''] ?? 0
@@ -100,7 +117,8 @@ export function teamRiskOf(state: DiveState): number {
   const strainRisk = state.strainAccepted
     ? STRAIN_RISK[state.strainId ?? ''] ?? 0
     : 0
-  return misfortuneRisk + strainRisk
+  const majorOrderRisk = state.majorOrder?.live ? MAJOR_ORDER_RISK : 0
+  return misfortuneRisk + strainRisk + majorOrderRisk
 }
 
 export interface StrainDecision {
@@ -382,6 +400,13 @@ export function canRerollWheel(
   // mission-1 business.
   if (wheel !== 'misfortune' && state.missionInOperation > 1) {
     return { allowed: false, free: false, reason: 'The front locks in for the whole operation' }
+  }
+  if (wheel === 'front') {
+    // A reroll must be able to move: a Major Order that pins a single front
+    // fixes the draw for the operation.
+    if (majorOrderFronts(state).length < 2) {
+      return { allowed: false, free: false, reason: 'Only one front on this Major Order' }
+    }
   }
   if (wheel === 'strain') {
     if (!state.strainId) {

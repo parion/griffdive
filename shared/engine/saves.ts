@@ -89,6 +89,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 9) {
     migrated = migrateV8toV9(migrated)
   }
+  if (migrated.schemaVersion < 10) {
+    migrated = migrateV9toV10(migrated)
+  }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
   return migrated
@@ -142,6 +145,19 @@ function migrateV8toV9(doc: SaveDoc): SaveDoc {
         const parts = key.split(':')
         return parts.length >= 3 ? key : `${key}:none`
       }),
+    },
+  }
+}
+
+// v10: Major Orders landed. An operation can be pinned to the live MO's
+// front(s) and banks an extra reroll token on completion; pre-v10 saves carry
+// no commitment, and the next operation reopens the call anyway.
+function migrateV9toV10(doc: SaveDoc): SaveDoc {
+  return {
+    ...doc,
+    state: {
+      ...doc.state,
+      majorOrder: null,
     },
   }
 }

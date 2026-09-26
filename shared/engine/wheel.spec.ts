@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { FRONTS } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
 import { STRAINS } from '../data/strains'
 import type { FrontId } from '../data/fronts'
@@ -72,6 +73,22 @@ describe('deriveMisfortune / deriveFront', () => {
       expect(deriveFront(4242)).toBe(deriveFront(4242))
       expect(eligibleMisfortunes(difficulty)).toContain(deriveMisfortune(4242, difficulty))
     }
+  })
+
+  it('restricts the draw to an eligible pool (Major Order front)', () => {
+    const pool = FRONTS.filter(front => front.id === 'illuminate')
+    for (let seed = 0; seed < 50; seed++) {
+      expect(deriveFront(seed, pool)).toBe('illuminate')
+    }
+    const two = FRONTS.filter(front => front.id !== 'terminids')
+    for (let seed = 0; seed < 50; seed++) {
+      expect(two.map(front => front.id)).toContain(deriveFront(seed, two))
+    }
+  })
+
+  it('falls back to the full roster when the pool is empty', () => {
+    const fronts = new Set(Array.from({ length: 50 }, (_, seed) => deriveFront(seed, [])))
+    expect(fronts.size).toBeGreaterThan(1)
   })
 })
 

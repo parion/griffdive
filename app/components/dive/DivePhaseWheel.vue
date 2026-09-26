@@ -2,7 +2,7 @@
 import { pactName } from '~~/shared/data/pacts'
 import { applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
 import { activeMisfortune, ceilingRangeForDifficulty, pactOfferFor, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
-import type { DiverState, DiveState } from '~~/shared/engine/types'
+import type { DiverState, DiveState, MajorOrderSelection } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -15,6 +15,7 @@ const emit = defineEmits<{
   spin: []
   decide: [accepted: boolean]
   decideStrain: [accepted: boolean]
+  setMajorOrder: [order: MajorOrderSelection | null]
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
   lock: [pactIds: string[]]
 }>()
@@ -93,7 +94,15 @@ const coverage = computed<Record<string, string>>(() => {
     @decide="emit('decide', $event)"
     @decide-strain="emit('decideStrain', $event)"
     @reroll="emit('reroll', $event)"
-  />
+  >
+    <template #front-before-roll>
+      <MajorOrderPicker
+        :state="state"
+        :can-control="canControl"
+        @select="emit('setMajorOrder', $event)"
+      />
+    </template>
+  </WheelPanel>
   <p
     v-if="wheelRange && !state.wheel"
     class="row small muted"
