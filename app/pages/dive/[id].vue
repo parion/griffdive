@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { diverOptions } from '~~/shared/engine/selectors'
+import { diverOptions, majorOrderFronts } from '~~/shared/engine/selectors'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
-import type { CrusadeVariant, DiverState, EngineAction, ItemRef, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
+import type { CrusadeVariant, DiverState, EngineAction, ItemRef, MajorOrderSelection, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
 import { rememberDiverName } from '~/composables/useGameSocket'
 
 const route = useRoute()
@@ -159,7 +159,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
     const same = wheel === 'misfortune'
       ? deriveMisfortune(seed, current.difficulty).id === current.wheel.misfortuneId
       : wheel === 'front'
-        ? deriveFront(seed) === current.frontId
+        ? deriveFront(seed, majorOrderFronts(current)) === current.frontId
         : deriveStrain(seed, current.difficulty, current.frontId!)?.id === current.strainId
     if (!same) {
       break
@@ -175,6 +175,13 @@ function decideMisfortune(accepted: boolean): void {
 
 function decideStrain(accepted: boolean): void {
   dispatch({ type: 'ACCEPT_STRAIN', accepted })
+}
+
+// The Major Order is the operation's front commitment, host-set before the
+// first spin: it pins the front draw and banks a reroll token on completion.
+// The picker's live suggestion (Phase B) carries the same selection shape.
+function setMajorOrder(order: MajorOrderSelection | null): void {
+  dispatch({ type: 'SET_MAJOR_ORDER', order })
 }
 
 function lockPacts(pactIds: string[]): void {
@@ -430,6 +437,7 @@ function launchCrusade(variant: CrusadeVariant): void {
             @spin="spin"
             @decide="decideMisfortune"
             @decide-strain="decideStrain"
+            @set-major-order="setMajorOrder"
             @reroll="reroll"
             @lock="lockPacts"
           />

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { FRONTS } from '~~/shared/data/fronts'
 import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
-import { MISFORTUNE_RISK, STRAIN_RISK } from '~~/shared/engine/config'
+import { MISFORTUNE_RISK, MAJOR_ORDER_REROLL_BONUS, STRAIN_RISK } from '~~/shared/engine/config'
 import {
   canRerollWheel,
   currentFront,
@@ -29,6 +29,7 @@ defineEmits<{
 const misfortune = computed(() => currentMisfortune(props.state))
 const front = computed(() => currentFront(props.state))
 const strain = computed(() => currentStrain(props.state))
+const majorOrder = computed(() => props.state.majorOrder)
 const misfortuneReroll = computed(() => canRerollWheel(props.state, 'misfortune'))
 const frontReroll = computed(() => canRerollWheel(props.state, 'front'))
 const strainReroll = computed(() => canRerollWheel(props.state, 'strain'))
@@ -387,6 +388,13 @@ function rerollLabel(
               @reeling="onFrontReeling"
             />
           </strong>
+          <span
+            v-if="majorOrder"
+            class="mo-tag"
+            :title="majorOrder.title ?? undefined"
+          >
+            Major Order · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll on completion
+          </span>
           <div
             v-if="strain"
             class="strain"
@@ -478,6 +486,13 @@ function rerollLabel(
         </template>
         <template v-else-if="state.frontId">
           <strong class="misfortune-name">{{ front?.displayName }}</strong>
+          <span
+            v-if="majorOrder"
+            class="mo-tag"
+            :title="majorOrder.title ?? undefined"
+          >
+            Major Order · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll on completion
+          </span>
           <div
             v-if="strain"
             class="strain"
@@ -540,6 +555,17 @@ function rerollLabel(
 .misfortune-name { font-size: 1.1rem; color: var(--gold); }
 .front-card { position: relative; overflow: hidden; isolation: isolate; }
 .front-card .misfortune-name { color: var(--front-accent, var(--gold)); }
+.mo-tag {
+  justify-self: start;
+  align-self: start;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--front-accent, var(--gold));
+  border: 1px solid color-mix(in srgb, var(--front-accent, var(--gold)) 45%, var(--border));
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
 
 /* The strain is a subfaction of the front: same card, its own divider. */
 .strain {

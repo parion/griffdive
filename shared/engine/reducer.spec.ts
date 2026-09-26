@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS, ITEMS_BY_ID } from '../data/catalog'
+import type { FrontId } from '../data/fronts'
 import { PACTS } from '../data/pacts'
-import { BONUS_STATS, MISFORTUNE_RISK, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor } from './config'
+import { BONUS_STATS, MAJOR_ORDER_REROLL_BONUS, MISFORTUNE_RISK, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor } from './config'
 import { startingItemIds } from './progression'
 import { DIVERS_CHOICE_OPTION_ID, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
@@ -1369,5 +1370,101 @@ describe('unknown actions', () => {
     const state = freshState()
     const bogus = { type: 'NOT_AN_ACTION' } as unknown as EngineAction
     expect(reduce(state, bogus)).toBe(state)
+  })
+})
+
+describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
+  function withOrder(front: FrontId): DiveState {
+    return reduce(freshState(), { type: 'SET_MAJOR_ORDER', order: { fronts: [front] } })
+  }
+
+  function playOperation(state: DiveState, seeds: number[]): DiveState {
+    let next = state
+    for (const seed of seeds) {
+      next = reduce(next, { type: 'SPIN_WHEEL', seed })
+      next = reduce(next, { type: 'ACCEPT_MISFORTUNE', accepted: false })
+      if (next.phase === 'strain') {
+        next = reduce(next, { type: 'ACCEPT_STRAIN', accepted: false })
+      }
+      next = reduce(next, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+      next = reduce(next, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+      const option = diverOptions(next, requireDiver(next))[0]
+      if (!option) {
+        throw new Error('expected a reward option')
+      }
+      next = reduce(next, { type: 'PICK_REWARD', playerId: 'p1', optionId: option.optionId })
+      next = reduce(next, { type: 'ADVANCE' })
+    }
+    return next
+  }
+
+  it('pins the operation front draw to the ordered front', () => {
+    for (const front of ['terminids', 'automatons', 'illuminate'] as const) {
+      const set = withOrder(front)
+      expect(set.majorOrder?.fronts).toEqual([front])
+      for (let seed = 0; seed < 40; seed++) {
+        expect(reduce(set, { type: 'SPIN_WHEEL', seed }).frontId).toBe(front)
+      }
+    }
+  })
+
+  it('refuses a Major Order once the front is drawn', () => {
+    const spun = spunState(42)
+    expect(reduce(spun, { type: 'SET_MAJOR_ORDER', order: { fronts: ['terminids'] } })).toBe(spun)
+  })
+
+  it('normalizes unknown and empty fronts to no order', () => {
+    const unknown = reduce(freshState(), {
+      type: 'SET_MAJOR_ORDER',
+      order: { fronts: ['bogus' as FrontId] },
+    })
+    expect(unknown.majorOrder).toBeNull()
+    const empty = reduce(freshState(), { type: 'SET_MAJOR_ORDER', order: { fronts: [] } })
+    expect(empty.majorOrder).toBeNull()
+  })
+
+  it('refuses a front reroll when one front is pinned, allows it when the order spans fronts', () => {
+    const spun = reduce(withOrder('automatons'), { type: 'SPIN_WHEEL', seed: 5 })
+    expect(canRerollWheel(spun, 'front')).toMatchObject({
+      allowed: false,
+      reason: 'Only one front on this Major Order',
+    })
+    const wide = reduce(freshState(), {
+      type: 'SET_MAJOR_ORDER',
+      order: { fronts: ['terminids', 'automatons'] },
+    })
+    const wideSpun = reduce(wide, { type: 'SPIN_WHEEL', seed: 5 })
+    expect(canRerollWheel(wideSpun, 'front').allowed).toBe(true)
+  })
+
+  it('banks an extra reroll token when an order operation completes, then clears', () => {
+    const completed = playOperation(withOrder('terminids'), [11, 22])
+    expect(completed.difficulty).toBe(4)
+    expect(completed.missionInOperation).toBe(1)
+    expect(completed.rerollTokens).toBe(1 + MAJOR_ORDER_REROLL_BONUS)
+    expect(completed.majorOrder).toBeNull()
+  })
+
+  it('keeps the baseline token count without an order', () => {
+    const completed = playOperation(freshState(), [11, 22])
+    expect(completed.rerollTokens).toBe(1)
+    expect(completed.majorOrder).toBeNull()
+  })
+
+  it('keeps the order across a failure restart (the front is locked)', () => {
+    let state = reduce(withOrder('terminids'), { type: 'SPIN_WHEEL', seed: 7 })
+    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })
+    if (state.phase === 'strain') {
+      state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
+    }
+    state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 0 })
+    state = reduce(state, {
+      type: 'FORFEIT_ITEM',
+      itemRef: { ownerId: 'p1', itemId: requireId(state.personalInventories.p1?.[0]) },
+    })
+    expect(state.phase).toBe('spin')
+    expect(state.majorOrder?.fronts).toEqual(['terminids'])
+    expect(state.frontId).toBe('terminids')
   })
 })

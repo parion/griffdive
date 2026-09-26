@@ -1,7 +1,7 @@
 import { FRONTS } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
 import { STRAINS } from '../data/strains'
-import type { FrontId } from '../data/fronts'
+import type { Front, FrontId } from '../data/fronts'
 import type { Misfortune } from '../data/misfortunes'
 import type { Strain } from '../data/strains'
 import { MISFORTUNE_MIN_DIFFICULTY, MIN_DIFFICULTY, STRAIN_MIN_DIFFICULTY } from './config'
@@ -34,9 +34,14 @@ export function deriveMisfortune(seed: number, difficulty: number): Misfortune {
   return pickRandom(rng, eligibleMisfortunes(difficulty))
 }
 
-export function deriveFront(seed: number): FrontId {
+// The front pool is the whole roster by default; a Major Order narrows it to
+// the fronts the squad committed to, so the draw still randomizes (no seed
+// favors one MO front) but never leaves the order. An empty pool falls back to
+// the full roster — an MO that names no front pins nothing.
+export function deriveFront(seed: number, eligible: readonly Front[] = FRONTS): FrontId {
+  const pool = eligible.length > 0 ? eligible : FRONTS
   const rng = mulberry32(deriveSeed(seed, 2))
-  return pickRandom(rng, FRONTS).id
+  return pickRandom(rng, pool).id
 }
 
 export function deriveStrain(seed: number, difficulty: number, frontId: FrontId): Strain | null {

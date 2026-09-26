@@ -500,13 +500,39 @@ Covered by `e2e/guide.spec.ts` and the updated one-shot assertions in `e2e/warbo
 the front, so the shared reroll pool needs more sources. Audit the current supply
 (`REROLL_TOKENS_PER_OPERATION` 1/op plus the free overrule on already-completed combos) against the
 new demand; candidate sources: a full-star clear on a strain-accepted operation, an
-operation-complete bonus, or a bonus-honors team award. Design pass, no code yet.
+operation-complete bonus, or a bonus-honors team award. Design pass, no code yet. The **Major Order**
+bonus (N40) is the first such source to land.
+
+**N40 · Major Orders Phase A. Done.** The operation's front draw can now be pinned to the live war's
+Major Order. Before the operation's first spin the host sets `SET_MAJOR_ORDER` (host-only, phase
+`spin`, `frontId === null`) with the MO's front(s): `deriveFront` takes an eligible pool, so the spin
+still randomizes within a multi-front order but never leaves it (a single-front order fixes the draw,
+and its front reroll is refused — "Only one front on this Major Order"). The commitment is re-chosen
+each operation and kept on a failure restart with the locked front; it lives on `DiveState.majorOrder`
+(`{ fronts, title?, planetNames?, expiresAt? }`, metadata pass-through for the banner). The carrot is
+`MAJOR_ORDER_REROLL_BONUS` (1): completing an MO-aligned operation banks an extra reroll token for the
+next operation — Valor, tiers and rewards are untouched (principle 1). `SET_MAJOR_ORDER` added to the
+reducer union, `HOST_ONLY_ACTIONS` and `ENGINE_ACTION_TYPES`; `MajorOrderPicker` renders in the spin
+phase and a Major Order tag rides the WheelPanel front card. `SAVE_SCHEMA_VERSION` 9 → 10
+(`migrateV9toV10` defaults `majorOrder: null`), `ENGINE_VERSION` 17 → 18; goldens unchanged (the
+scripted crusade sets no MO). Covered by reducer tests (front pin across seeds, late-order refusal,
+unknown/empty normalization, single-front reroll refusal, bonus token + clear, failure-restart
+retention), `deriveFront` pool tests, the v9→v10 migration test, and `majorOrderFronts`.
+**Phase B (live API) also landed:** `server/api/war/major-order.get.ts` (10-minute cache, never
+caches a failure) → `server/utils/major-order.ts` (`normalizeMajorOrder`, pure + unit-tested)
+normalizes `api.helldivers2.dev/api/v1/assignments` joined to
+`helldiverstrainingmanual.com/api/v1/war/campaign` for planet→faction into a `MajorOrderSelection`;
+`useMajorOrder` feeds the picker's one-click "Play it" suggestion. Offline/static builds, a failed
+fetch, or `GRIFFDIVE_DISABLE_MO_API=1` all fall back to the manual picker. Covered by
+`server/utils/major-order.spec.ts` and the solo-dive E2E MO flow.
 
 ### Post-v1 / R&D
 
 **N3 · Campaign API / MO boosts.** New server proxy route + cache (respect rate limits/ToS), with
 campaign data injected into state like seeds so the engine stays pure. Offline must degrade
-gracefully. Engine purity (invariant 1) forbids fetching inside `shared/engine/**`.
+gracefully. Engine purity (invariant 1) forbids fetching inside `shared/engine/**`. **Landed as
+N40 Phase B** — the engine consumes the host's `MajorOrderSelection` (never a fetch); the proxy
+caches and degrades to the manual picker.
 
 ### Shipped outside the batches
 

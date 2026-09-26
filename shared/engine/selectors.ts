@@ -1,4 +1,5 @@
 import { ALL_ITEMS, ALL_WARBOND_CODES } from '../data/catalog'
+import { FRONTS } from '../data/fronts'
 import type { Front } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
 import type { Misfortune } from '../data/misfortunes'
@@ -50,6 +51,19 @@ export function activeMisfortune(state: DiveState): Misfortune | null {
 
 export function currentFront(state: DiveState): Front | null {
   return state.frontId ? frontById(state.frontId) : null
+}
+
+// The fronts a Major Order pins the operation's draw to. No MO (or one that
+// names no known front) leaves the full roster, so the draw is unrestricted.
+// With an MO the pool is exactly its fronts — the squad chose where to fight,
+// so the spin randomizes within the order but never leaves it.
+export function majorOrderFronts(state: DiveState): readonly Front[] {
+  const ids = state.majorOrder?.fronts
+  if (!ids?.length) {
+    return FRONTS
+  }
+  const pool = FRONTS.filter(front => ids.includes(front.id))
+  return pool.length > 0 ? pool : FRONTS
 }
 
 export function currentStrain(state: DiveState): Strain | null {
@@ -382,6 +396,13 @@ export function canRerollWheel(
   // mission-1 business.
   if (wheel !== 'misfortune' && state.missionInOperation > 1) {
     return { allowed: false, free: false, reason: 'The front locks in for the whole operation' }
+  }
+  if (wheel === 'front') {
+    // A reroll must be able to move: a Major Order that pins a single front
+    // fixes the draw for the operation.
+    if (majorOrderFronts(state).length < 2) {
+      return { allowed: false, free: false, reason: 'Only one front on this Major Order' }
+    }
   }
   if (wheel === 'strain') {
     if (!state.strainId) {

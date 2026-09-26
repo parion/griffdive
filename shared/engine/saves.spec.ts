@@ -124,6 +124,15 @@ describe('save migration v8 → v9 (strains)', () => {
   })
 })
 
+describe('save migration v9 → v10 (Major Orders)', () => {
+  it('defaults the Major Order to none', () => {
+    const doc: SaveDoc = { ...v1Doc(), schemaVersion: 9 }
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
+    expect(migrated.state.majorOrder).toBeNull()
+  })
+})
+
 // v1–v3 wheels carried the front; the legacy shape reads it during migration.
 function legacyWheel(seed: number, misfortuneId: string, front: string): SaveDoc['state']['wheel'] {
   return { seed, misfortuneId, front } as SaveDoc['state']['wheel']

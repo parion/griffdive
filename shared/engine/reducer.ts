@@ -1,11 +1,13 @@
 import { ALL_WARBOND_CODES, ITEMS_BY_ID, WARBONDS } from '../data/catalog'
-import type { CrusadeSettings, DiveState, DiverState, EngineAction } from './types'
-import { ACTION_LOG_CAP, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, REWARD_TOKEN_CAP, maxStarsFor, missionsPerOperation } from './config'
+import { FRONTS } from '../data/fronts'
+import type { FrontId } from '../data/fronts'
+import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection } from './types'
+import { ACTION_LOG_CAP, MAJOR_ORDER_REROLL_BONUS, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, REWARD_TOKEN_CAP, maxStarsFor, missionsPerOperation } from './config'
 import { STARTING_KITS, startingItemIds } from './progression'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed } from './rng'
-import { activeMisfortune, allDiversPicked, bonusEligible, catchUpOptionsFor, comboKey, diverOptions, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor } from './selectors'
+import { activeMisfortune, allDiversPicked, bonusEligible, catchUpOptionsFor, comboKey, diverOptions, majorOrderFronts, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor } from './selectors'
 import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 
 export function createDiveState(
@@ -46,6 +48,7 @@ function applyStart(state: DiveState, settings: CrusadeSettings): Partial<DiveSt
     strainId: null,
     strainAccepted: false,
     strainDecided: false,
+    majorOrder: null,
     personalInventories,
   }
 }
@@ -149,8 +152,9 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }
       // Every mission draws its own misfortune; the front and its strain are
       // drawn once per operation, with the first spin, and persist across its
-      // missions.
-      const frontId = state.frontId ?? deriveFront(action.seed)
+      // missions. A Major Order pins the front pool to the fronts the host set
+      // before this spin.
+      const frontId = state.frontId ?? deriveFront(action.seed, majorOrderFronts(state))
       const drawingOperation = state.frontId === null
       return commit(state, {
         wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed, state.difficulty).id },
@@ -224,6 +228,41 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }, action)
     }
 
+    case 'SET_MAJOR_ORDER': {
+      // The Major Order pins the operation's front draw, so it is answered
+      // before the first spin: once the front is drawn the operation is
+      // committed and the MO rides the locked front (a failure restart keeps
+      // it, like the front). A new operation starts with frontId null, which
+      // reopens the call.
+      if (state.phase !== 'spin' || state.frontId !== null) {
+        return state
+      }
+      if (!action.order) {
+        return commit(state, { majorOrder: null }, action)
+      }
+      const known = new Set<string>(FRONTS.map(front => front.id))
+      const fronts = [...new Set(action.order.fronts)]
+        .filter((id): id is FrontId => known.has(id))
+      if (fronts.length === 0) {
+        return commit(state, { majorOrder: null }, action)
+      }
+      const selection: MajorOrderSelection = { fronts }
+      // Display metadata is pass-through (Phase B fills it from the war API):
+      // sanitized to bounded strings so a hostile client can't bloat the room.
+      if (typeof action.order.title === 'string' && action.order.title.trim()) {
+        selection.title = action.order.title.trim().slice(0, 120)
+      }
+      if (Array.isArray(action.order.planetNames)) {
+        selection.planetNames = action.order.planetNames
+          .filter(name => typeof name === 'string' && name.trim())
+          .slice(0, 8)
+      }
+      if (typeof action.order.expiresAt === 'string') {
+        selection.expiresAt = action.order.expiresAt.slice(0, 40)
+      }
+      return commit(state, { majorOrder: selection }, action)
+    }
+
     case 'REROLL_WHEEL': {
       if (
         (state.phase !== 'decision' && state.phase !== 'strain' && state.phase !== 'pacts')
@@ -249,7 +288,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       const sameResult = action.wheel === 'misfortune'
         ? deriveMisfortune(action.seed, state.difficulty).id === state.wheel.misfortuneId
         : action.wheel === 'front'
-          ? deriveFront(action.seed) === state.frontId
+          ? deriveFront(action.seed, majorOrderFronts(state)) === state.frontId
           : deriveStrain(action.seed, state.difficulty, state.frontId)?.id === state.strainId
       if (sameResult) {
         return state
@@ -275,7 +314,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         }, action)
       }
       if (action.wheel === 'front') {
-        const frontId = deriveFront(action.seed)
+        const frontId = deriveFront(action.seed, majorOrderFronts(state))
         return commit(state, {
           frontId,
           strainId: deriveStrain(action.seed, state.difficulty, frontId)?.id ?? null,
@@ -509,21 +548,25 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
             strainId: null,
             strainAccepted: false,
             strainDecided: false,
+            majorOrder: null,
           }, action)
         }
         // Operation completed: a fresh operation draws a new front and strain
-        // with its first spin.
+        // with its first spin, and the Major Order is re-chosen. Playing the
+        // operation toward an MO banks its extra reroll token for the next one.
         return commit(state, {
           missionIndex,
           difficulty: nextDifficulty,
           missionInOperation: 1,
-          rerollTokens: REROLL_TOKENS_PER_OPERATION,
+          rerollTokens: REROLL_TOKENS_PER_OPERATION
+            + (state.majorOrder ? MAJOR_ORDER_REROLL_BONUS : 0),
           ...resetForNextMission(state),
           wheel: null,
           frontId: null,
           strainId: null,
           strainAccepted: false,
           strainDecided: false,
+          majorOrder: null,
           misfortuneAccepted: false,
           phase: 'spin',
         }, action)

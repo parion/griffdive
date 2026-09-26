@@ -98,6 +98,30 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByText('Rewards banned')).toBeVisible()
 })
 
+test('a Major Order pins the operation front and tags the card', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Diver name').fill('Griffon')
+  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await dismissWarbondIntro(page)
+
+  // The host can pin the operation to the live Major Order's front before the
+  // first spin; the picker starts on "No order".
+  const picker = page.getByRole('group', { name: 'Major Order front' })
+  await expect(picker).toBeVisible()
+  await expect(picker.getByRole('button', { name: 'No order' })).toHaveAttribute('aria-pressed', 'true')
+  await picker.getByRole('button', { name: 'Automatons', exact: true }).click()
+  await expect(picker.getByRole('button', { name: 'Automatons', exact: true })).toHaveAttribute('aria-pressed', 'true')
+
+  await page.getByRole('button', { name: 'Spin', exact: true }).click()
+
+  // The draw is pinned: the front card lands on the ordered front, and the MO
+  // tag rides it for the operation. The picker is gone once the front is drawn.
+  const frontCard = page.locator('.front-card')
+  await expect(frontCard.getByText('Automatons')).toBeVisible()
+  await expect(frontCard.getByText(/Major Order/)).toBeVisible()
+  await expect(picker).toBeHidden()
+})
+
 test('a failed mission labels the operation failed and restarts it', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')

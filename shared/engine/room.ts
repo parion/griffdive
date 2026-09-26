@@ -21,6 +21,7 @@ export function createLobbyState(): DiveState {
     strainId: null,
     strainAccepted: false,
     strainDecided: false,
+    majorOrder: null,
     rerollTokens: REROLL_TOKENS_PER_OPERATION,
     completedCombos: [],
     personalInventories: {},
