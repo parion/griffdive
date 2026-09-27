@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { seedOnboarded } from './helpers'
 
 test('PWA affordances: manifest, icons and service worker are served', async ({ page, request }) => {
   const manifest = await request.get('/manifest.webmanifest')
@@ -20,6 +21,7 @@ test('PWA affordances: manifest, icons and service worker are served', async ({ 
   const sw = await request.get('/sw.js')
   expect(sw.ok()).toBeTruthy()
 
+  await seedOnboarded(page)
   await page.goto('/')
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest')
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#131511')

@@ -6,12 +6,16 @@ import { isRoomCode } from '~~/shared/utils/room-code'
 import type { CrusadeSettings, CrusadeVariant, DiveState } from '~~/shared/engine/types'
 import type { DiveSaveInfo } from '~~/shared/types/messages'
 import type { SaveDoc } from '~~/shared/types/save'
+import { storedDiverName } from '~/composables/useGameSocket'
+import { useOnboarding } from '~/composables/useOnboarding'
 
 const saves = useSaves()
 const recentRooms = useRecentRooms()
 const { ownedWarbonds: myWarbonds, setOwned: setMyWarbonds } = useOwnedWarbonds()
+const { hasSeenOnboarding } = useOnboarding()
 
-const diverName = ref('Griffin')
+const savedName = storedDiverName()
+const diverName = ref(savedName === 'Diver' ? 'Griffin' : savedName)
 const variant = ref<CrusadeVariant>('standard')
 const slotList = ref<{ id: string, doc: SaveDoc }[]>([])
 const joinCode = ref('')
@@ -23,6 +27,11 @@ const onlineDives = ref<OnlineDive[]>([])
 const onlineLoading = ref(true)
 
 onMounted(() => {
+  // First run: the full-screen briefing takes over before the base is shown.
+  if (!hasSeenOnboarding.value) {
+    navigateTo('/start?next=/')
+    return
+  }
   slotList.value = saves.listSaves()
   refreshOnlineDives()
 })
@@ -189,6 +198,12 @@ function formatSavedAt(doc: SaveDoc): string {
             Join
           </button>
         </form>
+        <NuxtLink
+          class="btn ghost"
+          to="/start?next=/"
+        >
+          How it works
+        </NuxtLink>
       </div>
       <ul class="perks">
         <li>

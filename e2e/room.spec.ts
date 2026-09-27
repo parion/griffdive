@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { dismissWarbondIntro } from './helpers'
+import { completeOnboarding, dismissWarbondIntro } from './helpers'
 
 test('two divers sync one dive; late joiner gets the snapshot', async ({ browser }) => {
   const contextA = await browser.newContext()
@@ -8,25 +8,24 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   const pageB = await contextB.newPage()
 
   await pageA.goto('/')
+  await completeOnboarding(pageA, 'Host')
   await pageA.getByRole('button', { name: 'Host an online dive' }).click()
   await expect(pageA).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
 
-  // The name gate holds the host until they introduce themselves.
-  await pageA.getByLabel('Your name').fill('Host')
-  await pageA.getByRole('button', { name: 'Join the dive' }).click()
+  // The host is seated under the onboarding-provided name.
   await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
   await expect(pageA.getByText('Wheel of Misfortune')).toBeVisible()
   // A lone host is nudged to share the invite — the copy control glows.
   await expect(pageA.getByLabel('Copy invite link')).toHaveClass(/glow/)
 
-  // A second browser joins through the same invite link — the name gate
-  // blocks seating until they provide a name.
+  // A second browser joins through the same invite link — the first-run
+  // briefing blocks seating until they name themselves.
   await pageB.goto(pageA.url())
-  await expect(pageB.getByLabel('Your name')).toBeVisible()
+  await expect(pageB.getByLabel('Diver name')).toBeVisible()
   await expect(pageB.locator('.diver-chip')).toHaveCount(0)
-  await pageB.getByLabel('Your name').fill('Duo')
-  await pageB.getByRole('button', { name: 'Join the dive' }).click()
+  await pageB.getByLabel('Diver name').fill('Duo')
+  await pageB.getByRole('button', { name: 'Skip the tour' }).click()
   await dismissWarbondIntro(pageB)
 
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
@@ -102,16 +101,14 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   const pageB = await contextB.newPage()
 
   await pageA.goto('/')
+  await completeOnboarding(pageA, 'Host')
   await pageA.getByRole('button', { name: 'Host an online dive' }).click()
-  await pageA.getByLabel('Your name').fill('Host')
-  await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
   await expect(pageA.getByText('Wheel of Misfortune')).toBeVisible()
 
   await pageB.goto(pageA.url())
-  await pageB.getByLabel('Your name').fill('Sidekick')
-  await pageB.getByRole('button', { name: 'Join the dive' }).click()
+  await completeOnboarding(pageB, 'Sidekick')
   await dismissWarbondIntro(pageB)
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
 
@@ -145,16 +142,14 @@ test('the Codex slide-over keeps the host seated', async ({ browser }) => {
   const pageB = await contextB.newPage()
 
   await pageA.goto('/')
+  await completeOnboarding(pageA, 'Host')
   await pageA.getByRole('button', { name: 'Host an online dive' }).click()
-  await pageA.getByLabel('Your name').fill('Host')
-  await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
   await expect(pageA.getByText('Wheel of Misfortune')).toBeVisible()
 
   await pageB.goto(pageA.url())
-  await pageB.getByLabel('Your name').fill('Duo')
-  await pageB.getByRole('button', { name: 'Join the dive' }).click()
+  await completeOnboarding(pageB, 'Duo')
   await dismissWarbondIntro(pageB)
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
 

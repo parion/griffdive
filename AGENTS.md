@@ -30,7 +30,9 @@ room server-side so it outlives the idle TTL and a browser clearing its storage,
 the existing rejoin path (see Saved dives). **Alpha has landed:** the save schema is frozen at v10
 and the migration chain is open (see Save model). The **Griffdiver lore layer** has landed too: the
 Class E framing, pre-match brief and ceremony lines live in `shared/data/lore.ts` (presentation
-only; see Lore in the Data catalog). See [Roadmap](#roadmap).
+only; see Lore in the Data catalog), and the full-screen **first-run onboarding** (`/start`) now
+takes the name and warbonds while showing the loop with auto-playing vignettes. See
+[Roadmap](#roadmap).
 
 ---
 
@@ -592,7 +594,8 @@ all routes; static hosts need a `/*` → shell fallback instead.
 app/
   pages/           index (new crusade / host / join / continue), dive/[id] (solo + room flow —
                    thin orchestrator: session driver + action handlers; shell and per-phase UI
-                   live in components/dive/), lobby (open dives), codex
+                   live in components/dive/), start (first-run onboarding — full-screen briefing
+                   for name + warbonds, replaces the old name gate), codex
   components/      dive/ (DiveHeader — title/difficulty/mission track + session controls,
                    SquadStrip — diver chips, presence, name, host moderation,
                    DivePhaseLobby/DivePhaseWheel/DivePhaseDiving/DivePhaseRewards/
@@ -611,9 +614,13 @@ app/
                    catch-up ceremony, DiversChoiceCard — the special
                    S+ "Liberty's Cross" offer card, DiversChoicePicker — its minified codex
                    modal, InventoryGrid, CrusadeSetup, WarbondPicker,
-                   JoinNameGate — name gate held while joining,
                    DiveGuide — the "How a dive works" primer content,
                    shared by the first-run slide-over and the Guide button),
+                   onboarding/ (OnboardingFlow — the full-screen first-run briefing shell
+                   (progress rail + auto-playing vignettes), IdentityStep — the A→E registry
+                   reveal + name, WheelStep — the reeled misfortune demo, PactStep — the Valor
+                   meter filling from team risk + a pact, RewardStep — the reward draft and
+                   ceiling ladder; the warbonds + deploy beats render in the shell),
                    codex/CodexBrowser — the shared catalog browser (filter + tier grid),
                    warbonds/WarbondBrowser — the shared warbond owner list (single column,
                    acquisition specials last; each banner starts blurred and dimmed, then
@@ -638,7 +645,8 @@ app/
                    seated dive),
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
                    useMajorOrder (live war proxy → the picker's suggestion; null offline),
-                   useChangelog (GitHub deployments + commits → changelog entries, 10-min cache)
+                   useChangelog (GitHub deployments + commits → changelog entries, 10-min cache),
+                   useOnboarding (one-shot first-run briefing memory; gates the home redirect)
   stores/          session.ts (Pinia: selfId, snapshot, online)
   utils/           seed.ts (client seed generation)
   assets/css/      main.css — global HD2 theme (two-font system, see Conventions)
@@ -837,8 +845,8 @@ mount: `fly volumes create griffdive_data --region ams --size 1`.
   light of liberty; the mode's earn-your-arsenal loop is their atonement. The module carries **no
   game rules**, is never saved or synced, and is **not** part of `CATALOG_VERSION`; components
   render it and nothing branches on it. Voice is Ministry-of-Truth satire. The pre-match read lives
-  on `JoinNameGate` (room joins) and the first-run `DiveGuide` (every dive), so no player wades
-  through a wall of text to start.
+  on the first-run `/start` onboarding (identity + auto-playing loop vignettes) and the `DiveGuide`
+  primer, so no player wades through a wall of text to start.
 
 ---
 
@@ -927,8 +935,9 @@ mount: `fly volumes create griffdive_data --region ams --size 1`.
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host
   authority, pact lock-in), Codex slide-over (opens over the dive without dropping the session),
   Guide slide-over (the "How a dive works" primer reachable from the header),
+  first-run onboarding (`onboarding.spec.ts`: the animated briefing walked end to end),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
-  non-dismissible name gate, star-rating keyboard navigation), PWA affordances
+  first-run gate, star-rating keyboard navigation), PWA affordances
   (manifest content type + icons served, SW reachable, shell head links). Chromium only;
   `pnpm exec playwright install chromium` after a fresh clone.
 

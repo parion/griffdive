@@ -2,7 +2,6 @@
 import { diverOptions, majorOrderFronts } from '~~/shared/engine/selectors'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
 import type { CrusadeVariant, DiverState, EngineAction, ItemRef, MajorOrderSelection, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
-import { rememberDiverName } from '~/composables/useGameSocket'
 
 const route = useRoute()
 const slotId = computed(() => String(route.params.id))
@@ -30,6 +29,15 @@ const {
 } = useDiveView(session)
 
 const dispatch = (action: EngineAction) => session.dispatch(action)
+
+// A first-run joiner (no stored name or seat) is routed through the full-screen
+// briefing to name themselves and declare warbonds before seating. Returners
+// with a saved name auto-connect and never see it.
+onMounted(() => {
+  if (session.awaitingName.value) {
+    navigateTo(`/start?next=${encodeURIComponent(route.fullPath)}`)
+  }
+})
 
 // Warbonds are what each diver actually owns — declared per diver, any phase,
 // and driven by the global Warbonds drawer. A local save seeds the working list
@@ -328,13 +336,6 @@ function transferHost(diverId: string): void {
   dispatch({ type: 'TRANSFER_HOST', playerId: diverId })
 }
 
-// The name gate runs before joining: confirm stores the name so the first
-// hello seats this diver named, then the connection opens.
-function confirmJoinName(name: string): void {
-  rememberDiverName(name)
-  session.connect()
-}
-
 function launchCrusade(variant: CrusadeVariant): void {
   commitName()
   dispatch({ type: 'START_DIVE', settings: { variant } })
@@ -347,10 +348,6 @@ function launchCrusade(variant: CrusadeVariant): void {
     class="page"
     tabindex="-1"
   >
-    <JoinNameGate
-      v-if="session.awaitingName.value"
-      @confirm="confirmJoinName"
-    />
     <p
       v-if="session.loadError.value"
       class="panel"

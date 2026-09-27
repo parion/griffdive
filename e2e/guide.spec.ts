@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { seedOnboarded } from './helpers'
 
 test('the Guide slide-over explains the loop from the header', async ({ page }) => {
+  await seedOnboarded(page)
   await page.goto('/')
 
   const trigger = page.getByRole('button', { name: 'Guide', exact: true })

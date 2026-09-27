@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { seedOnboarded } from './helpers'
 
 test('the Warbonds drawer toggles ownership and persists it', async ({ page }) => {
+  await seedOnboarded(page)
   await page.goto('/')
 
   await page.getByRole('button', { name: 'Warbonds', exact: true }).click()
@@ -29,6 +31,7 @@ test('the Warbonds drawer toggles ownership and persists it', async ({ page }) =
 })
 
 test('the Warbonds panel opens at dive start once, then stays quiet', async ({ page }) => {
+  await seedOnboarded(page)
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
   await page.getByRole('button', { name: 'Start solo crusade' }).click()
