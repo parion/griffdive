@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ITEMS_BY_ID } from '~~/shared/data/catalog'
+import { GRIFFDIVER_CACHE_LINE, GRIFFDIVER_PROMOTION_LINE } from '~~/shared/data/lore'
 import { availableCaches, catchUpOptionsFor } from '~~/shared/engine/selectors'
 import type { DiveState, DiverState } from '~~/shared/engine/types'
 import { SPRING_SNAP, riseIn } from '~/utils/motion'
@@ -32,6 +33,9 @@ function itemNames(itemIds: string[]): string[] {
 <template>
   <section class="panel promotion">
     <h2>Field Promotion</h2>
+    <p class="recall small">
+      {{ GRIFFDIVER_PROMOTION_LINE }}
+    </p>
     <p class="muted small">
       You joined mid-crusade — the squad climbed without you. Claim
       {{ diver.catchUpOwed }}
@@ -41,6 +45,9 @@ function itemNames(itemIds: string[]): string[] {
     </p>
 
     <template v-if="mode === 'choice' && untouched">
+      <p class="muted small cache-note">
+        {{ GRIFFDIVER_CACHE_LINE }}
+      </p>
       <div class="cache-list">
         <button
           v-for="cache in caches"
@@ -87,7 +94,7 @@ function itemNames(itemIds: string[]): string[] {
         class="row small muted banked"
         v-bind="riseIn(0)"
       >
-        Promotion banked — welcome back to the fight, diver.
+        Promotion banked — welcome back to the fight, Griffdiver.
       </Motion>
     </template>
   </section>
@@ -123,6 +130,15 @@ function itemNames(itemIds: string[]): string[] {
   text-transform: uppercase;
   color: var(--khaki);
 }
+
+.recall {
+  margin: 0;
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--gold);
+  color: var(--khaki);
+}
+
+.cache-note { margin: 0; }
 
 .banked {
   margin: 0;

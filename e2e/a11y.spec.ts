@@ -59,7 +59,7 @@ test('the join name gate cannot be dismissed', async ({ browser }) => {
   await page.getByRole('button', { name: 'Host an online dive' }).click()
   await expect(page).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
 
-  const dialog = page.getByRole('dialog', { name: 'Identify yourself, diver' })
+  const dialog = page.getByRole('dialog', { name: 'Identify yourself, Griffdiver' })
   await expect(dialog).toBeVisible()
   await expect(dialog.getByLabel('Your name')).toBeFocused()
 

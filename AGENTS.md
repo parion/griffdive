@@ -28,7 +28,9 @@ worker with an offline shell + on-demand catalog art), the operation-long **fact
 Remaining Phase 4 polish is next. Hybrid **saved dives** have landed: any seated diver can pin a
 room server-side so it outlives the idle TTL and a browser clearing its storage, resuming through
 the existing rejoin path (see Saved dives). **Alpha has landed:** the save schema is frozen at v10
-and the migration chain is open (see Save model). See [Roadmap](#roadmap).
+and the migration chain is open (see Save model). The **Griffdiver lore layer** has landed too: the
+Class E framing, pre-match brief and ceremony lines live in `shared/data/lore.ts` (presentation
+only; see Lore in the Data catalog). See [Roadmap](#roadmap).
 
 ---
 
@@ -661,6 +663,8 @@ shared/
   utils/           room-code.ts (room-code alphabet + validator)
   data/            items (equipment.ts, stratagems.ts), warbonds.ts, fronts.ts,
                    misfortunes.ts, strains.ts, pacts.ts, catalog.ts (aggregation + CATALOG_VERSION),
+                   lore.ts (in-universe Griffdiver copy — citizen classes, the pre-match
+                   brief, ceremony lines; presentation only, never saved),
                    ordering.ts (kit presentation order: stratagem role → tier → name),
                    images.ts (imageURL filename → /images/<dir> URL resolver,
                    difficultyImageUrl for the 1–10 difficulty emblems)
@@ -827,6 +831,14 @@ mount: `fly volumes create griffdive_data --region ams --size 1`.
   warbonds). Saves record catalog + engine versions as diagnostics; the save-schema version drives
   the migration chain (see Save model). From alpha the schema is frozen — shape changes migrate
   rather than dropping docs.
+- **Lore (presentation only):** `shared/data/lore.ts` holds the in-universe Griffdiver copy —
+  citizen classes, the pre-match brief, and ceremony lines. Griffdivers are Class E citizens
+  (Helldivers are Class A), stripped of citizenship and sent to the front to be redeemed before the
+  light of liberty; the mode's earn-your-arsenal loop is their atonement. The module carries **no
+  game rules**, is never saved or synced, and is **not** part of `CATALOG_VERSION`; components
+  render it and nothing branches on it. Voice is Ministry-of-Truth satire. The pre-match read lives
+  on `JoinNameGate` (room joins) and the first-run `DiveGuide` (every dive), so no player wades
+  through a wall of text to start.
 
 ---
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CITIZEN_CLASSES, GRIFFDIVER_BRIEF, GRIFFDIVER_GATE_LEDE } from '~~/shared/data/lore'
 import { ACCOUNTABILITY_LABELS } from '~/utils/accountability'
 
 interface GuideStep {
@@ -49,6 +50,28 @@ const CHECKS = Object.values(ACCOUNTABILITY_LABELS)
       Griffdive wraps a Helldivers 2 operation in a squad challenge. Every mission
       runs the same six beats.
     </p>
+
+    <section class="guide-note briefing">
+      <h3>Who are the Griffdivers?</h3>
+      <p>{{ GRIFFDIVER_GATE_LEDE }}</p>
+      <ul class="brief-list">
+        <li
+          v-for="line in GRIFFDIVER_BRIEF"
+          :key="line"
+        >
+          {{ line }}
+        </li>
+      </ul>
+      <ul class="class-list">
+        <li
+          v-for="entry in CITIZEN_CLASSES"
+          :key="entry.grade"
+        >
+          <strong>{{ entry.label }}</strong>
+          <span>{{ entry.blurb }}</span>
+        </li>
+      </ul>
+    </section>
 
     <ol class="guide-steps">
       <li
@@ -194,4 +217,28 @@ const CHECKS = Object.values(ACCOUNTABILITY_LABELS)
   gap: 0.2rem;
 }
 .guide-checks li { color: var(--khaki); font-size: 0.85rem; }
+
+.brief-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.25rem;
+}
+.brief-list li { color: var(--khaki); font-size: 0.85rem; }
+
+.class-list {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.class-list li { display: grid; gap: 0.1rem; }
+.class-list strong {
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--teal);
+}
+.class-list span { color: var(--muted); font-size: 0.8rem; }
 </style>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { GRIFFDIVER_TAGLINE } from '~~/shared/data/lore'
 import { difficultyName } from '~~/shared/engine/progression'
 import { createDiveState } from '~~/shared/engine/reducer'
 import { isRoomCode } from '~~/shared/utils/room-code'
@@ -150,6 +151,9 @@ function formatSavedAt(doc: SaveDoc): string {
         <span class="chip">live-synced</span>
       </div>
       <h1>Squad up online</h1>
+      <p class="lore-tagline">
+        {{ GRIFFDIVER_TAGLINE }}
+      </p>
       <p class="muted">
         Griffdive is built for squads: host a crusade, share the link, and run the Wheel of
         Misfortune together — climb from difficulty 3 to 10, carry personal pacts, and let risk
@@ -382,6 +386,15 @@ function formatSavedAt(doc: SaveDoc): string {
 }
 
 .chips { gap: 0.4rem; }
+
+.lore-tagline {
+  margin: 0;
+  max-width: 46rem;
+  padding-left: 0.7rem;
+  border-left: 2px solid var(--gold);
+  color: var(--khaki);
+  font-size: 0.95rem;
+}
 
 .hero-actions .btn.primary {
   padding: 0.7rem 1.4rem;
