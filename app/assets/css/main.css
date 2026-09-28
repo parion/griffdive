@@ -48,6 +48,11 @@
   --teal: #4ad7c8;
   --purple: #b06bff;
 
+  /* Samples */
+  --sample-common: #45ff8d;
+  --sample-rare: #ff812a;
+  --sample-super: #ff5ac7;
+
   /* Tiers */
   --tier-c: #9a9b82;
   --tier-b: #6fbf73;
@@ -344,6 +349,7 @@ p { margin: 0.25rem 0; }
 .hazard-red { background-image: repeating-linear-gradient(-45deg, var(--red) 0 8px, var(--ground) 8px 16px); }
 .hazard-soft { background-image: repeating-linear-gradient(-45deg, rgba(255, 214, 66, 0.28) 0 4px, transparent 4px 8px); }
 .hazard-soft-red { background-image: repeating-linear-gradient(-45deg, rgba(255, 75, 62, 0.2) 0 4px, transparent 4px 8px); }
+.hazard-dark { background-image: repeating-linear-gradient(-45deg, rgba(11, 12, 9, 0.5) 0 8px, transparent 8px 16px); }
 .hatch { background-image: repeating-linear-gradient(-45deg, rgba(184, 176, 141, 0.13) 0 6px, transparent 6px 12px); }
 
 .grid-bg {
@@ -659,12 +665,14 @@ input[type='radio'] { accent-color: var(--gold); width: 1rem; height: 1rem; }
 .rise { animation: riseIn 0.45s var(--ease-out) both; }
 .stamp { animation: stampIn 0.42s var(--ease-out) both; }
 .crawl { background-size: 22.6px 22.6px; animation: crawl 0.6s linear infinite; }
+.crawl-slow { background-size: 22.6px 22.6px; animation: crawl 1.6s linear infinite; }
 .slam { animation: slam 0.5s var(--ease-impact) both; }
 .impact { animation: impact 0.6s var(--ease-out) both; transform-origin: left center; }
 .glow { animation: glow 2.6s ease-in-out infinite; }
 .blinkc { animation: blinkc 1s steps(1) infinite; }
 .glitch { animation: glitch 2.6s steps(1) infinite; }
 .flick { animation: flicker 3.2s linear infinite; }
+.flicker { animation: flicker 2.8s steps(1, end) 0.6s both; }
 .seat-live { animation: seatGlow 1.8s ease-in-out infinite; }
 .caret { animation: caret 1s steps(1) infinite; }
 .spin-slow { animation: spinSlow 8s linear infinite; }

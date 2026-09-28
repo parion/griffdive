@@ -4,7 +4,7 @@ import { performanceValor } from '~~/shared/engine/rewards'
 import { diverOptions, majorOrderFronts, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain, eligibleMisfortunes } from '~~/shared/engine/wheel'
-import type { CrusadeVariant, DiverState, EngineAction, ItemRef, MajorOrderSelection, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
+import type { CrusadeVariant, DiverState, EngineAction, ItemRef, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
 import { rememberDiverName } from '~/composables/useGameSocket'
 
 const route = useRoute()
@@ -16,6 +16,7 @@ const { ownedWarbonds, setOwned } = useOwnedWarbonds()
 const { openWarbonds, guideOpen } = useDrawers()
 const { hasSeenWarbondIntro, markWarbondIntroSeen } = useWarbondIntro()
 const { hasSeenDiveIntro, markDiveIntroSeen } = useDiveIntro()
+const { isPhone } = usePhoneShell()
 
 const {
   state,
@@ -35,6 +36,19 @@ const {
 const dispatch = (action: EngineAction) => session.dispatch(action)
 
 const armoryOpen = ref(false)
+
+// The rewards phase holds two screens — the draft and the honors ceremony.
+// The page owns the toggle so the shell's rails can follow it (draft → Valor,
+// honors → the squad's token banks); the phase component drives the value.
+const rewardsView = ref<'draft' | 'honors'>('draft')
+
+// The rewards phase unmounts between missions, so reset the toggle whenever
+// the dive leaves rewards — the next draft always opens on the draft.
+watch(phase, (current) => {
+  if (current !== 'rewards') {
+    rewardsView.value = 'draft'
+  }
+})
 
 // The Valor rail and the climb strip are shell state, not phase state: the
 // page composes them from selectors so every phase shares one rail.
@@ -278,7 +292,7 @@ function failPact(playerId: string, pactId: string): void {
   dispatch({ type: 'FAIL_PACT', playerId, pactId })
 }
 
-function report(payload: { outcome: MissionOutcome, stars: number, timePct: number, samples?: SampleCounts }): void {
+function report(payload: MissionReport): void {
   dispatch({ type: 'REPORT_RESULT', ...payload })
 }
 
@@ -460,8 +474,61 @@ function launchCrusade(variant: CrusadeVariant): void {
       </div>
     </section>
 
+    <AchievedOverlay
+      v-else-if="state && state.phase === 'complete' && state.achieved"
+      :state="state"
+      :crusade-label="crusadeLabel"
+      :mode="session.mode"
+      :slot-name="session.slotName.value"
+    />
+
+    <DivePhone
+      v-else-if="state && isPhone"
+      :state="state"
+      :self-id="selfId"
+      :self="self"
+      :can-control="canControl"
+      :op-length="opLength"
+      :mode="session.mode"
+      :slot-name="session.slotName.value"
+      :status="session.status.value"
+      :saved="Boolean(session.saved.value)"
+      :is-host="session.selfIsHost.value"
+      :online="session.online.value"
+      :kicked="kicked"
+      :last-error="session.lastError.value?.message ?? null"
+      @spin="spin"
+      @decide="decideMisfortune"
+      @decide-strain="decideStrain"
+      @set-major-order="setMajorOrder"
+      @reroll="reroll"
+      @lock-pacts="lockPacts"
+      @pact-risk="livePactRisk = $event"
+      @report="report"
+      @fail-pact="failPact"
+      @pick="pick"
+      @reroll-rewards="rerollRewards"
+      @ban-rewards="banRewards"
+      @spin-bonus="spinBonus"
+      @award-bonus="awardBonus"
+      @advance="advance"
+      @forfeit="forfeit"
+      @claim-catch-up-option="claimCatchUpOption"
+      @claim-cache="claimCache"
+      @start="launchCrusade"
+      @copy-invite="copyInvite"
+      @open-armory="armoryOpen = true"
+      @leave="leaveDive"
+      @end="endDive"
+      @save-dive="saveDive"
+      @unsave-dive="unsaveDive"
+      @abandon-slot="abandonSlot"
+      @dismiss-error="session.dismissError()"
+    />
+
     <DiveFrame
       v-else-if="state"
+      :left="state.phase !== 'forfeit'"
       :right="state.phase !== 'lobby'"
     >
       <template #header>
@@ -508,6 +575,11 @@ function launchCrusade(variant: CrusadeVariant): void {
           @kick="kick"
         />
 
+        <MissionReportSummary
+          v-if="state.phase === 'rewards'"
+          :state="state"
+        />
+
         <section
           v-if="wheelPool"
           class="sec pool"
@@ -541,7 +613,17 @@ function launchCrusade(variant: CrusadeVariant): void {
       </template>
 
       <template #right>
+        <ForfeitCarriesOver
+          v-if="state.phase === 'forfeit'"
+          :state="state"
+        />
+        <RewardTokensRail
+          v-else-if="state.phase === 'rewards' && rewardsView === 'honors'"
+          :state="state"
+          :self-id="selfId"
+        />
         <ValorMeter
+          v-else
           :difficulty="state.difficulty"
           :team-risk="teamRisk"
           :pact-risk="pactRisk"
@@ -604,7 +686,7 @@ function launchCrusade(variant: CrusadeVariant): void {
           />
 
           <DivePhaseWheel
-            v-if="phase === 'spin' || phase === 'decision' || phase === 'strain' || phase === 'pacts'"
+            v-if="phase === 'spin' || phase === 'decision' || phase === 'strain'"
             :state="state"
             :self-id="selfId"
             :self="self"
@@ -614,6 +696,14 @@ function launchCrusade(variant: CrusadeVariant): void {
             @decide-strain="decideStrain"
             @set-major-order="setMajorOrder"
             @reroll="reroll"
+          />
+
+          <PactScreen
+            v-else-if="phase === 'pacts'"
+            :state="state"
+            :self-id="selfId"
+            :self="self"
+            :can-control="canControl"
             @lock="lockPacts"
             @pact-risk="livePactRisk = $event"
           />
@@ -631,6 +721,7 @@ function launchCrusade(variant: CrusadeVariant): void {
 
           <DivePhaseRewards
             v-if="phase === 'rewards'"
+            v-model:view="rewardsView"
             :state="state"
             :self-id="selfId"
             :self="self"

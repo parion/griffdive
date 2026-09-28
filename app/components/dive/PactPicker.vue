@@ -11,7 +11,7 @@ const props = defineProps<{
   // Offered pacts the current selection rules out: pactId → reason to show.
   blocked?: Record<string, string>
 }>()
-defineEmits<{ toggle: [pactId: string], lock: [] }>()
+defineEmits<{ toggle: [pactId: string] }>()
 
 // Where the squad verifies each pact — the chip reads as the check channel,
 // not a rule (AGENTS.md: accountability rule).
@@ -64,38 +64,6 @@ function stampLabel(reason: string): string {
 
 <template>
   <section class="panel pacts">
-    <h2 class="sec-h pacts-head">
-      <WaitingLight label="Waiting on your pact picks" />
-      <AppTooltip
-        content="Rolled from the wheel decision — take any, all, or none. Every pact you carry raises your reward ceiling; a pact you break in the field is voided and costs one reward option. Restrictions that tax the same strength can't be stacked, and reserve utility (smoke, EMS, shields) is always available as loadout filler."
-      >
-        <button
-          class="pacts-term disp"
-          type="button"
-        >
-          Pacts
-        </button>
-      </AppTooltip>
-      <span class="lbl">personal risk · personal rewards</span>
-      <span
-        class="offer-tally"
-        role="status"
-      >
-        <span
-          class="chits"
-          aria-hidden="true"
-        >
-          <span
-            v-for="pact in offer"
-            :key="pact.id"
-            class="chit"
-            :class="{ on: isOn(pact.id) }"
-          />
-        </span>
-        <span class="cap">{{ selected.length }}<b>/{{ offer.length }}</b> sworn</span>
-      </span>
-    </h2>
-
     <div
       class="hand"
       role="group"
@@ -186,17 +154,6 @@ function stampLabel(reason: string): string {
         >Sworn</span>
       </CheckboxRoot>
     </div>
-
-    <footer class="row spread pacts-foot">
-      <span class="cap muted">Break a pact in the field to void its risk — it costs one reward option</span>
-      <button
-        class="btn primary cut"
-        type="button"
-        @click="$emit('lock')"
-      >
-        Lock in &amp; dive
-      </button>
-    </footer>
   </section>
 </template>
 
@@ -236,9 +193,10 @@ function stampLabel(reason: string): string {
 }
 
 .hand {
-  display: grid;
-  gap: 0.7rem;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 22px;
 }
 
 .pact-card {
@@ -247,7 +205,7 @@ function stampLabel(reason: string): string {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  width: 100%;
+  width: min(264px, 100%);
   min-height: 100%;
   padding: 0.85rem 0.9rem 0.95rem;
   text-align: left;

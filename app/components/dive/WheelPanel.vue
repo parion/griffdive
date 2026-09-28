@@ -18,6 +18,7 @@ import {
   strainDecision,
 } from '~~/shared/engine/selectors'
 import { eligibleMisfortunes, eligibleStrains } from '~~/shared/engine/wheel'
+import { catchUpOpsBehind } from '~~/shared/engine/progression'
 import type { DiveState } from '~~/shared/engine/types'
 import { ACCOUNTABILITY_LABELS } from '~/utils/accountability'
 import { riseIn } from '~/utils/motion'
@@ -81,6 +82,28 @@ const rerollWindow = computed(() =>
 // Pre-roll the faction card carries the Major Order chooser: on narrow screens
 // it leads, so the squad picks where to fight before hitting Spin.
 const preRoll = computed(() => !props.state.wheel && !props.state.frontId)
+
+// The operation ordinal (each cleared operation bumps difficulty by one), so
+// the title reads "Operation 5 · Mission 1 of 3" like the rest of the terminal.
+const variant = computed(() => props.state.settings?.variant ?? 'standard')
+const opNumber = computed(() => catchUpOpsBehind(props.state.difficulty, variant.value) + 1)
+const subtitle = computed(() => {
+  const base = `Operation ${opNumber.value} · Mission ${props.state.missionInOperation} of ${opLength.value}`
+  return preRoll.value ? `${base} · first spin draws the front` : base
+})
+
+// Pre-spin the front is unknown; the hint shows whether the Major Order (or a
+// manual pick) has already pinned it, and which faction that is.
+const pinnedFronts = computed(() => props.state.majorOrder?.fronts ?? [])
+const frontHint = computed(() => {
+  if (pinnedFronts.value.length > 0) {
+    const names = pinnedFronts.value
+      .map(id => FRONTS.find(front => front.id === id)?.displayName ?? id)
+      .join(' / ')
+    return `${names} pinned by the Major Order — no strain drawn.`
+  }
+  return 'Drawn with the first spin — a subfaction joins it.'
+})
 
 // The wheel spins on the seed before the result cards reveal. Purely
 // presentational: the engine result already exists, this just holds the reveal
@@ -313,15 +336,36 @@ function rerollLabel(
 
 <template>
   <section class="panel wheel-panel">
-    <header class="sh">
-      <h2 class="disp wheel-title">
-        Wheel of Misfortune
-      </h2>
-      <span
-        class="dash"
-        aria-hidden="true"
-      />
-      <span class="cap">Op {{ state.missionInOperation }} / {{ opLength }}</span>
+    <header class="sh wheel-head">
+      <div class="wheel-head-l">
+        <span class="lbl">{{ subtitle }}</span>
+        <h2 class="disp wheel-title">
+          Wheel of Misfortune
+        </h2>
+      </div>
+      <AppTooltip
+        :content="rerollLabel(misfortuneReroll, 'misfortune')"
+        :disabled="!canControl || !misfortuneReroll.allowed || misfortuneReeling"
+      >
+        <button
+          class="btn ghost reroll-main"
+          type="button"
+          :disabled="!canControl || !misfortuneReroll.allowed || misfortuneReeling"
+          :aria-label="rerollLabel(misfortuneReroll, 'misfortune')"
+          @click="emit('reroll', 'misfortune')"
+        >
+          <IconDice />
+          <span class="reroll-text">Reroll</span>
+          <span class="reroll-tally">
+            <span
+              class="chit hex"
+              :class="{ on: state.rerollTokens > 0 }"
+              aria-hidden="true"
+            />
+            <b>{{ state.rerollTokens }}</b>
+          </span>
+        </button>
+      </AppTooltip>
     </header>
 
     <div class="wheel-body">
@@ -333,8 +377,33 @@ function rerollLabel(
         @spin="$emit('spin')"
       />
       <div class="wheel-side">
+        <template v-if="preRoll">
+          <slot name="front-before-roll" />
+          <section
+            class="front-hint cut-sm"
+            aria-label="Front and strain"
+          >
+            <div
+              class="front-hint-emblems"
+              aria-hidden="true"
+            >
+              <img
+                v-for="entry in FRONTS"
+                :key="entry.id"
+                :src="factionImageUrl(entry.id)"
+                alt=""
+                :class="{ on: pinnedFronts.includes(entry.id) }"
+                draggable="false"
+              >
+            </div>
+            <div class="front-hint-copy">
+              <span class="lbl">Front + strain</span>
+              <span class="front-hint-text">{{ frontHint }}</span>
+            </div>
+          </section>
+        </template>
         <section
-          v-if="spinning"
+          v-else-if="spinning"
           class="drawing cut-sm"
           aria-live="polite"
         >
@@ -344,7 +413,6 @@ function rerollLabel(
         <div
           v-else
           class="wheel-result"
-          :class="{ 'pre-roll': preRoll }"
         >
           <Motion
             as="article"
@@ -358,20 +426,6 @@ function rerollLabel(
                 v-if="state.wheel"
                 class="head-tools"
               >
-                <AppTooltip
-                  v-if="canControl && rerollWindow"
-                  :content="rerollLabel(misfortuneReroll, 'misfortune')"
-                  :disabled="!misfortuneReroll.allowed || misfortuneReeling"
-                >
-                  <button
-                    class="reroll-dice"
-                    type="button"
-                    :disabled="!misfortuneReroll.allowed || misfortuneReeling"
-                    :aria-label="rerollLabel(misfortuneReroll, 'misfortune')"
-                    :title="!misfortuneReroll.allowed || misfortuneReeling ? rerollLabel(misfortuneReroll, 'misfortune') : undefined"
-                    @click="emit('reroll', 'misfortune')"
-                  ><IconDice /></button>
-                </AppTooltip>
                 <AppTooltip :content="stamp.text">
                   <span
                     class="lock"
@@ -458,7 +512,7 @@ function rerollLabel(
                   <span
                     class="hold-sub"
                     aria-hidden="true"
-                  >+0 risk</span>
+                  >+0</span>
                 </button>
               </div>
               <button
@@ -559,7 +613,7 @@ function rerollLabel(
                   :class="{ on: i <= state.missionInOperation }"
                   aria-hidden="true"
                 />
-                <span class="lock-text cap">Holds {{ opLength }} missions</span>
+                <span class="lock-text cap">All {{ opLength }} missions</span>
               </div>
               <div
                 v-if="strain"
@@ -656,7 +710,7 @@ function rerollLabel(
                     <span
                       class="hold-sub"
                       aria-hidden="true"
-                    >+0 risk</span>
+                    >+0</span>
                   </button>
                 </div>
                 <button
@@ -693,7 +747,7 @@ function rerollLabel(
                   class="lock-cell on"
                   aria-hidden="true"
                 />
-                <span class="lock-text cap">Holds {{ opLength }} missions</span>
+                <span class="lock-text cap">All {{ opLength }} missions</span>
               </div>
               <div
                 v-if="strain"
@@ -733,11 +787,9 @@ function rerollLabel(
               </p>
             </template>
             <template v-else>
-              <slot name="front-before-roll">
-                <p class="front-pending cap">
-                  Drawn with the first spin
-                </p>
-              </slot>
+              <p class="front-pending cap">
+                Drawn with the first spin
+              </p>
             </template>
           </Motion>
         </div>
@@ -750,20 +802,7 @@ function rerollLabel(
         class="muted small"
       >Waiting for the host to spin…</span>
       <span
-        class="chits"
-        :aria-label="`${state.rerollTokens} reroll tokens`"
-        role="img"
-      >
-        <span
-          v-for="i in Math.max(state.rerollTokens, 1)"
-          :key="i"
-          class="chit"
-          :class="{ on: i <= state.rerollTokens }"
-        />
-      </span>
-      <span class="cap">Reroll tokens <b>{{ state.rerollTokens }}</b></span>
-      <span
-        v-if="state.wheel"
+        v-else-if="state.wheel"
         class="cap muted"
       >Free reroll if this combo is already cleared</span>
     </footer>
@@ -772,7 +811,51 @@ function rerollLabel(
 
 <style scoped>
 .wheel-panel { gap: var(--gap-panel); }
+.wheel-head { align-items: flex-end; }
+.wheel-head-l { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
 .wheel-title { margin: 0; font-size: var(--fs-h1); color: var(--text); }
+
+/* Prominent reroll: the header control carries the shared chit + count, so the
+   per-card dice are reserved for the operation-long front/strain locks. */
+.reroll-main {
+  height: 44px;
+  padding: 0 14px;
+  flex-shrink: 0;
+  color: var(--text);
+}
+.reroll-main svg { width: 20px; height: 20px; }
+.reroll-text { font-size: 12px; font-weight: 700; letter-spacing: 0.16em; }
+.reroll-tally {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line-3);
+}
+.reroll-main .chit { width: 9px; height: 11px; }
+.reroll-tally b { font-size: 14px; font-weight: 700; }
+
+/* Pre-spin front/strain hint: the wheel shows where the first spin is headed. */
+.front-hint {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 20px;
+  border: 1px dashed var(--line-3);
+}
+.front-hint-emblems { display: flex; gap: 8px; }
+.front-hint-emblems img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  opacity: 0.35;
+  filter: grayscale(0.6);
+  transition: opacity var(--dur-med) var(--ease-out), filter var(--dur-med) var(--ease-out);
+}
+.front-hint-emblems img.on { opacity: 0.95; filter: none; }
+.front-hint-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.front-hint-text { font-size: 14px; font-weight: 600; color: var(--khaki); }
 
 .wheel-body {
   display: grid;

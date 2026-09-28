@@ -37,6 +37,15 @@ function slicePath(startDeg: number, endDeg: number): string {
   return `M ${CX} ${CY} L ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} Z`
 }
 
+// Risk pips: one 6px square per point of team risk, stacked radially in the
+// segment so the wheel reads its own odds at a glance (matches the legend).
+const pips = computed(() =>
+  segments.value.flatMap((segment, i) =>
+    Array.from({ length: segment.risk }, (_, k) => {
+      const [x, y] = polar(R - 24 - k * 9, i * step.value)
+      return { key: `${segment.id}-${k}`, x: x - 3, y: y - 3, tone: segment.tone }
+    })))
+
 const rotation = ref(0)
 
 // Spins are seeds: every client derives the same misfortune from the same
@@ -72,97 +81,123 @@ const hubLabel = computed(() => {
 </script>
 
 <template>
-  <div class="wheel-wrap">
-    <div
-      class="halo"
-      aria-hidden="true"
-    />
-    <div
-      class="rotor"
-      :style="{ transform: `rotate(${rotation}deg)` }"
-    >
-      <svg
-        :width="SIZE"
-        :height="SIZE"
-        :viewBox="`0 0 ${SIZE} ${SIZE}`"
-        role="img"
-        :aria-label="`Wheel of Misfortune, ${segments.length} misfortunes`"
+  <div class="wheel-col">
+    <div class="wheel-wrap">
+      <div
+        class="halo"
+        aria-hidden="true"
+      />
+      <div
+        class="rotor"
+        :style="{ transform: `rotate(${rotation}deg)` }"
       >
-        <circle
-          :cx="CX"
-          :cy="CY"
-          :r="R"
-          fill="var(--rail)"
-          stroke="var(--line-4)"
-          stroke-width="1"
-        />
-        <circle
-          :cx="CX"
-          :cy="CY"
-          :r="R - 12"
-          fill="none"
-          stroke="var(--line-2)"
-          stroke-width="14"
-          stroke-dasharray="2 20.4"
-        />
-        <g
-          v-for="(segment, i) in segments"
-          :key="segment.id"
+        <svg
+          :width="SIZE"
+          :height="SIZE"
+          :viewBox="`0 0 ${SIZE} ${SIZE}`"
+          role="img"
+          :aria-label="`Wheel of Misfortune, ${segments.length} misfortunes`"
         >
-          <path
-            :d="slicePath(i * step - step / 2, i * step + step / 2)"
-            :fill="segment.tone"
-            fill-opacity="0.14"
-            :stroke="segment.tone"
+          <circle
+            :cx="CX"
+            :cy="CY"
+            :r="R"
+            fill="var(--rail)"
+            stroke="var(--line-4)"
             stroke-width="1"
           />
-        </g>
-        <circle
-          :cx="CX"
-          :cy="CY"
-          :r="72"
-          fill="var(--ground)"
-          stroke="var(--line-4)"
-          stroke-width="1"
-        />
-      </svg>
-      <div
-        class="labels"
-        aria-hidden="true"
-      >
-        <span
-          v-for="(segment, i) in segments"
-          :key="segment.id"
-          class="seg-label"
-          :style="{ transform: `rotate(${i * step}deg) translateX(78px)` }"
-        >{{ segment.name }}</span>
+          <circle
+            :cx="CX"
+            :cy="CY"
+            :r="R - 12"
+            fill="none"
+            stroke="var(--line-2)"
+            stroke-width="14"
+            stroke-dasharray="2 20.4"
+          />
+          <g
+            v-for="(segment, i) in segments"
+            :key="segment.id"
+          >
+            <path
+              :d="slicePath(i * step - step / 2, i * step + step / 2)"
+              :fill="`color-mix(in srgb, ${segment.tone} 40%, var(--ground))`"
+              :stroke="segment.tone"
+              stroke-width="1.5"
+            />
+          </g>
+          <rect
+            v-for="pip in pips"
+            :key="pip.key"
+            :x="pip.x"
+            :y="pip.y"
+            width="6"
+            height="6"
+            :fill="pip.tone"
+          />
+          <circle
+            :cx="CX"
+            :cy="CY"
+            :r="72"
+            fill="var(--ground)"
+            stroke="var(--line-4)"
+            stroke-width="1"
+          />
+        </svg>
+        <div
+          class="labels"
+          aria-hidden="true"
+        >
+          <span
+            v-for="(segment, i) in segments"
+            :key="segment.id"
+            class="seg-label"
+            :style="{ transform: `rotate(${i * step}deg) translateX(78px)` }"
+          >{{ segment.name }}</span>
+        </div>
       </div>
+
+      <div
+        class="pointer"
+        aria-hidden="true"
+      />
+      <div
+        class="pointer-line"
+        aria-hidden="true"
+      />
+
+      <button
+        class="hub"
+        :class="{ live: seed === null && canControl, drawing: spinning }"
+        type="button"
+        :disabled="seed !== null || !canControl"
+        :aria-label="seed === null ? 'Spin' : 'Wheel drawn'"
+        @click="emit('spin')"
+      >
+        <span class="disp hub-word">{{ hubLabel }}</span>
+        <span class="hub-sub">{{ seed === null ? 'Draw the wheel' : 'Result locked' }}</span>
+      </button>
     </div>
 
     <div
-      class="pointer"
+      class="risk-legend"
       aria-hidden="true"
-    />
-    <div
-      class="pointer-line"
-      aria-hidden="true"
-    />
-
-    <button
-      class="hub"
-      :class="{ live: seed === null && canControl, drawing: spinning }"
-      type="button"
-      :disabled="seed !== null || !canControl"
-      :aria-label="seed === null ? 'Spin' : 'Wheel drawn'"
-      @click="emit('spin')"
     >
-      <span class="disp hub-word">{{ hubLabel }}</span>
-      <span class="hub-sub">{{ seed === null ? 'Draw the wheel' : 'Result locked' }}</span>
-    </button>
+      <span class="risk-item"><span class="risk-sw khaki" />Risk 1–2</span>
+      <span class="risk-item"><span class="risk-sw orange" />Risk 3</span>
+      <span class="risk-item"><span class="risk-sw red" />Risk 4–5</span>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.wheel-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
 .wheel-wrap {
   position: relative;
   width: min(100%, 460px);
@@ -170,6 +205,23 @@ const hubLabel = computed(() => {
   margin-inline: auto;
   flex-shrink: 0;
 }
+.risk-legend {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.risk-item { display: inline-flex; align-items: center; gap: 6px; }
+.risk-sw { width: 8px; height: 8px; flex-shrink: 0; }
+.risk-sw.khaki { background: var(--khaki); }
+.risk-sw.orange { background: var(--orange); }
+.risk-sw.red { background: var(--red); }
 .halo {
   position: absolute;
   inset: -18px;

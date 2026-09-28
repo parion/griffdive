@@ -3,7 +3,7 @@ import { FRONTS } from '../data/fronts'
 import type { Front } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
 import type { Misfortune } from '../data/misfortunes'
-import { pactById } from '../data/pacts'
+import { PACTS, pactById } from '../data/pacts'
 import type { Pact } from '../data/pacts'
 import type { Strain } from '../data/strains'
 import type { Item } from '../data/types'
@@ -25,6 +25,7 @@ import {
   MISFORTUNE_BANS_STRATAGEM,
   PACT_BANS_STRATAGEM,
   hasLegalLoadout,
+  isPactSelectable,
   pactRiskTotal,
   rollPactOffer,
   stratagemBanReason,
@@ -128,6 +129,31 @@ export function teamRiskOf(state: DiveState): number {
     : 0
   const majorOrderRisk = state.majorOrder?.live ? MAJOR_ORDER_RISK : 0
   return misfortuneRisk + strainRisk + majorOrderRisk
+}
+
+export interface TeamRiskBreakdown {
+  misfortuneRisk: number
+  strainRisk: number
+  majorOrderRisk: number
+  total: number
+}
+
+// The legible split of `teamRiskOf` for the pacts summary bar — same inputs,
+// same acceptance flags, so the screen and the floor can never disagree.
+export function teamRiskBreakdown(state: DiveState): TeamRiskBreakdown {
+  const misfortuneRisk = state.misfortuneAccepted
+    ? MISFORTUNE_RISK[currentMisfortune(state)?.id ?? ''] ?? 0
+    : 0
+  const strainRisk = state.strainAccepted
+    ? STRAIN_RISK[state.strainId ?? ''] ?? 0
+    : 0
+  const majorOrderRisk = state.majorOrder?.live ? MAJOR_ORDER_RISK : 0
+  return {
+    misfortuneRisk,
+    strainRisk,
+    majorOrderRisk,
+    total: misfortuneRisk + strainRisk + majorOrderRisk,
+  }
 }
 
 export interface StrainDecision {
@@ -499,6 +525,18 @@ export function availableCaches(state: DiveState): { ownerId: string, itemIds: s
     ownerId,
     itemIds,
   }))
+}
+
+// The pacts the accepted misfortune filtered out of the offer this mission —
+// flavor for the pacts screen's filter note. Wraps `isPactSelectable`, the same
+// predicate the offer roll uses, so the note can never contradict the hand.
+export function filteredPactsFor(state: DiveState): Pact[] {
+  const decision = misfortuneDecision(state)
+  if (!state.wheel || !decision.decided || !decision.accepted) {
+    return []
+  }
+  const misfortuneId = currentMisfortune(state)?.id ?? null
+  return PACTS.filter(pact => !isPactSelectable(pact.id, misfortuneId))
 }
 
 // The per-diver pact offer: rolled deterministically from the wheel seed once

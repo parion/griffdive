@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { MAJOR_ORDER_RISK, MISFORTUNE_RISK, STRAIN_RISK, maxStarsFor, sampleAvailability } from '~~/shared/engine/config'
+import { MAJOR_ORDER_RISK, MISFORTUNE_RISK, STRAIN_RISK, missionsPerOperation } from '~~/shared/engine/config'
 import { activeMisfortune, activeStrain, currentFront, teamRiskOf } from '~~/shared/engine/selectors'
-import type { DiverState, DiveState, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
+import type { DiverState, DiveState, MissionReport } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -12,7 +12,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  report: [payload: { outcome: MissionOutcome, stars: number, timePct: number, samples?: SampleCounts }]
+  report: [payload: MissionReport]
   fail: [playerId: string, pactId: string]
 }>()
 
@@ -20,6 +20,7 @@ const misfortune = computed(() => activeMisfortune(props.state))
 const front = computed(() => currentFront(props.state))
 const strain = computed(() => activeStrain(props.state))
 const teamRisk = computed(() => teamRiskOf(props.state))
+const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 
 // Per-source risk chips for the locked status strip (total stays teamRiskOf).
 const misfortuneRisk = computed(() =>
@@ -28,50 +29,30 @@ const strainRisk = computed(() =>
   props.state.strainAccepted ? STRAIN_RISK[strain.value?.id ?? ''] ?? 0 : 0)
 const majorOrderRisk = computed(() => (props.state.majorOrder?.live ? MAJOR_ORDER_RISK : 0))
 
+// The report is its own screen (spec 08): the host's outcome call swaps the
+// briefing for the report layout, and MissionReport owns its local fields so a
+// landed report never leaks the last mission's performance into the next.
 const reportMode = ref<'none' | 'success' | 'failure'>('none')
-const stars = ref(1)
-const timePct = ref(0)
-const samples = ref<SampleCounts>({ common: 0, rare: 0, super: 0 })
 
-// Slider maxima come from the game's per-difficulty sample availability.
-const sampleMax = computed(() => sampleAvailability(props.state.difficulty))
-const maxStars = computed(() => maxStarsFor(props.state.difficulty))
-
-// The report fields are live local state, not engine state. Clear them the
-// moment a report lands, or the next briefing inherits the last mission's
-// performance (a stale decimal on the locked Valor meter).
-function resetReportFields(): void {
-  stars.value = maxStars.value
-  timePct.value = 0
-  samples.value = { common: 0, rare: 0, super: 0 }
-}
-
-function submit(outcome: MissionOutcome): void {
-  emit('report', {
-    outcome,
-    stars: outcome === 'success' ? stars.value : 0,
-    timePct: timePct.value,
-    samples: outcome === 'success' ? { ...samples.value } : undefined,
-  })
+function submit(payload: MissionReport): void {
+  emit('report', payload)
   reportMode.value = 'none'
-  resetReportFields()
 }
 
-// The stars field opens at the difficulty's best result — most clears are
-// full-star, so the common case needs no adjustment.
 function openReport(mode: 'success' | 'failure'): void {
   reportMode.value = mode
-  resetReportFields()
 }
 
 function cancelReport(): void {
   reportMode.value = 'none'
-  resetReportFields()
 }
 </script>
 
 <template>
-  <section class="panel briefing">
+  <section
+    v-if="reportMode === 'none'"
+    class="panel briefing"
+  >
     <h2 class="sec-h briefing-head">
       <span
         class="lamp teal pulse"
@@ -221,101 +202,18 @@ function cancelReport(): void {
     >
       Waiting for the host to report the mission result.
     </p>
-
-    <div
-      v-if="reportMode !== 'none'"
-      class="report-form"
-    >
-      <div
-        v-if="reportMode === 'success'"
-        class="report-victory"
-      >
-        <span class="victory-banner">
-          <span
-            class="wing"
-            aria-hidden="true"
-          />
-          Mission completed
-          <span
-            class="wing flip"
-            aria-hidden="true"
-          />
-        </span>
-        <StarRating
-          v-model="stars"
-          :length="maxStars"
-          size="lg"
-        />
-        <span class="cap muted">of {{ maxStars }} at difficulty {{ state.difficulty }}</span>
-      </div>
-      <div
-        v-else
-        class="report-failure"
-      >
-        <span class="disp failure-banner">Mission failed</span>
-        <span class="cap muted">no stars · the operation repeats</span>
-      </div>
-
-      <div class="report-fields">
-        <template v-if="reportMode === 'success'">
-          <RangeField
-            v-model="samples.common"
-            :max="sampleMax.common"
-            icon="/images/svgs/Common_Sample_Icon.svg"
-            aria-label="Common samples"
-          />
-          <RangeField
-            v-if="sampleMax.rare > 0"
-            v-model="samples.rare"
-            :max="sampleMax.rare"
-            icon="/images/svgs/Rare_Sample_Icon.svg"
-            aria-label="Rare samples"
-          />
-          <RangeField
-            v-if="sampleMax.super > 0"
-            v-model="samples.super"
-            :max="sampleMax.super"
-            icon="/images/svgs/Super_Sample_Icon.svg"
-            aria-label="Super samples"
-          />
-        </template>
-        <RangeField
-          v-model="timePct"
-          :max="100"
-          aria-label="Time remaining percent"
-        >
-          <template #icon>
-            <AppTooltip content="Time remaining">
-              <button
-                class="icon-tip"
-                type="button"
-                aria-label="Time remaining"
-              >
-                <IconClock />
-              </button>
-            </AppTooltip>
-          </template>
-        </RangeField>
-      </div>
-
-      <div class="row report-actions">
-        <button
-          class="btn primary cut"
-          type="button"
-          @click="submit(reportMode === 'success' ? 'success' : 'failure')"
-        >
-          Submit {{ reportMode === 'success' ? 'success' : 'failure' }}
-        </button>
-        <button
-          class="btn ghost tiny"
-          type="button"
-          @click="cancelReport"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
   </section>
+
+  <MissionReport
+    v-if="reportMode !== 'none'"
+    :state="state"
+    :self-id="selfId"
+    :self="self"
+    :outcome="reportMode"
+    :op-length="opLength"
+    @submit="submit"
+    @cancel="cancelReport"
+  />
 </template>
 
 <style scoped>

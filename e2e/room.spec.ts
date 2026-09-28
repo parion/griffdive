@@ -57,7 +57,7 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   // team risk. The host declines it; the call syncs to the joiner.
   await expect(pageB.getByRole('img', { name: 'Strain call — awaiting host' })).toBeVisible()
   await pageA.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
-  await expect(pageB.getByRole('img', { name: 'Standard forces — no strain' })).toBeVisible()
+  await expect(pageB.getByRole('heading', { name: 'Swear your pacts' })).toBeVisible()
 
   // Both lock pacts — the dive only starts once the whole squad is in.
   await pageB.locator('.pact:not([disabled])').first().click()
@@ -77,8 +77,8 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   // shows as an icon-only squad indicator in the draft (N14).
   await pageA.getByRole('button', { name: 'Mission complete' }).click()
   await pageA.getByRole('button', { name: 'Submit success' }).click()
-  await expect(pageB.getByText('Rewards — choose one')).toBeVisible()
-  await pageB.locator('.item-card:not([disabled])').first().click()
+  await expect(pageB.getByRole('heading', { name: 'Reward Draft' })).toBeVisible()
+  await pageB.locator('.pod-card .item-card:not([disabled])').first().click()
   await expect(pageA.locator('.squad-pick.done')).toHaveCount(1)
   await expect(pageA.locator('.squad-pick.done img')).toBeVisible()
 

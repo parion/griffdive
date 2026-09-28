@@ -121,9 +121,14 @@ engine.
   header · `CrusadeStrip` (the horizontal 3→10 climb) · left rail (Squad + wheel pool) · centre
   phase · right rail (`ValorMeter` with ceiling odds) · `PhaseRail` (bottom Mission phases).
   `WheelOfMisfortune.vue` is a real SVG wheel whose rotation is derived from the wheel seed.
+  On the `rewards` phase the centre swaps between the `RewardDraft` pod cabinet and the dedicated
+  `BonusCeremony` honors screen — the left rail gains `MissionReportSummary` and the right rail
+  swaps `ValorMeter` for `RewardTokensRail` on honors.
   Armory is an in-app drawer (`ArmoryDrawer.vue`); the Griffdiver Briefing
   (`BriefingOverlay.vue`) is the first-run dossier. One structural breakpoint (1020px) flows the
-  shell and stacks the rails.
+  shell and stacks the rails. Below it `usePhoneShell` swaps the whole three-rail tree for
+  `DivePhone` (`DivePhoneShell` + `Phone*`), a fixed-band shell whose phase content is a
+  bottom-sheet/fixed-footer layout.
 - **Armory detection**: the Armory never computes bans. `armoryRules(state, diver)` lists the
   active misfortune/pact rules and `itemBannedInArmory(state, diver, item)` returns why a
   stratagem is greyed; both wrap `stratagemBanReason` in `shared/engine/pacts.ts` — the same
@@ -655,15 +660,30 @@ app/
                    DivePhaseLobby/DivePhaseWheel/DivePhaseDiving/DivePhaseRewards/
                    DivePhaseForfeit/DivePhaseComplete — one panel per engine phase, each
                    owning its local form state and emitting intents,
+                   PactScreen — the dedicated pacts screen (team-risk summary bar,
+                   filter/floor notes, hold-to-lock CTA), MissionReport +
+                   SampleCanister/SegmentedBar — the dedicated two-column mission
+                   report, ForfeitPicker/ForfeitCarriesOver — the per-diver surrender
+                   picker and the forfeit "carries over" rail,
+                   AchievedOverlay — the full-bleed Griffdive achieved takeover,
+                   DivePhone + DivePhoneShell/PhoneTopBar/PhoneCrusadeBar/PhoneSquadBar/
+                   PhoneWheel/PhonePacts/PhoneValor/PhoneReport/PhoneDiving/
+                   PhoneRewardDraft — the fixed phone shell and its per-phase
+                   bottom-sheet layouts,
                    WheelPanel, MajorOrderPicker — the pre-spin MO chooser, rendered in
                    the faction card's pre-roll slot,
                    MajorOrderCard — the in-game-style MO panel (emblem, countdown,
                    order overview, planet liberation bars),
-                   PactPicker, RewardDraft — the slot-machine reward
-                   draft (staggered reels that lock left to right), RewardReel — one
-                   rolling reel, ValorMeter — the live Valor gauge
-                   and tier-ceiling ladder, BonusCeremony — the end-of-mission stat
-                   contest that replaces the locked Valor meter and pays a reward token,
+                   PactPicker, RewardDraft — the reward draft (a stars→options
+                   badge, the per-step CeilingTrack with a sliding marker, a
+                   pod-drop cabinet of RewardPod reveal cards stamped Banked/Banned,
+                   and the always-on reward-token bar that links to honors),
+                   MissionReportSummary — the left-rail report card,
+                   RewardTokensRail — the honors rail's per-diver token banks,
+                   ValorMeter — the live Valor gauge
+                   and tier-ceiling ladder, BonusCeremony — the dedicated
+                   end-of-mission honors screen (iconographic seeded reel,
+                   hold-to-confirm award) that banks a reward token,
                    FieldPromotionCard — the mid-crusade
                    catch-up ceremony, DiversChoiceCard — the special
                    S+ "Liberty's Cross" offer card, DiversChoicePicker — its minified codex
@@ -676,7 +696,10 @@ app/
                    acquisition specials last; each banner starts blurred and dimmed, then
                    resolves on hover/focus/tap, click toggles),
                    ui/ (BrandMark — the Griffdive chevron mark, ItemCard, TierBadge, RiskPips — risk
-                   dots, with a rolling back-and-forth state while a wheel draw reels, WaitingLight —
+                   dots, with a rolling back-and-forth state while a wheel draw reels,
+                   SampleCanister/SegmentedBar — the report's tinted sample jars and
+                   click-to-set time bar, HoldButton — the press-and-hold confirm,
+                   WaitingLight —
                    the slow-pulsing gold dot that marks a section a diver still has to act on,
                    ChangelogModal — GitHub deploy log shown from the alpha header chip, AppDrawer —
                    the themed right-hand Reka
@@ -696,7 +719,9 @@ app/
                    seated dive),
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
                    useMajorOrder (live war proxy → the picker's suggestion; null offline),
-                   useChangelog (GitHub deployments + commits → changelog entries, 10-min cache)
+                   useChangelog (GitHub deployments + commits → changelog entries, 10-min cache),
+                   usePhoneShell (the 1020px breakpoint as JS, so the dive can swap the whole
+                   three-rail tree for the phone shell)
   stores/          session.ts (Pinia: selfId, snapshot, online)
   utils/           seed.ts (client seed generation)
   assets/css/      main.css — global HD2 theme (two-font system, see Conventions)

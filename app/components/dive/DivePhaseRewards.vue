@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ALL_WARBOND_CODES, ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
-import { allDiversPicked, bonusEligible, bonusIneligibilityReason, canBanAnyReward, canBanReward, canRerollRewards, diverOptions, rewardPoolFor } from '~~/shared/engine/selectors'
+import { performanceValor } from '~~/shared/engine/rewards'
+import { allDiversPicked, bonusEligible, canBanAnyReward, canBanReward, canRerollRewards, diverOptions, pactRiskOf, rewardPoolFor, teamRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -20,6 +21,15 @@ const emit = defineEmits<{
   awardBonus: [playerId: string]
   advance: []
 }>()
+
+// The draft and the honors ceremony are distinct screens, not stacked cards:
+// the reward draft links out to honors, honors runs the ceremony and advances.
+const view = defineModel<'draft' | 'honors'>('view', { default: 'draft' })
+
+// A new mission's draft always opens on the draft, never stuck on honors.
+watch(() => props.state.missionIndex, () => {
+  view.value = 'draft'
+})
 
 const options = computed(() => (props.self ? diverOptions(props.state, props.self) : []))
 
@@ -61,10 +71,10 @@ const bannableIds = computed(() => {
 })
 
 const ready = computed(() => allDiversPicked(props.state))
-// Honors are a limited prize: no ceremony unless a full-star clear landed on
-// the squad-size cadence. Otherwise the phase goes straight to Next Mission.
+// Honors are a limited prize: the ceremony only runs on a full-star clear that
+// lands on the squad-size cadence. Otherwise the draft advances directly.
 const bonusUp = computed(() => ready.value && bonusEligible(props.state))
-const bonusNote = computed(() => bonusIneligibilityReason(props.state))
+
 const draftResolved = computed(() =>
   props.self !== null && (props.self.pickedOptionId !== null || props.self.rewardBanned))
 const draftBanned = computed(() => props.self?.rewardBanned ?? false)
@@ -73,25 +83,31 @@ const advanceLabel = computed(() =>
   props.state.missionInOperation >= props.opLength
     ? `Complete operation → difficulty ${Math.min(props.state.difficulty + 1, MAX_DIFFICULTY)}`
     : 'Next mission')
+
+// Ceiling preview inputs: the same figures the shell's Valor meter is built
+// from, so the track and the rail can never disagree.
+const teamRisk = computed(() => teamRiskOf(props.state))
+const pactRisk = computed(() => (props.self ? pactRiskOf(props.self) : 0))
+const performance = computed(() => performanceValor(props.state.lastReport))
+
+const kicker = computed(() =>
+  `Mission ${props.state.missionInOperation} of ${props.opLength} · extracted`)
 </script>
 
 <template>
   <BonusCeremony
-    v-if="bonusUp"
+    v-if="view === 'honors' && bonusUp"
     :state="state"
     :self-id="selfId"
     :self="self"
     :can-control="canControl"
     @spin="emit('spinBonus')"
     @award="playerId => emit('awardBonus', playerId)"
+    @advance="emit('advance')"
   />
-  <p
-    v-else-if="bonusNote"
-    class="muted small honor-note"
-  >
-    {{ bonusNote }}
-  </p>
+
   <RewardDraft
+    v-else
     :options="options"
     :picked-id="self?.pickedOptionId ?? null"
     :pool="rewardPool"
@@ -104,61 +120,22 @@ const advanceLabel = computed(() =>
     :bannable-ids="bannableIds"
     :resolved="draftResolved"
     :banned="draftBanned"
+    :banned-ids="self?.bannedItemIds ?? []"
+    :stars="state.lastReport?.stars ?? 0"
+    :difficulty="state.difficulty"
+    :team-risk="teamRisk"
+    :pact-risk="pactRisk"
+    :performance="performance"
+    :rerolled="Boolean(self?.rewardRerollSeed)"
+    :ready="ready"
+    :bonus-up="bonusUp"
+    :can-control="canControl"
+    :advance-label="advanceLabel"
+    :kicker="kicker"
     @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
     @reroll="emit('reroll')"
     @ban="optionIds => emit('ban', optionIds)"
+    @advance="emit('advance')"
+    @open-honors="view = 'honors'"
   />
-  <Transition name="phase">
-    <div
-      v-if="ready"
-      class="advance-row"
-    >
-      <div class="advance-copy">
-        <span class="lbl">{{ state.missionInOperation >= opLength ? 'Operation complete' : 'Draft closed' }}</span>
-        <span class="muted small">All divers have picked.</span>
-      </div>
-      <button
-        class="btn primary cut advance-btn"
-        type="button"
-        :disabled="!canControl"
-        @click="emit('advance')"
-      >
-        <span class="disp advance-label">{{ advanceLabel }}</span>
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.4"
-          aria-hidden="true"
-        ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-      </button>
-      <span
-        v-if="!canControl"
-        class="muted small"
-      >Waiting for the host…</span>
-    </div>
-  </Transition>
 </template>
-
-<style scoped>
-.honor-note { margin: 0.25rem 0; }
-
-.advance-row {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  flex-wrap: wrap;
-  padding: 0.7rem 0.85rem;
-  border: 1px solid var(--line-2);
-  background: var(--ground);
-}
-.advance-copy { display: grid; gap: 0.1rem; min-width: 0; }
-.advance-btn {
-  margin-left: auto;
-  gap: 0.9rem;
-  padding: 0.7rem 1.1rem;
-}
-.advance-label { font-size: 1rem; letter-spacing: 0.04em; white-space: nowrap; }
-</style>

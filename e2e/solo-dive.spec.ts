@@ -23,7 +23,8 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // team risk. Declining keeps the dive at the misfortune's risk alone.
   await expect(page.getByRole('img', { name: 'Strain call pending' })).toBeVisible()
   await page.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
-  await expect(page.getByRole('img', { name: 'Standard forces — no strain' })).toBeVisible()
+  // Declining advances straight to the dedicated pacts screen (no wheel).
+  await expect(page.getByRole('heading', { name: 'Swear your pacts' })).toBeVisible()
 
   // The squad strip shows who still has to decide.
   await expect(page.getByRole('img', { name: 'choosing pacts' })).toBeVisible()
@@ -55,18 +56,19 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('radio', { name: '3 stars' })).toHaveAttribute('aria-checked', 'true')
   await page.getByRole('button', { name: 'Submit success' }).click()
 
-  await expect(page.getByText('Rewards — choose one')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Reward Draft' })).toBeVisible()
   await expect(page.getByRole('img', { name: 'choosing reward' })).toBeVisible()
-  await page.locator('.item-card:not([disabled])').first().click()
+  await page.locator('.pod-card .item-card:not([disabled])').first().click()
 
-  // Bonus honors replaces the locked Valor meter once the draft completes: the
-  // host spins the stat contest (on click, like the wheel) and awards the
-  // winner, who banks a reward token automatically.
+  // Bonus honors is its own screen, reached from the draft's bottom bar: the
+  // host spins the stat contest (on click, like the wheel) and banks the
+  // winner's token.
+  await page.getByRole('button', { name: 'Squad Honors' }).click()
   await expect(page.getByRole('heading', { name: 'Squad Honors' })).toBeVisible()
   // Solo: the only diver is always the winner, so the spin auto-banks the
   // token — no selection step.
-  await page.locator('.slot').getByRole('button', { name: 'Spin' }).click()
-  await expect(page.getByText(/takes the honors and banks a reward token/)).toBeVisible()
+  await page.getByRole('button', { name: 'Spin the honors stat' }).click()
+  await expect(page.getByText('Token banked')).toBeVisible()
 
   await page.getByRole('button', { name: /Next mission/ }).click()
   // Medium runs 2-mission operations. The tracker advances to the second
@@ -86,15 +88,19 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.getByRole('button', { name: 'Submit success' }).click()
 
   // Banning is a separate flow alongside reroll, and it forfeits the reward
-  // pick: the same slot-machine reels become the purge selector, so select a
-  // reel, confirm, and the draft resolves with no reward.
+  // pick: the landed pods become the purge selector, so select a pod, hold to
+  // confirm, and the draft resolves with no reward.
   await expect(page.locator('.token-bar').getByRole('img', { name: /1 of 3 reward tokens/ })).toBeVisible()
   await page.getByRole('button', { name: 'Ban items' }).click()
-  await expect(page.getByText('Ban offered rewards')).toBeVisible()
-  await expect(page.locator('.reels .reel-window').first()).toBeVisible()
-  await page.locator('.reels .reel-result .item-card:not([disabled])').first().click()
-  await expect(page.locator('.reels .reel-window.picked')).toHaveCount(1)
-  await page.getByRole('button', { name: 'Ban 1 item' }).click()
+  await expect(page.getByText('Select items above')).toBeVisible()
+  await expect(page.locator('.cabinet .pod-card').first()).toBeVisible()
+  await page.locator('.cabinet .pod-card .item-card:not([disabled])').first().click()
+  await expect(page.locator('.cabinet .pod-card.picked')).toHaveCount(1)
+  const banConfirm = page.getByRole('button', { name: /forfeit this pick/ })
+  await banConfirm.hover()
+  await page.mouse.down()
+  await page.waitForTimeout(1000)
+  await page.mouse.up()
   await expect(page.getByText('Rewards banned')).toBeVisible()
 })
 
@@ -170,13 +176,20 @@ test('a failed mission labels the operation failed and restarts it', async ({ pa
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
 
   await page.getByRole('button', { name: 'Mission failed' }).click()
-  await page.getByRole('button', { name: 'Submit failure' }).click()
+  await page.getByRole('button', { name: 'File failure' }).click()
 
   // The header track reads the failed mission, not a stale live index.
   await expect(page.getByRole('img', { name: /Operation failed/i })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Operation failed' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Mission failed' })).toBeVisible()
 
-  // Forfeiting one item restarts the operation at mission 1.
-  await page.locator('.item-card:not([disabled])').first().click()
+  // Surrender is a two-step ceremony: pick one item, hold to confirm, then
+  // respin the wheel — the forfeit restarts the operation at mission 1.
+  await page.locator('.sur-tile:not([disabled])').first().click()
+  const surrender = page.getByRole('button', { name: /Surrender the selected item/ })
+  await surrender.hover()
+  await page.mouse.down()
+  await page.waitForTimeout(900)
+  await page.mouse.up()
+  await page.getByRole('button', { name: 'Respin the wheel' }).click()
   await expect(page.getByRole('img', { name: /operation mission 1 of 2/i })).toBeVisible()
 })
