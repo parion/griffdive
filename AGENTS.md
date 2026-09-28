@@ -159,9 +159,11 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
    resets the decision. A rule the squad cannot field (one that would strand a diver below HD2's
    four required stratagems) cannot be accepted — see Mandatory four stratagems. On the operation's
    first mission the call then passes to the **strain**: accepting commits the squad for the whole
-   operation and adds the strain's team risk to every mission of it — see Faction strains.
+   operation and adds the strain's team risk to every mission of it — see Faction strains. Once
+   both calls are in, the wheel holds on a **deal** step: the host presses **Deal the pacts**
+   (host-only `DEAL_PACTS`) to open the hand.
 3. **Pact** — each diver is dealt a personal **pact offer**: 2 pacts on difficulties 3–6, 3 on 7+,
-   rolled deterministically from the wheel seed (per diver) once the decision is in. The offer
+   rolled deterministically from the wheel seed (per diver) once the hand is dealt. The offer
    pool filters out pacts the accepted misfortune makes redundant or impossible; a declined draw
    offers from the full catalog. Each diver privately picks a subset of their offer (0 to all; a
    pick strictly implied by another is refused — see Redundant picks).
@@ -206,7 +208,8 @@ Exactly one misfortune per **mission**, drawn from the pool eligible at the oper
 difficulty. The draw is an offer, not a verdict: in a dedicated **decision** phase before pacts
 roll, the squad (host executes, IRL voice vote) **accepts or declines** it. Declining runs a
 zero-team-risk dive; accepting applies the misfortune's **team risk** (1–5) to every diver's Valor
-for this mission. A reroll redraws and resets the decision. A squad-binding rule must be
+for this mission. A reroll redraws and resets the decision (returning the squad to the `decision`
+phase, before the deal). A squad-binding rule must be
 fieldable by **every seated diver**: if accepting would strand even one diver below HD2's four
 required stratagems, the engine refuses the accept (the UI disables "Lock it in" and names who
 can't field it; opting out and rerolling stay open) — see Mandatory four stratagems.
@@ -304,8 +307,9 @@ The front's **strain** is drawn with it at the operation's first spin — a subf
 (wiki.gg/Factions), gated per-strain by `STRAIN_MIN_DIFFICULTY` like misfortunes. It is an
 **optional, operation-long team-risk commitment**, never a forced modifier. The spin opens the wheel
 decision, and the squad (host executes, IRL voice vote) answers the misfortune and the strain call
-**independently** — either may be locked first, and the phase only advances to pacts once both are
-in (a dedicated `strain` phase carries the strain call when the misfortune is locked first).
+**independently** — either may be locked first, and the phase only advances once both are in
+(a dedicated `strain` phase carries the strain call when the misfortune is locked first; the
+wheel then holds on the `deal` phase until the host deals the hand — see Core loop).
 Declining is free and zero-risk — principle 1 (risk is chosen, never forced) stays intact, and a
 surplus-kit squad is never handed an unfieldable operation. Accepting
 commits the squad for the whole operation: the strain's **team risk** (2–3) is added to **every
@@ -579,7 +583,7 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   (`CLAIM_CACHE`) *instead of* rolling the promotion — claiming after rolling options is refused,
   so the two never stack. The same diver rejoining under their stored playerId reclaims their
   unclaimed cache automatically (soft-kick parity: their link still seats them).
-- **Seating window:** fresh joins only seat in `lobby/spin/decision/pacts/diving` — never during
+- **Seating window:** fresh joins only seat in `lobby/spin/decision/strain/deal/pacts/diving` — never during
   `rewards`/`forfeit` (that would grant a draft for a mission the joiner never dove) or
   `complete`. The server rejects with `dive-locked`. A joiner seated mid-mission
   (`diving`) gets `skipsCurrentDraft` and sits out that mission's reward draft instead of
@@ -822,7 +826,7 @@ rooms every 15 min so the `MAX_ROOMS` backstop rarely matters.
 Canonical engine actions (the reducer union; keep names stable):
 
 `START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
-`SET_MAJOR_ORDER{order}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `SET_WARBONDS{playerId,warbondCodes}`
+`DEAL_PACTS{}` `SET_MAJOR_ORDER{order}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
 `AWARD_BONUS{playerId}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
@@ -830,7 +834,7 @@ Canonical engine actions (the reducer union; keep names stable):
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
-`ACCEPT_STRAIN`, `SET_MAJOR_ORDER`, `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
+`ACCEPT_STRAIN`, `DEAL_PACTS`, `SET_MAJOR_ORDER`, `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated

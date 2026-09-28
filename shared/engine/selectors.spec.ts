@@ -191,6 +191,7 @@ describe('diverOptions', () => {
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 1234 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
+    state = reduce(state, { type: 'DEAL_PACTS' })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'host', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
     const diver = state.divers.find((candidate): candidate is DiverState => candidate.id === 'host')!
@@ -207,6 +208,7 @@ describe('diverOptions', () => {
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 1234 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
+    state = reduce(state, { type: 'DEAL_PACTS' })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'host', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
     const diver = state.divers.find((candidate): candidate is DiverState => candidate.id === 'host')!

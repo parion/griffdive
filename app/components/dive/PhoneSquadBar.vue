@@ -22,7 +22,7 @@ function statusOf(diverId: string): string {
   if (!diver) {
     return ''
   }
-  if (props.state.phase === 'pacts') {
+  if (props.state.phase === 'deal' || props.state.phase === 'pacts') {
     return diver.pactsLocked ? 'ready' : 'choosing pacts'
   }
   if (props.state.phase === 'rewards') {

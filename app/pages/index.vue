@@ -118,6 +118,7 @@ const PHASE_LABELS: Record<string, string> = {
   spin: 'Awaiting spin',
   decision: 'Deciding the wheel',
   strain: 'Deciding the strain',
+  deal: 'Dealing the pacts',
   pacts: 'Picking pacts',
   diving: 'Diving',
   rewards: 'Reward draft',

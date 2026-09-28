@@ -27,9 +27,13 @@ function spunState(seed = 42): DiveState {
 // the strain and leaves team risk to the misfortune alone.
 function decidedState(seed = 42, accepted = true): DiveState {
   const decided = reduce(spunState(seed), { type: 'ACCEPT_MISFORTUNE', accepted })
-  return decided.phase === 'strain'
+  const answered = decided.phase === 'strain'
     ? reduce(decided, { type: 'ACCEPT_STRAIN', accepted: false })
     : decided
+  // The wheel decision holds on the wheel screen until the host deals the hand.
+  return answered.phase === 'deal'
+    ? reduce(answered, { type: 'DEAL_PACTS' })
+    : answered
 }
 
 function offerPacts(state: DiveState, diverId = 'p1'): string[] {
@@ -90,6 +94,7 @@ const skeletonActions: EngineAction[] = [
   { type: 'SPIN_WHEEL', seed: 1 },
   { type: 'ACCEPT_MISFORTUNE', accepted: true },
   { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 2 },
+  { type: 'DEAL_PACTS' },
   { type: 'SET_PACTS', playerId: 'p1', pactIds: ['thirsty'] },
   { type: 'FAIL_PACT', playerId: 'p1', pactId: 'thirsty' },
   { type: 'SET_WARBONDS', playerId: 'p1', warbondCodes: ['warbond3'] },
@@ -231,7 +236,7 @@ describe('SPIN_WHEEL / REROLL_WHEEL', () => {
 })
 
 describe('ACCEPT_MISFORTUNE (optional team risk)', () => {
-  it('moves the squad from decision to the strain call, then to pacts', () => {
+  it('moves the squad from decision to the strain call, then to the host deal', () => {
     const state = spunState(42)
     expect(state.phase).toBe('decision')
     // The operation's first mission hands over to the strain decision, which
@@ -242,7 +247,9 @@ describe('ACCEPT_MISFORTUNE (optional team risk)', () => {
     expect(accepted.strainId).not.toBeNull()
     const declined = reduce(accepted, { type: 'ACCEPT_STRAIN', accepted: false })
     expect(declined.strainAccepted).toBe(false)
-    expect(declined.phase).toBe('pacts')
+    // The wheel decision holds until the host deals the hand.
+    expect(declined.phase).toBe('deal')
+    expect(reduce(declined, { type: 'DEAL_PACTS' }).phase).toBe('pacts')
     // The misfortune can still be flipped in the strain window.
     const flipped = reduce(accepted, { type: 'ACCEPT_MISFORTUNE', accepted: false })
     expect(flipped.misfortuneAccepted).toBe(false)
@@ -252,7 +259,8 @@ describe('ACCEPT_MISFORTUNE (optional team risk)', () => {
   it('skips the strain call when no subfaction was drawn', () => {
     const state: DiveState = { ...spunState(42), strainId: null }
     const decided = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
-    expect(decided.phase).toBe('pacts')
+    expect(decided.phase).toBe('deal')
+    expect(reduce(decided, { type: 'DEAL_PACTS' }).phase).toBe('pacts')
   })
 
   it('freezes the decision once any pact is locked', () => {
@@ -280,7 +288,7 @@ describe('ACCEPT_MISFORTUNE (optional team risk)', () => {
     expect(reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })).toBe(state)
     const declined = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })
     expect(declined.misfortuneAccepted).toBe(false)
-    expect(declined.phase).toBe('pacts')
+    expect(declined.phase).toBe('deal')
   })
 
   it('accepts a misfortune the squad can field', () => {
@@ -293,7 +301,7 @@ describe('ACCEPT_MISFORTUNE (optional team risk)', () => {
     }
     const accepted = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     expect(accepted.misfortuneAccepted).toBe(true)
-    expect(accepted.phase).toBe('pacts')
+    expect(accepted.phase).toBe('deal')
   })
 })
 
@@ -307,10 +315,11 @@ describe('ACCEPT_STRAIN (optional operation-long team risk)', () => {
   }
 
   function strainDecided(seed = 42, accepted = true): DiveState {
-    return reduce(
+    const decided = reduce(
       reduce(strainDrawn(seed), { type: 'ACCEPT_MISFORTUNE', accepted: true }),
       { type: 'ACCEPT_STRAIN', accepted },
     )
+    return reduce(decided, { type: 'DEAL_PACTS' })
   }
 
   it('adds its team risk to every mission of the operation', () => {
@@ -383,6 +392,7 @@ describe('ACCEPT_STRAIN (optional operation-long team risk)', () => {
         expect(state.strainAccepted).toBe(true)
         state = reduce(state, { type: 'SPIN_WHEEL', seed: 60 })
         state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })
+        state = reduce(state, { type: 'DEAL_PACTS' })
         state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
       }
     }
@@ -440,8 +450,44 @@ describe('ACCEPT_STRAIN (optional operation-long team risk)', () => {
     expect(strainFirst.misfortuneAccepted).toBe(false)
 
     const both = reduce(strainFirst, { type: 'ACCEPT_MISFORTUNE', accepted: false })
-    expect(both.phase).toBe('pacts')
+    expect(both.phase).toBe('deal')
     expect(teamRiskOf(both)).toBe(STRAIN_RISK[both.strainId!] ?? 0)
+  })
+})
+
+describe('DEAL_PACTS (the host gate before the hand)', () => {
+  it('deals only once the wheel decision is in', () => {
+    const spun = spunState(42)
+    expect(reduce(spun, { type: 'DEAL_PACTS' })).toBe(spun)
+    const accepting = reduce(spun, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    expect(accepting.phase).toBe('strain')
+    // The strain call is still open — nothing to deal yet.
+    expect(reduce(accepting, { type: 'DEAL_PACTS' })).toBe(accepting)
+  })
+
+  it('moves the held wheel to the pact hand, and SET_PACTS only works after', () => {
+    const accepted = reduce(spunState(42), { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    const declined = reduce(accepted, { type: 'ACCEPT_STRAIN', accepted: false })
+    expect(declined.phase).toBe('deal')
+    // The hand cannot be locked while the wheel is still held.
+    expect(reduce(declined, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })).toBe(declined)
+    const dealt = reduce(declined, { type: 'DEAL_PACTS' })
+    expect(dealt.phase).toBe('pacts')
+    expect(reduce(dealt, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] }).phase).toBe('diving')
+  })
+
+  it('is a no-op outside the held window', () => {
+    const dealt = decidedState(42)
+    expect(reduce(dealt, { type: 'DEAL_PACTS' })).toBe(dealt)
+    const diving = divingState(42)
+    expect(reduce(diving, { type: 'DEAL_PACTS' })).toBe(diving)
+  })
+
+  it('reopens the gate when a reroll redraws the call', () => {
+    const dealt = decidedState(42)
+    const rerolled = reduce(dealt, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 7 })
+    expect(rerolled.phase).toBe('decision')
+    expect(reduce(rerolled, { type: 'DEAL_PACTS' })).toBe(rerolled)
   })
 })
 
@@ -659,6 +705,7 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
     state = reduce(state, { type: 'ADVANCE' })
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 99 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    state = reduce(state, { type: 'DEAL_PACTS' })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
     options = diverOptions(state, requireDiver(state))
@@ -689,6 +736,7 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
       state = reduce(state, { type: 'SPIN_WHEEL', seed: 50 + i })
       state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
       state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
+      state = reduce(state, { type: 'DEAL_PACTS' })
       state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
       state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
       const options = diverOptions(state, requireDiver(state))
@@ -811,8 +859,11 @@ describe('KICK_DIVER', () => {
   it('a kicked diver no longer blocks the pact window', () => {
     const spun = reduce(twoDiverState(), { type: 'SPIN_WHEEL', seed: 42 })
     const decided = reduce(
-      reduce(spun, { type: 'ACCEPT_MISFORTUNE', accepted: true }),
-      { type: 'ACCEPT_STRAIN', accepted: false },
+      reduce(
+        reduce(spun, { type: 'ACCEPT_MISFORTUNE', accepted: true }),
+        { type: 'ACCEPT_STRAIN', accepted: false },
+      ),
+      { type: 'DEAL_PACTS' },
     )
     const halfLocked = reduce(decided, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     expect(halfLocked.phase).toBe('pacts')
@@ -827,6 +878,7 @@ describe('KICK_DIVER', () => {
     let state = reduce(twoDiverState(), { type: 'SPIN_WHEEL', seed: 42 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
+    state = reduce(state, { type: 'DEAL_PACTS' })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p2', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
@@ -1178,6 +1230,7 @@ describe('reward tokens + bonus honors', () => {
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
+    state = reduce(state, { type: 'DEAL_PACTS' })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p2', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
@@ -1393,6 +1446,7 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
       if (next.phase === 'strain') {
         next = reduce(next, { type: 'ACCEPT_STRAIN', accepted: false })
       }
+      next = reduce(next, { type: 'DEAL_PACTS' })
       next = reduce(next, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
       next = reduce(next, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
       const option = diverOptions(next, requireDiver(next))[0]
@@ -1420,9 +1474,9 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
     expect(spun.strainId).toBeNull()
     expect(spun.phase).toBe('decision')
     // No strain means no strain call: the misfortune decision goes straight to
-    // pacts, and the operation carries no subfaction risk.
+    // the host deal, and the operation carries no subfaction risk.
     const decided = reduce(spun, { type: 'ACCEPT_MISFORTUNE', accepted: false })
-    expect(decided.phase).toBe('pacts')
+    expect(decided.phase).toBe('deal')
   })
 
   it('adds its team risk only for a live order', () => {
@@ -1488,6 +1542,7 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
     if (state.phase === 'strain') {
       state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
     }
+    state = reduce(state, { type: 'DEAL_PACTS' })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 0 })
     state = reduce(state, {

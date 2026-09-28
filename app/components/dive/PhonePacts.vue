@@ -104,7 +104,7 @@ const floorCount = computed(() => {
   return legalStratagemCount(misfortuneId, selection.value, owned)
 })
 
-const canLock = computed(() => props.canControl && !locked.value && offer.value.length > 0)
+const canLock = computed(() => !locked.value && offer.value.length > 0)
 const swornText = computed(() => `${selection.value.length}/${offer.value.length} sworn`)
 
 const pendingText = computed(() => {
@@ -307,12 +307,6 @@ const pendingText = computed(() => {
           <span class="locked-note">Waiting for the squad…</span>
         </div>
       </div>
-      <p
-        v-if="!canControl && !locked"
-        class="wait-note"
-      >
-        Only the host locks the squad's call.
-      </p>
     </footer>
   </div>
 </template>

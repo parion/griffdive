@@ -39,6 +39,7 @@ test('the star rating is a keyboard-navigable radio group', async ({ page }) => 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await page.locator('.misfortune').getByRole('button', { name: 'Lock it in' }).click()
   await page.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
+  await page.getByRole('button', { name: 'Deal the pacts' }).click()
   await page.locator('.pact:not([disabled])').first().click()
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
   await page.getByRole('button', { name: 'Mission complete' }).click()

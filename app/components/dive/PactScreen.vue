@@ -125,7 +125,7 @@ const holding = ref(false)
 const committed = ref(false)
 let holdTimer: ReturnType<typeof setTimeout> | undefined
 
-const canLock = computed(() => props.canControl && !locked.value && offer.value.length > 0)
+const canLock = computed(() => !locked.value && offer.value.length > 0)
 
 function lockNow(): void {
   emit('lock', selection.value)

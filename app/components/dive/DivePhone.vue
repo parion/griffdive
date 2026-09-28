@@ -25,6 +25,7 @@ const emit = defineEmits<{
   spin: []
   decide: [accepted: boolean]
   decideStrain: [accepted: boolean]
+  deal: []
   setMajorOrder: [order: MajorOrderSelection | null]
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
   lockPacts: [pactIds: string[]]
@@ -134,12 +135,13 @@ const phase = computed(() => props.state.phase)
         />
 
         <PhoneWheel
-          v-else-if="phase === 'spin' || phase === 'decision' || phase === 'strain'"
+          v-else-if="phase === 'spin' || phase === 'decision' || phase === 'strain' || phase === 'deal'"
           :state="state"
           :can-control="canControl"
           @spin="emit('spin')"
           @decide="emit('decide', $event)"
           @decide-strain="emit('decideStrain', $event)"
+          @deal="emit('deal')"
           @set-major-order="emit('setMajorOrder', $event)"
           @reroll="emit('reroll', $event)"
         />

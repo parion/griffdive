@@ -28,6 +28,7 @@ const emit = defineEmits<{
   spin: []
   decide: [accepted: boolean]
   decideStrain: [accepted: boolean]
+  deal: []
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
 }>()
 
@@ -55,7 +56,7 @@ const strainIcon = computed(() => (strain.value ? strainImageUrl(strain.value.id
 const strainCall = computed(() => strainDecision(props.state))
 const strainDeciding = computed(() => strain.value !== null && !strainCall.value.decided)
 const strainSwitchable = computed(() =>
-  props.state.phase === 'pacts'
+  (props.state.phase === 'deal' || props.state.phase === 'pacts')
   && strain.value !== null
   && props.state.missionInOperation === 1
   && !props.state.divers.some(diver => diver.pactsLocked))
@@ -69,15 +70,24 @@ const decisionOpen = computed(() =>
   props.state.phase === 'decision'
   && props.state.wheel !== null)
 const canSwitch = computed(() =>
-  props.state.phase === 'pacts'
+  (props.state.phase === 'deal' || props.state.phase === 'pacts')
   && props.state.wheel !== null
   && !props.state.divers.some(diver => diver.pactsLocked))
 const rerollWindow = computed(() =>
   (props.state.phase === 'decision'
     || props.state.phase === 'strain'
+    || props.state.phase === 'deal'
     || props.state.phase === 'pacts')
   && props.state.wheel !== null
   && !props.state.divers.some(diver => diver.pactsLocked))
+
+// The host gate: once both calls are in, the wheel holds with a "Deal the
+// pacts" CTA until the host deals the hand. A reroll can reopen a call, so the
+// CTA waits for both decisions to stand.
+const dealReady = computed(() =>
+  props.state.phase === 'deal'
+  && decision.value.decided
+  && strainCall.value.decided)
 
 // Pre-roll the faction card carries the Major Order chooser: on narrow screens
 // it leads, so the squad picks where to fight before hitting Spin.
@@ -797,8 +807,29 @@ function rerollLabel(
     </div>
 
     <footer class="wheel-foot row">
+      <button
+        v-if="dealReady && canControl"
+        class="btn primary cut deal-cta"
+        type="button"
+        @click="emit('deal')"
+      >
+        <span class="disp">Deal the pacts</span>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          aria-hidden="true"
+        >
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </button>
       <span
-        v-if="!state.wheel && !canControl"
+        v-else-if="dealReady"
+        class="muted small"
+      >Waiting for the host to deal the pacts…</span>
+      <span
+        v-else-if="!state.wheel && !canControl"
         class="muted small"
       >Waiting for the host to spin…</span>
       <span
@@ -1151,4 +1182,13 @@ function rerollLabel(
 
 .wheel-foot { gap: 0.6rem; align-items: center; }
 .wheel-foot .cap { margin-left: auto; }
+.deal-cta {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+}
+.deal-cta svg { width: 22px; height: 22px; }
 </style>

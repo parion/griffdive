@@ -34,7 +34,7 @@ function initial(diverName: string): string {
 const statuses = computed<Record<string, string>>(() => {
   const result: Record<string, string> = {}
   for (const diver of props.state.divers) {
-    if (props.state.phase === 'pacts') {
+    if (props.state.phase === 'deal' || props.state.phase === 'pacts') {
       result[diver.id] = diver.pactsLocked ? 'ready' : 'choosing pacts'
     }
     else if (props.state.phase === 'rewards') {

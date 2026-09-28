@@ -13,6 +13,10 @@ export type DivePhase
     | 'spin'
     | 'decision'
     | 'strain'
+    // The wheel decision is in but the host has not dealt the pact hand yet:
+    // the wheel screen holds with a "Deal the pacts" CTA (host-only). Keeps the
+    // hand from being dealt (or the offer shown) before the squad is ready.
+    | 'deal'
     | 'pacts'
     | 'diving'
     | 'rewards'
@@ -156,6 +160,7 @@ export type EngineAction
     | { type: 'SPIN_WHEEL', seed: number }
     | { type: 'ACCEPT_MISFORTUNE', accepted: boolean }
     | { type: 'ACCEPT_STRAIN', accepted: boolean }
+    | { type: 'DEAL_PACTS' }
     | { type: 'SET_MAJOR_ORDER', order: MajorOrderSelection | null }
     | { type: 'REROLL_WHEEL', wheel: 'misfortune' | 'front' | 'strain', seed: number }
     | { type: 'SET_PACTS', playerId: string, pactIds: string[] }

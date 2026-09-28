@@ -66,21 +66,26 @@ equivalent component/layout).
 
 Screens 9-12 are lower visual priority and can slip if the shell work grows.
 
-### Work-in-tree status (coordinator board)
+### Screen status (coordinator board)
 
-The working tree carries concurrent agents' uncommitted work. Verified state:
+The redesign landed as three commits on `Major-Redesign` (latest: `feat(dive): redesign dive screens
+per destroyer-terminal spec`). Verified state at the current HEAD:
 
 | Screen | State in tree | Notes |
 | --- | --- | --- |
-| 1 Pacts | Confirmed | `PactScreen.vue` split out; wheel no longer renders in `pacts`; summary bar, filter/floor notes, hold-to-lock. `PactPicker` deduped to the hand only (the duplicate dead `Lock in & dive` CTA was removed; the screen owns the CTA). Visual nit: the card-back `rotateY` deal is still a 2D translate. |
-| 2 Mission report | Confirmed | `MissionReport.vue` + `SampleCanister` + `SegmentedBar`; `DivePhaseDiving` branches to it. |
-| 3 Reward draft | Implemented + fixed | `RewardPod` + `CeilingTrack`; e2e updated. Fixed: `.hazard-dark` ban fill, `CeilingTrack` S+ marker overflow, lead-pod ceiling math. |
-| 4 Squad honors | Implemented + fixed | `BonusCeremony` split via `DivePhaseRewards v-model:view`; `RewardTokensRail`. Fixed: first-spin reel animation, `Honored` stamp + `tagFlash`, award `.crawl`, mission-counter CTA. |
-| 5 Failed / forfeit | Implemented + fixed | `ForfeitPicker` + `ForfeitCarriesOver`; e2e updated. Fixed: `.flicker`/`.crawl-slow` animations, 40px title. |
-| 6 Achieved | Implemented | `AchievedOverlay` wired full-bleed in `dive/[id].vue`. Open: failed dots (no failure-history data), export reuse. |
-| 7 Wheel | Implemented + fixed | `WheelPanel` / `WheelOfMisfortune` reworked. Fixed: solid segment fills, "All N missions" lock label. Open: "Deal the pacts" gate (needs an engine phase change). |
-| 8-12 | Not started | `index.vue`, `DivePhaseLobby`, `BriefingOverlay`, `InventoryGrid` remain unchanged from HEAD; spec deltas absent. |
-| 13 Phone shell | Wired | New `DivePhone` orchestrator + `Phone*` components now rendered from `dive/[id].vue` below the 1020px breakpoint via `usePhoneShell`. Fixed: `PhoneValor` partial cell, honors `@advance`. Remaining: no-scroll 390×844 fidelity, hit-size pass. |
+| 1 Pacts | Done | `PactScreen.vue` split out; wheel no longer renders in `pacts`; summary bar, filter/floor notes, hold-to-lock. `PactPicker` deduped to the hand only (the screen owns the CTA). Fixed: `canLock` no longer gated on host-only `canControl`, so every seated diver — not just the host — can lock their own pacts. Visual nit: the card-back `rotateY` deal is still a 2D translate. |
+| 2 Mission report | Done | `MissionReport.vue` + `SampleCanister` + `SegmentedBar`; `DivePhaseDiving` branches to it. E2E assertions moved to the canister/segmented controls. |
+| 3 Reward draft | Done | `RewardPod` + `CeilingTrack`; always-on token bar with Honors link; hold-to-confirm ban; e2e updated. Fixed: `.hazard-dark` ban fill, `CeilingTrack` S+ marker overflow, lead-pod ceiling math. |
+| 4 Squad honors | Done | `BonusCeremony` split via `DivePhaseRewards v-model:view`; `RewardTokensRail`. Fixed: first-spin reel animation, `Honored` stamp + `tagFlash`, award `.crawl`, mission-counter CTA. |
+| 5 Failed / forfeit | Done | `ForfeitPicker` + `ForfeitCarriesOver`; e2e updated. Fixed: `.flicker`/`.crawl-slow` animations, 40px title. |
+| 6 Achieved | Done | `AchievedOverlay` wired full-bleed in `dive/[id].vue`; export action wired. Open: failed dots (no failure-history data). |
+| 7 Wheel | Partial | `WheelPanel` / `WheelOfMisfortune` reworked: title + prominent Reroll-with-tally, segment risk pips + legend, front/strain hint; the MO chooser sits in the front card's pre-roll slot. Fixed: solid segment fills, "All N missions" lock label. Landed: the **"Deal the pacts" gate** — a new `deal` phase holds the wheel after both calls are in until the host presses the host-only `DEAL_PACTS` CTA (desktop + phone). Open: the MO card is not the spec's full pre-spin column card. |
+| 8 Bridge home | Partial | `index.vue` rebuilt: climb ladder, "Every mission" loop, Valor sources, Solo drop + Variant & warbonds split, room-code join, Continue record. Deltas: no Major Order band; loop is 4 steps (spec wants 6 + NEXT); record is not the spec's live-room card; no per-tier odds ladder. |
+| 9 Lobby | Partial | `DivePhaseLobby.vue`: hellpod bays, "Invite only", variant selector via `CrusadeSetup`. Missing: invite code-cell sidebar, route-preview strip, animated pod drop/door halves, hold-to-launch + checks strip. |
+| 10 Briefing | Partial (different content) | `BriefingOverlay.vue` is a dossier with a beat rail (Squad/Sentence/File/Catch-up/Deploy/Begin). The spec's six interactive tour beats remain absent; product direction still open. |
+| 11 Armory | Partial | `InventoryGrid.vue` reworked (`AppTabs`, accented sections) but still the drawer via `ArmoryDrawer`/`AppDrawer`. Spec subtitle (warbond count), `slot-in` stagger and title scale not confirmed. |
+| 12 Dive | Partial | `DivePhaseDiving.vue`: locked team-risk status strip + outcome plates. Missing: 136px mission card/DEPLOYED stamp, entry shake + pod-drop overlay, `anyVoid` rail panel, `PactBriefing` skull-row/vertical-hold styling. |
+| 13 Phone shell | Partial (wired) | New `DivePhone` orchestrator + `Phone*` components rendered from `dive/[id].vue` below the 1020px breakpoint via `usePhoneShell`. Fixed: `PhoneValor` partial cell, honors `@advance`. Remaining: no-scroll 390×844 fidelity, hit-size pass. |
 
 ---
 
@@ -336,7 +341,7 @@ vertical list; record has 4 items (`:56-70`); no squad tags; actions are Delete 
 
 # 7. Wheel — spec `05-wheel-of-misfortune`
 
-**Status:** Partial (missing "Deal the pacts" gate; needs an engine phase change). **Effort:** S-M.
+**Status:** Partial (deal gate landed; MO card placement remains). **Effort:** S-M.
 
 **Spec:** `05-wheel-of-misfortune.body.html:303-498`:
 
@@ -360,7 +365,9 @@ vertical list; record has 4 items (`:56-70`); no squad tags; actions are Delete 
 1. Add title/subtitle + prominent Reroll button (with chit + count).
 2. Move the MO card above the front card in the pre-spin column; add the front+strain hint row.
 3. Add segment risk pips + legend to `WheelOfMisfortune.vue`.
-4. Add the "Deal the pacts" CTA to the ready state (gates the pacts phase — pairs with #1).
+4. ~~Add the "Deal the pacts" CTA to the ready state (gates the pacts phase — pairs with #1).~~
+   **Done:** a `deal` engine phase + host-only `DEAL_PACTS` action; the wheel holds with the CTA
+   once both calls are in, then swaps to `PactScreen`.
 5. Align hold/opt-out labels.
 
 **Acceptance:** title + reroll; MO card placement; segment pips + legend; Deal-the-pacts gate.
@@ -520,15 +527,18 @@ context; no bottom-sheet component (only unused `.sheet-*` CSS in `main.css:766-
 
 # Cross-cutting tasks
 
-- [ ] **Sample tokens** `--sample-common/rare/super` → `main.css`.
+- [x] **Sample tokens** `--sample-common/rare/super` → `main.css`.
 - [ ] **Wire orphaned keyframes** per screen (see each section); remove or use unused ones so
-      `main.css` has no dead motion after the pass.
-- [ ] **`.cap` prose fix** — new prose class so balance-expected copy wraps.
-- [ ] **E2E updates** — specs assert behavior, not pixels; update anchors when labels/roles change
-      (star rating roles, report labels, pacts CTA, honors route). Keep `pnpm test:e2e` green.
+      `main.css` has no dead motion after the pass. (Screens 1–6 wired; audit the rest.)
+- [ ] **`.cap` prose fix** — new prose class so balance-expected copy wraps. (Not started.)
+- [x] **E2E updates** — specs assert behavior, not pixels; update anchors when labels/roles change
+      (star rating roles, report labels, pacts CTA, honors route). `pnpm test:e2e` green at HEAD
+      (16 passing); this session fixed the non-host pact-lock regression and the stale
+      report/CTA assertions.
 - [ ] **Verify per screen** — `pnpm lint && pnpm typecheck && pnpm test`, plus a screenshot check via
-      `.orca/*.mjs` at 1440×900 and 390×844.
-- [ ] **AGENTS.md** — update the "Destroyer Terminal design language" section and directory map as
+      `.orca/*.mjs` at 1440×900 and 390×844. (`lint` / `typecheck` / `test` / `test:e2e` green at
+      HEAD; screenshot check outstanding.)
+- [x] **AGENTS.md** — update the "Destroyer Terminal design language" section and directory map as
       each screen lands; note new components (`PactScreen`, `MissionReport`, `SampleCanister`,
       `SegmentedBar`, `ForfeitPicker`).
 

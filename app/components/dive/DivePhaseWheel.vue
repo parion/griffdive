@@ -13,6 +13,7 @@ const emit = defineEmits<{
   spin: []
   decide: [accepted: boolean]
   decideStrain: [accepted: boolean]
+  deal: []
   setMajorOrder: [order: MajorOrderSelection | null]
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
 }>()
@@ -27,6 +28,7 @@ const wheelRange = computed(() => ceilingRangeForDifficulty(props.state.difficul
     @spin="emit('spin')"
     @decide="emit('decide', $event)"
     @decide-strain="emit('decideStrain', $event)"
+    @deal="emit('deal')"
     @reroll="emit('reroll', $event)"
   >
     <template #front-before-roll>

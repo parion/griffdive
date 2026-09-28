@@ -14,6 +14,7 @@ const emit = defineEmits<{
   spin: []
   decide: [accepted: boolean]
   decideStrain: [accepted: boolean]
+  deal: []
   setMajorOrder: [order: MajorOrderSelection | null]
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
 }>()
@@ -47,6 +48,12 @@ const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const pendingText = computed(() => {
   return decision.value.decided ? 'Misfortune called' : 'Misfortune pending'
 })
+
+// The host gate: both calls in, the wheel holds until the host deals.
+const dealReady = computed(() =>
+  props.state.phase === 'deal'
+  && decision.value.decided
+  && strainCall.value.decided)
 
 const showMo = computed(() => !props.state.frontId)
 
@@ -303,6 +310,30 @@ function acceptDisabled(): boolean {
           :pact-risk="0"
           :pending-text="decision.decided && (!strainVisible || strainCall.decided) ? 'Dealing pacts' : pendingText"
         />
+
+        <button
+          v-if="dealReady && canControl"
+          class="deal-btn"
+          type="button"
+          @click="emit('deal')"
+        >
+          <span class="disp">Deal the pacts</span>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            aria-hidden="true"
+          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </button>
+        <p
+          v-else-if="dealReady"
+          class="waiting"
+        >
+          Waiting for the host to deal the pacts…
+        </p>
       </template>
 
       <template v-else-if="!canControl">
@@ -492,6 +523,20 @@ function acceptDisabled(): boolean {
   text-transform: uppercase;
   color: var(--muted);
 }
+
+.deal-btn {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  background: var(--gold);
+  color: var(--on-gold);
+  cursor: pointer;
+}
+.deal-btn svg { width: 20px; height: 20px; }
 
 @keyframes sweepY {
   0% { transform: translateY(-40%); }

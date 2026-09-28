@@ -48,6 +48,7 @@ export function useDiveView(session: DiveSession): DiveView {
     return current === 'spin'
       || current === 'decision'
       || current === 'strain'
+      || current === 'deal'
       || current === 'pacts'
       ? 'spin-pacts'
       : current

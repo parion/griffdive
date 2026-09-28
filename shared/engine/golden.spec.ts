@@ -70,6 +70,10 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
       const strainRisk = state.strainId ? (STRAIN_RISK[state.strainId] ?? 0) : 0
       state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: strainRisk >= 3 || mission % 2 === 0 })
     }
+    // The wheel decision holds until the host deals the pact hand.
+    if (state.phase === 'deal') {
+      state = reduce(state, { type: 'DEAL_PACTS' })
+    }
     const accepted = state.misfortuneAccepted
     const strainAccepted = state.strainAccepted
     // The diver picks a subset of what the wheel offered this mission.

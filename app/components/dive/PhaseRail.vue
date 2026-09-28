@@ -17,6 +17,7 @@ const active = computed(() => {
     case 'spin': return 0
     case 'decision':
     case 'strain': return 1
+    case 'deal':
     case 'pacts': return 2
     case 'diving': return 3
     case 'rewards': return 5

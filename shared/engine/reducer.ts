@@ -7,7 +7,7 @@ import { STARTING_KITS, startingItemIds } from './progression'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed } from './rng'
-import { activeMisfortune, allDiversPicked, bonusEligible, catchUpOptionsFor, comboKey, diverOptions, majorOrderFronts, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor } from './selectors'
+import { activeMisfortune, allDiversPicked, bonusEligible, catchUpOptionsFor, comboKey, diverOptions, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision } from './selectors'
 import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 
 export function createDiveState(
@@ -182,7 +182,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // before pacts roll. Afterwards the call may still flip while nobody has
       // locked pacts — team risk is shared, so it freezes at the first lock.
       const deciding = state.phase === 'decision'
-      const switching = (state.phase === 'strain' || state.phase === 'pacts')
+      const switching = (state.phase === 'strain' || state.phase === 'deal' || state.phase === 'pacts')
         && !state.divers.some(diver => diver.pactsLocked)
       if (!deciding && !switching) {
         return state
@@ -199,7 +199,9 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }
       return commit(state, {
         misfortuneAccepted: action.accepted,
-        ...(deciding ? { phase: needsStrainDecision(state) ? 'strain' : 'pacts' } : {}),
+        // Both calls in: hold on the wheel screen until the host deals the
+        // hand ('deal'). A pending strain keeps the squad in the strain phase.
+        ...(deciding ? { phase: needsStrainDecision(state) ? 'strain' : 'deal' } : {}),
       }, action)
     }
 
@@ -215,20 +217,40 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         return state
       }
       const deciding = state.phase === 'decision' || state.phase === 'strain'
-      const switching = state.phase === 'pacts' && !state.divers.some(diver => diver.pactsLocked)
+      const switching = (state.phase === 'deal' || state.phase === 'pacts')
+        && !state.divers.some(diver => diver.pactsLocked)
       if (!deciding && !switching) {
         return state
       }
-      if (switching && action.accepted === state.strainAccepted) {
+      // A reroll can reopen the strain call after it was answered; re-answering
+      // an open call must register even when the value matches the stale one.
+      if (switching && state.strainDecided && action.accepted === state.strainAccepted) {
         return state
       }
       return commit(state, {
         strainAccepted: action.accepted,
         strainDecided: true,
         // Answering the strain from the strain phase completes the wheel
-        // decision; from the decision phase the misfortune still gates it.
-        ...(state.phase === 'strain' ? { phase: 'pacts' } : {}),
+        // decision; from the decision phase the misfortune still gates it, and
+        // from 'deal'/'pacts' the squad stays put (a flip or a re-answer).
+        ...(state.phase === 'strain' ? { phase: 'deal' } : {}),
       }, action)
+    }
+
+    case 'DEAL_PACTS': {
+      // The host-only gate between the wheel decision and the pact hand: the
+      // squad holds on the wheel until the host deals. Refuse while either call
+      // is still open or a pact is already locked.
+      if (state.phase !== 'deal' || !state.wheel) {
+        return state
+      }
+      if (state.divers.some(diver => diver.pactsLocked)) {
+        return state
+      }
+      if (!misfortuneDecision(state).decided || !strainDecision(state).decided) {
+        return state
+      }
+      return commit(state, { phase: 'pacts' }, action)
     }
 
     case 'SET_MAJOR_ORDER': {
@@ -284,7 +306,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
 
     case 'REROLL_WHEEL': {
       if (
-        (state.phase !== 'decision' && state.phase !== 'strain' && state.phase !== 'pacts')
+        (state.phase !== 'decision' && state.phase !== 'strain' && state.phase !== 'deal' && state.phase !== 'pacts')
         || !state.wheel
         || !state.frontId
       ) {

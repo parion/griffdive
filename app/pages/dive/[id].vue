@@ -88,6 +88,7 @@ const pendingText = computed(() => {
     case 'spin': return 'Awaiting spin'
     case 'decision':
     case 'strain': return 'Deciding'
+    case 'deal': return 'Ready to deal'
     case 'pacts': return 'Pacts pending'
     default: return ''
   }
@@ -97,7 +98,7 @@ const pendingText = computed(() => {
 // how the risk bands are distributed. Presentation of `eligibleMisfortunes`.
 const wheelPool = computed(() => {
   const current = state.value
-  if (!current || !['spin', 'decision', 'strain', 'pacts'].includes(current.phase)) {
+  if (!current || !['spin', 'decision', 'strain', 'deal', 'pacts'].includes(current.phase)) {
     return null
   }
   const list = eligibleMisfortunes(current.difficulty)
@@ -271,6 +272,11 @@ function decideMisfortune(accepted: boolean): void {
 
 function decideStrain(accepted: boolean): void {
   dispatch({ type: 'ACCEPT_STRAIN', accepted })
+}
+
+// The host gate between the wheel decision and the pact hand.
+function dealPacts(): void {
+  dispatch({ type: 'DEAL_PACTS' })
 }
 
 // The Major Order is the operation's front commitment, host-set before the
@@ -500,6 +506,7 @@ function launchCrusade(variant: CrusadeVariant): void {
       @spin="spin"
       @decide="decideMisfortune"
       @decide-strain="decideStrain"
+      @deal="dealPacts"
       @set-major-order="setMajorOrder"
       @reroll="reroll"
       @lock-pacts="lockPacts"
@@ -686,7 +693,7 @@ function launchCrusade(variant: CrusadeVariant): void {
           />
 
           <DivePhaseWheel
-            v-if="phase === 'spin' || phase === 'decision' || phase === 'strain'"
+            v-if="phase === 'spin' || phase === 'decision' || phase === 'strain' || phase === 'deal'"
             :state="state"
             :self-id="selfId"
             :self="self"
@@ -694,6 +701,7 @@ function launchCrusade(variant: CrusadeVariant): void {
             @spin="spin"
             @decide="decideMisfortune"
             @decide-strain="decideStrain"
+            @deal="dealPacts"
             @set-major-order="setMajorOrder"
             @reroll="reroll"
           />

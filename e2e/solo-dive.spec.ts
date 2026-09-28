@@ -23,7 +23,8 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // team risk. Declining keeps the dive at the misfortune's risk alone.
   await expect(page.getByRole('img', { name: 'Strain call pending' })).toBeVisible()
   await page.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
-  // Declining advances straight to the dedicated pacts screen (no wheel).
+  // The host deals the hand before the dedicated pacts screen (no wheel).
+  await page.getByRole('button', { name: 'Deal the pacts' }).click()
   await expect(page.getByRole('heading', { name: 'Swear your pacts' })).toBeVisible()
 
   // The squad strip shows who still has to decide.
@@ -42,19 +43,19 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(valor).toBeVisible()
 
   await page.getByRole('button', { name: 'Mission complete' }).click()
-  // The victory banner + big stars, then slider-driven samples and time.
-  await expect(page.getByText('Mission Completed')).toBeVisible()
-  const commonSlider = page.locator('input[type="range"][aria-label="Common samples"]')
-  await expect(commonSlider).toBeVisible()
-  await expect(page.locator('input[type="range"][aria-label="Time remaining percent"]')).toBeVisible()
-  await commonSlider.fill('5')
-  await expect(page.locator('input[type="number"][aria-label="Common samples"]')).toHaveValue('5')
-  // Reka tooltip labels the time-remaining slider.
-  await page.getByRole('button', { name: 'Time remaining' }).hover()
-  await expect(page.getByText('Time remaining', { exact: true })).toBeVisible()
+  // The victory banner + big stars, then stepped sample canisters and the
+  // click-to-set time bar.
+  await expect(page.getByRole('heading', { name: 'Mission complete' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Common: 0 of 18' })).toBeVisible()
+  await page.getByRole('button', { name: 'Add a common' }).click()
+  await expect(page.getByRole('group', { name: 'Common: 1 of 18' })).toBeVisible()
+  const timeBar = page.getByRole('progressbar', { name: 'Time remaining percent' })
+  await expect(timeBar).toBeVisible()
+  await page.getByRole('button', { name: 'Set time remaining percent to 60 percent' }).click()
+  await expect(timeBar).toHaveAttribute('aria-valuenow', '60')
   // The report form opens at the difficulty's best result — 3 stars at Medium.
   await expect(page.getByRole('radio', { name: '3 stars' })).toHaveAttribute('aria-checked', 'true')
-  await page.getByRole('button', { name: 'Submit success' }).click()
+  await page.getByRole('button', { name: 'File report' }).click()
 
   await expect(page.getByRole('heading', { name: 'Reward Draft' })).toBeVisible()
   await expect(page.getByRole('img', { name: 'choosing reward' })).toBeVisible()
@@ -82,10 +83,11 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
 
   // Play mission 2 out so the banked honors token can be spent.
   await page.locator('.misfortune').getByRole('button', { name: 'Opt out' }).click()
+  await page.getByRole('button', { name: 'Deal the pacts' }).click()
   await page.locator('.pact:not([disabled])').first().click()
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
   await page.getByRole('button', { name: 'Mission complete' }).click()
-  await page.getByRole('button', { name: 'Submit success' }).click()
+  await page.getByRole('button', { name: 'File report' }).click()
 
   // Banning is a separate flow alongside reroll, and it forfeits the reward
   // pick: the landed pods become the purge selector, so select a pod, hold to
@@ -172,6 +174,7 @@ test('a failed mission labels the operation failed and restarts it', async ({ pa
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await page.locator('.misfortune').getByRole('button', { name: 'Lock it in' }).click()
   await page.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
+  await page.getByRole('button', { name: 'Deal the pacts' }).click()
   await page.locator('.pact:not([disabled])').first().click()
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
 
