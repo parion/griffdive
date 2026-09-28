@@ -32,8 +32,9 @@ the room code + copy control · 84px climb strip · three rails · 52px Mission-
 Bridge home fits one desktop view (hero + climb ladder · 6-step mission loop · Valor odds ladder ·
 deploy rail with code-cell join and the service record · a full-width Major Order band and footer),
 the wheel is a real spinning SVG wheel, the Armory marks
-misfortune/pact bans per tile from engine selectors, and a Griffdiver Briefing dossier onboards
-first-time divers. Engine, sync, saves and data are untouched; see
+misfortune/pact bans per tile from engine selectors, and an interactive six-beat Griffdiver
+Briefing (Identify · Spin · Pact · Reward · Warbonds · Deploy) onboards first-time divers. Engine,
+sync, saves and data are untouched; see
 [Destroyer Terminal design language](#destroyer-terminal-design-language). Hybrid **saved
 dives** have landed: any seated diver can pin a room server-side so it outlives the idle TTL and a
 browser clearing its storage, resuming through the existing rejoin path (see Saved dives).

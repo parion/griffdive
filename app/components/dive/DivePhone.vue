@@ -130,6 +130,8 @@ const phase = computed(() => props.state.phase)
       <template v-if="!kicked">
         <DivePhaseLobby
           v-if="phase === 'lobby'"
+          :state="state"
+          :self-id="selfId"
           :can-control="canControl"
           @start="emit('start', $event)"
         />

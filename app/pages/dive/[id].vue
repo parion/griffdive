@@ -688,6 +688,8 @@ function launchCrusade(variant: CrusadeVariant): void {
         >
           <DivePhaseLobby
             v-if="phase === 'lobby'"
+            :state="state"
+            :self-id="selfId"
             :can-control="canControl"
             @start="launchCrusade"
           />

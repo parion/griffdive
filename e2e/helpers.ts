@@ -3,10 +3,14 @@ import { expect, type Page } from '@playwright/test'
 // The first-run Griffdiver briefing is a full-screen overlay over the dive:
 // close it first when this browser hasn't seen it yet.
 export async function dismissBriefing(page: Page): Promise<void> {
+  // The tour's final CTA is "Begin dive" (last beat); the header's "Back to
+  // base" closes it from any beat.
   const begin = page.getByRole('button', { name: 'Begin dive' })
-  if (await begin.isVisible().catch(() => false)) {
-    await begin.click()
-    await expect(begin).toBeHidden()
+  const base = page.getByRole('button', { name: 'Back to base' })
+  const target = begin.or(base).first()
+  if (await target.isVisible().catch(() => false)) {
+    await target.click()
+    await expect(target).toBeHidden()
   }
 }
 
@@ -17,8 +21,9 @@ export async function dismissWarbondIntro(page: Page): Promise<void> {
   const guide = page.getByRole('dialog', { name: 'How a dive works' })
   const warbonds = page.getByRole('dialog', { name: 'Warbonds' })
   const begin = page.getByRole('button', { name: 'Begin dive' })
+  const base = page.getByRole('button', { name: 'Back to base' })
   // Wait for whichever first-run surface this browser gets.
-  await expect(begin.or(guide).or(warbonds).first()).toBeVisible()
+  await expect(begin.or(base).or(guide).or(warbonds).first()).toBeVisible()
   await dismissBriefing(page)
   await expect(guide.or(warbonds).first()).toBeVisible()
   if (await guide.isVisible()) {

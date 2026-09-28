@@ -36,7 +36,7 @@ test('the Warbonds panel opens at dive start once, then stays quiet', async ({ p
   // The briefing primes the loop first, then hands off to the Warbonds panel.
   const briefing = page.getByRole('dialog', { name: 'Griffdiver briefing' })
   await expect(briefing).toBeVisible()
-  await briefing.getByRole('button', { name: 'Begin dive' }).click()
+  await briefing.getByRole('button', { name: 'Back to base' }).click()
   await expect(briefing).toBeHidden()
 
   const drawer = page.getByRole('dialog', { name: 'Warbonds' })

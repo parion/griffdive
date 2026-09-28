@@ -81,8 +81,8 @@ per destroyer-terminal spec`). Verified state at the current HEAD:
 | 6 Achieved | Done | `AchievedOverlay` wired full-bleed in `dive/[id].vue`; export action wired. Open: failed dots (no failure-history data). |
 | 7 Wheel | Partial | `WheelPanel` / `WheelOfMisfortune` reworked: title + prominent Reroll-with-tally, segment risk pips + legend, front/strain hint; the MO chooser sits in the front card's pre-roll slot. Fixed: solid segment fills, "All N missions" lock label. Landed: the **"Deal the pacts" gate** — a new `deal` phase holds the wheel after both calls are in until the host presses the host-only `DEAL_PACTS` CTA (desktop + phone). Open: the MO card is not the spec's full pre-spin column card. |
 | 8 Bridge home | Done | `index.vue` rebuilt to the design: hero moved into the left column, climb ladder + goal flag, **6-step** "Every mission" loop + NEXT, Valor panel with a **per-tier odds ladder** (engine `oddsToReach`) + big Valor number, **code-cell join** with caret + n/6, Solo drop split from Variant & warbonds (dialog), live-room/local **Service record** cards, full-width **Major Order band** + footer. Motion wired (`rise/slam/impact/rung/flag-in/cell-on/grow/loopLit/mo-in`). Left column scrolls a little at 900px. |
-| 9 Lobby | Partial | `DivePhaseLobby.vue`: hellpod bays, "Invite only", variant selector via `CrusadeSetup`. Missing: invite code-cell sidebar, route-preview strip, animated pod drop/door halves, hold-to-launch + checks strip. |
-| 10 Briefing | Partial (different content) | `BriefingOverlay.vue` is a dossier with a beat rail (Squad/Sentence/File/Catch-up/Deploy/Begin). The spec's six interactive tour beats remain absent; product direction still open. |
+| 9 Lobby | Done | `DivePhaseLobby.vue` rebuilt to the design: hellpod bays with seated/empty/launched states (pod drop, doors, DEPLOYED), a 5-column variant radiogroup (start number, tick staircase, kit lines), launch summary + hold-to-launch → Launched stamp, and the pre-launch checks strip. The invite code cells and route strip are carried by the shell (`SquadStrip` / `CrusadeStrip`). |
+| 10 Briefing | Done | `BriefingOverlay.vue` rebuilt as the interactive six-beat tour (Identify · Spin · Pact · Reward · Warbonds · Deploy): 300px dossier aside, 68px chevron progress rail, per-beat panels (registry form + class flip, the real `WheelOfMisfortune` + accept/opt-out, Valor meter + pact cards + odds ladder, ceiling-roll track + reward pods, 26-cell warbond grid with SELECT/CLEAR ALL, Order of Deployment document), and a 76px gated footer (Back · pips · NAME REQUIRED · Next/Begin dive). Reveal timelines respect `prefers-reduced-motion`. |
 | 11 Armory | Partial | `InventoryGrid.vue` reworked (`AppTabs`, accented sections) but still the drawer via `ArmoryDrawer`/`AppDrawer`. Spec subtitle (warbond count), `slot-in` stagger and title scale not confirmed. |
 | 12 Dive | Partial | `DivePhaseDiving.vue`: locked team-risk status strip + outcome plates. Missing: 136px mission card/DEPLOYED stamp, entry shake + pod-drop overlay, `anyVoid` rail panel, `PactBriefing` skull-row/vertical-hold styling. |
 | 13 Phone shell | Partial (wired) | New `DivePhone` orchestrator + `Phone*` components rendered from `dive/[id].vue` below the 1020px breakpoint via `usePhoneShell`. Fixed: `PhoneValor` partial cell, honors `@advance`. Remaining: no-scroll 390×844 fidelity, hit-size pass. |
@@ -414,7 +414,7 @@ has 4 cells no NEXT (`:154-159`); join is a plain input + button (`:427-446`); r
 
 # 9. Lobby — spec `01-lobby-pre-launch`
 
-**Status:** Partial (folded into shell). **Effort:** L.
+**Status:** Done. **Effort:** L.
 
 **Spec:** `01-lobby-pre-launch.body.html`:
 
@@ -441,7 +441,7 @@ selector, hold-to-launch + launched stamp, checks strip. Wire `podDrop/doorL/doo
 
 # 10. Briefing — spec `03-griffdiver-briefing`
 
-**Status:** Partial (different content). **Effort:** XL.
+**Status:** Done. **Effort:** XL.
 
 **Spec:** interactive six-beat tour — `01 IDENTIFY · 02 SPIN · 03 PACT · 04 REWARD · 05 WARBONDS ·
 06 DEPLOY` (`03-griffdiver-briefing.body.html:435-442`), 300px dossier aside + 1140px main with a
