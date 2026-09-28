@@ -1,34 +1,26 @@
 <script setup lang="ts">
-import { ProgressRoot } from 'reka-ui'
 import { VALOR_METER_MAX, baseTierFor } from '~~/shared/engine/config'
 import { ceilingRange } from '~~/shared/engine/selectors'
-import { valorOf } from '~~/shared/engine/rewards'
+import { oddsToReach, valorOf } from '~~/shared/engine/rewards'
 import type { RewardTier } from '~~/shared/engine/types'
 
 const props = withDefaults(defineProps<{
   difficulty: number
   teamRisk: number
   pactRisk: number
-  // The small squad-level term from the mission just reported; zero in the
-  // pacts window (the previous report is cleared on advance).
   performance?: number
-  // Locked: pacts are committed and the dive is live — the gauge reads the
-  // diver's actual Valor and drops live as failed pacts void their risk.
   locked?: boolean
-}>(), { performance: 0, locked: false })
+  diverName?: string
+  pendingText?: string
+}>(), { performance: 0, locked: false, diverName: '', pendingText: '' })
 
 const LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
 const valor = computed(() => valorOf(props.teamRisk, props.pactRisk, props.performance))
-// The gauge is fixed at the meter top (11): Valor past it can't be shown, it
-// "breaks" the gauge and banks as Luck that lifts the top-rung odds.
 const scale = VALOR_METER_MAX
 const overflow = computed(() => Math.max(0, valor.value - VALOR_METER_MAX))
 const range = computed(() =>
   ceilingRange(props.difficulty, props.teamRisk, props.pactRisk, props.performance))
-
-const ratio = computed(() => Math.min(1, valor.value / scale))
-const clamped = computed(() => Math.min(valor.value, scale))
 
 type CellSource = 'empty' | 'team' | 'pact' | 'performance'
 interface ValorCell {
@@ -37,33 +29,19 @@ interface ValorCell {
   amount: number
 }
 
-// One cell per meter point, colored by the source that owns it. Team and pact
-// risk are whole numbers, so only the trailing performance cell is ever
-// partial — it fills its cell by the fractional share.
+// One cell per meter point, filled from the bottom so the gauge stacks the
+// sources legibly: team risk first, then pacts, then performance.
 const cells = computed<ValorCell[]>(() => {
   const teamEnd = props.teamRisk
   const pactEnd = props.teamRisk + props.pactRisk
-  return Array.from({ length: scale }, (_, index) => {
+  const bottomUp = Array.from({ length: scale }, (_, index): ValorCell => {
     const source: CellSource
       = index < teamEnd ? 'team' : index < pactEnd ? 'pact' : 'performance'
     const amount = Math.min(1, Math.max(0, valor.value - index))
     return { key: index, source: amount > 0 ? source : 'empty', amount }
   })
+  return bottomUp.reverse()
 })
-
-function cellClass(cell: ValorCell): (string | false)[] {
-  return [
-    cell.source !== 'empty' && `cell-${cell.source}`,
-    cell.amount >= 1 && 'filled',
-    cell.amount > 0 && cell.amount < 1 && 'partial',
-  ]
-}
-
-function cellStyle(cell: ValorCell): { '--fill'?: string } {
-  return cell.amount > 0 && cell.amount < 1
-    ? { '--fill': `${cell.amount * 100}%` }
-    : {}
-}
 
 function format(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
@@ -77,289 +55,198 @@ const valueText = computed(() =>
 const baseTier = computed(() => baseTierFor(props.difficulty))
 const baseIndex = computed(() => LADDER.indexOf(baseTier.value))
 const maxIndex = computed(() => LADDER.indexOf(range.value.max))
-const rungs = computed(() =>
-  LADDER.slice(baseIndex.value).map((tier, offset) => {
-    const index = baseIndex.value + offset
-    return { tier, lit: index <= maxIndex.value, top: index === maxIndex.value }
-  }),
-)
 
-const reaching = computed(() => range.value.max !== range.value.min)
-const oddsPct = computed(() => Math.round(range.value.odds * 100))
-const ceilingLabel = computed(() =>
-  reaching.value
-    ? `Base ceiling ${baseTier.value}, up to ${range.value.max} at about ${oddsPct.value}% odds`
-    : `Base ceiling ${baseTier.value}, no Valor staked`,
-)
+const rungs = computed(() => LADDER.map((tier, index) => {
+  const reachable = index > baseIndex.value
+  const odds = reachable ? oddsToReach(props.difficulty, valor.value, tier) : 1
+  return {
+    tier,
+    below: index < baseIndex.value,
+    lit: index >= baseIndex.value && index <= maxIndex.value,
+    pct: reachable ? Math.round(odds * 100) : 100,
+    odds,
+  }
+}))
+
+const legend = computed(() => [
+  { id: 'team', name: 'Team', value: props.teamRisk },
+  { id: 'pact', name: 'Pacts', value: props.pactRisk },
+  { id: 'perf', name: 'Perf', value: props.performance },
+  { id: 'luck', name: 'Luck', value: overflow.value },
+])
 </script>
 
 <template>
-  <section
-    class="valor"
-    :class="{ locked: props.locked }"
-    :style="{ '--heat': ratio }"
-  >
-    <div class="valor-head">
-      <AppTooltip content="Valor stacks the risk you chose: team risk, your pacts, and a small performance bonus. More Valor raises the reward-tier odds.">
-        <span
-          class="valor-title lbl"
-          tabindex="0"
-        >Valor</span>
-      </AppTooltip>
-      <span class="valor-value disp">{{ format(valor) }}</span>
-      <span class="valor-scale">/ {{ format(scale) }}</span>
+  <section class="valor-rail">
+    <div class="head">
+      <span class="lbl title">Valor<span v-if="diverName"> · {{ diverName }}</span></span>
       <span
-        v-if="props.locked"
-        class="chip gold locked-chip"
+        v-if="pendingText"
+        class="hazard-soft pending"
+      >{{ pendingText }}</span>
+      <span
+        v-else-if="locked"
+        class="chip gold locked"
       >Locked</span>
     </div>
 
-    <ProgressRoot
-      class="gauge"
-      :model-value="clamped"
-      :max="scale"
-      :get-value-label="() => 'Valor'"
-      :get-value-text="() => valueText"
-    >
-      <span
-        v-for="cell in cells"
-        :key="cell.key"
-        class="cell"
-        :class="cellClass(cell)"
-        :style="cellStyle(cell)"
-        aria-hidden="true"
-      />
-      <span
-        class="tip"
-        :style="{ left: `${ratio * 100}%` }"
-        aria-hidden="true"
-      />
-    </ProgressRoot>
-
-    <div class="valor-breakdown cap">
-      <span
-        v-if="props.teamRisk"
-        class="tag team"
-      >Team +{{ format(props.teamRisk) }}</span>
-      <span
-        v-if="props.pactRisk"
-        class="tag pact"
-      >Pacts +{{ format(props.pactRisk) }}</span>
-      <span
-        v-if="props.performance"
-        class="tag performance"
-      >Perf +{{ format(props.performance) }}</span>
+    <div class="big">
+      <span class="disp value">{{ format(valor) }}</span>
+      <span class="scale">/ {{ format(scale) }}</span>
       <span
         v-if="overflow > 0"
-        class="tag overflow"
-      >Meter broken · +{{ format(overflow) }} Luck</span>
-      <span
-        v-if="!valor"
-        class="muted"
-      >No Valor staked — a safe dive</span>
+        class="luck-chip"
+      >+{{ format(overflow) }} Luck</span>
     </div>
 
-    <AppTooltip content="Your reward ceiling is the best tier this Valor can roll — risk buys odds, never a guarantee.">
+    <div class="grid">
       <div
-        class="ceiling"
-        role="img"
-        :aria-label="ceilingLabel"
-        tabindex="0"
+        role="progressbar"
+        aria-label="Valor"
+        aria-valuemin="0"
+        :aria-valuemax="scale"
+        :aria-valuenow="valor"
+        :aria-valuetext="valueText"
+        class="cells"
       >
-        <span class="lbl">Ceiling</span>
-        <span class="rungs">
-          <template
-            v-for="(rung, index) in rungs"
-            :key="rung.tier"
-          >
-            <span
-              v-if="index > 0"
-              class="link"
-              :class="{ lit: rung.lit }"
-              aria-hidden="true"
-            />
-            <TierBadge
-              :tier="rung.tier"
-              size="sm"
-              class="rung"
-              :class="{ lit: rung.lit, top: rung.top }"
-            />
-          </template>
-        </span>
-        <span class="odds cap">
-          <template v-if="reaching">~{{ oddsPct }}% · {{ range.max }}</template>
-          <template v-else>guaranteed</template>
-        </span>
+        <span
+          v-for="cell in cells"
+          :key="cell.key"
+          class="cell"
+          :class="[cell.source, cell.amount > 0 && cell.amount < 1 ? 'partial' : '']"
+          :style="cell.amount > 0 && cell.amount < 1 ? { '--fill': `${cell.amount * 100}%` } : undefined"
+        />
       </div>
-    </AppTooltip>
 
-    <p
-      v-if="!props.locked"
-      class="hint muted cap"
-    >
-      Chosen risk buys odds, never a guarantee.
-    </p>
+      <div class="odds">
+        <span class="lbl odds-h">Ceiling odds</span>
+        <div
+          v-for="r in rungs"
+          :key="r.tier"
+          class="rung"
+          :class="{ below: r.below, lit: r.lit }"
+        >
+          <div class="rung-row">
+            <TierBadge
+              :tier="r.tier"
+              size="sm"
+              class="rung-t"
+            />
+            <span class="rung-pct">{{ r.below ? '—' : `${r.pct}%` }}</span>
+          </div>
+          <div class="rung-bar">
+            <i :style="{ width: r.below ? '0%' : `${Math.max(2, r.odds * 100)}%` }" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div
+        v-for="l in legend"
+        :key="l.id"
+        class="legend-row"
+        :class="{ zero: l.value <= 0 }"
+      >
+        <span
+          class="swatch"
+          :class="l.id"
+          aria-hidden="true"
+        />
+        <span>{{ l.name }}</span>
+        <span class="legend-v">{{ format(l.value) }}</span>
+      </div>
+    </div>
   </section>
 </template>
 
 <style scoped>
-.valor {
-  --heat: 0;
-  display: grid;
-  gap: 0.5rem;
-  padding: 0.75rem 0.85rem 0.85rem;
-  border: 1px solid var(--line-2);
-  background: var(--panel);
-  transition: border-color var(--dur-med) var(--ease-out);
-}
+.valor-rail { display: flex; flex-direction: column; gap: 14px; }
 
-.valor.locked {
-  border-color: color-mix(in srgb, var(--gold) 55%, var(--line-2));
-}
-
-.valor-head {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-
-.valor-title {
-  color: var(--gold);
-}
-
-.valor-value {
-  font-size: 2rem;
-  line-height: 0.9;
-  color: color-mix(in srgb, var(--gold) calc(55% + var(--heat) * 45%), var(--text));
-  text-shadow: 0 0 calc(var(--heat) * 16px) color-mix(in srgb, var(--red) calc(var(--heat) * 85%), transparent);
-  transition: color var(--dur-med) var(--ease-out), text-shadow var(--dur-med) var(--ease-out);
-}
-
-.valor-scale {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--dim);
-}
-
-.locked-chip {
-  margin-left: auto;
-}
-
-/* The gauge: an 11-cell meter whose cells stack team risk, pacts and
-   performance; the tip glows brighter the more Valor is staked. Reka's
-   ProgressRoot owns the accessible progressbar semantics — the cells and tip
-   are purely visual. */
-.gauge {
-  position: relative;
-  display: flex;
-  gap: 3px;
-  height: 1.1rem;
-}
-
-.cell {
-  flex: 1 1 0;
-  min-width: 0;
-  background: var(--raised);
-  border: 1px solid var(--line-2);
-  transition: background-color var(--dur-med), border-color var(--dur-med);
-}
-
-.cell-team { --c: var(--gold); }
-.cell-pact { --c: var(--red); }
-.cell-performance { --c: var(--teal); }
-
-.cell.filled {
-  background: var(--c);
-  border-color: color-mix(in srgb, var(--c) 60%, var(--line-2));
-}
-
-.cell.partial {
-  background: linear-gradient(90deg, var(--c) 0 var(--fill), var(--raised) var(--fill));
-  border-color: color-mix(in srgb, var(--c) 45%, var(--line-2));
-}
-
-.tip {
-  position: absolute;
-  top: 50%;
-  translate: -50% -50%;
-  width: 0.95rem;
-  height: 0.95rem;
-  border-radius: 50%;
-  background: radial-gradient(circle, #fff6c8 0%, var(--gold) 42%, transparent 72%);
-  opacity: var(--heat);
-  pointer-events: none;
-  animation: valor-burn 1.3s ease-in-out infinite;
-  transition: left var(--dur-med) var(--ease-out), opacity var(--dur-med) var(--ease-out);
-}
-
-@keyframes valor-burn {
-  0%, 100% { scale: 1; filter: brightness(1); }
-  50% { scale: 1.4; filter: brightness(1.6); }
-}
-
-.valor-breakdown {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-.tag {
-  padding: 0 0.35rem;
+.head { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 20px; }
+.title { color: var(--gold); }
+.pending {
+  padding: 3px 7px;
   font-size: 10px;
   font-weight: 700;
-  border: 1px solid currentColor;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+.locked { font-size: 9px; }
+
+.big { display: flex; align-items: baseline; gap: 6px; }
+.value { font-size: clamp(2.4rem, 5vw, 3.6rem); color: var(--gold); line-height: 1; }
+.scale { font-size: 14px; font-weight: 700; color: var(--ghost-ink); }
+.luck-chip {
+  margin-left: auto;
+  padding: 2px 6px;
+  border: 1px solid var(--purple);
+  color: var(--purple);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.tag.team { color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); }
-.tag.pact { color: var(--red); background: color-mix(in srgb, var(--red) 10%, transparent); }
-.tag.performance { color: var(--teal); background: color-mix(in srgb, var(--teal) 10%, transparent); }
-.tag.overflow {
-  color: var(--red);
-  background: color-mix(in srgb, var(--red) 16%, transparent);
-  animation: break-pulse 1.1s ease-in-out infinite;
+.grid { display: grid; grid-template-columns: 44px 1fr; gap: 16px; }
+.cells {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--line-2);
+  height: 100%;
+}
+.cell { height: 25px; background: var(--ground); border: 1px solid var(--line-1); }
+.cell.team { background: var(--khaki); border-color: var(--khaki); }
+.cell.pact { background: var(--orange); border-color: var(--orange); }
+.cell.performance { background: var(--teal); border-color: var(--teal); }
+.cell.partial {
+  background: linear-gradient(to top, var(--teal) var(--fill, 50%), var(--ground) var(--fill, 50%));
+  border-color: var(--teal);
 }
 
-@keyframes break-pulse {
-  0%, 100% { opacity: 0.72; }
-  50% { opacity: 1; }
+.odds { display: flex; flex-direction: column; gap: 8px; }
+.odds-h { font-size: 10px; }
+.rung { display: flex; flex-direction: column; gap: 4px; opacity: 0.55; }
+.rung.lit { opacity: 1; }
+.rung.below { opacity: 0.3; }
+.rung-row { display: flex; align-items: center; gap: 8px; }
+.rung-t {
+  min-width: 30px;
+  height: 22px;
+  font-size: 12px;
+  background: var(--ground);
 }
+.rung-pct { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--text); }
+.rung-bar { height: 4px; background: var(--raised); }
+.rung-bar i { display: block; height: 4px; background: currentColor; transition: width 0.5s var(--ease-out); }
 
-.ceiling {
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-1);
+}
+.legend-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.rungs {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-}
-
-.rung {
-  opacity: 0.32;
-  filter: grayscale(1);
-  transition: opacity var(--dur-med) var(--ease-out), filter var(--dur-med) var(--ease-out), scale var(--dur-med) var(--ease-snap);
-}
-
-.rung.lit { opacity: 1; filter: none; }
-.rung.top { scale: 1.12; }
-
-.link {
-  width: 0.55rem;
-  height: 2px;
-  background: var(--line-2);
-  transition: background var(--dur-med) var(--ease-out);
-}
-
-.link.lit { background: color-mix(in srgb, var(--gold) 70%, var(--line-2)); }
-
-.odds {
-  margin-left: auto;
+  gap: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--khaki);
 }
-
-.hint { margin: 0; }
+.legend-row.zero { color: var(--dim); }
+.legend-v { margin-left: auto; color: var(--text); }
+.legend-row.zero .legend-v { color: var(--dim); }
+.swatch { width: 10px; height: 10px; background: var(--line-2); flex-shrink: 0; }
+.swatch.team { background: var(--khaki); }
+.swatch.pact { background: var(--orange); }
+.swatch.perf { background: var(--teal); }
+.swatch.luck { background: var(--purple); }
 </style>

@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ALL_WARBOND_CODES, ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
-import { performanceValor } from '~~/shared/engine/rewards'
-import { allDiversPicked, bonusEligible, bonusIneligibilityReason, canBanAnyReward, canBanReward, canRerollRewards, diverOptions, pactRiskOf, rewardPoolFor, teamRiskOf } from '~~/shared/engine/selectors'
+import { allDiversPicked, bonusEligible, bonusIneligibilityReason, canBanAnyReward, canBanReward, canRerollRewards, diverOptions, rewardPoolFor } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -22,9 +21,6 @@ const emit = defineEmits<{
   advance: []
 }>()
 
-const teamRisk = computed(() => teamRiskOf(props.state))
-const selfPactRisk = computed(() => (props.self ? pactRiskOf(props.self) : 0))
-const selfPerformance = computed(() => performanceValor(props.state.lastReport))
 const options = computed(() => (props.self ? diverOptions(props.state, props.self) : []))
 
 // Liberty's Cross picks from the diver's own catalog: their declared warbonds
@@ -80,16 +76,8 @@ const advanceLabel = computed(() =>
 </script>
 
 <template>
-  <ValorMeter
-    v-if="!ready"
-    :difficulty="state.difficulty"
-    :team-risk="teamRisk"
-    :pact-risk="selfPactRisk"
-    :performance="selfPerformance"
-    locked
-  />
   <BonusCeremony
-    v-else-if="bonusUp"
+    v-if="bonusUp"
     :state="state"
     :self-id="selfId"
     :self="self"

@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { useSessionStore } from '~/stores/session'
 
+const route = useRoute()
+// The dive renders its own terminal header (crusade, room code, copy, nav), so
+// the global bridge header stands down there.
+const onDive = computed(() => route.path.startsWith('/dive'))
+
 const changelogOpen = ref(false)
 const { codexOpen, warbondsOpen, guideOpen } = useDrawers()
 const { online } = useSessionStore()
@@ -13,7 +18,10 @@ const { online } = useSessionStore()
         href="#main-content"
         class="skip-link"
       >Skip to main content</a>
-      <header class="term-header">
+      <header
+        v-if="!onDive"
+        class="term-header"
+      >
         <NuxtLink
           to="/"
           class="brand"

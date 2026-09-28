@@ -72,7 +72,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // Medium runs 2-mission operations. The tracker advances to the second
   // segment; the overall mission count lives in its accessible label.
   await expect(page.getByRole('img', { name: /operation mission 2 of 2/i })).toBeVisible()
-  await expect(page.locator('.mission-track .seg.active')).toHaveCount(1)
+  await expect(page.locator('.rung[data-state="current"]')).toContainText('Mission 2/2')
   // The front persists, but mission 2 begins at the spin: a fresh misfortune
   // awaits the squad's decision.
   await page.getByRole('button', { name: 'Spin', exact: true }).click()

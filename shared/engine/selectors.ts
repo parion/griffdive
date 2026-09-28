@@ -3,6 +3,7 @@ import { FRONTS } from '../data/fronts'
 import type { Front } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
 import type { Misfortune } from '../data/misfortunes'
+import { pactById } from '../data/pacts'
 import type { Pact } from '../data/pacts'
 import type { Strain } from '../data/strains'
 import type { Item } from '../data/types'
@@ -20,7 +21,15 @@ import {
   pactOptionsFor,
 } from './config'
 import type { BonusStat } from './config'
-import { hasLegalLoadout, pactRiskTotal, rollPactOffer } from './pacts'
+import {
+  MISFORTUNE_BANS_STRATAGEM,
+  PACT_BANS_STRATAGEM,
+  hasLegalLoadout,
+  pactRiskTotal,
+  rollPactOffer,
+  stratagemBanReason,
+} from './pacts'
+import type { StratagemBanSource } from './pacts'
 import { startingItemIds } from './progression'
 import { performanceValor, maxCeiling, oddsToReach, optionsForStars, rollBonus, rollCeiling, rollRewardOptions, valorOf } from './rewards'
 import type { RewardOption } from './rewards'
@@ -153,6 +162,54 @@ export function diverValor(state: DiveState, diver: DiverState): number {
 // The actual offer rolls its ceiling (diverOptions).
 export function diverCeiling(state: DiveState, diver: DiverState): RewardTier {
   return maxCeiling(state.difficulty, diverValor(state, diver))
+}
+
+// The Armory's "active rules" readout: the accepted misfortune plus the
+// diver's sworn pacts, with the ban predicate each contributes. Display only —
+// `stratagemBanReason` below is the single source of truth for what is legal.
+export interface ArmoryRule {
+  id: string
+  name: string
+  source: 'misfortune' | 'pact'
+  /** Whether this rule removes equip choices at all (behavioural rules don't). */
+  equipBearing: boolean
+}
+
+export function armoryRules(state: DiveState, diver: DiverState): ArmoryRule[] {
+  const rules: ArmoryRule[] = []
+  const misfortune = activeMisfortune(state)
+  if (misfortune) {
+    rules.push({
+      id: misfortune.id,
+      name: misfortune.name,
+      source: 'misfortune',
+      equipBearing: misfortune.id === 'oopsAllAirstrikes'
+        || Boolean(MISFORTUNE_BANS_STRATAGEM[misfortune.id]),
+    })
+  }
+  for (const id of diver.pactIds) {
+    const pact = pactById(id)
+    if (!pact) {
+      continue
+    }
+    rules.push({
+      id,
+      name: pact.name,
+      source: 'pact',
+      equipBearing: Boolean(PACT_BANS_STRATAGEM[id]),
+    })
+  }
+  return rules
+}
+
+// Why the Armory greys a stratagem tile: the accepted misfortune or one of the
+// diver's sworn pacts bans it. Null when the item is legal.
+export function itemBannedInArmory(
+  state: DiveState,
+  diver: DiverState,
+  item: Item,
+): StratagemBanSource | null {
+  return stratagemBanReason(activeMisfortune(state)?.id ?? null, diver.pactIds, item)
 }
 
 export function rewardPoolFor(codes: readonly string[]): Item[] {

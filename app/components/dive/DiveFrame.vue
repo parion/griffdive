@@ -1,86 +1,104 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ rails?: boolean }>(), { rails: true })
+withDefaults(defineProps<{ left?: boolean, right?: boolean }>(), { left: true, right: true })
 </script>
 
 <template>
-  <div class="dive-frame">
-    <div class="dive-strip">
-      <slot name="strip" />
-    </div>
+  <div class="shell">
+    <slot name="header" />
+    <slot name="ladder" />
+
     <div
-      class="dive-body"
-      :class="{ 'no-rails': !rails }"
+      class="body"
+      :class="{ 'no-left': !left, 'no-right': !right }"
     >
       <aside
-        v-if="rails"
+        v-if="left"
         class="rail rail-left scan"
         aria-label="Crusade"
       >
         <slot name="left" />
       </aside>
-      <section
-        class="dive-center"
-        aria-label="Mission"
+
+      <main
+        id="main-content"
+        class="center grid-bg scan"
+        tabindex="-1"
       >
         <slot />
-      </section>
+      </main>
+
       <aside
-        v-if="rails"
-        class="rail rail-right scan"
-        aria-label="Mission status"
+        v-if="right"
+        class="rail rail-right"
+        aria-label="Valor"
       >
         <slot name="right" />
       </aside>
     </div>
+
+    <slot name="phases" />
   </div>
 </template>
 
 <style scoped>
-.dive-frame {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 10px clamp(10px, 2vw, 22px) 28px;
-  max-width: 1500px;
-  margin: 0 auto;
-  width: 100%;
-}
-.dive-strip {
-  border: 1px solid var(--line-1);
-  background: var(--rail);
-  padding: 10px 14px;
-  min-width: 0;
-}
-.dive-body {
+/* The dive is a fixed terminal: header, climb strip, three rails and the
+   mission-phase bar all share one viewport. Panels scroll internally, the page
+   never does. */
+.shell {
+  height: 100vh;
   display: grid;
-  grid-template-columns: 232px minmax(0, 1fr) 286px;
-  gap: 10px;
-  align-items: start;
+  grid-template-rows: 60px 84px minmax(0, 1fr) 52px;
+  overflow: hidden;
+  background: var(--ground);
 }
-.dive-body.no-rails { grid-template-columns: minmax(0, 1fr); }
+.body {
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr) 284px;
+  min-height: 0;
+}
+.body.no-right { grid-template-columns: 216px minmax(0, 1fr); }
+.body.no-left { grid-template-columns: minmax(0, 1fr) 284px; }
+
 .rail {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  position: sticky;
-  top: 70px;
-  max-height: calc(100vh - 84px);
+  gap: var(--gap-panel);
+  padding: var(--sp-5) var(--sp-4);
+  background: var(--rail);
+  min-height: 0;
   overflow-y: auto;
-  padding-right: 2px;
 }
-.dive-center { display: grid; gap: 10px; min-width: 0; }
+.rail-left { border-right: 1px solid var(--line-1); }
+.rail-right { border-left: 1px solid var(--line-1); }
 
-@media (max-width: 1180px) {
-  .dive-body { grid-template-columns: 232px minmax(0, 1fr); }
-  .rail-right { grid-column: 1 / -1; position: static; max-height: none; }
+.center {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-panel);
+  padding: var(--gap-panel) var(--pad-page);
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
-@media (max-width: 860px) {
-  .dive-body { grid-template-columns: minmax(0, 1fr); }
-  .rail { position: static; max-height: none; }
-  /* On phones the mission content leads; the rails follow below it. */
+.center :deep(> *) { min-width: 0; }
+
+/* One structural breakpoint: below this the shell flows and the rails follow
+   the mission content instead of framing it. Everything inside is fluid. */
+@media (max-width: 1020px) {
+  .shell {
+    height: auto;
+    min-height: 100vh;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    overflow: visible;
+  }
+  .body { grid-template-columns: minmax(0, 1fr); }
+  .body.no-right,
+  .body.no-left { grid-template-columns: minmax(0, 1fr); }
+  .rail { border: 0; padding: var(--sp-4) var(--pad-page); }
+  .center { order: 1; overflow: visible; }
   .rail-left { order: 2; }
-  .dive-center { order: 1; }
   .rail-right { order: 3; }
-  .dive-strip { padding: 8px 10px; }
 }
 </style>

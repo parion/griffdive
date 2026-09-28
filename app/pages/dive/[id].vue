@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { diverOptions, majorOrderFronts } from '~~/shared/engine/selectors'
-import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
+import { MISFORTUNE_MIN_DIFFICULTY, MISFORTUNE_RISK } from '~~/shared/engine/config'
+import { performanceValor } from '~~/shared/engine/rewards'
+import { diverOptions, majorOrderFronts, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
+import { VARIANTS } from '~~/shared/engine/progression'
+import { deriveFront, deriveMisfortune, deriveStrain, eligibleMisfortunes } from '~~/shared/engine/wheel'
 import type { CrusadeVariant, DiverState, EngineAction, ItemRef, MajorOrderSelection, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
 import { rememberDiverName } from '~/composables/useGameSocket'
 
@@ -10,7 +13,7 @@ const session = useDiveSession(slotId.value)
 const saves = useSaves()
 const { push: pushToast } = useToasts()
 const { ownedWarbonds, setOwned } = useOwnedWarbonds()
-const { openWarbonds, guideOpen, openGuide } = useDrawers()
+const { openWarbonds, guideOpen } = useDrawers()
 const { hasSeenWarbondIntro, markWarbondIntroSeen } = useWarbondIntro()
 const { hasSeenDiveIntro, markDiveIntroSeen } = useDiveIntro()
 
@@ -32,6 +35,79 @@ const {
 const dispatch = (action: EngineAction) => session.dispatch(action)
 
 const armoryOpen = ref(false)
+
+// The Valor rail and the climb strip are shell state, not phase state: the
+// page composes them from selectors so every phase shares one rail.
+const variantName = computed(() =>
+  VARIANTS.find(variant => variant.id === state.value?.settings?.variant)?.name ?? 'Crusade')
+const crusadeLabel = computed(() => `${diverName(selfId.value)} · ${variantName.value}`)
+
+const teamRisk = computed(() => state.value ? teamRiskOf(state.value) : 0)
+// While a diver is still picking pacts the phase reports its live selection
+// upward, so the shell's Valor rail previews the stake before the lock.
+const livePactRisk = ref(0)
+const pactRisk = computed(() => {
+  const diver = self.value
+  if (!diver) {
+    return 0
+  }
+  if (state.value?.phase === 'pacts' && !diver.pactsLocked) {
+    return livePactRisk.value
+  }
+  return pactRiskOf(diver)
+})
+const performance = computed(() => {
+  const current = state.value
+  if (!current) {
+    return 0
+  }
+  return current.phase === 'rewards' || current.phase === 'forfeit' || current.phase === 'complete'
+    ? performanceValor(current.lastReport)
+    : 0
+})
+const valorLocked = computed(() => {
+  const phase = state.value?.phase
+  return phase === 'diving' || phase === 'rewards' || phase === 'forfeit' || phase === 'complete'
+})
+const pendingText = computed(() => {
+  switch (state.value?.phase) {
+    case 'spin': return 'Awaiting spin'
+    case 'decision':
+    case 'strain': return 'Deciding'
+    case 'pacts': return 'Pacts pending'
+    default: return ''
+  }
+})
+
+// The wheel pool card: how many misfortunes are eligible at this difficulty and
+// how the risk bands are distributed. Presentation of `eligibleMisfortunes`.
+const wheelPool = computed(() => {
+  const current = state.value
+  if (!current || !['spin', 'decision', 'strain', 'pacts'].includes(current.phase)) {
+    return null
+  }
+  const list = eligibleMisfortunes(current.difficulty)
+  const bars = [0, 0, 0, 0, 0]
+  for (const misfortune of list) {
+    const risk = Math.min(5, Math.max(1, MISFORTUNE_RISK[misfortune.id] ?? 1))
+    bars[risk - 1] = (bars[risk - 1] ?? 0) + 1
+  }
+  const joining = list
+    .filter(misfortune => MISFORTUNE_MIN_DIFFICULTY[misfortune.id] === current.difficulty)
+    .map(misfortune => misfortune.name)
+  return {
+    count: list.length,
+    bars,
+    note: joining.length
+      ? `${joining.join(', ')} join at difficulty ${current.difficulty}`
+      : 'The full pool is on the wheel',
+  }
+})
+
+const POOL_COLORS = ['var(--khaki)', 'var(--khaki)', 'var(--orange)', 'var(--red)', 'var(--red)']
+function poolColor(index: number): string {
+  return POOL_COLORS[index] ?? 'var(--line-3)'
+}
 
 // Warbonds are what each diver actually owns — declared per diver, any phase,
 // and driven by the global Warbonds drawer. A local save seeds the working list
@@ -66,33 +142,49 @@ watch(ownedWarbonds, (codes) => {
   }
 })
 
-// Dive startup is part of the ritual — a fresh solo dive opens the guide on
-// mount, and a room join opens it the moment the diver is seated (right after
-// the name gate). It fires once ever, like the remembered name.
-watch(self, (diver) => {
-  if (!diver) {
+// Dive startup is part of the ritual: a fresh browser gets the Griffdiver
+// briefing the moment the diver is seated (right after the name gate), instead
+// of the old auto-opened guide. Closing it marks the dive intro seen and hands
+// off to the Warbonds panel, so a first-timer reads one surface at a time.
+const briefingOpen = ref(false)
+
+watch([self, state], ([diver, current]) => {
+  if (!diver || !current || briefingOpen.value || hasSeenDiveIntro.value) {
     return
   }
-  if (!hasSeenDiveIntro.value) {
-    markDiveIntroSeen()
-    openGuide()
-    return
-  }
-  if (!hasSeenWarbondIntro.value && !guideOpen.value) {
+  briefingOpen.value = true
+}, { immediate: true })
+
+function openWarbondsIntro(): void {
+  if (!hasSeenWarbondIntro.value && !guideOpen.value && !briefingOpen.value) {
     markWarbondIntroSeen()
     openWarbonds()
   }
+}
+
+// A dive start whose briefing was already seen still gets the one-shot
+// Warbonds prompt (a browser from before the briefing, or a later crusade).
+watch(self, (diver) => {
+  if (!diver || briefingOpen.value || !hasSeenDiveIntro.value) {
+    return
+  }
+  openWarbondsIntro()
 }, { immediate: true })
 
-// The guide goes first; the Warbonds panel (declare what you own) follows it so
-// a first-timer reads one panel at a time, never both at once.
+// Opening the guide by hand on a first run still hands off to the Warbonds
+// panel — but never behind the briefing.
 watch(guideOpen, (open) => {
   if (open || !self.value || hasSeenWarbondIntro.value) {
     return
   }
-  markWarbondIntroSeen()
-  openWarbonds()
+  openWarbondsIntro()
 })
+
+function closeBriefing(): void {
+  briefingOpen.value = false
+  markDiveIntroSeen()
+  openWarbondsIntro()
+}
 
 // Hostship moves under the squad's feet (disconnect migration) with no other
 // signal — announce the crown's arrival and departure.
@@ -332,11 +424,7 @@ function launchCrusade(variant: CrusadeVariant): void {
 </script>
 
 <template>
-  <main
-    id="main-content"
-    class="dive-page"
-    tabindex="-1"
-  >
+  <div class="dive-page">
     <JoinNameGate
       v-if="session.awaitingName.value"
       @confirm="confirmJoinName"
@@ -371,19 +459,24 @@ function launchCrusade(variant: CrusadeVariant): void {
         >Back to base</NuxtLink>
       </div>
     </section>
-    <DiveFrame v-else-if="state">
-      <template #strip>
-        <DiveHeader
-          :state="state"
+
+    <DiveFrame
+      v-else-if="state"
+      :right="state.phase !== 'lobby'"
+    >
+      <template #header>
+        <DiveTopBar
+          :crusade-label="crusadeLabel"
+          :difficulty="state.difficulty"
           :mode="session.mode"
+          :slot-name="session.slotName.value"
           :status="session.status.value"
-          :self-id="selfId"
+          :saved="Boolean(session.saved.value)"
           :can-control="canControl"
           :is-host="session.selfIsHost.value"
-          :op-length="opLength"
-          :slot-name="session.slotName.value"
-          :saved="session.saved.value"
+          :lone-host="state.divers.length === 1"
           @copy-invite="copyInvite"
+          @open-armory="armoryOpen = true"
           @leave="leaveDive"
           @end="endDive"
           @save-dive="saveDive"
@@ -391,77 +484,76 @@ function launchCrusade(variant: CrusadeVariant): void {
         />
       </template>
 
+      <template #ladder>
+        <CrusadeStrip
+          :difficulty="state.difficulty"
+          :achieved="state.achieved"
+          :failed="state.phase === 'forfeit'"
+          :mission-in-operation="state.missionInOperation"
+          :op-length="opLength"
+        />
+      </template>
+
       <template #left>
-        <button
-          class="armory-btn cut"
-          type="button"
-          @click="armoryOpen = true"
-        >
-          <IconWarbond class="armory-icon" />
-          <span>Armory</span>
-        </button>
+        <SquadStrip
+          :state="state"
+          :self-id="selfId"
+          :online="session.online.value"
+          :mode="session.mode"
+          :is-host="session.selfIsHost.value"
+          :name-draft="nameDraft"
+          @update:name-draft="setNameDraft"
+          @commit="commitName"
+          @transfer-host="transferHost"
+          @kick="kick"
+        />
+
         <section
-          class="sec"
-          aria-labelledby="ladder-h"
+          v-if="wheelPool"
+          class="sec pool"
+          aria-labelledby="pool-h"
         >
           <div class="sec-h">
             <h2
-              id="ladder-h"
+              id="pool-h"
               class="lbl"
             >
-              <span class="sn">01</span> The climb
+              Wheel pool
             </h2>
             <span class="dash" />
           </div>
-          <CrusadeLadder
-            :difficulty="state.difficulty"
-            :achieved="state.achieved"
-          />
-        </section>
-        <section
-          class="sec"
-          aria-labelledby="squad-h"
-        >
-          <div class="sec-h">
-            <h2
-              id="squad-h"
-              class="lbl"
-            >
-              Squad
-            </h2>
-            <span class="dash" />
+          <div class="pool-count">
+            <span class="disp">{{ wheelPool.count }}</span>
+            <span class="cap">misfortunes on the wheel</span>
           </div>
-          <SquadStrip
-            :state="state"
-            :self-id="selfId"
-            :online="session.online.value"
-            :mode="session.mode"
-            :is-host="session.selfIsHost.value"
-            :name-draft="nameDraft"
-            @update:name-draft="setNameDraft"
-            @commit="commitName"
-            @transfer-host="transferHost"
-            @kick="kick"
-          />
+          <div
+            class="pool-bars"
+            aria-hidden="true"
+          >
+            <span
+              v-for="(n, i) in wheelPool.bars"
+              :key="i"
+              :style="{ flexGrow: Math.max(n, 1), background: poolColor(i) }"
+            />
+          </div>
+          <span class="cap pool-note">{{ wheelPool.note }}</span>
         </section>
       </template>
 
       <template #right>
-        <section
-          class="sec"
-          aria-labelledby="phases-h"
-        >
-          <div class="sec-h">
-            <h2
-              id="phases-h"
-              class="lbl"
-            >
-              Mission phases
-            </h2>
-            <span class="dash" />
-          </div>
-          <PhaseRail :phase="state.phase" />
-        </section>
+        <ValorMeter
+          :difficulty="state.difficulty"
+          :team-risk="teamRisk"
+          :pact-risk="pactRisk"
+          :performance="performance"
+          :locked="valorLocked"
+          :diver-name="diverName(selfId)"
+          :pending-text="pendingText"
+        />
+      </template>
+
+      <template #phases>
+        <PhaseRail :phase="state.phase" />
       </template>
 
       <p
@@ -523,6 +615,7 @@ function launchCrusade(variant: CrusadeVariant): void {
             @set-major-order="setMajorOrder"
             @reroll="reroll"
             @lock="lockPacts"
+            @pact-risk="livePactRisk = $event"
           />
 
           <DivePhaseDiving
@@ -579,13 +672,23 @@ function launchCrusade(variant: CrusadeVariant): void {
     >
       Loading dive…
     </p>
-  </main>
+
+    <BriefingOverlay
+      v-if="briefingOpen && state"
+      :state="state"
+      :self="self"
+      :self-id="selfId"
+      :mode="session.mode"
+      :online="session.online.value"
+      @close="closeBriefing"
+    />
+  </div>
 </template>
 
 <style scoped>
 .dive-page { min-height: 100vh; }
 
-.phase-stack { display: grid; gap: 10px; }
+.phase-stack { display: grid; gap: var(--gap-panel); }
 
 .error-banner {
   border-color: var(--red);
@@ -597,24 +700,10 @@ function launchCrusade(variant: CrusadeVariant): void {
 
 .kicked { border-color: var(--red); }
 
-.armory-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px;
-  border: 1px solid var(--line-4);
-  background: var(--rail);
-  color: var(--khaki);
-  font: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: color var(--dur-fast), border-color var(--dur-fast), background-color var(--dur-fast);
-}
-.armory-btn:hover { color: var(--gold); border-color: var(--gold); background: rgba(255, 214, 66, 0.06); }
-.armory-icon { width: 18px; height: 18px; }
+.pool { border-style: dashed; border-color: var(--line-2); background: transparent; }
+.pool-count { display: flex; align-items: baseline; gap: var(--sp-3); }
+.pool-count .disp { font-size: 26px; color: var(--text); }
+.pool-bars { display: flex; gap: 3px; }
+.pool-bars span { height: 4px; min-width: 6px; }
+.pool-note { white-space: normal; }
 </style>

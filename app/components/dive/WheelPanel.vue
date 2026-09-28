@@ -82,6 +82,33 @@ const rerollWindow = computed(() =>
 // it leads, so the squad picks where to fight before hitting Spin.
 const preRoll = computed(() => !props.state.wheel && !props.state.frontId)
 
+// The wheel spins on the seed before the result cards reveal. Purely
+// presentational: the engine result already exists, this just holds the reveal
+// for the rotation. Reduced motion skips straight to the cards.
+const spinning = ref(false)
+let spinTimer: ReturnType<typeof setTimeout> | undefined
+watch(
+  () => props.state.wheel?.seed,
+  (seed, previous) => {
+    clearTimeout(spinTimer)
+    if (seed === undefined || seed === previous) {
+      spinning.value = false
+      return
+    }
+    const reduced = import.meta.client
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) {
+      spinning.value = false
+      return
+    }
+    spinning.value = true
+    spinTimer = setTimeout(() => {
+      spinning.value = false
+    }, 2400)
+  },
+)
+onBeforeUnmount(() => clearTimeout(spinTimer))
+
 // A squad-binding rule every diver must be able to field: a drawn misfortune
 // that strands a diver below HD2's four required stratagems can't be accepted.
 // The reducer refuses it too — this is the legible half.
@@ -297,413 +324,424 @@ function rerollLabel(
       <span class="cap">Op {{ state.missionInOperation }} / {{ opLength }}</span>
     </header>
 
-    <div
-      class="wheel-result"
-      :class="{ 'pre-roll': preRoll }"
-    >
-      <Motion
-        as="article"
-        class="wheel-card misfortune cut-sm"
-        :class="[state.wheel ? cardTone : 'pending', { reeling: misfortuneReeling }]"
-        v-bind="riseIn(0)"
-      >
-        <div class="card-head">
-          <span class="lbl">Misfortune <span class="dim">· whole squad</span></span>
-          <span
-            v-if="state.wheel"
-            class="head-tools"
-          >
-            <AppTooltip
-              v-if="canControl && rerollWindow"
-              :content="rerollLabel(misfortuneReroll, 'misfortune')"
-              :disabled="!misfortuneReroll.allowed || misfortuneReeling"
-            >
-              <button
-                class="reroll-dice"
-                type="button"
-                :disabled="!misfortuneReroll.allowed || misfortuneReeling"
-                :aria-label="rerollLabel(misfortuneReroll, 'misfortune')"
-                :title="!misfortuneReroll.allowed || misfortuneReeling ? rerollLabel(misfortuneReroll, 'misfortune') : undefined"
-                @click="emit('reroll', 'misfortune')"
-              ><IconDice /></button>
-            </AppTooltip>
-            <AppTooltip :content="stamp.text">
-              <span
-                class="lock"
-                :class="stamp.tone"
-                role="img"
-                :aria-label="stamp.text"
-              ><IconLock :open="!stamp.locked" /></span>
-            </AppTooltip>
-          </span>
-        </div>
-
-        <template v-if="state.wheel">
-          <div
-            class="misfortune-name disp"
-            aria-live="polite"
-          >
-            <ReelText
-              :final="misfortune?.name ?? ''"
-              :candidates="misfortuneNames"
-              :reel-id="misfortuneReelId"
-              @reeling="misfortuneReeling = $event"
-            />
-          </div>
-          <p class="rule reel-hide">
-            {{ misfortune?.rule }}
-          </p>
-          <p
-            v-if="misfortune"
-            class="odl account reel-hide"
-          >
-            {{ ACCOUNTABILITY_LABELS[misfortune.accountability] }}
-          </p>
-          <div class="risk-row">
-            <span class="cap">Team risk</span>
-            <RiskPips
-              :value="teamRisk"
-              :rolling="misfortuneReeling"
-            />
-            <span
-              v-if="teamRisk > 0"
-              class="risk-plus disp"
-            >+{{ teamRisk }}</span>
-          </div>
-          <p
-            v-if="acceptBlocked && canControl && !decision.decided"
-            class="stranded-note reel-hide"
-          >
-            {{ strandedReason }}
-          </p>
-          <div
-            v-if="!decision.decided && canControl"
-            class="decision-actions reel-hide"
-          >
-            <button
-              class="btn primary cut hold"
-              type="button"
-              :disabled="!acceptAllowed"
-              :title="acceptBlocked ? strandedReason : undefined"
-              @pointerdown="acceptHold.down"
-              @pointerup="acceptHold.up"
-              @pointerleave="acceptHold.up"
-              @click="acceptHold.click"
-            >
-              <span
-                aria-hidden="true"
-                class="hazard crawl hold-fill"
-                :class="{ on: acceptHold.holding.value }"
-              />
-              <span class="hold-label">
-                <span class="disp">Lock it in</span>
-                <span
-                  class="hold-sub"
-                  aria-hidden="true"
-                >{{ acceptBlocked ? 'Blocked' : 'Hold to lock' }}</span>
-              </span>
-            </button>
-            <button
-              class="btn ghost opt-out"
-              type="button"
-              :disabled="misfortuneReeling"
-              @click="emit('decide', false)"
-            >
-              <span class="disp">Opt out</span>
-              <span
-                class="hold-sub"
-                aria-hidden="true"
-              >+0 risk</span>
-            </button>
-          </div>
-          <button
-            v-else-if="decision.decided && canSwitch"
-            class="btn tiny ghost"
-            type="button"
-            :disabled="!decision.accepted && acceptBlocked"
-            :title="!decision.accepted && acceptBlocked ? strandedReason : undefined"
-            @click="emit('decide', !decision.accepted)"
-          >
-            {{ decision.accepted ? 'Switch — opt out' : 'Switch — lock it in' }}
-          </button>
-          <p
-            v-else-if="!decision.decided && !canControl"
-            class="muted small"
-          >
-            The host decides before pacts roll.
-          </p>
-        </template>
-        <button
-          v-else
-          class="spin-cta cut"
-          type="button"
-          :disabled="!canControl"
-          aria-label="Spin"
-          @click="emit('spin')"
+    <div class="wheel-body">
+      <WheelOfMisfortune
+        :difficulty="state.difficulty"
+        :seed="state.wheel?.seed ?? null"
+        :can-control="canControl"
+        :spinning="spinning"
+        @spin="$emit('spin')"
+      />
+      <div class="wheel-side">
+        <section
+          v-if="spinning"
+          class="drawing cut-sm"
+          aria-live="polite"
         >
-          <span
-            class="spin-ring"
-            aria-hidden="true"
-          />
-          <span class="disp spin-word">Spin</span>
-          <span class="cap spin-sub">{{ canControl ? 'Draw · misfortune · front · strain' : 'Awaiting host' }}</span>
-        </button>
-      </Motion>
-
-      <Motion
-        as="article"
-        class="wheel-card front-card cut-sm"
-        :class="{ reeling: cardReeling, accented: !!front && frontSettled }"
-        :style="front ? { '--front-accent': front.accent } : undefined"
-        v-bind="riseIn(1)"
-      >
-        <AnimatePresence>
+          <span class="disp drawing-word pulse">Drawing</span>
+          <span class="lbl">Misfortune · front · strain</span>
+        </section>
+        <div
+          v-else
+          class="wheel-result"
+          :class="{ 'pre-roll': preRoll }"
+        >
           <Motion
-            v-if="front && frontSettled"
-            :key="front.id"
-            as="img"
-            class="front-art"
-            :src="factionImageUrl(front.id)"
-            alt=""
-            draggable="false"
-            :initial="{ opacity: 0, x: 26 }"
-            :animate="{ opacity: 0.16, x: 0 }"
-            :exit="{ opacity: 0, x: 26 }"
-            :transition="{ duration: 0.45, ease: 'easeOut' }"
-          />
-        </AnimatePresence>
-        <div class="card-head">
-          <span class="lbl">Front <span class="dim">· operation lock</span></span>
-          <span
-            v-if="state.wheel && canControl"
-            class="head-tools"
+            as="article"
+            class="wheel-card misfortune cut-sm"
+            :class="[state.wheel ? cardTone : 'pending', { reeling: misfortuneReeling }]"
+            v-bind="riseIn(0)"
           >
-            <AppTooltip
-              :content="rerollLabel(frontReroll, 'front')"
-              :disabled="!frontReroll.allowed || frontReeling"
-            >
-              <button
-                class="reroll-dice"
-                type="button"
-                :disabled="!frontReroll.allowed || frontReeling"
-                :aria-label="rerollLabel(frontReroll, 'front')"
-                :title="!frontReroll.allowed || frontReeling ? rerollLabel(frontReroll, 'front') : undefined"
-                @click="emit('reroll', 'front')"
-              ><IconDice /></button>
-            </AppTooltip>
-          </span>
-        </div>
-
-        <template v-if="state.wheel">
-          <div class="misfortune-name disp front-name">
-            <ReelText
-              :final="front?.displayName ?? ''"
-              :candidates="frontNames"
-              :colors="frontColors"
-              :reel-id="frontReelId"
-              :start-delay="150"
-              @reeling="onFrontReeling"
-            />
-          </div>
-          <span
-            v-if="majorOrder?.live"
-            class="mo-tag cap reel-hide"
-            :title="majorOrder.title ?? undefined"
-          >
-            Major Order · +{{ MAJOR_ORDER_RISK }} risk · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll
-          </span>
-          <div
-            v-if="state.frontId"
-            class="front-lock reel-hide"
-          >
-            <span
-              v-for="i in opLength"
-              :key="i"
-              class="lock-cell"
-              :class="{ on: i <= state.missionInOperation }"
-              aria-hidden="true"
-            />
-            <span class="lock-text cap">Holds {{ opLength }} missions</span>
-          </div>
-          <div
-            v-if="strain"
-            class="strain"
-          >
-            <div class="strain-head">
-              <span class="lbl">Strain <span class="dim">· optional</span></span>
-              <span class="head-tools">
+            <div class="card-head">
+              <span class="lbl">Misfortune <span class="dim">· whole squad</span></span>
+              <span
+                v-if="state.wheel"
+                class="head-tools"
+              >
                 <AppTooltip
                   v-if="canControl && rerollWindow"
-                  :content="rerollLabel(strainReroll, 'strain')"
-                  :disabled="!strainReroll.allowed || cardReeling"
+                  :content="rerollLabel(misfortuneReroll, 'misfortune')"
+                  :disabled="!misfortuneReroll.allowed || misfortuneReeling"
                 >
                   <button
                     class="reroll-dice"
                     type="button"
-                    :disabled="!strainReroll.allowed || cardReeling"
-                    :aria-label="rerollLabel(strainReroll, 'strain')"
-                    :title="!strainReroll.allowed || cardReeling ? rerollLabel(strainReroll, 'strain') : undefined"
-                    @click="emit('reroll', 'strain')"
+                    :disabled="!misfortuneReroll.allowed || misfortuneReeling"
+                    :aria-label="rerollLabel(misfortuneReroll, 'misfortune')"
+                    :title="!misfortuneReroll.allowed || misfortuneReeling ? rerollLabel(misfortuneReroll, 'misfortune') : undefined"
+                    @click="emit('reroll', 'misfortune')"
                   ><IconDice /></button>
                 </AppTooltip>
-                <AppTooltip :content="strainStamp.text">
+                <AppTooltip :content="stamp.text">
                   <span
                     class="lock"
-                    :class="strainStamp.tone"
+                    :class="stamp.tone"
                     role="img"
-                    :aria-label="strainStamp.text"
-                  ><IconLock :open="!strainStamp.locked" /></span>
+                    :aria-label="stamp.text"
+                  ><IconLock :open="!stamp.locked" /></span>
                 </AppTooltip>
               </span>
             </div>
-            <div
-              class="strain-name disp"
-              :class="{ waiting: cardReeling && !strainReeling }"
-            >
-              <span
-                v-if="strainIcon && !cardReeling"
-                class="strain-icon"
-                :style="{ maskImage: `url(${strainIcon})`, WebkitMaskImage: `url(${strainIcon})` }"
-                aria-hidden="true"
-              />
-              <ReelText
-                :final="strain.name"
-                :candidates="strainNames"
-                :reel-id="strainReelId"
-                @reeling="strainReeling = $event"
-              />
-            </div>
-            <div class="risk-row">
-              <span class="cap">Every mission</span>
-              <RiskPips
-                :value="strainRisk"
-                :rolling="strainReeling"
-              />
-              <span
-                v-if="strainRisk > 0"
-                class="risk-plus disp strain-plus"
-              >+{{ strainRisk }}</span>
-            </div>
-            <div
-              v-if="strainDeciding && canControl"
-              class="decision-actions reel-hide"
-            >
-              <button
-                class="btn cut hold strain-hold"
-                type="button"
-                :disabled="!strainAcceptAllowed"
-                @pointerdown="strainHold.down"
-                @pointerup="strainHold.up"
-                @pointerleave="strainHold.up"
-                @click="strainHold.click"
+
+            <template v-if="state.wheel">
+              <div
+                class="misfortune-name disp"
+                aria-live="polite"
               >
-                <span
-                  aria-hidden="true"
-                  class="hazard crawl hold-fill"
-                  :class="{ on: strainHold.holding.value }"
+                <ReelText
+                  :final="misfortune?.name ?? ''"
+                  :candidates="misfortuneNames"
+                  :reel-id="misfortuneReelId"
+                  @reeling="misfortuneReeling = $event"
                 />
-                <span class="hold-label">
-                  <span class="disp">Lock it in</span>
+              </div>
+              <p class="rule reel-hide">
+                {{ misfortune?.rule }}
+              </p>
+              <p
+                v-if="misfortune"
+                class="odl account reel-hide"
+              >
+                {{ ACCOUNTABILITY_LABELS[misfortune.accountability] }}
+              </p>
+              <div class="risk-row">
+                <span class="cap">Team risk</span>
+                <RiskPips
+                  :value="teamRisk"
+                  :rolling="misfortuneReeling"
+                />
+                <span
+                  v-if="teamRisk > 0"
+                  class="risk-plus disp"
+                >+{{ teamRisk }}</span>
+              </div>
+              <p
+                v-if="acceptBlocked && canControl && !decision.decided"
+                class="stranded-note reel-hide"
+              >
+                {{ strandedReason }}
+              </p>
+              <div
+                v-if="!decision.decided && canControl"
+                class="decision-actions reel-hide"
+              >
+                <button
+                  class="btn primary cut hold"
+                  type="button"
+                  :disabled="!acceptAllowed"
+                  :title="acceptBlocked ? strandedReason : undefined"
+                  @pointerdown="acceptHold.down"
+                  @pointerup="acceptHold.up"
+                  @pointerleave="acceptHold.up"
+                  @click="acceptHold.click"
+                >
+                  <span
+                    aria-hidden="true"
+                    class="hazard crawl hold-fill"
+                    :class="{ on: acceptHold.holding.value }"
+                  />
+                  <span class="hold-label">
+                    <span class="disp">Lock it in</span>
+                    <span
+                      class="hold-sub"
+                      aria-hidden="true"
+                    >{{ acceptBlocked ? 'Blocked' : 'Hold to lock' }}</span>
+                  </span>
+                </button>
+                <button
+                  class="btn ghost opt-out"
+                  type="button"
+                  :disabled="misfortuneReeling"
+                  @click="emit('decide', false)"
+                >
+                  <span class="disp">Opt out</span>
                   <span
                     class="hold-sub"
                     aria-hidden="true"
-                  >Hold · commit ×{{ opLength }}</span>
-                </span>
-              </button>
+                  >+0 risk</span>
+                </button>
+              </div>
               <button
-                class="btn ghost opt-out"
+                v-else-if="decision.decided && canSwitch"
+                class="btn tiny ghost"
                 type="button"
-                :disabled="cardReeling"
-                @click="emit('decideStrain', false)"
+                :disabled="!decision.accepted && acceptBlocked"
+                :title="!decision.accepted && acceptBlocked ? strandedReason : undefined"
+                @click="emit('decide', !decision.accepted)"
               >
-                <span class="disp">Opt out</span>
-                <span
-                  class="hold-sub"
-                  aria-hidden="true"
-                >+0 risk</span>
+                {{ decision.accepted ? 'Switch — opt out' : 'Switch — lock it in' }}
               </button>
-            </div>
-            <button
-              v-else-if="strainSwitchable && canControl"
-              class="btn tiny ghost"
-              type="button"
-              @click="emit('decideStrain', !strainCall.accepted)"
-            >
-              {{ strainCall.accepted ? 'Switch — opt out' : 'Switch — lock it in' }}
-            </button>
+              <p
+                v-else-if="!decision.decided && !canControl"
+                class="muted small"
+              >
+                The host decides before pacts roll.
+              </p>
+            </template>
             <p
-              v-else-if="strainDeciding && !canControl"
-              class="muted small"
+              v-else
+              class="cap spin-hint"
             >
-              The host decides before pacts roll.
+              {{ canControl ? 'Spin the wheel to draw' : 'Awaiting the host’s spin' }}
             </p>
-          </div>
-        </template>
-        <template v-else-if="state.frontId">
-          <div class="misfortune-name disp front-name">
-            {{ front?.displayName }}
-          </div>
-          <span
-            v-if="majorOrder?.live"
-            class="mo-tag cap"
-            :title="majorOrder.title ?? undefined"
+          </Motion>
+
+          <Motion
+            as="article"
+            class="wheel-card front-card cut-sm"
+            :class="{ reeling: cardReeling, accented: !!front && frontSettled }"
+            :style="front ? { '--front-accent': front.accent } : undefined"
+            v-bind="riseIn(1)"
           >
-            Major Order · +{{ MAJOR_ORDER_RISK }} risk · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll
-          </span>
-          <div class="front-lock">
-            <span
-              v-for="i in opLength"
-              :key="i"
-              class="lock-cell on"
-              aria-hidden="true"
-            />
-            <span class="lock-text cap">Holds {{ opLength }} missions</span>
-          </div>
-          <div
-            v-if="strain"
-            class="strain"
-          >
-            <div class="strain-head">
-              <span class="lbl">Strain <span class="dim">· optional</span></span>
-              <AppTooltip :content="strainStamp.text">
-                <span
-                  class="lock"
-                  :class="strainStamp.tone"
-                  role="img"
-                  :aria-label="strainStamp.text"
-                ><IconLock :open="!strainStamp.locked" /></span>
-              </AppTooltip>
-            </div>
-            <div class="strain-name disp">
-              <span
-                v-if="strainIcon"
-                class="strain-icon"
-                :style="{ maskImage: `url(${strainIcon})`, WebkitMaskImage: `url(${strainIcon})` }"
-                aria-hidden="true"
+            <AnimatePresence>
+              <Motion
+                v-if="front && frontSettled"
+                :key="front.id"
+                as="img"
+                class="front-art"
+                :src="factionImageUrl(front.id)"
+                alt=""
+                draggable="false"
+                :initial="{ opacity: 0, x: 26 }"
+                :animate="{ opacity: 0.16, x: 0 }"
+                :exit="{ opacity: 0, x: 26 }"
+                :transition="{ duration: 0.45, ease: 'easeOut' }"
               />
-              {{ strain.name }}
-            </div>
-            <div class="risk-row">
-              <span class="cap">Every mission</span>
-              <RiskPips :value="strainRisk" />
+            </AnimatePresence>
+            <div class="card-head">
+              <span class="lbl">Front <span class="dim">· operation lock</span></span>
               <span
-                v-if="strainRisk > 0"
-                class="risk-plus disp strain-plus"
-              >+{{ strainRisk }}</span>
+                v-if="state.wheel && canControl"
+                class="head-tools"
+              >
+                <AppTooltip
+                  :content="rerollLabel(frontReroll, 'front')"
+                  :disabled="!frontReroll.allowed || frontReeling"
+                >
+                  <button
+                    class="reroll-dice"
+                    type="button"
+                    :disabled="!frontReroll.allowed || frontReeling"
+                    :aria-label="rerollLabel(frontReroll, 'front')"
+                    :title="!frontReroll.allowed || frontReeling ? rerollLabel(frontReroll, 'front') : undefined"
+                    @click="emit('reroll', 'front')"
+                  ><IconDice /></button>
+                </AppTooltip>
+              </span>
             </div>
-          </div>
-          <p class="muted small">
-            Fixed for the whole operation.
-          </p>
-        </template>
-        <template v-else>
-          <slot name="front-before-roll">
-            <p class="front-pending cap">
-              Drawn with the first spin
-            </p>
-          </slot>
-        </template>
-      </Motion>
+
+            <template v-if="state.wheel">
+              <div class="misfortune-name disp front-name">
+                <ReelText
+                  :final="front?.displayName ?? ''"
+                  :candidates="frontNames"
+                  :colors="frontColors"
+                  :reel-id="frontReelId"
+                  :start-delay="150"
+                  @reeling="onFrontReeling"
+                />
+              </div>
+              <span
+                v-if="majorOrder?.live"
+                class="mo-tag cap reel-hide"
+                :title="majorOrder.title ?? undefined"
+              >
+                Major Order · +{{ MAJOR_ORDER_RISK }} risk · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll
+              </span>
+              <div
+                v-if="state.frontId"
+                class="front-lock reel-hide"
+              >
+                <span
+                  v-for="i in opLength"
+                  :key="i"
+                  class="lock-cell"
+                  :class="{ on: i <= state.missionInOperation }"
+                  aria-hidden="true"
+                />
+                <span class="lock-text cap">Holds {{ opLength }} missions</span>
+              </div>
+              <div
+                v-if="strain"
+                class="strain"
+              >
+                <div class="strain-head">
+                  <span class="lbl">Strain <span class="dim">· optional</span></span>
+                  <span class="head-tools">
+                    <AppTooltip
+                      v-if="canControl && rerollWindow"
+                      :content="rerollLabel(strainReroll, 'strain')"
+                      :disabled="!strainReroll.allowed || cardReeling"
+                    >
+                      <button
+                        class="reroll-dice"
+                        type="button"
+                        :disabled="!strainReroll.allowed || cardReeling"
+                        :aria-label="rerollLabel(strainReroll, 'strain')"
+                        :title="!strainReroll.allowed || cardReeling ? rerollLabel(strainReroll, 'strain') : undefined"
+                        @click="emit('reroll', 'strain')"
+                      ><IconDice /></button>
+                    </AppTooltip>
+                    <AppTooltip :content="strainStamp.text">
+                      <span
+                        class="lock"
+                        :class="strainStamp.tone"
+                        role="img"
+                        :aria-label="strainStamp.text"
+                      ><IconLock :open="!strainStamp.locked" /></span>
+                    </AppTooltip>
+                  </span>
+                </div>
+                <div
+                  class="strain-name disp"
+                  :class="{ waiting: cardReeling && !strainReeling }"
+                >
+                  <span
+                    v-if="strainIcon && !cardReeling"
+                    class="strain-icon"
+                    :style="{ maskImage: `url(${strainIcon})`, WebkitMaskImage: `url(${strainIcon})` }"
+                    aria-hidden="true"
+                  />
+                  <ReelText
+                    :final="strain.name"
+                    :candidates="strainNames"
+                    :reel-id="strainReelId"
+                    @reeling="strainReeling = $event"
+                  />
+                </div>
+                <div class="risk-row">
+                  <span class="cap">Every mission</span>
+                  <RiskPips
+                    :value="strainRisk"
+                    :rolling="strainReeling"
+                  />
+                  <span
+                    v-if="strainRisk > 0"
+                    class="risk-plus disp strain-plus"
+                  >+{{ strainRisk }}</span>
+                </div>
+                <div
+                  v-if="strainDeciding && canControl"
+                  class="decision-actions reel-hide"
+                >
+                  <button
+                    class="btn cut hold strain-hold"
+                    type="button"
+                    :disabled="!strainAcceptAllowed"
+                    @pointerdown="strainHold.down"
+                    @pointerup="strainHold.up"
+                    @pointerleave="strainHold.up"
+                    @click="strainHold.click"
+                  >
+                    <span
+                      aria-hidden="true"
+                      class="hazard crawl hold-fill"
+                      :class="{ on: strainHold.holding.value }"
+                    />
+                    <span class="hold-label">
+                      <span class="disp">Lock it in</span>
+                      <span
+                        class="hold-sub"
+                        aria-hidden="true"
+                      >Hold · commit ×{{ opLength }}</span>
+                    </span>
+                  </button>
+                  <button
+                    class="btn ghost opt-out"
+                    type="button"
+                    :disabled="cardReeling"
+                    @click="emit('decideStrain', false)"
+                  >
+                    <span class="disp">Opt out</span>
+                    <span
+                      class="hold-sub"
+                      aria-hidden="true"
+                    >+0 risk</span>
+                  </button>
+                </div>
+                <button
+                  v-else-if="strainSwitchable && canControl"
+                  class="btn tiny ghost"
+                  type="button"
+                  @click="emit('decideStrain', !strainCall.accepted)"
+                >
+                  {{ strainCall.accepted ? 'Switch — opt out' : 'Switch — lock it in' }}
+                </button>
+                <p
+                  v-else-if="strainDeciding && !canControl"
+                  class="muted small"
+                >
+                  The host decides before pacts roll.
+                </p>
+              </div>
+            </template>
+            <template v-else-if="state.frontId">
+              <div class="misfortune-name disp front-name">
+                {{ front?.displayName }}
+              </div>
+              <span
+                v-if="majorOrder?.live"
+                class="mo-tag cap"
+                :title="majorOrder.title ?? undefined"
+              >
+                Major Order · +{{ MAJOR_ORDER_RISK }} risk · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll
+              </span>
+              <div class="front-lock">
+                <span
+                  v-for="i in opLength"
+                  :key="i"
+                  class="lock-cell on"
+                  aria-hidden="true"
+                />
+                <span class="lock-text cap">Holds {{ opLength }} missions</span>
+              </div>
+              <div
+                v-if="strain"
+                class="strain"
+              >
+                <div class="strain-head">
+                  <span class="lbl">Strain <span class="dim">· optional</span></span>
+                  <AppTooltip :content="strainStamp.text">
+                    <span
+                      class="lock"
+                      :class="strainStamp.tone"
+                      role="img"
+                      :aria-label="strainStamp.text"
+                    ><IconLock :open="!strainStamp.locked" /></span>
+                  </AppTooltip>
+                </div>
+                <div class="strain-name disp">
+                  <span
+                    v-if="strainIcon"
+                    class="strain-icon"
+                    :style="{ maskImage: `url(${strainIcon})`, WebkitMaskImage: `url(${strainIcon})` }"
+                    aria-hidden="true"
+                  />
+                  {{ strain.name }}
+                </div>
+                <div class="risk-row">
+                  <span class="cap">Every mission</span>
+                  <RiskPips :value="strainRisk" />
+                  <span
+                    v-if="strainRisk > 0"
+                    class="risk-plus disp strain-plus"
+                  >+{{ strainRisk }}</span>
+                </div>
+              </div>
+              <p class="muted small">
+                Fixed for the whole operation.
+              </p>
+            </template>
+            <template v-else>
+              <slot name="front-before-roll">
+                <p class="front-pending cap">
+                  Drawn with the first spin
+                </p>
+              </slot>
+            </template>
+          </Motion>
+        </div>
+      </div>
     </div>
 
     <footer class="wheel-foot row">
@@ -733,8 +771,31 @@ function rerollLabel(
 </template>
 
 <style scoped>
-.wheel-panel { gap: 0.9rem; }
-.wheel-title { margin: 0; font-size: 1.1rem; color: var(--text); }
+.wheel-panel { gap: var(--gap-panel); }
+.wheel-title { margin: 0; font-size: var(--fs-h1); color: var(--text); }
+
+.wheel-body {
+  display: grid;
+  grid-template-columns: minmax(280px, 468px) minmax(0, 1fr);
+  gap: clamp(14px, 2vw, 26px);
+  align-items: start;
+  min-height: 0;
+}
+.wheel-side { display: flex; flex-direction: column; gap: var(--gap-panel); min-width: 0; }
+.drawing {
+  flex-grow: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--sp-4);
+  min-height: 220px;
+  border: 1px solid var(--line-1);
+  background: rgba(19, 21, 15, 0.6);
+}
+.drawing-word { font-size: clamp(22px, 2.4vw, 30px); color: var(--gold); }
+@media (max-width: 1020px) {
+  .wheel-body { grid-template-columns: minmax(0, 1fr); }
+}
 
 .wheel-result { display: grid; gap: 0.6rem; grid-template-columns: 1fr; }
 
@@ -844,39 +905,14 @@ function rerollLabel(
 .wheel-card.misfortune.safe { opacity: 0.85; }
 .wheel-card.misfortune.safe .misfortune-name { color: var(--muted); }
 
-/* Pre-spin the card is face down: a big host call-to-action. */
-.spin-cta {
-  position: relative;
+/* Pre-spin the card is face down: the wheel's hub is the spin control. */
+.spin-hint {
   display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 0.35rem;
-  min-height: 9rem;
-  width: 100%;
-  padding: 1rem;
-  margin-top: 0.25rem;
-  background: var(--ground);
-  border: 1px solid var(--line-3);
-  color: var(--gold);
-  cursor: pointer;
-  overflow: hidden;
-  transition: border-color var(--dur-fast), filter var(--dur-fast);
+  place-items: center;
+  min-height: 4.5rem;
+  color: var(--muted);
+  text-align: center;
 }
-.spin-cta:hover:not(:disabled) { border-color: var(--gold); filter: brightness(1.12); }
-.spin-cta:disabled { cursor: default; opacity: 0.55; }
-.spin-ring {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 9rem;
-  height: 9rem;
-  translate: -50% -50%;
-  border: 1px dashed color-mix(in srgb, var(--gold) 32%, transparent);
-  border-radius: 50%;
-  animation: spin-slow 8s linear infinite;
-}
-.spin-word { font-size: 2rem; letter-spacing: 0.14em; }
-.spin-sub { color: var(--muted); }
 
 .mo-tag {
   justify-self: start;
@@ -1032,14 +1068,4 @@ function rerollLabel(
 
 .wheel-foot { gap: 0.6rem; align-items: center; }
 .wheel-foot .cap { margin-left: auto; }
-
-@media (min-width: 640px) {
-  .wheel-result { grid-template-columns: 1fr 1fr; }
-}
-
-@media (max-width: 639px) {
-  /* Pre-roll the faction card holds the Major Order chooser: lead with it so the
-     squad picks where to fight before the Spin button below it. */
-  .wheel-result.pre-roll .front-card { order: -1; }
-}
 </style>

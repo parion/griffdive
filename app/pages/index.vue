@@ -644,16 +644,29 @@ const valorSources = [
 </template>
 
 <style scoped>
-.bridge { max-width: 1320px; gap: 1rem; }
+/* The Bridge is one desktop view: hero, climb, loop and deploy all share the
+   viewport. Columns scroll internally rather than the page. */
+.bridge {
+  max-width: 1500px;
+  width: 100%;
+  height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-panel);
+  padding: var(--gap-panel) var(--pad-page);
+  overflow: hidden;
+}
 
 /* Hero ------------------------------------------------------------------ */
 .hero {
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
+  min-height: 168px;
   display: flex;
   align-items: center;
-  gap: 1.6rem;
-  padding: 1.5rem 1.6rem;
+  gap: clamp(1rem, 2vw, 1.6rem);
+  padding: var(--pad-panel) var(--pad-page);
   border: 1px solid var(--line-2);
   border-left: 3px solid var(--gold);
   background: radial-gradient(640px 260px at 8% -20%, rgba(255, 214, 66, 0.08), transparent 70%), var(--rail);
@@ -715,13 +728,23 @@ const valorSources = [
 
 /* Layout ---------------------------------------------------------------- */
 .bridge-grid {
+  flex-grow: 1;
+  min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(20rem, 1fr);
-  gap: 1rem;
-  align-items: start;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 1fr);
+  gap: var(--gap-panel);
+  align-items: stretch;
 }
-.bridge-main { display: grid; gap: 1rem; min-width: 0; }
-.bridge-deploy { display: grid; gap: 1rem; min-width: 0; }
+.bridge-main,
+.bridge-deploy {
+  display: grid;
+  gap: var(--gap-panel);
+  min-width: 0;
+  min-height: 0;
+  align-content: start;
+  overflow-y: auto;
+  padding-right: 2px;
+}
 
 /* Ladder ---------------------------------------------------------------- */
 .ladder {
@@ -953,8 +976,12 @@ const valorSources = [
 }
 .empty-mark { color: var(--ghost-ink); }
 
-@media (max-width: 960px) {
+/* Below the fixed desktop shell the Bridge flows and the page scrolls again. */
+@media (max-width: 1020px) {
+  .bridge { height: auto; overflow: visible; }
   .bridge-grid { grid-template-columns: minmax(0, 1fr); }
+  .bridge-main,
+  .bridge-deploy { overflow: visible; }
 }
 @media (max-width: 620px) {
   .hero { flex-direction: column; align-items: flex-start; }

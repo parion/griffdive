@@ -77,6 +77,30 @@
   --dur-med: 250ms;
   --dur-slow: 450ms;
 
+  /* Spacing — one 4px-based scale so padding/gaps stay consistent. */
+  --sp-1: 4px;
+  --sp-2: 6px;
+  --sp-3: 8px;
+  --sp-4: 12px;
+  --sp-5: 16px;
+  --sp-6: 20px;
+  --sp-7: 24px;
+  --sp-8: 32px;
+
+  /* Fluid layout: page/panel padding and gaps track the viewport instead of
+     stepping at breakpoints. */
+  --pad-page: clamp(12px, 2vw, 28px);
+  --pad-panel: clamp(10px, 1.1vw, 16px);
+  --gap-panel: clamp(8px, 0.9vw, 14px);
+  --gap-grid: clamp(6px, 0.7vw, 12px);
+
+  /* Fluid type */
+  --fs-cap: clamp(9px, 0.72vw, 10px);
+  --fs-sm: clamp(11px, 0.85vw, 13px);
+  --fs-body: clamp(13px, 0.95vw, 15px);
+  --fs-h1: clamp(20px, 2.4vw, 34px);
+  --fs-display: clamp(30px, 4.6vw, 56px);
+
   /* Chrome */
   --radius: 0px;
 }
@@ -169,13 +193,14 @@ svg { flex-shrink: 0; }
    Typography
    ========================================================================== */
 h1, h2, h3, h4 {
-  margin: 0 0 0.5rem;
+  margin: 0 0 var(--sp-3);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-h2 { font-size: 1.05rem; color: var(--khaki); }
-h3 { font-size: 0.9rem; }
+h1 { font-size: var(--fs-h1); }
+h2 { font-size: var(--fs-body); color: var(--khaki); }
+h3 { font-size: var(--fs-sm); }
 
 p { margin: 0.25rem 0; }
 

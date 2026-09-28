@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { MAJOR_ORDER_RISK, MISFORTUNE_RISK, STRAIN_RISK, maxStarsFor, sampleAvailability } from '~~/shared/engine/config'
-import { performanceValor } from '~~/shared/engine/rewards'
-import { activeMisfortune, activeStrain, currentFront, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
+import { activeMisfortune, activeStrain, currentFront, teamRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -20,7 +19,6 @@ const emit = defineEmits<{
 const misfortune = computed(() => activeMisfortune(props.state))
 const front = computed(() => currentFront(props.state))
 const strain = computed(() => activeStrain(props.state))
-const selfPactRisk = computed(() => (props.self ? pactRiskOf(props.self) : 0))
 const teamRisk = computed(() => teamRiskOf(props.state))
 
 // Per-source risk chips for the locked status strip (total stays teamRiskOf).
@@ -38,15 +36,6 @@ const samples = ref<SampleCounts>({ common: 0, rare: 0, super: 0 })
 // Slider maxima come from the game's per-difficulty sample availability.
 const sampleMax = computed(() => sampleAvailability(props.state.difficulty))
 const maxStars = computed(() => maxStarsFor(props.state.difficulty))
-
-// Live preview of the team-performance Valor this report will carry.
-const performancePreview = computed(() =>
-  performanceValor({
-    outcome: 'success',
-    stars: 0,
-    timePct: timePct.value,
-    samples: { ...samples.value },
-  }))
 
 // The report fields are live local state, not engine state. Clear them the
 // moment a report lands, or the next briefing inherits the last mission's
@@ -165,14 +154,6 @@ function cancelReport(): void {
         <span class="disp team-num">{{ teamRisk }}</span>
       </div>
     </div>
-
-    <ValorMeter
-      :difficulty="state.difficulty"
-      :team-risk="teamRisk"
-      :pact-risk="selfPactRisk"
-      :performance="performancePreview"
-      locked
-    />
 
     <PactBriefing
       :divers="state.divers"

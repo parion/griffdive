@@ -27,9 +27,12 @@ worker with an offline shell + on-demand catalog art), the operation-long **fact
 (host-set front commitment, +1 reroll token on completion — manual picker plus the live war API).
 **The Destroyer Terminal redesign has landed** — the whole UI moved to a single terminal language
 (dark ground/rail/panel surfaces, gold/red/orange/teal/purple signals, cut frames, hazard stripes,
-scanlines and a signature motion set) with a persistent three-rail dive shell, a Bridge home, a
-phone layout, and a hidden `/kit` foundations route. Engine, sync, saves and data are untouched;
-see [Destroyer Terminal design language](#destroyer-terminal-design-language). Hybrid **saved
+scanlines and a signature motion set). The dive is a fixed, no-scroll terminal (60px header with
+the room code + copy control · 84px climb strip · three rails · 52px Mission-phases bar), the
+Bridge home fits one desktop view, the wheel is a real spinning SVG wheel, the Armory marks
+misfortune/pact bans per tile from engine selectors, and a Griffdiver Briefing dossier onboards
+first-time divers. Engine, sync, saves and data are untouched; see
+[Destroyer Terminal design language](#destroyer-terminal-design-language). Hybrid **saved
 dives** have landed: any seated diver can pin a room server-side so it outlives the idle TTL and a
 browser clearing its storage, resuming through the existing rejoin path (see Saved dives).
 **Alpha has landed:** the save schema is frozen at v10 and the migration chain is open (see Save
@@ -98,7 +101,10 @@ engine.
   (`#0B0C09`/`#0E100B`/`#13150F`/`#1A1D15`), lines `--line-1…5`, inks
   `--text/--khaki/--muted/--dim/--on-gold`, signals `--gold/--red/--orange/--teal/--purple`,
   tiers `--tier-*`, plus the `--font-body` (Chakra Petch) / `--font-display` (Archivo 125%)
-  pair and the ease/duration tokens. Legacy token names (`--bg`, `--bg-raised`, …) are kept as
+  pair, the ease/duration tokens, a 4px spacing scale (`--sp-1…8`) and **fluid** layout/type
+  tokens (`--pad-page/--pad-panel/--gap-panel/--gap-grid`, `--fs-cap/sm/body/h1/display`) built on
+  `clamp()`. Prefer the tokens and container queries (`@container`) over viewport `@media`; keep
+  breakpoints structural and few. Legacy token names (`--bg`, `--bg-raised`, …) are kept as
   aliases.
 - **Utilities**: type `.disp/.lbl/.cap/.sub/.vl/.odl`; shape `.cut/.cut-sm/.chev/.ticks/.hazard/
   .hatch/.scan/.grid-bg/.hex/.tag-shape`; panels `.panel/.sec/.sec-h/.dash`; controls `.btn/
@@ -106,12 +112,23 @@ engine.
 - **Motion**: ambient loops are CSS classes (`.pulse/.rise/.stamp/.slam/.glow/.blinkc/.glitch/…`);
   one-shot reveals use `motion-v` presets in `app/utils/motion.ts` (`riseIn/popIn/slamIn/dealIn/
   sheetUp/impactIn`). Animation is presentation, never rules; every effect honours
-  `prefers-reduced-motion` (global CSS guard + explicit `matchMedia` in JS-driven reels).
-- **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav);
-  `components/dive/DiveFrame.vue` is the persistent three-rail dive shell (left: Armory ·
-  Crusade ladder · Squad; centre: phase; right: Mission phases) fed by `useDiveView`. New atoms:
-  `components/ui/BrandMark.vue`, `components/dive/CrusadeLadder.vue`, `PhaseRail.vue`,
-  `ArmoryDrawer.vue`. Armory/Briefing are in-app overlays, not routes.
+  `prefers-reduced-motion` (global CSS guard + explicit `matchMedia` in JS-driven reels and the
+  wheel reveal).
+- **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav) on every
+  route except the dive, which renders its own `DiveTopBar` (crusade + difficulty emblem + room
+  code/copy + Armory/Codex/Warbonds/Field manual). `components/dive/DiveFrame.vue` is the
+  no-scroll dive shell — grid rows `60px 84px minmax(0,1fr) 52px` and columns `216px 1fr 284px`:
+  header · `CrusadeStrip` (the horizontal 3→10 climb) · left rail (Squad + wheel pool) · centre
+  phase · right rail (`ValorMeter` with ceiling odds) · `PhaseRail` (bottom Mission phases).
+  `WheelOfMisfortune.vue` is a real SVG wheel whose rotation is derived from the wheel seed.
+  Armory is an in-app drawer (`ArmoryDrawer.vue`); the Griffdiver Briefing
+  (`BriefingOverlay.vue`) is the first-run dossier. One structural breakpoint (1020px) flows the
+  shell and stacks the rails.
+- **Armory detection**: the Armory never computes bans. `armoryRules(state, diver)` lists the
+  active misfortune/pact rules and `itemBannedInArmory(state, diver, item)` returns why a
+  stratagem is greyed; both wrap `stratagemBanReason` in `shared/engine/pacts.ts` — the same
+  predicate `legalStratagemCount` / `hasLoadout` use, so the screen and the floor can never
+  disagree.
 - **Foundations kit**: a hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`) specimens
   the tokens/atoms so contributors can sanity-check the language. It is dev reference, not a
   product surface.
@@ -626,11 +643,15 @@ app/
                    room flow — thin orchestrator: session driver + action handlers; the
                    three-rail shell and per-phase UI live in components/dive/), codex,
                    kit (hidden, unlinked foundations route — see Destroyer Terminal design language)
-  components/      dive/ (DiveFrame — the persistent three-rail dive shell (Armory · Crusade
-                   ladder · Squad / phase / Mission phases), ArmoryDrawer — the in-dive Armory
-                   overlay, CrusadeLadder — the 3→10 difficulty ladder, PhaseRail — the six
-                   mission beats, DiveHeader — mission strip + session controls,
-                   SquadStrip — diver chips, presence, name, host moderation,
+  components/      dive/ (DiveFrame — the no-scroll terminal shell (header · climb strip ·
+                   Squad/wheel-pool rail · phase · Valor rail · Mission-phases bar), DiveTopBar —
+                   the dive header (crusade · difficulty emblem · room code/copy · nav),
+                   CrusadeStrip — the horizontal 3→10 climb, PhaseRail — the bottom six mission
+                   beats, WheelOfMisfortune — the seeded spinning SVG wheel,
+                   BriefingOverlay — the first-run Griffdiver dossier, ArmoryDrawer — the in-dive
+                   Armory overlay (kit + loadout readiness + active-rule bans), CrusadeLadder —
+                   the vertical 3→10 ladder (achieved screen), SquadStrip — diver rail, presence,
+                   name, host moderation,
                    DivePhaseLobby/DivePhaseWheel/DivePhaseDiving/DivePhaseRewards/
                    DivePhaseForfeit/DivePhaseComplete — one panel per engine phase, each
                    owning its local form state and emitting intents,

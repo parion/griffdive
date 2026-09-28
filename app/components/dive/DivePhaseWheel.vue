@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { pactName } from '~~/shared/data/pacts'
 import { applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
-import { activeMisfortune, ceilingRangeForDifficulty, pactOfferFor, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
+import { activeMisfortune, ceilingRangeForDifficulty, pactOfferFor } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MajorOrderSelection } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -18,9 +18,18 @@ const emit = defineEmits<{
   setMajorOrder: [order: MajorOrderSelection | null]
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
   lock: [pactIds: string[]]
+  pactRisk: [value: number]
 }>()
 
 const selection = ref<string[]>([])
+
+// The Valor rail lives in the shell, so the phase reports its live selection
+// risk upward. Presentation only — `pactRiskTotal` is the engine's own sum.
+watch(
+  selection,
+  ids => emit('pactRisk', pactRiskTotal(ids)),
+  { immediate: true },
+)
 
 // A new draw or a flipped decision rolls a fresh offer — start the pick clean.
 // Primitive getters compare by value; a getter returning a fresh array would
@@ -45,8 +54,6 @@ const offer = computed(() =>
   props.selfId ? pactOfferFor(props.state, props.selfId) : [])
 
 const wheelRange = computed(() => ceilingRangeForDifficulty(props.state.difficulty))
-const teamRisk = computed(() => teamRiskOf(props.state))
-const selfPactRisk = computed(() => (props.self ? pactRiskOf(props.self) : 0))
 
 function toggle(pactId: string): void {
   selection.value = applyPactToggle(
@@ -164,12 +171,6 @@ const coverage = computed<Record<string, string>>(() => {
               class="muted small"
             >None — a safe dive.</span>
           </p>
-          <ValorMeter
-            :difficulty="state.difficulty"
-            :team-risk="teamRisk"
-            :pact-risk="selfPactRisk"
-            locked
-          />
         </section>
         <template v-else>
           <PactPicker
@@ -178,11 +179,6 @@ const coverage = computed<Record<string, string>>(() => {
             :blocked="coverage"
             @toggle="toggle"
             @lock="emit('lock', selection)"
-          />
-          <ValorMeter
-            :difficulty="state.difficulty"
-            :team-risk="teamRisk"
-            :pact-risk="pactRiskTotal(selection)"
           />
         </template>
       </div>

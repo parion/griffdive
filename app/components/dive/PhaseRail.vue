@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import type { DivePhase } from '~~/shared/engine/types'
 
-const props = withDefaults(defineProps<{ phase: DivePhase, orientation?: 'vertical' | 'horizontal' }>(), {
-  orientation: 'vertical',
-})
+const props = defineProps<{ phase: DivePhase }>()
 
 const STEPS = [
   { key: 'spin', label: 'Spin', d: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 3v18M3 12h18' },
@@ -14,9 +12,6 @@ const STEPS = [
   { key: 'rewards', label: 'Rewards', d: 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10' },
 ] as const
 
-// Engine phases collapse onto the six mission beats: `decision`/`strain` are
-// the Decide beat, and the Report beat lives inside `diving` until the result
-// is filed.
 const active = computed(() => {
   switch (props.phase) {
     case 'spin': return 0
@@ -36,93 +31,72 @@ function stateOf(i: number): 'done' | 'current' | 'reachable' | 'locked' {
   if (active.value < 0) return 'locked'
   if (i < active.value) return 'done'
   if (i === active.value) return 'current'
-  if (i === active.value + 1) return 'reachable'
   return 'locked'
 }
 </script>
 
 <template>
   <nav
-    class="phase-rail"
-    :class="orientation"
+    class="phase-bar"
     aria-label="Mission phases"
   >
-    <ol>
-      <li
-        v-for="(s, i) in STEPS"
-        :key="s.key"
-        :data-state="stateOf(i)"
-        :aria-current="stateOf(i) === 'current' ? 'step' : undefined"
-        :aria-label="`${s.label}, ${stateOf(i)}`"
+    <div
+      v-for="(s, i) in STEPS"
+      :key="s.key"
+      class="step cut-sm"
+      :data-state="stateOf(i)"
+      :aria-current="stateOf(i) === 'current' ? 'step' : undefined"
+      :aria-label="`${s.label}, ${stateOf(i)}`"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
       >
-        <span
-          class="node cut-sm"
-          aria-hidden="true"
-        >
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path :d="s.d" />
-          </svg>
-        </span>
-        <span class="rlabel">{{ s.label }}</span>
-      </li>
-    </ol>
+        <path :d="s.d" />
+      </svg>
+      <span>{{ s.label }}</span>
+    </div>
   </nav>
 </template>
 
 <style scoped>
-.phase-rail ol {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.phase-bar {
   display: flex;
-  gap: 4px;
-}
-.node {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border: 1px solid var(--line-2);
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--pad-page);
+  border-top: 1px solid var(--line-1);
   background: var(--ground);
-  color: var(--muted);
-  flex-shrink: 0;
+  overflow-x: auto;
 }
-.rlabel {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.vertical ol { flex-direction: column; gap: 3px; }
-.vertical li {
+.step {
+  flex: 1 1 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 6px;
-  border-left: 2px solid var(--line-1);
+  justify-content: center;
+  gap: var(--sp-3);
+  height: 36px;
+  padding: 0 var(--sp-3);
+  background: var(--ground);
+  color: var(--ghost-ink);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  min-width: max-content;
+  transition: background-color var(--dur-fast), color var(--dur-fast);
 }
-
-.horizontal ol { flex-direction: row; flex-wrap: wrap; }
-.horizontal li { display: flex; align-items: center; gap: 6px; padding-right: 10px; }
-
-[data-state='current'] { border-left-color: var(--gold); }
-[data-state='current'] .node { border-color: var(--gold); color: var(--gold); background: rgba(255, 214, 66, 0.08); }
-[data-state='current'] .rlabel { color: var(--gold); }
-[data-state='done'] { border-left-color: var(--line-4); }
-[data-state='done'] .node { color: var(--teal); border-color: var(--line-3); }
-[data-state='done'] .rlabel { color: var(--dim); text-decoration: line-through; }
-[data-state='reachable'] .node { border-color: var(--line-4); color: var(--khaki); }
-[data-state='reachable'] .rlabel { color: var(--khaki); }
-[data-state='locked'] { opacity: 0.5; }
-[data-state='locked'] .rlabel { color: var(--ghost-ink); }
+[data-state='done'] { color: var(--dim); background: var(--rail); }
+[data-state='reachable'] { color: var(--khaki); }
+[data-state='locked'] { color: var(--ghost-ink); opacity: 0.6; }
+[data-state='current'] {
+  background: var(--gold);
+  color: var(--on-gold);
+  animation: tagFlash 0.4s var(--ease-out);
+}
 </style>
