@@ -538,6 +538,12 @@ context; no bottom-sheet component (only unused `.sheet-*` CSS in `main.css:766-
 - [ ] **Verify per screen** — `pnpm lint && pnpm typecheck && pnpm test`, plus a screenshot check via
       `.orca/*.mjs` at 1440×900 and 390×844. (`lint` / `typecheck` / `test` / `test:e2e` green at
       HEAD; screenshot check outstanding.)
+- [ ] **Visual QA vs. the design** — render each screen at 1440×900 and diff it against the
+      extracted page (`.orca/drops/extracted/<NN>-*.html`); fix per-page/global layout divergences
+      that the component work missed. **In progress** (started on Rewards: pods now fill the centre
+      column via `repeat(var(--cols), 1fr)` instead of `auto-fit`; the Valor rail legend splits
+      Misfortune / Strain / Pacts / Performance, and the ceiling-odds ladder reads S+ → C with
+      `BASE` / `FLOOR` labels). The same diff pass is still owed for the remaining screens.
 - [x] **AGENTS.md** — update the "Destroyer Terminal design language" section and directory map as
       each screen lands; note new components (`PactScreen`, `MissionReport`, `SampleCanister`,
       `SegmentedBar`, `ForfeitPicker`).

@@ -708,7 +708,9 @@ const statusKind = computed<'honors' | 'advance' | 'wait' | 'pick'>(() => {
 
 .cabinet {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  /* Exactly one equal column per rolled option, so the pods fill the centre
+     column (the design's `repeat(4, 1fr)`); `auto-fit` left empty tracks. */
+  grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
   grid-auto-rows: minmax(280px, 1fr);
   gap: 16px;
   flex: 1 1 auto;

@@ -12,7 +12,20 @@ const props = withDefaults(defineProps<{
   locked?: boolean
   diverName?: string
   pendingText?: string
-}>(), { performance: 0, locked: false, diverName: '', pendingText: '' })
+  // The team-risk split, when the caller has it: the design's legend reads
+  // Misfortune / Strain / Pacts / Performance rather than one "Team" row.
+  misfortuneRisk?: number
+  strainRisk?: number
+  majorOrderRisk?: number
+}>(), {
+  performance: 0,
+  locked: false,
+  diverName: '',
+  pendingText: '',
+  misfortuneRisk: undefined,
+  strainRisk: undefined,
+  majorOrderRisk: undefined,
+})
 
 const LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
@@ -56,24 +69,39 @@ const baseTier = computed(() => baseTierFor(props.difficulty))
 const baseIndex = computed(() => LADDER.indexOf(baseTier.value))
 const maxIndex = computed(() => LADDER.indexOf(range.value.max))
 
+// Top-down S+ → C, matching the design's odds ladder.
 const rungs = computed(() => LADDER.map((tier, index) => {
   const reachable = index > baseIndex.value
   const odds = reachable ? oddsToReach(props.difficulty, valor.value, tier) : 1
   return {
     tier,
     below: index < baseIndex.value,
+    isBase: index === baseIndex.value,
     lit: index >= baseIndex.value && index <= maxIndex.value,
     pct: reachable ? Math.round(odds * 100) : 100,
     odds,
   }
-}))
+}).reverse())
 
-const legend = computed(() => [
-  { id: 'team', name: 'Team', value: props.teamRisk },
-  { id: 'pact', name: 'Pacts', value: props.pactRisk },
-  { id: 'perf', name: 'Perf', value: props.performance },
-  { id: 'luck', name: 'Luck', value: overflow.value },
-])
+const legend = computed(() => {
+  const rows: { id: string, name: string, value: number }[] = []
+  if (props.misfortuneRisk !== undefined || props.strainRisk !== undefined) {
+    rows.push({ id: 'misfortune', name: 'Misfortune', value: props.misfortuneRisk ?? 0 })
+    rows.push({ id: 'strain', name: 'Strain', value: props.strainRisk ?? 0 })
+    if ((props.majorOrderRisk ?? 0) > 0) {
+      rows.push({ id: 'mo', name: 'Major Order', value: props.majorOrderRisk ?? 0 })
+    }
+  }
+  else {
+    rows.push({ id: 'team', name: 'Team', value: props.teamRisk })
+  }
+  rows.push({ id: 'pact', name: 'Pacts', value: props.pactRisk })
+  rows.push({ id: 'perf', name: 'Performance', value: props.performance })
+  if (overflow.value > 0) {
+    rows.push({ id: 'luck', name: 'Luck', value: overflow.value })
+  }
+  return rows
+})
 </script>
 
 <template>
@@ -132,7 +160,7 @@ const legend = computed(() => [
               size="sm"
               class="rung-t"
             />
-            <span class="rung-pct">{{ r.below ? '—' : `${r.pct}%` }}</span>
+            <span class="rung-pct">{{ r.below ? 'FLOOR' : r.isBase ? 'BASE' : `${r.pct}%` }}</span>
           </div>
           <div class="rung-bar">
             <i :style="{ width: r.below ? '0%' : `${Math.max(2, r.odds * 100)}%` }" />
@@ -246,7 +274,10 @@ const legend = computed(() => [
 .legend-row.zero .legend-v { color: var(--dim); }
 .swatch { width: 10px; height: 10px; background: var(--line-2); flex-shrink: 0; }
 .swatch.team { background: var(--khaki); }
-.swatch.pact { background: var(--orange); }
+.swatch.misfortune { background: var(--gold); }
+.swatch.strain { background: var(--orange); }
+.swatch.mo { background: var(--teal); }
+.swatch.pact { background: var(--red); }
 .swatch.perf { background: var(--teal); }
 .swatch.luck { background: var(--purple); }
 </style>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MISFORTUNE_MIN_DIFFICULTY, MISFORTUNE_RISK } from '~~/shared/engine/config'
 import { performanceValor } from '~~/shared/engine/rewards'
-import { diverOptions, majorOrderFronts, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
+import { diverOptions, majorOrderFronts, pactRiskOf, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain, eligibleMisfortunes } from '~~/shared/engine/wheel'
 import type { CrusadeVariant, DiverState, EngineAction, ItemRef, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
@@ -57,6 +57,8 @@ const variantName = computed(() =>
 const crusadeLabel = computed(() => `${diverName(selfId.value)} · ${variantName.value}`)
 
 const teamRisk = computed(() => state.value ? teamRiskOf(state.value) : 0)
+const riskBreakdown = computed(() =>
+  state.value ? teamRiskBreakdown(state.value) : { misfortuneRisk: 0, strainRisk: 0, majorOrderRisk: 0, total: 0 })
 // While a diver is still picking pacts the phase reports its live selection
 // upward, so the shell's Valor rail previews the stake before the lock.
 const livePactRisk = ref(0)
@@ -633,6 +635,9 @@ function launchCrusade(variant: CrusadeVariant): void {
           v-else
           :difficulty="state.difficulty"
           :team-risk="teamRisk"
+          :misfortune-risk="riskBreakdown.misfortuneRisk"
+          :strain-risk="riskBreakdown.strainRisk"
+          :major-order-risk="riskBreakdown.majorOrderRisk"
           :pact-risk="pactRisk"
           :performance="performance"
           :locked="valorLocked"
