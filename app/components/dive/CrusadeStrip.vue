@@ -42,7 +42,7 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
       class="rung"
       :data-state="r.state"
       role="img"
-      :style="{ flexGrow: r.state === 'current' || r.state === 'goal' ? 1.9 : 1 }"
+      :style="{ flexGrow: r.state === 'current' ? 2.4 : 1 }"
       :aria-label="`${r.name}, difficulty ${r.n}, tier ${r.tier}${r.state === 'current' ? `, operation mission ${missionInOperation} of ${opLength}` : ''}`"
     >
       <div class="rung-top">
@@ -101,6 +101,7 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
               v-for="k in r.pips"
               :key="k"
               class="rung-pip"
+              :class="{ filled: k <= missionInOperation }"
             />
           </span>
           <span class="mission">Mission {{ missionInOperation }}/{{ opLength }}</span>
@@ -151,7 +152,8 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
 .tier { width: 18px; height: 18px; font-size: 11px; border: 1px solid currentColor; }
 
 .pips-row { display: flex; align-items: center; gap: 5px; }
-.rung-pip { width: 22px; height: 6px; border: 1px solid var(--gold); background: rgba(255, 214, 66, 0.25); }
+.rung-pip { width: 22px; height: 6px; border: 1px solid var(--line-4); background: transparent; }
+.rung-pip.filled { border-color: var(--gold); background: var(--gold); animation: pulse 2s ease-in-out infinite; }
 .failed-mark { display: inline-flex; color: var(--red); }
 .failed-mark svg { width: 14px; height: 14px; }
 .mission {
@@ -163,16 +165,17 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
   white-space: nowrap;
 }
 
-[data-state='cleared'] { opacity: 0.55; }
-[data-state='cleared'] .n { color: var(--ghost-ink); }
-[data-state='locked'] { opacity: 0.7; }
+[data-state='cleared'] { color: var(--khaki); border-color: var(--line-3); }
+[data-state='cleared'] .n { color: var(--khaki); }
+[data-state='locked'] { color: var(--dim); border-color: #1e2118; }
+[data-state='locked'] .n { color: var(--dim); }
 [data-state='locked'] .name { color: var(--dim); }
 [data-state='current'] {
   border-color: var(--gold);
-  background: rgba(255, 214, 66, 0.06);
+  background: var(--raised);
 }
 [data-state='current'] .n { color: var(--gold); }
 [data-state='current'] .name { color: var(--text); }
-[data-state='goal'] { border-color: var(--line-4); }
-[data-state='goal'] .n { color: var(--gold); }
+[data-state='goal'] { color: var(--dim); border-color: #1e2118; }
+[data-state='goal'] .n { color: var(--dim); }
 </style>

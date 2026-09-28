@@ -18,6 +18,7 @@ import {
   pactOfferFor,
   teamRiskBreakdown,
 } from '~~/shared/engine/selectors'
+import { catchUpOpsBehind } from '~~/shared/engine/progression'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 const props = withDefaults(defineProps<{
@@ -164,8 +165,10 @@ function click(): void {
 onBeforeUnmount(() => clearTimeout(holdTimer))
 
 const swornText = computed(() => `${selection.value.length}/${offer.value.length} sworn`)
+const opNumber = computed(() =>
+  catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'standard') + 1)
 const opLabel = computed(() =>
-  `Mission ${props.state.missionInOperation} of ${opLength.value} · ${props.self?.name ?? 'offer'}'s offer`)
+  `Operation ${opNumber.value} · Mission ${props.state.missionInOperation} of ${opLength.value} · ${props.self?.name ?? 'offer'}'s offer`)
 </script>
 
 <template>
@@ -220,6 +223,7 @@ const opLabel = computed(() =>
           <RiskPips
             :value="breakdown.misfortuneRisk"
             :max="5"
+            tone="gold"
           />
           <span class="team-name">{{ misfortune?.name ?? 'Safe dive' }}</span>
           <span
@@ -281,10 +285,14 @@ const opLabel = computed(() =>
         <div class="team-cell-row">
           <span class="total-pips">
             <span
-              v-for="i in 5"
-              :key="i"
-              class="total-pip"
-              :class="{ on: i <= breakdown.total }"
+              v-for="i in breakdown.misfortuneRisk"
+              :key="`m${i}`"
+              class="total-pip gold"
+            />
+            <span
+              v-for="i in opLongRisk"
+              :key="`o${i}`"
+              class="total-pip orange"
             />
           </span>
           <span class="total-num disp">{{ breakdown.total }}</span>
@@ -489,9 +497,10 @@ const opLabel = computed(() =>
 .hold-cell { width: 10px; height: 10px; border: 2px solid var(--orange); background: var(--orange); }
 .team-total { border-right: 0; background: var(--panel); }
 .total-pips { display: flex; gap: 2px; }
-.total-pip { width: 9px; height: 9px; background: var(--line-2); }
-.total-pip.on { background: var(--gold); }
-.total-num { font-size: 1.6rem; color: var(--text); }
+.total-pip { width: 9px; height: 9px; }
+.total-pip.gold { background: var(--gold); }
+.total-pip.orange { background: var(--orange); }
+.total-num { font-size: 2rem; color: var(--text); }
 
 /* ---- Notes ---- */
 .pact-notes {

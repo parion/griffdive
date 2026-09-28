@@ -79,7 +79,7 @@ per destroyer-terminal spec`). Verified state at the current HEAD:
 | 4 Squad honors | Done | `BonusCeremony` split via `DivePhaseRewards v-model:view`; `RewardTokensRail`. Fixed: first-spin reel animation, `Honored` stamp + `tagFlash`, award `.crawl`, mission-counter CTA. |
 | 5 Failed / forfeit | Done | `ForfeitPicker` + `ForfeitCarriesOver`; e2e updated. Fixed: `.flicker`/`.crawl-slow` animations, 40px title. |
 | 6 Achieved | Done | `AchievedOverlay` wired full-bleed in `dive/[id].vue`; export action wired. Open: failed dots (no failure-history data). |
-| 7 Wheel | Partial | `WheelPanel` / `WheelOfMisfortune` reworked: title + prominent Reroll-with-tally, segment risk pips + legend, front/strain hint; the MO chooser sits in the front card's pre-roll slot. Fixed: solid segment fills, "All N missions" lock label. Landed: the **"Deal the pacts" gate** — a new `deal` phase holds the wheel after both calls are in until the host presses the host-only `DEAL_PACTS` CTA (desktop + phone). Open: the MO card is not the spec's full pre-spin column card. |
+| 7 Wheel | Partial | `WheelPanel` / `WheelOfMisfortune` reworked: title + prominent Reroll-with-tally, segment risk pips + legend, front/strain hint; the MO chooser sits in the front card's pre-roll slot. Fixed: solid segment fills, "All N missions" lock label. Landed: the **"Deal the pacts" gate** — a new `deal` phase holds the wheel after both calls are in until the host presses the host-only `DEAL_PACTS` CTA (desktop + phone). The MO card now matches the spec's pre-spin card (see the visual-QA notes); the manual front picker stays below it as the offline fallback. Open: the front card still uses an emblem watermark rather than the spec's inline 56px emblem. |
 | 8 Bridge home | Done | `index.vue` rebuilt to the design: hero moved into the left column, climb ladder + goal flag, **6-step** "Every mission" loop + NEXT, Valor panel with a **per-tier odds ladder** (engine `oddsToReach`) + big Valor number, **code-cell join** with caret + n/6, Solo drop split from Variant & warbonds (dialog), live-room/local **Service record** cards, full-width **Major Order band** + footer. Motion wired (`rise/slam/impact/rung/flag-in/cell-on/grow/loopLit/mo-in`). Left column scrolls a little at 900px. |
 | 9 Lobby | Done | `DivePhaseLobby.vue` rebuilt to the design: hellpod bays with seated/empty/launched states (pod drop, doors, DEPLOYED), a 5-column variant radiogroup (start number, tick staircase, kit lines), launch summary + hold-to-launch → Launched stamp, and the pre-launch checks strip. The invite code cells and route strip are carried by the shell (`SquadStrip` / `CrusadeStrip`). |
 | 10 Briefing | Done | `BriefingOverlay.vue` rebuilt as the interactive six-beat tour (Identify · Spin · Pact · Reward · Warbonds · Deploy): 300px dossier aside, 68px chevron progress rail, per-beat panels (registry form + class flip, the real `WheelOfMisfortune` + accept/opt-out, Valor meter + pact cards + odds ladder, ceiling-roll track + reward pods, 26-cell warbond grid with SELECT/CLEAR ALL, Order of Deployment document), and a 76px gated footer (Back · pips · NAME REQUIRED · Next/Begin dive). Reveal timelines respect `prefers-reduced-motion`. |
@@ -540,10 +540,48 @@ context; no bottom-sheet component (only unused `.sheet-*` CSS in `main.css:766-
       HEAD; screenshot check outstanding.)
 - [ ] **Visual QA vs. the design** — render each screen at 1440×900 and diff it against the
       extracted page (`.orca/drops/extracted/<NN>-*.html`); fix per-page/global layout divergences
-      that the component work missed. **In progress** (started on Rewards: pods now fill the centre
-      column via `repeat(var(--cols), 1fr)` instead of `auto-fit`; the Valor rail legend splits
-      Misfortune / Strain / Pacts / Performance, and the ceiling-odds ladder reads S+ → C with
-      `BASE` / `FLOOR` labels). The same diff pass is still owed for the remaining screens.
+      that the component work missed. **In progress.**
+      - Extraction is reproducible: `node /tmp/extract-all.mjs` writes the 19 page templates to
+        `.orca/drops/extracted/<NN>-<name>.html`; `/tmp/prep-render.mjs` inlines the bundled fonts
+        into `.orca/drops/extracted/_render/`; `.orca/shoot-design.mjs <pages…>` screenshots them to
+        `/tmp/design-shots/`. App screens are captured by `e2e/zz-shot.spec.ts` (throwaway) to
+        `/tmp/app-shots/`.
+      - **Shell — done this pass** (verified at 1440×900):
+        - `PhaseRail.vue` now renders chevron segments (`.chev-first` on step 0, `.chev` after) like
+          the design, not `cut-sm` rectangles.
+        - `CrusadeStrip.vue` — only the current rung flexes (`2.4`, matching the design); the goal
+          rung no longer widens. Mission pips now fill up to `missionInOperation` and pulse the
+          current one, instead of every pip rendering identically filled. Rung colors now match the
+          design's dive ladder: current gold on `--raised`, cleared `--khaki` on `--line-3`, future
+          and goal `--dim` (the gold goal number was wrong — the gold *flag* is the goal marker).
+      - **Rewards — done this pass:** pods fill the centre column via `repeat(var(--cols), 1fr)`
+        instead of `auto-fit`; the Valor rail legend splits Misfortune / Strain / Pacts /
+        Performance; the ceiling-odds ladder reads S+ → C with `BASE` / `FLOOR` labels.
+      - **Risk pips are now skulls (global).** The design draws every risk pip as a skull
+        (`skulls(n, max, c)` → `max` skulls, the first `n` filled, the rest `#2C3022`). `RiskPips`
+        rendered 8px red squares instead. `main.css` `.pips` + `ui/RiskPips.vue` now render the
+        design's skull SVG, tinted per context via a new `tone` prop (`red` pact default, `gold`
+        the pacts team-bar misfortune, `orange` strain). This lands on the wheel, dive, pacts and
+        report at once.
+      - **Pacts — done this pass:** the title now reads `Operation N · Mission M of O · <diver>'s
+        offer` (was missing the operation number); the team-bar Team cell draws one square per risk
+        point colored by source (gold misfortune / orange op-long) with a 32px number, matching the
+        design (was a fixed 5-pip meter); the offer cards now size to the design's 264×372 (128px
+        glyph tile, 66px glyph, 2rem risk, 1.3rem name, 340px min-height). Skipped: the design's
+        `Drop in →` link after locking (the app advances automatically once every diver locks, so
+        there is no separate action) and the card-back `rotateY` deal (still a 2D translate).
+      - **Wheel — done this pass:** `MajorOrderCard` now matches the design's pre-spin card —
+        pulsing radio icon + `Incoming · Major Order` label + plain uppercase countdown (was a
+        skull emblem, a big `Major Order` title and a gold `Ends in` chip); the planet row is the
+        design's icon + `MARFARK` + red `89.7%` + bar (dropped the `Order overview` heading,
+        `Liberate` prefix and checkbox); the brief is 19px/600. Result-card names bumped to the
+        design's scale (`clamp(1.6rem, 2.6vw, 2.375rem)` misfortune / `…1.625rem` front). The e2e
+        MO assertion still resolves (the label is a real `<h3>`, substring name match).
+      - **Flagged, not yet changed:** the dive header (`DiveTopBar`) carries a difficulty emblem and
+        a fourth (Warbonds) nav icon plus Solo/End controls that the design's dive header does not —
+        these are documented product additions (AGENTS.md), so left as-is pending a call.
+      - **Owed:** the same diff pass for Wheel, Pacts, Report, Honors, Forfeit, Achieved, Bridge,
+        Lobby, Briefing, Armory, Dive centre (PactBriefing 2-col card grid) and the phone layouts.
 - [x] **AGENTS.md** — update the "Destroyer Terminal design language" section and directory map as
       each screen lands; note new components (`PactScreen`, `MissionReport`, `SampleCanister`,
       `SegmentedBar`, `ForfeitPicker`).

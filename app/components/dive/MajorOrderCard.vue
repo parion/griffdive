@@ -71,17 +71,29 @@ function liberationWidth(value: number): string {
     :style="{ '--mo-accent': accent }"
   >
     <header class="mo-head">
-      <span
-        class="mo-emblem"
+      <svg
+        class="mo-pulse pulse"
+        viewBox="0 0 24 24"
+        fill="none"
+        :stroke="accent"
+        stroke-width="1.8"
         aria-hidden="true"
-      />
-      <h3 class="mo-title disp">
-        Major Order
+      >
+        <path d="M5 12a7 7 0 0 1 14 0M8.5 12a3.5 3.5 0 0 1 7 0" />
+        <circle
+          cx="12"
+          cy="12"
+          r="1"
+        />
+        <path d="M12 13v8" />
+      </svg>
+      <h3 class="lbl mo-incoming">
+        Incoming · Major Order
       </h3>
       <span
         v-if="countdown"
-        class="mo-ends cap"
-      >Ends in <b>{{ countdown }}</b></span>
+        class="mo-ends"
+      >{{ countdown }}</span>
     </header>
 
     <p
@@ -95,47 +107,37 @@ function liberationWidth(value: number): string {
       v-if="order.planets?.length"
       class="mo-overview"
     >
-      <h4 class="mo-overview-title cap">
-        <span
-          class="mo-overview-icon"
-          aria-hidden="true"
-        />
-        Order overview
-      </h4>
       <ul class="mo-planets">
         <li
           v-for="planet in order.planets"
           :key="planet.index"
           class="mo-planet"
         >
-          <span class="mo-planet-head">
-            <img
-              class="mo-planet-front"
-              :src="factionImageUrl(planet.front)"
-              alt=""
-              draggable="false"
-            >
-            <span class="mo-planet-name">Liberate <strong>{{ planet.name }}</strong></span>
-            <span
-              class="mo-check"
-              :class="{ done: planet.liberation >= 100 }"
-              aria-hidden="true"
-            />
-          </span>
-          <span
-            class="mo-bar"
-            role="progressbar"
-            :aria-label="`${planet.name} liberation`"
-            :aria-valuenow="Math.round(planet.liberation)"
-            aria-valuemin="0"
-            aria-valuemax="100"
+          <img
+            class="mo-planet-front"
+            :src="factionImageUrl(planet.front)"
+            alt=""
+            draggable="false"
           >
+          <div class="mo-planet-body">
+            <span class="mo-planet-head">
+              <span class="mo-planet-name">{{ planet.name }}</span>
+              <span class="mo-planet-pct">{{ planet.liberation.toFixed(1) }}%</span>
+            </span>
             <span
-              class="mo-bar-fill"
-              :style="{ width: liberationWidth(planet.liberation) }"
-            />
-            <span class="mo-bar-pct">{{ planet.liberation.toFixed(1) }}%</span>
-          </span>
+              class="mo-bar"
+              role="progressbar"
+              :aria-label="`${planet.name} liberation`"
+              :aria-valuenow="Math.round(planet.liberation)"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <span
+                class="mo-bar-fill"
+                :style="{ width: liberationWidth(planet.liberation) }"
+              />
+            </span>
+          </div>
         </li>
       </ul>
     </section>
@@ -191,64 +193,27 @@ function liberationWidth(value: number): string {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding-bottom: 0.6rem;
-  border-bottom: 1px solid var(--line-2);
 }
-.mo-emblem {
-  flex-shrink: 0;
-  width: 2rem;
-  height: 2rem;
-  background-color: var(--mo-accent);
-  mask-image: url('/images/iconSVGs/skull-and-crossbones.svg');
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-image: url('/images/iconSVGs/skull-and-crossbones.svg');
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
-}
-.mo-title {
-  margin: 0;
-  flex: 1;
-  font-size: 1.05rem;
-  letter-spacing: 0.12em;
-  color: var(--text);
-}
+.mo-pulse { flex-shrink: 0; width: 1.15rem; height: 1.15rem; }
+.mo-incoming { flex: 1; margin: 0; color: var(--gold); }
 .mo-ends {
   flex-shrink: 0;
-  padding: 0.2rem 0.45rem;
-  color: var(--on-gold);
-  background: var(--gold);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text);
 }
-.mo-ends b { color: var(--on-gold); }
 
 .mo-brief {
   margin: 0;
-  color: var(--khaki);
-  line-height: 1.4;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
 }
 
 .mo-overview { display: grid; gap: 0.5rem; }
-.mo-overview-title {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--red);
-}
-.mo-overview-icon {
-  width: 0.85rem;
-  height: 0.85rem;
-  background-color: var(--red);
-  mask-image: url('/images/iconSVGs/missile.svg');
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-image: url('/images/iconSVGs/missile.svg');
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
-}
 
 .mo-planets {
   display: grid;
@@ -257,30 +222,28 @@ function liberationWidth(value: number): string {
   padding: 0;
   list-style: none;
 }
-.mo-planet { display: grid; gap: 0.25rem; }
+.mo-planet { display: flex; align-items: center; gap: 0.7rem; }
+.mo-planet-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
 .mo-planet-head { display: flex; align-items: center; gap: 0.45rem; }
 .mo-planet-front {
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1.75rem;
+  height: 1.75rem;
   object-fit: contain;
   flex-shrink: 0;
 }
-.mo-planet-name { color: var(--khaki); }
-.mo-planet-name strong { color: var(--text); }
-.mo-check {
-  margin-left: auto;
-  width: 0.85rem;
-  height: 0.85rem;
-  border: 1px solid var(--line-4);
-  flex-shrink: 0;
+.mo-planet-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text);
 }
-.mo-check.done { background: var(--teal); border-color: var(--teal); }
+.mo-planet-pct { margin-left: auto; font-weight: 700; color: var(--red); }
 
 .mo-bar {
   position: relative;
-  display: flex;
-  align-items: center;
-  min-height: 1.05rem;
+  display: block;
+  height: 0.4rem;
   background: var(--line-1);
   overflow: hidden;
 }
@@ -289,14 +252,6 @@ function liberationWidth(value: number): string {
   inset: 0 auto 0 0;
   background: color-mix(in srgb, var(--mo-accent, var(--red)) 80%, #000);
   transition: width var(--dur-med) var(--ease-out);
-}
-.mo-bar-pct {
-  position: relative;
-  padding-left: 0.4rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--on-gold);
-  text-shadow: 0 1px 0 color-mix(in srgb, #000 55%, transparent);
 }
 
 .mo-stats {

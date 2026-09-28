@@ -250,14 +250,14 @@ function stampLabel(reason: string): string {
 }
 
 .pact-risk {
-  font-size: 1.5rem;
+  font-size: 2rem;
   color: var(--red);
 }
 
 .pact-glyph {
   display: grid;
   place-items: center;
-  height: 72px;
+  height: 128px;
   background-color: var(--rail);
   background-size: 16px 16px;
   border: 1px solid var(--line-2);
@@ -271,17 +271,17 @@ function stampLabel(reason: string): string {
 }
 
 .pact-glyph svg {
-  width: 34px;
-  height: 34px;
+  width: 66px;
+  height: 66px;
 }
 
 .pact-name {
-  font-size: 1.15rem;
+  font-size: 1.3rem;
   color: var(--text);
 }
 
 .pact-rule {
-  font-size: 0.9rem;
+  font-size: 0.94rem;
   line-height: 1.3;
   color: var(--text);
 }
@@ -410,7 +410,7 @@ function stampLabel(reason: string): string {
 
 @media (min-width: 760px) {
   .pact-card {
-    min-height: 268px;
+    min-height: 340px;
   }
 }
 </style>

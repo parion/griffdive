@@ -678,6 +678,7 @@ function rerollLabel(
                   <RiskPips
                     :value="strainRisk"
                     :rolling="strainReeling"
+                    tone="orange"
                   />
                   <span
                     v-if="strainRisk > 0"
@@ -785,7 +786,10 @@ function rerollLabel(
                 </div>
                 <div class="risk-row">
                   <span class="cap">Every mission</span>
-                  <RiskPips :value="strainRisk" />
+                  <RiskPips
+                    :value="strainRisk"
+                    tone="orange"
+                  />
                   <span
                     v-if="strainRisk > 0"
                     class="risk-plus disp strain-plus"
@@ -931,11 +935,11 @@ function rerollLabel(
 
 .card-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
 .misfortune-name {
-  font-size: 1.5rem;
+  font-size: clamp(1.6rem, 2.6vw, 2.375rem);
   color: var(--gold);
   line-height: 1.05;
 }
-.front-name { font-size: 1.35rem; }
+.front-name { font-size: clamp(1.35rem, 1.9vw, 1.625rem); }
 
 /* The strain is a subfaction of the front: same card, its own divider. */
 .strain {

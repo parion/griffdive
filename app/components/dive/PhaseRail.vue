@@ -44,7 +44,8 @@ function stateOf(i: number): 'done' | 'current' | 'reachable' | 'locked' {
     <div
       v-for="(s, i) in STEPS"
       :key="s.key"
-      class="step cut-sm"
+      class="step"
+      :class="i === 0 ? 'chev-first' : 'chev'"
       :data-state="stateOf(i)"
       :aria-current="stateOf(i) === 'current' ? 'step' : undefined"
       :aria-label="`${s.label}, ${stateOf(i)}`"
