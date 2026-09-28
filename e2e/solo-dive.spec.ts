@@ -4,7 +4,7 @@ import { dismissWarbondIntro } from './helpers'
 test('solo dive flow: spin → pacts → report → rewards → advance', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
-  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await page.getByRole('button', { name: 'Solo drop' }).click()
 
   await expect(page).toHaveURL(/\/dive\/[0-9a-f-]{36}/)
   await dismissWarbondIntro(page)
@@ -125,7 +125,7 @@ test('a live Major Order renders the panel, pins the front, and tags the card', 
 
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
-  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await page.getByRole('button', { name: 'Solo drop' }).click()
   await dismissWarbondIntro(page)
 
   // The in-game-style panel renders in the faction card's pre-roll slot.
@@ -150,7 +150,7 @@ test('a manual faction pick pins the front without a Major Order tag', async ({ 
 
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
-  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await page.getByRole('button', { name: 'Solo drop' }).click()
   await dismissWarbondIntro(page)
 
   await expect(page.getByText(/No active Major Order/)).toBeVisible()
@@ -168,7 +168,7 @@ test('a manual faction pick pins the front without a Major Order tag', async ({ 
 test('a failed mission labels the operation failed and restarts it', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
-  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await page.getByRole('button', { name: 'Solo drop' }).click()
   await dismissWarbondIntro(page)
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()

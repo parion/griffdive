@@ -34,7 +34,7 @@ test('the changelog dialog traps focus, closes on Escape, and restores focus', a
 test('the star rating is a keyboard-navigable radio group', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
-  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await page.getByRole('button', { name: 'Solo drop' }).click()
   await dismissWarbondIntro(page)
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await page.locator('.misfortune').getByRole('button', { name: 'Lock it in' }).click()

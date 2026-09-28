@@ -80,7 +80,7 @@ per destroyer-terminal spec`). Verified state at the current HEAD:
 | 5 Failed / forfeit | Done | `ForfeitPicker` + `ForfeitCarriesOver`; e2e updated. Fixed: `.flicker`/`.crawl-slow` animations, 40px title. |
 | 6 Achieved | Done | `AchievedOverlay` wired full-bleed in `dive/[id].vue`; export action wired. Open: failed dots (no failure-history data). |
 | 7 Wheel | Partial | `WheelPanel` / `WheelOfMisfortune` reworked: title + prominent Reroll-with-tally, segment risk pips + legend, front/strain hint; the MO chooser sits in the front card's pre-roll slot. Fixed: solid segment fills, "All N missions" lock label. Landed: the **"Deal the pacts" gate** — a new `deal` phase holds the wheel after both calls are in until the host presses the host-only `DEAL_PACTS` CTA (desktop + phone). Open: the MO card is not the spec's full pre-spin column card. |
-| 8 Bridge home | Partial | `index.vue` rebuilt: climb ladder, "Every mission" loop, Valor sources, Solo drop + Variant & warbonds split, room-code join, Continue record. Deltas: no Major Order band; loop is 4 steps (spec wants 6 + NEXT); record is not the spec's live-room card; no per-tier odds ladder. |
+| 8 Bridge home | Done | `index.vue` rebuilt to the design: hero moved into the left column, climb ladder + goal flag, **6-step** "Every mission" loop + NEXT, Valor panel with a **per-tier odds ladder** (engine `oddsToReach`) + big Valor number, **code-cell join** with caret + n/6, Solo drop split from Variant & warbonds (dialog), live-room/local **Service record** cards, full-width **Major Order band** + footer. Motion wired (`rise/slam/impact/rung/flag-in/cell-on/grow/loopLit/mo-in`). Left column scrolls a little at 900px. |
 | 9 Lobby | Partial | `DivePhaseLobby.vue`: hellpod bays, "Invite only", variant selector via `CrusadeSetup`. Missing: invite code-cell sidebar, route-preview strip, animated pod drop/door halves, hold-to-launch + checks strip. |
 | 10 Briefing | Partial (different content) | `BriefingOverlay.vue` is a dossier with a beat rail (Squad/Sentence/File/Catch-up/Deploy/Begin). The spec's six interactive tour beats remain absent; product direction still open. |
 | 11 Armory | Partial | `InventoryGrid.vue` reworked (`AppTabs`, accented sections) but still the drawer via `ArmoryDrawer`/`AppDrawer`. Spec subtitle (warbond count), `slot-in` stagger and title scale not confirmed. |
@@ -376,7 +376,7 @@ vertical list; record has 4 items (`:56-70`); no squad tags; actions are Delete 
 
 # 8. Bridge home — spec `00-bridge`
 
-**Status:** Partial. **Effort:** M-L.
+**Status:** Done. **Effort:** M-L.
 
 **Spec:** `00-bridge.body.html`:
 

@@ -29,7 +29,9 @@ worker with an offline shell + on-demand catalog art), the operation-long **fact
 (dark ground/rail/panel surfaces, gold/red/orange/teal/purple signals, cut frames, hazard stripes,
 scanlines and a signature motion set). The dive is a fixed, no-scroll terminal (60px header with
 the room code + copy control · 84px climb strip · three rails · 52px Mission-phases bar), the
-Bridge home fits one desktop view, the wheel is a real spinning SVG wheel, the Armory marks
+Bridge home fits one desktop view (hero + climb ladder · 6-step mission loop · Valor odds ladder ·
+deploy rail with code-cell join and the service record · a full-width Major Order band and footer),
+the wheel is a real spinning SVG wheel, the Armory marks
 misfortune/pact bans per tile from engine selectors, and a Griffdiver Briefing dossier onboards
 first-time divers. Engine, sync, saves and data are untouched; see
 [Destroyer Terminal design language](#destroyer-terminal-design-language). Hybrid **saved

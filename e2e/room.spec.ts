@@ -88,10 +88,10 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   const roomCode = pageA.url().slice(-6)
   await pageB.goto('/')
   await expect(pageB.getByText('Checking for live dives…')).toBeHidden()
-  const onlineSlot = pageB.locator('.slot').filter({ hasText: roomCode })
+  const onlineSlot = pageB.locator('.record-card').filter({ hasText: roomCode })
   await expect(onlineSlot).toBeVisible()
-  await expect(onlineSlot.getByText(/2 divers/)).toBeVisible()
-  await expect(onlineSlot.getByRole('link', { name: 'Rejoin' })).toBeVisible()
+  await expect(onlineSlot.locator('.rc-avatar')).toHaveCount(2)
+  await expect(onlineSlot.getByRole('link', { name: 'RESUME' })).toBeVisible()
 
   await contextA.close()
   await contextB.close()

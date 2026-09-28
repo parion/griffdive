@@ -31,7 +31,7 @@ test('the Warbonds drawer toggles ownership and persists it', async ({ page }) =
 test('the Warbonds panel opens at dive start once, then stays quiet', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
-  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await page.getByRole('button', { name: 'Solo drop' }).click()
 
   // The briefing primes the loop first, then hands off to the Warbonds panel.
   const briefing = page.getByRole('dialog', { name: 'Griffdiver briefing' })
@@ -46,7 +46,7 @@ test('the Warbonds panel opens at dive start once, then stays quiet', async ({ p
 
   // A second crusade in the same browser keeps everything closed (seen once).
   await page.goto('/')
-  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await page.getByRole('button', { name: 'Solo drop' }).click()
   await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeVisible()
   await expect(drawer).toBeHidden()
   await expect(page.getByRole('dialog', { name: 'Griffdiver briefing' })).toBeHidden()

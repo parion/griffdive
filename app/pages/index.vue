@@ -1,9 +1,16 @@
 <script setup lang="ts">
-import { baseTierFor, missionsPerOperation } from '~~/shared/engine/config'
-import { difficultyName } from '~~/shared/engine/progression'
+import {
+  MAJOR_ORDER_REROLL_BONUS,
+  VALOR_METER_MAX,
+  baseTierFor,
+  missionsPerOperation,
+} from '~~/shared/engine/config'
+import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import { createDiveState } from '~~/shared/engine/reducer'
+import { oddsToReach } from '~~/shared/engine/rewards'
+import { factionImageUrl } from '~~/shared/data/images'
 import { isRoomCode } from '~~/shared/utils/room-code'
-import type { CrusadeSettings, CrusadeVariant, DiveState } from '~~/shared/engine/types'
+import type { CrusadeSettings, CrusadeVariant, DiveState, RewardTier } from '~~/shared/engine/types'
 import type { DiveSaveInfo } from '~~/shared/types/messages'
 import type { SaveDoc } from '~~/shared/types/save'
 
@@ -15,17 +22,28 @@ const diverName = ref('Griffin')
 const variant = ref<CrusadeVariant>('standard')
 const slotList = ref<{ id: string, doc: SaveDoc }[]>([])
 const joinCode = ref('')
+const codeFocused = ref(false)
+const variantOpen = ref(false)
 const hosting = ref(false)
+
+// The live Major Order band at the foot of the Bridge: pass-through metadata
+// from the war proxy (never the engine).
+const { order: liveOrder, status: moStatus } = useMajorOrder()
 
 interface OnlineDive { code: string, state: DiveState | null, saved: DiveSaveInfo | null }
 
 const onlineDives = ref<OnlineDive[]>([])
 const onlineLoading = ref(true)
 
+let moTimer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
   slotList.value = saves.listSaves()
   refreshOnlineDives()
+  moTimer = setInterval(() => {
+    now.value = Date.now()
+  }, 30_000)
 })
+onBeforeUnmount(() => clearInterval(moTimer))
 
 async function refreshOnlineDives(): Promise<void> {
   const rooms = recentRooms.listRooms()
@@ -60,10 +78,6 @@ const VARIANTS_LABELS: Record<CrusadeVariant, string> = {
   quickplay: 'Quickplay',
 }
 
-const startLabel = computed(() =>
-  variant.value === 'standard' ? 'Start solo crusade' : `Start ${VARIANTS_LABELS[variant.value]} crusade`,
-)
-
 function startCrusade(): void {
   const name = diverName.value.trim() || 'Diver'
   const settings: CrusadeSettings = { variant: variant.value }
@@ -91,7 +105,7 @@ async function hostOnlineDive(): Promise<void> {
 }
 
 function joinDive(): void {
-  const code = joinCode.value.trim().toUpperCase()
+  const code = cleanCode(joinCode.value)
   if (isRoomCode(code)) {
     navigateTo(`/dive/${code}`)
   }
@@ -113,30 +127,9 @@ function removeSlot(id: string): void {
   slotList.value = saves.listSaves()
 }
 
-const PHASE_LABELS: Record<string, string> = {
-  lobby: 'In lobby',
-  spin: 'Awaiting spin',
-  decision: 'Deciding the wheel',
-  strain: 'Deciding the strain',
-  deal: 'Dealing the pacts',
-  pacts: 'Picking pacts',
-  diving: 'Diving',
-  rewards: 'Reward draft',
-  forfeit: 'Forfeit pick',
-  complete: 'Complete',
-}
-
-function phaseLabel(phase: string): string {
-  return PHASE_LABELS[phase] ?? phase
-}
-
 function forgetDive(code: string): void {
   recentRooms.forgetRoom(code)
   onlineDives.value = onlineDives.value.filter(dive => dive.code !== code)
-}
-
-function formatSavedAt(doc: SaveDoc): string {
-  return new Date(doc.savedAt).toLocaleString()
 }
 
 // The climb is the game's own 3→10 ladder: each rung names its difficulty,
@@ -148,22 +141,126 @@ const ladder = computed(() => Array.from({ length: 8 }, (_, i) => {
     name: difficultyName(n),
     tier: baseTierFor(n),
     pips: missionsPerOperation(n),
-    height: 40 + i * 14,
+    height: 56 + i * 12,
   }
 }))
 
+// The six beats of a mission, mirroring the dive's PhaseRail. Each cell lights
+// in sequence (the `.lit` loop overlay) to read as a cycle.
 const loopSteps = [
-  { n: '01', label: 'Identify', cap: 'Name + warbonds', d: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21c.8-4 4-6.5 8-6.5s7.2 2.5 8 6.5' },
-  { n: '02', label: 'Spin', cap: 'Misfortune + front', d: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 12l5-4M9 6l1 3-3 1' },
-  { n: '03', label: 'Pact', cap: 'Private offer', d: 'M6 3h12v14l-6 4-6-4zM9 8h6M9 12h6' },
-  { n: '04', label: 'Reward', cap: 'Risk buys the ceiling', d: 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10' },
+  { label: 'Spin', cap: 'Draw a misfortune', d: 'M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0M12 3v18M3 12h18', ic: 'var(--gold)' },
+  { label: 'Decide', cap: 'Accept or opt out', d: 'M12 21v-8M12 13L6 7M12 13l6-6M4 3h5v5M20 3h-5v5', ic: 'var(--gold)' },
+  { label: 'Pacts', cap: 'Swear personal risk', d: 'M6 3h12v14l-6 4-6-4zM9 8h6M9 12h6', ic: 'var(--red)' },
+  { label: 'Dive', cap: 'Play the mission', d: 'M12 3v12M7 10l5 5 5-5M5 21h14', ic: 'var(--khaki)' },
+  { label: 'Report', cap: 'Stars + samples', d: 'M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6l-5.4 2.9 1.2-6-4.5-4.2 6.1-.7z', ic: 'var(--teal)' },
+  { label: 'Rewards', cap: 'Draft your loot', d: 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10', ic: 'var(--gold)' },
 ]
 
-const valorSources = [
-  { key: 'TEAM', label: 'Misfortune + strain', color: 'var(--red)' },
-  { key: 'PACT', label: 'Your chosen restrictions', color: 'var(--orange)' },
-  { key: 'PERF', label: 'Time + samples', color: 'var(--teal)' },
+// The Bridge Valor panel is an illustration: a representative strong build at a
+// mid difficulty so the odds ladder is legible before any crusade exists. The
+// example stakes are fixed display copy; the odds come from the engine.
+const PREVIEW_DIFFICULTY = 7
+const PREVIEW_SOURCES = [
+  { key: 'TEAM', name: 'Misfortune', value: 2, color: 'var(--gold)' },
+  { key: 'TEAM', name: 'Strain', value: 2, color: 'var(--orange)' },
+  { key: 'PACT', name: 'Pacts', value: 4, color: 'var(--red)' },
+  { key: 'PERF', name: 'Performance', value: 0.16, color: 'var(--teal)' },
 ]
+const PREVIEW_VALOR = PREVIEW_SOURCES.reduce((sum, src) => sum + src.value, 0)
+const TIER_LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
+
+const previewBase = computed(() => baseTierFor(PREVIEW_DIFFICULTY))
+// Odds top-down (S+ → floor); the base tier is the difficulty's hard floor and
+// everything below it is unreachable.
+const oddsRungs = computed(() => {
+  const baseIndex = TIER_LADDER.indexOf(previewBase.value)
+  return [...TIER_LADDER].reverse().map((tier) => {
+    const index = TIER_LADDER.indexOf(tier)
+    const odds = index < baseIndex
+      ? 0
+      : index === baseIndex
+        ? 1
+        : oddsToReach(PREVIEW_DIFFICULTY, PREVIEW_VALOR, tier)
+    return {
+      tier,
+      pct: Math.round(odds * 1000) / 10,
+      tag: index === baseIndex ? 'BASE' : index < baseIndex ? 'FLOOR' : null,
+    }
+  })
+})
+
+// The 11-cell meter, each cell coloured by the source that filled it; a
+// fractional stake shows as a sliver. Rendered bottom-up (column-reverse).
+const meterCells = computed(() => {
+  const cells: { color: string, filled: boolean, sliver: number }[] = []
+  for (const src of PREVIEW_SOURCES) {
+    const whole = Math.floor(src.value)
+    for (let i = 0; i < whole; i++) {
+      cells.push({ color: src.color, filled: true, sliver: 0 })
+    }
+    const frac = src.value - whole
+    if (frac > 0.001) {
+      cells.push({ color: src.color, filled: false, sliver: frac })
+    }
+  }
+  while (cells.length < VALOR_METER_MAX) {
+    cells.push({ color: 'var(--ground)', filled: false, sliver: 0 })
+  }
+  return cells.slice(0, VALOR_METER_MAX)
+})
+const previewValorLabel = computed(() => PREVIEW_VALOR.toFixed(2))
+
+// Major Order band: pass-through war metadata. `now` ticks so the countdown
+// stays honest while the page sits open.
+const now = ref(Date.now())
+const moFront = computed(() => liveOrder.value?.fronts[0] ?? null)
+const moFrontImage = computed(() => (moFront.value ? factionImageUrl(moFront.value) : undefined))
+const moPlanet = computed(() => liveOrder.value?.planets?.[0] ?? null)
+const moCountdown = computed(() => {
+  const expires = liveOrder.value?.expiresAt ? Date.parse(liveOrder.value.expiresAt) : Number.NaN
+  if (!Number.isFinite(expires)) {
+    return ''
+  }
+  const ms = expires - now.value
+  if (ms <= 0) {
+    return 'ending'
+  }
+  const totalHours = Math.floor(ms / 3_600_000)
+  return `${Math.floor(totalHours / 24)}D ${String(totalHours % 24).padStart(2, '0')}H`
+})
+
+// The join control: six code cells with a live caret and n/6 counter.
+function cleanCode(value: string): string {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
+}
+const codeCells = computed(() => {
+  const code = cleanCode(joinCode.value)
+  return Array.from({ length: 6 }, (_, i) => {
+    const ch = code[i] ?? ''
+    return {
+      ch,
+      active: i === Math.min(code.length, 5) && code.length < 6,
+      filled: Boolean(ch),
+    }
+  })
+})
+const codeLen = computed(() => cleanCode(joinCode.value).length)
+
+// Service record cards: live rooms and local saves share one shape.
+function opNumber(state: DiveState): number {
+  return catchUpOpsBehind(state.difficulty, state.settings?.variant ?? 'standard') + 1
+}
+function missionLabel(state: DiveState): string {
+  return `M${state.missionInOperation}/${missionsPerOperation(state.difficulty)}`
+}
+function ladderCells(difficulty: number): ('cleared' | 'current' | 'locked')[] {
+  return Array.from({ length: 8 }, (_, i) => {
+    const n = 3 + i
+    if (n < difficulty) return 'cleared'
+    return n === difficulty ? 'current' : 'locked'
+  })
+}
+const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
 </script>
 
 <template>
@@ -172,45 +269,45 @@ const valorSources = [
     class="page bridge"
     tabindex="-1"
   >
-    <section
-      class="hero grid-bg scan"
-      aria-label="Griffdive"
-    >
-      <div class="hero-mark rise">
-        <div class="ticks hero-mark-frame">
-          <BrandMark
-            :size="92"
-            title="Griffdive mark"
-            class="brand"
-          />
-        </div>
-      </div>
-      <div class="hero-copy">
-        <span class="lbl rise">Destroyer bridge · crusade companion</span>
-        <h1 class="disp hero-word slam">
-          Griffdive
-        </h1>
-        <div
-          class="hero-rule impact"
-          aria-hidden="true"
-        >
-          <span class="hazard" />
-          <span class="dash" />
-          <span class="hero-node" />
-        </div>
-        <p class="hero-tag rise">
-          CLIMB <span class="tag-strong">3 → 10</span>
-          <span
-            class="tag-dot"
-            aria-hidden="true"
-          />
-          RISK BUYS <span class="tag-gold">RARITY</span>
-        </p>
-      </div>
-    </section>
-
     <div class="bridge-grid">
       <div class="bridge-main">
+        <section
+          class="hero grid-bg scan"
+          aria-label="Griffdive"
+        >
+          <div class="hero-mark rise">
+            <div class="ticks hero-mark-frame">
+              <BrandMark
+                :size="92"
+                title="Griffdive mark"
+                class="brand"
+              />
+            </div>
+          </div>
+          <div class="hero-copy">
+            <span class="lbl rise">Destroyer bridge · crusade companion</span>
+            <h1 class="disp hero-word slam">
+              Griffdive
+            </h1>
+            <div
+              class="hero-rule impact"
+              aria-hidden="true"
+            >
+              <span class="hazard" />
+              <span class="dash" />
+              <span class="hero-node" />
+            </div>
+            <p class="hero-tag rise">
+              CLIMB <span class="tag-strong">3 → 10</span>
+              <span
+                class="tag-dot"
+                aria-hidden="true"
+              />
+              RISK BUYS <span class="tag-gold">RARITY</span>
+            </p>
+          </div>
+        </section>
+
         <section
           class="sec"
           aria-labelledby="climb-h"
@@ -287,27 +384,66 @@ const valorSources = [
             aria-label="Mission loop"
           >
             <li
-              v-for="s in loopSteps"
-              :key="s.n"
+              v-for="(s, i) in loopSteps"
+              :key="s.label"
               class="loop-step"
             >
-              <div class="loop-cell cut-sm">
+              <div
+                class="loop-cell"
+                :class="i === 0 ? 'chev-first' : 'chev'"
+              >
+                <span class="loop-face">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    :stroke="s.ic"
+                    stroke-width="2"
+                    aria-hidden="true"
+                  >
+                    <path :d="s.d" />
+                  </svg>
+                  <span class="loop-label cap">{{ s.label }}</span>
+                </span>
+                <span
+                  class="loop-lit"
+                  aria-hidden="true"
+                  :style="{ animationDelay: `${2.4 + i * 1.1}s` }"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path :d="s.d" />
+                  </svg>
+                  <span class="loop-label cap">{{ s.label }}</span>
+                </span>
+              </div>
+              <span class="loop-cap">{{ s.cap }}</span>
+            </li>
+            <li
+              class="loop-step loop-next"
+              aria-label="Then the next mission"
+            >
+              <div class="loop-cell loop-next-cell cut-sm">
                 <svg
-                  width="18"
-                  height="18"
+                  width="20"
+                  height="20"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  stroke-width="1.9"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+                  stroke-width="2"
                   aria-hidden="true"
                 >
-                  <path :d="s.d" />
+                  <path d="M20 12a8 8 0 0 1-14 5.3M4 12a8 8 0 0 1 14-5.3M18 3v4h-4M6 21v-4h4" />
                 </svg>
-                <span class="loop-label cap">{{ s.label }}</span>
               </div>
-              <span class="loop-cap">{{ s.cap }}</span>
+              <span class="loop-cap">NEXT</span>
             </li>
           </ol>
         </section>
@@ -332,9 +468,10 @@ const valorSources = [
               aria-label="Valor sources"
             >
               <li
-                v-for="v in valorSources"
-                :key="v.key"
-                class="src"
+                v-for="(v, i) in PREVIEW_SOURCES"
+                :key="v.name"
+                class="src rise"
+                :style="{ animationDelay: `${1.16 + i * 0.07}s` }"
               >
                 <span
                   class="src-chip"
@@ -342,30 +479,87 @@ const valorSources = [
                   aria-hidden="true"
                 />
                 <span
-                  class="src-key disp"
+                  class="src-val disp"
                   :style="{ color: v.color }"
-                >{{ v.key }}</span>
-                <span class="src-name">{{ v.label }}</span>
+                >+{{ v.value }}</span>
+                <span class="src-name">{{ v.name }}</span>
               </li>
             </ul>
-            <div class="valor-meter">
-              <div
-                class="meter-col"
-                role="img"
-                aria-label="Valor meter, capped at 11, overflow banks as Luck"
+            <span
+              class="valor-arrow"
+              aria-hidden="true"
+            >
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--line-5)"
+                stroke-width="2"
+              ><path d="M4 12h15M13 6l6 6-6 6" /></svg>
+            </span>
+            <div
+              class="meter-col"
+              role="progressbar"
+              aria-label="Valor"
+              :aria-valuemin="0"
+              :aria-valuemax="VALOR_METER_MAX"
+              :aria-valuenow="PREVIEW_VALOR"
+              :aria-valuetext="`${previewValorLabel} of ${VALOR_METER_MAX}`"
+            >
+              <span
+                v-for="(c, i) in meterCells"
+                :key="i"
+                class="meter-cell"
+                :style="{ background: c.filled ? c.color : 'var(--ground)', animationDelay: `${1.3 + i * 0.05}s` }"
               >
-                <i
-                  v-for="n in 11"
-                  :key="n"
-                  :style="{ '--i': n }"
+                <span
+                  v-if="c.sliver > 0"
+                  class="meter-sliver"
+                  :style="{ height: `${c.sliver * 100}%`, background: c.color }"
                 />
-              </div>
-              <div class="meter-copy">
-                <span class="lbl">Meter caps at 11</span>
-                <span class="muted small">
-                  Stacked risk rolls the ceiling — C→B→A→S→S+. Past 11, Valor banks as
-                  <strong class="luck">Luck</strong> and buys flat odds on the top rungs.
-                </span>
+              </span>
+            </div>
+            <span
+              class="valor-arrow"
+              aria-hidden="true"
+            >
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--line-5)"
+                stroke-width="2"
+              ><path d="M4 12h15M13 6l6 6-6 6" /></svg>
+            </span>
+            <div class="valor-num rise">
+              <span class="lbl">Valor</span>
+              <span class="disp valor-big">{{ previewValorLabel }}</span>
+              <span class="valor-diff">AT DIFFICULTY {{ PREVIEW_DIFFICULTY }}</span>
+            </div>
+            <div
+              class="odds"
+              role="img"
+              :aria-label="`Ceiling odds at difficulty ${PREVIEW_DIFFICULTY} with Valor ${previewValorLabel}`"
+            >
+              <div
+                v-for="(r, i) in oddsRungs"
+                :key="r.tier"
+                class="odds-row"
+                :class="{ floor: r.tag === 'FLOOR' }"
+              >
+                <span
+                  class="odds-tier disp"
+                  :data-tier="r.tier"
+                >{{ r.tier }}</span>
+                <div class="odds-track">
+                  <span
+                    class="odds-fill"
+                    :style="{ width: `${r.pct}%`, animationDelay: `${1.5 + i * 0.09}s` }"
+                  />
+                </div>
+                <span class="odds-pct">{{ r.tag ?? `${r.pct}%` }}</span>
               </div>
             </div>
           </div>
@@ -421,30 +615,75 @@ const valorSources = [
             class="join"
             @submit.prevent="joinDive"
           >
-            <label
-              for="room-code"
-              class="lbl"
-            >Join · room code</label>
+            <div class="join-head">
+              <label
+                for="room-code"
+                class="lbl"
+              >Join · room code</label>
+              <span
+                class="join-count"
+                :class="{ full: codeLen === 6 }"
+                aria-hidden="true"
+              >{{ codeLen }}/6</span>
+            </div>
             <div class="join-row">
-              <input
-                id="room-code"
-                v-model="joinCode"
-                class="nb join-input"
-                type="text"
-                maxlength="6"
-                placeholder="CODE"
-                aria-label="Room code"
-                autocapitalize="characters"
-                spellcheck="false"
-              >
+              <div class="code-wrap">
+                <div
+                  class="code-cells"
+                  :class="{ focus: codeFocused }"
+                  aria-hidden="true"
+                >
+                  <span
+                    v-for="(c, i) in codeCells"
+                    :key="i"
+                    class="code-cell"
+                    :class="{ filled: c.filled, active: c.active, focus: codeFocused }"
+                  >
+                    <span class="disp code-ch">{{ c.ch }}</span>
+                    <span
+                      v-if="c.active"
+                      class="code-caret"
+                      :class="{ blink: codeFocused }"
+                    />
+                  </span>
+                </div>
+                <input
+                  id="room-code"
+                  class="code-in"
+                  type="text"
+                  :value="joinCode"
+                  maxlength="6"
+                  autocomplete="off"
+                  spellcheck="false"
+                  autocapitalize="characters"
+                  aria-label="Room code"
+                  aria-describedby="room-code-hint"
+                  @input="joinCode = cleanCode(($event.target as HTMLInputElement).value)"
+                  @focus="codeFocused = true"
+                  @blur="codeFocused = false"
+                >
+              </div>
               <button
                 class="btn primary cut-sm join-btn"
                 type="submit"
-                :disabled="!isRoomCode(joinCode.trim().toUpperCase())"
+                :disabled="codeLen < 6"
               >
-                Join
+                <span class="disp">Join</span>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.6"
+                  aria-hidden="true"
+                ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
               </button>
             </div>
+            <span
+              id="room-code-hint"
+              class="sr-only"
+            >Six letters or digits from the host's invite</span>
           </form>
         </section>
 
@@ -452,57 +691,93 @@ const valorSources = [
           class="sec solo"
           aria-label="Solo drop"
         >
-          <div class="solo-head">
-            <span class="cap">Solo drop</span>
-            <label
-              for="diver-name"
-              class="lbl"
-            >Diver name</label>
+          <label
+            for="diver-name"
+            class="lbl"
+          >Solo drop · diver name</label>
+          <div class="solo-row">
+            <input
+              id="diver-name"
+              v-model="diverName"
+              class="nb solo-name"
+              type="text"
+              maxlength="32"
+              autocomplete="nickname"
+              spellcheck="false"
+            >
+            <button
+              class="btn ghost solo-drop"
+              type="button"
+              @click="startCrusade"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              ><path d="M12 3v11M7 10l5 5 5-5M6 21h12" /></svg>
+              <span>SOLO DROP</span>
+            </button>
           </div>
-          <input
-            id="diver-name"
-            v-model="diverName"
-            class="nb"
-            type="text"
-            maxlength="32"
-            autocomplete="nickname"
-            spellcheck="false"
-          >
           <button
-            class="btn primary block cut-sm solo-btn"
+            class="btn ghost variant-btn"
             type="button"
-            @click="startCrusade"
+            aria-haspopup="dialog"
+            :aria-label="`Variant and warbonds: ${variantLabel}, ${myWarbonds.length} warbonds`"
+            @click="variantOpen = true"
           >
-            {{ startLabel }}
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--khaki)"
+              stroke-width="1.8"
+              aria-hidden="true"
+            ><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" /><rect
+              x="14"
+              y="4"
+              width="4"
+              height="4"
+            /><rect
+              x="8"
+              y="10"
+              width="4"
+              height="4"
+            /><rect
+              x="16"
+              y="16"
+              width="4"
+              height="4"
+            /></svg>
+            <span>VARIANT &amp; WARBONDS</span>
+            <span class="variant-meta">{{ variantLabel }} · {{ myWarbonds.length }}</span>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--muted)"
+              stroke-width="2.2"
+              aria-hidden="true"
+            ><path d="M9 6l6 6-6 6" /></svg>
           </button>
-          <details class="adv panel">
-            <summary>Variant &amp; warbonds</summary>
-            <CrusadeSetup
-              v-model:variant="variant"
-              :show-start="false"
-            />
-            <p class="muted small">
-              Warbonds are personal — reward offers only include items you own.
-            </p>
-            <WarbondPicker
-              :warbond-codes="myWarbonds"
-              @update:warbond-codes="setMyWarbonds"
-            />
-          </details>
         </section>
 
         <section
           class="sec record"
           aria-labelledby="rec-h"
         >
-          <div class="sec-h">
+          <div class="record-head">
             <h2
               id="rec-h"
               class="lbl"
             >
-              Continue <span class="muted">· {{ onlineDives.length + slotList.length }}</span>
+              Service record <span class="muted">· {{ onlineDives.length + slotList.length }}</span>
             </h2>
-            <span class="dash" />
             <label class="import small muted">
               <input
                 type="file"
@@ -521,110 +796,194 @@ const valorSources = [
             Checking for live dives…
           </div>
           <template v-else>
-            <div
+            <ul
               v-if="onlineDives.length > 0"
-              class="group"
+              class="slot-list"
             >
-              <h3 class="cap">
-                Online
-              </h3>
-              <ul class="slot-list">
-                <li
-                  v-for="dive in onlineDives"
-                  :key="dive.code"
-                  class="slot cut-sm"
-                >
-                  <div class="slot-head">
-                    <span class="mono slot-code">{{ dive.code }}</span>
-                    <span
-                      v-if="dive.state?.settings"
-                      class="chip"
-                    >{{ VARIANTS_LABELS[dive.state.settings.variant] }}</span>
+              <li
+                v-for="dive in onlineDives"
+                :key="dive.code"
+                class="record-card"
+              >
+                <template v-if="dive.state">
+                  <div class="rc-head">
+                    <span class="rc-name">{{ dive.state.divers[0]?.name ?? 'Crusade' }} · {{ VARIANTS_LABELS[dive.state.settings?.variant ?? 'standard'] }}</span>
+                    <span class="rc-live"><span
+                      class="pulse rc-dot"
+                      aria-hidden="true"
+                    />LIVE ROOM {{ dive.code }}</span>
                     <span
                       v-if="dive.saved"
                       class="chip gold"
                       :title="`Saved as “${dive.saved.name}” — kept past the idle timeout`"
                     >saved</span>
-                  </div>
-                  <p
-                    v-if="dive.state"
-                    class="muted small slot-line"
-                  >
-                    {{ difficultyName(dive.state.difficulty) }} ({{ dive.state.difficulty }})
-                    · {{ phaseLabel(dive.state.phase) }}
-                    · {{ dive.state.divers.length }} {{ dive.state.divers.length === 1 ? 'diver' : 'divers' }}
-                  </p>
-                  <p
-                    v-else
-                    class="muted small slot-line"
-                  >
-                    Unreachable right now — the dive server may be down.
-                  </p>
-                  <div class="row slot-actions">
-                    <NuxtLink
-                      class="btn primary tiny cut-sm"
-                      :to="`/dive/${dive.code}`"
-                    >Rejoin</NuxtLink>
-                    <button
-                      class="btn ghost tiny"
-                      type="button"
-                      @click="forgetDive(dive.code)"
+                    <div
+                      class="rc-squad"
+                      role="img"
+                      :aria-label="`Squad: ${dive.state.divers.map(d => d.name).join(', ')}`"
                     >
-                      Forget
-                    </button>
+                      <span
+                        v-for="d in dive.state.divers"
+                        :key="d.id"
+                        class="rc-avatar disp"
+                        :class="{ host: d.id === dive.state.hostId }"
+                      >{{ d.name.slice(0, 1).toUpperCase() }}</span>
+                    </div>
                   </div>
-                </li>
-              </ul>
-            </div>
-
-            <div
-              v-if="slotList.length > 0"
-              class="group"
-            >
-              <h3 class="cap">
-                Local saves
-              </h3>
-              <ul class="slot-list">
-                <li
-                  v-for="{ id, doc } in slotList"
-                  :key="id"
-                  class="slot cut-sm"
+                  <div class="rc-body">
+                    <span class="disp rc-diff">{{ dive.state.difficulty }}</span>
+                    <div class="rc-meta">
+                      <span class="rc-diffname">{{ difficultyName(dive.state.difficulty) }}</span>
+                      <div class="rc-op">
+                        <span>OP {{ opNumber(dive.state) }}</span>
+                        <span
+                          class="rc-pips"
+                          aria-hidden="true"
+                        ><i
+                          v-for="i in missionsPerOperation(dive.state.difficulty)"
+                          :key="i"
+                          :class="{ on: i <= dive.state.missionInOperation }"
+                        /></span>
+                        <span>{{ missionLabel(dive.state) }}</span>
+                      </div>
+                    </div>
+                    <NuxtLink
+                      class="btn ghost rc-resume"
+                      :to="`/dive/${dive.code}`"
+                    >
+                      <span>RESUME</span>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.4"
+                        aria-hidden="true"
+                      ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                    </NuxtLink>
+                  </div>
+                  <div
+                    class="rc-ladder"
+                    role="img"
+                    :aria-label="`Ladder: on difficulty ${dive.state.difficulty} of 10`"
+                  >
+                    <span class="rc-lad-end">3</span>
+                    <div class="rc-lad">
+                      <i
+                        v-for="(c, i) in ladderCells(dive.state.difficulty)"
+                        :key="i"
+                        :class="c"
+                      />
+                    </div>
+                    <span class="rc-lad-end">10</span>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="var(--muted)"
+                      stroke-width="2"
+                      aria-hidden="true"
+                    ><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></svg>
+                  </div>
+                </template>
+                <div
+                  v-else
+                  class="rc-unreachable"
                 >
-                  <div class="slot-head">
-                    <span class="slot-name">{{ doc.slotName }}</span>
+                  <span class="mono slot-code">{{ dive.code }}</span>
+                  <span class="muted small">Unreachable right now — the dive server may be down.</span>
+                  <button
+                    class="btn ghost tiny"
+                    type="button"
+                    @click="forgetDive(dive.code)"
+                  >
+                    Forget
+                  </button>
+                </div>
+              </li>
+            </ul>
+
+            <ul
+              v-if="slotList.length > 0"
+              class="slot-list"
+            >
+              <li
+                v-for="{ id, doc } in slotList"
+                :key="id"
+                class="record-card local"
+              >
+                <div class="rc-local-body">
+                  <div class="rc-local-head">
+                    <span class="rc-name">{{ doc.slotName }}</span>
                     <span
                       v-if="doc.state.achieved"
                       class="chip gold"
-                    >achieved</span>
+                    >ACHIEVED</span>
+                    <span class="rc-local-tag">LOCAL SAVE</span>
                   </div>
-                  <p class="muted small slot-line">
-                    {{ difficultyName(doc.state.difficulty) }} ({{ doc.state.difficulty }})
-                    · {{ phaseLabel(doc.state.phase) }}
-                    · {{ formatSavedAt(doc) }}
-                  </p>
-                  <div class="row slot-actions">
-                    <NuxtLink
-                      class="btn primary tiny cut-sm"
-                      :to="`/dive/${id}`"
-                    >Open</NuxtLink>
-                    <button
-                      class="btn ghost tiny"
-                      type="button"
-                      @click="saves.exportSave(id)"
-                    >
-                      Export
-                    </button>
-                    <button
-                      class="btn danger tiny"
-                      type="button"
-                      @click="removeSlot(id)"
-                    >
-                      Delete
-                    </button>
+                  <div
+                    class="rc-ladder"
+                    role="img"
+                    :aria-label="`Ladder: on difficulty ${doc.state.difficulty} of 10`"
+                  >
+                    <div class="rc-lad">
+                      <i
+                        v-for="(c, i) in ladderCells(doc.state.difficulty)"
+                        :key="i"
+                        :class="c"
+                      />
+                    </div>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="var(--gold)"
+                      stroke="var(--gold)"
+                      stroke-width="2"
+                      aria-hidden="true"
+                    ><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></svg>
                   </div>
-                </li>
-              </ul>
-            </div>
+                </div>
+                <NuxtLink
+                  class="btn ghost rc-open"
+                  :to="`/dive/${id}`"
+                >OPEN</NuxtLink>
+                <button
+                  class="icon-btn rc-icon"
+                  type="button"
+                  :aria-label="`Export ${doc.slotName}`"
+                  @click="saves.exportSave(id)"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    aria-hidden="true"
+                  ><path d="M12 3v12M7 10l5 5 5-5M4 21h16" /></svg>
+                </button>
+                <button
+                  class="icon-btn rc-icon danger"
+                  type="button"
+                  :aria-label="`Delete ${doc.slotName}`"
+                  @click="removeSlot(id)"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    aria-hidden="true"
+                  ><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              </li>
+            </ul>
 
             <div
               v-if="onlineDives.length === 0 && slotList.length === 0"
@@ -641,6 +1000,130 @@ const valorSources = [
         </section>
       </aside>
     </div>
+
+    <section
+      v-if="liveOrder"
+      class="mo-band mo-in"
+      aria-label="Major Order"
+    >
+      <div class="mo-radar">
+        <span
+          class="hazard mo-radar-bar"
+          aria-hidden="true"
+        />
+        <svg
+          class="pulse"
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--gold)"
+          stroke-width="1.8"
+          aria-hidden="true"
+        ><path d="M5 12a7 7 0 0 1 14 0M8.5 12a3.5 3.5 0 0 1 7 0" /><circle
+          cx="12"
+          cy="12"
+          r="1"
+        /><path d="M12 13v8" /></svg>
+      </div>
+      <div class="mo-title">
+        <span class="lbl gold">Major Order</span>
+        <span class="mo-name">{{ liveOrder.title ?? 'Play the live war front' }}</span>
+      </div>
+      <div
+        v-if="moPlanet"
+        class="mo-planet"
+      >
+        <img
+          v-if="moFrontImage"
+          :src="moFrontImage"
+          alt=""
+          width="32"
+          height="32"
+        >
+        <div class="mo-planet-body">
+          <div class="mo-planet-head">
+            <span>{{ moPlanet.name }}</span>
+            <span class="mo-pct">{{ moPlanet.liberation }}%</span>
+          </div>
+          <div
+            class="mo-track"
+            role="progressbar"
+            :aria-label="`${moPlanet.name} liberation`"
+            :aria-valuenow="moPlanet.liberation"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <span
+              class="mo-fill"
+              :style="{ width: `${moPlanet.liberation}%` }"
+            />
+          </div>
+        </div>
+      </div>
+      <div
+        v-if="moCountdown"
+        class="mo-count"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--khaki)"
+          stroke-width="1.8"
+          aria-hidden="true"
+        ><circle
+          cx="12"
+          cy="13"
+          r="8"
+        /><path d="M12 9v4l3 2M9 2h6" /></svg>
+        <span class="disp mo-count-n">{{ moCountdown }}</span>
+        <span class="sr-only">remaining</span>
+      </div>
+      <div class="mo-play">
+        <span class="lbl">Play it:</span>
+        <span class="mo-carrot">
+          <span
+            class="hex"
+            aria-hidden="true"
+          />+{{ MAJOR_ORDER_REROLL_BONUS }} REROLL
+        </span>
+      </div>
+    </section>
+    <section
+      v-else
+      class="mo-band mo-empty"
+      aria-label="Major Order"
+    >
+      <span class="lbl">Major Order</span>
+      <span class="muted small">
+        {{ moStatus === 'none' ? 'No active Major Order — the wheel picks the front' : 'War feed unavailable — the wheel picks the front' }}
+      </span>
+    </section>
+
+    <footer class="bridge-foot">
+      <span>FAN PROJECT · NOT AFFILIATED WITH ARROWHEAD GAME STUDIOS OR SONY</span>
+      <span
+        class="foot-marks"
+        aria-hidden="true"
+      ><i /><i /><i /></span>
+    </footer>
+
+    <AppDialog
+      v-model:open="variantOpen"
+      title="Variant & warbonds"
+      description="Your starting kit and the warbonds you own. Rewards roll from your warbonds only."
+    >
+      <CrusadeSetup
+        v-model:variant="variant"
+        :show-start="false"
+      />
+      <WarbondPicker
+        :warbond-codes="myWarbonds"
+        @update:warbond-codes="setMyWarbonds"
+      />
+    </AppDialog>
   </main>
 </template>
 
@@ -663,7 +1146,7 @@ const valorSources = [
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
-  min-height: 168px;
+  min-height: 148px;
   display: flex;
   align-items: center;
   gap: clamp(1rem, 2vw, 1.6rem);
@@ -680,8 +1163,8 @@ const valorSources = [
 .hero-mark-frame {
   display: grid;
   place-items: center;
-  width: 10rem;
-  height: 10rem;
+  width: 8.5rem;
+  height: 8.5rem;
   background: rgba(19, 21, 15, 0.85);
   border: 1px solid var(--line-2);
 }
@@ -739,6 +1222,7 @@ const valorSources = [
 .bridge-main,
 .bridge-deploy {
   display: grid;
+  grid-auto-rows: max-content;
   gap: var(--gap-panel);
   min-width: 0;
   min-height: 0;
@@ -755,7 +1239,7 @@ const valorSources = [
   list-style: none;
   margin: 0;
   padding: 0;
-  min-height: 12.5rem;
+  min-height: 10.75rem;
 }
 .rung-item {
   display: flex;
@@ -992,5 +1476,375 @@ const valorSources = [
   .ladder { overflow-x: auto; padding-bottom: 4px; }
   .rung-item { flex: 0 0 4.6rem; }
   .rung-name { overflow-wrap: anywhere; }
+}
+
+/* Loop — chevron cells + the cycling lit overlay + NEXT -------------------- */
+.loop { gap: 2px; }
+.loop-cell {
+  position: relative;
+  overflow: hidden;
+  height: 3.6rem;
+  border: 0;
+  background: var(--raised);
+}
+.loop-face,
+.loop-lit {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0 0.7rem;
+}
+.loop-face { color: var(--text); }
+.loop-lit {
+  background: var(--gold);
+  color: var(--on-gold);
+  opacity: 0;
+  animation: loopLit 6.6s linear infinite both;
+}
+.loop-next { flex: 0 0 3.25rem; }
+.loop-next-cell {
+  display: grid;
+  place-items: center;
+  height: 3.6rem;
+  border: 1px dashed var(--line-4);
+  background: transparent;
+  color: var(--khaki);
+}
+
+/* Valor — sources, meter, big number, odds ladder ------------------------- */
+.valor { display: flex; align-items: center; gap: 1rem; }
+.src-val { font-size: 0.72rem; min-width: 2.4rem; }
+.valor-arrow { display: inline-flex; flex-shrink: 0; }
+.meter-col {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  padding: 2px;
+  width: 1.6rem;
+  height: 6rem;
+  border: 1px solid var(--line-2);
+  flex-shrink: 0;
+}
+.meter-cell {
+  position: relative;
+  flex-grow: 1;
+  animation: cellOn 0.22s ease-out both;
+}
+.meter-sliver { position: absolute; left: 0; right: 0; bottom: 0; }
+.valor-num { display: flex; flex-direction: column; gap: 0.3rem; flex-shrink: 0; width: 7.5rem; }
+.valor-big { font-size: 2.3rem; color: var(--gold); line-height: 1; }
+.valor-diff { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: var(--muted); white-space: nowrap; }
+.odds { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.odds-row { display: flex; align-items: center; gap: 0.6rem; height: 1rem; }
+.odds-row.floor { opacity: 0.45; }
+.odds-tier {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 1rem;
+  flex-shrink: 0;
+  font-size: 10px;
+  border: 1px solid currentColor;
+}
+.odds-tier[data-tier='C'] { color: var(--tier-c); }
+.odds-tier[data-tier='B'] { color: var(--tier-b); }
+.odds-tier[data-tier='A'] { color: var(--tier-a); }
+.odds-tier[data-tier='S'] { color: var(--tier-s); }
+.odds-tier[data-tier='S+'] { color: var(--tier-splus); }
+.odds-track { flex-grow: 1; height: 5px; background: var(--raised); }
+.odds-fill {
+  display: block;
+  height: 5px;
+  background: currentColor;
+  animation: growX 0.7s var(--ease-out) both;
+  transform-origin: left center;
+}
+.odds-row[data-tier] .odds-fill { color: inherit; }
+.odds-row:nth-child(1) .odds-fill { background: var(--tier-splus); }
+.odds-row:nth-child(2) .odds-fill { background: var(--tier-s); }
+.odds-row:nth-child(3) .odds-fill { background: var(--tier-a); }
+.odds-row:nth-child(4) .odds-fill { background: var(--tier-b); }
+.odds-row:nth-child(5) .odds-fill { background: var(--tier-c); }
+.odds-pct { width: 3.2rem; flex-shrink: 0; text-align: right; font-size: 0.75rem; font-weight: 700; color: var(--text); }
+
+/* Join — six code cells with a live caret --------------------------------- */
+.join-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.join-count { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--muted); }
+.join-count.full { color: var(--gold); }
+.code-wrap { position: relative; flex-grow: 1; min-width: 0; height: 3.5rem; }
+.code-cells { position: absolute; inset: 0; display: flex; gap: 4px; }
+.code-cells .code-cell:nth-child(3) { margin-right: 0.7rem; }
+.code-cell {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  background: var(--ground);
+  border: 1px solid var(--line-2);
+  border-bottom: 2px solid var(--line-3);
+}
+.code-cell.filled { background: var(--raised); border-color: var(--line-5); }
+.code-cell.active.focus { border-color: var(--gold); border-bottom-color: var(--gold); }
+.code-cell.filled.active { border-bottom-color: var(--gold); }
+.code-ch { font-size: 1.5rem; color: var(--text); }
+.code-caret {
+  position: absolute;
+  left: 50%;
+  bottom: 0.6rem;
+  width: 1rem;
+  height: 2px;
+  margin-left: -0.5rem;
+  background: var(--line-5);
+}
+.code-caret.blink { background: var(--gold); animation: caretBlink 1s steps(1) infinite; }
+@keyframes caretBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.code-in {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font-size: 1rem;
+  text-transform: uppercase;
+  cursor: text;
+}
+.code-in:focus { outline: none; }
+.code-in::selection { background: transparent; }
+.join-btn { flex-shrink: 0; width: 6.5rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
+
+/* Solo — split drop from variant & warbonds -------------------------------- */
+.solo-row { display: flex; gap: 0.5rem; }
+.solo-name { flex-grow: 1; min-width: 0; }
+.solo-drop {
+  flex-shrink: 0;
+  width: 10.25rem;
+  height: 3.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  border-color: var(--gold);
+  color: var(--gold);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+.variant-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 2.75rem;
+  padding: 0 0.75rem;
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+.variant-meta { margin-left: auto; color: var(--muted); }
+
+/* Service record --------------------------------------------------------- */
+.record-head { display: flex; align-items: center; gap: 0.75rem; height: 2.75rem; }
+.record-head .import { margin-left: auto; }
+.record-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: var(--panel);
+  border: 1px solid var(--line-4);
+}
+.record-card.local {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.7rem 0.7rem 1rem;
+  background: var(--rail);
+  border-color: var(--line-2);
+}
+.rc-head { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.rc-name { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.08em; white-space: nowrap; }
+.rc-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 1.4rem;
+  padding: 0 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--teal) 50%, transparent);
+  background: color-mix(in srgb, var(--teal) 8%, transparent);
+  color: var(--teal);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+.rc-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); }
+.rc-squad { margin-left: auto; display: flex; gap: 3px; }
+.rc-avatar {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  background: var(--line-2);
+  color: var(--text);
+}
+.rc-avatar.host { background: var(--gold); color: var(--on-gold); }
+.rc-body { display: flex; align-items: center; gap: 0.9rem; }
+.rc-diff { font-size: 2.75rem; color: var(--gold); line-height: 1; }
+.rc-meta { display: flex; flex-direction: column; gap: 0.35rem; flex-grow: 1; min-width: 0; }
+.rc-diffname { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.12em; color: var(--gold); }
+.rc-op { display: flex; align-items: center; gap: 0.5rem; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--khaki); }
+.rc-pips { display: flex; gap: 3px; }
+.rc-pips i { width: 1rem; height: 6px; border: 1px solid var(--line-5); }
+.rc-pips i.on { background: var(--gold); border-color: var(--gold); }
+.rc-resume {
+  flex-shrink: 0;
+  height: 2.75rem;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border-color: var(--gold);
+  color: var(--gold);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+.rc-ladder { display: flex; align-items: center; gap: 0.5rem; }
+.rc-lad-end { font-size: 10px; font-weight: 700; color: var(--muted); }
+.rc-lad { flex-grow: 1; display: flex; gap: 3px; }
+.rc-lad i { flex: 1 1 0; height: 4px; background: var(--line-3); }
+.rc-lad i.cleared { background: var(--khaki); }
+.rc-lad i.current { height: 8px; background: var(--gold); }
+.rc-lad i.locked { background: var(--line-2); }
+.rc-unreachable { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.rc-local-body { display: flex; flex-direction: column; gap: 0.6rem; flex-grow: 1; min-width: 0; }
+.rc-local-head { display: flex; align-items: center; gap: 0.5rem; }
+.rc-local-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: var(--muted); }
+.rc-open {
+  flex-shrink: 0;
+  height: 2.75rem;
+  padding: 0 0.9rem;
+  display: flex;
+  align-items: center;
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+.rc-icon {
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-2);
+  color: var(--khaki);
+}
+.rc-icon.danger:hover { color: var(--red); border-color: var(--red); }
+
+/* Major Order band + footer ---------------------------------------------- */
+.mo-band {
+  flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid var(--line-2);
+  background: var(--rail);
+}
+.mo-band.mo-in { animation: moIn 0.55s var(--ease-out) both; }
+.mo-empty { align-items: center; gap: 0.75rem; padding: 0.9rem var(--pad-page); }
+.mo-radar {
+  position: relative;
+  flex-shrink: 0;
+  width: 4rem;
+  display: grid;
+  place-items: center;
+  background: var(--panel);
+  border-right: 1px solid var(--line-2);
+}
+.mo-radar-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; }
+.mo-title {
+  flex-shrink: 0;
+  width: 24rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0 1.5rem;
+  border-right: 1px solid var(--line-1);
+}
+.mo-name { font-size: 1rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mo-planet { flex-grow: 1; min-width: 0; display: flex; align-items: center; gap: 0.9rem; padding: 0 1.5rem; }
+.mo-planet img { width: 2rem; height: 2rem; object-fit: contain; flex-shrink: 0; }
+.mo-planet-body { flex-grow: 1; display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+.mo-planet-head { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em; }
+.mo-pct { color: var(--red); }
+.mo-track { height: 6px; background: var(--line-3); }
+.mo-fill { display: block; height: 6px; background: var(--red); }
+.mo-count {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 1.5rem;
+  border-left: 1px solid var(--line-1);
+}
+.mo-count-n { font-size: 1.1rem; color: var(--text); }
+.mo-play {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 1.5rem;
+  border-left: 1px solid var(--line-1);
+}
+.mo-carrot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 1.75rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--gold);
+  background: var(--raised);
+  color: var(--gold);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+.bridge-foot {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1.5rem;
+  background: var(--ground);
+  border-top: 1px solid var(--raised);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+.foot-marks { display: flex; gap: 4px; }
+.foot-marks i { width: 18px; height: 2px; background: var(--line-3); }
+.foot-marks i:nth-child(2) { width: 6px; }
+.foot-marks i:nth-child(3) { width: 2px; background: var(--line-5); }
+
+@media (max-width: 1020px) {
+  .mo-band { flex-wrap: wrap; }
+  .mo-title,
+  .mo-planet,
+  .mo-count,
+  .mo-play { width: auto; flex: 1 1 14rem; padding: 0.6rem 1rem; border: 0; }
+  .rc-ladder { flex-wrap: wrap; }
 }
 </style>
