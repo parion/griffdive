@@ -8,6 +8,8 @@ const props = defineProps<{
   tone: 'common' | 'rare' | 'super'
   label: string
   icon: string
+  // The weighted valor contribution (design shows this, not the max).
+  value?: string
 }>()
 
 const emit = defineEmits<{ 'update:modelValue': [value: number] }>()
@@ -106,7 +108,14 @@ function step(delta: number): void {
       <span class="canister-label">{{ label }}</span>
       <div class="canister-count">
         <span class="disp count-num">{{ modelValue }}</span>
-        <span class="count-max">/ {{ max }}</span>
+        <span
+          v-if="value"
+          class="count-val"
+        >{{ value }}</span>
+        <span
+          v-else
+          class="count-max"
+        >/ {{ max }}</span>
       </div>
       <div class="step-row">
         <button
@@ -189,6 +198,7 @@ function step(delta: number): void {
 }
 .count-num { font-size: 2rem; color: var(--text); }
 .count-max { font-size: 11px; font-weight: 700; color: var(--dim); }
+.count-val { font-size: 11px; font-weight: 700; color: var(--teal); }
 .step-row { display: flex; gap: 6px; }
 .step {
   width: 44px;

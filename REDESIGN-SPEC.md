@@ -563,6 +563,13 @@ context; no bottom-sheet component (only unused `.sheet-*` CSS in `main.css:766-
         design's skull SVG, tinted per context via a new `tone` prop (`red` pact default, `gold`
         the pacts team-bar misfortune, `orange` strain). This lands on the wheel, dive, pacts and
         report at once.
+      - **Mission report — done this pass:** the banner bread now reads `OP N · MISSION M/O / D ·
+        NAME` (design) instead of `MISSION M/O / Name`; the Samples card surfaces the raw valor
+        contribution against its cap (`0.032 / .300`, `CAPPED`) and the canister shows that value
+        instead of `/max`; the Time card shows `value / .200` beside the percent; the reward
+        preview's bottom section is the design's **stars→options** distribution (1★…N★, current
+        gold) instead of the tier ladder (the ceiling already lives on the Valor rail). `starsToOptions`
+        is actually `STARS_TO_OPTIONS` in `config.ts` — fixed after the first build caught it.
       - **Pacts — done this pass:** the title now reads `Operation N · Mission M of O · <diver>'s
         offer` (was missing the operation number); the team-bar Team cell draws one square per risk
         point colored by source (gold misfortune / orange op-long) with a 32px number, matching the

@@ -3,11 +3,13 @@ import {
   MAX_OPTIONS,
   SAMPLE_VALOR_CAP,
   SAMPLE_VALOR_WEIGHTS,
+  STARS_TO_OPTIONS,
+  TIME_VALOR_MAX,
   bonusIntervalFor,
   maxStarsFor,
   sampleAvailability,
 } from '~~/shared/engine/config'
-import { difficultyName } from '~~/shared/engine/progression'
+import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import { performanceValor, optionsForDiver } from '~~/shared/engine/rewards'
 import {
   currentFront,
@@ -15,7 +17,7 @@ import {
   pactRiskOf,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
-import type { DiverState, DiveState, MissionOutcome, MissionReport, RewardTier, SampleCounts } from '~~/shared/engine/types'
+import type { DiverState, DiveState, MissionOutcome, MissionReport, SampleCounts } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -29,8 +31,6 @@ const emit = defineEmits<{
   submit: [payload: MissionReport]
   cancel: []
 }>()
-
-const LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
 const maxStars = computed(() => maxStarsFor(props.state.difficulty))
 const sampleMax = computed(() => sampleAvailability(props.state.difficulty))
@@ -55,6 +55,8 @@ const performance = computed(() => performanceValor(props.outcome === 'success' 
 const performanceText = computed(() => performance.value <= 0 ? '0' : `+${performance.value.toFixed(2)}`)
 
 const timeFrac = computed(() => Math.min(1, Math.max(0, timePct.value / 100)))
+const timeNote = computed(() =>
+  `${(timeFrac.value * TIME_VALOR_MAX).toFixed(3)} / .${Math.round(TIME_VALOR_MAX * 1000).toString().padStart(3, '0')}`)
 
 // Sample contribution to the performance cap, per rarity — the tri-color bar.
 const sampleFractions = computed(() => {
@@ -72,11 +74,19 @@ const sampleFractions = computed(() => {
   }
 })
 const sampleCapFrac = computed(() => Math.min(1, sampleFractions.value.total / SAMPLE_VALOR_CAP))
+// The design surfaces the raw valor contribution against its cap, not a label.
+const sampleNote = computed(() => {
+  const cap = `.${Math.round(SAMPLE_VALOR_CAP * 1000).toString().padStart(3, '0')}`
+  const capped = sampleFractions.value.total > SAMPLE_VALOR_CAP ? ' CAPPED' : ''
+  return `${sampleFractions.value.total.toFixed(3)} / ${cap}${capped}`
+})
+
+const opNumber = computed(() =>
+  catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'standard') + 1)
 
 const ceiling = computed(() => (props.self ? diverCeiling(props.state, props.self) : 'C'))
 const optionCount = computed(() =>
   optionsForDiver(stars.value, ceiling.value, props.self?.failedPactIds.length ?? 0))
-const ceilingIndex = computed(() => LADDER.indexOf(ceiling.value))
 
 // The diver's locked Valor floor: shared team risk plus their own pact risk
 // (failed pacts already voided by the selector).
@@ -98,7 +108,17 @@ const sampleRows = computed(() => [
   { key: 'common' as const, label: 'Common', tone: 'common' as const, icon: '/images/svgs/Common_Sample_Icon.svg', max: sampleMax.value.common },
   { key: 'rare' as const, label: 'Rare', tone: 'rare' as const, icon: '/images/svgs/Rare_Sample_Icon.svg', max: sampleMax.value.rare },
   { key: 'super' as const, label: 'Super', tone: 'super' as const, icon: '/images/svgs/Super_Sample_Icon.svg', max: sampleMax.value.super },
-].filter(row => row.max > 0))
+].filter(row => row.max > 0).map(row => ({
+  ...row,
+  value: (samples.value[row.key] * SAMPLE_VALOR_WEIGHTS[row.key]).toFixed(3),
+})))
+
+// The design's reward table is a stars→options distribution, not the tier
+// ladder (the ceiling already lives on the Valor rail).
+const rewardTable = computed(() => Array.from({ length: maxStars.value }, (_, i) => {
+  const k = i + 1
+  return { stars: k, options: STARS_TO_OPTIONS[k] ?? 1, current: k === stars.value }
+}))
 
 function submit(): void {
   emit('submit', report.value)
@@ -129,9 +149,9 @@ function submit(): void {
         />
       </div>
       <div class="banner-bread">
-        <span>MISSION {{ state.missionInOperation }}/{{ opLength }}</span>
+        <span>OP {{ opNumber }} · MISSION {{ state.missionInOperation }}/{{ opLength }}</span>
         <span class="sep">/</span>
-        <span>{{ difficultyName(state.difficulty) }}</span>
+        <span>{{ state.difficulty }} · {{ difficultyName(state.difficulty).toUpperCase() }}</span>
         <span class="sep">/</span>
         <span :style="front ? { color: front.accent } : undefined">{{ frontLabel }}</span>
         <span class="sep">/</span>
@@ -213,7 +233,7 @@ function submit(): void {
         >
           <div class="rcard-head">
             <span class="lbl">Samples</span>
-            <span class="rcard-note teal-note">FEEDS PERFORMANCE</span>
+            <span class="rcard-note teal-note">{{ sampleNote }}</span>
           </div>
           <div class="sample-grid">
             <SampleCanister
@@ -224,6 +244,7 @@ function submit(): void {
               :tone="row.tone"
               :label="row.label"
               :icon="row.icon"
+              :value="row.value"
             />
           </div>
         </section>
@@ -237,6 +258,7 @@ function submit(): void {
             :max="100"
             label="Time remaining"
             aria-label="Time remaining percent"
+            :note="timeNote"
           />
         </section>
       </div>
@@ -297,17 +319,23 @@ function submit(): void {
             </span>
           </div>
           <div
-            class="tier-table"
+            class="stars-table"
             aria-hidden="true"
           >
             <div
-              v-for="(tier, i) in LADDER"
-              :key="tier"
-              class="tier-col"
-              :class="{ reached: i <= ceilingIndex }"
+              v-for="row in rewardTable"
+              :key="row.stars"
+              class="stars-col"
+              :class="{ current: row.current }"
             >
-              <span class="tier-block" />
-              <span class="tier-label">{{ tier }}</span>
+              <div class="stars-blocks">
+                <span
+                  v-for="j in MAX_OPTIONS"
+                  :key="j"
+                  :class="{ on: j <= row.options }"
+                />
+              </div>
+              <span class="stars-label">{{ row.stars }}★</span>
             </div>
           </div>
         </section>
@@ -586,18 +614,20 @@ function submit(): void {
 }
 .crate.on { border-style: solid; border-color: var(--gold); background: color-mix(in srgb, var(--gold) 6%, var(--rail)); color: var(--gold); }
 .crate svg { width: 26px; height: 26px; }
-.tier-table {
+.stars-table {
   display: flex;
   align-items: flex-end;
   gap: 6px;
   padding-top: 10px;
   border-top: 1px dashed var(--line-2);
 }
-.tier-col { flex-grow: 1; flex-basis: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; }
-.tier-block { width: 100%; height: 6px; background: var(--line-3); }
-.tier-col.reached .tier-block { background: var(--teal); }
-.tier-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); }
-.tier-col.reached .tier-label { color: var(--teal); }
+.stars-col { flex-grow: 1; flex-basis: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.stars-blocks { display: flex; flex-direction: column-reverse; gap: 2px; width: 100%; }
+.stars-blocks span { height: 6px; background: var(--raised); }
+.stars-col:not(.current) .stars-blocks span.on { background: var(--line-5); }
+.stars-col.current .stars-blocks span.on { background: var(--gold); }
+.stars-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); }
+.stars-col.current .stars-label { color: var(--gold); }
 
 /* Performance */
 .perf-card { flex-grow: 1; }

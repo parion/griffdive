@@ -8,6 +8,8 @@ const props = withDefaults(defineProps<{
   label: string
   ariaLabel?: string
   tone?: string
+  // The design surfaces the raw valor contribution against its cap.
+  note?: string
 }>(), {
   max: 100,
   cells: 20,
@@ -39,7 +41,13 @@ function nudge(delta: number): void {
   >
     <div class="seg-head">
       <span class="lbl">{{ label }}</span>
-      <span class="disp seg-value">{{ modelValue }}<span class="seg-unit">%</span></span>
+      <span class="seg-readout">
+        <span
+          v-if="note"
+          class="seg-note"
+        >{{ note }}</span>
+        <span class="disp seg-value">{{ modelValue }}<span class="seg-unit">%</span></span>
+      </span>
     </div>
     <div class="seg-row">
       <button
@@ -107,6 +115,8 @@ function nudge(delta: number): void {
   justify-content: space-between;
   gap: 10px;
 }
+.seg-readout { display: flex; align-items: baseline; gap: 12px; }
+.seg-note { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; color: var(--tone); }
 .seg-value { font-size: 1.6rem; color: var(--tone); }
 .seg-unit { font-size: 0.85rem; color: var(--dim); margin-left: 2px; }
 .seg-row { display: flex; align-items: center; gap: 10px; }
