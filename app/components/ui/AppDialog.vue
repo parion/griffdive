@@ -53,7 +53,7 @@ function blockDismiss(event: Event): void {
           @open-auto-focus="emit('openAutoFocus', $event)"
         >
           <Motion
-            class="app-dialog"
+            class="app-dialog cut"
             :class="[`app-dialog--${size}`, contentClass]"
             :initial="{ opacity: 0, y: 24, scale: 0.97 }"
             :animate="{ opacity: 1, y: 0, scale: 1 }"
@@ -121,10 +121,10 @@ function blockDismiss(event: Event): void {
   max-height: min(84vh, 760px);
   overflow: auto;
   padding: 1.1rem 1.25rem 1.25rem;
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  background: var(--panel);
+  border: 1px solid var(--line-3);
+  border-top: 3px solid var(--gold);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
 }
 
 .app-dialog--sm { width: min(26rem, calc(100vw - 2rem)); }

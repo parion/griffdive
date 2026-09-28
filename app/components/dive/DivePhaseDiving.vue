@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { maxStarsFor, sampleAvailability } from '~~/shared/engine/config'
+import { MAJOR_ORDER_RISK, MISFORTUNE_RISK, STRAIN_RISK, maxStarsFor, sampleAvailability } from '~~/shared/engine/config'
 import { performanceValor } from '~~/shared/engine/rewards'
 import { activeMisfortune, activeStrain, currentFront, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
@@ -22,6 +22,13 @@ const front = computed(() => currentFront(props.state))
 const strain = computed(() => activeStrain(props.state))
 const selfPactRisk = computed(() => (props.self ? pactRiskOf(props.self) : 0))
 const teamRisk = computed(() => teamRiskOf(props.state))
+
+// Per-source risk chips for the locked status strip (total stays teamRiskOf).
+const misfortuneRisk = computed(() =>
+  props.state.misfortuneAccepted ? MISFORTUNE_RISK[misfortune.value?.id ?? ''] ?? 0 : 0)
+const strainRisk = computed(() =>
+  props.state.strainAccepted ? STRAIN_RISK[strain.value?.id ?? ''] ?? 0 : 0)
+const majorOrderRisk = computed(() => (props.state.majorOrder?.live ? MAJOR_ORDER_RISK : 0))
 
 const reportMode = ref<'none' | 'success' | 'failure'>('none')
 const stars = ref(1)
@@ -75,30 +82,90 @@ function cancelReport(): void {
 </script>
 
 <template>
-  <section class="panel">
-    <h2>Briefing</h2>
-    <p>
-      <template v-if="misfortune">
-        <strong>{{ misfortune.name }}</strong> — {{ misfortune.rule }}
-      </template>
-      <template v-else>
-        No team misfortune — safe dive
-      </template>
-      · vs <strong
-        :style="front ? { color: front.accent } : undefined"
-      >{{ front?.displayName }}</strong>
-      <template v-if="strain">
-        · <strong
-          :style="front ? { color: front.accent } : undefined"
-        >{{ strain.name }}</strong>
-      </template>
-    </p>
-    <PactBriefing
-      :divers="state.divers"
-      :self-id="selfId"
-      :is-host="isHost"
-      @fail="(playerId, pactId) => emit('fail', playerId, pactId)"
-    />
+  <section class="panel briefing">
+    <h2 class="sec-h briefing-head">
+      <span
+        class="lamp teal pulse"
+        aria-hidden="true"
+      />
+      <span class="lbl gold">Briefing · in the field</span>
+      <span class="cap muted">report when the squad is out</span>
+    </h2>
+
+    <div
+      class="status"
+      aria-label="Team risk, locked for the squad"
+    >
+      <span
+        class="status-icon hazard-soft"
+        aria-hidden="true"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect
+            x="6"
+            y="11"
+            width="12"
+            height="9"
+          />
+          <path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" />
+        </svg>
+      </span>
+
+      <div class="status-cell">
+        <span class="lbl">Misfortune · squad</span>
+        <div class="status-line">
+          <RiskPips
+            v-if="misfortune"
+            :value="misfortuneRisk"
+            :max="5"
+          />
+          <span class="status-name">{{ misfortune?.name ?? 'Safe dive' }}</span>
+          <span
+            v-if="misfortune"
+            class="status-val disp"
+          >+{{ misfortuneRisk }}</span>
+        </div>
+      </div>
+
+      <div class="status-cell front-cell">
+        <span class="lbl">Front · strain · op-long</span>
+        <div class="status-line">
+          <span
+            class="status-name disp"
+            :style="front ? { color: front.accent } : undefined"
+          >{{ front?.displayName ?? 'Unknown front' }}</span>
+          <template v-if="strain">
+            <span class="status-sep">·</span>
+            <span class="status-name">{{ strain.name }}</span>
+          </template>
+          <span
+            v-if="strainRisk"
+            class="status-val disp strain-val"
+          >+{{ strainRisk }}</span>
+          <span
+            v-if="majorOrderRisk"
+            class="status-val disp mo-val"
+          >MO +{{ majorOrderRisk }}</span>
+        </div>
+      </div>
+
+      <div
+        class="status-total"
+        role="img"
+        :aria-label="`Team risk ${teamRisk}, the floor under every diver's Valor`"
+      >
+        <span class="lbl">Team</span>
+        <span class="disp team-num">{{ teamRisk }}</span>
+      </div>
+    </div>
+
     <ValorMeter
       :difficulty="state.difficulty"
       :team-risk="teamRisk"
@@ -106,31 +173,74 @@ function cancelReport(): void {
       :performance="performancePreview"
       locked
     />
+
+    <PactBriefing
+      :divers="state.divers"
+      :self-id="selfId"
+      :is-host="isHost"
+      @fail="(playerId, pactId) => emit('fail', playerId, pactId)"
+    />
+
     <div
       v-if="canControl && reportMode === 'none'"
-      class="row"
+      class="outcome ticks"
     >
-      <button
-        class="btn primary"
-        type="button"
-        @click="openReport('success')"
-      >
-        Mission complete
-      </button>
-      <button
-        class="btn danger"
-        type="button"
-        @click="openReport('failure')"
-      >
-        Mission failed
-      </button>
+      <div class="row spread outcome-head">
+        <span class="lbl">Outcome · host calls it</span>
+        <span class="cap muted">win = objectives + extraction</span>
+      </div>
+      <div class="outcome-buttons">
+        <button
+          class="btn primary cut outcome-btn success"
+          type="button"
+          @click="openReport('success')"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M12 20V8M7 13l5-5 5 5M4 4h16" />
+          </svg>
+          <span class="outcome-copy">
+            <span class="disp">Mission complete</span>
+            <span class="cap">file the report</span>
+          </span>
+        </button>
+        <button
+          class="btn danger cut outcome-btn failure"
+          type="button"
+          @click="openReport('failure')"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+          <span class="outcome-copy">
+            <span class="disp">Mission failed</span>
+            <span class="cap">forfeit 1 item · retry op</span>
+          </span>
+        </button>
+      </div>
     </div>
     <p
       v-else-if="!canControl"
-      class="muted small"
+      class="cap muted waiting"
     >
       Waiting for the host to report the mission result.
     </p>
+
     <div
       v-if="reportMode !== 'none'"
       class="report-form"
@@ -144,7 +254,7 @@ function cancelReport(): void {
             class="wing"
             aria-hidden="true"
           />
-          Mission Completed
+          Mission completed
           <span
             class="wing flip"
             aria-hidden="true"
@@ -155,8 +265,16 @@ function cancelReport(): void {
           :length="maxStars"
           size="lg"
         />
-        <span class="muted small">of {{ maxStars }} at this difficulty</span>
+        <span class="cap muted">of {{ maxStars }} at difficulty {{ state.difficulty }}</span>
       </div>
+      <div
+        v-else
+        class="report-failure"
+      >
+        <span class="disp failure-banner">Mission failed</span>
+        <span class="cap muted">no stars · the operation repeats</span>
+      </div>
+
       <div class="report-fields">
         <template v-if="reportMode === 'success'">
           <RangeField
@@ -198,9 +316,10 @@ function cancelReport(): void {
           </template>
         </RangeField>
       </div>
-      <div class="row">
+
+      <div class="row report-actions">
         <button
-          class="btn primary"
+          class="btn primary cut"
           type="button"
           @click="submit(reportMode === 'success' ? 'success' : 'failure')"
         >
@@ -219,23 +338,149 @@ function cancelReport(): void {
 </template>
 
 <style scoped>
+.briefing {
+  gap: 0.85rem;
+}
+
+.briefing-head { margin: 0; }
+
+.gold { color: var(--gold); }
+
+/* Locked team-risk strip: misfortune + front/strain + the shared total. */
+.status {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1.35fr) minmax(0, 1fr) auto;
+  align-items: stretch;
+  border: 1px solid var(--line-2);
+  background: var(--rail);
+}
+
+.status-icon {
+  display: grid;
+  place-items: center;
+  border-right: 1px solid var(--line-2);
+  color: var(--gold);
+}
+
+.status-icon svg {
+  width: 18px;
+  height: 18px;
+  background: var(--rail);
+  padding: 2px;
+  box-sizing: content-box;
+}
+
+.status-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 8px 14px;
+  border-right: 1px solid var(--line-1);
+}
+
+.front-cell {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--red) 8%, transparent), transparent 70%);
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.status-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-sep { color: var(--line-4); }
+
+.status-val {
+  font-size: 1rem;
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+.strain-val { color: var(--orange); }
+.mo-val { color: var(--teal); }
+
+.status-total {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 16px;
+  background: var(--panel);
+}
+
+.team-num {
+  font-size: 1.9rem;
+  line-height: 1;
+  color: var(--text);
+}
+
+/* Outcome call: two big action plates. */
+.outcome {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.75rem 0.9rem 0.9rem;
+  border: 1px solid var(--line-3);
+  background-color: var(--panel);
+}
+
+.outcome-head { align-items: baseline; }
+.outcome-buttons { display: grid; grid-template-columns: 1.5fr 1fr; gap: 0.6rem; }
+
+.outcome-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 58px;
+  padding: 0.5rem 1rem;
+  text-align: left;
+}
+
+.outcome-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
+.outcome-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
 .report-form {
   display: grid;
-  gap: 0.5rem;
-  border-top: 1px dashed var(--border);
-  padding-top: 0.6rem;
+  gap: 0.7rem;
+  border-top: 1px dashed var(--line-2);
+  padding-top: 0.7rem;
 }
+
 .report-fields {
   display: grid;
   gap: 0.75rem;
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
 }
+
 .report-victory {
   display: grid;
   justify-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
   padding: 0.35rem 0 0.15rem;
 }
+
+.victory-banner,
+.failure-banner {
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
 .victory-banner {
   display: inline-flex;
   align-items: center;
@@ -243,25 +488,34 @@ function cancelReport(): void {
   max-width: 100%;
   text-align: center;
   gap: 0.7rem;
-  font-family: var(--font-display);
-  font-stretch: 125%;
-  font-weight: 800;
   font-size: 1.15rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
   color: var(--gold);
 }
+
+.failure-banner {
+  font-size: 1.15rem;
+  color: var(--red);
+}
+
+.report-failure {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0 0.15rem;
+}
+
 .wing {
   width: 2.4rem;
   height: 0.95rem;
-  background: repeating-linear-gradient(
-    115deg,
-    var(--gold) 0 0.18rem,
-    transparent 0.18rem 0.42rem
-  );
+  background: repeating-linear-gradient(115deg, var(--gold) 0 0.18rem, transparent 0.18rem 0.42rem);
   clip-path: polygon(0 50%, 22% 0, 100% 0, 100% 100%, 22% 100%);
 }
+
 .wing.flip { transform: scaleX(-1); }
+
+.report-actions { align-items: center; }
+.waiting { margin: 0; }
+
 .icon-tip {
   display: inline-grid;
   place-items: center;
@@ -274,9 +528,16 @@ function cancelReport(): void {
   cursor: help;
   transition: color var(--dur-fast) var(--ease-out);
 }
+
 .icon-tip:hover,
 .icon-tip:focus-visible {
   outline: none;
   color: var(--gold);
+}
+
+@media (max-width: 620px) {
+  .status { grid-template-columns: 40px 1fr auto; }
+  .front-cell { grid-column: 2 / 4; border-top: 1px solid var(--line-1); }
+  .outcome-buttons { grid-template-columns: 1fr; }
 }
 </style>

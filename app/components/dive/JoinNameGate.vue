@@ -26,36 +26,36 @@ function join(): void {
       Your name is how the squad sees you. You'll declare your warbonds next — the panel opens the
       moment you join.
     </template>
-    <div class="gate">
-      <form
-        class="row"
-        @submit.prevent="join"
+    <form
+      class="gate"
+      @submit.prevent="join"
+    >
+      <span class="lbl">Callsign</span>
+      <input
+        v-model="nameDraft"
+        class="nb"
+        type="text"
+        :maxlength="MAX_NAME_LENGTH"
+        placeholder="Diver"
+        aria-label="Your name"
+        autocomplete="nickname"
+        spellcheck="false"
       >
-        <input
-          v-model="nameDraft"
-          type="text"
-          :maxlength="MAX_NAME_LENGTH"
-          placeholder="Diver"
-          aria-label="Your name"
-          autocomplete="nickname"
-          spellcheck="false"
-        >
-        <button
-          class="btn primary"
-          type="submit"
-          :disabled="!valid"
-        >
-          Join the dive
-        </button>
-      </form>
+      <button
+        class="btn primary block cut-sm"
+        type="submit"
+        :disabled="!valid"
+      >
+        Join the dive
+      </button>
       <p class="exit row small">
         <NuxtLink to="/">Back to base</NuxtLink>
       </p>
-    </div>
+    </form>
   </AppDialog>
 </template>
 
 <style scoped>
-.gate { display: grid; gap: 0.75rem; }
+.gate { display: grid; gap: 0.6rem; }
 .exit { justify-content: center; margin: 0; }
 </style>

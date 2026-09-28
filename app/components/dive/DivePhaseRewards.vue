@@ -72,6 +72,11 @@ const bonusNote = computed(() => bonusIneligibilityReason(props.state))
 const draftResolved = computed(() =>
   props.self !== null && (props.self.pickedOptionId !== null || props.self.rewardBanned))
 const draftBanned = computed(() => props.self?.rewardBanned ?? false)
+
+const advanceLabel = computed(() =>
+  props.state.missionInOperation >= props.opLength
+    ? `Complete operation → difficulty ${Math.min(props.state.difficulty + 1, MAX_DIFFICULTY)}`
+    : 'Next mission')
 </script>
 
 <template>
@@ -118,17 +123,28 @@ const draftBanned = computed(() => props.self?.rewardBanned ?? false)
   <Transition name="phase">
     <div
       v-if="ready"
-      class="row"
+      class="advance-row"
     >
+      <div class="advance-copy">
+        <span class="lbl">{{ state.missionInOperation >= opLength ? 'Operation complete' : 'Draft closed' }}</span>
+        <span class="muted small">All divers have picked.</span>
+      </div>
       <button
-        class="btn primary"
+        class="btn primary cut advance-btn"
         type="button"
         :disabled="!canControl"
         @click="emit('advance')"
       >
-        {{ state.missionInOperation >= opLength
-          ? `Complete operation → difficulty ${Math.min(state.difficulty + 1, MAX_DIFFICULTY)}`
-          : 'Next mission' }}
+        <span class="disp advance-label">{{ advanceLabel }}</span>
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          aria-hidden="true"
+        ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
       </button>
       <span
         v-if="!canControl"
@@ -140,4 +156,21 @@ const draftBanned = computed(() => props.self?.rewardBanned ?? false)
 
 <style scoped>
 .honor-note { margin: 0.25rem 0; }
+
+.advance-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--line-2);
+  background: var(--ground);
+}
+.advance-copy { display: grid; gap: 0.1rem; min-width: 0; }
+.advance-btn {
+  margin-left: auto;
+  gap: 0.9rem;
+  padding: 0.7rem 1.1rem;
+}
+.advance-label { font-size: 1rem; letter-spacing: 0.04em; white-space: nowrap; }
 </style>

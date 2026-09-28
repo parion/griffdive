@@ -51,40 +51,45 @@ function select(value: unknown): void {
 <style scoped>
 .star-rating {
   display: inline-flex;
-  gap: 0.15rem;
+  gap: 0.25rem;
 }
 
 .star {
   appearance: none;
-  border: 0;
-  background: none;
-  padding: 0 0.1rem;
-  font-size: 1.25rem;
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 1px solid var(--line-3);
+  background: var(--panel);
+  padding: 0;
+  font-size: 1.15rem;
   line-height: 1;
   cursor: pointer;
-  color: var(--muted);
-  opacity: 0.45;
-  transition: opacity var(--dur-fast) var(--ease-out);
+  color: var(--ghost-ink);
+  transition: color var(--dur-fast), border-color var(--dur-fast), background-color var(--dur-fast), transform var(--dur-fast);
 }
 
 .star.filled {
   color: var(--gold);
-  opacity: 1;
+  border-color: var(--gold);
+  background: rgba(255, 214, 66, 0.08);
+  text-shadow: 0 0 8px rgba(255, 214, 66, 0.45);
 }
 
-.size-lg {
-  gap: 0.4rem;
-}
+.star:hover:not(:disabled) { border-color: var(--khaki); }
+
+.size-lg { gap: 0.4rem; }
 .size-lg .star {
-  font-size: 2.6rem;
-  padding: 0 0.15rem;
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.9rem;
   text-shadow: 0 0 14px color-mix(in srgb, var(--gold) 55%, transparent);
 }
 
 .star:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
-  border-radius: 2px;
 }
 
 .disabled .star {

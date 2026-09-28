@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 test('the Guide slide-over explains the loop from the header', async ({ page }) => {
   await page.goto('/')
 
-  const trigger = page.getByRole('button', { name: 'Guide', exact: true })
+  const trigger = page.getByRole('button', { name: 'Field manual', exact: true })
   await expect(trigger).toHaveAttribute('aria-expanded', 'false')
   await trigger.click()
 

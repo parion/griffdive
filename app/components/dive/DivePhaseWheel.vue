@@ -103,18 +103,24 @@ const coverage = computed<Record<string, string>>(() => {
       />
     </template>
   </WheelPanel>
+
   <p
     v-if="wheelRange && !state.wheel"
-    class="row small muted"
+    class="wheel-preview row"
   >
-    No misfortune: <TierBadge
+    <span class="cap">No misfortune ceiling</span>
+    <TierBadge
       :tier="wheelRange.min"
       size="sm"
-    /> · strongest accepted: <TierBadge
+    />
+    <span class="cap">strongest accepted</span>
+    <TierBadge
       :tier="wheelRange.max"
       size="sm"
-    /> (~{{ Math.round(wheelRange.odds * 100) }}%)
+    />
+    <span class="cap muted">~{{ Math.round(wheelRange.odds * 100) }}% at best</span>
   </p>
+
   <template v-if="state.phase === 'pacts'">
     <Transition
       name="phase"
@@ -124,11 +130,25 @@ const coverage = computed<Record<string, string>>(() => {
         :key="self?.pactsLocked ? 'locked' : 'picking'"
         class="stack"
       >
-        <div
+        <section
           v-if="self?.pactsLocked"
-          class="panel"
+          class="sec cut-sm pact-locked"
         >
-          <h2>Pacts locked</h2>
+          <header class="sh">
+            <span
+              class="disp stp sworn"
+              role="img"
+              aria-label="Pacts sworn"
+            >Sworn</span>
+            <h2 class="disp pact-locked-title">
+              Pacts locked
+            </h2>
+            <span
+              class="dash"
+              aria-hidden="true"
+            />
+            <span class="cap">Awaiting squad</span>
+          </header>
           <p class="muted small">
             Waiting for the rest of the squad to lock in…
           </p>
@@ -139,6 +159,10 @@ const coverage = computed<Record<string, string>>(() => {
               :key="pactId"
               class="chip"
             >{{ pactName(pactId) }}</span>
+            <span
+              v-if="self.pactIds.length === 0"
+              class="muted small"
+            >None — a safe dive.</span>
           </p>
           <ValorMeter
             :difficulty="state.difficulty"
@@ -146,7 +170,7 @@ const coverage = computed<Record<string, string>>(() => {
             :pact-risk="selfPactRisk"
             locked
           />
-        </div>
+        </section>
         <template v-else>
           <PactPicker
             :offer="offer"
@@ -168,4 +192,19 @@ const coverage = computed<Record<string, string>>(() => {
 
 <style scoped>
 .stack { display: grid; gap: 0.6rem; }
+
+.wheel-preview {
+  gap: 0.5rem;
+  margin: 0;
+  align-items: center;
+}
+
+.pact-locked { gap: 0.7rem; }
+.pact-locked-title { margin: 0; flex: 1; color: var(--text); }
+.sworn {
+  color: var(--teal);
+  border-color: var(--teal);
+  padding: 2px 8px;
+  font-size: 0.7rem;
+}
 </style>

@@ -25,10 +25,15 @@ has landed, as has the Phase 4 PWA layer (installable manifest, generated icons,
 worker with an offline shell + on-demand catalog art), the operation-long **faction strains**
 (N2: optional, accept/decline, compounding team risk) and the operation-long **Major Orders**
 (host-set front commitment, +1 reroll token on completion — manual picker plus the live war API).
-Remaining Phase 4 polish is next. Hybrid **saved dives** have landed: any seated diver can pin a
-room server-side so it outlives the idle TTL and a browser clearing its storage, resuming through
-the existing rejoin path (see Saved dives). **Alpha has landed:** the save schema is frozen at v10
-and the migration chain is open (see Save model). See [Roadmap](#roadmap).
+**The Destroyer Terminal redesign has landed** — the whole UI moved to a single terminal language
+(dark ground/rail/panel surfaces, gold/red/orange/teal/purple signals, cut frames, hazard stripes,
+scanlines and a signature motion set) with a persistent three-rail dive shell, a Bridge home, a
+phone layout, and a hidden `/kit` foundations route. Engine, sync, saves and data are untouched;
+see [Destroyer Terminal design language](#destroyer-terminal-design-language). Hybrid **saved
+dives** have landed: any seated diver can pin a room server-side so it outlives the idle TTL and a
+browser clearing its storage, resuming through the existing rejoin path (see Saved dives).
+**Alpha has landed:** the save schema is frozen at v10 and the migration chain is open (see Save
+model). See [Roadmap](#roadmap).
 
 ---
 
@@ -81,6 +86,35 @@ Design principles — every gameplay decision must honor these:
 6. **Team risk is shared; personal risk is personal** (Slay the Spire 2 co-op model). The whole squad
    carries the misfortune; each diver carries their own pacts and drafts their own rewards.
 7. **Failure is a setback, not a wipe.** Repeat the difficulty, forfeit one item, keep climbing.
+
+### Destroyer Terminal design language
+
+The whole UI speaks one terminal language (the redesign source lives at
+`.orca/drops/Griffdive — Destroyer Terminal redesign.html`; extracted references under
+`.orca/drops/extracted/`, both git-ignored). It is presentation only — it never touches the
+engine.
+
+- **Tokens** live in `app/assets/css/main.css`: surfaces `--ground/--rail/--panel/--raised`
+  (`#0B0C09`/`#0E100B`/`#13150F`/`#1A1D15`), lines `--line-1…5`, inks
+  `--text/--khaki/--muted/--dim/--on-gold`, signals `--gold/--red/--orange/--teal/--purple`,
+  tiers `--tier-*`, plus the `--font-body` (Chakra Petch) / `--font-display` (Archivo 125%)
+  pair and the ease/duration tokens. Legacy token names (`--bg`, `--bg-raised`, …) are kept as
+  aliases.
+- **Utilities**: type `.disp/.lbl/.cap/.sub/.vl/.odl`; shape `.cut/.cut-sm/.chev/.ticks/.hazard/
+  .hatch/.scan/.grid-bg/.hex/.tag-shape`; panels `.panel/.sec/.sec-h/.dash`; controls `.btn/
+  .ghost/.icon-btn/.chip/.nb`; data atoms `.tb/.tier-badge/.pips/.chit/.chits/.lamp/.stp/.chan`.
+- **Motion**: ambient loops are CSS classes (`.pulse/.rise/.stamp/.slam/.glow/.blinkc/.glitch/…`);
+  one-shot reveals use `motion-v` presets in `app/utils/motion.ts` (`riseIn/popIn/slamIn/dealIn/
+  sheetUp/impactIn`). Animation is presentation, never rules; every effect honours
+  `prefers-reduced-motion` (global CSS guard + explicit `matchMedia` in JS-driven reels).
+- **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav);
+  `components/dive/DiveFrame.vue` is the persistent three-rail dive shell (left: Armory ·
+  Crusade ladder · Squad; centre: phase; right: Mission phases) fed by `useDiveView`. New atoms:
+  `components/ui/BrandMark.vue`, `components/dive/CrusadeLadder.vue`, `PhaseRail.vue`,
+  `ArmoryDrawer.vue`. Armory/Briefing are in-app overlays, not routes.
+- **Foundations kit**: a hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`) specimens
+  the tokens/atoms so contributors can sanity-check the language. It is dev reference, not a
+  product surface.
 
 ---
 
@@ -588,10 +622,14 @@ all routes; static hosts need a `/*` → shell fallback instead.
 
 ```
 app/
-  pages/           index (new crusade / host / join / continue), dive/[id] (solo + room flow —
-                   thin orchestrator: session driver + action handlers; shell and per-phase UI
-                   live in components/dive/), lobby (open dives), codex
-  components/      dive/ (DiveHeader — title/difficulty/mission track + session controls,
+  pages/           index (Bridge home — new crusade / host / join / continue), dive/[id] (solo +
+                   room flow — thin orchestrator: session driver + action handlers; the
+                   three-rail shell and per-phase UI live in components/dive/), codex,
+                   kit (hidden, unlinked foundations route — see Destroyer Terminal design language)
+  components/      dive/ (DiveFrame — the persistent three-rail dive shell (Armory · Crusade
+                   ladder · Squad / phase / Mission phases), ArmoryDrawer — the in-dive Armory
+                   overlay, CrusadeLadder — the 3→10 difficulty ladder, PhaseRail — the six
+                   mission beats, DiveHeader — mission strip + session controls,
                    SquadStrip — diver chips, presence, name, host moderation,
                    DivePhaseLobby/DivePhaseWheel/DivePhaseDiving/DivePhaseRewards/
                    DivePhaseForfeit/DivePhaseComplete — one panel per engine phase, each
@@ -616,10 +654,11 @@ app/
                    warbonds/WarbondBrowser — the shared warbond owner list (single column,
                    acquisition specials last; each banner starts blurred and dimmed, then
                    resolves on hover/focus/tap, click toggles),
-                   ui/ (ItemCard, TierBadge, RiskPips — risk dots, with a rolling back-and-forth
-                   state while a wheel draw reels, WaitingLight — the slow-pulsing gold dot that
-                   marks a section a diver still has to act on, ChangelogModal — GitHub deploy log
-                   shown from the alpha header chip, AppDrawer — the themed right-hand Reka
+                   ui/ (BrandMark — the Griffdive chevron mark, ItemCard, TierBadge, RiskPips — risk
+                   dots, with a rolling back-and-forth state while a wheel draw reels, WaitingLight —
+                   the slow-pulsing gold dot that marks a section a diver still has to act on,
+                   ChangelogModal — GitHub deploy log shown from the alpha header chip, AppDrawer —
+                   the themed right-hand Reka
                    Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer/GuideDrawer —
                    its three slide-overs, IconBook/IconWarbond/IconGuide — the nav leading icons,
                    AppDialog/AppTabs/AppTooltip —
@@ -947,7 +986,9 @@ Each phase lands shippable. Update AGENTS.md (commands, status) as part of each 
   pass, Fly.io deploy + CI/CD (approval-gated batch releases, PR previews, metrics) and PWA
   affordances (`@vite-pwa/nuxt`: installable manifest, generated icons, Workbox service worker with
   an offline app shell + on-demand catalog art) have landed, as have **Major Orders** (host-set
-  front commitment + reroll bonus, manual picker plus the live war API; see Operation layer).
+  front commitment + reroll bonus, manual picker plus the live war API; see Operation layer) and
+  the **Destroyer Terminal redesign** (single terminal language, three-rail dive shell, Bridge
+  home, phone layout, hidden `/kit`; see Destroyer Terminal design language).
   Remaining: the final polish pass. *Done
   when: production URL serves a full multiplayer dive.*
 - **Phase 5 — Post-v1 backlog.** Specialists (PC parity), tier-maker custom rarity tables, heat

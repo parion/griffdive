@@ -48,7 +48,8 @@ function shuffle<T>(list: readonly T[]): T[] {
 const winner = computed(() => props.option.item)
 const tierVar = computed(() =>
   props.option.choice ? 'var(--tier-splus)' : `var(--tier-${winner.value.tier})`)
-const winnerTier = computed(() => (props.option.choice ? 'S+' : winner.value.tier))
+const winnerTier = computed(() => (props.option.choice ? 'S+' : winner.value.tier.toUpperCase()))
+const pod = computed(() => String(props.index + 1).padStart(2, '0'))
 
 // Whether the settled card can still be acted on: in pick mode a stopped reel
 // that has not been dimmed by another pick; in ban mode only engine-bannable
@@ -102,6 +103,14 @@ function imageUrl(item: Item): string | undefined {
       }"
       :style="{ '--tier': tierVar }"
     >
+      <div class="reel-frame odl">
+        <span class="frame-pod">POD {{ pod }}</span>
+        <span
+          class="frame-tier tb"
+          :data-tier="winnerTier"
+        >{{ winnerTier }}</span>
+      </div>
+
       <div
         class="reel-strip"
         :class="{ rolling: !instant }"
@@ -141,6 +150,7 @@ function imageUrl(item: Item): string | undefined {
           <span class="sym-name">{{ winner.displayName }}</span>
         </div>
       </div>
+
       <Motion
         v-if="settled"
         as="div"
@@ -179,21 +189,21 @@ function imageUrl(item: Item): string | undefined {
   position: relative;
   height: var(--cell-h);
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--tier, var(--gold)) 30%, var(--line-2));
+  border-top: 3px solid var(--tier, var(--gold));
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--tier, var(--gold)) 5%, transparent), transparent 30%),
-    var(--bg);
-  box-shadow: inset 0 0 26px rgba(0, 0, 0, 0.55);
+    linear-gradient(180deg, color-mix(in srgb, var(--tier, var(--gold)) 8%, transparent), transparent 30%),
+    var(--ground);
+  box-shadow: inset 0 0 26px rgba(0, 0, 0, 0.6);
   transition: border-color var(--dur-med) var(--ease-out), opacity var(--dur-med) var(--ease-out), filter var(--dur-med) var(--ease-out);
 }
 
 .reel-window.settled {
-  border-color: color-mix(in srgb, var(--tier, var(--gold)) 45%, var(--border));
+  border-color: color-mix(in srgb, var(--tier, var(--gold)) 55%, var(--line-2));
 }
 .reel-window.picked {
   border-color: var(--gold);
-  box-shadow: 0 0 20px color-mix(in srgb, var(--gold) 30%, transparent), inset 0 0 26px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--gold) 32%, transparent), inset 0 0 26px rgba(0, 0, 0, 0.6);
 }
 .reel-window.dimmed { opacity: 0.4; filter: grayscale(0.5); }
 
@@ -202,10 +212,27 @@ function imageUrl(item: Item): string | undefined {
   content: '';
   position: absolute;
   inset: 0;
+  z-index: 2;
   pointer-events: none;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 24%, transparent 76%, rgba(0, 0, 0, 0.45));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 24%, transparent 74%, rgba(0, 0, 0, 0.5));
 }
+
+.reel-frame {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.35rem 0.45rem;
+  color: var(--muted);
+  background: linear-gradient(180deg, var(--ground) 42%, transparent);
+  pointer-events: none;
+}
+.frame-tier { font-size: 0.62rem; border: 1px solid currentColor; padding: 0 0.25rem; }
 
 .reel-strip {
   display: grid;
@@ -232,10 +259,10 @@ function imageUrl(item: Item): string | undefined {
   gap: 0.4rem;
   padding: 0.6rem;
   text-align: center;
-  border: 1px solid color-mix(in srgb, currentColor 28%, var(--border));
+  border: 1px solid color-mix(in srgb, currentColor 24%, var(--line-2));
   background:
     linear-gradient(165deg, color-mix(in srgb, currentColor 10%, transparent), transparent 60%),
-    var(--bg);
+    var(--panel);
 }
 .reel-window.reeling .reel-symbol { filter: blur(1px); }
 
@@ -256,6 +283,7 @@ function imageUrl(item: Item): string | undefined {
 .reel-result {
   position: absolute;
   inset: 0;
+  z-index: 3;
   display: grid;
 }
 .reel-result.locked { pointer-events: none; }
@@ -297,11 +325,12 @@ function imageUrl(item: Item): string | undefined {
   text-align: center;
   gap: 0.45rem;
   padding: 0.6rem;
-  border-color: color-mix(in srgb, var(--tier) 55%, var(--border));
+  border-color: color-mix(in srgb, var(--tier) 55%, var(--line-2));
   background:
     linear-gradient(165deg, color-mix(in srgb, var(--tier) 15%, transparent), transparent 62%),
-    var(--bg-raised);
+    var(--panel);
 }
+.reel-result :deep(.item-card)::before { opacity: 1; }
 .reel-result :deep(.item-top) {
   flex-direction: column;
   width: 100%;
@@ -314,17 +343,16 @@ function imageUrl(item: Item): string | undefined {
   width: 100%;
   height: 5.5rem;
   object-fit: contain;
-  background: color-mix(in srgb, var(--cat) 14%, var(--bg));
-  border-color: color-mix(in srgb, var(--cat) 30%, var(--border));
-  border-radius: 8px;
+  background: color-mix(in srgb, var(--cat) 14%, var(--ground));
+  border-color: color-mix(in srgb, var(--cat) 30%, var(--line-2));
   padding: 0.4rem;
 }
 .reel-result :deep(.item-name) {
   text-align: center;
   line-height: 1.15;
-}
-.reel-result :deep(.item-tags) {
-  justify-content: center;
-  text-align: center;
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 </style>

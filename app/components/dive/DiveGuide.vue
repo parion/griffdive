@@ -41,6 +41,10 @@ const STEPS: GuideStep[] = [
 ]
 
 const CHECKS = Object.values(ACCOUNTABILITY_LABELS)
+
+function stepNumber(index: number): string {
+  return String(index + 1).padStart(2, '0')
+}
 </script>
 
 <template>
@@ -56,18 +60,24 @@ const CHECKS = Object.values(ACCOUNTABILITY_LABELS)
         :key="step.key"
       >
         <span
-          class="step-num"
+          class="step-num cut-sm disp"
           aria-hidden="true"
-        >{{ index + 1 }}</span>
+        >{{ stepNumber(index) }}</span>
         <div class="step-body">
-          <strong>{{ step.title }}</strong>
+          <strong class="disp step-title">{{ step.title }}</strong>
           <p>{{ step.body }}</p>
         </div>
       </li>
     </ol>
 
     <section class="guide-note">
-      <h3>Reading the odds</h3>
+      <h3 class="disp note-title">
+        <span
+          class="note-mark"
+          aria-hidden="true"
+        />
+        Reading the odds
+      </h3>
       <p>
         <strong>Valor</strong> is the risk you chose: team risk from the accepted
         misfortune, your pact risk, plus a small performance bonus. Your
@@ -77,7 +87,13 @@ const CHECKS = Object.values(ACCOUNTABILITY_LABELS)
     </section>
 
     <section class="guide-note">
-      <h3>Faction strains</h3>
+      <h3 class="disp note-title">
+        <span
+          class="note-mark"
+          aria-hidden="true"
+        />
+        Faction strains
+      </h3>
       <p>
         A strain is a subfaction of the drawn front — Predator Strain Terminids, Jet
         Brigade Automatons, Vote Snatchers Illuminate.
@@ -95,7 +111,13 @@ const CHECKS = Object.values(ACCOUNTABILITY_LABELS)
     </section>
 
     <section class="guide-note">
-      <h3>Major Orders</h3>
+      <h3 class="disp note-title">
+        <span
+          class="note-mark"
+          aria-hidden="true"
+        />
+        Major Orders
+      </h3>
       <p>
         Before an operation's first spin the host can pin its front to the live
         <strong>Major Order</strong>, so the squad fights where the war is. The
@@ -109,7 +131,13 @@ const CHECKS = Object.values(ACCOUNTABILITY_LABELS)
     </section>
 
     <section class="guide-note">
-      <h3>Where rules are checked</h3>
+      <h3 class="disp note-title">
+        <span
+          class="note-mark"
+          aria-hidden="true"
+        />
+        Where rules are checked
+      </h3>
       <p class="muted small">
         Every misfortune and pact has an observable tell, so the squad can hold each
         other to it:
@@ -119,6 +147,15 @@ const CHECKS = Object.values(ACCOUNTABILITY_LABELS)
           v-for="check in CHECKS"
           :key="check"
         >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            aria-hidden="true"
+          ><path d="M5 12l5 5 9-10" /></svg>
           {{ check }}
         </li>
       </ul>
@@ -140,58 +177,67 @@ const CHECKS = Object.values(ACCOUNTABILITY_LABELS)
 .guide-steps li {
   display: flex;
   gap: 0.7rem;
-  padding: 0.55rem 0.7rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  background: var(--rail);
+  border: 1px solid var(--line-1);
+  border-left: 2px solid var(--gold);
 }
 .step-num {
   flex-shrink: 0;
   display: inline-grid;
   place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border: 1px solid var(--gold);
-  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  background: var(--ground);
+  border: 1px solid color-mix(in srgb, var(--gold) 55%, var(--line-2));
   color: var(--gold);
-  font-family: var(--font-display);
-  font-stretch: 125%;
-  font-weight: 800;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 .step-body { min-width: 0; }
-.step-body strong {
+.step-title {
   display: block;
-  font-family: var(--font-display);
-  font-stretch: 125%;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-size: 0.85rem;
-  color: var(--khaki);
+  font-size: 0.92rem;
+  letter-spacing: 0.08em;
+  color: var(--text);
 }
-.step-body p { margin: 0.15rem 0 0; }
+.step-body p { margin: 0.2rem 0 0; }
 
 .guide-note {
-  padding: 0.6rem 0.75rem;
+  padding: 0.7rem 0.85rem;
+  background: color-mix(in srgb, var(--teal) 5%, var(--rail));
+  border: 1px solid color-mix(in srgb, var(--teal) 35%, var(--line-1));
   border-left: 2px solid var(--teal);
-  background: color-mix(in srgb, var(--teal) 7%, transparent);
-  border-radius: 6px;
 }
-.guide-note h3 {
-  margin: 0 0 0.25rem;
-  font-size: 0.8rem;
+.note-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--teal);
 }
-.guide-note p { margin: 0; }
+.note-mark {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  background: var(--teal);
+}
+.guide-note p { margin: 0.2rem 0 0; }
 
 .guide-checks {
-  margin: 0.4rem 0 0;
-  padding-left: 1.1rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
   display: grid;
-  gap: 0.2rem;
+  gap: 0.3rem;
 }
-.guide-checks li { color: var(--khaki); font-size: 0.85rem; }
+.guide-checks li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--khaki);
+  font-size: 0.85rem;
+}
+.guide-checks svg { flex-shrink: 0; color: var(--teal); }
 </style>

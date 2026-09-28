@@ -31,6 +31,8 @@ const {
 
 const dispatch = (action: EngineAction) => session.dispatch(action)
 
+const armoryOpen = ref(false)
+
 // Warbonds are what each diver actually owns — declared per diver, any phase,
 // and driven by the global Warbonds drawer. A local save seeds the working list
 // from its own draft; a room join pushes the browser's declared list to the
@@ -126,18 +128,6 @@ watch(
     else if (status === 'disconnected' && wasConnected && !reportedLost) {
       pushToast('Connection lost — reconnecting…', 'warn')
       reportedLost = true
-    }
-  },
-)
-
-// Once the diver banks their reward, surface the squad inventory so the new
-// item is visible without hunting for it.
-const squadInventory = ref<HTMLDetailsElement | null>(null)
-watch(
-  () => self.value?.pickedOptionId ?? null,
-  (picked) => {
-    if (picked && squadInventory.value) {
-      squadInventory.value.open = true
     }
   },
 )
@@ -344,7 +334,7 @@ function launchCrusade(variant: CrusadeVariant): void {
 <template>
   <main
     id="main-content"
-    class="page"
+    class="dive-page"
     tabindex="-1"
   >
     <JoinNameGate
@@ -353,13 +343,13 @@ function launchCrusade(variant: CrusadeVariant): void {
     />
     <p
       v-if="session.loadError.value"
-      class="panel"
+      class="panel page"
     >
       Dive not found. <NuxtLink to="/">Back to base</NuxtLink>
     </p>
     <section
       v-else-if="session.mode === 'room' && !session.awaitingName.value && session.connectionFailed.value"
-      class="panel"
+      class="panel page"
     >
       <h2>Can't reach the dive server</h2>
       <p class="muted small">
@@ -381,29 +371,98 @@ function launchCrusade(variant: CrusadeVariant): void {
         >Back to base</NuxtLink>
       </div>
     </section>
-    <template v-else-if="state">
-      <DiveHeader
-        :state="state"
-        :mode="session.mode"
-        :status="session.status.value"
-        :self-id="selfId"
-        :can-control="canControl"
-        :is-host="session.selfIsHost.value"
-        :op-length="opLength"
-        :slot-name="session.slotName.value"
-        :online="session.online.value"
-        :name-draft="nameDraft"
-        :saved="session.saved.value"
-        @copy-invite="copyInvite"
-        @leave="leaveDive"
-        @end="endDive"
-        @save-dive="saveDive"
-        @unsave-dive="unsaveDive"
-        @update:name-draft="setNameDraft"
-        @commit="commitName"
-        @transfer-host="transferHost"
-        @kick="kick"
-      />
+    <DiveFrame v-else-if="state">
+      <template #strip>
+        <DiveHeader
+          :state="state"
+          :mode="session.mode"
+          :status="session.status.value"
+          :self-id="selfId"
+          :can-control="canControl"
+          :is-host="session.selfIsHost.value"
+          :op-length="opLength"
+          :slot-name="session.slotName.value"
+          :saved="session.saved.value"
+          @copy-invite="copyInvite"
+          @leave="leaveDive"
+          @end="endDive"
+          @save-dive="saveDive"
+          @unsave-dive="unsaveDive"
+        />
+      </template>
+
+      <template #left>
+        <button
+          class="armory-btn cut"
+          type="button"
+          @click="armoryOpen = true"
+        >
+          <IconWarbond class="armory-icon" />
+          <span>Armory</span>
+        </button>
+        <section
+          class="sec"
+          aria-labelledby="ladder-h"
+        >
+          <div class="sec-h">
+            <h2
+              id="ladder-h"
+              class="lbl"
+            >
+              <span class="sn">01</span> The climb
+            </h2>
+            <span class="dash" />
+          </div>
+          <CrusadeLadder
+            :difficulty="state.difficulty"
+            :achieved="state.achieved"
+          />
+        </section>
+        <section
+          class="sec"
+          aria-labelledby="squad-h"
+        >
+          <div class="sec-h">
+            <h2
+              id="squad-h"
+              class="lbl"
+            >
+              Squad
+            </h2>
+            <span class="dash" />
+          </div>
+          <SquadStrip
+            :state="state"
+            :self-id="selfId"
+            :online="session.online.value"
+            :mode="session.mode"
+            :is-host="session.selfIsHost.value"
+            :name-draft="nameDraft"
+            @update:name-draft="setNameDraft"
+            @commit="commitName"
+            @transfer-host="transferHost"
+            @kick="kick"
+          />
+        </section>
+      </template>
+
+      <template #right>
+        <section
+          class="sec"
+          aria-labelledby="phases-h"
+        >
+          <div class="sec-h">
+            <h2
+              id="phases-h"
+              class="lbl"
+            >
+              Mission phases
+            </h2>
+            <span class="dash" />
+          </div>
+          <PhaseRail :phase="state.phase" />
+        </section>
+      </template>
 
       <p
         v-if="kicked"
@@ -508,21 +567,15 @@ function launchCrusade(variant: CrusadeVariant): void {
         </div>
       </Transition>
 
-      <details
-        v-if="state.phase !== 'lobby'"
-        ref="squadInventory"
-        class="panel"
-      >
-        <summary>Kit inventory</summary>
-        <InventoryGrid
-          :state="state"
-          :self-id="selfId"
-        />
-      </details>
-    </template>
+      <ArmoryDrawer
+        v-model:open="armoryOpen"
+        :state="state"
+        :self-id="selfId"
+      />
+    </DiveFrame>
     <p
       v-else
-      class="panel muted"
+      class="panel page muted"
     >
       Loading dive…
     </p>
@@ -530,7 +583,9 @@ function launchCrusade(variant: CrusadeVariant): void {
 </template>
 
 <style scoped>
-.phase-stack { display: grid; gap: 1rem; }
+.dive-page { min-height: 100vh; }
+
+.phase-stack { display: grid; gap: 10px; }
 
 .error-banner {
   border-color: var(--red);
@@ -541,4 +596,25 @@ function launchCrusade(variant: CrusadeVariant): void {
 }
 
 .kicked { border-color: var(--red); }
+
+.armory-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line-4);
+  background: var(--rail);
+  color: var(--khaki);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--dur-fast), border-color var(--dur-fast), background-color var(--dur-fast);
+}
+.armory-btn:hover { color: var(--gold); border-color: var(--gold); background: rgba(255, 214, 66, 0.06); }
+.armory-icon { width: 18px; height: 18px; }
 </style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ProgressIndicator, ProgressRoot } from 'reka-ui'
+import { ProgressRoot } from 'reka-ui'
 import { VALOR_METER_MAX, baseTierFor } from '~~/shared/engine/config'
 import { ceilingRange } from '~~/shared/engine/selectors'
 import { valorOf } from '~~/shared/engine/rewards'
@@ -28,18 +28,42 @@ const range = computed(() =>
   ceilingRange(props.difficulty, props.teamRisk, props.pactRisk, props.performance))
 
 const ratio = computed(() => Math.min(1, valor.value / scale))
-const fill = computed(() => Math.max(0, valor.value))
-// Segments are laid out inside the filled indicator, so their widths are
-// shares of the current Valor (not of the full scale).
-function share(value: number): string {
-  return `${fill.value > 0 ? (value / fill.value) * 100 : 0}%`
+const clamped = computed(() => Math.min(valor.value, scale))
+
+type CellSource = 'empty' | 'team' | 'pact' | 'performance'
+interface ValorCell {
+  key: number
+  source: CellSource
+  amount: number
 }
 
-const teamWidth = computed(() => share(props.teamRisk))
-const pactWidth = computed(() => share(props.pactRisk))
-const performanceWidth = computed(() => share(props.performance))
-const pactLeft = computed(() => share(props.teamRisk))
-const performanceLeft = computed(() => share(props.teamRisk + props.pactRisk))
+// One cell per meter point, colored by the source that owns it. Team and pact
+// risk are whole numbers, so only the trailing performance cell is ever
+// partial — it fills its cell by the fractional share.
+const cells = computed<ValorCell[]>(() => {
+  const teamEnd = props.teamRisk
+  const pactEnd = props.teamRisk + props.pactRisk
+  return Array.from({ length: scale }, (_, index) => {
+    const source: CellSource
+      = index < teamEnd ? 'team' : index < pactEnd ? 'pact' : 'performance'
+    const amount = Math.min(1, Math.max(0, valor.value - index))
+    return { key: index, source: amount > 0 ? source : 'empty', amount }
+  })
+})
+
+function cellClass(cell: ValorCell): (string | false)[] {
+  return [
+    cell.source !== 'empty' && `cell-${cell.source}`,
+    cell.amount >= 1 && 'filled',
+    cell.amount > 0 && cell.amount < 1 && 'partial',
+  ]
+}
+
+function cellStyle(cell: ValorCell): { '--fill'?: string } {
+  return cell.amount > 0 && cell.amount < 1
+    ? { '--fill': `${cell.amount * 100}%` }
+    : {}
+}
 
 function format(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
@@ -78,68 +102,63 @@ const ceilingLabel = computed(() =>
     <div class="valor-head">
       <AppTooltip content="Valor stacks the risk you chose: team risk, your pacts, and a small performance bonus. More Valor raises the reward-tier odds.">
         <span
-          class="valor-title"
+          class="valor-title lbl"
           tabindex="0"
         >Valor</span>
       </AppTooltip>
-      <span class="valor-value">{{ format(valor) }}</span>
+      <span class="valor-value disp">{{ format(valor) }}</span>
+      <span class="valor-scale">/ {{ format(scale) }}</span>
+      <span
+        v-if="props.locked"
+        class="chip gold locked-chip"
+      >Locked</span>
     </div>
+
     <ProgressRoot
       class="gauge"
-      :model-value="valor"
+      :model-value="clamped"
       :max="scale"
       :get-value-label="() => 'Valor'"
       :get-value-text="() => valueText"
     >
-      <ProgressIndicator
-        class="fill"
-        :style="{ width: `${ratio * 100}%` }"
-      >
-        <span
-          class="seg team"
-          :style="{ width: teamWidth }"
-        />
-        <span
-          class="seg pact"
-          :style="{ width: pactWidth, left: pactLeft }"
-        />
-        <span
-          class="seg performance"
-          :style="{ width: performanceWidth, left: performanceLeft }"
-        />
-      </ProgressIndicator>
+      <span
+        v-for="cell in cells"
+        :key="cell.key"
+        class="cell"
+        :class="cellClass(cell)"
+        :style="cellStyle(cell)"
+        aria-hidden="true"
+      />
       <span
         class="tip"
         :style="{ left: `${ratio * 100}%` }"
         aria-hidden="true"
       />
     </ProgressRoot>
-    <div class="valor-breakdown small">
+
+    <div class="valor-breakdown cap">
       <span
         v-if="props.teamRisk"
         class="tag team"
-      >Team +{{ props.teamRisk }}</span>
+      >Team +{{ format(props.teamRisk) }}</span>
       <span
         v-if="props.pactRisk"
         class="tag pact"
-      >Pacts +{{ props.pactRisk }}</span>
+      >Pacts +{{ format(props.pactRisk) }}</span>
       <span
         v-if="props.performance"
         class="tag performance"
-      >Performance +{{ format(props.performance) }}</span>
+      >Perf +{{ format(props.performance) }}</span>
       <span
         v-if="overflow > 0"
-        class="chip break-chip"
+        class="tag overflow"
       >Meter broken · +{{ format(overflow) }} Luck</span>
       <span
         v-if="!valor"
         class="muted"
       >No Valor staked — a safe dive</span>
-      <span
-        v-if="props.locked"
-        class="chip locked-chip"
-      >Locked in</span>
     </div>
+
     <AppTooltip content="Your reward ceiling is the best tier this Valor can roll — risk buys odds, never a guarantee.">
       <div
         class="ceiling"
@@ -147,6 +166,7 @@ const ceilingLabel = computed(() =>
         :aria-label="ceilingLabel"
         tabindex="0"
       >
+        <span class="lbl">Ceiling</span>
         <span class="rungs">
           <template
             v-for="(rung, index) in rungs"
@@ -156,6 +176,7 @@ const ceilingLabel = computed(() =>
               v-if="index > 0"
               class="link"
               :class="{ lit: rung.lit }"
+              aria-hidden="true"
             />
             <TierBadge
               :tier="rung.tier"
@@ -165,15 +186,16 @@ const ceilingLabel = computed(() =>
             />
           </template>
         </span>
-        <span class="odds small">
-          <template v-if="reaching">~{{ oddsPct }}% to reach {{ range.max }}</template>
+        <span class="odds cap">
+          <template v-if="reaching">~{{ oddsPct }}% · {{ range.max }}</template>
           <template v-else>guaranteed</template>
         </span>
       </div>
     </AppTooltip>
+
     <p
       v-if="!props.locked"
-      class="hint muted small"
+      class="hint muted cap"
     >
       Chosen risk buys odds, never a guarantee.
     </p>
@@ -184,65 +206,78 @@ const ceilingLabel = computed(() =>
 .valor {
   --heat: 0;
   display: grid;
-  gap: 0.45rem;
-  padding: 0.7rem 0.85rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--bg);
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem 0.85rem;
+  border: 1px solid var(--line-2);
+  background: var(--panel);
+  transition: border-color var(--dur-med) var(--ease-out);
 }
 
-.valor-head { display: flex; align-items: baseline; gap: 0.5rem; }
+.valor.locked {
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--line-2));
+}
+
+.valor-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
 .valor-title {
-  font-family: var(--font-display);
-  font-stretch: 125%;
-  font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
   color: var(--gold);
 }
+
 .valor-value {
-  margin-left: auto;
-  font-family: var(--font-display);
-  font-stretch: 125%;
-  font-weight: 800;
-  font-size: 1.55rem;
-  line-height: 1;
+  font-size: 2rem;
+  line-height: 0.9;
   color: color-mix(in srgb, var(--gold) calc(55% + var(--heat) * 45%), var(--text));
   text-shadow: 0 0 calc(var(--heat) * 16px) color-mix(in srgb, var(--red) calc(var(--heat) * 85%), transparent);
-  transition:
-    color var(--dur-med) var(--ease-out),
-    text-shadow var(--dur-med) var(--ease-out);
+  transition: color var(--dur-med) var(--ease-out), text-shadow var(--dur-med) var(--ease-out);
 }
 
-/* The gauge: a stacked fill (team risk, pacts, performance) whose tip glows
-   brighter and pulses harder the more Valor is staked — the Hades heat read.
-   Reka's ProgressRoot owns the accessible progressbar semantics; the indicator
-   and its segments are purely visual. */
+.valor-scale {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--dim);
+}
+
+.locked-chip {
+  margin-left: auto;
+}
+
+/* The gauge: an 11-cell meter whose cells stack team risk, pacts and
+   performance; the tip glows brighter the more Valor is staked. Reka's
+   ProgressRoot owns the accessible progressbar semantics — the cells and tip
+   are purely visual. */
 .gauge {
   position: relative;
-  height: 0.72rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bg) 70%, #000);
-  overflow: hidden;
+  display: flex;
+  gap: 3px;
+  height: 1.1rem;
 }
-.fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  transition: width var(--dur-med) var(--ease-out);
+
+.cell {
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--raised);
+  border: 1px solid var(--line-2);
+  transition: background-color var(--dur-med), border-color var(--dur-med);
 }
-.seg {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  transition:
-    width var(--dur-med) var(--ease-out),
-    left var(--dur-med) var(--ease-out);
+
+.cell-team { --c: var(--gold); }
+.cell-pact { --c: var(--red); }
+.cell-performance { --c: var(--teal); }
+
+.cell.filled {
+  background: var(--c);
+  border-color: color-mix(in srgb, var(--c) 60%, var(--line-2));
 }
-.seg.team { left: 0; background: linear-gradient(90deg, var(--gold), color-mix(in srgb, var(--gold) 60%, var(--red))); }
-.seg.pact { background: linear-gradient(90deg, color-mix(in srgb, var(--red) 75%, var(--gold)), var(--red)); }
-.seg.performance { background: linear-gradient(90deg, color-mix(in srgb, var(--teal) 70%, var(--gold)), var(--teal)); }
+
+.cell.partial {
+  background: linear-gradient(90deg, var(--c) 0 var(--fill), var(--raised) var(--fill));
+  border-color: color-mix(in srgb, var(--c) 45%, var(--line-2));
+}
+
 .tip {
   position: absolute;
   top: 50%;
@@ -254,57 +289,77 @@ const ceilingLabel = computed(() =>
   opacity: var(--heat);
   pointer-events: none;
   animation: valor-burn 1.3s ease-in-out infinite;
-  transition:
-    left var(--dur-med) var(--ease-out),
-    opacity var(--dur-med) var(--ease-out);
+  transition: left var(--dur-med) var(--ease-out), opacity var(--dur-med) var(--ease-out);
 }
+
 @keyframes valor-burn {
   0%, 100% { scale: 1; filter: brightness(1); }
   50% { scale: 1.4; filter: brightness(1.6); }
 }
 
-.valor-breakdown { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.valor-breakdown {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
 .tag {
   padding: 0 0.35rem;
-  border-radius: 4px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-size: 0.68rem;
+  border: 1px solid currentColor;
 }
-.tag.team { color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, transparent); }
-.tag.pact { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
-.tag.performance { color: var(--teal); background: color-mix(in srgb, var(--teal) 14%, transparent); }
-.locked-chip { color: var(--muted); }
-.break-chip {
+
+.tag.team { color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); }
+.tag.pact { color: var(--red); background: color-mix(in srgb, var(--red) 10%, transparent); }
+.tag.performance { color: var(--teal); background: color-mix(in srgb, var(--teal) 10%, transparent); }
+.tag.overflow {
   color: var(--red);
-  background: color-mix(in srgb, var(--red) 18%, transparent);
+  background: color-mix(in srgb, var(--red) 16%, transparent);
   animation: break-pulse 1.1s ease-in-out infinite;
 }
+
 @keyframes break-pulse {
   0%, 100% { opacity: 0.72; }
   50% { opacity: 1; }
 }
 
-.ceiling { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.rungs { display: inline-flex; align-items: center; gap: 0.28rem; }
+.ceiling {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rungs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
 .rung {
   opacity: 0.32;
   filter: grayscale(1);
-  transition:
-    opacity var(--dur-med) var(--ease-out),
-    filter var(--dur-med) var(--ease-out),
-    scale var(--dur-med) var(--ease-snap);
+  transition: opacity var(--dur-med) var(--ease-out), filter var(--dur-med) var(--ease-out), scale var(--dur-med) var(--ease-snap);
 }
+
 .rung.lit { opacity: 1; filter: none; }
 .rung.top { scale: 1.12; }
+
 .link {
   width: 0.55rem;
   height: 2px;
-  background: var(--border);
+  background: var(--line-2);
   transition: background var(--dur-med) var(--ease-out);
 }
-.link.lit { background: color-mix(in srgb, var(--gold) 70%, var(--border)); }
-.odds { margin-left: auto; color: var(--khaki); }
+
+.link.lit { background: color-mix(in srgb, var(--gold) 70%, var(--line-2)); }
+
+.odds {
+  margin-left: auto;
+  color: var(--khaki);
+}
+
 .hint { margin: 0; }
 </style>

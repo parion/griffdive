@@ -23,19 +23,31 @@ const label = computed(() => props.failed
       v-for="m in opLength"
       :key="m"
       class="seg"
-      :class="{ done: m < missionInOperation, active: m === missionInOperation }"
+      :class="{
+        done: m < missionInOperation,
+        active: m === missionInOperation,
+        down: props.failed && m === missionInOperation,
+      }"
     >
       <svg
         v-if="m < missionInOperation"
-        class="check"
+        class="glyph"
         viewBox="0 0 16 16"
         aria-hidden="true"
       >
         <path d="M3 8.5 6.5 12 13 4.5" />
       </svg>
+      <svg
+        v-else-if="props.failed && m === missionInOperation"
+        class="glyph"
+        viewBox="0 0 16 16"
+        aria-hidden="true"
+      >
+        <path d="M4 4l8 8M12 4l-8 8" />
+      </svg>
       <span
         v-else
-        class="num"
+        class="num disp"
       >{{ m }}</span>
     </span>
   </span>
@@ -44,59 +56,57 @@ const label = computed(() => props.failed
 <style scoped>
 .mission-track {
   display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
+  align-items: stretch;
+  gap: 3px;
 }
 
 .seg {
   display: inline-grid;
   place-items: center;
-  width: 1.35rem;
-  height: 1.35rem;
-  border: 1px solid var(--border);
-  border-radius: 5px;
+  width: 1.5rem;
+  height: 1.1rem;
+  border: 1px solid var(--line-3);
+  background: var(--ground);
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
+  clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
 }
 
 .seg.done {
-  border-color: color-mix(in srgb, var(--gold) 55%, var(--border));
-  background: color-mix(in srgb, var(--gold) 16%, transparent);
-  color: var(--gold);
+  border-color: var(--line-4);
+  background: rgba(74, 215, 200, 0.08);
+  color: var(--teal);
 }
 
 .seg.active {
   border-color: var(--gold);
+  background: rgba(255, 214, 66, 0.1);
   color: var(--gold);
   animation: seg-pulse 1.8s ease-in-out infinite;
 }
 
-/* The failed mission is no longer progress: mark the active segment red and
-   still, so the header doesn't read as if the operation is still running. */
-.mission-track.failed .seg.active {
+/* A failed mission is no longer progress — mark it red and still. */
+.mission-track.failed .seg.active,
+.mission-track.failed .seg.down {
   border-color: var(--red);
+  background: rgba(255, 75, 62, 0.12);
   color: var(--red);
   animation: none;
 }
-.mission-track.failed .seg.done {
-  border-color: var(--border);
-  background: none;
-  color: var(--muted);
-}
 
-.check {
-  width: 0.85rem;
-  height: 0.85rem;
+.glyph {
+  width: 0.7rem;
+  height: 0.7rem;
   fill: none;
   stroke: currentColor;
-  stroke-width: 2;
+  stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 @keyframes seg-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 40%, transparent); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 214, 66, 0.4); }
   50% { box-shadow: 0 0 0 4px transparent; }
 }
 </style>

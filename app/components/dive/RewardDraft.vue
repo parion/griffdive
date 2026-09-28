@@ -2,7 +2,9 @@
 import { ITEMS_BY_ID, TIER_RANK } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
+import { REWARD_TOKEN_CAP } from '~~/shared/engine/config'
 import type { RewardOption } from '~~/shared/engine/rewards'
+import type { RewardTier } from '~~/shared/engine/types'
 
 interface SquadPick {
   id: string
@@ -181,48 +183,152 @@ function squadPickLabel(pick: SquadPick): string {
   }
   return pick.item ? `${pick.name} picked ${pick.item.displayName}` : `${pick.name} is choosing`
 }
+
+// Presentation only: the rolled ceiling is the best tier the frozen offer
+// landed on (the S+ sentinel is Liberty's Cross). The readout lights the ladder
+// from the band floor to that ceiling; it never rolls anything itself.
+const LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
+
+function maxTierOf(options: RewardOption[]): RewardTier {
+  const rolled = options.filter(option => !option.choice)
+  if (options.some(option => option.choice)) {
+    return 'S+'
+  }
+  if (rolled.length === 0) {
+    return 'C'
+  }
+  const best = rolled.reduce((top, option) =>
+    TIER_RANK[option.item.tier] > TIER_RANK[top.item.tier] ? option : top, rolled[0]!)
+  return best.item.tier.toUpperCase() as RewardTier
+}
+
+function minTierOf(options: RewardOption[]): RewardTier {
+  const rolled = options.filter(option => !option.choice)
+  if (rolled.length === 0) {
+    return options.some(option => option.choice) ? 'S+' : 'C'
+  }
+  const low = rolled.reduce((bottom, option) =>
+    TIER_RANK[option.item.tier] < TIER_RANK[bottom.item.tier] ? option : bottom, rolled[0]!)
+  return low.item.tier.toUpperCase() as RewardTier
+}
+
+const ceilingTier = computed(() => maxTierOf(lockedOptions.value))
+const floorTier = computed(() => minTierOf(lockedOptions.value))
+const ceilingIndex = computed(() => LADDER.indexOf(ceilingTier.value))
+const floorIndex = computed(() => LADDER.indexOf(floorTier.value))
+const leadOptionId = computed<string | null>(() => {
+  const rolled = lockedOptions.value.filter(option => !option.choice)
+  if (rolled.length === 0) {
+    return null
+  }
+  return rolled.reduce((top, option) =>
+    TIER_RANK[option.item.tier] > TIER_RANK[top.item.tier] ? option : top, rolled[0]!).optionId
+})
 </script>
 
 <template>
-  <section class="panel slot-machine">
+  <section
+    class="cabinet panel scan"
+    :class="{ banning: banMode }"
+  >
+    <span
+      v-if="banMode"
+      class="hazard-red ban-edge"
+      aria-hidden="true"
+    />
+
     <header class="cabinet-head">
-      <h2 class="draft-title">
-        <WaitingLight
-          v-if="!resolved && !banMode"
-          label="Waiting on your reward pick"
-        />
-        {{ banMode ? 'Ban offered rewards' : 'Rewards — choose one' }}
-      </h2>
-      <p class="muted small">
-        <template v-if="banMode">
-          Pick any or all of the offered rewards to ban from your future
-          offers — this spends a token and forfeits this mission's reward.
-        </template>
-        <template v-else>
-          Every reward is yours alone — stratagems included.
-        </template>
-      </p>
-      <p
-        v-if="props.optionsLost && !banMode"
-        class="small options-lost"
-      >
-        {{ props.optionsLost }} pact{{ props.optionsLost === 1 ? '' : 's' }} failed —
-        {{ props.optionsLost === 1 ? 'one reward option forfeited' : `${props.optionsLost} reward options forfeited` }}.
-      </p>
+      <div class="head-copy">
+        <span class="lbl">Reward draft</span>
+        <h2 class="disp cabinet-title">
+          <WaitingLight
+            v-if="!resolved && !banMode"
+            label="Waiting on your reward pick"
+          />
+          {{ banMode ? 'Ban offered rewards' : 'Rewards — choose one' }}
+        </h2>
+        <p class="cabinet-sub muted small">
+          <template v-if="banMode">
+            Pick any or all of the offered rewards to ban from your future
+            offers — this spends a token and forfeits this mission's reward.
+          </template>
+          <template v-else>
+            Every reward is yours alone — stratagems included.
+          </template>
+        </p>
+      </div>
+      <span
+        v-if="lockedOptions.length && !banMode"
+        class="chip gold nowrap"
+      >{{ lockedOptions.length }} option{{ lockedOptions.length === 1 ? '' : 's' }}</span>
     </header>
+
+    <p
+      v-if="props.optionsLost && !banMode"
+      class="options-lost small"
+    >
+      {{ props.optionsLost }} pact{{ props.optionsLost === 1 ? '' : 's' }} failed —
+      {{ props.optionsLost === 1 ? 'one reward option forfeited' : `${props.optionsLost} reward options forfeited` }}.
+    </p>
+
+    <section
+      v-if="lockedOptions.length && !banned && !wasResolvedOnMount"
+      class="ceiling"
+      aria-label="Ceiling roll"
+    >
+      <div class="ceiling-head">
+        <span class="lbl">Ceiling roll</span>
+        <span
+          class="ceiling-ladder"
+          role="img"
+          :aria-label="allSettled ? `Rolled ceiling ${ceilingTier}` : 'Rolling the ceiling'"
+        >
+          <template
+            v-for="(tier, i) in LADDER"
+            :key="tier"
+          >
+            <span
+              v-if="i > 0"
+              class="ceiling-link"
+              :class="{ lit: i > floorIndex && i <= ceilingIndex }"
+            />
+            <TierBadge
+              :tier="tier"
+              size="sm"
+              class="ceiling-rung"
+              :class="{ lit: i >= floorIndex && i <= ceilingIndex, top: i === ceilingIndex }"
+            />
+          </template>
+        </span>
+        <Transition
+          name="phase"
+          mode="out-in"
+        >
+          <span
+            v-if="allSettled"
+            class="stamp disp ceiling-stamp"
+            :data-tier="ceilingTier"
+          >Ceiling · {{ ceilingTier }}</span>
+          <span
+            v-else
+            class="lbl pulse climbing"
+          >Climbing…</span>
+        </Transition>
+      </div>
+    </section>
 
     <div
       v-if="squadPicks.length && !banMode && !resolved"
-      class="squad-picks"
+      class="squad-row"
     >
-      <span class="muted small">Squad</span>
+      <span class="lbl">Squad</span>
       <AppTooltip
         v-for="pick in squadPicks"
         :key="pick.id"
         :content="squadPickLabel(pick)"
       >
         <span
-          class="squad-pick"
+          class="squad-pick cut-sm"
           :class="{ done: pick.item !== null, skipped: pick.skipped }"
           role="img"
           :aria-label="squadPickLabel(pick)"
@@ -250,23 +356,40 @@ function squadPickLabel(pick: SquadPick): string {
       v-if="tokenCount > 0 && !banMode && !resolved"
       class="token-bar"
     >
-      <span class="muted small">Reward tokens: {{ tokenCount }}</span>
-      <button
-        class="btn tiny ghost"
-        type="button"
-        :disabled="!canReroll || !allSettled"
-        @click="emit('reroll')"
-      >
-        Reroll offer
-      </button>
-      <button
-        class="btn tiny ghost"
-        type="button"
-        :disabled="!canBan || !allSettled"
-        @click="startBan"
-      >
-        Ban items
-      </button>
+      <div class="tok-readout">
+        <span class="lbl">Reward tokens</span>
+        <span
+          class="chits"
+          role="img"
+          :aria-label="`${tokenCount} of ${REWARD_TOKEN_CAP} reward tokens`"
+        >
+          <span
+            v-for="i in REWARD_TOKEN_CAP"
+            :key="i"
+            class="hex tok"
+            :class="{ on: i <= tokenCount }"
+          />
+        </span>
+        <span class="tok-count">{{ tokenCount }}<span class="dim">/{{ REWARD_TOKEN_CAP }}</span></span>
+      </div>
+      <div class="tok-actions">
+        <button
+          class="btn tiny ghost"
+          type="button"
+          :disabled="!canReroll || !allSettled"
+          @click="emit('reroll')"
+        >
+          Reroll offer
+        </button>
+        <button
+          class="btn tiny danger"
+          type="button"
+          :disabled="!canBan || !allSettled"
+          @click="startBan"
+        >
+          Ban items
+        </button>
+      </div>
     </div>
 
     <div
@@ -274,25 +397,34 @@ function squadPickLabel(pick: SquadPick): string {
       class="reels"
       :class="{ settled: allSettled }"
     >
-      <RewardReel
+      <div
         v-for="(option, index) in lockedOptions"
         :key="`${reelEpoch}-${option.optionId}`"
-        :option="option"
-        :candidates="reelPool"
-        :choice-pool="pool"
-        :owned-ids="ownedIds"
-        :index="index"
-        :instant="instant || reelsDone"
-        :can-pick="allSettled && !resolved"
-        :picked="pickedReelId === option.optionId"
-        :dimmed="pickedReelId !== null && pickedReelId !== option.optionId"
-        :ban-mode="banMode"
-        :bannable="bannableIds.includes(option.optionId)"
-        :selected="selectedBanIds.includes(option.optionId)"
-        @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
-        @ban="toggleBan"
-        @settled="onSettled"
-      />
+        class="reel-slot"
+        :class="{ lead: option.optionId === leadOptionId && !option.choice && !banMode }"
+      >
+        <span
+          v-if="option.optionId === leadOptionId && !option.choice && !banMode && allSettled"
+          class="lead-flag lbl"
+        >Ceiling</span>
+        <RewardReel
+          :option="option"
+          :candidates="reelPool"
+          :choice-pool="pool"
+          :owned-ids="ownedIds"
+          :index="index"
+          :instant="instant || reelsDone"
+          :can-pick="allSettled && !resolved"
+          :picked="pickedReelId === option.optionId"
+          :dimmed="pickedReelId !== null && pickedReelId !== option.optionId"
+          :ban-mode="banMode"
+          :bannable="bannableIds.includes(option.optionId)"
+          :selected="selectedBanIds.includes(option.optionId)"
+          @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
+          @ban="toggleBan"
+          @settled="onSettled"
+        />
+      </div>
     </div>
     <p
       v-else-if="!lockedOptions.length && !resolved"
@@ -305,9 +437,28 @@ function squadPickLabel(pick: SquadPick): string {
       v-if="banMode"
       class="ban-footer"
     >
-      <div class="row">
+      <span
+        class="hazard-red"
+        aria-hidden="true"
+      />
+      <div class="ban-copy">
+        <span class="lbl ban-lbl">Ban · purge from your pool</span>
+        <strong class="ban-count">
+          {{ selectedBanIds.length === 0
+            ? 'Select offered items'
+            : `${selectedBanIds.length} item${selectedBanIds.length === 1 ? '' : 's'} selected` }}
+        </strong>
+      </div>
+      <div class="ban-actions">
         <button
-          class="btn primary"
+          class="btn ghost"
+          type="button"
+          @click="cancelBan"
+        >
+          Cancel
+        </button>
+        <button
+          class="btn danger"
           type="button"
           :disabled="selectedBanIds.length === 0"
           @click="confirmBan"
@@ -315,13 +466,6 @@ function squadPickLabel(pick: SquadPick): string {
           {{ selectedBanIds.length === 0
             ? 'Ban selected items'
             : `Ban ${selectedBanIds.length} item${selectedBanIds.length === 1 ? '' : 's'}` }}
-        </button>
-        <button
-          class="btn ghost"
-          type="button"
-          @click="cancelBan"
-        >
-          Cancel
         </button>
       </div>
     </div>
@@ -338,11 +482,11 @@ function squadPickLabel(pick: SquadPick): string {
     <Transition name="phase">
       <div
         v-if="resolved"
-        class="banked"
+        class="banked cut-sm"
       >
         <template v-if="banned">
-          <span class="muted small">Draft resolved</span>
-          <strong>Rewards banned</strong>
+          <span class="lbl ban-lbl">Draft resolved</span>
+          <strong class="banked-name">Rewards banned</strong>
           <span class="muted small">— no reward this mission. Your future offers are cleaner.</span>
         </template>
         <template v-else>
@@ -354,8 +498,8 @@ function squadPickLabel(pick: SquadPick): string {
             draggable="false"
           >
           <div class="banked-copy">
-            <span class="muted small">Reward banked</span>
-            <strong>{{ pickedItem?.displayName }}</strong>
+            <span class="lbl">Reward banked</span>
+            <strong class="banked-name">{{ pickedItem?.displayName }}</strong>
             <span class="muted small">— see the squad inventory below.</span>
           </div>
         </template>
@@ -365,23 +509,62 @@ function squadPickLabel(pick: SquadPick): string {
 </template>
 
 <style scoped>
-.slot-machine {
+.cabinet {
   position: relative;
   display: grid;
   gap: 0.85rem;
   padding: 1rem 0.9rem 0.9rem;
-  border-color: color-mix(in srgb, var(--gold) 35%, var(--border));
+  border-color: color-mix(in srgb, var(--gold) 38%, var(--line-3));
   background:
     radial-gradient(120% 70% at 50% -12%, color-mix(in srgb, var(--gold) 12%, transparent), transparent 62%),
-    var(--bg-raised);
+    var(--panel);
+}
+.cabinet.banning { border-color: color-mix(in srgb, var(--red) 55%, var(--line-3)); }
+.ban-edge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
 }
 
-.cabinet-head { display: grid; gap: 0.25rem; text-align: center; }
-.draft-title { display: flex; align-items: center; justify-content: center; gap: 0.45rem; }
+.cabinet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.head-copy { display: grid; gap: 0.2rem; min-width: 0; }
+.cabinet-title { display: flex; align-items: center; gap: 0.45rem; margin: 0; color: var(--text); }
+.cabinet-sub { margin: 0; }
 .options-lost {
-  margin: 0.25rem 0 0;
+  margin: 0;
   color: var(--red);
 }
+
+.ceiling {
+  border: 1px solid var(--line-1);
+  background: var(--ground);
+  padding: 0.5rem 0.7rem;
+}
+.ceiling-head { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+.ceiling-ladder { display: inline-flex; align-items: center; gap: 0.28rem; }
+.ceiling-rung {
+  opacity: 0.3;
+  filter: grayscale(1);
+  transition: opacity var(--dur-med) var(--ease-out), filter var(--dur-med) var(--ease-out), scale var(--dur-med) var(--ease-snap);
+}
+.ceiling-rung.lit { opacity: 1; filter: none; }
+.ceiling-rung.top { scale: 1.12; }
+.ceiling-link {
+  width: 0.5rem;
+  height: 2px;
+  background: var(--line-3);
+  transition: background var(--dur-med) var(--ease-out);
+}
+.ceiling-link.lit { background: color-mix(in srgb, var(--gold) 70%, var(--line-3)); }
+.ceiling-stamp { margin-left: auto; padding: 0.2rem 0.5rem; border: 2px solid currentColor; font-size: 1rem; }
+.climbing { margin-left: auto; }
 
 .reels {
   display: flex;
@@ -391,36 +574,70 @@ function squadPickLabel(pick: SquadPick): string {
   overflow-x: auto;
   scrollbar-width: thin;
 }
+.reel-slot { position: relative; }
+.lead-flag {
+  position: absolute;
+  top: -0.15rem;
+  left: 50%;
+  z-index: 4;
+  translate: -50% 0;
+  padding: 0.1rem 0.45rem;
+  color: var(--gold);
+  background: var(--ground);
+  border: 1px solid var(--gold);
+}
+.reel-slot.lead :deep(.reel-window) {
+  box-shadow: 0 0 24px color-mix(in srgb, var(--gold) 22%, transparent), inset 0 0 26px rgba(0, 0, 0, 0.6);
+}
 
 .hint { text-align: center; margin: 0; }
 
 .token-bar {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  margin: 0.5rem 0 0.25rem;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--line-2);
+  background: var(--ground);
 }
+.tok-readout { display: flex; align-items: center; gap: 0.5rem; }
+.tok { width: 0.8rem; height: 0.95rem; background: var(--line-2); border: 1px solid var(--line-3); }
+.tok.on { background: var(--gold); border-color: var(--gold); }
+.tok-count { font-weight: 700; font-size: 0.95rem; }
+.tok-actions { display: flex; gap: 0.4rem; }
+
 .ban-footer {
-  margin-top: 0.6rem;
-  padding-top: 0.6rem;
-  border-top: 1px dashed color-mix(in srgb, var(--red) 40%, var(--border));
-}
-.squad-picks {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  margin: 0.5rem 0 0.25rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.75rem 0.6rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--red) 50%, var(--line-3));
+  background: color-mix(in srgb, var(--red) 8%, transparent);
 }
+.ban-footer > .hazard-red {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+}
+.ban-copy { display: grid; gap: 0.1rem; min-width: 0; }
+.ban-lbl { color: var(--red); }
+.ban-count { font-size: 0.95rem; }
+.ban-actions { display: flex; gap: 0.5rem; margin-left: auto; flex-wrap: wrap; }
+
+.squad-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
 .squad-pick {
   display: inline-grid;
   place-items: center;
-  width: 1.9rem;
-  height: 1.9rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--line-3);
+  background: var(--ground);
   overflow: hidden;
 }
 .squad-pick img {
@@ -456,14 +673,13 @@ function squadPickLabel(pick: SquadPick): string {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 35%, transparent);
   }
 }
+
 .banked {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 0.7rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--border));
-  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--line-3));
   background: color-mix(in srgb, var(--gold) 8%, transparent);
 }
 .banked-art {
@@ -471,11 +687,6 @@ function squadPickLabel(pick: SquadPick): string {
   height: 2.5rem;
   object-fit: contain;
 }
-.banked-copy {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.banked-copy strong { color: var(--gold); }
+.banked-copy { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+.banked-name { color: var(--gold); }
 </style>

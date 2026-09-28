@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ALL_ITEMS, WARBONDS } from '~~/shared/data/catalog'
+import { ALL_ITEMS, SPECIAL_WARBOND_CODES, WARBONDS } from '~~/shared/data/catalog'
 import { warbondImageUrl } from '~~/shared/data/images'
 import type { RewardTier } from '~~/shared/engine/types'
 import type { Tier, Warbond } from '~~/shared/data/types'
@@ -14,6 +14,7 @@ interface WarbondRow {
   image: string | undefined
   tier: RewardTier | undefined
   items: number
+  special: boolean
 }
 
 // Hover / focus / tap spotlight only — the banner stays obscured otherwise.
@@ -25,6 +26,7 @@ const rows = computed<WarbondRow[]>(() => WARBONDS.map((warbond: Warbond) => ({
   image: warbondImageUrl(warbond),
   tier: warbond.tier ? TIER_LABEL[warbond.tier] : undefined,
   items: ALL_ITEMS.filter(item => item.warbondCode === warbond.code).length,
+  special: SPECIAL_WARBOND_CODES.includes(warbond.code),
 })))
 
 const allOwned = computed(() => ownedWarbonds.value.length === WARBONDS.length)
@@ -32,15 +34,19 @@ const allOwned = computed(() => ownedWarbonds.value.length === WARBONDS.length)
 function toggleAll(): void {
   setOwned(allOwned.value ? [] : WARBONDS.map(warbond => warbond.code))
 }
+
+function isOwned(code: string): boolean {
+  return ownedWarbonds.value.includes(code)
+}
 </script>
 
 <template>
   <div class="warbond-browser">
-    <div class="row spread">
-      <p class="muted small">
-        {{ ownedWarbonds.length }} of {{ WARBONDS.length }} owned · reward offers only include items
-        from your own warbonds
-      </p>
+    <div class="wb-head row spread">
+      <span class="lbl">
+        Owned <b class="wb-count">{{ ownedWarbonds.length }}</b>
+        <span class="dim">/ {{ WARBONDS.length }}</span>
+      </span>
       <button
         type="button"
         class="btn tiny ghost"
@@ -49,6 +55,9 @@ function toggleAll(): void {
         {{ allOwned ? 'Clear all' : 'Select all' }}
       </button>
     </div>
+    <p class="muted small wb-note">
+      Reward offers only include items from your own warbonds.
+    </p>
 
     <ul class="warbond-list">
       <li
@@ -57,12 +66,12 @@ function toggleAll(): void {
       >
         <button
           type="button"
-          class="warbond"
-          :class="{
-            selected: ownedWarbonds.includes(row.code),
-            focused: activeCode === row.code,
-          }"
-          :aria-pressed="ownedWarbonds.includes(row.code)"
+          class="warbond cut-sm"
+          :class="[
+            isOwned(row.code) ? 'wb-on' : 'wb-off',
+            { focused: activeCode === row.code, special: row.special },
+          ]"
+          :aria-pressed="isOwned(row.code)"
           @click="toggle(row.code)"
           @pointerenter="activeCode = row.code"
           @pointerleave="activeCode = ''"
@@ -81,7 +90,13 @@ function toggleAll(): void {
           >✓</span>
           <span class="warbond-text">
             <span class="warbond-name">{{ row.displayName }}</span>
-            <span class="muted small">{{ row.items }} items</span>
+            <span class="warbond-meta">
+              <span class="cap">{{ row.items }} items</span>
+              <span
+                v-if="row.special"
+                class="acq"
+              >Acquisition</span>
+            </span>
           </span>
           <TierBadge
             v-if="row.tier"
@@ -95,7 +110,10 @@ function toggleAll(): void {
 </template>
 
 <style scoped>
-.warbond-browser { display: grid; gap: 0.7rem; }
+.warbond-browser { display: grid; gap: 0.6rem; }
+.wb-head { align-items: baseline; }
+.wb-count { color: var(--gold); }
+.wb-note { margin: 0; }
 
 .warbond-list {
   list-style: none;
@@ -113,28 +131,28 @@ function toggleAll(): void {
   width: 100%;
   min-height: 3.4rem;
   padding: 0.8rem 0.9rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg);
+  border: 1px solid var(--line-2);
+  background: var(--panel);
   color: var(--text);
   font: inherit;
   text-align: left;
   cursor: pointer;
   overflow: hidden;
-  transition: border-color 160ms ease, background 160ms ease;
+  transition: border-color var(--dur-fast), background-color var(--dur-fast), filter var(--dur-fast);
 }
+.warbond:hover { border-color: #8a8c6e; }
 
-.warbond.selected {
-  border-color: color-mix(in srgb, var(--gold) 55%, var(--border));
+.wb-on {
+  border-color: var(--line-4);
+  background-color: var(--raised);
 }
-.warbond.selected::before {
-  content: '';
-  position: absolute;
-  inset-block: 0;
-  left: 0;
-  width: 3px;
-  background: var(--gold);
-}
+.wb-on .warbond-name { color: var(--gold); }
+
+.wb-off { color: var(--muted); }
+.wb-off .warbond-name { color: var(--khaki); }
+.wb-off .warbond-check { border-style: dashed; }
+
+.warbond.special { border-left: 3px solid color-mix(in srgb, var(--khaki) 35%, transparent); }
 
 /* The banner starts obscured — soft blur, low light — and resolves while the
    row is hovered, focused or tapped. */
@@ -157,6 +175,9 @@ function toggleAll(): void {
     transform 620ms var(--ease-out);
 }
 
+.wb-off .warbond-bg { filter: grayscale(1) brightness(0.5) blur(11px); }
+.wb-on .warbond-bg { opacity: 0.12; }
+
 .warbond.focused .warbond-bg {
   opacity: 0.34;
   filter: blur(0) saturate(1) brightness(1);
@@ -171,30 +192,47 @@ function toggleAll(): void {
   flex: none;
   width: 1.15rem;
   height: 1.15rem;
-  border: 1px solid var(--muted);
-  border-radius: 50%;
+  border: 1px solid var(--line-4);
   font-size: 0.7rem;
   line-height: 1;
   color: transparent;
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+  transition: background-color var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
 }
-.warbond.selected .warbond-check {
+.wb-on .warbond-check {
   background: var(--gold);
   border-color: var(--gold);
-  color: #171712;
+  color: var(--on-gold);
 }
 
 .warbond-text {
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 0.05rem;
+  gap: 0.1rem;
   flex: 1;
   min-width: 0;
 }
-
-.warbond-name { font-weight: 600; letter-spacing: 0.02em; }
-.warbond.selected .warbond-name { color: var(--gold); }
+.warbond-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.warbond-meta { display: flex; align-items: center; gap: 0.5rem; }
+.acq {
+  display: inline-block;
+  padding: 0 0.4rem;
+  border: 1px solid var(--line-4);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--khaki);
+  white-space: nowrap;
+}
 
 .warbond :deep(.tier-badge) { position: relative; z-index: 1; flex: none; }
 

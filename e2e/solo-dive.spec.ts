@@ -88,7 +88,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // Banning is a separate flow alongside reroll, and it forfeits the reward
   // pick: the same slot-machine reels become the purge selector, so select a
   // reel, confirm, and the draft resolves with no reward.
-  await expect(page.getByText('Reward tokens: 1')).toBeVisible()
+  await expect(page.locator('.token-bar').getByRole('img', { name: /1 of 3 reward tokens/ })).toBeVisible()
   await page.getByRole('button', { name: 'Ban items' }).click()
   await expect(page.getByText('Ban offered rewards')).toBeVisible()
   await expect(page.locator('.reels .reel-window').first()).toBeVisible()

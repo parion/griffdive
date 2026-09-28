@@ -13,5 +13,5 @@ defineProps<{ tier: RewardTier, size?: 'sm' | 'md' }>()
 </template>
 
 <style scoped>
-.tier-badge { background: color-mix(in srgb, currentColor 14%, transparent); }
+.tier-badge { background: var(--ground); }
 </style>
