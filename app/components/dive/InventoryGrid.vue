@@ -404,7 +404,7 @@ function forfeit(ownerId: string, itemId: string): void {
                     aria-label="Host"
                   ><path d="M3 18h18v2H3zM4 16l2-9 4 4 2-6 2 6 4-4 2 9z" /></svg>
                 </span>
-                <span class="cap">{{ entry.count }} items</span>
+                <span class="cap">{{ entry.diver.warbondCodes.length }} WARBONDS</span>
               </span>
               <span
                 class="chits"
@@ -476,9 +476,9 @@ function forfeit(ownerId: string, itemId: string): void {
           <header class="armory-head">
             <div class="head-copy">
               <span class="lbl">Armory · personal inventory · {{ selectedEntry?.count ?? 0 }}</span>
-              <h3 class="disp armory-title">
+              <h1 class="disp armory-title">
                 {{ selectedEntry?.title ?? 'Diver kit' }}
-              </h3>
+              </h1>
             </div>
             <AppTabs
               class="head-tabs"
@@ -538,8 +538,9 @@ function forfeit(ownerId: string, itemId: string): void {
                     <span
                       v-for="(slot, index) in entry.slots"
                       :key="index"
-                      class="slot cut-sm"
+                      class="slot cut-sm slot-in"
                       :class="{ filled: slot.filled }"
+                      :style="{ animationDelay: `${index * 0.06}s` }"
                     >
                       <img
                         v-if="slot.image"
@@ -1098,6 +1099,7 @@ function forfeit(ownerId: string, itemId: string): void {
   border: 1px dashed var(--line-3);
   color: var(--ghost-ink);
 }
+.slot-in { animation: slotIn 0.5s var(--ease-out) both; }
 .slot.filled {
   border-style: solid;
   border-color: var(--teal);
@@ -1216,11 +1218,15 @@ function forfeit(ownerId: string, itemId: string): void {
 .chip.filter.on .filter-count { color: var(--gold); }
 
 .sections {
-  display: grid;
-  gap: var(--gap-panel);
-  align-content: start;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--gap-panel);
+  row-gap: var(--gap-panel);
+  align-content: flex-start;
 }
 .kit-sec {
+  flex: 1 1 17rem;
+  min-width: 0;
   display: grid;
   gap: var(--sp-3);
   padding-left: var(--sp-4);

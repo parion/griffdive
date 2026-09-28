@@ -29,8 +29,10 @@ const strandedReason = computed(() =>
 const strain = computed(() => currentStrain(props.state))
 const strainRisk = computed(() => STRAIN_RISK[strain.value?.id ?? ''] ?? 0)
 const strainCall = computed(() => strainDecision(props.state))
+// The drawn strain persists with the front for the whole operation, so the
+// card shows whenever one exists (not just on the first mission's decision).
 const strainVisible = computed(() =>
-  Boolean(props.state.strainId) && props.state.missionInOperation === 1 && !props.state.majorOrder)
+  Boolean(props.state.strainId) && !props.state.majorOrder)
 
 const front = computed(() =>
   props.state.frontId ? FRONTS.find(f => f.id === props.state.frontId) ?? null : null)

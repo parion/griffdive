@@ -83,9 +83,9 @@ per destroyer-terminal spec`). Verified state at the current HEAD:
 | 8 Bridge home | Done | `index.vue` rebuilt to the design: hero moved into the left column, climb ladder + goal flag, **6-step** "Every mission" loop + NEXT, Valor panel with a **per-tier odds ladder** (engine `oddsToReach`) + big Valor number, **code-cell join** with caret + n/6, Solo drop split from Variant & warbonds (dialog), live-room/local **Service record** cards, full-width **Major Order band** + footer. Motion wired (`rise/slam/impact/rung/flag-in/cell-on/grow/loopLit/mo-in`). Left column scrolls a little at 900px. |
 | 9 Lobby | Done | `DivePhaseLobby.vue` rebuilt to the design: hellpod bays with seated/empty/launched states (pod drop, doors, DEPLOYED), a 5-column variant radiogroup (start number, tick staircase, kit lines), launch summary + hold-to-launch → Launched stamp, and the pre-launch checks strip. The invite code cells and route strip are carried by the shell (`SquadStrip` / `CrusadeStrip`). |
 | 10 Briefing | Done | `BriefingOverlay.vue` rebuilt as the interactive six-beat tour (Identify · Spin · Pact · Reward · Warbonds · Deploy): 300px dossier aside, 68px chevron progress rail, per-beat panels (registry form + class flip, the real `WheelOfMisfortune` + accept/opt-out, Valor meter + pact cards + odds ladder, ceiling-roll track + reward pods, 26-cell warbond grid with SELECT/CLEAR ALL, Order of Deployment document), and a 76px gated footer (Back · pips · NAME REQUIRED · Next/Begin dive). Reveal timelines respect `prefers-reduced-motion`. |
-| 11 Armory | Partial | `InventoryGrid.vue` reworked (`AppTabs`, accented sections) but still the drawer via `ArmoryDrawer`/`AppDrawer`. Spec subtitle (warbond count), `slot-in` stagger and title scale not confirmed. |
-| 12 Dive | Partial | `DivePhaseDiving.vue`: locked team-risk status strip + outcome plates. Missing: 136px mission card/DEPLOYED stamp, entry shake + pod-drop overlay, `anyVoid` rail panel, `PactBriefing` skull-row/vertical-hold styling. |
-| 13 Phone shell | Partial (wired) | New `DivePhone` orchestrator + `Phone*` components rendered from `dive/[id].vue` below the 1020px breakpoint via `usePhoneShell`. Fixed: `PhoneValor` partial cell, honors `@advance`. Remaining: no-scroll 390×844 fidelity, hit-size pass. |
+| 11 Armory | Done | `InventoryGrid.vue` (drawer, kept by product decision) aligned to the spec: vertical diver tablist with a **warbond-count** subtitle, `slot-in` stagger on the readiness slots, `<h1>` title, flex-wrap accented sections with notes, and the reserve/tier key footer. |
+| 12 Dive | Partial | Landed: the 136px **mission card** (DEPLOYED + `N/4 ON THE GROUND`, mission pips, `VS <front>`, strain chip, TEAM RULE/LOADOUT CHECK), the **entry pod-drop + shake**, and the red dashed **anyVoid** summary. Remaining: the `PactBriefing` skull-row / vertical-hold restyle (Your pacts / Squad pacts columns). |
+| 13 Phone shell | Partial (wired + hit-size) | `DivePhone` orchestrator + `Phone*` components render from `dive/[id].vue` below 1020px via `usePhoneShell`; the shell is a fixed 390×844 no-scroll band layout (verified). Hit-size pass done (global nav icon buttons, `MajorOrderPicker` refresh + faction options now ≥44px); `PhoneWheel` strain card now persists past mission 1. Remaining: Bridge-home phone reorder (host/join/solo before education), front/strain reroll + host moderation on phone, and the unused `#sheet` slot. |
 
 ---
 
@@ -464,7 +464,7 @@ piece; scope before starting.
 
 # 11. Armory — spec `02-armory`
 
-**Status:** Partial (closest match). **Effort:** S-M.
+**Status:** Done. **Effort:** S-M.
 
 **Spec:** `02-armory.body.html`: full page with ladder + 52px key footer (`:254-274`, `:319-322`);
 4-item vertical tablist with selected `.chev` (`:280-297`); kit-tab second line = **warbond count**
@@ -503,7 +503,7 @@ columns, add the anyVoid rail panel, align outcome labels/weights.
 
 # 13. Phone shell — specs `04`, `13`-`17`
 
-**Status:** Wired (renders below 1020px; no-scroll/390×844 fidelity + hit-size pass pending). **Effort:** XL.
+**Status:** Partial (wired + hit-size pass done; home reorder and a few phone affordances remain). **Effort:** XL.
 
 All phone specs are **390×844 fixed, no-scroll** with a 48/40/52px header/crusade/squad trio and
 content anchored in **bottom sheets** (`bottom:0`). Current: `DiveFrame.vue:89-103` collapses to a

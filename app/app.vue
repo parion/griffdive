@@ -173,6 +173,12 @@ const { online } = useSessionStore()
   .alpha-chip { display: none; }
   .uplink { display: none; }
   .navb span { display: none; }
-  .navb { padding: 0.35rem; }
+  /* Phone hit-size floor: icon-only nav controls stay a 44px touch target. */
+  .navb {
+    padding: 0;
+    width: 44px;
+    height: 44px;
+    justify-content: center;
+  }
 }
 </style>

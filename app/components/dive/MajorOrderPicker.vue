@@ -149,8 +149,8 @@ function playSuggestion(): void {
   display: inline-grid;
   place-items: center;
   padding: 0;
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 2.75rem;
+  height: 2.75rem;
   flex-shrink: 0;
   background: none;
   border: 1px solid var(--line-4);
@@ -174,8 +174,8 @@ function playSuggestion(): void {
   display: inline-grid;
   place-items: center;
   padding: 0.3rem;
-  width: 2.7rem;
-  height: 2.7rem;
+  width: 2.75rem;
+  height: 2.75rem;
   background: var(--ground);
   border: 1px solid color-mix(in srgb, var(--mo-accent) 40%, var(--line-3));
   color: var(--khaki);
