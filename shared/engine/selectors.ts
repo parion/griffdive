@@ -10,7 +10,6 @@ import type { Item } from '../data/types'
 import {
   MAJOR_ORDER_RISK,
   MISFORTUNE_RISK,
-  OPTIONS_LOST_PER_FAILED_PACT,
   PACT_RISK,
   SAMPLE_VALOR_CAP,
   STRAIN_RISK,
@@ -32,7 +31,7 @@ import {
 } from './pacts'
 import type { StratagemBanSource } from './pacts'
 import { startingItemIds } from './progression'
-import { performanceValor, maxCeiling, oddsToReach, optionsForStars, rollBonus, rollCeiling, rollRewardOptions, valorOf } from './rewards'
+import { performanceValor, maxCeiling, oddsToReach, optionsForDiver, rollBonus, rollCeiling, rollRewardOptions, valorOf } from './rewards'
 import type { RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -276,11 +275,7 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   const exclude = new Set([...owned, ...diver.bannedItemIds])
   // Every failed pact forfeits one reward option (AGENTS.md: Reward math) —
   // floored at one so the draft can always complete and never deadlock ADVANCE.
-  const count = Math.max(
-    1,
-    optionsForStars(state.lastReport.stars, ceiling)
-    - diver.failedPactIds.length * OPTIONS_LOST_PER_FAILED_PACT,
-  )
+  const count = optionsForDiver(state.lastReport.stars, ceiling, diver.failedPactIds.length)
   return rollRewardOptions(
     deriveSeed(seed, 2),
     ceiling,

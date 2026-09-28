@@ -772,6 +772,15 @@ function launchCrusade(variant: CrusadeVariant): void {
       Loading dive…
     </p>
 
+    <!-- The phone shell swaps out DiveFrame, which owns the desktop Armory
+         drawer — so the phone branch needs its own mount for the same ref. -->
+    <ArmoryDrawer
+      v-if="state && isPhone"
+      v-model:open="armoryOpen"
+      :state="state"
+      :self-id="selfId"
+    />
+
     <BriefingOverlay
       v-if="briefingOpen && state"
       :state="state"

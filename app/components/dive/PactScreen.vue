@@ -296,6 +296,7 @@ const opLabel = computed(() =>
       :offer="offer"
       :selected="selection"
       :blocked="coverage"
+      :disabled="locked"
       @toggle="toggle"
     />
 

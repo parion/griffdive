@@ -539,6 +539,7 @@ function tokenChits(count: number): boolean[] {
         <button
           class="ghost skip-btn"
           type="button"
+          :disabled="!canControl"
           @click="emit('advance')"
         >
           Skip

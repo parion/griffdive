@@ -2,6 +2,7 @@ import type { Item, Tier } from '../data/types'
 import {
   BONUS_STATS,
   MAX_OPTIONS,
+  OPTIONS_LOST_PER_FAILED_PACT,
   OVERFLOW_S_LUCK,
   OVERFLOW_S_PLUS_LUCK,
   SAMPLE_VALOR_CAP,
@@ -162,6 +163,17 @@ export function optionsForStars(stars: number, ceiling: RewardTier): number {
     return Math.min(count + S_PLUS_BONUS_OPTIONS, MAX_OPTIONS + S_PLUS_BONUS_OPTIONS)
   }
   return count
+}
+
+// The options a diver's draft actually offers: the star count less one per
+// failed pact, floored at one so the draft can always complete (AGENTS.md:
+// Reward math). The single source for both the rolled offer and the preview.
+export function optionsForDiver(
+  stars: number,
+  ceiling: RewardTier,
+  failedPactCount: number,
+): number {
+  return Math.max(1, optionsForStars(stars, ceiling) - failedPactCount * OPTIONS_LOST_PER_FAILED_PACT)
 }
 
 // Reward options live in the band the difficulty guarantees (its base tier) and

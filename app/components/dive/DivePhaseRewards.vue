@@ -34,9 +34,16 @@ watch(() => props.state.missionIndex, () => {
 const options = computed(() => (props.self ? diverOptions(props.state, props.self) : []))
 
 // Liberty's Cross picks from the diver's own catalog: their declared warbonds
-// minus anything already owned. Same personal-pool rule as the rolled offers.
-const rewardPool = computed(() =>
-  props.self ? rewardPoolFor(props.self.warbondCodes ?? ALL_WARBOND_CODES) : [])
+// minus anything already owned and minus anything they have banned for the
+// rest of the crusade — the same allow-list PICK_REWARD enforces.
+const rewardPool = computed(() => {
+  if (!props.self) {
+    return []
+  }
+  const banned = new Set(props.self.bannedItemIds)
+  return rewardPoolFor(props.self.warbondCodes ?? ALL_WARBOND_CODES)
+    .filter(item => !banned.has(item.id))
+})
 const ownedIds = computed(() => props.state.personalInventories[props.selfId ?? ''] ?? [])
 
 // The rest of the squad's draft state for the icon-only indicators: what each

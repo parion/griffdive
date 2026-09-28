@@ -5,12 +5,15 @@ import type { Accountability } from '~~/shared/data/types'
 import { PACT_RISK } from '~~/shared/engine/config'
 import { ACCOUNTABILITY_LABELS } from '~/utils/accountability'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   offer: Pact[]
   selected: string[]
   // Offered pacts the current selection rules out: pactId → reason to show.
   blocked?: Record<string, string>
-}>()
+  // The diver has locked: the hand is read-only, so a toggle can't show a
+  // loadout that was never sworn.
+  disabled?: boolean
+}>(), { blocked: undefined, disabled: false })
 defineEmits<{ toggle: [pactId: string] }>()
 
 // Where the squad verifies each pact — the chip reads as the check channel,
@@ -73,7 +76,7 @@ function stampLabel(reason: string): string {
         v-for="(pact, index) in offer"
         :key="pact.id"
         :model-value="isOn(pact.id)"
-        :disabled="isRuled(pact.id)"
+        :disabled="props.disabled || isRuled(pact.id)"
         class="pact pact-card cut-sm"
         :class="[dealClass(index), { on: isOn(pact.id), ruled: isRuled(pact.id) }]"
         :style="{ animationDelay: dealDelay(index) }"

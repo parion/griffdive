@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PACT_RISK, STRATAGEM_SLOTS_REQUIRED } from '~~/shared/engine/config'
+import { PACT_RISK, STRATAGEM_SLOTS_REQUIRED, missionsPerOperation } from '~~/shared/engine/config'
 import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
 import { pactName } from '~~/shared/data/pacts'
 import {
@@ -89,6 +89,7 @@ const coverage = computed<Record<string, string>>(() => {
 
 const locked = computed(() => Boolean(props.self?.pactsLocked))
 const selectedRisk = computed(() => pactRiskTotal(selection.value))
+const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 
 const front = computed(() => currentFront(props.state))
 const strain = computed(() => currentStrain(props.state))
@@ -166,7 +167,7 @@ const pendingText = computed(() => {
               class="s-icon s-icon-sub"
             >
             <span class="s-name">{{ strain?.name ?? 'Major Order' }}</span>
-            <span class="disp s-risk orange">+{{ breakdown.strainRisk || breakdown.majorOrderRisk }} ×3</span>
+            <span class="disp s-risk orange">+{{ breakdown.strainRisk || breakdown.majorOrderRisk }} ×{{ opLength }}</span>
           </div>
         </div>
         <div class="summary-total">

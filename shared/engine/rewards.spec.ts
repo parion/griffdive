@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS } from '../data/catalog'
 import { VALOR_METER_MAX, sPlusValorFloorFor, sValorFloorFor } from './config'
-import { DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, maxCeiling, oddsToReach, optionsForStars, performanceValor, rollCeiling, rollRewardOptions, tierWeight, valorOf } from './rewards'
+import { DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, maxCeiling, oddsToReach, optionsForDiver, optionsForStars, performanceValor, rollCeiling, rollRewardOptions, tierWeight, valorOf } from './rewards'
 import { mulberry32 } from './rng'
 import type { RewardTier } from './types'
 
@@ -174,6 +174,24 @@ describe('optionsForStars', () => {
   it('clamps out-of-range stars', () => {
     expect(optionsForStars(99, 'C')).toBe(4)
     expect(optionsForStars(-3, 'C')).toBe(1)
+  })
+})
+
+describe('optionsForDiver', () => {
+  it('forfeits one option per failed pact', () => {
+    expect(optionsForDiver(5, 'B', 0)).toBe(4)
+    expect(optionsForDiver(5, 'B', 1)).toBe(3)
+    expect(optionsForDiver(3, 'B', 1)).toBe(2)
+  })
+
+  it('never drops below one option, so the draft can always complete', () => {
+    expect(optionsForDiver(0, 'C', 5)).toBe(1)
+    expect(optionsForDiver(5, 'B', 99)).toBe(1)
+  })
+
+  it('keeps the S+ bonus option before the failed-pact penalty', () => {
+    expect(optionsForDiver(5, 'S+', 0)).toBe(5)
+    expect(optionsForDiver(5, 'S+', 2)).toBe(3)
   })
 })
 

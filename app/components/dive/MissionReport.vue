@@ -3,14 +3,16 @@ import {
   MAX_OPTIONS,
   SAMPLE_VALOR_CAP,
   SAMPLE_VALOR_WEIGHTS,
+  bonusIntervalFor,
   maxStarsFor,
   sampleAvailability,
 } from '~~/shared/engine/config'
 import { difficultyName } from '~~/shared/engine/progression'
-import { performanceValor, optionsForStars } from '~~/shared/engine/rewards'
+import { performanceValor, optionsForDiver } from '~~/shared/engine/rewards'
 import {
   currentFront,
   diverCeiling,
+  pactRiskOf,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionOutcome, MissionReport, RewardTier, SampleCounts } from '~~/shared/engine/types'
@@ -72,10 +74,14 @@ const sampleFractions = computed(() => {
 const sampleCapFrac = computed(() => Math.min(1, sampleFractions.value.total / SAMPLE_VALOR_CAP))
 
 const ceiling = computed(() => (props.self ? diverCeiling(props.state, props.self) : 'C'))
-const optionCount = computed(() => optionsForStars(stars.value, ceiling.value))
+const optionCount = computed(() =>
+  optionsForDiver(stars.value, ceiling.value, props.self?.failedPactIds.length ?? 0))
 const ceilingIndex = computed(() => LADDER.indexOf(ceiling.value))
 
-const valorBase = computed(() => teamRiskOf(props.state))
+// The diver's locked Valor floor: shared team risk plus their own pact risk
+// (failed pacts already voided by the selector).
+const valorBase = computed(() =>
+  teamRiskOf(props.state) + (props.self ? pactRiskOf(props.self) : 0))
 const valorWithPerf = computed(() => valorBase.value + performance.value)
 const valorDelta = computed(() => {
   const delta = valorWithPerf.value - valorBase.value
@@ -84,7 +90,9 @@ const valorDelta = computed(() => {
 
 const frontLabel = computed(() => front.value?.displayName ?? 'Unknown front')
 const honorsEligible = computed(() =>
-  props.outcome === 'success' && stars.value === maxStars.value)
+  props.outcome === 'success'
+  && stars.value === maxStars.value
+  && props.state.missionIndex % bonusIntervalFor(props.state.divers.length) === 0)
 
 const sampleRows = computed(() => [
   { key: 'common' as const, label: 'Common', tone: 'common' as const, icon: '/images/svgs/Common_Sample_Icon.svg', max: sampleMax.value.common },

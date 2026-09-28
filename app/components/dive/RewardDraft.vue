@@ -91,6 +91,11 @@ const lockedOptions = ref<RewardOption[]>(props.options.length > 0 ? [...props.o
 const settledCount = ref(0)
 // Once the pods have revealed, remounting them must not replay the drop.
 const podsDone = ref(false)
+// Bumped on every redraw: a reroll can reuse option ids, and Vue would patch
+// the existing pods in place — their `settled` would already be true and never
+// re-emit, leaving `allSettled` false and the draft deadlocked. A fresh key
+// remounts the pods so the drop replays and the settle count can rebuild.
+const draftGeneration = ref(0)
 
 function sameOffer(a: RewardOption[], b: RewardOption[]): boolean {
   return a.length === b.length && a.every((option, i) => option.optionId === b[i]?.optionId)
@@ -110,6 +115,7 @@ watch(() => props.options, (next) => {
     lockedOptions.value = [...next]
     settledCount.value = 0
     podsDone.value = false
+    draftGeneration.value++
   }
 })
 
@@ -375,7 +381,7 @@ const statusKind = computed<'honors' | 'advance' | 'wait' | 'pick'>(() => {
     >
       <RewardPod
         v-for="(option, index) in lockedOptions"
-        :key="option.optionId"
+        :key="`${draftGeneration}-${option.optionId}`"
         :option="option"
         :choice-pool="pool"
         :owned-ids="ownedIds"
