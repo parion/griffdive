@@ -118,7 +118,7 @@ function acceptDisabled(): boolean {
 
 <template>
   <div class="phone-wheel">
-    <div class="scroll">
+    <div class="body">
       <div class="stage">
         <div
           class="sweep"
@@ -171,15 +171,6 @@ function acceptDisabled(): boolean {
           </svg>
           <span class="reroll-n">{{ state.rerollTokens }}</span>
         </button>
-
-        <div
-          class="legend"
-          aria-hidden="true"
-        >
-          <span><i class="khaki" />1–2</span>
-          <span><i class="orange" />3</span>
-          <span><i class="red" />4–5</span>
-        </div>
 
         <WheelOfMisfortune
           :difficulty="state.difficulty"
@@ -309,31 +300,45 @@ function acceptDisabled(): boolean {
                 >{{ strainCall.accepted ? 'Committed' : 'Opted out' }}</span>
               </span>
             </div>
-            <div class="strain-row">
-              <img
-                v-if="frontImage"
-                :src="frontImage"
-                :alt="front?.displayName ?? 'Front'"
-                class="strain-icon"
-              >
-              <img
-                v-if="strainImage"
-                :src="strainImage"
-                alt=""
-                class="strain-icon strain-sub"
-              >
-              <div class="strain-copy">
-                <span class="strain-name disp">{{ strain.name }}</span>
-                <span class="strain-front">{{ front?.displayName }} · every mission</span>
+            <div class="fs-grid">
+              <div class="fs-cell">
+                <span class="fs-icon">
+                  <img
+                    v-if="frontImage"
+                    :src="frontImage"
+                    :alt="front?.displayName ?? 'Front'"
+                  >
+                </span>
+                <span class="fs-copy">
+                  <span class="lbl fs-lbl">Front</span>
+                  <span class="fs-name">{{ front?.displayName ?? 'Unknown' }}</span>
+                </span>
+                <span class="fs-note">all {{ opLength }} missions</span>
               </div>
-              <span class="disp strain-risk orange">+{{ strainRisk }} ×{{ opLength }}</span>
+              <div class="fs-cell fs-strain">
+                <span class="fs-icon">
+                  <img
+                    v-if="strainImage"
+                    :src="strainImage"
+                    :alt="strain.name"
+                  >
+                </span>
+                <span class="fs-copy">
+                  <span class="lbl fs-lbl strain-l">Strain</span>
+                  <span class="fs-name disp">{{ strain.name }}</span>
+                </span>
+                <span class="fs-risk">
+                  <b class="disp orange">+{{ strainRisk }}</b>
+                  <i class="lbl">each mission</i>
+                </span>
+              </div>
             </div>
 
             <template v-if="!strainCall.decided">
               <div class="mis-actions">
                 <HoldButton
                   label="Commit"
-                  hint="hold · whole operation"
+                  :hint="`hold · all ${opLength} missions`"
                   tone="orange"
                   :disabled="!canControl"
                   @confirm="emit('decideStrain', true)"
@@ -435,25 +440,17 @@ function acceptDisabled(): boolean {
 
 <style scoped>
 .phone-wheel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-/* One scroll region for the whole phase: the wheel and the decision cards
-   scroll together, so the cards slide up over the wheel rather than being
-   trapped in a short nested viewport. */
-.scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  display: flex;
-  flex-direction: column;
-}
+/* The wheel is fixed at the top of the phase; the decision cards sit below and
+   tuck up over its lower rim, scrolling within their own sheet — never the
+   page. The wheel stays visible above so the spin hub is always reachable. */
+.body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .stage {
   position: relative;
   flex: 0 0 auto;
   display: grid;
-  place-items: center;
-  padding: 10px 12px;
-  overflow: visible;
+  place-items: start center;
+  padding: 8px 12px 0;
+  overflow: hidden;
 }
 .sweep {
   position: absolute;
@@ -465,7 +462,8 @@ function acceptDisabled(): boolean {
   animation: sweepY 9s linear infinite;
   pointer-events: none;
 }
-.stage :deep(.wheel-wrap) { width: 100%; max-width: 340px; }
+.stage :deep(.wheel-wrap) { width: min(100%, 300px, 46vh); }
+.stage :deep(.risk-legend) { display: none; }
 
 .reroll {
   position: absolute;
@@ -495,32 +493,22 @@ function acceptDisabled(): boolean {
   font-weight: 700;
 }
 
-.legend {
-  position: absolute;
-  right: 12px;
-  top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--muted);
-}
-.legend span { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
-.legend i { width: 7px; height: 7px; }
-.legend i.khaki { background: var(--khaki); }
-.legend i.orange { background: var(--orange); }
-.legend i.red { background: var(--red); }
-
 .cards {
-  flex: 0 0 auto;
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: -22px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 12px;
   background: var(--rail);
   border-top: 1px solid var(--line-3);
+  box-shadow: 0 -16px 28px rgba(11, 12, 9, 0.72);
 }
 
 .drawing {
@@ -612,14 +600,41 @@ function acceptDisabled(): boolean {
   background: linear-gradient(90deg, rgba(255, 75, 62, 0.1), var(--panel) 60%);
   border-color: rgba(255, 75, 62, 0.45);
 }
-.strain-l { color: var(--red); }
-.strain-row { display: flex; align-items: center; gap: 10px; }
-.strain-icon { width: 34px; height: 34px; object-fit: contain; flex-shrink: 0; }
-.strain-sub { width: 22px; height: 22px; margin-left: -14px; }
-.strain-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; }
-.strain-name { font-size: 17px; color: var(--text); }
-.strain-front { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-.strain-risk { font-size: 18px; }
+.strain-l { color: var(--orange); }
+
+/* Front and strain read as two separate, labelled rows — no merged icons. */
+.fs-grid { display: flex; flex-direction: column; }
+.fs-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 6px 0;
+  border-top: 1px dashed var(--line-3);
+}
+.fs-cell:first-child { border-top: 0; }
+.fs-icon {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+.fs-icon img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.fs-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.fs-lbl { font-size: 9px; }
+.fs-name {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.fs-note { flex-shrink: 0; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.fs-risk { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.fs-risk b { font-size: 16px; }
+.fs-risk i { font-size: 8px; font-style: normal; }
 .orange { color: var(--orange); }
 
 .mo-card { background: linear-gradient(90deg, rgba(255, 75, 62, 0.08), var(--panel) 60%); }
