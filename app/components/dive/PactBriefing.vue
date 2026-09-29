@@ -348,7 +348,7 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: var(--khaki);
+  color: var(--red);
   white-space: nowrap;
 }
 
