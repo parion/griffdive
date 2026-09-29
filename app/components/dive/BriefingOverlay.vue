@@ -6,9 +6,9 @@ import { ITEMS_BY_ID, WARBONDS } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
 import {
   MAX_DIFFICULTY,
-  MISFORTUNE_RISK,
   MIN_DIFFICULTY,
   baseTierFor,
+  conditionRiskAt,
   missionsPerOperation,
 } from '~~/shared/engine/config'
 import { STARTING_KITS, VARIANTS, difficultyName } from '~~/shared/engine/progression'
@@ -130,10 +130,10 @@ const warbondCount = computed(() => ownedWarbonds.value.length)
 
 // A representative misfortune for the spin demo (difficulty 3, fixed seed).
 const demoSegment = computed(() => {
-  const drawn = deriveMisfortune(42, MIN_DIFFICULTY)
+  const drawn = deriveMisfortune(42)
   return MISFORTUNES.find(m => m.id === drawn.id) ?? MISFORTUNES[0]!
 })
-const demoRisk = computed(() => MISFORTUNE_RISK[demoSegment.value.id] ?? 1)
+const demoRisk = computed(() => conditionRiskAt(demoSegment.value.id, MIN_DIFFICULTY))
 
 // The two pacts the tour offers, and the local "sworn" picks.
 const demoPacts = computed(() => [PACTS.find(p => p.id === 'thirsty')!, PACTS.find(p => p.id === 'packLight')!])
@@ -143,7 +143,10 @@ function toggleSworn(id: string): void {
     ? sworn.value.filter(x => x !== id)
     : [...sworn.value, id]
 }
-const pactRisk = computed(() => demoPacts.value.filter(p => sworn.value.includes(p.id)).length)
+const pactRisk = computed(() =>
+  demoPacts.value
+    .filter(p => sworn.value.includes(p.id))
+    .reduce((sum, p) => sum + conditionRiskAt(p.id, MIN_DIFFICULTY), 0))
 
 // The three reward candidates, from the diver's own pool.
 const draft = computed(() => rewardPoolFor(props.self?.warbondCodes ?? []).slice(0, 3))
@@ -548,7 +551,7 @@ function close(): void {
                       class="spin-drawing"
                     >
                       <span class="disp pulse spin-drawing-word">Drawing</span>
-                      <span class="lbl">12 misfortunes on the wheel</span>
+                      <span class="lbl">{{ MISFORTUNES.length }} misfortunes on the wheel</span>
                     </div>
                     <template v-else>
                       <span class="disp spin-name">{{ demoSegment.name }}</span>

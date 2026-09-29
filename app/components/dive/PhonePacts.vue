@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PACT_RISK, STRATAGEM_SLOTS_REQUIRED, missionsPerOperation } from '~~/shared/engine/config'
+import { STRATAGEM_SLOTS_REQUIRED, conditionRiskAt, missionsPerOperation } from '~~/shared/engine/config'
 import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
 import { pactName } from '~~/shared/data/pacts'
 import {
@@ -46,7 +46,7 @@ const offer = computed(() =>
 
 watch(
   selection,
-  ids => emit('pactRisk', pactRiskTotal(ids)),
+  ids => emit('pactRisk', pactRiskTotal(ids, props.state.difficulty)),
   { immediate: true },
 )
 
@@ -88,7 +88,7 @@ const coverage = computed<Record<string, string>>(() => {
 })
 
 const locked = computed(() => Boolean(props.self?.pactsLocked))
-const selectedRisk = computed(() => pactRiskTotal(selection.value))
+const selectedRisk = computed(() => pactRiskTotal(selection.value, props.state.difficulty))
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 
 const front = computed(() => currentFront(props.state))
@@ -209,7 +209,7 @@ const pendingText = computed(() => {
           type="button"
           :aria-pressed="selection.includes(pact.id)"
           :aria-disabled="locked || Boolean(coverage[pact.id])"
-          :aria-label="`${pact.name}, ${pact.rule}, risk ${PACT_RISK[pact.id] ?? 0}${coverage[pact.id] ? `. ${coverage[pact.id]}` : ''}`"
+          :aria-label="`${pact.name}, ${pact.rule}, risk ${conditionRiskAt(pact.id, state.difficulty)}${coverage[pact.id] ? `. ${coverage[pact.id]}` : ''}`"
           @click="toggle(pact.id)"
         >
           <span
@@ -241,11 +241,11 @@ const pendingText = computed(() => {
             </span>
           </span>
           <span class="pact-risk">
-            <span class="disp risk-n red">+{{ PACT_RISK[pact.id] ?? 0 }}</span>
+            <span class="disp risk-n red">+{{ conditionRiskAt(pact.id, state.difficulty) }}</span>
             <span class="skulls">
               <RiskPips
-                :value="PACT_RISK[pact.id] ?? 0"
-                :max="3"
+                :value="conditionRiskAt(pact.id, state.difficulty)"
+                :max="5"
               />
             </span>
           </span>

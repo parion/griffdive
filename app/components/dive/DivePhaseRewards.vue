@@ -94,7 +94,7 @@ const advanceLabel = computed(() =>
 // Ceiling preview inputs: the same figures the shell's Valor meter is built
 // from, so the track and the rail can never disagree.
 const teamRisk = computed(() => teamRiskOf(props.state))
-const pactRisk = computed(() => (props.self ? pactRiskOf(props.self) : 0))
+const pactRisk = computed(() => (props.self ? pactRiskOf(props.self, props.state.difficulty) : 0))
 const performance = computed(() => performanceValor(props.state.lastReport))
 
 const kicker = computed(() =>

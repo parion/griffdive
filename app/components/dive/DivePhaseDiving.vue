@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
-import { MAJOR_ORDER_RISK, MISFORTUNE_RISK, OPTIONS_LOST_PER_FAILED_PACT, STRAIN_RISK, missionsPerOperation } from '~~/shared/engine/config'
+import { MAJOR_ORDER_RISK, OPTIONS_LOST_PER_FAILED_PACT, STRAIN_RISK, conditionRiskAt, missionsPerOperation } from '~~/shared/engine/config'
 import { difficultyName } from '~~/shared/engine/progression'
 import { activeMisfortune, activeStrain, currentFront, teamRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionReport } from '~~/shared/engine/types'
@@ -26,7 +26,9 @@ const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 
 // Per-source risk chips for the locked status strip (total stays teamRiskOf).
 const misfortuneRisk = computed(() =>
-  props.state.misfortuneAccepted ? MISFORTUNE_RISK[misfortune.value?.id ?? ''] ?? 0 : 0)
+  props.state.misfortuneAccepted
+    ? conditionRiskAt(misfortune.value?.id ?? '', props.state.difficulty)
+    : 0)
 const strainRisk = computed(() =>
   props.state.strainAccepted ? STRAIN_RISK[strain.value?.id ?? ''] ?? 0 : 0)
 const majorOrderRisk = computed(() => (props.state.majorOrder?.live ? MAJOR_ORDER_RISK : 0))
@@ -292,6 +294,7 @@ function cancelReport(): void {
       :divers="state.divers"
       :self-id="selfId"
       :is-host="isHost"
+      :difficulty="state.difficulty"
       @fail="(playerId, pactId) => emit('fail', playerId, pactId)"
     />
 

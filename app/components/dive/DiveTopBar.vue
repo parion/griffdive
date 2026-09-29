@@ -24,7 +24,7 @@ const emit = defineEmits<{
   unsaveDive: []
 }>()
 
-const { codexOpen, warbondsOpen, guideOpen } = useDrawers()
+const { codexOpen, warbondsOpen } = useDrawers()
 
 const roomCode = computed(() => (props.slotName || '').toUpperCase())
 </script>
@@ -170,15 +170,6 @@ const roomCode = computed(() => (props.slotName || '').toUpperCase())
       >
         <IconWarbond />
       </button>
-      <button
-        class="icon-btn navb"
-        type="button"
-        aria-label="Field manual"
-        :aria-expanded="guideOpen"
-        @click="guideOpen = true"
-      >
-        <IconGuide />
-      </button>
     </nav>
   </header>
 </template>
@@ -238,7 +229,8 @@ const roomCode = computed(() => (props.slotName || '').toUpperCase())
 }
 .room-l { font-size: 10px; }
 .room-code { font-size: 15px; font-weight: 700; letter-spacing: 0.3em; }
-.room-copy { width: 32px; height: 32px; display: grid; place-items: center; padding: 0; }
+.room-copy { width: 30px; height: 30px; display: grid; place-items: center; padding: 0; }
+.room-copy svg { width: 15px; height: 15px; }
 .saved { font-size: 9px; }
 .session { display: flex; gap: 4px; }
 .ship-nav { display: flex; gap: 4px; }

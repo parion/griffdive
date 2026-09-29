@@ -21,7 +21,7 @@ const emit = defineEmits<{
   unsaveDive: []
 }>()
 
-const { codexOpen, warbondsOpen, guideOpen } = useDrawers()
+const { codexOpen, warbondsOpen } = useDrawers()
 const roomCode = computed(() => (props.slotName || '').toUpperCase())
 
 const menuOpen = ref(false)
@@ -112,14 +112,6 @@ function run(action: () => void): void {
         class="menu cut-sm"
         role="menu"
       >
-        <button
-          class="menu-item"
-          type="button"
-          role="menuitem"
-          @click="run(() => (guideOpen = true))"
-        >
-          Field manual
-        </button>
         <button
           class="menu-item"
           type="button"

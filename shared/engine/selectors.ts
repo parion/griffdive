@@ -9,13 +9,12 @@ import type { Strain } from '../data/strains'
 import type { Item } from '../data/types'
 import {
   MAJOR_ORDER_RISK,
-  MISFORTUNE_RISK,
-  PACT_RISK,
   SAMPLE_VALOR_CAP,
   STRAIN_RISK,
   TIME_VALOR_MAX,
   baseTierFor,
   bonusIntervalFor,
+  conditionRiskAt,
   maxStarsFor,
   pactOptionsFor,
 } from './config'
@@ -121,7 +120,7 @@ export function misfortuneStrandedDivers(state: DiveState): DiverState[] {
 // is what keeps the operation's Valor potential intact.
 export function teamRiskOf(state: DiveState): number {
   const misfortuneRisk = state.misfortuneAccepted
-    ? MISFORTUNE_RISK[currentMisfortune(state)?.id ?? ''] ?? 0
+    ? conditionRiskAt(currentMisfortune(state)?.id ?? '', state.difficulty)
     : 0
   const strainRisk = state.strainAccepted
     ? STRAIN_RISK[state.strainId ?? ''] ?? 0
@@ -141,7 +140,7 @@ export interface TeamRiskBreakdown {
 // same acceptance flags, so the screen and the floor can never disagree.
 export function teamRiskBreakdown(state: DiveState): TeamRiskBreakdown {
   const misfortuneRisk = state.misfortuneAccepted
-    ? MISFORTUNE_RISK[currentMisfortune(state)?.id ?? ''] ?? 0
+    ? conditionRiskAt(currentMisfortune(state)?.id ?? '', state.difficulty)
     : 0
   const strainRisk = state.strainAccepted
     ? STRAIN_RISK[state.strainId ?? ''] ?? 0
@@ -172,15 +171,16 @@ export function strainDecision(state: DiveState): StrainDecision {
 }
 
 // A failed pact is voided: it no longer stakes risk, so its share of the
-// diver's Valor disappears from previews and from the rolled offer alike.
-export function pactRiskOf(diver: DiverState): number {
-  return pactRiskTotal(diver.pactIds.filter(id => !diver.failedPactIds.includes(id)))
+// diver's Valor disappears from previews and from the rolled offer alike. Each
+// surviving pact's risk is scaled by the operation's difficulty.
+export function pactRiskOf(diver: DiverState, difficulty: number): number {
+  return pactRiskTotal(diver.pactIds.filter(id => !diver.failedPactIds.includes(id)), difficulty)
 }
 
 // Chosen risk lives on the diver and the team; team performance is squad-level
 // and rides the report. Together they are the diver's Valor.
 export function diverValor(state: DiveState, diver: DiverState): number {
-  return valorOf(teamRiskOf(state), pactRiskOf(diver), performanceValor(state.lastReport))
+  return valorOf(teamRiskOf(state), pactRiskOf(diver, state.difficulty), performanceValor(state.lastReport))
 }
 
 // Display ceiling: the deterministic best case the diver's Valor can preview.
@@ -433,7 +433,7 @@ export function ceilingRange(difficulty: number, teamRisk: number, pactRisk: num
 export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): CeilingRange {
   const misfortuneMax = Math.max(
     0,
-    ...eligibleMisfortunes(difficulty).map(misfortune => MISFORTUNE_RISK[misfortune.id] ?? 0),
+    ...eligibleMisfortunes().map(misfortune => conditionRiskAt(misfortune.id, difficulty)),
   )
   const strainMax = Math.max(
     0,
@@ -451,13 +451,14 @@ export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): Cei
 export function maxValorFor(difficulty: number): number {
   const misfortuneMax = Math.max(
     0,
-    ...eligibleMisfortunes(difficulty).map(misfortune => MISFORTUNE_RISK[misfortune.id] ?? 0),
+    ...eligibleMisfortunes().map(misfortune => conditionRiskAt(misfortune.id, difficulty)),
   )
   const strainMax = Math.max(
     0,
     ...eligibleStrains(difficulty).map(strain => STRAIN_RISK[strain.id] ?? 0),
   )
-  const pactMax = Object.values(PACT_RISK)
+  const pactMax = PACTS
+    .map(pact => conditionRiskAt(pact.id, difficulty))
     .sort((a, b) => b - a)
     .slice(0, pactOptionsFor(difficulty))
     .reduce((sum, risk) => sum + risk, 0)

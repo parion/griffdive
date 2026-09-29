@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MISFORTUNE_RISK } from '~~/shared/engine/config'
+import { conditionRiskAt } from '~~/shared/engine/config'
 import { deriveMisfortune, eligibleMisfortunes } from '~~/shared/engine/wheel'
 
 const props = withDefaults(defineProps<{
@@ -23,8 +23,8 @@ const SEG_DARK = ['#1B1E15', '#15170F']
 const SEG_HIT = '#3B3413'
 
 const segments = computed(() =>
-  eligibleMisfortunes(props.difficulty).map((misfortune) => {
-    const risk = Math.min(5, Math.max(1, MISFORTUNE_RISK[misfortune.id] ?? 1))
+  eligibleMisfortunes().map((misfortune) => {
+    const risk = conditionRiskAt(misfortune.id, props.difficulty)
     const tone = risk >= 4 ? 'var(--red)' : risk === 3 ? 'var(--orange)' : 'var(--khaki)'
     return { id: misfortune.id, name: misfortune.name, risk, tone }
   }))
@@ -32,10 +32,11 @@ const segments = computed(() =>
 const step = computed(() => (segments.value.length ? 360 / segments.value.length : 360))
 
 const drawn = computed(() =>
-  props.seed === null ? null : deriveMisfortune(props.seed, props.difficulty))
+  props.seed === null ? null : deriveMisfortune(props.seed))
 const drawnIndex = computed(() =>
   drawn.value ? segments.value.findIndex(segment => segment.id === drawn.value!.id) : -1)
-const drawnRisk = computed(() => (drawn.value ? MISFORTUNE_RISK[drawn.value.id] ?? 0 : 0))
+const drawnRisk = computed(() =>
+  drawn.value ? conditionRiskAt(drawn.value.id, props.difficulty) : 0)
 
 function polar(radius: number, deg: number): [number, number] {
   const a = (deg * Math.PI) / 180
@@ -93,7 +94,7 @@ watch(
       isSpinning.value = false
       return
     }
-    const index = segments.value.findIndex(segment => segment.id === deriveMisfortune(seed, props.difficulty).id)
+    const index = segments.value.findIndex(segment => segment.id === deriveMisfortune(seed).id)
     if (index < 0) {
       return
     }

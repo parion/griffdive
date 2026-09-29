@@ -158,7 +158,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       const frontId = state.frontId ?? deriveFront(action.seed, majorOrderFronts(state))
       const drawingOperation = state.frontId === null
       return commit(state, {
-        wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed, state.difficulty).id },
+        wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed).id },
         frontId,
         strainId: state.majorOrder
           ? null
@@ -327,7 +327,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // lands on the result it would replace, so a paid reroll never returns
       // the same outcome. Only the immediately replaced result is excluded.
       const sameResult = action.wheel === 'misfortune'
-        ? deriveMisfortune(action.seed, state.difficulty).id === state.wheel.misfortuneId
+        ? deriveMisfortune(action.seed).id === state.wheel.misfortuneId
         : action.wheel === 'front'
           ? deriveFront(action.seed, majorOrderFronts(state)) === state.frontId
           : deriveStrain(action.seed, state.difficulty, state.frontId)?.id === state.strainId
@@ -347,7 +347,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // decision — a new front brings a new subfaction.
       if (action.wheel === 'misfortune') {
         return commit(state, {
-          wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed, state.difficulty).id },
+          wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed).id },
           misfortuneAccepted: false,
           phase: 'decision',
           rerollTokens,

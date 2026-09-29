@@ -1,8 +1,8 @@
-import { PACTS } from '../data/pacts'
+import { PACTS, pactById } from '../data/pacts'
 import type { Pact } from '../data/pacts'
 import { stratagems } from '../data/stratagems'
 import type { Item } from '../data/types'
-import { PACT_RISK, RESERVE_STRATAGEMS, STRATAGEM_SLOTS_REQUIRED, pactOptionsFor } from './config'
+import { RESERVE_STRATAGEMS, STRATAGEM_SLOTS_REQUIRED, conditionRiskAt, pactOptionsFor } from './config'
 import { deriveSeed, mulberry32, pickIndex } from './rng'
 
 // A pact that would be redundant or impossible under the accepted misfortune
@@ -22,7 +22,7 @@ export const BLOCKED_UNDER_MISFORTUNE: Readonly<Record<string, readonly string[]
 }
 
 export function isPactSelectable(pactId: string, misfortuneId: string | null): boolean {
-  if (!(pactId in PACT_RISK)) {
+  if (!pactById(pactId)) {
     return false
   }
   if (!misfortuneId) {
@@ -94,8 +94,10 @@ export function applyPactToggle(
   return [...picked]
 }
 
-export function pactRiskTotal(pactIds: readonly string[]): number {
-  return pactIds.reduce((sum, id) => sum + (PACT_RISK[id] ?? 0), 0)
+// Pacts carry no flat risk: each condition's value scales with the operation's
+// difficulty, so the total needs the difficulty it is being measured at.
+export function pactRiskTotal(pactIds: readonly string[], difficulty: number): number {
+  return pactIds.reduce((sum, id) => sum + conditionRiskAt(id, difficulty), 0)
 }
 
 const RESERVE_STRATAGEM_SET = new Set<string>(RESERVE_STRATAGEMS)

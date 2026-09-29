@@ -7,7 +7,7 @@ const route = useRoute()
 const onDive = computed(() => route.path.startsWith('/dive'))
 
 const changelogOpen = ref(false)
-const { codexOpen, warbondsOpen, guideOpen } = useDrawers()
+const { codexOpen, warbondsOpen } = useDrawers()
 const { online } = useSessionStore()
 </script>
 
@@ -60,16 +60,6 @@ const { online } = useSessionStore()
             type="button"
             class="icon-btn navb"
             aria-haspopup="dialog"
-            :aria-expanded="guideOpen"
-            @click="guideOpen = true"
-          >
-            <IconGuide class="nav-icon" />
-            <span>Field manual</span>
-          </button>
-          <button
-            type="button"
-            class="icon-btn navb"
-            aria-haspopup="dialog"
             :aria-expanded="codexOpen"
             @click="codexOpen = true"
           >
@@ -92,10 +82,6 @@ const { online } = useSessionStore()
       <ChangelogModal
         :open="changelogOpen"
         @close="changelogOpen = false"
-      />
-      <GuideDrawer
-        :open="guideOpen"
-        @update:open="guideOpen = $event"
       />
       <CodexDrawer
         :open="codexOpen"

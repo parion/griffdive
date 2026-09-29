@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS, ITEMS_BY_ID } from '../data/catalog'
 import type { FrontId } from '../data/fronts'
 import { PACTS } from '../data/pacts'
-import { BONUS_STATS, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, MISFORTUNE_RISK, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor } from './config'
+import { BONUS_STATS, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor, conditionRiskAt } from './config'
 import { startingItemIds } from './progression'
 import { DIVERS_CHOICE_OPTION_ID, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
@@ -326,7 +326,7 @@ describe('ACCEPT_STRAIN (optional operation-long team risk)', () => {
     const decided = strainDecided(42, true)
     expect(decided.phase).toBe('pacts')
     const strainRisk = STRAIN_RISK[decided.strainId!] ?? 0
-    const misfortuneRisk = MISFORTUNE_RISK[decided.wheel!.misfortuneId] ?? 0
+    const misfortuneRisk = conditionRiskAt(decided.wheel!.misfortuneId, decided.difficulty)
     expect(strainRisk).toBeGreaterThan(0)
     expect(teamRiskOf(decided)).toBe(misfortuneRisk + strainRisk)
 
@@ -354,7 +354,7 @@ describe('ACCEPT_STRAIN (optional operation-long team risk)', () => {
     const declined = strainDecided(42, false)
     expect(declined.phase).toBe('pacts')
     expect(declined.strainAccepted).toBe(false)
-    expect(teamRiskOf(declined)).toBe(MISFORTUNE_RISK[declined.wheel!.misfortuneId] ?? 0)
+    expect(teamRiskOf(declined)).toBe(conditionRiskAt(declined.wheel!.misfortuneId, declined.difficulty))
   })
 
   it('reopens on a failure restart with the same draw', () => {
@@ -565,10 +565,10 @@ describe('FAIL_PACT (broken pacts in the field)', () => {
   it('voids the failed pact\'s risk in Valor and ceiling', () => {
     const { state, pactId } = divingWithHeldPact()
     const diver = requireDiver(state)
-    expect(pactRiskOf(diver)).toBeGreaterThan(0)
+    expect(pactRiskOf(diver, state.difficulty)).toBeGreaterThan(0)
     const failed = reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId })
     const failedDiver = requireDiver(failed)
-    expect(pactRiskOf(failedDiver)).toBe(0)
+    expect(pactRiskOf(failedDiver, failed.difficulty)).toBe(0)
     expect(diverValor(failed, failedDiver)).toBe(teamRiskOf(failed))
     expect(diverCeiling(failed, failedDiver)).toBe(maxCeiling(failed.difficulty, teamRiskOf(failed)))
   })

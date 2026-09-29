@@ -2,7 +2,6 @@
 // Warbonds drawer without unmounting the session.
 const codexOpen = ref(false)
 const warbondsOpen = ref(false)
-const guideOpen = ref(false)
 
 export function useDrawers() {
   function openCodex(): void {
@@ -13,9 +12,5 @@ export function useDrawers() {
     warbondsOpen.value = true
   }
 
-  function openGuide(): void {
-    guideOpen.value = true
-  }
-
-  return { codexOpen, warbondsOpen, guideOpen, openCodex, openWarbonds, openGuide }
+  return { codexOpen, warbondsOpen, openCodex, openWarbonds }
 }

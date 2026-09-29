@@ -2,7 +2,7 @@
 import { pactById } from '~~/shared/data/pacts'
 import type { Pact } from '~~/shared/data/pacts'
 import type { Accountability } from '~~/shared/data/types'
-import { PACT_RISK } from '~~/shared/engine/config'
+import { conditionRiskAt } from '~~/shared/engine/config'
 import { pactRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState } from '~~/shared/engine/types'
 import { ACCOUNTABILITY_LABELS } from '~/utils/accountability'
@@ -11,6 +11,7 @@ const props = defineProps<{
   divers: DiverState[]
   selfId: string | null
   isHost: boolean
+  difficulty: number
 }>()
 
 const emit = defineEmits<{ fail: [playerId: string, pactId: string] }>()
@@ -45,7 +46,7 @@ const self = computed(() => props.divers.find(diver => diver.id === props.selfId
 const squadmates = computed(() => props.divers.filter(diver => diver.id !== props.selfId))
 
 function riskOf(pactId: string): number {
-  return PACT_RISK[pactId] ?? 0
+  return conditionRiskAt(pactId, props.difficulty)
 }
 
 function accountabilityLabel(pact: Pact | null): string | null {
@@ -65,7 +66,7 @@ const selfSummary = computed(() => {
   if (!diver || !diver.pactIds.length) {
     return 'SAFE DIVE'
   }
-  return `${diver.pactIds.length} SWORN · +${pactRiskOf(diver)} VALOR`
+  return `${diver.pactIds.length} SWORN · +${pactRiskOf(diver, props.difficulty)} VALOR`
 })
 
 // Marking a pact failed is one-way in the engine. The diver's own cards use a
@@ -244,7 +245,7 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
             <span class="squad-name">{{ diver.name }}</span>
             <span class="squad-valor">
               <span class="lbl">Valor</span>
-              <span class="disp valor-num">{{ pactRiskOf(diver) }}</span>
+              <span class="disp valor-num">{{ pactRiskOf(diver, difficulty) }}</span>
             </span>
           </div>
 

@@ -9,7 +9,7 @@
 import { createDiveState, reduce } from '../shared/engine/reducer'
 import { createLobbyState, joinDiver } from '../shared/engine/room'
 import { createSaveDoc } from '../shared/engine/saves'
-import { MISFORTUNE_RISK, STRAIN_RISK, maxStarsFor } from '../shared/engine/config'
+import { STRAIN_RISK, conditionRiskAt, maxStarsFor } from '../shared/engine/config'
 import { diverOptions, pactOfferFor } from '../shared/engine/selectors'
 import type { DiveState } from '../shared/engine/types'
 import type { SaveDoc } from '../shared/types/save'
@@ -64,7 +64,7 @@ function achieved(): DiveState {
   let state = createDiveState(SETTINGS, HOST, NAME)
   for (let mission = 0; mission < 80 && state.phase !== 'complete'; mission++) {
     state = reduce(state, { type: 'SPIN_WHEEL', seed: (mission * 2654435761) >>> 0 })
-    const wantsRisk = (MISFORTUNE_RISK[state.wheel!.misfortuneId] ?? 0) >= 3
+    const wantsRisk = conditionRiskAt(state.wheel!.misfortuneId, state.difficulty) >= 3
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: wantsRisk })
     if (state.phase === 'decision') {
       state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })

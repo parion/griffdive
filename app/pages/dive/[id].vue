@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MISFORTUNE_MIN_DIFFICULTY, MISFORTUNE_RISK } from '~~/shared/engine/config'
+import { conditionRiskAt } from '~~/shared/engine/config'
 import { performanceValor } from '~~/shared/engine/rewards'
 import { diverOptions, majorOrderFronts, pactRiskOf, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
@@ -13,7 +13,7 @@ const session = useDiveSession(slotId.value)
 const saves = useSaves()
 const { push: pushToast } = useToasts()
 const { ownedWarbonds, setOwned } = useOwnedWarbonds()
-const { openWarbonds, guideOpen } = useDrawers()
+const { openWarbonds } = useDrawers()
 const { hasSeenWarbondIntro, markWarbondIntroSeen } = useWarbondIntro()
 const { hasSeenDiveIntro, markDiveIntroSeen } = useDiveIntro()
 const { isPhone } = usePhoneShell()
@@ -70,7 +70,7 @@ const pactRisk = computed(() => {
   if (state.value?.phase === 'pacts' && !diver.pactsLocked) {
     return livePactRisk.value
   }
-  return pactRiskOf(diver)
+  return state.value ? pactRiskOf(diver, state.value.difficulty) : 0
 })
 const performance = computed(() => {
   const current = state.value
@@ -96,28 +96,25 @@ const pendingText = computed(() => {
   }
 })
 
-// The wheel pool card: how many misfortunes are eligible at this difficulty and
-// how the risk bands are distributed. Presentation of `eligibleMisfortunes`.
+// The wheel pool card: the unified condition catalogue is never gated, so
+// every team rule is on the wheel at every difficulty and the card reads how
+// the current difficulty scales their risk bands. Presentation of
+// `eligibleMisfortunes` + `conditionRiskAt`.
 const wheelPool = computed(() => {
   const current = state.value
   if (!current || !['spin', 'decision', 'strain', 'deal', 'pacts'].includes(current.phase)) {
     return null
   }
-  const list = eligibleMisfortunes(current.difficulty)
+  const list = eligibleMisfortunes()
   const bars = [0, 0, 0, 0, 0]
   for (const misfortune of list) {
-    const risk = Math.min(5, Math.max(1, MISFORTUNE_RISK[misfortune.id] ?? 1))
+    const risk = conditionRiskAt(misfortune.id, current.difficulty)
     bars[risk - 1] = (bars[risk - 1] ?? 0) + 1
   }
-  const joining = list
-    .filter(misfortune => MISFORTUNE_MIN_DIFFICULTY[misfortune.id] === current.difficulty)
-    .map(misfortune => misfortune.name)
   return {
     count: list.length,
     bars,
-    note: joining.length
-      ? `${joining.join(', ')} join at difficulty ${current.difficulty}`
-      : 'The full pool is on the wheel',
+    note: `Risk scales with difficulty ${current.difficulty} — every condition is always available`,
   }
 })
 
@@ -173,7 +170,7 @@ watch([self, state], ([diver, current]) => {
 }, { immediate: true })
 
 function openWarbondsIntro(): void {
-  if (!hasSeenWarbondIntro.value && !guideOpen.value && !briefingOpen.value) {
+  if (!hasSeenWarbondIntro.value && !briefingOpen.value) {
     markWarbondIntroSeen()
     openWarbonds()
   }
@@ -187,15 +184,6 @@ watch(self, (diver) => {
   }
   openWarbondsIntro()
 }, { immediate: true })
-
-// Opening the guide by hand on a first run still hands off to the Warbonds
-// panel — but never behind the briefing.
-watch(guideOpen, (open) => {
-  if (open || !self.value || hasSeenWarbondIntro.value) {
-    return
-  }
-  openWarbondsIntro()
-})
 
 function closeBriefing(): void {
   briefingOpen.value = false
@@ -256,7 +244,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   let seed = session.newSeed()
   for (let attempt = 0; attempt < 32; attempt++) {
     const same = wheel === 'misfortune'
-      ? deriveMisfortune(seed, current.difficulty).id === current.wheel.misfortuneId
+      ? deriveMisfortune(seed).id === current.wheel.misfortuneId
       : wheel === 'front'
         ? deriveFront(seed, majorOrderFronts(current)) === current.frontId
         : deriveStrain(seed, current.difficulty, current.frontId!)?.id === current.strainId
@@ -587,41 +575,43 @@ function launchCrusade(variant: CrusadeVariant): void {
           @kick="kick"
         />
 
-        <MissionReportSummary
-          v-if="state.phase === 'rewards'"
-          :state="state"
-        />
+        <div class="rail-lower">
+          <MissionReportSummary
+            v-if="state.phase === 'rewards'"
+            :state="state"
+          />
 
-        <section
-          v-if="wheelPool"
-          class="sec pool"
-          aria-labelledby="pool-h"
-        >
-          <div class="sec-h">
-            <h2
-              id="pool-h"
-              class="lbl"
-            >
-              Wheel pool
-            </h2>
-            <span class="dash" />
-          </div>
-          <div class="pool-count">
-            <span class="disp">{{ wheelPool.count }}</span>
-            <span class="cap pool-count-cap">misfortunes on the wheel</span>
-          </div>
-          <div
-            class="pool-bars"
-            aria-hidden="true"
+          <section
+            v-if="wheelPool"
+            class="sec pool"
+            aria-labelledby="pool-h"
           >
-            <span
-              v-for="(n, i) in wheelPool.bars"
-              :key="i"
-              :style="{ flexGrow: Math.max(n, 1), background: poolColor(i) }"
-            />
-          </div>
-          <span class="cap pool-note">{{ wheelPool.note }}</span>
-        </section>
+            <div class="sec-h">
+              <h2
+                id="pool-h"
+                class="lbl"
+              >
+                Wheel pool
+              </h2>
+              <span class="dash" />
+            </div>
+            <div class="pool-count">
+              <span class="disp">{{ wheelPool.count }}</span>
+              <span class="cap pool-count-cap">misfortunes on the wheel</span>
+            </div>
+            <div
+              class="pool-bars"
+              aria-hidden="true"
+            >
+              <span
+                v-for="(n, i) in wheelPool.bars"
+                :key="i"
+                :style="{ flexGrow: Math.max(n, 1), background: poolColor(i) }"
+              />
+            </div>
+            <span class="cap pool-note">{{ wheelPool.note }}</span>
+          </section>
+        </div>
       </template>
 
       <template #right>
@@ -817,6 +807,15 @@ function launchCrusade(variant: CrusadeVariant): void {
 }
 
 .kicked { border-color: var(--red); }
+
+/* Everything below the squad list is bottom-anchored in the left rail. */
+.rail-lower {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-panel);
+  min-width: 0;
+}
 
 .pool { border-style: dashed; border-color: var(--line-2); background: transparent; }
 .pool-count { display: flex; align-items: baseline; gap: var(--sp-3); }

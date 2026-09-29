@@ -4,8 +4,8 @@ import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
 import {
   MAJOR_ORDER_REROLL_BONUS,
   MAJOR_ORDER_RISK,
-  MISFORTUNE_RISK,
   STRAIN_RISK,
+  conditionRiskAt,
   missionsPerOperation,
 } from '~~/shared/engine/config'
 import {
@@ -42,7 +42,9 @@ const misfortuneReroll = computed(() => canRerollWheel(props.state, 'misfortune'
 const frontReroll = computed(() => canRerollWheel(props.state, 'front'))
 const strainReroll = computed(() => canRerollWheel(props.state, 'strain'))
 const teamRisk = computed(() =>
-  props.state.wheel ? (MISFORTUNE_RISK[props.state.wheel.misfortuneId] ?? 0) : 0,
+  props.state.wheel
+    ? conditionRiskAt(props.state.wheel.misfortuneId, props.state.difficulty)
+    : 0,
 )
 const strainRisk = computed(() =>
   strain.value ? (STRAIN_RISK[strain.value.id] ?? 0) : 0,
@@ -115,6 +117,12 @@ const frontHint = computed(() => {
   return 'Drawn with the first spin — a subfaction joins it.'
 })
 
+// The wheel spin and the misfortune reel share one clock: the reveal starts
+// with the rotation and lands as the wheel settles, so the name never keeps
+// rolling after the wheel stops. Kept in sync with the rotor transition in
+// WheelOfMisfortune.vue.
+const SPIN_MS = 2800
+
 // The wheel spins on the seed before the result cards reveal. Purely
 // presentational: the engine result already exists, this just holds the reveal
 // for the rotation. Reduced motion skips straight to the cards.
@@ -137,7 +145,7 @@ watch(
     spinning.value = true
     spinTimer = setTimeout(() => {
       spinning.value = false
-    }, 2400)
+    }, SPIN_MS)
   },
 )
 onBeforeUnmount(() => clearTimeout(spinTimer))
@@ -156,7 +164,7 @@ const strandedReason = computed(() => {
 })
 
 const misfortuneNames = computed(() =>
-  eligibleMisfortunes(props.state.difficulty).map(entry => entry.name),
+  eligibleMisfortunes().map(entry => entry.name),
 )
 const frontNames = computed(() => FRONTS.map(entry => entry.displayName))
 const strainNames = computed(() =>
@@ -412,14 +420,6 @@ function rerollLabel(
             </div>
           </section>
         </template>
-        <section
-          v-else-if="spinning"
-          class="drawing cut-sm"
-          aria-live="polite"
-        >
-          <span class="disp drawing-word pulse">Drawing</span>
-          <span class="lbl">Misfortune · front · strain</span>
-        </section>
         <div
           v-else
           class="wheel-result"
@@ -456,6 +456,7 @@ function rerollLabel(
                   :final="misfortune?.name ?? ''"
                   :candidates="misfortuneNames"
                   :reel-id="misfortuneReelId"
+                  :duration="SPIN_MS"
                   @reeling="misfortuneReeling = $event"
                 />
               </div>
@@ -900,17 +901,6 @@ function rerollLabel(
   min-height: 0;
 }
 .wheel-side { display: flex; flex-direction: column; gap: var(--gap-panel); min-width: 0; }
-.drawing {
-  flex-grow: 1;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: var(--sp-4);
-  min-height: 220px;
-  border: 1px solid var(--line-1);
-  background: rgba(19, 21, 15, 0.6);
-}
-.drawing-word { font-size: clamp(22px, 2.4vw, 30px); color: var(--gold); }
 @media (max-width: 1020px) {
   .wheel-body { grid-template-columns: minmax(0, 1fr); }
 }

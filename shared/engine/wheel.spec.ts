@@ -3,63 +3,65 @@ import { FRONTS } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
 import { STRAINS } from '../data/strains'
 import type { FrontId } from '../data/fronts'
-import { MIN_DIFFICULTY, MISFORTUNE_MIN_DIFFICULTY, MISFORTUNE_RISK, STRAIN_MIN_DIFFICULTY, STRAIN_RISK } from './config'
+import { MIN_DIFFICULTY, STRAIN_MIN_DIFFICULTY, STRAIN_RISK, conditionRiskAt } from './config'
 import { deriveFront, deriveMisfortune, deriveStrain, eligibleMisfortunes, eligibleStrains } from './wheel'
 
 const FRONT_IDS: readonly FrontId[] = ['terminids', 'automatons', 'illuminate']
 
-describe('misfortune catalog integrity', () => {
-  it('every misfortune has risk, an entry difficulty, and an accountability channel', () => {
+describe('condition catalog integrity', () => {
+  it('every misfortune has risk, an accountability channel and a unique name', () => {
     for (const misfortune of MISFORTUNES) {
-      expect(MISFORTUNE_RISK[misfortune.id]).toBeGreaterThan(0)
-      expect(MISFORTUNE_MIN_DIFFICULTY[misfortune.id]).toBeGreaterThanOrEqual(MIN_DIFFICULTY)
+      expect(conditionRiskAt(misfortune.id, MIN_DIFFICULTY)).toBeGreaterThan(0)
       expect(['loadout', 'field', 'stats']).toContain(misfortune.accountability)
     }
     expect(new Set(MISFORTUNES.map(misfortune => misfortune.name)).size).toBe(MISFORTUNES.length)
   })
 
-  it('the hardest restrictions wait for the highest difficulties', () => {
-    expect(MISFORTUNE_MIN_DIFFICULTY.pacifist).toBe(9)
-    expect(MISFORTUNE_MIN_DIFFICULTY.noReserves).toBe(7)
-    expect(MISFORTUNE_RISK.pacifist).toBe(5)
-    expect(MISFORTUNE_RISK.noReserves).toBe(4)
+  it('scales each condition\'s risk with difficulty, inverse allowed', () => {
+    // A team rule that grows into the top band at altitude.
+    expect(conditionRiskAt('noStratagems', MIN_DIFFICULTY)).toBeLessThan(conditionRiskAt('noStratagems', 10))
+    expect(conditionRiskAt('noStratagems', 10)).toBe(5)
+    // A personal rule that is inverse: it matters less once the war is the threat.
+    expect(conditionRiskAt('stimAbstinent', 10)).toBeLessThan(conditionRiskAt('stimAbstinent', MIN_DIFFICULTY))
+    // Every condition stays on the 1–5 scale at every rung.
+    for (const difficulty of [3, 5, 7, 10]) {
+      for (const id of ['noBackpacks', 'pacifist', 'stimAbstinent', 'untouchable']) {
+        const risk = conditionRiskAt(id, difficulty)
+        expect(risk).toBeGreaterThanOrEqual(1)
+        expect(risk).toBeLessThanOrEqual(5)
+      }
+    }
   })
 })
 
 describe('eligibleMisfortunes', () => {
-  it('starts with only the difficulty-3 pool', () => {
-    const ids = eligibleMisfortunes(3).map(misfortune => misfortune.id)
-    expect(ids).toEqual(['noBackpacks', 'noSentries', 'noBoosters', 'noResupplies'])
-  })
-
-  it('unlocks the full pool by difficulty 9', () => {
-    const ids = eligibleMisfortunes(9).map(misfortune => misfortune.id)
-    expect(ids).toContain('noStratagems')
-    expect(ids).toContain('meleeOnly')
+  it('returns the whole team pool at every difficulty — nothing is gated', () => {
+    const ids = eligibleMisfortunes().map(misfortune => misfortune.id)
+    expect(ids).toHaveLength(MISFORTUNES.length)
+    expect(ids).toContain('noBackpacks')
     expect(ids).toContain('pacifist')
-    expect(ids).toContain('noReserves')
-    expect(ids).toHaveLength(15)
+    expect(ids).toContain('meleeOnly')
   })
 })
 
 describe('deriveMisfortune / deriveFront', () => {
-  it('is deterministic per seed and difficulty', () => {
-    expect(deriveMisfortune(1234, 5).id).toBe(deriveMisfortune(1234, 5).id)
+  it('is deterministic per seed', () => {
+    expect(deriveMisfortune(1234).id).toBe(deriveMisfortune(1234).id)
     expect(deriveFront(1234)).toBe(deriveFront(1234))
   })
 
-  it('always lands in the eligible pool and a valid front', () => {
+  it('always lands in the pool and a valid front', () => {
     const fronts = new Set(['terminids', 'automatons', 'illuminate'])
+    const pool = eligibleMisfortunes().map(misfortune => misfortune.id)
     for (let seed = 0; seed < 200; seed++) {
-      const pool = eligibleMisfortunes(4).map(misfortune => misfortune.id)
-      expect(pool).toContain(deriveMisfortune(seed, 4).id)
+      expect(pool).toContain(deriveMisfortune(seed).id)
       expect(fronts.has(deriveFront(seed))).toBe(true)
     }
   })
 
   it('varies results across seeds', () => {
     const misfortunes = new Set(
-      Array.from({ length: 50 }, (_, seed) => deriveMisfortune(seed, 6).id),
+      Array.from({ length: 50 }, (_, seed) => deriveMisfortune(seed).id),
     )
     expect(misfortunes.size).toBeGreaterThan(1)
     const fronts = new Set(Array.from({ length: 50 }, (_, seed) => deriveFront(seed)))
@@ -67,12 +69,9 @@ describe('deriveMisfortune / deriveFront', () => {
   })
 
   it('draws the misfortune and the front from independent streams', () => {
-    // The same seed must draw the same front regardless of which misfortune
-    // pool the difficulty offers — the per-mission redraw never disturbs it.
-    for (const difficulty of [3, 9]) {
-      expect(deriveFront(4242)).toBe(deriveFront(4242))
-      expect(eligibleMisfortunes(difficulty)).toContain(deriveMisfortune(4242, difficulty))
-    }
+    // The front is a separate stream from the misfortune draw.
+    expect(deriveFront(4242)).toBe(deriveFront(4242))
+    expect(eligibleMisfortunes()).toContain(deriveMisfortune(4242))
   })
 
   it('restricts the draw to an eligible pool (Major Order front)', () => {

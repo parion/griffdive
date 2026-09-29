@@ -91,7 +91,7 @@ const optionCount = computed(() =>
 // The diver's locked Valor floor: shared team risk plus their own pact risk
 // (failed pacts already voided by the selector).
 const valorBase = computed(() =>
-  teamRiskOf(props.state) + (props.self ? pactRiskOf(props.self) : 0))
+  teamRiskOf(props.state) + (props.self ? pactRiskOf(props.self, props.state.difficulty) : 0))
 const valorWithPerf = computed(() => valorBase.value + performance.value)
 const valorDelta = computed(() => {
   const delta = valorWithPerf.value - valorBase.value

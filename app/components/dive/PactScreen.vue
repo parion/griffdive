@@ -58,7 +58,7 @@ const offer = computed(() =>
 // risk upward. Presentation only — `pactRiskTotal` is the engine's own sum.
 watch(
   selection,
-  ids => emit('pactRisk', pactRiskTotal(ids)),
+  ids => emit('pactRisk', pactRiskTotal(ids, props.state.difficulty)),
   { immediate: true },
 )
 
@@ -305,6 +305,7 @@ const opLabel = computed(() =>
       :selected="selection"
       :blocked="coverage"
       :disabled="locked"
+      :difficulty="state.difficulty"
       @toggle="toggle"
     />
 

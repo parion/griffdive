@@ -2,12 +2,13 @@
 import { CheckboxRoot } from 'reka-ui'
 import type { Pact } from '~~/shared/data/pacts'
 import type { Accountability } from '~~/shared/data/types'
-import { PACT_RISK } from '~~/shared/engine/config'
+import { conditionRiskAt } from '~~/shared/engine/config'
 import { ACCOUNTABILITY_LABELS } from '~/utils/accountability'
 
 const props = withDefaults(defineProps<{
   offer: Pact[]
   selected: string[]
+  difficulty: number
   // Offered pacts the current selection rules out: pactId → reason to show.
   blocked?: Record<string, string>
   // The diver has locked: the hand is read-only, so a toggle can't show a
@@ -25,7 +26,7 @@ const CHANNEL_ICON: Record<Accountability, string> = {
 }
 
 function riskOf(pactId: string): number {
-  return PACT_RISK[pactId] ?? 0
+  return conditionRiskAt(pactId, props.difficulty)
 }
 
 function isOn(pactId: string): boolean {

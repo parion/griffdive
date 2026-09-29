@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MAJOR_ORDER_RISK, MISFORTUNE_RISK, STRAIN_RISK, maxStarsFor } from '~~/shared/engine/config'
+import { MAJOR_ORDER_RISK, STRAIN_RISK, conditionRiskAt, maxStarsFor } from '~~/shared/engine/config'
 import { activeMisfortune, activeStrain, currentFront, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
 
@@ -20,10 +20,12 @@ const misfortune = computed(() => activeMisfortune(props.state))
 const front = computed(() => currentFront(props.state))
 const strain = computed(() => activeStrain(props.state))
 const teamRisk = computed(() => teamRiskOf(props.state))
-const baseValor = computed(() => teamRisk.value + (props.self ? pactRiskOf(props.self) : 0))
+const baseValor = computed(() => teamRisk.value + (props.self ? pactRiskOf(props.self, props.state.difficulty) : 0))
 
 const misfortuneRisk = computed(() =>
-  props.state.misfortuneAccepted ? MISFORTUNE_RISK[misfortune.value?.id ?? ''] ?? 0 : 0)
+  props.state.misfortuneAccepted
+    ? conditionRiskAt(misfortune.value?.id ?? '', props.state.difficulty)
+    : 0)
 const strainRisk = computed(() =>
   props.state.strainAccepted ? STRAIN_RISK[strain.value?.id ?? ''] ?? 0 : 0)
 const majorOrderRisk = computed(() => (props.state.majorOrder?.live ? MAJOR_ORDER_RISK : 0))
@@ -143,6 +145,7 @@ function submit(): void {
         :divers="state.divers"
         :self-id="selfId"
         :is-host="isHost"
+        :difficulty="state.difficulty"
         @fail="(playerId, pactId) => emit('fail', playerId, pactId)"
       />
 

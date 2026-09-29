@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PACTS, pactById } from '../data/pacts'
-import { PACT_RISK, RESERVE_STRATAGEMS, STRATAGEM_SLOTS_REQUIRED, pactOptionsFor } from './config'
+import { RESERVE_STRATAGEMS, STRATAGEM_SLOTS_REQUIRED, conditionRiskAt, pactOptionsFor } from './config'
 import { startingItemIds } from './progression'
 import {
   BLOCKED_UNDER_MISFORTUNE,
@@ -19,7 +19,7 @@ import {
 describe('catalog integrity', () => {
   it('every pact has a positive risk and a unique name', () => {
     for (const pact of PACTS) {
-      expect(PACT_RISK[pact.id]).toBeGreaterThan(0)
+      expect(conditionRiskAt(pact.id, 3)).toBeGreaterThan(0)
       expect(pactById(pact.id)).toBe(pact)
     }
     expect(new Set(PACTS.map(pact => pact.name)).size).toBe(PACTS.length)
@@ -140,11 +140,16 @@ describe('reserve and loadout legality', () => {
 
 describe('pactRiskTotal', () => {
   it('sums known pacts and ignores unknown ids', () => {
-    expect(pactRiskTotal([])).toBe(0)
-    expect(pactRiskTotal(['packLight'])).toBe(1)
-    expect(pactRiskTotal(['stimAbstinent', 'deadWeight'])).toBe(5)
-    expect(pactRiskTotal(['untouchable', 'packLight'])).toBe(4)
-    expect(pactRiskTotal(['ghostPact'])).toBe(0)
+    expect(pactRiskTotal([], 3)).toBe(0)
+    expect(pactRiskTotal(['packLight'], 3)).toBe(1)
+    expect(pactRiskTotal(['stimAbstinent', 'deadWeight'], 3)).toBe(5)
+    expect(pactRiskTotal(['untouchable', 'packLight'], 3)).toBe(4)
+    expect(pactRiskTotal(['ghostPact'], 3)).toBe(0)
+  })
+
+  it('scales the sum with the difficulty', () => {
+    expect(pactRiskTotal(['thirsty'], 10)).toBeGreaterThan(pactRiskTotal(['thirsty'], 3))
+    expect(pactRiskTotal(['stimAbstinent'], 10)).toBeLessThan(pactRiskTotal(['stimAbstinent'], 3))
   })
 })
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MAJOR_ORDER_RISK, MISFORTUNE_RISK, STRAIN_RISK, missionsPerOperation } from '~~/shared/engine/config'
+import { MAJOR_ORDER_RISK, STRAIN_RISK, conditionRiskAt, missionsPerOperation } from '~~/shared/engine/config'
 import { canRerollWheel, currentMisfortune, currentStrain, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, strainDecision, teamRiskOf } from '~~/shared/engine/selectors'
 import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
 import { FRONTS } from '~~/shared/data/fronts'
@@ -20,6 +20,8 @@ const emit = defineEmits<{
 }>()
 
 const misfortune = computed(() => currentMisfortune(props.state))
+const misfortuneRisk = computed(() =>
+  misfortune.value ? conditionRiskAt(misfortune.value.id, props.state.difficulty) : 0)
 const decision = computed(() => misfortuneDecision(props.state))
 const stranded = computed(() => misfortuneStrandedDivers(props.state))
 const acceptBlocked = computed(() => stranded.value.length > 0)
@@ -185,9 +187,9 @@ function acceptDisabled(): boolean {
             >
               <span
                 class="disp red"
-              >+{{ MISFORTUNE_RISK[misfortune.id] ?? 0 }}</span>
+              >+{{ misfortuneRisk }}</span>
               <RiskPips
-                :value="MISFORTUNE_RISK[misfortune.id] ?? 0"
+                :value="misfortuneRisk"
                 :max="5"
               />
             </span>
