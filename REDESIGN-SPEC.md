@@ -545,7 +545,7 @@ context; no bottom-sheet component (only unused `.sheet-*` CSS in `main.css:766-
       the styling divergences it surfaced are fixed. Remaining mismatches are documented artifacts:
       the multi-beat briefing (the design page aggregates all six beats, the app renders one), a
       handful of cross-component text collisions (e.g. "BASE"/"Valor" appearing in two places), and
-      `/kit` specimen-label parity (a hidden dev route). Baseline now **19 pages, ~72 mismatches**,
+      `/kit` specimen-label parity (a hidden dev route). Baseline now **19 pages, 70 mismatches**,
       down from 155.
       - **Automated now.** The design contract + conformance harness landed (see `design/README.md`):
         `pnpm design:extract` rebuilds `design/spec/*.json` from the bundle; `e2e/design-conformance.spec.ts`
