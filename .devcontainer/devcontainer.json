@@ -1,6 +1,9 @@
-// Griffdive dev container: Nuxt 4 toolchain on the official Paseo daemon image.
-// Paseo serves its web UI on :6767 and pairs devices through the E2E-encrypted relay;
-// OpenCode is the agent CLI, with the Context7 MCP wired up in ../opencode.json.
+// Griffdive dev container: Nuxt 4 toolchain on the official Paseo image.
+// Primary remote path is Orca over SSH: the container's sshd listens on :2222 (forwarded
+// to the laptop) and post-start.sh runs .devcontainer/ssh-setup.sh to stand it up —
+// https://www.onorca.dev/docs/ssh. The Paseo daemon on :6767 stays available as a
+// fallback. OpenCode and Claude Code are the agent CLIs, with the Context7 MCP wired up
+// in ../opencode.json; Claude credentials persist in their own volume.
 {
   "name": "griffdive",
   "build": {
@@ -22,18 +25,34 @@
     "source=paseo-node-modules-${devcontainerId},target=/workspace/node_modules,type=volume",
     // pnpm falls back to a project-local store when its default store is on a
     // different filesystem than the project; keep that fallback off the bind mount.
-    "source=paseo-pnpm-store-${devcontainerId},target=/workspace/.pnpm-store,type=volume"
+    "source=paseo-pnpm-store-${devcontainerId},target=/workspace/.pnpm-store,type=volume",
+    // Orca's SSH state (host keys, authorized_keys) deliberately does NOT live in the
+    // home volume: a recreate would rotate the keypair and break the laptop's copied
+    // key. Fixed name, so it also survives a change of project path.
+    "source=orca-ssh-griffdive,target=/home/paseo/.orca-ssh,type=volume",
+    // Claude Code auth + settings persist here. ~/.claude.json (the OAuth account) lives
+    // beside ~/.claude, so CLAUDE_CONFIG_DIR points both into this one volume — a
+    // dedicated volume keeps Claude state independent of the shared home volume.
+    "source=claude-code-config-${devcontainerId},target=/home/paseo/.claude,type=volume"
   ],
-  "forwardPorts": [3000, 6767],
+  "forwardPorts": [3000, 6767, 2222],
   "portsAttributes": {
     "3000": { "label": "Nuxt dev", "onAutoForward": "openBrowser" },
-    "6767": { "label": "Paseo web UI", "onAutoForward": "openBrowser" }
+    "6767": { "label": "Paseo web UI (fallback)", "onAutoForward": "openBrowser" },
+    // Orca's SSH target: the container's sshd, reachable as localhost:2222 on the
+    // laptop so Orca Settings -> SSH can dial in (see .devcontainer/ssh-setup.sh).
+    "2222": { "label": "Orca SSH", "onAutoForward": "silent" }
   },
   "otherPortsAttributes": { "onAutoForward": "silent" },
   "containerEnv": {
     // Relay is opt-in in Paseo; force it on for every daemon launch from this container.
     "PASEO_RELAY_ENABLED": "true",
-    "PASEO_LISTEN": "0.0.0.0:6767"
+    "PASEO_LISTEN": "0.0.0.0:6767",
+    // Keep Claude Code's account/config inside the persisted volume above rather than
+    // the ephemeral home directory, so sign-in survives rebuilds.
+    "CLAUDE_CONFIG_DIR": "/home/paseo/.claude",
+    // The image pins Claude Code; auto-update cannot write the root-owned npm prefix.
+    "DISABLE_AUTOUPDATER": "1"
   },
   "remoteEnv": {
     // Optional: set PASEO_PASSWORD on the host to password-protect the daemon.
