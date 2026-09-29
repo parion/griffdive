@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { ALL_WARBOND_CODES } from '../data/catalog'
-import { MISFORTUNE_RISK, STRAIN_RISK } from './config'
+import { STRAIN_RISK, conditionRiskAt } from './config'
 import { createDiveState, reduce } from './reducer'
 import { diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
 import type { DiveState } from './types'
@@ -58,7 +58,7 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
     }
     // The squad accepts intense misfortunes and declines weak ones. A rule the
     // squad cannot field is refused by the engine, so the script opts out.
-    const wantsRisk = (MISFORTUNE_RISK[state.wheel!.misfortuneId] ?? 0) >= 3
+    const wantsRisk = conditionRiskAt(state.wheel!.misfortuneId, state.difficulty) >= 3
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: wantsRisk })
     if (state.phase === 'decision') {
       state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })
@@ -69,6 +69,10 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
     if (state.phase === 'strain') {
       const strainRisk = state.strainId ? (STRAIN_RISK[state.strainId] ?? 0) : 0
       state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: strainRisk >= 3 || mission % 2 === 0 })
+    }
+    // The wheel decision holds until the host deals the pact hand.
+    if (state.phase === 'deal') {
+      state = reduce(state, { type: 'DEAL_PACTS' })
     }
     const accepted = state.misfortuneAccepted
     const strainAccepted = state.strainAccepted

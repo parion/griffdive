@@ -52,37 +52,58 @@ function warbondName(code: string): string {
 
 <template>
   <div class="codex-browser">
-    <p class="muted small">
+    <p class="muted small codex-count">
       {{ filtered.length }} of {{ ALL_ITEMS.length }} items · tiers from the community default list
     </p>
 
-    <section class="panel row">
-      <select v-model="category">
-        <option
-          v-for="entry in CATEGORIES"
-          :key="entry"
-          :value="entry"
+    <section
+      class="panel filters"
+      aria-label="Catalog filters"
+    >
+      <label class="field">
+        <span class="lbl">Category</span>
+        <select
+          v-model="category"
+          aria-label="Category"
         >
-          {{ entry === 'all' ? 'All categories' : entry }}
-        </option>
-      </select>
-      <select v-model="warbond">
-        <option value="all">
-          All warbonds
-        </option>
-        <option
-          v-for="entry in WARBONDS"
-          :key="entry.code"
-          :value="entry.code"
+          <option
+            v-for="entry in CATEGORIES"
+            :key="entry"
+            :value="entry"
+          >
+            {{ entry === 'all' ? 'All categories' : entry }}
+          </option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span class="lbl">Warbond</span>
+        <select
+          v-model="warbond"
+          aria-label="Warbond"
         >
-          {{ entry.displayName }}
-        </option>
-      </select>
-      <input
-        v-model="search"
-        type="text"
-        placeholder="Search name or id…"
-      >
+          <option value="all">
+            All warbonds
+          </option>
+          <option
+            v-for="entry in WARBONDS"
+            :key="entry.code"
+            :value="entry.code"
+          >
+            {{ entry.displayName }}
+          </option>
+        </select>
+      </label>
+
+      <label class="field field-search">
+        <span class="lbl">Search</span>
+        <input
+          v-model="search"
+          type="text"
+          placeholder="Search name or id…"
+          aria-label="Search"
+        >
+      </label>
     </section>
 
     <template
@@ -93,60 +114,79 @@ function warbondName(code: string): string {
         class="tier-heading"
         :data-tier="group.tier"
       >
-        <span class="label">{{ group.tier.toUpperCase() }} Tier</span>
-        <span class="count">{{ group.items.length }}</span>
+        <span class="disp tier-mark">{{ group.tier.toUpperCase() }}</span>
+        <span class="tier-label">{{ group.tier.toUpperCase() }} Tier</span>
+        <span
+          class="dash"
+          aria-hidden="true"
+        />
+        <span class="cap tier-count">{{ group.items.length }} items</span>
       </h2>
-      <section class="grid">
-        <div
+      <section class="grid item-grid">
+        <ItemCard
           v-for="item in group.items"
           :key="item.id"
-          class="codex-row"
-        >
-          <ItemCard
-            :item="item"
-            disabled
-          />
-          <p class="muted small">
-            {{ warbondName(item.warbondCode) }}
-          </p>
-        </div>
+          :item="item"
+          :note="warbondName(item.warbondCode)"
+          disabled
+        />
       </section>
     </template>
+
+    <p
+      v-if="!tierGroups.length"
+      class="muted small"
+    >
+      No catalog items match these filters.
+    </p>
   </div>
 </template>
 
 <style scoped>
-.codex-row { display: grid; gap: 0.2rem; }
-.panel select, .panel input[type="text"] { min-width: 0; flex: 1 1 10rem; }
+.codex-browser { display: grid; gap: 0.9rem; }
+.codex-count { margin: 0; }
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+}
+.field { display: grid; gap: 0.3rem; }
+.field select,
+.field input[type="text"] { width: 100%; min-width: 0; }
+.field-search { grid-column: 1 / -1; }
+
 .tier-heading {
   display: flex;
   align-items: baseline;
   gap: 0.6rem;
-  margin: 1.75rem 0 0.75rem;
-  font-family: var(--font-display);
+  margin: 1.4rem 0 0.1rem;
+}
+.tier-mark {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2rem;
+  height: 2rem;
   font-size: 1rem;
-  font-weight: 700;
+  color: currentColor;
+  border: 1px solid currentColor;
+}
+.tier-label {
+  font-family: var(--font-display);
   font-stretch: 125%;
-  letter-spacing: 0.14em;
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
-.tier-heading::before, .tier-heading::after {
-  content: '';
-  align-self: center;
-  flex: 1;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.35;
-}
-.tier-heading .count {
-  font-family: var(--font-body);
-  font-size: 0.75rem;
-  font-weight: 400;
-  letter-spacing: 0.06em;
-  opacity: 0.7;
-}
+.tier-count { margin-left: auto; flex-shrink: 0; }
+
 .tier-heading[data-tier='s'] { color: var(--tier-s); }
 .tier-heading[data-tier='a'] { color: var(--tier-a); }
 .tier-heading[data-tier='b'] { color: var(--tier-b); }
 .tier-heading[data-tier='c'] { color: var(--tier-c); }
+
+.item-grid { grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); }
 </style>

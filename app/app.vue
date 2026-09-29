@@ -1,62 +1,80 @@
 <script setup lang="ts">
+import { useSessionStore } from '~/stores/session'
+
+const route = useRoute()
+// The dive renders its own terminal header (crusade, room code, copy, nav), so
+// the global bridge header stands down there.
+const onDive = computed(() => route.path.startsWith('/dive'))
+
 const changelogOpen = ref(false)
-const { codexOpen, warbondsOpen, guideOpen } = useDrawers()
+const { codexOpen, warbondsOpen } = useDrawers()
+const { online } = useSessionStore()
 </script>
 
 <template>
   <MotionConfig reduced-motion="user">
-    <div>
+    <div class="app-shell">
       <a
         href="#main-content"
         class="skip-link"
       >Skip to main content</a>
-      <header class="top-bar">
-        <div class="row">
-          <NuxtLink
-            to="/"
-            class="brand"
-          >GRIFFDIVE</NuxtLink>
-          <button
-            type="button"
-            class="chip warn alpha-chip"
-            title="Alpha — click for the changelog"
-            aria-haspopup="dialog"
-            :aria-expanded="changelogOpen"
-            @click="changelogOpen = true"
-          >
-            alpha
-          </button>
+      <header
+        v-if="!onDive"
+        class="term-header"
+      >
+        <NuxtLink
+          to="/"
+          class="brand"
+          aria-label="Griffdive bridge"
+        >
+          <BrandMark :size="26" />
+          <span class="brand-word disp">Griffdive</span>
+        </NuxtLink>
+        <button
+          type="button"
+          class="chip alpha-chip"
+          title="Alpha — click for the changelog"
+          aria-haspopup="dialog"
+          :aria-expanded="changelogOpen"
+          @click="changelogOpen = true"
+        >
+          Alpha
+        </button>
+        <div class="grow" />
+        <div
+          v-if="online.length"
+          class="chan uplink"
+        >
+          <span
+            class="lamp teal pulse"
+            aria-hidden="true"
+          />
+          <span>Uplink</span>
+          <span class="uplink-n">Live</span>
         </div>
-        <nav aria-label="Primary">
+        <nav
+          class="ship-nav"
+          aria-label="Ship"
+        >
           <button
             type="button"
-            class="nav-link"
-            aria-haspopup="dialog"
-            :aria-expanded="guideOpen"
-            @click="guideOpen = true"
-          >
-            <IconGuide class="nav-icon" />
-            Guide
-          </button>
-          <button
-            type="button"
-            class="nav-link"
+            class="icon-btn navb"
             aria-haspopup="dialog"
             :aria-expanded="codexOpen"
             @click="codexOpen = true"
           >
             <IconBook class="nav-icon" />
-            Codex
+            <span>Codex</span>
           </button>
           <button
             type="button"
-            class="nav-link"
+            class="icon-btn navb"
             aria-haspopup="dialog"
             :aria-expanded="warbondsOpen"
             @click="warbondsOpen = true"
           >
             <IconWarbond class="nav-icon" />
-            Warbonds
+            <span>Warbonds</span>
           </button>
         </nav>
       </header>
@@ -64,10 +82,6 @@ const { codexOpen, warbondsOpen, guideOpen } = useDrawers()
       <ChangelogModal
         :open="changelogOpen"
         @close="changelogOpen = false"
-      />
-      <GuideDrawer
-        :open="guideOpen"
-        @update:open="guideOpen = $event"
       />
       <CodexDrawer
         :open="codexOpen"
@@ -83,81 +97,74 @@ const { codexOpen, warbondsOpen, guideOpen } = useDrawers()
 </template>
 
 <style scoped>
-.nav-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--teal);
-  font: inherit;
-  cursor: pointer;
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
-.nav-link:hover { text-decoration: underline; }
-.nav-icon { opacity: 0.85; }
 
-/* Mobile: the header is tight, so the brand drops its trailing alpha chip and
-   the nav becomes a row of boxed, icon-over-label tiles — the chunky bordered
-   panels the game's own HUD favours. */
-@media (max-width: 640px) {
-  .top-bar {
-    padding: 0.55rem 0.75rem;
-    gap: 0.4rem;
-  }
+.term-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 60px;
+  padding: 0 20px 0 24px;
+  border-bottom: 1px solid var(--line-1);
+  background: var(--ground);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--gold);
+}
+.brand:hover { color: var(--gold); text-decoration: none; }
+.brand-word {
+  font-size: 17px;
+  letter-spacing: 0.06em;
+}
+
+.alpha-chip {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--khaki);
+}
+
+.uplink { height: 32px; }
+.uplink-n { color: var(--muted); letter-spacing: 0.16em; }
+
+.ship-nav {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+.navb {
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.3rem 0.55rem;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.nav-icon { width: 20px; height: 20px; }
+
+@media (max-width: 720px) {
+  .term-header { padding: 0 12px; gap: 10px; }
+  .brand-word { font-size: 14px; letter-spacing: 0.04em; }
   .alpha-chip { display: none; }
-  .brand {
-    font-size: 0.95rem;
-    letter-spacing: 0.1em;
-  }
-  .top-bar nav { gap: 0.3rem; }
-  .nav-link {
-    position: relative;
-    flex-direction: column;
+  .uplink { display: none; }
+  .navb span { display: none; }
+  /* Phone hit-size floor: icon-only nav controls stay a 44px touch target. */
+  .navb {
+    padding: 0;
+    width: 44px;
+    height: 44px;
     justify-content: center;
-    gap: 0.12rem;
-    min-width: 3.1rem;
-    padding: 0.32rem 0.35rem;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background: var(--bg-raised);
-    color: var(--khaki);
-    font-size: 0.6rem;
-    font-weight: 700;
-    letter-spacing: 0.07em;
-    line-height: 1;
-    text-transform: uppercase;
-    overflow: hidden;
   }
-  /* The gold service stripe: the one accent that makes the tiles read as HUD
-     hardware rather than plain buttons. */
-  .nav-link::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 2px;
-    background: var(--gold);
-    opacity: 0.5;
-    transition: opacity var(--dur-fast) var(--ease-out);
-  }
-  .nav-link .nav-icon {
-    width: 1.15rem;
-    height: 1.15rem;
-    color: var(--teal);
-    opacity: 1;
-  }
-  .nav-link:hover {
-    text-decoration: none;
-    border-color: color-mix(in srgb, var(--gold) 60%, var(--border));
-    color: var(--gold);
-  }
-  .nav-link:hover::before { opacity: 1; }
-  .nav-link[aria-expanded='true'] {
-    border-color: var(--gold);
-    color: var(--gold);
-    background: color-mix(in srgb, var(--gold) 12%, var(--bg-raised));
-  }
-  .nav-link[aria-expanded='true']::before { opacity: 1; }
-  .nav-link[aria-expanded='true'] .nav-icon { color: var(--gold); }
 }
 </style>

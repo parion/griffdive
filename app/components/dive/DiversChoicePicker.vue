@@ -83,7 +83,13 @@ watch(() => props.open, (open) => {
     @open-auto-focus="focusSearch"
   >
     <template #title>
-      <span class="choice-title"><span class="mark">S+</span> Liberty’s Cross</span>
+      <span class="choice-title">
+        <span
+          class="mark tb"
+          data-tier="S+"
+        >S+</span>
+        Liberty’s Cross
+      </span>
     </template>
     <template #description>
       {{ claimableCount }} of {{ pool.length }} items claimable — anything from your own warbonds,
@@ -152,8 +158,8 @@ watch(() => props.open, (open) => {
 
 <style scoped>
 :deep(.choice-dialog) {
-  border-color: color-mix(in srgb, var(--tier-splus) 40%, var(--border));
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 34px color-mix(in srgb, var(--tier-splus) 14%, transparent);
+  border-color: color-mix(in srgb, var(--tier-splus) 45%, var(--line-3));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 34px color-mix(in srgb, var(--tier-splus) 14%, transparent);
 }
 
 .choice-title {
@@ -161,9 +167,9 @@ watch(() => props.open, (open) => {
   align-items: center;
   gap: 0.5rem;
   font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 700;
   font-stretch: 125%;
+  font-size: 1rem;
+  font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -174,9 +180,9 @@ watch(() => props.open, (open) => {
   min-width: 1.7rem;
   height: 1.7rem;
   padding: 0 0.2rem;
-  border: 1px solid currentColor;
-  border-radius: 5px;
   font-size: 0.75rem;
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, var(--tier-splus) 14%, transparent);
 }
 
 .filters {
@@ -185,7 +191,10 @@ watch(() => props.open, (open) => {
   z-index: 1;
   margin-bottom: 0.75rem;
   padding: 0.6rem;
-  background: var(--bg-raised);
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  background: var(--panel);
 }
 .filters select, .filters input[type="text"] { min-width: 0; flex: 1 1 10rem; }
 
@@ -195,9 +204,9 @@ watch(() => props.open, (open) => {
   gap: 0.6rem;
   margin: 1.1rem 0 0.6rem;
   font-family: var(--font-display);
-  font-size: 0.85rem;
-  font-weight: 700;
   font-stretch: 125%;
+  font-size: 0.85rem;
+  font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -212,7 +221,7 @@ watch(() => props.open, (open) => {
 .tier-heading .count {
   font-family: var(--font-body);
   font-size: 0.7rem;
-  font-weight: 400;
+  font-weight: 700;
   letter-spacing: 0.06em;
   opacity: 0.7;
 }

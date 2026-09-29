@@ -1,75 +1,34 @@
-# Nuxt Minimal Starter
+# Griffdive
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+A squad roguelike companion app for **Helldivers 2**. Griffdive wraps the game's missions in a
+challenge campaign: squads climb the difficulty ladder with scavenged loadouts, spin a Wheel of
+Misfortune before every dive, and individually choose pacts — the more risk accepted, the rarer
+the loot.
 
-## Setup
+Fan project. Not affiliated with or endorsed by Sony Interactive Entertainment or Arrowhead Game
+Studios. Non-commercial, no ads, no monetization. See [CREDITS.md](./CREDITS.md).
 
-Make sure to install dependencies:
+## Getting started
 
 ```bash
-# npm
-npm install
-
-# pnpm
 pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
+pnpm dev        # http://localhost:3000
 ```
 
-## Development Server
+## Commands
 
-Start the development server on `http://localhost:3000`:
+| Command | Purpose |
+| --- | --- |
+| `pnpm dev` | Dev server on `http://localhost:3000` |
+| `pnpm build` / `pnpm preview` | Production build (Nitro server; REST + WebSocket) |
+| `pnpm generate` | Static SPA build (solo/offline only — no WebSocket server) |
+| `pnpm lint` / `pnpm lint:fix` | ESLint via `@nuxt/eslint` |
+| `pnpm test` / `pnpm test:watch` | Vitest (engine unit + golden tests) |
+| `pnpm test:e2e` | Playwright (production build on `:3173`) |
+| `pnpm typecheck` | `nuxt typecheck` (vue-tsc) |
+| `pnpm pwa:assets` | Regenerate PWA icons from `public/icon.svg` |
 
-```bash
-# npm
-npm run dev
+## Documentation
 
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
-```
-
-## Production
-
-Build the application for production:
-
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+[`AGENTS.md`](./AGENTS.md) is the source of truth for game rules, architecture and conventions;
+[`PLAN.md`](./PLAN.md) tracks playtest findings and the work between releases.

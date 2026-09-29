@@ -3,26 +3,34 @@ import { FRONTS } from '../data/fronts'
 import type { Front } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
 import type { Misfortune } from '../data/misfortunes'
+import { PACTS, pactById } from '../data/pacts'
 import type { Pact } from '../data/pacts'
 import type { Strain } from '../data/strains'
 import type { Item } from '../data/types'
 import {
   MAJOR_ORDER_RISK,
-  MISFORTUNE_RISK,
-  OPTIONS_LOST_PER_FAILED_PACT,
-  PACT_RISK,
   SAMPLE_VALOR_CAP,
   STRAIN_RISK,
   TIME_VALOR_MAX,
   baseTierFor,
   bonusIntervalFor,
+  conditionRiskAt,
   maxStarsFor,
   pactOptionsFor,
 } from './config'
 import type { BonusStat } from './config'
-import { hasLegalLoadout, pactRiskTotal, rollPactOffer } from './pacts'
+import {
+  MISFORTUNE_BANS_STRATAGEM,
+  PACT_BANS_STRATAGEM,
+  hasLegalLoadout,
+  isPactSelectable,
+  pactRiskTotal,
+  rollPactOffer,
+  stratagemBanReason,
+} from './pacts'
+import type { StratagemBanSource } from './pacts'
 import { startingItemIds } from './progression'
-import { performanceValor, maxCeiling, oddsToReach, optionsForStars, rollBonus, rollCeiling, rollRewardOptions, valorOf } from './rewards'
+import { performanceValor, maxCeiling, oddsToReach, optionsForDiver, rollBonus, rollCeiling, rollRewardOptions, valorOf } from './rewards'
 import type { RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -112,13 +120,38 @@ export function misfortuneStrandedDivers(state: DiveState): DiverState[] {
 // is what keeps the operation's Valor potential intact.
 export function teamRiskOf(state: DiveState): number {
   const misfortuneRisk = state.misfortuneAccepted
-    ? MISFORTUNE_RISK[currentMisfortune(state)?.id ?? ''] ?? 0
+    ? conditionRiskAt(currentMisfortune(state)?.id ?? '', state.difficulty)
     : 0
   const strainRisk = state.strainAccepted
     ? STRAIN_RISK[state.strainId ?? ''] ?? 0
     : 0
   const majorOrderRisk = state.majorOrder?.live ? MAJOR_ORDER_RISK : 0
   return misfortuneRisk + strainRisk + majorOrderRisk
+}
+
+export interface TeamRiskBreakdown {
+  misfortuneRisk: number
+  strainRisk: number
+  majorOrderRisk: number
+  total: number
+}
+
+// The legible split of `teamRiskOf` for the pacts summary bar — same inputs,
+// same acceptance flags, so the screen and the floor can never disagree.
+export function teamRiskBreakdown(state: DiveState): TeamRiskBreakdown {
+  const misfortuneRisk = state.misfortuneAccepted
+    ? conditionRiskAt(currentMisfortune(state)?.id ?? '', state.difficulty)
+    : 0
+  const strainRisk = state.strainAccepted
+    ? STRAIN_RISK[state.strainId ?? ''] ?? 0
+    : 0
+  const majorOrderRisk = state.majorOrder?.live ? MAJOR_ORDER_RISK : 0
+  return {
+    misfortuneRisk,
+    strainRisk,
+    majorOrderRisk,
+    total: misfortuneRisk + strainRisk + majorOrderRisk,
+  }
 }
 
 export interface StrainDecision {
@@ -138,21 +171,70 @@ export function strainDecision(state: DiveState): StrainDecision {
 }
 
 // A failed pact is voided: it no longer stakes risk, so its share of the
-// diver's Valor disappears from previews and from the rolled offer alike.
-export function pactRiskOf(diver: DiverState): number {
-  return pactRiskTotal(diver.pactIds.filter(id => !diver.failedPactIds.includes(id)))
+// diver's Valor disappears from previews and from the rolled offer alike. Each
+// surviving pact's risk is scaled by the operation's difficulty.
+export function pactRiskOf(diver: DiverState, difficulty: number): number {
+  return pactRiskTotal(diver.pactIds.filter(id => !diver.failedPactIds.includes(id)), difficulty)
 }
 
 // Chosen risk lives on the diver and the team; team performance is squad-level
 // and rides the report. Together they are the diver's Valor.
 export function diverValor(state: DiveState, diver: DiverState): number {
-  return valorOf(teamRiskOf(state), pactRiskOf(diver), performanceValor(state.lastReport))
+  return valorOf(teamRiskOf(state), pactRiskOf(diver, state.difficulty), performanceValor(state.lastReport))
 }
 
 // Display ceiling: the deterministic best case the diver's Valor can preview.
 // The actual offer rolls its ceiling (diverOptions).
 export function diverCeiling(state: DiveState, diver: DiverState): RewardTier {
   return maxCeiling(state.difficulty, diverValor(state, diver))
+}
+
+// The Armory's "active rules" readout: the accepted misfortune plus the
+// diver's sworn pacts, with the ban predicate each contributes. Display only —
+// `stratagemBanReason` below is the single source of truth for what is legal.
+export interface ArmoryRule {
+  id: string
+  name: string
+  source: 'misfortune' | 'pact'
+  /** Whether this rule removes equip choices at all (behavioural rules don't). */
+  equipBearing: boolean
+}
+
+export function armoryRules(state: DiveState, diver: DiverState): ArmoryRule[] {
+  const rules: ArmoryRule[] = []
+  const misfortune = activeMisfortune(state)
+  if (misfortune) {
+    rules.push({
+      id: misfortune.id,
+      name: misfortune.name,
+      source: 'misfortune',
+      equipBearing: misfortune.id === 'oopsAllAirstrikes'
+        || Boolean(MISFORTUNE_BANS_STRATAGEM[misfortune.id]),
+    })
+  }
+  for (const id of diver.pactIds) {
+    const pact = pactById(id)
+    if (!pact) {
+      continue
+    }
+    rules.push({
+      id,
+      name: pact.name,
+      source: 'pact',
+      equipBearing: Boolean(PACT_BANS_STRATAGEM[id]),
+    })
+  }
+  return rules
+}
+
+// Why the Armory greys a stratagem tile: the accepted misfortune or one of the
+// diver's sworn pacts bans it. Null when the item is legal.
+export function itemBannedInArmory(
+  state: DiveState,
+  diver: DiverState,
+  item: Item,
+): StratagemBanSource | null {
+  return stratagemBanReason(activeMisfortune(state)?.id ?? null, diver.pactIds, item)
 }
 
 export function rewardPoolFor(codes: readonly string[]): Item[] {
@@ -193,11 +275,7 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   const exclude = new Set([...owned, ...diver.bannedItemIds])
   // Every failed pact forfeits one reward option (AGENTS.md: Reward math) —
   // floored at one so the draft can always complete and never deadlock ADVANCE.
-  const count = Math.max(
-    1,
-    optionsForStars(state.lastReport.stars, ceiling)
-    - diver.failedPactIds.length * OPTIONS_LOST_PER_FAILED_PACT,
-  )
+  const count = optionsForDiver(state.lastReport.stars, ceiling, diver.failedPactIds.length)
   return rollRewardOptions(
     deriveSeed(seed, 2),
     ceiling,
@@ -355,7 +433,7 @@ export function ceilingRange(difficulty: number, teamRisk: number, pactRisk: num
 export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): CeilingRange {
   const misfortuneMax = Math.max(
     0,
-    ...eligibleMisfortunes(difficulty).map(misfortune => MISFORTUNE_RISK[misfortune.id] ?? 0),
+    ...eligibleMisfortunes().map(misfortune => conditionRiskAt(misfortune.id, difficulty)),
   )
   const strainMax = Math.max(
     0,
@@ -373,13 +451,14 @@ export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): Cei
 export function maxValorFor(difficulty: number): number {
   const misfortuneMax = Math.max(
     0,
-    ...eligibleMisfortunes(difficulty).map(misfortune => MISFORTUNE_RISK[misfortune.id] ?? 0),
+    ...eligibleMisfortunes().map(misfortune => conditionRiskAt(misfortune.id, difficulty)),
   )
   const strainMax = Math.max(
     0,
     ...eligibleStrains(difficulty).map(strain => STRAIN_RISK[strain.id] ?? 0),
   )
-  const pactMax = Object.values(PACT_RISK)
+  const pactMax = PACTS
+    .map(pact => conditionRiskAt(pact.id, difficulty))
     .sort((a, b) => b - a)
     .slice(0, pactOptionsFor(difficulty))
     .reduce((sum, risk) => sum + risk, 0)
@@ -442,6 +521,18 @@ export function availableCaches(state: DiveState): { ownerId: string, itemIds: s
     ownerId,
     itemIds,
   }))
+}
+
+// The pacts the accepted misfortune filtered out of the offer this mission —
+// flavor for the pacts screen's filter note. Wraps `isPactSelectable`, the same
+// predicate the offer roll uses, so the note can never contradict the hand.
+export function filteredPactsFor(state: DiveState): Pact[] {
+  const decision = misfortuneDecision(state)
+  if (!state.wheel || !decision.decided || !decision.accepted) {
+    return []
+  }
+  const misfortuneId = currentMisfortune(state)?.id ?? null
+  return PACTS.filter(pact => !isPactSelectable(pact.id, misfortuneId))
 }
 
 // The per-diver pact offer: rolled deterministically from the wheel seed once

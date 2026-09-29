@@ -1,8 +1,8 @@
-import { PACTS } from '../data/pacts'
+import { PACTS, pactById } from '../data/pacts'
 import type { Pact } from '../data/pacts'
 import { stratagems } from '../data/stratagems'
 import type { Item } from '../data/types'
-import { PACT_RISK, RESERVE_STRATAGEMS, STRATAGEM_SLOTS_REQUIRED, pactOptionsFor } from './config'
+import { RESERVE_STRATAGEMS, STRATAGEM_SLOTS_REQUIRED, conditionRiskAt, pactOptionsFor } from './config'
 import { deriveSeed, mulberry32, pickIndex } from './rng'
 
 // A pact that would be redundant or impossible under the accepted misfortune
@@ -22,7 +22,7 @@ export const BLOCKED_UNDER_MISFORTUNE: Readonly<Record<string, readonly string[]
 }
 
 export function isPactSelectable(pactId: string, misfortuneId: string | null): boolean {
-  if (!(pactId in PACT_RISK)) {
+  if (!pactById(pactId)) {
     return false
   }
   if (!misfortuneId) {
@@ -94,13 +94,15 @@ export function applyPactToggle(
   return [...picked]
 }
 
-export function pactRiskTotal(pactIds: readonly string[]): number {
-  return pactIds.reduce((sum, id) => sum + (PACT_RISK[id] ?? 0), 0)
+// Pacts carry no flat risk: each condition's value scales with the operation's
+// difficulty, so the total needs the difficulty it is being measured at.
+export function pactRiskTotal(pactIds: readonly string[], difficulty: number): number {
+  return pactIds.reduce((sum, id) => sum + conditionRiskAt(id, difficulty), 0)
 }
 
 const RESERVE_STRATAGEM_SET = new Set<string>(RESERVE_STRATAGEMS)
 
-function isReserveStratagem(item: Item): boolean {
+export function isReserveStratagem(item: Item): boolean {
   return RESERVE_STRATAGEM_SET.has(item.id)
 }
 
@@ -111,7 +113,7 @@ function isBackpackStratagem(item: Item): boolean {
 // The game's "red" stratagems: Eagle and Orbital strikes. A misfortune that
 // restricts the loadout to them (Oops, All Airstrikes) still leaves enough
 // choices to ready up.
-function isAirstrikeStratagem(item: Item): boolean {
+export function isAirstrikeStratagem(item: Item): boolean {
   return item.category === 'Eagle' || item.category === 'Orbital'
 }
 
@@ -121,7 +123,7 @@ function isSupportWeaponStratagem(item: Item): boolean {
 
 // Pacts that remove a stratagem from the loadout. Reserve utility is exempt:
 // the reworded category pacts ban offensive firepower only.
-const PACT_BANS_STRATAGEM: Readonly<Record<string, (item: Item) => boolean>> = {
+export const PACT_BANS_STRATAGEM: Readonly<Record<string, (item: Item) => boolean>> = {
   packLight: isBackpackStratagem,
   primaryConcern: isSupportWeaponStratagem,
   antiTankAbstinent: item => item.antitank === true,
@@ -134,12 +136,45 @@ const PACT_BANS_STRATAGEM: Readonly<Record<string, (item: Item) => boolean>> = {
 // utility is not exempt. Only rules that restrict what can be *equipped* count
 // here; purely behavioral misfortunes (No Stratagems: four slots still equip,
 // they just cannot be called) do not remove loadout choices.
-const MISFORTUNE_BANS_STRATAGEM: Readonly<Record<string, (item: Item) => boolean>> = {
+export const MISFORTUNE_BANS_STRATAGEM: Readonly<Record<string, (item: Item) => boolean>> = {
   noBackpacks: isBackpackStratagem,
   noSentries: item => item.tags.includes('Sentry'),
   noEagles: item => item.category === 'Eagle',
   noOrbitals: item => item.category === 'Orbital',
   primaryOnly: isSupportWeaponStratagem,
+}
+
+export interface StratagemBanSource {
+  source: 'misfortune' | 'pact'
+  id: string
+}
+
+// Why an item cannot be equipped: the accepted misfortune or one of the
+// diver's pacts. Misfortunes bind absolutely (reserve is not exempt); pacts
+// leave reserve utility legal, because HD2 still needs four equipped
+// stratagems to ready up. Purely behavioural rules (No Stratagems, Melee Only)
+// do not remove equip choices and return null.
+export function stratagemBanReason(
+  misfortuneId: string | null,
+  pactIds: readonly string[],
+  item: Item,
+): StratagemBanSource | null {
+  if (misfortuneId) {
+    if (misfortuneId === 'oopsAllAirstrikes' && !isAirstrikeStratagem(item)) {
+      return { source: 'misfortune', id: misfortuneId }
+    }
+    if (MISFORTUNE_BANS_STRATAGEM[misfortuneId]?.(item)) {
+      return { source: 'misfortune', id: misfortuneId }
+    }
+  }
+  if (!isReserveStratagem(item)) {
+    for (const id of pactIds) {
+      if (PACT_BANS_STRATAGEM[id]?.(item)) {
+        return { source: 'pact', id }
+      }
+    }
+  }
+  return null
 }
 
 // How many stratagems a diver can still field once the accepted misfortune and
@@ -151,20 +186,12 @@ export function legalStratagemCount(
   ownedIds: readonly string[],
 ): number {
   const owned = new Set(ownedIds)
-  const misfortuneBans = misfortuneId ? MISFORTUNE_BANS_STRATAGEM[misfortuneId] : undefined
-  const airstrikesOnly = misfortuneId === 'oopsAllAirstrikes'
   let count = 0
   for (const item of stratagems) {
     if (!owned.has(item.id) && !isReserveStratagem(item)) {
       continue
     }
-    if (airstrikesOnly && !isAirstrikeStratagem(item)) {
-      continue
-    }
-    if (misfortuneBans?.(item)) {
-      continue
-    }
-    if (!isReserveStratagem(item) && pactIds.some(id => PACT_BANS_STRATAGEM[id]?.(item))) {
+    if (stratagemBanReason(misfortuneId, pactIds, item)) {
       continue
     }
     count++

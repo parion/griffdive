@@ -1,45 +1,60 @@
 <script setup lang="ts">
-import { ProgressIndicator, ProgressRoot } from 'reka-ui'
 import { VALOR_METER_MAX, baseTierFor } from '~~/shared/engine/config'
 import { ceilingRange } from '~~/shared/engine/selectors'
-import { valorOf } from '~~/shared/engine/rewards'
+import { oddsToReach, valorOf } from '~~/shared/engine/rewards'
 import type { RewardTier } from '~~/shared/engine/types'
 
 const props = withDefaults(defineProps<{
   difficulty: number
   teamRisk: number
   pactRisk: number
-  // The small squad-level term from the mission just reported; zero in the
-  // pacts window (the previous report is cleared on advance).
   performance?: number
-  // Locked: pacts are committed and the dive is live — the gauge reads the
-  // diver's actual Valor and drops live as failed pacts void their risk.
   locked?: boolean
-}>(), { performance: 0, locked: false })
+  diverName?: string
+  pendingText?: string
+  // The team-risk split, when the caller has it: the design's legend reads
+  // Misfortune / Strain / Pacts / Performance rather than one "Team" row.
+  misfortuneRisk?: number
+  strainRisk?: number
+  majorOrderRisk?: number
+}>(), {
+  performance: 0,
+  locked: false,
+  diverName: '',
+  pendingText: '',
+  misfortuneRisk: undefined,
+  strainRisk: undefined,
+  majorOrderRisk: undefined,
+})
 
 const LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
 const valor = computed(() => valorOf(props.teamRisk, props.pactRisk, props.performance))
-// The gauge is fixed at the meter top (11): Valor past it can't be shown, it
-// "breaks" the gauge and banks as Luck that lifts the top-rung odds.
 const scale = VALOR_METER_MAX
 const overflow = computed(() => Math.max(0, valor.value - VALOR_METER_MAX))
 const range = computed(() =>
   ceilingRange(props.difficulty, props.teamRisk, props.pactRisk, props.performance))
 
-const ratio = computed(() => Math.min(1, valor.value / scale))
-const fill = computed(() => Math.max(0, valor.value))
-// Segments are laid out inside the filled indicator, so their widths are
-// shares of the current Valor (not of the full scale).
-function share(value: number): string {
-  return `${fill.value > 0 ? (value / fill.value) * 100 : 0}%`
+type CellSource = 'empty' | 'team' | 'pact' | 'performance'
+interface ValorCell {
+  key: number
+  source: CellSource
+  amount: number
 }
 
-const teamWidth = computed(() => share(props.teamRisk))
-const pactWidth = computed(() => share(props.pactRisk))
-const performanceWidth = computed(() => share(props.performance))
-const pactLeft = computed(() => share(props.teamRisk))
-const performanceLeft = computed(() => share(props.teamRisk + props.pactRisk))
+// One cell per meter point, filled from the bottom so the gauge stacks the
+// sources legibly: team risk first, then pacts, then performance.
+const cells = computed<ValorCell[]>(() => {
+  const teamEnd = props.teamRisk
+  const pactEnd = props.teamRisk + props.pactRisk
+  const bottomUp = Array.from({ length: scale }, (_, index): ValorCell => {
+    const source: CellSource
+      = index < teamEnd ? 'team' : index < pactEnd ? 'pact' : 'performance'
+    const amount = Math.min(1, Math.max(0, valor.value - index))
+    return { key: index, source: amount > 0 ? source : 'empty', amount }
+  })
+  return bottomUp.reverse()
+})
 
 function format(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
@@ -53,258 +68,215 @@ const valueText = computed(() =>
 const baseTier = computed(() => baseTierFor(props.difficulty))
 const baseIndex = computed(() => LADDER.indexOf(baseTier.value))
 const maxIndex = computed(() => LADDER.indexOf(range.value.max))
-const rungs = computed(() =>
-  LADDER.slice(baseIndex.value).map((tier, offset) => {
-    const index = baseIndex.value + offset
-    return { tier, lit: index <= maxIndex.value, top: index === maxIndex.value }
-  }),
-)
 
-const reaching = computed(() => range.value.max !== range.value.min)
-const oddsPct = computed(() => Math.round(range.value.odds * 100))
-const ceilingLabel = computed(() =>
-  reaching.value
-    ? `Base ceiling ${baseTier.value}, up to ${range.value.max} at about ${oddsPct.value}% odds`
-    : `Base ceiling ${baseTier.value}, no Valor staked`,
-)
+// Top-down S+ → C, matching the design's odds ladder.
+const rungs = computed(() => LADDER.map((tier, index) => {
+  const reachable = index > baseIndex.value
+  const odds = reachable ? oddsToReach(props.difficulty, valor.value, tier) : 1
+  return {
+    tier,
+    below: index < baseIndex.value,
+    isBase: index === baseIndex.value,
+    lit: index >= baseIndex.value && index <= maxIndex.value,
+    pct: reachable ? Math.round(odds * 100) : 100,
+    odds,
+  }
+}).reverse())
+
+const legend = computed(() => {
+  const rows: { id: string, name: string, value: number }[] = []
+  if (props.misfortuneRisk !== undefined || props.strainRisk !== undefined) {
+    rows.push({ id: 'misfortune', name: 'Misfortune', value: props.misfortuneRisk ?? 0 })
+    rows.push({ id: 'strain', name: 'Strain', value: props.strainRisk ?? 0 })
+    if ((props.majorOrderRisk ?? 0) > 0) {
+      rows.push({ id: 'mo', name: 'Major Order', value: props.majorOrderRisk ?? 0 })
+    }
+  }
+  else {
+    rows.push({ id: 'team', name: 'Team', value: props.teamRisk })
+  }
+  rows.push({ id: 'pact', name: 'Pacts', value: props.pactRisk })
+  rows.push({ id: 'perf', name: 'Performance', value: props.performance })
+  if (overflow.value > 0) {
+    rows.push({ id: 'luck', name: 'Luck', value: overflow.value })
+  }
+  return rows
+})
 </script>
 
 <template>
-  <section
-    class="valor"
-    :class="{ locked: props.locked }"
-    :style="{ '--heat': ratio }"
-  >
-    <div class="valor-head">
-      <AppTooltip content="Valor stacks the risk you chose: team risk, your pacts, and a small performance bonus. More Valor raises the reward-tier odds.">
-        <span
-          class="valor-title"
-          tabindex="0"
-        >Valor</span>
-      </AppTooltip>
-      <span class="valor-value">{{ format(valor) }}</span>
+  <section class="valor-rail">
+    <div class="head">
+      <span class="lbl title">Valor<span v-if="diverName"> · {{ diverName }}</span></span>
+      <span
+        v-if="pendingText"
+        class="hazard-soft pending"
+      >{{ pendingText }}</span>
+      <span
+        v-else-if="locked"
+        class="chip gold locked"
+      >Locked</span>
     </div>
-    <ProgressRoot
-      class="gauge"
-      :model-value="valor"
-      :max="scale"
-      :get-value-label="() => 'Valor'"
-      :get-value-text="() => valueText"
-    >
-      <ProgressIndicator
-        class="fill"
-        :style="{ width: `${ratio * 100}%` }"
-      >
-        <span
-          class="seg team"
-          :style="{ width: teamWidth }"
-        />
-        <span
-          class="seg pact"
-          :style="{ width: pactWidth, left: pactLeft }"
-        />
-        <span
-          class="seg performance"
-          :style="{ width: performanceWidth, left: performanceLeft }"
-        />
-      </ProgressIndicator>
-      <span
-        class="tip"
-        :style="{ left: `${ratio * 100}%` }"
-        aria-hidden="true"
-      />
-    </ProgressRoot>
-    <div class="valor-breakdown small">
-      <span
-        v-if="props.teamRisk"
-        class="tag team"
-      >Team +{{ props.teamRisk }}</span>
-      <span
-        v-if="props.pactRisk"
-        class="tag pact"
-      >Pacts +{{ props.pactRisk }}</span>
-      <span
-        v-if="props.performance"
-        class="tag performance"
-      >Performance +{{ format(props.performance) }}</span>
+
+    <div class="big">
+      <span class="disp value">{{ format(valor) }}</span>
+      <span class="scale">/ {{ format(scale) }}</span>
       <span
         v-if="overflow > 0"
-        class="chip break-chip"
-      >Meter broken · +{{ format(overflow) }} Luck</span>
-      <span
-        v-if="!valor"
-        class="muted"
-      >No Valor staked — a safe dive</span>
-      <span
-        v-if="props.locked"
-        class="chip locked-chip"
-      >Locked in</span>
+        class="luck-chip"
+      >+{{ format(overflow) }} Luck</span>
     </div>
-    <AppTooltip content="Your reward ceiling is the best tier this Valor can roll — risk buys odds, never a guarantee.">
+
+    <div class="grid">
       <div
-        class="ceiling"
-        role="img"
-        :aria-label="ceilingLabel"
-        tabindex="0"
+        role="progressbar"
+        aria-label="Valor"
+        aria-valuemin="0"
+        :aria-valuemax="scale"
+        :aria-valuenow="valor"
+        :aria-valuetext="valueText"
+        class="cells"
       >
-        <span class="rungs">
-          <template
-            v-for="(rung, index) in rungs"
-            :key="rung.tier"
-          >
-            <span
-              v-if="index > 0"
-              class="link"
-              :class="{ lit: rung.lit }"
-            />
-            <TierBadge
-              :tier="rung.tier"
-              size="sm"
-              class="rung"
-              :class="{ lit: rung.lit, top: rung.top }"
-            />
-          </template>
-        </span>
-        <span class="odds small">
-          <template v-if="reaching">~{{ oddsPct }}% to reach {{ range.max }}</template>
-          <template v-else>guaranteed</template>
-        </span>
+        <span
+          v-for="cell in cells"
+          :key="cell.key"
+          class="cell"
+          :class="[cell.source, cell.amount > 0 && cell.amount < 1 ? 'partial' : '']"
+          :style="cell.amount > 0 && cell.amount < 1 ? { '--fill': `${cell.amount * 100}%` } : undefined"
+        />
       </div>
-    </AppTooltip>
-    <p
-      v-if="!props.locked"
-      class="hint muted small"
-    >
-      Chosen risk buys odds, never a guarantee.
-    </p>
+
+      <div class="odds">
+        <span class="lbl odds-h">Ceiling odds</span>
+        <div
+          v-for="r in rungs"
+          :key="r.tier"
+          class="rung"
+          :class="{ below: r.below, lit: r.lit }"
+        >
+          <div class="rung-row">
+            <TierBadge
+              :tier="r.tier"
+              size="sm"
+              class="rung-t"
+            />
+            <span class="rung-pct">{{ r.below ? 'FLOOR' : r.isBase ? 'BASE' : `${r.pct}%` }}</span>
+          </div>
+          <div class="rung-bar">
+            <i :style="{ width: r.below ? '0%' : `${Math.max(2, r.odds * 100)}%` }" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div
+        v-for="l in legend"
+        :key="l.id"
+        class="legend-row"
+        :class="{ zero: l.value <= 0 }"
+      >
+        <span
+          class="swatch"
+          :class="l.id"
+          aria-hidden="true"
+        />
+        <span>{{ l.name }}</span>
+        <span class="legend-v">{{ format(l.value) }}</span>
+      </div>
+    </div>
   </section>
 </template>
 
 <style scoped>
-.valor {
-  --heat: 0;
-  display: grid;
-  gap: 0.45rem;
-  padding: 0.7rem 0.85rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--bg);
-}
+.valor-rail { display: flex; flex-direction: column; gap: 14px; }
 
-.valor-head { display: flex; align-items: baseline; gap: 0.5rem; }
-.valor-title {
-  font-family: var(--font-display);
-  font-stretch: 125%;
-  font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--gold);
-}
-.valor-value {
-  margin-left: auto;
-  font-family: var(--font-display);
-  font-stretch: 125%;
-  font-weight: 800;
-  font-size: 1.55rem;
-  line-height: 1;
-  color: color-mix(in srgb, var(--gold) calc(55% + var(--heat) * 45%), var(--text));
-  text-shadow: 0 0 calc(var(--heat) * 16px) color-mix(in srgb, var(--red) calc(var(--heat) * 85%), transparent);
-  transition:
-    color var(--dur-med) var(--ease-out),
-    text-shadow var(--dur-med) var(--ease-out);
-}
-
-/* The gauge: a stacked fill (team risk, pacts, performance) whose tip glows
-   brighter and pulses harder the more Valor is staked — the Hades heat read.
-   Reka's ProgressRoot owns the accessible progressbar semantics; the indicator
-   and its segments are purely visual. */
-.gauge {
-  position: relative;
-  height: 0.72rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bg) 70%, #000);
-  overflow: hidden;
-}
-.fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  transition: width var(--dur-med) var(--ease-out);
-}
-.seg {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  transition:
-    width var(--dur-med) var(--ease-out),
-    left var(--dur-med) var(--ease-out);
-}
-.seg.team { left: 0; background: linear-gradient(90deg, var(--gold), color-mix(in srgb, var(--gold) 60%, var(--red))); }
-.seg.pact { background: linear-gradient(90deg, color-mix(in srgb, var(--red) 75%, var(--gold)), var(--red)); }
-.seg.performance { background: linear-gradient(90deg, color-mix(in srgb, var(--teal) 70%, var(--gold)), var(--teal)); }
-.tip {
-  position: absolute;
-  top: 50%;
-  translate: -50% -50%;
-  width: 0.95rem;
-  height: 0.95rem;
-  border-radius: 50%;
-  background: radial-gradient(circle, #fff6c8 0%, var(--gold) 42%, transparent 72%);
-  opacity: var(--heat);
-  pointer-events: none;
-  animation: valor-burn 1.3s ease-in-out infinite;
-  transition:
-    left var(--dur-med) var(--ease-out),
-    opacity var(--dur-med) var(--ease-out);
-}
-@keyframes valor-burn {
-  0%, 100% { scale: 1; filter: brightness(1); }
-  50% { scale: 1.4; filter: brightness(1.6); }
-}
-
-.valor-breakdown { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.tag {
-  padding: 0 0.35rem;
-  border-radius: 4px;
+.head { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 20px; }
+.title { font-size: 10px; color: var(--muted); }
+.pending {
+  padding: 3px 7px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+  white-space: nowrap;
   text-transform: uppercase;
-  font-size: 0.68rem;
 }
-.tag.team { color: var(--gold); background: color-mix(in srgb, var(--gold) 14%, transparent); }
-.tag.pact { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
-.tag.performance { color: var(--teal); background: color-mix(in srgb, var(--teal) 14%, transparent); }
-.locked-chip { color: var(--muted); }
-.break-chip {
-  color: var(--red);
-  background: color-mix(in srgb, var(--red) 18%, transparent);
-  animation: break-pulse 1.1s ease-in-out infinite;
-}
-@keyframes break-pulse {
-  0%, 100% { opacity: 0.72; }
-  50% { opacity: 1; }
+.locked { font-size: 9px; }
+
+.big { display: flex; align-items: baseline; gap: 6px; }
+.value { font-size: clamp(2.4rem, 5vw, 3.6rem); color: var(--gold); line-height: 1; }
+.scale { font-size: 14px; font-weight: 700; color: var(--ghost-ink); }
+.luck-chip {
+  margin-left: auto;
+  padding: 2px 6px;
+  border: 1px solid var(--purple);
+  color: var(--purple);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.ceiling { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.rungs { display: inline-flex; align-items: center; gap: 0.28rem; }
-.rung {
-  opacity: 0.32;
-  filter: grayscale(1);
-  transition:
-    opacity var(--dur-med) var(--ease-out),
-    filter var(--dur-med) var(--ease-out),
-    scale var(--dur-med) var(--ease-snap);
+.grid { display: grid; grid-template-columns: 44px 1fr; gap: 16px; }
+.cells {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--line-2);
+  height: 100%;
 }
-.rung.lit { opacity: 1; filter: none; }
-.rung.top { scale: 1.12; }
-.link {
-  width: 0.55rem;
-  height: 2px;
-  background: var(--border);
-  transition: background var(--dur-med) var(--ease-out);
+.cell { height: 25px; background: var(--ground); border: 1px solid var(--line-1); }
+.cell.team { background: var(--khaki); border-color: var(--khaki); }
+.cell.pact { background: var(--orange); border-color: var(--orange); }
+.cell.performance { background: var(--teal); border-color: var(--teal); }
+.cell.partial {
+  background: linear-gradient(to top, var(--teal) var(--fill, 50%), var(--ground) var(--fill, 50%));
+  border-color: var(--teal);
 }
-.link.lit { background: color-mix(in srgb, var(--gold) 70%, var(--border)); }
-.odds { margin-left: auto; color: var(--khaki); }
-.hint { margin: 0; }
+
+.odds { display: flex; flex-direction: column; gap: 8px; }
+.odds-h { font-size: 10px; }
+.rung { display: flex; flex-direction: column; gap: 4px; opacity: 0.55; }
+.rung.lit { opacity: 1; }
+.rung.below { opacity: 0.3; }
+.rung-row { display: flex; align-items: center; gap: 10px; }
+.rung-t {
+  min-width: 34px;
+  height: 26px;
+  font-size: 13px;
+  background: var(--ground);
+}
+.rung-pct { margin-left: auto; font-size: 15px; font-weight: 700; color: var(--text); }
+.rung.below .rung-pct { color: var(--line-5); }
+.rung-bar { height: 4px; background: var(--raised); }
+.rung-bar i { display: block; height: 4px; background: currentColor; transition: width 0.5s var(--ease-out); }
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-1);
+}
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--khaki);
+}
+.legend-v { margin-left: auto; color: var(--text); }
+.swatch { width: 10px; height: 10px; background: var(--line-2); flex-shrink: 0; }
+.swatch.team { background: var(--khaki); }
+.swatch.misfortune { background: var(--gold); }
+.swatch.strain { background: var(--orange); }
+.swatch.mo { background: var(--teal); }
+.swatch.pact { background: var(--red); }
+.swatch.perf { background: var(--teal); }
+.swatch.luck { background: var(--purple); }
 </style>

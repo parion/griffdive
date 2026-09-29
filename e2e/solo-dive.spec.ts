@@ -4,7 +4,7 @@ import { dismissWarbondIntro } from './helpers'
 test('solo dive flow: spin → pacts → report → rewards → advance', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
-  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await page.getByRole('button', { name: 'Solo drop' }).click()
 
   await expect(page).toHaveURL(/\/dive\/[0-9a-f-]{36}/)
   await dismissWarbondIntro(page)
@@ -23,7 +23,9 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // team risk. Declining keeps the dive at the misfortune's risk alone.
   await expect(page.getByRole('img', { name: 'Strain call pending' })).toBeVisible()
   await page.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
-  await expect(page.getByRole('img', { name: 'Standard forces — no strain' })).toBeVisible()
+  // The host deals the hand before the dedicated pacts screen (no wheel).
+  await page.getByRole('button', { name: 'Deal the pacts' }).click()
+  await expect(page.getByRole('heading', { name: 'Swear your pacts' })).toBeVisible()
 
   // The squad strip shows who still has to decide.
   await expect(page.getByRole('img', { name: 'choosing pacts' })).toBeVisible()
@@ -41,38 +43,39 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(valor).toBeVisible()
 
   await page.getByRole('button', { name: 'Mission complete' }).click()
-  // The victory banner + big stars, then slider-driven samples and time.
-  await expect(page.getByText('Mission Completed')).toBeVisible()
-  const commonSlider = page.locator('input[type="range"][aria-label="Common samples"]')
-  await expect(commonSlider).toBeVisible()
-  await expect(page.locator('input[type="range"][aria-label="Time remaining percent"]')).toBeVisible()
-  await commonSlider.fill('5')
-  await expect(page.locator('input[type="number"][aria-label="Common samples"]')).toHaveValue('5')
-  // Reka tooltip labels the time-remaining slider.
-  await page.getByRole('button', { name: 'Time remaining' }).hover()
-  await expect(page.getByText('Time remaining', { exact: true })).toBeVisible()
+  // The victory banner + big stars, then stepped sample canisters and the
+  // click-to-set time bar.
+  await expect(page.getByRole('heading', { name: 'Mission complete' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Common: 0 of 18' })).toBeVisible()
+  await page.getByRole('button', { name: 'Add a common' }).click()
+  await expect(page.getByRole('group', { name: 'Common: 1 of 18' })).toBeVisible()
+  const timeBar = page.getByRole('progressbar', { name: 'Time remaining percent' })
+  await expect(timeBar).toBeVisible()
+  await page.getByRole('button', { name: 'Set time remaining percent to 60 percent' }).click()
+  await expect(timeBar).toHaveAttribute('aria-valuenow', '60')
   // The report form opens at the difficulty's best result — 3 stars at Medium.
   await expect(page.getByRole('radio', { name: '3 stars' })).toHaveAttribute('aria-checked', 'true')
-  await page.getByRole('button', { name: 'Submit success' }).click()
+  await page.getByRole('button', { name: 'File report' }).click()
 
-  await expect(page.getByText('Rewards — choose one')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Reward Draft' })).toBeVisible()
   await expect(page.getByRole('img', { name: 'choosing reward' })).toBeVisible()
-  await page.locator('.item-card:not([disabled])').first().click()
+  await page.locator('.pod-card .pod-hit').first().click()
 
-  // Bonus honors replaces the locked Valor meter once the draft completes: the
-  // host spins the stat contest (on click, like the wheel) and awards the
-  // winner, who banks a reward token automatically.
+  // Bonus honors is its own screen, reached from the draft's bottom bar: the
+  // host spins the stat contest (on click, like the wheel) and banks the
+  // winner's token.
+  await page.getByRole('button', { name: 'Squad Honors' }).click()
   await expect(page.getByRole('heading', { name: 'Squad Honors' })).toBeVisible()
   // Solo: the only diver is always the winner, so the spin auto-banks the
   // token — no selection step.
-  await page.locator('.slot').getByRole('button', { name: 'Spin' }).click()
-  await expect(page.getByText(/takes the honors and banks a reward token/)).toBeVisible()
+  await page.getByRole('button', { name: 'Spin the honors stat' }).click()
+  await expect(page.getByText('Token banked')).toBeVisible()
 
   await page.getByRole('button', { name: /Next mission/ }).click()
   // Medium runs 2-mission operations. The tracker advances to the second
   // segment; the overall mission count lives in its accessible label.
   await expect(page.getByRole('img', { name: /operation mission 2 of 2/i })).toBeVisible()
-  await expect(page.locator('.mission-track .seg.active')).toHaveCount(1)
+  await expect(page.locator('.rung[data-state="current"]')).toContainText('Mission 2/2')
   // The front persists, but mission 2 begins at the spin: a fresh misfortune
   // awaits the squad's decision.
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
@@ -80,21 +83,26 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
 
   // Play mission 2 out so the banked honors token can be spent.
   await page.locator('.misfortune').getByRole('button', { name: 'Opt out' }).click()
+  await page.getByRole('button', { name: 'Deal the pacts' }).click()
   await page.locator('.pact:not([disabled])').first().click()
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
   await page.getByRole('button', { name: 'Mission complete' }).click()
-  await page.getByRole('button', { name: 'Submit success' }).click()
+  await page.getByRole('button', { name: 'File report' }).click()
 
   // Banning is a separate flow alongside reroll, and it forfeits the reward
-  // pick: the same slot-machine reels become the purge selector, so select a
-  // reel, confirm, and the draft resolves with no reward.
-  await expect(page.getByText('Reward tokens: 1')).toBeVisible()
+  // pick: the landed pods become the purge selector, so select a pod, hold to
+  // confirm, and the draft resolves with no reward.
+  await expect(page.locator('.token-bar').getByRole('img', { name: /1 of 3 reward tokens/ })).toBeVisible()
   await page.getByRole('button', { name: 'Ban items' }).click()
-  await expect(page.getByText('Ban offered rewards')).toBeVisible()
-  await expect(page.locator('.reels .reel-window').first()).toBeVisible()
-  await page.locator('.reels .reel-result .item-card:not([disabled])').first().click()
-  await expect(page.locator('.reels .reel-window.picked')).toHaveCount(1)
-  await page.getByRole('button', { name: 'Ban 1 item' }).click()
+  await expect(page.getByText('Select items above')).toBeVisible()
+  await expect(page.locator('.cabinet .pod-card').first()).toBeVisible()
+  await page.locator('.cabinet .pod-card .pod-hit').first().click()
+  await expect(page.locator('.cabinet .pod-card.picked')).toHaveCount(1)
+  const banConfirm = page.getByRole('button', { name: /forfeit this pick/ })
+  await banConfirm.hover()
+  await page.mouse.down()
+  await page.waitForTimeout(1000)
+  await page.mouse.up()
   await expect(page.getByText('Rewards banned')).toBeVisible()
 })
 
@@ -117,7 +125,7 @@ test('a live Major Order renders the panel, pins the front, and tags the card', 
 
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
-  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await page.getByRole('button', { name: 'Solo drop' }).click()
   await dismissWarbondIntro(page)
 
   // The in-game-style panel renders in the faction card's pre-roll slot.
@@ -142,7 +150,7 @@ test('a manual faction pick pins the front without a Major Order tag', async ({ 
 
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
-  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await page.getByRole('button', { name: 'Solo drop' }).click()
   await dismissWarbondIntro(page)
 
   await expect(page.getByText(/No active Major Order/)).toBeVisible()
@@ -160,23 +168,31 @@ test('a manual faction pick pins the front without a Major Order tag', async ({ 
 test('a failed mission labels the operation failed and restarts it', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
-  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await page.getByRole('button', { name: 'Solo drop' }).click()
   await dismissWarbondIntro(page)
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await page.locator('.misfortune').getByRole('button', { name: 'Lock it in' }).click()
   await page.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
+  await page.getByRole('button', { name: 'Deal the pacts' }).click()
   await page.locator('.pact:not([disabled])').first().click()
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
 
   await page.getByRole('button', { name: 'Mission failed' }).click()
-  await page.getByRole('button', { name: 'Submit failure' }).click()
+  await page.getByRole('button', { name: 'File failure' }).click()
 
   // The header track reads the failed mission, not a stale live index.
   await expect(page.getByRole('img', { name: /Operation failed/i })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Operation failed' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Mission failed' })).toBeVisible()
 
-  // Forfeiting one item restarts the operation at mission 1.
-  await page.locator('.item-card:not([disabled])').first().click()
+  // Surrender is a two-step ceremony: pick one item, hold to confirm, then
+  // respin the wheel — the forfeit restarts the operation at mission 1.
+  await page.locator('.sur-tile:not([disabled])').first().click()
+  const surrender = page.getByRole('button', { name: /Surrender the selected item/ })
+  await surrender.hover()
+  await page.mouse.down()
+  await page.waitForTimeout(900)
+  await page.mouse.up()
+  await page.getByRole('button', { name: 'Respin the wheel' }).click()
   await expect(page.getByRole('img', { name: /operation mission 1 of 2/i })).toBeVisible()
 })

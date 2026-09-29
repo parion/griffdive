@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 18
+export const ENGINE_VERSION = 19
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -289,22 +289,63 @@ export function upgradeOdds(valor: number, bandPos: number, step: number): numbe
   return Math.min(UPGRADE_CAP, (valor * (1 + bandPos)) / UPGRADE_STEP ** step)
 }
 
-export const MISFORTUNE_RISK: Readonly<Record<string, number>> = {
-  noBackpacks: 1,
-  noSentries: 1,
-  noBoosters: 1,
-  noEagles: 2,
-  fragileLiberty: 2,
-  noOrbitals: 2,
-  primaryOnly: 3,
-  stealth: 3,
-  oopsAllAirstrikes: 3,
-  noResupplies: 4,
-  zeroDeaths: 4,
-  noReserves: 4,
-  noStratagems: 5,
-  meleeOnly: 5,
-  pacifist: 5,
+// One risk curve per condition (team misfortunes and personal pacts alike).
+// Nothing is gated by difficulty: every condition is always available, and the
+// difficulty scales its risk/Valor value instead:
+//
+//   risk(difficulty) = clamp(round(base + slope * (difficulty - MIN_DIFFICULTY)), 1, 5)
+//
+// `slope` may be negative — a condition that matters less at altitude is worth
+// less there (inverse scaling). These are the proposed defaults; they are
+// deliberately plain and easy to tune. `base` is the value at difficulty 3.
+export interface ConditionRiskCurve {
+  base: number
+  slope: number
+}
+
+export const CONDITION_RISK: Readonly<Record<string, ConditionRiskCurve>> = {
+  // Team rules — squad-binding misfortunes. Most grow with the enemy's strength.
+  noBackpacks: { base: 1, slope: 0 },
+  noSentries: { base: 1, slope: 0.05 },
+  noBoosters: { base: 1, slope: 0 },
+  noResupplies: { base: 1, slope: 0.25 },
+  noEagles: { base: 1, slope: 0.15 },
+  fragileLiberty: { base: 1, slope: 0.15 },
+  noOrbitals: { base: 1, slope: 0.2 },
+  primaryOnly: { base: 2, slope: 0.15 },
+  stealth: { base: 2, slope: 0.15 },
+  oopsAllAirstrikes: { base: 2, slope: 0.2 },
+  zeroDeaths: { base: 2, slope: 0.35 },
+  noReserves: { base: 2, slope: 0.35 },
+  noStratagems: { base: 3, slope: 0.3 },
+  meleeOnly: { base: 3, slope: 0.3 },
+  pacifist: { base: 3, slope: 0.3 },
+
+  // Personal rules — pacts. A mix: some rise with altitude, some are flat, and
+  // a couple are inverse (the self-imposed burden matters less once the war
+  // itself is the threat).
+  packLight: { base: 1, slope: 0 },
+  thirsty: { base: 1, slope: 0.15 },
+  emptyPockets: { base: 1, slope: 0 },
+  antiTankAbstinent: { base: 1, slope: 0.2 },
+  deadWeight: { base: 2, slope: 0 },
+  stimAbstinent: { base: 3, slope: -0.2 },
+  loadoutLoyalist: { base: 2, slope: 0 },
+  primaryConcern: { base: 1, slope: 0.2 },
+  grounded: { base: 2, slope: 0 },
+  shipSilent: { base: 2, slope: 0 },
+  openField: { base: 2, slope: 0 },
+  untouchable: { base: 3, slope: -0.1 },
+}
+
+// A condition's risk at a difficulty, clamped to the 1–5 scale. Unknown ids
+// return 0 so a stale save or catalog drift never inflates Valor.
+export function conditionRiskAt(conditionId: string, difficulty: number): number {
+  const curve = CONDITION_RISK[conditionId]
+  if (!curve) {
+    return 0
+  }
+  return Math.min(5, Math.max(1, Math.round(curve.base + curve.slope * (difficulty - MIN_DIFFICULTY))))
 }
 
 // Strains are an optional, operation-long commitment: the squad accepts or
@@ -333,37 +374,4 @@ export const STRAIN_MIN_DIFFICULTY: Readonly<Record<string, number>> = {
   mindlessMasses: 3,
   appropriators: 3,
   voteSnatchers: 5,
-}
-
-export const MISFORTUNE_MIN_DIFFICULTY: Readonly<Record<string, number>> = {
-  noBackpacks: 3,
-  noSentries: 3,
-  noBoosters: 3,
-  noResupplies: 3,
-  noEagles: 4,
-  fragileLiberty: 4,
-  noOrbitals: 5,
-  primaryOnly: 5,
-  stealth: 5,
-  oopsAllAirstrikes: 6,
-  zeroDeaths: 7,
-  noReserves: 7,
-  noStratagems: 9,
-  meleeOnly: 9,
-  pacifist: 9,
-}
-
-export const PACT_RISK: Readonly<Record<string, number>> = {
-  packLight: 1,
-  thirsty: 1,
-  emptyPockets: 1,
-  antiTankAbstinent: 2,
-  deadWeight: 2,
-  stimAbstinent: 3,
-  loadoutLoyalist: 2,
-  primaryConcern: 2,
-  grounded: 2,
-  shipSilent: 2,
-  openField: 2,
-  untouchable: 3,
 }

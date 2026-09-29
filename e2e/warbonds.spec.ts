@@ -31,23 +31,23 @@ test('the Warbonds drawer toggles ownership and persists it', async ({ page }) =
 test('the Warbonds panel opens at dive start once, then stays quiet', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
-  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await page.getByRole('button', { name: 'Solo drop' }).click()
 
-  // The guide primes the loop first, then hands off to the Warbonds panel.
-  const guide = page.getByRole('dialog', { name: 'How a dive works' })
-  await expect(guide).toBeVisible()
-  await guide.getByRole('button', { name: 'Close how a dive works' }).click()
-  await expect(guide).toBeHidden()
+  // The briefing primes the loop first, then hands off to the Warbonds panel.
+  const briefing = page.getByRole('dialog', { name: 'Griffdiver briefing' })
+  await expect(briefing).toBeVisible()
+  await briefing.getByRole('button', { name: 'Back to base' }).click()
+  await expect(briefing).toBeHidden()
 
   const drawer = page.getByRole('dialog', { name: 'Warbonds' })
   await expect(drawer).toBeVisible()
   await drawer.getByRole('button', { name: 'Close warbonds' }).click()
   await expect(drawer).toBeHidden()
 
-  // A second crusade in the same browser keeps both panels closed (seen once).
+  // A second crusade in the same browser keeps everything closed (seen once).
   await page.goto('/')
-  await page.getByRole('button', { name: 'Start solo crusade' }).click()
+  await page.getByRole('button', { name: 'Solo drop' }).click()
   await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeVisible()
   await expect(drawer).toBeHidden()
-  await expect(guide).toBeHidden()
+  await expect(page.getByRole('dialog', { name: 'Griffdiver briefing' })).toBeHidden()
 })

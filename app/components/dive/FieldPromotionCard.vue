@@ -30,9 +30,19 @@ function itemNames(itemIds: string[]): string[] {
 </script>
 
 <template>
-  <section class="panel promotion">
-    <h2>Field Promotion</h2>
-    <p class="muted small">
+  <section class="sec promotion">
+    <header class="sh">
+      <span
+        class="stp promo-stamp"
+        aria-hidden="true"
+      >Promotion</span>
+      <h2 class="lbl">
+        Field Promotion
+      </h2>
+      <span class="dash" />
+      <span class="cap">{{ diver.catchUpOwed }} / {{ diver.catchUpGranted }} picks</span>
+    </header>
+    <p class="sub muted">
       You joined mid-crusade — the squad climbed without you. Claim
       {{ diver.catchUpOwed }}
       {{ diver.catchUpOwed === 1 ? 'pick' : 'picks' }} at the current
@@ -45,12 +55,12 @@ function itemNames(itemIds: string[]): string[] {
         <button
           v-for="cache in caches"
           :key="cache.ownerId"
-          class="cache"
+          class="cache cut-sm"
           type="button"
           @click="emit('claimCache', cache.ownerId)"
         >
-          <span class="cache-title">Claim a fallen diver's kit</span>
-          <span class="muted small">{{ itemNames(cache.itemIds).join(' · ') }}</span>
+          <span class="cache-title cap">Claim a fallen diver's kit</span>
+          <span class="cache-items muted small">{{ itemNames(cache.itemIds).join(' · ') }}</span>
         </button>
       </div>
       <button
@@ -63,9 +73,6 @@ function itemNames(itemIds: string[]): string[] {
     </template>
 
     <template v-else>
-      <p class="row small muted">
-        <span>{{ diver.catchUpOwed }} of {{ diver.catchUpGranted }} picks left</span>
-      </p>
       <div class="grid">
         <Motion
           v-for="(option, index) in options"
@@ -94,37 +101,36 @@ function itemNames(itemIds: string[]): string[] {
 </template>
 
 <style scoped>
-.cache-list {
-  display: grid;
-  gap: 0.5rem;
+.promotion { border-color: var(--line-4); }
+.promo-stamp {
+  color: var(--teal);
+  border-color: var(--teal);
+  padding: 2px 7px;
+  font-size: 0.68rem;
 }
+
+.cache-list { display: grid; gap: 0.5rem; }
 
 .cache {
   display: grid;
   gap: 0.25rem;
   padding: 0.6rem 0.8rem;
   text-align: left;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  background: var(--ground);
+  border: 1px solid var(--line-3);
   color: inherit;
   font: inherit;
   cursor: pointer;
+  transition: border-color var(--dur-fast), background-color var(--dur-fast);
 }
-
 .cache:hover,
 .cache:focus-visible {
   border-color: var(--gold);
+  background: rgba(255, 214, 66, 0.05);
 }
 
-.cache-title {
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--khaki);
-}
+.cache-title { color: var(--khaki); }
+.cache-items { overflow-wrap: anywhere; }
 
-.banked {
-  margin: 0;
-}
+.banked { margin: 0; }
 </style>

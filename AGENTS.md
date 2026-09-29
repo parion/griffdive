@@ -19,16 +19,31 @@ complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (285 tests incl. a de
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection — verified by a live two-peer smoke test and the Playwright E2E suite (solo flow,
-two-browser room sync, Codex slide-over, Guide slide-over,
+two-browser room sync, Codex slide-over,
 PWA affordances) against the production build. Mid-crusade catch-up (Field Promotion + legacy caches, `LEAVE_DIVE`)
 has landed, as has the Phase 4 PWA layer (installable manifest, generated icons, Workbox service
 worker with an offline shell + on-demand catalog art), the operation-long **faction strains**
 (N2: optional, accept/decline, compounding team risk) and the operation-long **Major Orders**
 (host-set front commitment, +1 reroll token on completion — manual picker plus the live war API).
-Remaining Phase 4 polish is next. Hybrid **saved dives** have landed: any seated diver can pin a
-room server-side so it outlives the idle TTL and a browser clearing its storage, resuming through
-the existing rejoin path (see Saved dives). **Alpha has landed:** the save schema is frozen at v10
-and the migration chain is open (see Save model). See [Roadmap](#roadmap).
+**The Destroyer Terminal redesign has landed** — the whole UI moved to a single terminal language
+(dark ground/rail/panel surfaces, gold/red/orange/teal/purple signals, cut frames, hazard stripes,
+scanlines and a signature motion set). The dive is a fixed, no-scroll terminal (60px header with
+the room code + copy control · 84px climb strip · three rails · 52px Mission-phases bar), the
+Bridge home fits one desktop view (hero + climb ladder · 6-step mission loop · Valor odds ladder ·
+deploy rail with code-cell join and the service record · a full-width Major Order band and footer),
+the wheel is a real spinning SVG wheel, the Armory marks
+misfortune/pact bans per tile from engine selectors, and an interactive six-beat Griffdiver
+Briefing (Identify · Spin · Pact · Reward · Warbonds · Deploy) onboards first-time divers. Engine,
+sync, saves and data are untouched; see
+[Destroyer Terminal design language](#destroyer-terminal-design-language). Hybrid **saved
+dives** have landed: any seated diver can pin a room server-side so it outlives the idle TTL and a
+browser clearing its storage, resuming through the existing rejoin path (see Saved dives).
+**The condition catalogue is unified:** misfortunes (team) and pacts (personal) are now one
+catalogue, nothing is gated by difficulty, and a per-condition curve scales each rule's risk/Valor
+with altitude (see Condition scaling). The Field manual slide-over was retired — the Griffdiver
+Briefing covers onboarding.
+**Alpha has landed:** the save schema is frozen at v10 and the migration chain is open (see Save
+model). See [Roadmap](#roadmap).
 
 ---
 
@@ -48,7 +63,7 @@ pnpm only (`pnpm-lock.yaml` is canonical).
 | `pnpm lint:fix` | exists | Auto-fix lint/style issues |
 | `pnpm test` | exists | Vitest (engine unit + golden tests) |
 | `pnpm test:watch` | exists | Vitest watch mode |
-| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, Codex slide-over, Guide slide-over, PWA affordances; production build on :3173) |
+| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, Codex slide-over, PWA affordances; production build on :3173) |
 | `pnpm typecheck` | exists | `nuxt typecheck` (vue-tsc) |
 
 Update this table the moment a command lands.
@@ -68,7 +83,8 @@ Griffdive fuses three systems. Each contributes a specific, researched lesson:
 Design principles — every gameplay decision must honor these:
 
 1. **Risk is chosen, never forced.** A zero/low-risk dive is always available (Penitent Crusade
-   baseline). Wheel randomness is bounded by a difficulty-scaled pool, and rerolls exist.
+   baseline). Wheel randomness draws the whole catalogue every mission; difficulty scales each
+   condition's risk, and rerolls exist.
 2. **Risk is legible.** Before committing to a dive, the UI shows exactly what tier ceiling the
    current risk buys (skull icons à la Dead Cells cursed-biome doors / Hades' Erebus gates). No
    hidden math.
@@ -81,6 +97,55 @@ Design principles — every gameplay decision must honor these:
 6. **Team risk is shared; personal risk is personal** (Slay the Spire 2 co-op model). The whole squad
    carries the misfortune; each diver carries their own pacts and drafts their own rewards.
 7. **Failure is a setback, not a wipe.** Repeat the difficulty, forfeit one item, keep climbing.
+
+### Destroyer Terminal design language
+
+The whole UI speaks one terminal language (the redesign source lives at
+`.orca/drops/Griffdive — Destroyer Terminal redesign.html`; extracted references under
+`.orca/drops/extracted/`, both git-ignored). It is presentation only — it never touches the
+engine.
+
+- **Tokens** live in `app/assets/css/main.css`: surfaces `--ground/--rail/--panel/--raised`
+  (`#0B0C09`/`#0E100B`/`#13150F`/`#1A1D15`), lines `--line-1…5`, inks
+  `--text/--khaki/--muted/--dim/--on-gold`, signals `--gold/--red/--orange/--teal/--purple`,
+  tiers `--tier-*`, plus the `--font-body` (Chakra Petch) / `--font-display` (Archivo 125%)
+  pair, the ease/duration tokens, a 4px spacing scale (`--sp-1…8`) and **fluid** layout/type
+  tokens (`--pad-page/--pad-panel/--gap-panel/--gap-grid`, `--fs-cap/sm/body/h1/display`) built on
+  `clamp()`. Prefer the tokens and container queries (`@container`) over viewport `@media`; keep
+  breakpoints structural and few. Legacy token names (`--bg`, `--bg-raised`, …) are kept as
+  aliases.
+- **Utilities**: type `.disp/.lbl/.cap/.sub/.vl/.odl`; shape `.cut/.cut-sm/.chev/.ticks/.hazard/
+  .hatch/.scan/.grid-bg/.hex/.tag-shape`; panels `.panel/.sec/.sec-h/.dash`; controls `.btn/
+  .ghost/.icon-btn/.chip/.nb`; data atoms `.tb/.tier-badge/.pips/.chit/.chits/.lamp/.stp/.chan`.
+- **Motion**: ambient loops are CSS classes (`.pulse/.rise/.stamp/.slam/.glow/.blinkc/.glitch/…`);
+  one-shot reveals use `motion-v` presets in `app/utils/motion.ts` (`riseIn/slamIn`, with the
+  `SPRING_SNAP` / `SPRING_POP` transitions). Animation is presentation, never rules; every effect
+  honours
+  `prefers-reduced-motion` (global CSS guard + explicit `matchMedia` in JS-driven reels and the
+  wheel reveal).
+- **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav) on every
+  route except the dive, which renders its own `DiveTopBar` (crusade + difficulty emblem + room
+  code/copy + Armory/Codex/Warbonds/Field manual). `components/dive/DiveFrame.vue` is the
+  no-scroll dive shell — grid rows `60px 84px minmax(0,1fr) 52px` and columns `216px 1fr 284px`:
+  header · `CrusadeStrip` (the horizontal 3→10 climb) · left rail (Squad + wheel pool) · centre
+  phase · right rail (`ValorMeter` with ceiling odds) · `PhaseRail` (bottom Mission phases).
+  `WheelOfMisfortune.vue` is a real SVG wheel whose rotation is derived from the wheel seed.
+  On the `rewards` phase the centre swaps between the `RewardDraft` pod cabinet and the dedicated
+  `BonusCeremony` honors screen — the left rail gains `MissionReportSummary` and the right rail
+  swaps `ValorMeter` for `RewardTokensRail` on honors.
+  Armory is an in-app drawer (`ArmoryDrawer.vue`); the Griffdiver Briefing
+  (`BriefingOverlay.vue`) is the first-run dossier. One structural breakpoint (1020px) flows the
+  shell and stacks the rails. Below it `usePhoneShell` swaps the whole three-rail tree for
+  `DivePhone` (`DivePhoneShell` + `Phone*`), a fixed-band shell whose phase content is a
+  bottom-sheet/fixed-footer layout.
+- **Armory detection**: the Armory never computes bans. `armoryRules(state, diver)` lists the
+  active misfortune/pact rules and `itemBannedInArmory(state, diver, item)` returns why a
+  stratagem is greyed; both wrap `stratagemBanReason` in `shared/engine/pacts.ts` — the same
+  predicate `legalStratagemCount` / `hasLoadout` use, so the screen and the floor can never
+  disagree.
+- **Foundations kit**: a hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`) specimens
+  the tokens/atoms so contributors can sanity-check the language. It is dev reference, not a
+  product surface.
 
 ---
 
@@ -103,9 +168,11 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
    resets the decision. A rule the squad cannot field (one that would strand a diver below HD2's
    four required stratagems) cannot be accepted — see Mandatory four stratagems. On the operation's
    first mission the call then passes to the **strain**: accepting commits the squad for the whole
-   operation and adds the strain's team risk to every mission of it — see Faction strains.
+   operation and adds the strain's team risk to every mission of it — see Faction strains. Once
+   both calls are in, the wheel holds on a **deal** step: the host presses **Deal the pacts**
+   (host-only `DEAL_PACTS`) to open the hand.
 3. **Pact** — each diver is dealt a personal **pact offer**: 2 pacts on difficulties 3–6, 3 on 7+,
-   rolled deterministically from the wheel seed (per diver) once the decision is in. The offer
+   rolled deterministically from the wheel seed (per diver) once the hand is dealt. The offer
    pool filters out pacts the accepted misfortune makes redundant or impossible; a declined draw
    offers from the full catalog. Each diver privately picks a subset of their offer (0 to all; a
    pick strictly implied by another is refused — see Redundant picks).
@@ -146,34 +213,54 @@ offered items from warbonds they don't own. Starting kits are not warbond-filter
 
 ### Team layer — misfortunes (Wheel)
 
-Exactly one misfortune per **mission**, drawn from the pool eligible at the operation's
-difficulty. The draw is an offer, not a verdict: in a dedicated **decision** phase before pacts
+Exactly one misfortune per **mission**, drawn from the **team-scoped** slice of the unified
+**condition catalogue** (`shared/data/conditions.ts`). Nothing is gated: every team rule is on the
+wheel at every difficulty — difficulty scales each rule's risk instead (**Condition scaling**,
+below). The draw is an offer, not a verdict: in a dedicated **decision** phase before pacts
 roll, the squad (host executes, IRL voice vote) **accepts or declines** it. Declining runs a
-zero-team-risk dive; accepting applies the misfortune's **team risk** (1–5) to every diver's Valor
-for this mission. A reroll redraws and resets the decision. A squad-binding rule must be
+zero-team-risk dive; accepting applies the misfortune's **team risk** to every diver's Valor
+for this mission. A reroll redraws and resets the decision (returning the squad to the `decision`
+phase, before the deal). A squad-binding rule must be
 fieldable by **every seated diver**: if accepting would strand even one diver below HD2's four
 required stratagems, the engine refuses the accept (the UI disables "Lock it in" and names who
 can't field it; opting out and rerolling stay open) — see Mandatory four stratagems.
 
-Starter catalog (all values tunable in `shared/engine/config.ts`; ids and shape are the contract):
+Starter catalog (ids and shape are the contract; the per-difficulty values are tunable in
+`CONDITION_RISK` in `shared/engine/config.ts`). "Risk d3→10" is the value at the floor and the
+top of the ladder:
 
-| Misfortune | Rule | Team risk | Enters pool at | Accountable via |
-| --- | --- | --- | --- | --- |
-| No Backpacks | No backpack stratagems | 1 | diff 3 | loadout |
-| No Sentries | No sentry stratagems | 1 | diff 3 | loadout |
-| No Boosters | No boosters equipped | 1 | diff 3 | loadout |
-| No Resupplies | Never call resupply | 4 | diff 3 | field |
-| No Eagles | No Eagle stratagems | 2 | diff 4 | loadout |
-| Fragile Liberty | Light armor only | 2 | diff 4 | loadout |
-| No Orbitals | No orbital stratagems | 2 | diff 5 | loadout |
-| Primary Only | Primaries only — no support weapons, no pickups or swaps (stratagems allowed) | 3 | diff 5 | field |
-| Stealth | No raised alarms or bot detections | 3 | diff 5 | field |
-| Oops, All Airstrikes | Eagle and orbital ("red") stratagems only | 3 | diff 6 | loadout |
-| Zero Deaths | Any diver death = mission failure | 4 | diff 7 | field |
-| No Reserves | No one gets reinforced this mission | 4 | diff 7 | field |
-| No Stratagems | No stratagems at all, not even resupply | 5 | diff 9 | loadout |
-| Melee Only | Melee weapons only | 5 | diff 9 | field |
-| Pacifist | No diver scores a kill | 5 | diff 9 | stats |
+| Misfortune | Rule | Risk d3→10 | Accountable via |
+| --- | --- | --- | --- |
+| No Backpacks | No backpack stratagems | 1 → 1 | loadout |
+| No Sentries | No sentry stratagems | 1 → 1 | loadout |
+| No Boosters | No boosters equipped | 1 → 1 | loadout |
+| No Resupplies | Never call resupply | 1 → 3 | field |
+| No Eagles | No Eagle stratagems | 1 → 2 | loadout |
+| Fragile Liberty | Light armor only | 1 → 2 | loadout |
+| No Orbitals | No orbital stratagems | 1 → 2 | loadout |
+| Primary Only | Primaries only — no support weapons, no pickups or swaps (stratagems allowed) | 2 → 3 | field |
+| Stealth | No raised alarms or bot detections | 2 → 3 | field |
+| Oops, All Airstrikes | Eagle and orbital ("red") stratagems only | 2 → 3 | loadout |
+| Zero Deaths | Any diver death = mission failure | 2 → 4 | field |
+| No Reserves | No one gets reinforced this mission | 2 → 4 | field |
+| No Stratagems | No stratagems at all, not even resupply | 3 → 5 | loadout |
+| Melee Only | Melee weapons only | 3 → 5 | field |
+| Pacifist | No diver scores a kill | 3 → 5 | stats |
+
+**Condition scaling.** Misfortunes (team) and pacts (personal) are one catalogue, and the only
+knob difficulty turns is **risk**, never eligibility. Each condition carries a `base` (its risk at
+difficulty 3) and a `slope` (risk points per difficulty step):
+
+```
+conditionRiskAt(id, difficulty) = clamp(round(base + slope × (difficulty − 3)), 1, 5)
+```
+
+Slopes are per condition and may be **negative** (inverse — a self-imposed burden that matters
+less once the war itself is the threat, e.g. *Stim Abstinent*, *Untouchable*). The proposed
+defaults are plain and easy to tune; because some slopes are inverse, `maxValorFor(difficulty)` is
+not strictly monotonic (it grows overall from the floor to the top of the ladder). `CONDITION_RISK`
+in `shared/engine/config.ts` is the single source of truth; every Valor/odds computation reads
+through `conditionRiskAt`.
 
 **Accountability:** misfortunes are held to the same standard as pacts (see Personal layer) —
 every wheel rule must be checkable through the loadout screen, live in the field, or the
@@ -190,8 +277,8 @@ zero-kill squad is forced into genuine support builds.
 the squad spends a reroll token — 1 token per operation (`REROLL_TOKENS_PER_OPERATION`), plus
 `MAJOR_ORDER_REROLL_BONUS` (1) banked by completing a Major Order operation, spendable on any wheel
 result. Never
-rerollable into an outcome the pool doesn't allow at the current difficulty, and never into the
-result it would replace — a reroll must actually move (`REROLL_WHEEL` refuses a same-result seed;
+rerollable into the result it would replace — a reroll must actually move (`REROLL_WHEEL` refuses a
+same-result seed;
 only the immediately replaced result is excluded, not every prior draw this window). **The front
 and its strain lock in for the whole operation**: they can only be rerolled during the operation's
 first mission decision window (`missionInOperation === 1`, enforced in the reducer and
@@ -248,8 +335,9 @@ The front's **strain** is drawn with it at the operation's first spin — a subf
 (wiki.gg/Factions), gated per-strain by `STRAIN_MIN_DIFFICULTY` like misfortunes. It is an
 **optional, operation-long team-risk commitment**, never a forced modifier. The spin opens the wheel
 decision, and the squad (host executes, IRL voice vote) answers the misfortune and the strain call
-**independently** — either may be locked first, and the phase only advances to pacts once both are
-in (a dedicated `strain` phase carries the strain call when the misfortune is locked first).
+**independently** — either may be locked first, and the phase only advances once both are in
+(a dedicated `strain` phase carries the strain call when the misfortune is locked first; the
+wheel then holds on the `deal` phase until the host deals the hand — see Core loop).
 Declining is free and zero-risk — principle 1 (risk is chosen, never forced) stays intact, and a
 surplus-kit squad is never handed an unfieldable operation. Accepting
 commits the squad for the whole operation: the strain's **team risk** (2–3) is added to **every
@@ -272,8 +360,9 @@ decision is in, the engine **rolls each diver a personal pact offer** — 2 pact
 derivation of the wheel seed per diver (`pactOfferFor` in `shared/engine/selectors.ts`), so every
 client computes the same 2–3 pacts with no extra sync; it is never stored. The pool filters out
 pacts the **accepted** misfortune makes redundant or impossible; a declined draw offers from the
-full catalog. Pacts are personal restrictions worth **pact risk** (1–3), and pact risk adds only
-to that diver's Valor.
+full catalog. Pacts are the **personal-scoped** slice of the same condition catalogue, and their
+**pact risk** scales with the operation's difficulty exactly like a misfortune's (`conditionRiskAt`;
+some are inverse, see Condition scaling), adding only to that diver's Valor.
 
 **Accountability rule:** every pact in the catalog must be verifiable in Helldivers 2 through one
 of three channels — the **loadout screen** (equipped gear and stratagems, visible pre-dive), the
@@ -350,6 +439,9 @@ pactRisk      = sum of the diver's picked pacts (max 8: the rolled
 performance   = team performance from the mission just reported, squad-level
                 and applied to every diver: time remaining (≤ 0.2) plus
                 samples (≤ 0.3), so it never exceeds 0.5
+
+(misfortune and pact risk are read through `conditionRiskAt(id, difficulty)`,
+ so the same condition is worth different Valor at different altitudes)
 
 base tier:     diff 3–5 → C   diff 6–7 → B   diff 8–10 → A
 meter:         the Valor gauge tops out at 11; Valor past it is Luck
@@ -523,7 +615,7 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   (`CLAIM_CACHE`) *instead of* rolling the promotion — claiming after rolling options is refused,
   so the two never stack. The same diver rejoining under their stored playerId reclaims their
   unclaimed cache automatically (soft-kick parity: their link still seats them).
-- **Seating window:** fresh joins only seat in `lobby/spin/decision/pacts/diving` — never during
+- **Seating window:** fresh joins only seat in `lobby/spin/decision/strain/deal/pacts/diving` — never during
   `rewards`/`forfeit` (that would grant a draft for a mission the joiner never dove) or
   `complete`. The server rejects with `dive-locked`. A joiner seated mid-mission
   (`diving`) gets `skipsCurrentDraft` and sits out that mission's reward draft instead of
@@ -588,47 +680,71 @@ all routes; static hosts need a `/*` → shell fallback instead.
 
 ```
 app/
-  pages/           index (new crusade / host / join / continue), dive/[id] (solo + room flow —
-                   thin orchestrator: session driver + action handlers; shell and per-phase UI
-                   live in components/dive/), lobby (open dives), codex
-  components/      dive/ (DiveHeader — title/difficulty/mission track + session controls,
-                   SquadStrip — diver chips, presence, name, host moderation,
+  pages/           index (Bridge home — new crusade / host / join / continue), dive/[id] (solo +
+                   room flow — thin orchestrator: session driver + action handlers; the
+                   three-rail shell and per-phase UI live in components/dive/), codex,
+                   kit (hidden, unlinked foundations route — see Destroyer Terminal design language)
+  components/      dive/ (DiveFrame — the no-scroll terminal shell (header · climb strip ·
+                   Squad/wheel-pool rail · phase · Valor rail · Mission-phases bar), DiveTopBar —
+                   the dive header (crusade · difficulty emblem · room code/copy · nav),
+                   CrusadeStrip — the horizontal 3→10 climb, PhaseRail — the bottom six mission
+                   beats, WheelOfMisfortune — the seeded spinning SVG wheel,
+                   BriefingOverlay — the first-run Griffdiver dossier, ArmoryDrawer — the in-dive
+                   Armory overlay (kit + loadout readiness + active-rule bans), CrusadeLadder —
+                   the vertical 3→10 ladder (achieved screen), SquadStrip — diver rail, presence,
+                   name, host moderation,
                    DivePhaseLobby/DivePhaseWheel/DivePhaseDiving/DivePhaseRewards/
                    DivePhaseForfeit/DivePhaseComplete — one panel per engine phase, each
                    owning its local form state and emitting intents,
+                   PactScreen — the dedicated pacts screen (team-risk summary bar,
+                   filter/floor notes, hold-to-lock CTA), MissionReport +
+                   SampleCanister/SegmentedBar — the dedicated two-column mission
+                   report, ForfeitPicker/ForfeitCarriesOver — the per-diver surrender
+                   picker and the forfeit "carries over" rail,
+                   AchievedOverlay — the full-bleed Griffdive achieved takeover,
+                   DivePhone + DivePhoneShell/PhoneTopBar/PhoneCrusadeBar/PhoneSquadBar/
+                   PhoneWheel/PhonePacts/PhoneValor/PhoneReport/PhoneDiving/
+                   PhoneRewardDraft/PhoneActionBar — the fixed phone shell, its per-phase
+                   layouts and the pinned bottom action bar (Valor detail + the phase's
+                   forward action),
                    WheelPanel, MajorOrderPicker — the pre-spin MO chooser, rendered in
                    the faction card's pre-roll slot,
                    MajorOrderCard — the in-game-style MO panel (emblem, countdown,
                    order overview, planet liberation bars),
-                   PactPicker, RewardDraft — the slot-machine reward
-                   draft (staggered reels that lock left to right), RewardReel — one
-                   rolling reel, ValorMeter — the live Valor gauge
-                   and tier-ceiling ladder, BonusCeremony — the end-of-mission stat
-                   contest that replaces the locked Valor meter and pays a reward token,
+                   PactPicker, RewardDraft — the reward draft (a stars→options
+                   badge, the per-step CeilingTrack with a sliding marker, a
+                   pod-drop cabinet of RewardPod reveal cards stamped Banked/Banned,
+                   and the always-on reward-token bar that links to honors),
+                   MissionReportSummary — the left-rail report card,
+                   RewardTokensRail — the honors rail's per-diver token banks,
+                   ValorMeter — the live Valor gauge
+                   and tier-ceiling ladder, BonusCeremony — the dedicated
+                   end-of-mission honors screen (iconographic seeded reel,
+                   hold-to-confirm award) that banks a reward token,
                    FieldPromotionCard — the mid-crusade
                    catch-up ceremony, DiversChoiceCard — the special
                    S+ "Liberty's Cross" offer card, DiversChoicePicker — its minified codex
                    modal, InventoryGrid, CrusadeSetup, WarbondPicker,
-                   JoinNameGate — name gate held while joining,
-                   DiveGuide — the "How a dive works" primer content,
-                   shared by the first-run slide-over and the Guide button),
+                   JoinNameGate — name gate held while joining),
                    codex/CodexBrowser — the shared catalog browser (filter + tier grid),
                    warbonds/WarbondBrowser — the shared warbond owner list (single column,
                    acquisition specials last; each banner starts blurred and dimmed, then
                    resolves on hover/focus/tap, click toggles),
-                   ui/ (ItemCard, TierBadge, RiskPips — risk dots, with a rolling back-and-forth
-                   state while a wheel draw reels, WaitingLight — the slow-pulsing gold dot that
-                   marks a section a diver still has to act on, ChangelogModal — GitHub deploy log
-                   shown from the alpha header chip, AppDrawer — the themed right-hand Reka
-                   Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer/GuideDrawer —
-                   its three slide-overs, IconBook/IconWarbond/IconGuide — the nav leading icons,
+                   ui/ (BrandMark — the Griffdive chevron mark, ItemCard, TierBadge, RiskPips — risk
+                   dots, with a rolling back-and-forth state while a wheel draw reels,
+                   SampleCanister/SegmentedBar — the report's tinted sample jars and
+                   click-to-set time bar, HoldButton — the press-and-hold confirm,
+                   ChangelogModal — GitHub deploy log shown from the alpha header chip, AppDrawer —
+                   the themed right-hand Reka
+                    Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer —
+                    its two slide-overs, IconBook/IconWarbond — the nav leading icons,
                    AppDialog/AppTabs/AppTooltip —
                    the themed Reka primitives every modal, tab strip and icon-only control builds
                    on),
   composables/     useDiveSession (unified local/room driver), useDiveView (session-derived
                    shell state: self/phase/canControl/name draft), useDiveEngine (local reducer +
                    persist),                    useGameSocket (WS, reconnect, stored playerId), useSaves,
-                   useDrawers (global Guide/Codex/Warbonds slide-over visibility, so the dive can
+                   useDrawers (global Codex/Warbonds slide-over visibility, so the dive can
                    open the Warbonds panel without unmounting), useWarbondIntro (one-shot
                    dive-start Warbonds prompt memory), useDiveIntro (one-shot dive-start
                    "How a dive works" primer memory), useOwnedWarbonds (localStorage-backed
@@ -636,7 +752,9 @@ app/
                    seated dive),
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
                    useMajorOrder (live war proxy → the picker's suggestion; null offline),
-                   useChangelog (GitHub deployments + commits → changelog entries, 10-min cache)
+                   useChangelog (GitHub deployments + commits → changelog entries, 10-min cache),
+                   usePhoneShell (the 1020px breakpoint as JS, so the dive can swap the whole
+                   three-rail tree for the phone shell)
   stores/          session.ts (Pinia: selfId, snapshot, online)
   utils/           seed.ts (client seed generation)
   assets/css/      main.css — global HD2 theme (two-font system, see Conventions)
@@ -660,20 +778,22 @@ shared/
                    host-only action list)
   utils/           room-code.ts (room-code alphabet + validator)
   data/            items (equipment.ts, stratagems.ts), warbonds.ts, fronts.ts,
-                   misfortunes.ts, strains.ts, pacts.ts, catalog.ts (aggregation + CATALOG_VERSION),
+                   conditions.ts (the unified team + personal condition catalogue;
+                   misfortunes.ts / pacts.ts are its scope views), strains.ts,
+                   catalog.ts (aggregation + CATALOG_VERSION),
                    ordering.ts (kit presentation order: stratagem role → tier → name),
                    images.ts (imageURL filename → /images/<dir> URL resolver,
                    difficultyImageUrl for the 1–10 difficulty emblems)
-scripts/
-  import-catalog.mjs  upstream → shared/data converter (report-only mode: --report)
-  upstream/           vendored MIT constants (snapshot commit recorded in _upstream-commit.json)
-public/images/        bundled item art keyed by folder: equipment/ (weapons, throwables,
+ scripts/
+   import-catalog.mjs  upstream → shared/data converter (report-only mode: --report)
+   upstream/           vendored MIT constants (snapshot commit recorded in _upstream-commit.json)
+ public/images/        bundled item art keyed by folder: equipment/ (weapons, throwables,
                       boosters), armor/, armorpassives/, svgs/ (stratagems), warbonds/,
                       difficulty/ (1–10 difficulty emblems), faction/ (front emblems)
 public/               PWA surface: icon.svg (brand source) + generated pwa-*.png /
                       maskable-icon-512x512.png / apple-touch-icon-180x180.png.
                       Regenerate with `pnpm pwa:assets` (config in pwa-assets.config.ts)
-e2e/                  Playwright specs (solo flow, room sync, Codex slide-over, Guide slide-over,
+e2e/                  Playwright specs (solo flow, room sync, Codex slide-over,
                       PWA affordances)
 playwright.config.ts  production-build webServer on :3173 (WebSocket included)
 pwa-assets.config.ts  @vite-pwa/assets-generator presets for the brand icon set
@@ -737,7 +857,7 @@ rooms every 15 min so the `MAX_ROOMS` backstop rarely matters.
 Canonical engine actions (the reducer union; keep names stable):
 
 `START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
-`SET_MAJOR_ORDER{order}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `SET_WARBONDS{playerId,warbondCodes}`
+`DEAL_PACTS{}` `SET_MAJOR_ORDER{order}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
 `AWARD_BONUS{playerId}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
@@ -745,7 +865,7 @@ Canonical engine actions (the reducer union; keep names stable):
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
-`ACCEPT_STRAIN`, `SET_MAJOR_ORDER`, `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
+`ACCEPT_STRAIN`, `DEAL_PACTS`, `SET_MAJOR_ORDER`, `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated
@@ -874,7 +994,7 @@ mount: `fly volumes create griffdive_data --region ams --size 1`.
   Defaults: `motion-v` (`<Motion>`, `<AnimatePresence>`, `<MotionConfig>`, auto-registered by
   `motion-v/nuxt`) for springs, exits and shared-element/layout work; CSS keyframes + the global
   `name="phase"` Vue transitions for ambient loops and phase swaps; shared spring/pop presets in
-  `app/utils/motion.ts` (`SPRING_SNAP`, `SPRING_POP`, `SPRING_SOFT`, `riseIn`, `popIn`). Easing
+  `app/utils/motion.ts` (`SPRING_SNAP`, `SPRING_POP`, `riseIn`, `slamIn`). Easing
   and duration tokens live in `main.css` (`--ease-out`, `--ease-snap`, `--dur-*`). Reduced motion
   is mandatory: `<MotionConfig reduced-motion="user">` in `app/app.vue` for motion-v, the
   `@media (prefers-reduced-motion: reduce)` guard in `main.css` for CSS, and an explicit
@@ -914,9 +1034,9 @@ mount: `fly volumes create griffdive_data --region ams --size 1`.
   production build (`pnpm build` + Nitro server, port 3173, WebSocket included). Specs: solo dive
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host
   authority, pact lock-in), Codex slide-over (opens over the dive without dropping the session),
-  Guide slide-over (the "How a dive works" primer reachable from the header),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
-  non-dismissible name gate, star-rating keyboard navigation), PWA affordances
+  non-dismissible name gate, star-rating keyboard navigation), phone host moderation
+  (`phone.spec.ts`: the 390px squad bar opens the moderation bottom sheet), PWA affordances
   (manifest content type + icons served, SW reachable, shell head links). Chromium only;
   `pnpm exec playwright install chromium` after a fresh clone.
 
@@ -947,7 +1067,9 @@ Each phase lands shippable. Update AGENTS.md (commands, status) as part of each 
   pass, Fly.io deploy + CI/CD (approval-gated batch releases, PR previews, metrics) and PWA
   affordances (`@vite-pwa/nuxt`: installable manifest, generated icons, Workbox service worker with
   an offline app shell + on-demand catalog art) have landed, as have **Major Orders** (host-set
-  front commitment + reroll bonus, manual picker plus the live war API; see Operation layer).
+  front commitment + reroll bonus, manual picker plus the live war API; see Operation layer) and
+  the **Destroyer Terminal redesign** (single terminal language, three-rail dive shell, Bridge
+  home, phone layout, hidden `/kit`; see Destroyer Terminal design language).
   Remaining: the final polish pass. *Done
   when: production URL serves a full multiplayer dive.*
 - **Phase 5 — Post-v1 backlog.** Specialists (PC parity), tier-maker custom rarity tables, heat

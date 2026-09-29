@@ -38,12 +38,25 @@ function select(value: unknown): void {
       :value="value"
       class="star"
       :class="{ filled: value <= preview }"
+      :style="{ animationDelay: `${0.06 + value * 0.07}s` }"
       :aria-label="`${value} ${value === 1 ? 'star' : 'stars'}`"
       @mouseenter="hovered = value"
       @focus="focused = value"
       @blur="focused = null"
     >
-      ★
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        class="star-glyph"
+      >
+        <path
+          d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"
+          fill="currentColor"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linejoin="round"
+        />
+      </svg>
     </RadioGroupItem>
   </RadioGroupRoot>
 </template>
@@ -51,40 +64,56 @@ function select(value: unknown): void {
 <style scoped>
 .star-rating {
   display: inline-flex;
-  gap: 0.15rem;
+  gap: 0.25rem;
 }
 
 .star {
   appearance: none;
-  border: 0;
-  background: none;
-  padding: 0 0.1rem;
-  font-size: 1.25rem;
-  line-height: 1;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 1px solid var(--line-3);
+  background: var(--panel);
+  padding: 0;
   cursor: pointer;
-  color: var(--muted);
-  opacity: 0.45;
-  transition: opacity var(--dur-fast) var(--ease-out);
+  color: var(--ghost-ink);
+  animation: starIn 0.5s var(--ease-out) both;
+  transition: color var(--dur-fast), border-color var(--dur-fast), background-color var(--dur-fast), transform var(--dur-fast);
+}
+
+.star-glyph {
+  width: 1.3rem;
+  height: 1.3rem;
+  display: block;
 }
 
 .star.filled {
   color: var(--gold);
-  opacity: 1;
+  border-color: var(--gold);
+  background: rgba(255, 214, 66, 0.08);
+  filter: drop-shadow(0 0 6px rgba(255, 214, 66, 0.5));
 }
 
-.size-lg {
-  gap: 0.4rem;
-}
+.star:hover:not(:disabled) { border-color: var(--khaki); }
+
+.size-lg { gap: 0.5rem; }
 .size-lg .star {
-  font-size: 2.6rem;
-  padding: 0 0.15rem;
-  text-shadow: 0 0 14px color-mix(in srgb, var(--gold) 55%, transparent);
+  width: 4.1rem;
+  height: 4.1rem;
+}
+.size-lg .star-glyph {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star { animation: none; }
 }
 
 .star:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
-  border-radius: 2px;
 }
 
 .disabled .star {

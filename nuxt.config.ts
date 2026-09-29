@@ -35,6 +35,16 @@ export default defineNuxtConfig({
     },
   },
   css: ['~/assets/css/main.css'],
+  routeRules: {
+    // The SPA shell is rendered per request and references content-hashed
+    // assets, so it must never be cached: a deploy is then picked up on the
+    // next load (and the PWA's NetworkFirst navigation cache stays honest).
+    // Hashed build assets keep their immutable caching, and the service worker
+    // itself must revalidate so a new build can take over.
+    '/**': { headers: { 'cache-control': 'no-cache' } },
+    '/_nuxt/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
+    '/sw.js': { headers: { 'cache-control': 'no-cache' } },
+  },
   compatibilityDate: '2025-07-15',
   nitro: {
     // Room state (and saved dives) live on disk, not process memory, so sessions

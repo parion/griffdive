@@ -4,13 +4,13 @@ import { STRAINS } from '../data/strains'
 import type { Front, FrontId } from '../data/fronts'
 import type { Misfortune } from '../data/misfortunes'
 import type { Strain } from '../data/strains'
-import { MISFORTUNE_MIN_DIFFICULTY, MIN_DIFFICULTY, STRAIN_MIN_DIFFICULTY } from './config'
+import { MIN_DIFFICULTY, STRAIN_MIN_DIFFICULTY } from './config'
 import { deriveSeed, mulberry32, pickRandom } from './rng'
 
-export function eligibleMisfortunes(difficulty: number): Misfortune[] {
-  return MISFORTUNES.filter(
-    misfortune => (MISFORTUNE_MIN_DIFFICULTY[misfortune.id] ?? MIN_DIFFICULTY) <= difficulty,
-  )
+// Every team condition is on the wheel at every difficulty — nothing is gated.
+// Difficulty scales each condition's risk instead (CONDITION_RISK).
+export function eligibleMisfortunes(): Misfortune[] {
+  return [...MISFORTUNES]
 }
 
 // Strains belong to a front: the pool is that front's subfactions eligible at
@@ -29,9 +29,9 @@ export function eligibleStrains(difficulty: number, frontId?: FrontId): Strain[]
 // Same seed always yields the same draw on every client (AGENTS.md: spins are
 // seeds). A front with no eligible strain draws none — the operation runs
 // against standard forces.
-export function deriveMisfortune(seed: number, difficulty: number): Misfortune {
+export function deriveMisfortune(seed: number): Misfortune {
   const rng = mulberry32(deriveSeed(seed, 1))
-  return pickRandom(rng, eligibleMisfortunes(difficulty))
+  return pickRandom(rng, eligibleMisfortunes())
 }
 
 // The front pool is the whole roster by default; a Major Order narrows it to

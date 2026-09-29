@@ -8,7 +8,7 @@ export interface MotionTransition {
   damping?: number
   mass?: number
   duration?: number
-  ease?: string
+  ease?: string | number[]
   delay?: number
 }
 
@@ -24,9 +24,6 @@ export const SPRING_SNAP: MotionTransition = { type: 'spring', stiffness: 320, d
 /** Overshoots once — landings, badge pops, reward ceremony. */
 export const SPRING_POP: MotionTransition = { type: 'spring', stiffness: 500, damping: 16 }
 
-/** Gentle drift — panels and large blocks. */
-export const SPRING_SOFT: MotionTransition = { type: 'spring', stiffness: 220, damping: 26 }
-
 export function riseIn(delay = 0, step = 0.07): MotionPreset {
   return {
     initial: { opacity: 0, y: 16 },
@@ -35,10 +32,11 @@ export function riseIn(delay = 0, step = 0.07): MotionPreset {
   }
 }
 
-export function popIn(delay = 0, step = 0.06): MotionPreset {
+/** Heavy landing — tier readouts, difficulty numerals, prize cards. */
+export function slamIn(delay = 0, step = 0.06): MotionPreset {
   return {
-    initial: { opacity: 0, scale: 0.85 },
-    animate: { opacity: 1, scale: 1 },
-    transition: { ...SPRING_POP, delay: delay * step },
+    initial: { opacity: 0, scale: 1.18, y: -10 },
+    animate: { opacity: 1, scale: 1, y: 0 },
+    transition: { type: 'spring', stiffness: 420, damping: 18, delay: delay * step },
   }
 }

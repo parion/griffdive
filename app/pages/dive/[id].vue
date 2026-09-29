@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { diverOptions, majorOrderFronts } from '~~/shared/engine/selectors'
-import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
-import type { CrusadeVariant, DiverState, EngineAction, ItemRef, MajorOrderSelection, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
+import { conditionRiskAt } from '~~/shared/engine/config'
+import { performanceValor } from '~~/shared/engine/rewards'
+import { diverOptions, majorOrderFronts, pactRiskOf, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
+import { VARIANTS } from '~~/shared/engine/progression'
+import { deriveFront, deriveMisfortune, deriveStrain, eligibleMisfortunes } from '~~/shared/engine/wheel'
+import type { CrusadeVariant, DiverState, EngineAction, ItemRef, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
 import { rememberDiverName } from '~/composables/useGameSocket'
 
 const route = useRoute()
@@ -10,9 +13,10 @@ const session = useDiveSession(slotId.value)
 const saves = useSaves()
 const { push: pushToast } = useToasts()
 const { ownedWarbonds, setOwned } = useOwnedWarbonds()
-const { openWarbonds, guideOpen, openGuide } = useDrawers()
+const { openWarbonds } = useDrawers()
 const { hasSeenWarbondIntro, markWarbondIntroSeen } = useWarbondIntro()
 const { hasSeenDiveIntro, markDiveIntroSeen } = useDiveIntro()
+const { isPhone } = usePhoneShell()
 
 const {
   state,
@@ -30,6 +34,94 @@ const {
 } = useDiveView(session)
 
 const dispatch = (action: EngineAction) => session.dispatch(action)
+
+const armoryOpen = ref(false)
+
+// The rewards phase holds two screens — the draft and the honors ceremony.
+// The page owns the toggle so the shell's rails can follow it (draft → Valor,
+// honors → the squad's token banks); the phase component drives the value.
+const rewardsView = ref<'draft' | 'honors'>('draft')
+
+// The rewards phase unmounts between missions, so reset the toggle whenever
+// the dive leaves rewards — the next draft always opens on the draft.
+watch(phase, (current) => {
+  if (current !== 'rewards') {
+    rewardsView.value = 'draft'
+  }
+})
+
+// The Valor rail and the climb strip are shell state, not phase state: the
+// page composes them from selectors so every phase shares one rail.
+const variantName = computed(() =>
+  VARIANTS.find(variant => variant.id === state.value?.settings?.variant)?.name ?? 'Crusade')
+const crusadeLabel = computed(() => `${diverName(selfId.value)} · ${variantName.value}`)
+
+const teamRisk = computed(() => state.value ? teamRiskOf(state.value) : 0)
+const riskBreakdown = computed(() =>
+  state.value ? teamRiskBreakdown(state.value) : { misfortuneRisk: 0, strainRisk: 0, majorOrderRisk: 0, total: 0 })
+// While a diver is still picking pacts the phase reports its live selection
+// upward, so the shell's Valor rail previews the stake before the lock.
+const livePactRisk = ref(0)
+const pactRisk = computed(() => {
+  const diver = self.value
+  if (!diver) {
+    return 0
+  }
+  if (state.value?.phase === 'pacts' && !diver.pactsLocked) {
+    return livePactRisk.value
+  }
+  return state.value ? pactRiskOf(diver, state.value.difficulty) : 0
+})
+const performance = computed(() => {
+  const current = state.value
+  if (!current) {
+    return 0
+  }
+  return current.phase === 'rewards' || current.phase === 'forfeit' || current.phase === 'complete'
+    ? performanceValor(current.lastReport)
+    : 0
+})
+const valorLocked = computed(() => {
+  const phase = state.value?.phase
+  return phase === 'diving' || phase === 'rewards' || phase === 'forfeit' || phase === 'complete'
+})
+const pendingText = computed(() => {
+  switch (state.value?.phase) {
+    case 'spin': return 'Awaiting spin'
+    case 'decision':
+    case 'strain': return 'Deciding'
+    case 'deal': return 'Ready to deal'
+    case 'pacts': return 'Pacts pending'
+    default: return ''
+  }
+})
+
+// The wheel pool card: the unified condition catalogue is never gated, so
+// every team rule is on the wheel at every difficulty and the card reads how
+// the current difficulty scales their risk bands. Presentation of
+// `eligibleMisfortunes` + `conditionRiskAt`.
+const wheelPool = computed(() => {
+  const current = state.value
+  if (!current || !['spin', 'decision', 'strain', 'deal', 'pacts'].includes(current.phase)) {
+    return null
+  }
+  const list = eligibleMisfortunes()
+  const bars = [0, 0, 0, 0, 0]
+  for (const misfortune of list) {
+    const risk = conditionRiskAt(misfortune.id, current.difficulty)
+    bars[risk - 1] = (bars[risk - 1] ?? 0) + 1
+  }
+  return {
+    count: list.length,
+    bars,
+    note: `Risk scales with difficulty ${current.difficulty} — every condition is always available`,
+  }
+})
+
+const POOL_COLORS = ['var(--khaki)', 'var(--khaki)', 'var(--orange)', 'var(--red)', 'var(--red)']
+function poolColor(index: number): string {
+  return POOL_COLORS[index] ?? 'var(--line-3)'
+}
 
 // Warbonds are what each diver actually owns — declared per diver, any phase,
 // and driven by the global Warbonds drawer. A local save seeds the working list
@@ -64,33 +156,40 @@ watch(ownedWarbonds, (codes) => {
   }
 })
 
-// Dive startup is part of the ritual — a fresh solo dive opens the guide on
-// mount, and a room join opens it the moment the diver is seated (right after
-// the name gate). It fires once ever, like the remembered name.
-watch(self, (diver) => {
-  if (!diver) {
+// Dive startup is part of the ritual: a fresh browser gets the Griffdiver
+// briefing the moment the diver is seated (right after the name gate), instead
+// of the old auto-opened guide. Closing it marks the dive intro seen and hands
+// off to the Warbonds panel, so a first-timer reads one surface at a time.
+const briefingOpen = ref(false)
+
+watch([self, state], ([diver, current]) => {
+  if (!diver || !current || briefingOpen.value || hasSeenDiveIntro.value) {
     return
   }
-  if (!hasSeenDiveIntro.value) {
-    markDiveIntroSeen()
-    openGuide()
-    return
-  }
-  if (!hasSeenWarbondIntro.value && !guideOpen.value) {
+  briefingOpen.value = true
+}, { immediate: true })
+
+function openWarbondsIntro(): void {
+  if (!hasSeenWarbondIntro.value && !briefingOpen.value) {
     markWarbondIntroSeen()
     openWarbonds()
   }
-}, { immediate: true })
+}
 
-// The guide goes first; the Warbonds panel (declare what you own) follows it so
-// a first-timer reads one panel at a time, never both at once.
-watch(guideOpen, (open) => {
-  if (open || !self.value || hasSeenWarbondIntro.value) {
+// A dive start whose briefing was already seen still gets the one-shot
+// Warbonds prompt (a browser from before the briefing, or a later crusade).
+watch(self, (diver) => {
+  if (!diver || briefingOpen.value || !hasSeenDiveIntro.value) {
     return
   }
-  markWarbondIntroSeen()
-  openWarbonds()
-})
+  openWarbondsIntro()
+}, { immediate: true })
+
+function closeBriefing(): void {
+  briefingOpen.value = false
+  markDiveIntroSeen()
+  openWarbondsIntro()
+}
 
 // Hostship moves under the squad's feet (disconnect migration) with no other
 // signal — announce the crown's arrival and departure.
@@ -130,18 +229,6 @@ watch(
   },
 )
 
-// Once the diver banks their reward, surface the squad inventory so the new
-// item is visible without hunting for it.
-const squadInventory = ref<HTMLDetailsElement | null>(null)
-watch(
-  () => self.value?.pickedOptionId ?? null,
-  (picked) => {
-    if (picked && squadInventory.value) {
-      squadInventory.value.open = true
-    }
-  },
-)
-
 function spin(): void {
   dispatch({ type: 'SPIN_WHEEL', seed: session.newSeed() })
 }
@@ -157,7 +244,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   let seed = session.newSeed()
   for (let attempt = 0; attempt < 32; attempt++) {
     const same = wheel === 'misfortune'
-      ? deriveMisfortune(seed, current.difficulty).id === current.wheel.misfortuneId
+      ? deriveMisfortune(seed).id === current.wheel.misfortuneId
       : wheel === 'front'
         ? deriveFront(seed, majorOrderFronts(current)) === current.frontId
         : deriveStrain(seed, current.difficulty, current.frontId!)?.id === current.strainId
@@ -175,6 +262,11 @@ function decideMisfortune(accepted: boolean): void {
 
 function decideStrain(accepted: boolean): void {
   dispatch({ type: 'ACCEPT_STRAIN', accepted })
+}
+
+// The host gate between the wheel decision and the pact hand.
+function dealPacts(): void {
+  dispatch({ type: 'DEAL_PACTS' })
 }
 
 // The Major Order is the operation's front commitment, host-set before the
@@ -196,7 +288,7 @@ function failPact(playerId: string, pactId: string): void {
   dispatch({ type: 'FAIL_PACT', playerId, pactId })
 }
 
-function report(payload: { outcome: MissionOutcome, stars: number, timePct: number, samples?: SampleCounts }): void {
+function report(payload: MissionReport): void {
   dispatch({ type: 'REPORT_RESULT', ...payload })
 }
 
@@ -342,24 +434,20 @@ function launchCrusade(variant: CrusadeVariant): void {
 </script>
 
 <template>
-  <main
-    id="main-content"
-    class="page"
-    tabindex="-1"
-  >
+  <div class="dive-page">
     <JoinNameGate
       v-if="session.awaitingName.value"
       @confirm="confirmJoinName"
     />
     <p
       v-if="session.loadError.value"
-      class="panel"
+      class="panel page"
     >
       Dive not found. <NuxtLink to="/">Back to base</NuxtLink>
     </p>
     <section
       v-else-if="session.mode === 'room' && !session.awaitingName.value && session.connectionFailed.value"
-      class="panel"
+      class="panel page"
     >
       <h2>Can't reach the dive server</h2>
       <p class="muted small">
@@ -381,29 +469,179 @@ function launchCrusade(variant: CrusadeVariant): void {
         >Back to base</NuxtLink>
       </div>
     </section>
-    <template v-else-if="state">
-      <DiveHeader
-        :state="state"
-        :mode="session.mode"
-        :status="session.status.value"
-        :self-id="selfId"
-        :can-control="canControl"
-        :is-host="session.selfIsHost.value"
-        :op-length="opLength"
-        :slot-name="session.slotName.value"
-        :online="session.online.value"
-        :name-draft="nameDraft"
-        :saved="session.saved.value"
-        @copy-invite="copyInvite"
-        @leave="leaveDive"
-        @end="endDive"
-        @save-dive="saveDive"
-        @unsave-dive="unsaveDive"
-        @update:name-draft="setNameDraft"
-        @commit="commitName"
-        @transfer-host="transferHost"
-        @kick="kick"
-      />
+
+    <AchievedOverlay
+      v-else-if="state && state.phase === 'complete' && state.achieved"
+      :state="state"
+      :crusade-label="crusadeLabel"
+      :mode="session.mode"
+      :slot-name="session.slotName.value"
+    />
+
+    <DivePhone
+      v-else-if="state && isPhone"
+      :state="state"
+      :self-id="selfId"
+      :self="self"
+      :can-control="canControl"
+      :op-length="opLength"
+      :mode="session.mode"
+      :slot-name="session.slotName.value"
+      :status="session.status.value"
+      :saved="Boolean(session.saved.value)"
+      :is-host="session.selfIsHost.value"
+      :online="session.online.value"
+      :kicked="kicked"
+      :last-error="session.lastError.value?.message ?? null"
+      @spin="spin"
+      @decide="decideMisfortune"
+      @decide-strain="decideStrain"
+      @deal="dealPacts"
+      @set-major-order="setMajorOrder"
+      @reroll="reroll"
+      @lock-pacts="lockPacts"
+      @pact-risk="livePactRisk = $event"
+      @report="report"
+      @fail-pact="failPact"
+      @pick="pick"
+      @reroll-rewards="rerollRewards"
+      @ban-rewards="banRewards"
+      @spin-bonus="spinBonus"
+      @award-bonus="awardBonus"
+      @advance="advance"
+      @forfeit="forfeit"
+      @claim-catch-up-option="claimCatchUpOption"
+      @claim-cache="claimCache"
+      @start="launchCrusade"
+      @kick="kick"
+      @transfer-host="transferHost"
+      @copy-invite="copyInvite"
+      @open-armory="armoryOpen = true"
+      @leave="leaveDive"
+      @end="endDive"
+      @save-dive="saveDive"
+      @unsave-dive="unsaveDive"
+      @abandon-slot="abandonSlot"
+      @dismiss-error="session.dismissError()"
+    />
+
+    <DiveFrame
+      v-else-if="state"
+      :left="state.phase !== 'forfeit'"
+      :right="state.phase !== 'lobby'"
+    >
+      <template #header>
+        <DiveTopBar
+          :crusade-label="crusadeLabel"
+          :difficulty="state.difficulty"
+          :mode="session.mode"
+          :slot-name="session.slotName.value"
+          :status="session.status.value"
+          :saved="Boolean(session.saved.value)"
+          :can-control="canControl"
+          :is-host="session.selfIsHost.value"
+          :lone-host="state.divers.length === 1"
+          @copy-invite="copyInvite"
+          @open-armory="armoryOpen = true"
+          @leave="leaveDive"
+          @end="endDive"
+          @save-dive="saveDive"
+          @unsave-dive="unsaveDive"
+        />
+      </template>
+
+      <template #ladder>
+        <CrusadeStrip
+          :difficulty="state.difficulty"
+          :achieved="state.achieved"
+          :failed="state.phase === 'forfeit'"
+          :mission-in-operation="state.missionInOperation"
+          :op-length="opLength"
+          :route="state.phase === 'lobby'"
+        />
+      </template>
+
+      <template #left>
+        <SquadStrip
+          :state="state"
+          :self-id="selfId"
+          :online="session.online.value"
+          :mode="session.mode"
+          :is-host="session.selfIsHost.value"
+          :name-draft="nameDraft"
+          @update:name-draft="setNameDraft"
+          @commit="commitName"
+          @transfer-host="transferHost"
+          @kick="kick"
+        />
+
+        <div class="rail-lower">
+          <MissionReportSummary
+            v-if="state.phase === 'rewards'"
+            :state="state"
+          />
+
+          <section
+            v-if="wheelPool"
+            class="sec pool"
+            aria-labelledby="pool-h"
+          >
+            <div class="sec-h">
+              <h2
+                id="pool-h"
+                class="lbl"
+              >
+                Wheel pool
+              </h2>
+              <span class="dash" />
+            </div>
+            <div class="pool-count">
+              <span class="disp">{{ wheelPool.count }}</span>
+              <span class="cap pool-count-cap">misfortunes on the wheel</span>
+            </div>
+            <div
+              class="pool-bars"
+              aria-hidden="true"
+            >
+              <span
+                v-for="(n, i) in wheelPool.bars"
+                :key="i"
+                :style="{ flexGrow: Math.max(n, 1), background: poolColor(i) }"
+              />
+            </div>
+            <span class="cap pool-note">{{ wheelPool.note }}</span>
+          </section>
+        </div>
+      </template>
+
+      <template #right>
+        <ForfeitCarriesOver
+          v-if="state.phase === 'forfeit'"
+          :state="state"
+        />
+        <RewardTokensRail
+          v-else-if="state.phase === 'rewards' && rewardsView === 'honors'"
+          :state="state"
+          :self-id="selfId"
+        />
+        <ValorMeter
+          v-else
+          :difficulty="state.difficulty"
+          :team-risk="teamRisk"
+          :misfortune-risk="riskBreakdown.misfortuneRisk"
+          :strain-risk="riskBreakdown.strainRisk"
+          :major-order-risk="riskBreakdown.majorOrderRisk"
+          :pact-risk="pactRisk"
+          :performance="performance"
+          :locked="valorLocked"
+          :diver-name="diverName(selfId)"
+          :pending-text="pendingText"
+        />
+      </template>
+
+      <template #phases>
+        <PhaseRail :phase="state.phase" />
+      </template>
 
       <p
         v-if="kicked"
@@ -448,12 +686,14 @@ function launchCrusade(variant: CrusadeVariant): void {
         >
           <DivePhaseLobby
             v-if="phase === 'lobby'"
+            :state="state"
+            :self-id="selfId"
             :can-control="canControl"
             @start="launchCrusade"
           />
 
           <DivePhaseWheel
-            v-if="phase === 'spin' || phase === 'decision' || phase === 'strain' || phase === 'pacts'"
+            v-if="phase === 'spin' || phase === 'decision' || phase === 'strain' || phase === 'deal'"
             :state="state"
             :self-id="selfId"
             :self="self"
@@ -461,9 +701,19 @@ function launchCrusade(variant: CrusadeVariant): void {
             @spin="spin"
             @decide="decideMisfortune"
             @decide-strain="decideStrain"
+            @deal="dealPacts"
             @set-major-order="setMajorOrder"
             @reroll="reroll"
+          />
+
+          <PactScreen
+            v-else-if="phase === 'pacts'"
+            :state="state"
+            :self-id="selfId"
+            :self="self"
+            :can-control="canControl"
             @lock="lockPacts"
+            @pact-risk="livePactRisk = $event"
           />
 
           <DivePhaseDiving
@@ -479,6 +729,7 @@ function launchCrusade(variant: CrusadeVariant): void {
 
           <DivePhaseRewards
             v-if="phase === 'rewards'"
+            v-model:view="rewardsView"
             :state="state"
             :self-id="selfId"
             :self="self"
@@ -508,29 +759,44 @@ function launchCrusade(variant: CrusadeVariant): void {
         </div>
       </Transition>
 
-      <details
-        v-if="state.phase !== 'lobby'"
-        ref="squadInventory"
-        class="panel"
-      >
-        <summary>Kit inventory</summary>
-        <InventoryGrid
-          :state="state"
-          :self-id="selfId"
-        />
-      </details>
-    </template>
+      <ArmoryDrawer
+        v-model:open="armoryOpen"
+        :state="state"
+        :self-id="selfId"
+      />
+    </DiveFrame>
     <p
       v-else
-      class="panel muted"
+      class="panel page muted"
     >
       Loading dive…
     </p>
-  </main>
+
+    <!-- The phone shell swaps out DiveFrame, which owns the desktop Armory
+         drawer — so the phone branch needs its own mount for the same ref. -->
+    <ArmoryDrawer
+      v-if="state && isPhone"
+      v-model:open="armoryOpen"
+      :state="state"
+      :self-id="selfId"
+    />
+
+    <BriefingOverlay
+      v-if="briefingOpen && state"
+      :state="state"
+      :self="self"
+      :self-id="selfId"
+      :mode="session.mode"
+      :online="session.online.value"
+      @close="closeBriefing"
+    />
+  </div>
 </template>
 
 <style scoped>
-.phase-stack { display: grid; gap: 1rem; }
+.dive-page { min-height: 100vh; }
+
+.phase-stack { display: grid; gap: var(--gap-panel); }
 
 .error-banner {
   border-color: var(--red);
@@ -541,4 +807,21 @@ function launchCrusade(variant: CrusadeVariant): void {
 }
 
 .kicked { border-color: var(--red); }
+
+/* Everything below the squad list is bottom-anchored in the left rail. */
+.rail-lower {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-panel);
+  min-width: 0;
+}
+
+.pool { border-style: dashed; border-color: var(--line-2); background: transparent; }
+.pool-count { display: flex; align-items: baseline; gap: var(--sp-3); }
+.pool-count .disp { font-size: 26px; color: var(--text); }
+.pool-bars { display: flex; gap: 3px; }
+.pool-bars span { height: 4px; min-width: 6px; }
+.pool-note { font-size: 12px; font-weight: 400; letter-spacing: normal; text-transform: none; white-space: normal; }
+.pool-count-cap { font-size: 12px; font-weight: 400; letter-spacing: normal; text-transform: none; }
 </style>

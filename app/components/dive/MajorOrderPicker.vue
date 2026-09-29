@@ -48,17 +48,25 @@ function playSuggestion(): void {
     />
     <p
       v-else-if="suggestionPending"
-      class="muted small"
+      class="mo-state muted small"
     >
+      <span
+        class="lamp gold pulse"
+        aria-hidden="true"
+      />
       Checking the live war…
     </p>
     <p
       v-else
-      class="row small muted mo-empty"
+      class="mo-state small"
     >
-      {{ status === 'none'
+      <span
+        class="lamp dim"
+        aria-hidden="true"
+      />
+      <span>{{ status === 'none'
         ? 'No active Major Order — the wheel draws the front as usual.'
-        : 'Failed to retrieve active MO' }}
+        : 'Failed to retrieve active MO' }}</span>
       <button
         class="mo-refresh"
         type="button"
@@ -70,12 +78,12 @@ function playSuggestion(): void {
       </button>
     </p>
 
-    <p class="muted small mo-pick-label">
+    <p class="lbl mo-pick-label">
       {{ suggestion ? 'Or pin a front manually' : 'Pin a faction (optional)' }}
     </p>
 
     <div
-      class="row mo-options"
+      class="mo-options"
       role="group"
       aria-label="Major Order front"
     >
@@ -85,7 +93,7 @@ function playSuggestion(): void {
         :content="front.displayName"
       >
         <button
-          class="btn mo-option mo-icon"
+          class="mo-option cut-sm"
           :class="{ selected: isSelected(front.id) }"
           :style="{ '--mo-accent': front.accent }"
           type="button"
@@ -102,7 +110,7 @@ function playSuggestion(): void {
         </button>
       </AppTooltip>
       <button
-        class="btn ghost mo-option"
+        class="mo-option mo-noorder ghost cut-sm"
         :class="{ selected: selected.length === 0 }"
         type="button"
         :disabled="!canControl"
@@ -114,7 +122,7 @@ function playSuggestion(): void {
     </div>
     <p
       v-if="!canControl"
-      class="muted small"
+      class="muted small mo-hint"
     >
       The host sets the Major Order before the first spin.
     </p>
@@ -128,43 +136,68 @@ function playSuggestion(): void {
 </template>
 
 <style scoped>
-.mo { display: grid; gap: 0.5rem; }
-.mo-options { flex-wrap: wrap; }
-.mo-empty { align-items: center; gap: 0.4rem; }
-.mo-icon {
-  display: inline-grid;
-  place-items: center;
-  padding: 0.25rem;
-  width: 2.6rem;
-  height: 2.6rem;
+.mo { display: grid; gap: 0.55rem; }
+
+.mo-state {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
 }
-.mo-icon img { width: 100%; height: 100%; object-fit: contain; }
+.mo-state .lamp { flex-shrink: 0; }
 .mo-refresh {
   display: inline-grid;
   place-items: center;
   padding: 0;
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 2.75rem;
+  height: 2.75rem;
   flex-shrink: 0;
   background: none;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 1px solid var(--line-4);
   color: var(--khaki);
   cursor: pointer;
-  transition: border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+  transition: border-color var(--dur-fast), color var(--dur-fast);
 }
 .mo-refresh:hover { border-color: var(--gold); color: var(--gold); }
 .mo-refresh svg { width: 1rem; height: 1rem; }
-.mo-option {
-  border-color: color-mix(in srgb, var(--mo-accent, var(--border)) 45%, var(--border));
-  transition: border-color var(--dur-fast) ease, background var(--dur-fast) ease;
+
+.mo-pick-label { margin: 0; }
+
+.mo-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: stretch;
 }
+.mo-option {
+  --mo-accent: var(--gold);
+  display: inline-grid;
+  place-items: center;
+  padding: 0.3rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  background: var(--ground);
+  border: 1px solid color-mix(in srgb, var(--mo-accent) 40%, var(--line-3));
+  color: var(--khaki);
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background-color var(--dur-fast), color var(--dur-fast), filter var(--dur-fast);
+}
+.mo-option img { width: 100%; height: 100%; object-fit: contain; }
+.mo-option:hover:not(:disabled) { border-color: var(--mo-accent); filter: brightness(1.12); }
 .mo-option.selected {
-  color: var(--mo-accent, var(--gold));
-  border-color: var(--mo-accent, var(--gold));
-  background: color-mix(in srgb, var(--mo-accent, var(--gold)) 14%, transparent);
+  color: var(--mo-accent);
+  border-color: var(--mo-accent);
+  background: color-mix(in srgb, var(--mo-accent) 16%, var(--ground));
 }
 .mo-option:disabled { opacity: 0.55; cursor: default; }
-.mo-pick-label { margin: 0; }
+
+.mo-noorder {
+  width: auto;
+  padding: 0 0.7rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .mo-hint { margin: 0; }
 </style>
