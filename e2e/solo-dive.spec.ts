@@ -59,7 +59,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
 
   await expect(page.getByRole('heading', { name: 'Reward Draft' })).toBeVisible()
   await expect(page.getByRole('img', { name: 'choosing reward' })).toBeVisible()
-  await page.locator('.pod-card .item-card:not([disabled])').first().click()
+  await page.locator('.pod-card .pod-hit').first().click()
 
   // Bonus honors is its own screen, reached from the draft's bottom bar: the
   // host spins the stat contest (on click, like the wheel) and banks the
@@ -96,7 +96,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.getByRole('button', { name: 'Ban items' }).click()
   await expect(page.getByText('Select items above')).toBeVisible()
   await expect(page.locator('.cabinet .pod-card').first()).toBeVisible()
-  await page.locator('.cabinet .pod-card .item-card:not([disabled])').first().click()
+  await page.locator('.cabinet .pod-card .pod-hit').first().click()
   await expect(page.locator('.cabinet .pod-card.picked')).toHaveCount(1)
   const banConfirm = page.getByRole('button', { name: /forfeit this pick/ })
   await banConfirm.hover()

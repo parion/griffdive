@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
 import type { RewardOption } from '~~/shared/engine/rewards'
 
@@ -31,6 +32,7 @@ const emit = defineEmits<{
 }>()
 
 const winner = computed(() => props.option.item)
+const imageUrl = computed(() => itemImageUrl(winner.value))
 const tierVar = computed(() =>
   props.option.choice ? 'var(--tier-splus)' : `var(--tier-${winner.value.tier})`)
 const winnerTier = computed(() => (props.option.choice ? 'S+' : winner.value.tier.toUpperCase()))
@@ -64,6 +66,23 @@ onBeforeUnmount(() => clearTimeout(timer))
 // pick dimmed it. In ban mode only engine-bannable pods select.
 const selectable = computed(() =>
   props.canPick && (props.banMode ? props.bannable : !props.dimmed))
+
+const hitLabel = computed(() => {
+  if (props.banMode) {
+    return `Select ${winner.value.displayName} to ban`
+  }
+  const lead = props.lead ? ', at your ceiling' : ''
+  return `Claim ${winner.value.displayName}, ${winnerTier.value} tier ${winner.value.category.toLowerCase()}${lead}`
+})
+
+function onHit(): void {
+  if (props.banMode) {
+    emit('ban', props.option.optionId)
+  }
+  else {
+    emit('pick', props.option.optionId)
+  }
+}
 </script>
 
 <template>
@@ -125,7 +144,7 @@ const selectable = computed(() =>
         <span class="lbl pod-id">POD {{ pod }}</span>
       </header>
 
-      <div class="pod-stage">
+      <div class="pod-stage grid-bg">
         <DiversChoiceCard
           v-if="option.choice"
           :pool="choicePool"
@@ -133,13 +152,22 @@ const selectable = computed(() =>
           :disabled="!selectable"
           @choose="itemId => emit('pick', option.optionId, itemId)"
         />
-        <ItemCard
-          v-else
-          :item="winner"
-          :selected="banMode ? selected : picked"
-          :disabled="!selectable"
-          @select="banMode ? emit('ban', option.optionId) : emit('pick', option.optionId)"
-        />
+        <img
+          v-else-if="imageUrl"
+          class="pod-art"
+          :src="imageUrl"
+          alt=""
+          loading="lazy"
+          draggable="false"
+        >
+      </div>
+
+      <div
+        v-if="!option.choice"
+        class="pod-info"
+      >
+        <span class="pod-name">{{ winner.displayName }}</span>
+        <span class="pod-cat">{{ winner.category }}</span>
       </div>
 
       <span
@@ -166,6 +194,14 @@ const selectable = computed(() =>
           ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
         </template>
       </footer>
+
+      <button
+        v-if="selectable && !option.choice"
+        class="pod-hit"
+        type="button"
+        :aria-label="hitLabel"
+        @click="onHit"
+      />
     </Motion>
   </div>
 </template>
@@ -192,15 +228,16 @@ const selectable = computed(() =>
   display: flex;
   flex-direction: column;
   background: var(--panel);
-  border: 1px solid color-mix(in srgb, var(--tier) 45%, var(--line-3));
+  border: 1px solid var(--line-2);
   overflow: hidden;
 }
-.pod-card.lead { border-color: color-mix(in srgb, var(--gold) 60%, var(--line-3)); }
-.pod-card.banning { border-color: color-mix(in srgb, var(--red) 45%, var(--line-3)); }
-.pod-card.dimmed { opacity: 0.4; filter: grayscale(0.5); }
+.pod-card.lead { border-color: var(--line-5); }
+.pod-card.banning,
+.pod-card.selected { border-color: var(--red); }
+.pod-card.dimmed { opacity: 0.26; filter: grayscale(0.85); }
 .pod-card.picked {
-  border-color: var(--red);
-  box-shadow: 0 0 20px color-mix(in srgb, var(--red) 30%, transparent);
+  border-color: var(--tier);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--tier) 25%, transparent);
 }
 
 .pod-stamp {
@@ -228,25 +265,70 @@ const selectable = computed(() =>
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 42px;
-  padding: 0 10px;
+  height: 44px;
+  padding: 0 12px;
   flex-shrink: 0;
 }
 .pod-tier { min-width: 32px; padding: 0 4px; color: var(--tier); border: 1px solid var(--tier); background: color-mix(in srgb, var(--tier) 14%, transparent); }
 .pod-lead { color: var(--gold); }
-.pod-id { margin-left: auto; color: var(--dim); }
+.pod-id { margin-left: auto; color: var(--dim); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; }
 
 .pod-stage {
   position: relative;
   flex: 1 1 auto;
-  min-height: 0;
-  margin: 0 10px;
+  min-height: 120px;
+  margin: 0 12px;
+  display: grid;
+  place-items: center;
+  background-color: var(--ground);
+  border: 1px solid var(--line-1);
   overflow: hidden;
 }
-.pod-stage :deep(.item-card),
+.pod-art {
+  width: 112px;
+  height: 112px;
+  object-fit: contain;
+}
 .pod-stage :deep(.choice-card) {
   width: 100%;
   height: 100%;
+}
+
+.pod-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 12px 0;
+}
+.pod-name {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.12;
+  text-transform: uppercase;
+}
+.pod-cat {
+  align-self: flex-start;
+  padding: 3px 7px;
+  border: 1px solid var(--line-2);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--khaki);
+}
+
+.pod-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
 }
 
 .pod-foot {
@@ -254,16 +336,17 @@ const selectable = computed(() =>
   align-items: center;
   gap: 8px;
   height: 40px;
+  margin-top: auto;
   padding: 0 12px;
-  border-top: 1px solid var(--line-2);
-  font-size: 0.68rem;
+  border-top: 1px solid var(--line-1);
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--khaki);
   flex-shrink: 0;
 }
-.pod-card.lead .pod-foot { color: var(--gold); }
+.pod-card.picked .pod-foot { color: var(--gold); }
 .pod-card.banning .pod-foot { color: var(--red); }
 .pod-foot svg { margin-left: auto; }
 .foot-mark {

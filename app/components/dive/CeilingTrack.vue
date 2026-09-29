@@ -95,13 +95,11 @@ function tierVar(tier: RewardTier): string {
       <span
         v-if="settled"
         class="stamp disp ceiling-stamp"
-        :data-tier="ceiling"
-        :style="{ '--tier': tierVar(ceiling) }"
       >Ceiling · {{ ceiling }}</span>
       <span
         v-else
         class="lbl pulse climbing"
-      >Climbing…</span>
+      >Climbing</span>
     </header>
 
     <div
@@ -127,19 +125,37 @@ function tierVar(tier: RewardTier): string {
           v-if="settled && node.ok"
           class="node-mark"
           aria-hidden="true"
-        >✓</span>
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3.4"
+          ><path d="M5 12l5 5 9-10" /></svg>
+        </span>
         <span
           v-else-if="settled && node.miss"
           class="node-mark miss"
           aria-hidden="true"
-        >✕</span>
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3.6"
+          ><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </span>
       </span>
 
       <span
         v-for="(link, i) in linkStates"
         :key="`${link.tier}-link`"
         class="link"
-        :style="{ left: `calc(${i} * var(--span) + 64px)`, width: `calc(var(--span) - 64px)` }"
+        :style="{ 'left': `calc(${i} * var(--span) + 64px)`, 'width': `calc(var(--span) - 64px)`, '--tier': tierVar(link.tier) }"
       >
         <span
           class="link-line"
@@ -185,13 +201,13 @@ function tierVar(tier: RewardTier): string {
 }
 .ceiling-stamp {
   margin-left: auto;
-  padding: 0.15rem 0.5rem;
+  padding: 10px 18px;
   font-size: 26px;
-  border: 3px solid var(--tier, var(--gold));
-  color: var(--tier, var(--gold));
-  background: color-mix(in srgb, var(--tier, var(--gold)) 6%, transparent);
+  border: 3px solid var(--gold);
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 6%, transparent);
 }
-.climbing { margin-left: auto; }
+.climbing { margin-left: auto; color: var(--khaki); }
 
 .track {
   position: relative;
@@ -243,16 +259,14 @@ function tierVar(tier: RewardTier): string {
 }
 .node-mark {
   position: absolute;
-  top: -10px;
-  right: -10px;
+  top: -9px;
+  right: -9px;
   width: 20px;
   height: 20px;
   display: grid;
   place-items: center;
   background: var(--tier, var(--gold));
   color: var(--on-gold);
-  font-size: 12px;
-  font-weight: 700;
 }
 .node-mark.miss { background: var(--red); }
 
@@ -270,7 +284,7 @@ function tierVar(tier: RewardTier): string {
 }
 .link-line.tried { width: 100%; }
 .link-line.tried.miss { width: 46%; background: var(--red); }
-.link-line.win { background: var(--gold); }
+.link-line.win { background: var(--tier, var(--gold)); }
 
 .link-pct {
   position: absolute;
@@ -287,7 +301,7 @@ function tierVar(tier: RewardTier): string {
   white-space: nowrap;
   transition: color 0.2s, border-color 0.2s;
 }
-.link-pct.win { color: var(--gold); border-color: var(--gold); }
+.link-pct.win { color: var(--tier, var(--gold)); border-color: var(--tier, var(--gold)); }
 .link-pct.miss { color: var(--red); border-color: var(--red); }
 
 .marker {

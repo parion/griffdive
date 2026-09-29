@@ -1320,10 +1320,16 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
   border: 1px solid var(--line-2);
   color: var(--text);
 }
-.loop-label { color: var(--text); }
+.loop-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: inherit;
+}
 .loop-cap {
   text-align: center;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;

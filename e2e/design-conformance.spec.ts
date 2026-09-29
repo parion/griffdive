@@ -1,13 +1,13 @@
-// Design conformance: render each app screen at its design page's state and
-// diff the static text styling against the extracted design contract
-// (design/spec/<page>.json). Report-only by default; set DESIGN_STRICT=1 to
-// fail on any style mismatch (the ratchet CI will run once the baseline is
-// clean).
+// Design conformance: render each app screen at its design scene's state and
+// diff the static text styling against the captured design contract
+// (design/scenes/<Page>__<scene>.json). Report-only by default; set
+// DESIGN_STRICT=1 to fail on any style mismatch (the ratchet CI will run once
+// the baseline is clean).
 //
 //   pnpm design:check          # strict
 //   pnpm test:e2e              # report-only, alongside the flow specs
 //
-// Regenerate the contract with `pnpm design:extract` after a design change.
+// Regenerate the contract with `pnpm design:capture` after a design change.
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -16,7 +16,7 @@ import { DESIGN_TARGETS, type DesignStep, type DesignTarget } from '../design/ma
 import { saveDocFor } from '../design/states'
 
 const ROOT = process.cwd()
-const SPEC_DIR = path.join(ROOT, 'design', 'spec')
+const SCENES_DIR = path.join(ROOT, 'design', 'scenes')
 const REPORT_DIR = path.join(ROOT, 'design', 'report')
 const SAVE_KEY = 'griffdive:saves:v1'
 const SLOT = '00000000-0000-4000-8000-000000000001'
@@ -70,7 +70,7 @@ async function applySteps(page: import('@playwright/test').Page, steps: DesignSt
       case 'open-honors':
         // The honors link only appears once every diver has picked, so resolve
         // the draft first.
-        await page.locator('.pod-card .item-card:not([disabled])').first().click()
+        await page.locator('.pod-card .pod-hit').first().click()
         await page.getByRole('button', { name: 'Squad Honors' }).click()
         await expect(page.getByRole('heading', { name: 'Squad Honors' })).toBeVisible()
         break
@@ -115,17 +115,18 @@ async function collectAppText(page: import('@playwright/test').Page): Promise<Ap
 }
 
 async function runTarget(page: import('@playwright/test').Page, target: DesignTarget): Promise<void> {
-  const specPath = path.join(SPEC_DIR, `${target.page}.json`)
+  const specPath = path.join(SCENES_DIR, `${target.key}.json`)
   if (!fs.existsSync(specPath)) {
-    test.skip(true, `no design spec for ${target.page} — run pnpm design:extract`)
+    test.skip(true, `no captured scene for ${target.key} — run pnpm design:capture`)
     return
   }
   const doc = JSON.parse(fs.readFileSync(specPath, 'utf8')) as {
     page: string
+    scene: string
     viewport: { width: number, height: number }
     regions: Region[]
   }
-  const viewport = target.viewport ?? doc.viewport
+  const viewport = doc.viewport
 
   await page.setViewportSize(viewport)
   // Seed the local save (and the one-shot intro flags) before the app boots.
@@ -181,20 +182,35 @@ async function runTarget(page: import('@playwright/test').Page, target: DesignTa
       unmatched.push(region.text)
       continue
     }
-    const app = candidates.reduce((best, entry) =>
-      Math.abs(entry.font.size - region.font.size) < Math.abs(best.font.size - region.font.size) ? entry : best)
+    // A label can appear several times (a legend row and a phase-rail step both
+    // read "Pacts"), so pick the instance that matches on *all* styling axes —
+    // not just the nearest size — before diffing it.
+    const score = (entry: AppText) =>
+      Math.abs(entry.font.size - region.font.size)
+      + (entry.font.weight !== region.font.weight ? 12 : 0)
+      + (entry.font.family !== region.font.family ? 12 : 0)
+      + (entry.color !== region.color ? 6 : 0)
+    const app = candidates.reduce((best, entry) => score(entry) < score(best) ? entry : best)
     matched++
     const push = (prop: string, d: string | number, a: string | number) =>
       mismatches.push({ text: region.text, prop, design: d, app: a })
     if (region.font.family !== app.font.family) push('family', region.font.family, app.font.family)
     if (Math.abs(region.font.size - app.font.size) > 1.5) push('size', region.font.size, app.font.size)
     if (region.font.weight !== app.font.weight) push('weight', region.font.weight, app.font.weight)
-    if (region.font.transform !== app.font.transform) push('transform', region.font.transform, app.font.transform)
+    // A literal-uppercase design label and a CSS-uppercased app label render
+    // the same glyphs — only flag the transform when the rendered case differs.
+    const designCase = region.font.transform === 'uppercase' ? region.text.toUpperCase() : region.text
+    const appCase = app.font.transform === 'uppercase' ? app.text.toUpperCase() : app.text
+    if (designCase !== appCase && region.font.transform !== app.font.transform) {
+      push('transform', region.font.transform, app.font.transform)
+    }
     if (region.color !== app.color) push('color', region.color, app.color)
   }
 
   const report = {
-    page: target.page,
+    key: target.key,
+    label: target.label,
+    scene: doc.scene,
     viewport,
     designRegions: doc.regions.length,
     matched,
@@ -203,14 +219,14 @@ async function runTarget(page: import('@playwright/test').Page, target: DesignTa
     appTextNodes: appTexts.length,
   }
   fs.mkdirSync(REPORT_DIR, { recursive: true })
-  fs.writeFileSync(path.join(REPORT_DIR, `${target.page}.json`), `${JSON.stringify(report, null, 1)}\n`)
+  fs.writeFileSync(path.join(REPORT_DIR, `${target.key}.json`), `${JSON.stringify(report, null, 1)}\n`)
   if (process.env.DESIGN_SHOT === '1') {
-    await page.screenshot({ path: path.join(REPORT_DIR, `${target.page}.png`) })
+    await page.screenshot({ path: path.join(REPORT_DIR, `${target.key}.png`) })
   }
 
   const summary = mismatches.length
-    ? `${target.page}: ${matched} matched, ${mismatches.length} mismatches — ${mismatches.slice(0, 6).map(m => `${m.text}:${m.prop} ${m.design}→${m.app}`).join(', ')}`
-    : `${target.page}: ${matched} matched, 0 mismatches`
+    ? `${target.key}: ${matched} matched, ${mismatches.length} mismatches — ${mismatches.slice(0, 6).map(m => `${m.text}:${m.prop} ${m.design}→${m.app}`).join(', ')}`
+    : `${target.key}: ${matched} matched, 0 mismatches`
   console.log(`[design] ${summary}`)
 
   if (STRICT) {
@@ -219,7 +235,7 @@ async function runTarget(page: import('@playwright/test').Page, target: DesignTa
 }
 
 for (const target of DESIGN_TARGETS) {
-  test(`design conformance: ${target.page}`, async ({ page }) => {
+  test(`design conformance: ${target.key}`, async ({ page }) => {
     await runTarget(page, target)
   })
 }

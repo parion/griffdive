@@ -34,6 +34,7 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
 <template>
   <nav
     class="strip"
+    :class="{ failed }"
     aria-label="Crusade ladder, difficulty 3 to 10"
   >
     <div
@@ -175,7 +176,14 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
   background: var(--raised);
 }
 [data-state='current'] .n { color: var(--gold); }
-[data-state='current'] .name { color: var(--text); }
+[data-state='current'] .name { color: var(--gold); }
+/* A failed operation repeats the difficulty: the current rung goes red. */
+.strip.failed [data-state='current'] {
+  border-color: var(--red);
+  background: color-mix(in srgb, var(--red) 8%, transparent);
+}
+.strip.failed [data-state='current'] .n,
+.strip.failed [data-state='current'] .name { color: var(--red); }
 [data-state='goal'] { color: var(--dim); border-color: #1e2118; }
 [data-state='goal'] .n { color: var(--dim); }
 </style>

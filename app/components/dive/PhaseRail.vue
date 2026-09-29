@@ -93,9 +93,9 @@ function stateOf(i: number): 'done' | 'current' | 'reachable' | 'locked' {
   min-width: max-content;
   transition: background-color var(--dur-fast), color var(--dur-fast);
 }
-[data-state='done'] { color: var(--dim); background: var(--rail); }
+[data-state='done'] { color: var(--khaki); background: var(--line-1); }
 [data-state='reachable'] { color: var(--khaki); }
-[data-state='locked'] { color: var(--ghost-ink); opacity: 0.6; }
+[data-state='locked'] { color: var(--dim); background: var(--panel); }
 [data-state='current'] {
   background: var(--gold);
   color: var(--on-gold);

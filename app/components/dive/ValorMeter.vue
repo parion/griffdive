@@ -241,14 +241,15 @@ const legend = computed(() => {
 .rung { display: flex; flex-direction: column; gap: 4px; opacity: 0.55; }
 .rung.lit { opacity: 1; }
 .rung.below { opacity: 0.3; }
-.rung-row { display: flex; align-items: center; gap: 8px; }
+.rung-row { display: flex; align-items: center; gap: 10px; }
 .rung-t {
-  min-width: 30px;
-  height: 22px;
-  font-size: 12px;
+  min-width: 34px;
+  height: 26px;
+  font-size: 13px;
   background: var(--ground);
 }
-.rung-pct { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--text); }
+.rung-pct { margin-left: auto; font-size: 15px; font-weight: 700; color: var(--text); }
+.rung.below .rung-pct { color: var(--line-5); }
 .rung-bar { height: 4px; background: var(--raised); }
 .rung-bar i { display: block; height: 4px; background: currentColor; transition: width 0.5s var(--ease-out); }
 
@@ -263,15 +264,13 @@ const legend = computed(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--khaki);
 }
-.legend-row.zero { color: var(--dim); }
 .legend-v { margin-left: auto; color: var(--text); }
-.legend-row.zero .legend-v { color: var(--dim); }
 .swatch { width: 10px; height: 10px; background: var(--line-2); flex-shrink: 0; }
 .swatch.team { background: var(--khaki); }
 .swatch.misfortune { background: var(--gold); }

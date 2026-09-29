@@ -24,7 +24,7 @@ for (const file of files) {
 const lines = ['# Design conformance report', '']
 lines.push(`Pages: ${rows.length} · Matched labels: ${rows.reduce((n, r) => n + r.matched, 0)} · Mismatches: ${totalMismatches}`, '')
 for (const report of rows) {
-  lines.push(`## ${report.page}`)
+  lines.push(`## ${report.label ?? report.key ?? report.page}`)
   lines.push('')
   if (!report.mismatches.length) {
     lines.push('Clean.', '')
