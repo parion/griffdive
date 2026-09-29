@@ -44,7 +44,7 @@ const wheelRange = computed(() => ceilingRangeForDifficulty(props.state.difficul
     v-if="wheelRange && !state.wheel"
     class="wheel-preview row"
   >
-    <span class="cap">No misfortune ceiling</span>
+    <span class="cap">No directive ceiling</span>
     <TierBadge
       :tier="wheelRange.min"
       size="sm"

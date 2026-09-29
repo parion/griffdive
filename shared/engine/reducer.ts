@@ -72,6 +72,7 @@ function resetForNextMission(state: DiveState): Partial<DiveState> {
     lastReport: null,
     bonusSeed: null,
     bonusWinnerId: null,
+    misfortuneFailed: false,
     divers: resetDivers(state),
   }
 }
@@ -167,6 +168,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         // any pact offer exists. A fresh operation reopens the strain decision
         // too (a failure restart has already reset it).
         misfortuneAccepted: false,
+        misfortuneFailed: false,
         ...(drawingOperation ? { strainAccepted: false, strainDecided: false } : {}),
         phase: 'decision',
         seedHistory: [...state.seedHistory, action.seed],
@@ -349,6 +351,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         return commit(state, {
           wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed).id },
           misfortuneAccepted: false,
+          misfortuneFailed: false,
           phase: 'decision',
           rerollTokens,
           seedHistory,
@@ -442,6 +445,17 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           : candidate,
       )
       return commit(state, { divers }, action)
+    }
+
+    case 'FAIL_MISFORTUNE': {
+      // A team directive broken in the field is marked once, by the host, while
+      // the mission runs — the same window as a pact. The squad still dove
+      // under the rule (its bans stand for the mission), but the shared risk it
+      // staked is voided and every diver forfeits a reward option.
+      if (state.phase !== 'diving' || !state.misfortuneAccepted || state.misfortuneFailed) {
+        return state
+      }
+      return commit(state, { misfortuneFailed: true }, action)
     }
 
     case 'SET_WARBONDS': {

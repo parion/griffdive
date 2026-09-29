@@ -157,7 +157,7 @@ const hubLabel = computed(() => {
           :height="SIZE"
           :viewBox="`0 0 ${SIZE} ${SIZE}`"
           role="img"
-          :aria-label="`Wheel of Misfortune, ${segments.length} misfortunes`"
+          :aria-label="`Wheel of Adversity, ${segments.length} directives`"
         >
           <circle
             :cx="CX"

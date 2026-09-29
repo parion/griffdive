@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { STRATAGEM_SLOTS_REQUIRED, missionsPerOperation } from '~~/shared/engine/config'
+import { STRATAGEM_SLOTS_REQUIRED, conditionRiskAt, missionsPerOperation } from '~~/shared/engine/config'
 import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
 import { pactName } from '~~/shared/data/pacts'
 import {
@@ -104,6 +104,13 @@ const locked = computed(() => Boolean(props.self?.pactsLocked))
 const front = computed(() => currentFront(props.state))
 const strain = computed(() => currentStrain(props.state))
 const misfortune = computed(() => activeMisfortune(props.state))
+
+// Pips show the condition's raw 1–5 risk; the `+N` badge shows the weighted
+// Valor it stakes (team rules outweigh pacts).
+const directiveRisk = computed(() =>
+  props.state.misfortuneAccepted
+    ? conditionRiskAt(misfortune.value?.id ?? '', props.state.difficulty)
+    : 0)
 const breakdown = computed(() => teamRiskBreakdown(props.state))
 
 const frontImage = computed(() => (front.value ? factionImageUrl(front.value.id) : undefined))
@@ -218,10 +225,10 @@ const opLabel = computed(() =>
       </span>
 
       <div class="team-cell">
-        <span class="lbl">Misfortune · squad</span>
+        <span class="lbl">Directive · squad</span>
         <div class="team-cell-row">
           <RiskPips
-            :value="breakdown.misfortuneRisk"
+            :value="directiveRisk"
             :max="5"
             tone="gold"
           />
@@ -285,7 +292,7 @@ const opLabel = computed(() =>
         <div class="team-cell-row">
           <span class="total-pips">
             <span
-              v-for="i in breakdown.misfortuneRisk"
+              v-for="i in directiveRisk"
               :key="`m${i}`"
               class="total-pip gold"
             />

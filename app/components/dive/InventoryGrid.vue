@@ -166,7 +166,7 @@ function ruleView(rule: ReturnType<typeof armoryRules>[number]): RuleView {
     id: rule.id,
     name: rule.name,
     source: rule.source,
-    label: rule.source === 'misfortune' ? 'Misfortune' : 'Pact',
+    label: rule.source === 'misfortune' ? 'Directive' : 'Pact',
     bind: rule.equipBearing,
   }
 }
@@ -466,7 +466,7 @@ function forfeit(ownerId: string, itemId: string): void {
                   stroke-width="3"
                   aria-hidden="true"
                 ><path d="M6 6l12 12M18 6L6 18" /></svg>
-                Misfortunes · bind
+                Directives · bind
               </span>
             </div>
           </div>
@@ -807,7 +807,7 @@ function forfeit(ownerId: string, itemId: string): void {
             class="key-swatch hazard"
             aria-hidden="true"
           />
-          Misfortune ban
+          Directive ban
         </span>
         <span class="key-item">
           <span

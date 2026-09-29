@@ -18,6 +18,7 @@ export function createLobbyState(): DiveState {
     wheel: null,
     frontId: null,
     misfortuneAccepted: false,
+    misfortuneFailed: false,
     strainId: null,
     strainAccepted: false,
     strainDecided: false,

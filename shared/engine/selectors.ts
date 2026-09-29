@@ -9,12 +9,15 @@ import type { Strain } from '../data/strains'
 import type { Item } from '../data/types'
 import {
   MAJOR_ORDER_RISK,
+  OPTIONS_LOST_PER_FAILED_DIRECTIVE,
+  OPTIONS_LOST_PER_FAILED_PACT,
   SAMPLE_VALOR_CAP,
   STRAIN_RISK,
   TIME_VALOR_MAX,
   baseTierFor,
   bonusIntervalFor,
   conditionRiskAt,
+  directiveValorAt,
   maxStarsFor,
   pactOptionsFor,
 } from './config'
@@ -119,8 +122,8 @@ export function misfortuneStrandedDivers(state: DiveState): DiverState[] {
 // over the op's 2–3 missions. A live MO replaces the strain, so its fixed risk
 // is what keeps the operation's Valor potential intact.
 export function teamRiskOf(state: DiveState): number {
-  const misfortuneRisk = state.misfortuneAccepted
-    ? conditionRiskAt(currentMisfortune(state)?.id ?? '', state.difficulty)
+  const misfortuneRisk = state.misfortuneAccepted && !state.misfortuneFailed
+    ? directiveValorAt(currentMisfortune(state)?.id ?? '', state.difficulty)
     : 0
   const strainRisk = state.strainAccepted
     ? STRAIN_RISK[state.strainId ?? ''] ?? 0
@@ -139,8 +142,8 @@ export interface TeamRiskBreakdown {
 // The legible split of `teamRiskOf` for the pacts summary bar — same inputs,
 // same acceptance flags, so the screen and the floor can never disagree.
 export function teamRiskBreakdown(state: DiveState): TeamRiskBreakdown {
-  const misfortuneRisk = state.misfortuneAccepted
-    ? conditionRiskAt(currentMisfortune(state)?.id ?? '', state.difficulty)
+  const misfortuneRisk = state.misfortuneAccepted && !state.misfortuneFailed
+    ? directiveValorAt(currentMisfortune(state)?.id ?? '', state.difficulty)
     : 0
   const strainRisk = state.strainAccepted
     ? STRAIN_RISK[state.strainId ?? ''] ?? 0
@@ -273,9 +276,12 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   const owned = new Set(state.personalInventories[diver.id] ?? [])
   // Banned items never come back: a ban removes them from every future offer.
   const exclude = new Set([...owned, ...diver.bannedItemIds])
-  // Every failed pact forfeits one reward option (AGENTS.md: Reward math) —
-  // floored at one so the draft can always complete and never deadlock ADVANCE.
-  const count = optionsForDiver(state.lastReport.stars, ceiling, diver.failedPactIds.length)
+  // Every failed pact and the broken team directive each forfeit one reward
+  // option (AGENTS.md: Reward math) — floored at one so the draft can always
+  // complete and never deadlock ADVANCE.
+  const lostOptions = diver.failedPactIds.length * OPTIONS_LOST_PER_FAILED_PACT
+    + (state.misfortuneFailed ? OPTIONS_LOST_PER_FAILED_DIRECTIVE : 0)
+  const count = optionsForDiver(state.lastReport.stars, ceiling, lostOptions)
   return rollRewardOptions(
     deriveSeed(seed, 2),
     ceiling,
@@ -433,7 +439,7 @@ export function ceilingRange(difficulty: number, teamRisk: number, pactRisk: num
 export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): CeilingRange {
   const misfortuneMax = Math.max(
     0,
-    ...eligibleMisfortunes().map(misfortune => conditionRiskAt(misfortune.id, difficulty)),
+    ...eligibleMisfortunes().map(misfortune => directiveValorAt(misfortune.id, difficulty)),
   )
   const strainMax = Math.max(
     0,
@@ -451,7 +457,7 @@ export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): Cei
 export function maxValorFor(difficulty: number): number {
   const misfortuneMax = Math.max(
     0,
-    ...eligibleMisfortunes().map(misfortune => conditionRiskAt(misfortune.id, difficulty)),
+    ...eligibleMisfortunes().map(misfortune => directiveValorAt(misfortune.id, difficulty)),
   )
   const strainMax = Math.max(
     0,
@@ -507,6 +513,12 @@ export function canRerollWheel(
     return { allowed: true, free: false, reason: null }
   }
   return { allowed: false, free: false, reason: 'No reroll tokens left' }
+}
+
+// A team directive can be marked failed once, by the host, while the mission
+// runs — and only when one is actually in force.
+export function canFailMisfortune(state: DiveState): boolean {
+  return state.phase === 'diving' && state.misfortuneAccepted && !state.misfortuneFailed
 }
 
 export function allDiversPicked(state: DiveState): boolean {

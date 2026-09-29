@@ -619,11 +619,12 @@ input[type='radio'] { accent-color: var(--gold); width: 1rem; height: 1rem; }
 /* Risk pips are skulls (Destroyer Terminal): one per risk point, filled in the
    context tone, the remainder in the line color. `--pip` is overridden per
    context (gold misfortune, red pact, orange strain). */
-.pips { --pip: var(--red); --pip-eye: var(--panel); display: inline-flex; gap: 3px; align-items: center; }
+.pips { --pip: var(--red); --pip-eye: var(--panel); display: inline-flex; gap: 3px; align-items: center; flex-shrink: 0; }
 .pips i {
   width: 14px;
   height: 14px;
   display: inline-block;
+  flex-shrink: 0;
   color: var(--line-2);
 }
 .pips i.on {

@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 19
+export const ENGINE_VERSION = 20
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -75,6 +75,15 @@ export const S_PLUS_BONUS_OPTIONS = 1
 // Each pact marked failed in the field forfeits this many reward options —
 // the stake the diver never actually carried (AGENTS.md: Reward math).
 export const OPTIONS_LOST_PER_FAILED_PACT = 1
+// A broken team directive voids its shared risk for the whole squad and costs
+// every diver this many of their reward options.
+export const OPTIONS_LOST_PER_FAILED_DIRECTIVE = 1
+
+// Team directives bind the whole squad (and share the failure), so a point of
+// their risk is worth more Valor than a point of personal pact risk. Applied
+// to the accepted per-mission team condition only — the operation-long strain
+// and Major Order keep their own fixed values (AGENTS.md: Reward math).
+export const TEAM_DIRECTIVE_VALOR_WEIGHT = 1.5
 
 // Bonus honors: after every reward draft the squad spins one end-of-mission
 // stat contest; the host names the winner, who banks one flexible reward
@@ -346,6 +355,13 @@ export function conditionRiskAt(conditionId: string, difficulty: number): number
     return 0
   }
   return Math.min(5, Math.max(1, Math.round(curve.base + curve.slope * (difficulty - MIN_DIFFICULTY))))
+}
+
+// The Valor an accepted team directive stakes: its scaled risk, weighted above
+// a pact's because the whole squad carries it (and eats a failed directive
+// together).
+export function directiveValorAt(conditionId: string, difficulty: number): number {
+  return conditionRiskAt(conditionId, difficulty) * TEAM_DIRECTIVE_VALOR_WEIGHT
 }
 
 // Strains are an optional, operation-long commitment: the squad accepts or

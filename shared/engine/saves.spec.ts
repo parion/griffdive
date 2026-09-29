@@ -133,6 +133,15 @@ describe('save migration v9 → v10 (Major Orders)', () => {
   })
 })
 
+describe('save migration v10 → v11 (broken team directives)', () => {
+  it('defaults the failure mark to false', () => {
+    const doc: SaveDoc = { ...v1Doc(), schemaVersion: 10 }
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
+    expect(migrated.state.misfortuneFailed).toBe(false)
+  })
+})
+
 // v1–v3 wheels carried the front; the legacy shape reads it during migration.
 function legacyWheel(seed: number, misfortuneId: string, front: string): SaveDoc['state']['wheel'] {
   return { seed, misfortuneId, front } as SaveDoc['state']['wheel']

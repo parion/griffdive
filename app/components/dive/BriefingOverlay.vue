@@ -348,7 +348,7 @@ function close(): void {
             <p class="dsec-notice">
               <span class="lbl">Ministry notice</span>
               {{ isJoin
-                ? 'Their mercy: the Wheel of Misfortune. Chosen risk raises your Valor, and Valor buys rarer armaments — nothing here is free.'
+                ? 'Their mercy: the Wheel of Adversity. Chosen risk raises your Valor, and Valor buys rarer armaments — nothing here is free.'
                 : 'Your sentence: a crusade. Climb from difficulty 3 to 10 and the Ministry will consider your debt to liberty settled.' }}
             </p>
           </aside>
@@ -543,7 +543,7 @@ function close(): void {
                     :class="{ landed: spinLanded }"
                   >
                     <header class="spin-head">
-                      <span class="lbl">Misfortune · whole squad</span>
+                      <span class="lbl">Squad Directive · whole squad</span>
                       <span class="chip">LOADOUT</span>
                     </header>
                     <div
@@ -551,7 +551,7 @@ function close(): void {
                       class="spin-drawing"
                     >
                       <span class="disp pulse spin-drawing-word">Drawing</span>
-                      <span class="lbl">{{ MISFORTUNES.length }} misfortunes on the wheel</span>
+                      <span class="lbl">{{ MISFORTUNES.length }} directives on the wheel</span>
                     </div>
                     <template v-else>
                       <span class="disp spin-name">{{ demoSegment.name }}</span>

@@ -288,6 +288,12 @@ function failPact(playerId: string, pactId: string): void {
   dispatch({ type: 'FAIL_PACT', playerId, pactId })
 }
 
+// The host referees the squad's team directive: mark it broken in the field and
+// its shared risk is voided for everyone.
+function failDirective(): void {
+  dispatch({ type: 'FAIL_MISFORTUNE' })
+}
+
 function report(payload: MissionReport): void {
   dispatch({ type: 'REPORT_RESULT', ...payload })
 }
@@ -503,6 +509,7 @@ function launchCrusade(variant: CrusadeVariant): void {
       @pact-risk="livePactRisk = $event"
       @report="report"
       @fail-pact="failPact"
+      @fail-directive="failDirective"
       @pick="pick"
       @reroll-rewards="rerollRewards"
       @ban-rewards="banRewards"
@@ -597,7 +604,7 @@ function launchCrusade(variant: CrusadeVariant): void {
             </div>
             <div class="pool-count">
               <span class="disp">{{ wheelPool.count }}</span>
-              <span class="cap pool-count-cap">misfortunes on the wheel</span>
+              <span class="cap pool-count-cap">directives on the wheel</span>
             </div>
             <div
               class="pool-bars"
@@ -725,6 +732,7 @@ function launchCrusade(variant: CrusadeVariant): void {
             :is-host="session.selfIsHost.value"
             @report="report"
             @fail="failPact"
+            @fail-directive="failDirective"
           />
 
           <DivePhaseRewards

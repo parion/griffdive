@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MAJOR_ORDER_RISK, STRAIN_RISK, conditionRiskAt, missionsPerOperation } from '~~/shared/engine/config'
+import { MAJOR_ORDER_RISK, STRAIN_RISK, conditionRiskAt, directiveValorAt, missionsPerOperation } from '~~/shared/engine/config'
 import { canRerollWheel, currentMisfortune, currentStrain, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, strainDecision, teamRiskOf } from '~~/shared/engine/selectors'
 import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
 import { FRONTS } from '~~/shared/data/fronts'
@@ -22,6 +22,9 @@ const emit = defineEmits<{
 const misfortune = computed(() => currentMisfortune(props.state))
 const misfortuneRisk = computed(() =>
   misfortune.value ? conditionRiskAt(misfortune.value.id, props.state.difficulty) : 0)
+// A squad directive stakes 1.5× its risk in Valor — team rules outweigh pacts.
+const directiveValor = computed(() =>
+  misfortune.value ? directiveValorAt(misfortune.value.id, props.state.difficulty) : 0)
 const decision = computed(() => misfortuneDecision(props.state))
 const stranded = computed(() => misfortuneStrandedDivers(props.state))
 const acceptBlocked = computed(() => stranded.value.length > 0)
@@ -58,7 +61,7 @@ const teamRisk = computed(() => teamRiskOf(props.state))
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 
 const pendingText = computed(() => {
-  return decision.value.decided ? 'Misfortune called' : 'Misfortune pending'
+  return decision.value.decided ? 'Directive called' : 'Directive pending'
 })
 
 // The host gate: both calls in, the wheel holds until the host deals.
@@ -126,7 +129,7 @@ function acceptDisabled(): boolean {
         class="ghost reroll"
         type="button"
         :disabled="!misfortuneReroll.allowed"
-        :aria-label="`Reroll the misfortune${misfortuneReroll.free ? ' (free)' : `, spends a token (${state.rerollTokens} left)`}`"
+        :aria-label="`Reroll the directive${misfortuneReroll.free ? ' (free)' : `, spends a token (${state.rerollTokens} left)`}`"
         :title="misfortuneReroll.reason ?? undefined"
         @click="emit('reroll', 'misfortune')"
       >
@@ -200,7 +203,7 @@ function acceptDisabled(): boolean {
         aria-live="polite"
       >
         <span class="disp drawing-word pulse">Drawing</span>
-        <span class="lbl">Misfortune · front · strain</span>
+        <span class="lbl">Directive · front · strain</span>
       </div>
 
       <template v-else-if="state.wheel">
@@ -209,7 +212,7 @@ function acceptDisabled(): boolean {
           :class="decision.decided ? (decision.accepted ? 'locked' : 'safe') : 'open'"
         >
           <div class="card-head">
-            <span class="lbl">Misfortune · whole squad</span>
+            <span class="lbl">Directive · whole squad</span>
             <span
               v-if="decision.decided"
               class="stamp disp"
@@ -220,14 +223,14 @@ function acceptDisabled(): boolean {
             {{ misfortune?.name ?? 'Safe dive' }}
           </div>
           <div class="mis-row">
-            <span class="mis-rule">{{ misfortune?.rule ?? 'No team rule — a zero-risk dive.' }}</span>
+            <span class="mis-rule">{{ misfortune?.rule ?? 'No directive — a zero-risk dive.' }}</span>
             <span
               v-if="misfortune"
               class="mis-risk"
             >
               <span
                 class="disp red"
-              >+{{ misfortuneRisk }}</span>
+              >+{{ directiveValor }}</span>
               <RiskPips
                 :value="misfortuneRisk"
                 :max="5"
@@ -248,7 +251,7 @@ function acceptDisabled(): boolean {
                 hint="hold"
                 tone="gold"
                 :disabled="acceptDisabled()"
-                :aria-label="acceptBlocked ? strandedReason : 'Accept the misfortune, hold to lock'"
+                :aria-label="acceptBlocked ? strandedReason : 'Accept the directive, hold to lock'"
                 @confirm="emit('decide', true)"
               />
               <button

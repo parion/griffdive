@@ -189,7 +189,7 @@ const divers = computed(() => props.state.divers.map(diver => ({
     <div class="carry-resets">
       <span class="lbl">Resets</span>
       <div class="carry-reset">
-        <span class="carry-swatch gold" />MISFORTUNE<span class="carry-reset-v">RESPIN</span>
+        <span class="carry-swatch gold" />DIRECTIVE<span class="carry-reset-v">RESPIN</span>
       </div>
       <div class="carry-reset">
         <span class="carry-swatch red" />PACTS<span class="carry-reset-v">REDEALT</span>
