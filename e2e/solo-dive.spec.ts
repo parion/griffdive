@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { dismissWarbondIntro } from './helpers'
+import { dismissWarbondIntro, lockMisfortune } from './helpers'
 
 test('solo dive flow: spin → pacts → report → rewards → advance', async ({ page }) => {
   await page.goto('/')
@@ -16,7 +16,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.locator('.tier-badge').first()).toBeVisible()
 
   // The team locks the drawn misfortune in — chosen risk raises everyone's Valor.
-  await page.locator('.misfortune').getByRole('button', { name: 'Lock it in' }).click()
+  await lockMisfortune(page)
   await expect(page.getByRole('img', { name: 'Locked in — team-wide' })).toBeVisible()
 
   // The operation's first mission also draws a strain: an optional, op-long
@@ -172,7 +172,7 @@ test('a failed mission labels the operation failed and restarts it', async ({ pa
   await dismissWarbondIntro(page)
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
-  await page.locator('.misfortune').getByRole('button', { name: 'Lock it in' }).click()
+  await lockMisfortune(page)
   await page.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
   await page.getByRole('button', { name: 'Deal the pacts' }).click()
   await page.locator('.pact:not([disabled])').first().click()

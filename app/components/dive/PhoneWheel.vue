@@ -212,7 +212,7 @@ function acceptDisabled(): boolean {
           :class="decision.decided ? (decision.accepted ? 'locked' : 'safe') : 'open'"
         >
           <div class="card-head">
-            <span class="lbl">Squad Directive · whole squad</span>
+            <span class="lbl">Directive · whole squad</span>
             <span
               v-if="decision.decided"
               class="stamp disp"

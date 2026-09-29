@@ -439,7 +439,7 @@ function rerollLabel(
             v-bind="riseIn(0)"
           >
             <div class="card-head">
-              <span class="lbl">Squad Directive <span class="dim">· whole squad</span></span>
+              <span class="lbl">Directive <span class="dim">· whole squad</span></span>
               <span
                 v-if="state.wheel"
                 class="head-tools"
@@ -468,7 +468,7 @@ function rerollLabel(
                   @reeling="misfortuneReeling = $event"
                 />
               </div>
-              <p class="rule reel-hide">
+              <p class="mis-rule reel-hide">
                 {{ misfortune?.rule }}
               </p>
               <p
@@ -1050,7 +1050,7 @@ function rerollLabel(
 .lock-cell.on { background: var(--front-accent, var(--gold)); }
 .lock-text { margin-left: 4px; color: var(--muted); }
 
-.risk-row { display: flex; align-items: center; gap: 0.5rem; }
+.risk-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .risk-plus { color: var(--red); font-size: 0.9rem; }
 .strain-plus { color: var(--orange); }
 
@@ -1118,7 +1118,9 @@ function rerollLabel(
   font-size: 0.8rem;
 }
 .account { color: var(--dim); }
-.rule { margin: 0; font-size: 1rem; line-height: 1.35; }
+/* Not `.rule` — that global utility is a 1px divider line, which would clip the
+   directive's rule text to 1px and overlap the line below it. */
+.mis-rule { margin: 0; font-size: 1rem; line-height: 1.35; }
 
 /* Decision controls: the accept is a hold, the opt-out a plain ghost. */
 .decision-actions { display: flex; gap: 0.5rem; margin-top: 0.2rem; }

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { dismissWarbondIntro } from './helpers'
+import { dismissWarbondIntro, lockMisfortune } from './helpers'
 
 test('two divers sync one dive; late joiner gets the snapshot', async ({ browser }) => {
   const contextA = await browser.newContext()
@@ -50,7 +50,7 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   // the pending decision — only the host can lock the misfortune in.
   await pageA.getByRole('button', { name: 'Spin', exact: true }).click()
   await expect(pageB.getByRole('img', { name: 'Awaiting host', exact: true })).toBeVisible()
-  await pageA.locator('.misfortune').getByRole('button', { name: 'Lock it in' }).click()
+  await lockMisfortune(pageA)
   await expect(pageB.getByRole('img', { name: 'Locked in — team-wide' })).toBeVisible()
 
   // The operation's first mission also draws a strain — an optional, op-long
@@ -120,7 +120,7 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   // Host spins, locks the misfortune in and declines the operation's strain;
   // the joiner stalls before locking pacts.
   await pageA.getByRole('button', { name: 'Spin', exact: true }).click()
-  await pageA.locator('.misfortune').getByRole('button', { name: 'Lock it in' }).click()
+  await lockMisfortune(pageA)
   await pageA.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
   await pageA.getByRole('button', { name: 'Deal the pacts' }).click()
   await expect(pageB.getByRole('button', { name: 'Lock in & dive' })).toBeVisible()
