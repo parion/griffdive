@@ -1,0 +1,3341 @@
+{
+ "page": "10-squad-honors",
+ "viewport": {
+  "width": 1440,
+  "height": 900
+ },
+ "regions": [
+  {
+   "name": "Griffdive bridge",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > header:nth-child(1) > a:nth-child(1)",
+   "tag": "a",
+   "class": "",
+   "id": "",
+   "aria": "Griffdive bridge",
+   "text": "",
+   "box": {
+    "x": 24,
+    "y": 16.5,
+    "w": 159.2,
+    "h": 26
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(255, 214, 66)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(255, 214, 66)"
+   }
+  },
+  {
+   "name": "disp",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > header:nth-child(1) > a:nth-child(1) > span:nth-child(2)",
+   "tag": "span",
+   "class": "disp",
+   "id": "",
+   "aria": "",
+   "text": "Griffdive",
+   "box": {
+    "x": 60,
+    "y": 21.4,
+    "w": 123.2,
+    "h": 16.1
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 17,
+    "weight": "800",
+    "spacing": "1.02px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(255, 214, 66)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(255, 214, 66)"
+   }
+  },
+  {
+   "name": "lbl",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > header:nth-child(1) > div:nth-child(3) > span:nth-child(1)",
+   "tag": "span",
+   "class": "lbl",
+   "id": "",
+   "aria": "",
+   "text": "Crusade",
+   "box": {
+    "x": 224.2,
+    "y": 13,
+    "w": 170.2,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "600",
+    "spacing": "1.8px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > header:nth-child(1) > div:nth-child(3) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "Griffon · Standard",
+   "box": {
+    "x": 224.2,
+    "y": 28,
+    "w": 170.2,
+    "h": 18
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 14,
+    "weight": "700",
+    "spacing": "1.12px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "lbl",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > header:nth-child(1) > div:nth-child(5) > span:nth-child(1)",
+   "tag": "span",
+   "class": "lbl",
+   "id": "",
+   "aria": "",
+   "text": "Room",
+   "box": {
+    "x": 1072,
+    "y": 23,
+    "w": 38.2,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "600",
+    "spacing": "1.8px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > header:nth-child(1) > div:nth-child(5) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "K7QZPD",
+   "box": {
+    "x": 1120.2,
+    "y": 19.5,
+    "w": 88.8,
+    "h": 20
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 15,
+    "weight": "700",
+    "spacing": "4.8px",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "Copy invite link",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > header:nth-child(1) > div:nth-child(5) > button:nth-child(3)",
+   "tag": "button",
+   "class": "icon-btn",
+   "id": "",
+   "aria": "Copy invite link",
+   "text": "",
+   "box": {
+    "x": 1219,
+    "y": 13.5,
+    "w": 32,
+    "h": 32
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13.3,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(184, 176, 141)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 1,
+    "color": "rgba(0, 0, 0, 0)"
+   }
+  },
+  {
+   "name": "Ship",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > header:nth-child(1) > nav:nth-child(6)",
+   "tag": "nav",
+   "class": "",
+   "id": "",
+   "aria": "Ship",
+   "text": "",
+   "box": {
+    "x": 1280,
+    "y": 7.5,
+    "w": 140,
+    "h": 44
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "Armory",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > header:nth-child(1) > nav:nth-child(6) > a:nth-child(1)",
+   "tag": "a",
+   "class": "icon-btn",
+   "id": "",
+   "aria": "Armory",
+   "text": "",
+   "box": {
+    "x": 1280,
+    "y": 7.5,
+    "w": 44,
+    "h": 44
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(184, 176, 141)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 1,
+    "color": "rgba(0, 0, 0, 0)"
+   }
+  },
+  {
+   "name": "Codex",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > header:nth-child(1) > nav:nth-child(6) > button:nth-child(2)",
+   "tag": "button",
+   "class": "icon-btn",
+   "id": "",
+   "aria": "Codex",
+   "text": "",
+   "box": {
+    "x": 1328,
+    "y": 7.5,
+    "w": 44,
+    "h": 44
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13.3,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(184, 176, 141)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 1,
+    "color": "rgba(0, 0, 0, 0)"
+   }
+  },
+  {
+   "name": "Field manual",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > header:nth-child(1) > nav:nth-child(6) > button:nth-child(3)",
+   "tag": "button",
+   "class": "icon-btn",
+   "id": "",
+   "aria": "Field manual",
+   "text": "",
+   "box": {
+    "x": 1376,
+    "y": 7.5,
+    "w": 44,
+    "h": 44
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13.3,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(184, 176, 141)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 1,
+    "color": "rgba(0, 0, 0, 0)"
+   }
+  },
+  {
+   "name": "Crusade ladder",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > nav:nth-child(2)",
+   "tag": "nav",
+   "class": "",
+   "id": "",
+   "aria": "Crusade ladder",
+   "text": "",
+   "box": {
+    "x": 0,
+    "y": 60,
+    "w": 1440,
+    "h": 84
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgb(14, 16, 11)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "disp",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > nav:nth-child(2) > sc-for:nth-child(1) > div:nth-child(1) > div:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "disp",
+   "id": "",
+   "aria": "",
+   "text": "{{r.n}}",
+   "box": {
+    "x": 36,
+    "y": 80,
+    "w": 84.5,
+    "h": 20.9
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 22,
+    "weight": "800",
+    "spacing": "0.22px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > nav:nth-child(2) > sc-for:nth-child(1) > div:nth-child(1) > div:nth-child(1) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "{{r.name}}",
+   "box": {
+    "x": 128.5,
+    "y": 87,
+    "w": 67,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "700",
+    "spacing": "1.4px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "cleared",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > nav:nth-child(2) > sc-for:nth-child(1) > div:nth-child(1) > div:nth-child(1) > sc-if:nth-child(3) > svg:nth-child(1)",
+   "tag": "svg",
+   "class": "",
+   "id": "",
+   "aria": "cleared",
+   "text": "",
+   "box": {
+    "x": 203.5,
+    "y": 83,
+    "w": 14,
+    "h": 14
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "goal",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > nav:nth-child(2) > sc-for:nth-child(1) > div:nth-child(1) > div:nth-child(1) > sc-if:nth-child(4) > svg:nth-child(1)",
+   "tag": "svg",
+   "class": "",
+   "id": "",
+   "aria": "goal",
+   "text": "",
+   "box": {
+    "x": 225.5,
+    "y": 83,
+    "w": 14,
+    "h": 14
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > nav:nth-child(2) > sc-for:nth-child(1) > div:nth-child(1) > div:nth-child(2) > span:nth-child(1)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "{{r.t}}",
+   "box": {
+    "x": 36,
+    "y": 103.5,
+    "w": 18,
+    "h": 18
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "700",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "sc-if",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > nav:nth-child(2) > sc-for:nth-child(1) > div:nth-child(1) > div:nth-child(2) > sc-if:nth-child(2) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "OP 5 · MISSION 1/3",
+   "box": {
+    "x": 62,
+    "y": 107,
+    "w": 123.8,
+    "h": 14
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "700",
+    "spacing": "1.32px",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "Squad",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1)",
+   "tag": "aside",
+   "class": "",
+   "id": "",
+   "aria": "Squad",
+   "text": "",
+   "box": {
+    "x": 0,
+    "y": 144,
+    "w": 216,
+    "h": 704
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgb(14, 16, 11)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "lbl",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > div:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "lbl",
+   "id": "",
+   "aria": "",
+   "text": "Squad",
+   "box": {
+    "x": 16,
+    "y": 165,
+    "w": 47.9,
+    "h": 14
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "600",
+    "spacing": "1.98px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > div:nth-child(1) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "4/4 PICKED",
+   "box": {
+    "x": 130,
+    "y": 164,
+    "w": 69,
+    "h": 16
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 12,
+    "weight": "700",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(184, 176, 141)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(184, 176, 141)"
+   }
+  },
+  {
+   "name": "cut-sm",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > sc-for:nth-child(2) > div:nth-child(1) > span:nth-child(2)",
+   "tag": "span",
+   "class": "cut-sm disp",
+   "id": "",
+   "aria": "",
+   "text": "{{d.init}}",
+   "box": {
+    "x": 32,
+    "y": 200.5,
+    "w": 36,
+    "h": 36
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 16,
+    "weight": "800",
+    "spacing": "0.16px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > sc-for:nth-child(2) > div:nth-child(1) > div:nth-child(3) > div:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "{{d.name}}",
+   "box": {
+    "x": 78,
+    "y": 201.5,
+    "w": 84.4,
+    "h": 18
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 14,
+    "weight": "700",
+    "spacing": "0.84px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "host",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > sc-for:nth-child(2) > div:nth-child(1) > div:nth-child(3) > div:nth-child(1) > sc-if:nth-child(2) > svg:nth-child(1)",
+   "tag": "svg",
+   "class": "",
+   "id": "",
+   "aria": "host",
+   "text": "",
+   "box": {
+    "x": 168.4,
+    "y": 203,
+    "w": 13,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > sc-for:nth-child(2) > div:nth-child(1) > div:nth-child(3) > div:nth-child(2)",
+   "tag": "div",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "{{d.status}}",
+   "box": {
+    "x": 78,
+    "y": 224,
+    "w": 101,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "700",
+    "spacing": "1.2px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "{{d.pulseCls}}",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > sc-for:nth-child(2) > div:nth-child(1) > div:nth-child(3) > div:nth-child(2) > span:nth-child(1)",
+   "tag": "span",
+   "class": "{{d.pulseCls}}",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 78,
+    "y": 227,
+    "w": 7,
+    "h": 7
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "700",
+    "spacing": "1.2px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "Mission report",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > section:nth-child(4)",
+   "tag": "section",
+   "class": "",
+   "id": "",
+   "aria": "Mission report",
+   "text": "",
+   "box": {
+    "x": 16,
+    "y": 698,
+    "w": 183,
+    "h": 130
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 1,
+    "color": "rgb(44, 48, 34)"
+   }
+  },
+  {
+   "name": "lbl",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > section:nth-child(4) > div:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "lbl",
+   "id": "",
+   "aria": "",
+   "text": "Report",
+   "box": {
+    "x": 29,
+    "y": 711.5,
+    "w": 49.8,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "600",
+    "spacing": "1.8px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > section:nth-child(4) > div:nth-child(1) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "SUCCESS",
+   "box": {
+    "x": 106.2,
+    "y": 711,
+    "w": 79.8,
+    "h": 14
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "700",
+    "spacing": "1.54px",
+    "transform": "none"
+   },
+   "color": "rgb(74, 215, 200)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(74, 215, 200)"
+   }
+  },
+  {
+   "name": "5 of 5 stars",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > section:nth-child(4) > div:nth-child(2)",
+   "tag": "div",
+   "class": "",
+   "id": "",
+   "aria": "5 of 5 stars",
+   "text": "",
+   "box": {
+    "x": 29,
+    "y": 736,
+    "w": 157,
+    "h": 18
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > section:nth-child(4) > div:nth-child(2) > span:nth-child(6)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "5/5",
+   "box": {
+    "x": 164,
+    "y": 736,
+    "w": 22,
+    "h": 18
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 12,
+    "weight": "700",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > section:nth-child(4) > div:nth-child(3) > span:nth-child(1)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "14",
+   "box": {
+    "x": 29,
+    "y": 765,
+    "w": 34,
+    "h": 17
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13,
+    "weight": "700",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > section:nth-child(4) > div:nth-child(3) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "6",
+   "box": {
+    "x": 97.5,
+    "y": 765,
+    "w": 27,
+    "h": 17
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13,
+    "weight": "700",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > section:nth-child(4) > div:nth-child(3) > span:nth-child(3)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "2",
+   "box": {
+    "x": 159,
+    "y": 765,
+    "w": 27,
+    "h": 17
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13,
+    "weight": "700",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > section:nth-child(4) > div:nth-child(4) > div:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "TIME LEFT",
+   "box": {
+    "x": 29,
+    "y": 793,
+    "w": 66.6,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "700",
+    "spacing": "1.4px",
+    "transform": "none"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > section:nth-child(4) > div:nth-child(4) > div:nth-child(1) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "38%",
+   "box": {
+    "x": 157.8,
+    "y": 793,
+    "w": 28.2,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "700",
+    "spacing": "1.4px",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "Time remaining",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(1) > section:nth-child(4) > div:nth-child(4) > div:nth-child(2)",
+   "tag": "div",
+   "class": "",
+   "id": "",
+   "aria": "Time remaining",
+   "text": "",
+   "box": {
+    "x": 29,
+    "y": 811,
+    "w": 157,
+    "h": 4
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgb(35, 38, 28)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "grid-bg",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2)",
+   "tag": "main",
+   "class": "grid-bg scan",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 216,
+    "y": 144,
+    "w": 940,
+    "h": 704
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "lbl",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(2) > div:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "lbl",
+   "id": "",
+   "aria": "",
+   "text": "Operation 5 · Mission 1 of 3 · bonus",
+   "box": {
+    "x": 244,
+    "y": 166,
+    "w": 374.1,
+    "h": 14
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "600",
+    "spacing": "1.98px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "disp",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(2) > div:nth-child(1) > h1:nth-child(2)",
+   "tag": "h1",
+   "class": "disp",
+   "id": "",
+   "aria": "",
+   "text": "Squad Honors",
+   "box": {
+    "x": 244,
+    "y": 186,
+    "w": 374.1,
+    "h": 32.3
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 34,
+    "weight": "800",
+    "spacing": "0.34px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(2) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "HOST CALLS IT · GRIFFON",
+   "box": {
+    "x": 901.5,
+    "y": 182.3,
+    "w": 226.5,
+    "h": 36
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "700",
+    "spacing": "1.76px",
+    "transform": "none"
+   },
+   "color": "rgb(184, 176, 141)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 1,
+    "color": "rgb(44, 48, 34)"
+   }
+  },
+  {
+   "name": "Eligibility",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(3)",
+   "tag": "section",
+   "class": "",
+   "id": "",
+   "aria": "Eligibility",
+   "text": "",
+   "box": {
+    "x": 244,
+    "y": 232.3,
+    "w": 884,
+    "h": 48
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(19, 21, 15, 0.85)",
+   "border": {
+    "width": 1,
+    "color": "rgb(44, 48, 34)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(3) > div:nth-child(1) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "5/5 STARS",
+   "box": {
+    "x": 353,
+    "y": 247.8,
+    "w": 88.7,
+    "h": 17
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13,
+    "weight": "700",
+    "spacing": "2.08px",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "cut-sm",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(3) > div:nth-child(2) > span:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "cut-sm disp",
+   "id": "",
+   "aria": "",
+   "text": "G",
+   "box": {
+    "x": 478.7,
+    "y": 246.3,
+    "w": 20,
+    "h": 20
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 10,
+    "weight": "800",
+    "spacing": "0.1px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(20, 20, 16)",
+   "bg": "rgb(255, 214, 66)",
+   "border": {
+    "width": 0,
+    "color": "rgb(20, 20, 16)"
+   }
+  },
+  {
+   "name": "cut-sm",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(3) > div:nth-child(2) > span:nth-child(1) > span:nth-child(2)",
+   "tag": "span",
+   "class": "cut-sm disp",
+   "id": "",
+   "aria": "",
+   "text": "V",
+   "box": {
+    "x": 501.7,
+    "y": 246.3,
+    "w": 20,
+    "h": 20
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 10,
+    "weight": "800",
+    "spacing": "0.1px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgb(44, 48, 34)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "cut-sm",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(3) > div:nth-child(2) > span:nth-child(1) > span:nth-child(3)",
+   "tag": "span",
+   "class": "cut-sm disp",
+   "id": "",
+   "aria": "",
+   "text": "T",
+   "box": {
+    "x": 524.7,
+    "y": 246.3,
+    "w": 20,
+    "h": 20
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 10,
+    "weight": "800",
+    "spacing": "0.1px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgb(44, 48, 34)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "cut-sm",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(3) > div:nth-child(2) > span:nth-child(1) > span:nth-child(4)",
+   "tag": "span",
+   "class": "cut-sm disp",
+   "id": "",
+   "aria": "",
+   "text": "B",
+   "box": {
+    "x": 547.7,
+    "y": 246.3,
+    "w": 20,
+    "h": 20
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 10,
+    "weight": "800",
+    "spacing": "0.1px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgb(44, 48, 34)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(3) > div:nth-child(2) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "4 DIVERS",
+   "box": {
+    "x": 579.7,
+    "y": 247.8,
+    "w": 76.6,
+    "h": 17
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13,
+    "weight": "700",
+    "spacing": "2.08px",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(3) > div:nth-child(3) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "EVERY MISSION",
+   "box": {
+    "x": 761.4,
+    "y": 247.8,
+    "w": 128,
+    "h": 17
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13,
+    "weight": "700",
+    "spacing": "2.08px",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "section",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(3) > div:nth-child(5)",
+   "tag": "div",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "ELIGIBLE",
+   "box": {
+    "x": 997.7,
+    "y": 233.3,
+    "w": 129.3,
+    "h": 46
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 12,
+    "weight": "700",
+    "spacing": "2.16px",
+    "transform": "none"
+   },
+   "color": "rgb(74, 215, 200)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(74, 215, 200)"
+   }
+  },
+  {
+   "name": "Honors stat",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4)",
+   "tag": "section",
+   "class": "",
+   "id": "",
+   "aria": "Honors stat",
+   "text": "",
+   "box": {
+    "x": 244,
+    "y": 294.3,
+    "w": 884,
+    "h": 222
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "ticks",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(1)",
+   "tag": "div",
+   "class": "ticks",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 244,
+    "y": 294.3,
+    "w": 656,
+    "h": 281.8
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgb(11, 12, 9)",
+   "border": {
+    "width": 1,
+    "color": "rgb(58, 63, 46)"
+   }
+  },
+  {
+   "name": "reel-view",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(1) > div:nth-child(1)",
+   "tag": "div",
+   "class": "reel-view",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 246,
+    "y": 310.3,
+    "w": 652,
+    "h": 192
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "disp",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > sc-for:nth-child(1) > div:nth-child(1) > span:nth-child(2)",
+   "tag": "span",
+   "class": "disp",
+   "id": "",
+   "aria": "",
+   "text": "{{r.label}}",
+   "box": {
+    "x": 334,
+    "y": 331.8,
+    "w": 157.4,
+    "h": 20.9
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 22,
+    "weight": "800",
+    "spacing": "0.22px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > sc-for:nth-child(1) > div:nth-child(1) > span:nth-child(3)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "{{r.dir}}",
+   "box": {
+    "x": 791.2,
+    "y": 335.3,
+    "w": 76.8,
+    "h": 14
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "700",
+    "spacing": "1.98px",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "stamp",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(1) > sc-if:nth-child(5) > div:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "stamp",
+   "id": "",
+   "aria": "",
+   "text": "LEAST",
+   "box": {
+    "x": 763.9,
+    "y": 384.1,
+    "w": 97.5,
+    "h": 44.4
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13,
+    "weight": "700",
+    "spacing": "2.34px",
+    "transform": "none"
+   },
+   "color": "rgb(20, 20, 16)",
+   "bg": "rgb(255, 214, 66)",
+   "border": {
+    "width": 0,
+    "color": "rgb(20, 20, 16)"
+   }
+  },
+  {
+   "name": "lbl",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(1) > div:nth-child(6) > span:nth-child(1)",
+   "tag": "span",
+   "class": "lbl",
+   "id": "",
+   "aria": "",
+   "text": "{{reelCaption}}",
+   "box": {
+    "x": 261,
+    "y": 307.3,
+    "w": 110,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "600",
+    "spacing": "1.8px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(1) > span:nth-child(7)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "{{reelSr}}",
+   "box": {
+    "x": 245,
+    "y": 295.3,
+    "w": 1,
+    "h": 1
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "Spin the honors stat",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(2) > sc-if:nth-child(1) > button:nth-child(1)",
+   "tag": "button",
+   "class": "btn cut",
+   "id": "",
+   "aria": "Spin the honors stat",
+   "text": "",
+   "box": {
+    "x": 916,
+    "y": 294.3,
+    "w": 162.2,
+    "h": 101.3
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13.3,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(20, 20, 16)",
+   "bg": "rgb(255, 214, 66)",
+   "border": {
+    "width": 0,
+    "color": "rgb(20, 20, 16)"
+   }
+  },
+  {
+   "name": "disp",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(2) > sc-if:nth-child(1) > button:nth-child(1) > span:nth-child(2)",
+   "tag": "span",
+   "class": "disp",
+   "id": "",
+   "aria": "",
+   "text": "Spin",
+   "box": {
+    "x": 943.9,
+    "y": 339.3,
+    "w": 106.4,
+    "h": 32.3
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 34,
+    "weight": "800",
+    "spacing": "0.34px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(20, 20, 16)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(20, 20, 16)"
+   }
+  },
+  {
+   "name": "button",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(2) > sc-if:nth-child(1) > button:nth-child(1) > span:nth-child(3)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "HOST · DRAW A STAT",
+   "box": {
+    "x": 922,
+    "y": 381.6,
+    "w": 150.2,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "700",
+    "spacing": "2.4px",
+    "transform": "none"
+   },
+   "color": "rgb(20, 20, 16)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(20, 20, 16)"
+   }
+  },
+  {
+   "name": "disp",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(2) > sc-if:nth-child(2) > div:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "disp pulse",
+   "id": "",
+   "aria": "",
+   "text": "···",
+   "box": {
+    "x": 1002,
+    "y": 396.6,
+    "w": 39.9,
+    "h": 28.5
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 30,
+    "weight": "800",
+    "spacing": "0.3px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(255, 214, 66)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(255, 214, 66)"
+   }
+  },
+  {
+   "name": "lbl",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(2) > sc-if:nth-child(2) > div:nth-child(1) > span:nth-child(2)",
+   "tag": "span",
+   "class": "lbl",
+   "id": "",
+   "aria": "",
+   "text": "Drawing",
+   "box": {
+    "x": 989.1,
+    "y": 435.1,
+    "w": 65.9,
+    "h": 14
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "600",
+    "spacing": "1.98px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "rise",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(2) > sc-if:nth-child(3) > div:nth-child(1)",
+   "tag": "div",
+   "class": "rise",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 916,
+    "y": 450.3,
+    "w": 212,
+    "h": 126
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgb(19, 21, 15)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "lbl",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(2) > sc-if:nth-child(3) > div:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "lbl",
+   "id": "",
+   "aria": "",
+   "text": "{{prizeLbl}}",
+   "box": {
+    "x": 979.7,
+    "y": 450.3,
+    "w": 84.6,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "600",
+    "spacing": "1.8px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "hex",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(2) > sc-if:nth-child(3) > div:nth-child(1) > span:nth-child(2) > span:nth-child(1)",
+   "tag": "span",
+   "class": "hex",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 990,
+    "y": 475.3,
+    "w": 64,
+    "h": 72
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "hex",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(2) > sc-if:nth-child(3) > div:nth-child(1) > span:nth-child(2) > span:nth-child(2)",
+   "tag": "span",
+   "class": "hex",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 995,
+    "y": 480.3,
+    "w": 54,
+    "h": 62
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "disp",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(2) > sc-if:nth-child(3) > div:nth-child(1) > span:nth-child(2) > span:nth-child(3)",
+   "tag": "span",
+   "class": "disp",
+   "id": "",
+   "aria": "",
+   "text": "{{prizeHexTxt}}",
+   "box": {
+    "x": 990,
+    "y": 500.9,
+    "w": 243.3,
+    "h": 20.9
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 22,
+    "weight": "800",
+    "spacing": "0.22px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > section:nth-child(4) > div:nth-child(2) > sc-if:nth-child(3) > div:nth-child(1) > span:nth-child(3)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "{{prizeText}}",
+   "box": {
+    "x": 966.5,
+    "y": 559.3,
+    "w": 111,
+    "h": 17
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13,
+    "weight": "700",
+    "spacing": "2.08px",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "lbl",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(5) > span:nth-child(1)",
+   "tag": "span",
+   "class": "lbl",
+   "id": "",
+   "aria": "",
+   "text": "Name the winner",
+   "box": {
+    "x": 244,
+    "y": 532.8,
+    "w": 133.7,
+    "h": 14
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "600",
+    "spacing": "1.98px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(5) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "FROM THE IN-GAME STATS SCREEN",
+   "box": {
+    "x": 387.7,
+    "y": 532.3,
+    "w": 259.7,
+    "h": 15
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "700",
+    "spacing": "1.54px",
+    "transform": "none"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(5) > span:nth-child(3)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "TIES · HOST'S CALL",
+   "box": {
+    "x": 995.3,
+    "y": 532.8,
+    "w": 132.7,
+    "h": 14
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "700",
+    "spacing": "1.54px",
+    "transform": "none"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "Honors winner",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(6)",
+   "tag": "div",
+   "class": "",
+   "id": "",
+   "aria": "Honors winner",
+   "text": "",
+   "box": {
+    "x": 244,
+    "y": 561.3,
+    "w": 884,
+    "h": 158
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "{{t.aria}}",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(6) > sc-for:nth-child(1) > button:nth-child(1)",
+   "tag": "button",
+   "class": "tag",
+   "id": "",
+   "aria": "{{t.aria}}",
+   "text": "",
+   "box": {
+    "x": 244,
+    "y": 561.3,
+    "w": 209,
+    "h": 158
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13.3,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "tag-shape",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(6) > sc-for:nth-child(1) > button:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "tag-shape tag-edge",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 244,
+    "y": 561.3,
+    "w": 209,
+    "h": 158
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13.3,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "tag-shape",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(6) > sc-for:nth-child(1) > button:nth-child(1) > sc-if:nth-child(3) > span:nth-child(1)",
+   "tag": "span",
+   "class": "tag-shape",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 244,
+    "y": 561.3,
+    "w": 209,
+    "h": 158
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13.3,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgb(255, 214, 66)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "disp",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(6) > sc-for:nth-child(1) > button:nth-child(1) > span:nth-child(5) > span:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "disp",
+   "id": "",
+   "aria": "",
+   "text": "{{t.name}}",
+   "box": {
+    "x": 286,
+    "y": 579.8,
+    "w": 133,
+    "h": 19
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 20,
+    "weight": "800",
+    "spacing": "0.2px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "span",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(6) > sc-for:nth-child(1) > button:nth-child(1) > span:nth-child(5) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "{{t.serial}}",
+   "box": {
+    "x": 286,
+    "y": 634.8,
+    "w": 151,
+    "h": 16
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "600",
+    "spacing": "3.08px",
+    "transform": "none"
+   },
+   "color": "rgb(133, 135, 111)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(133, 135, 111)"
+   }
+  },
+  {
+   "name": "host",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(6) > sc-for:nth-child(1) > button:nth-child(1) > span:nth-child(5) > span:nth-child(2) > sc-if:nth-child(1) > svg:nth-child(1)",
+   "tag": "svg",
+   "class": "",
+   "id": "",
+   "aria": "host",
+   "text": "",
+   "box": {
+    "x": 388,
+    "y": 634.8,
+    "w": 13,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "600",
+    "spacing": "3.08px",
+    "transform": "none"
+   },
+   "color": "rgb(133, 135, 111)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(133, 135, 111)"
+   }
+  },
+  {
+   "name": "hex",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(6) > sc-for:nth-child(1) > button:nth-child(1) > span:nth-child(5) > span:nth-child(3) > span:nth-child(1) > sc-if:nth-child(2) > span:nth-child(1)",
+   "tag": "span",
+   "class": "hex",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 291,
+    "y": 694.8,
+    "w": 18,
+    "h": 21
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13.3,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgb(255, 214, 66)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "disp",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(6) > sc-for:nth-child(1) > button:nth-child(1) > span:nth-child(5) > span:nth-child(3) > span:nth-child(1) > sc-if:nth-child(2) > span:nth-child(2)",
+   "tag": "span",
+   "class": "disp",
+   "id": "",
+   "aria": "",
+   "text": "+1",
+   "box": {
+    "x": 291,
+    "y": 682.8,
+    "w": 21.3,
+    "h": 13.3
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 14,
+    "weight": "800",
+    "spacing": "0.14px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(255, 214, 66)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(255, 214, 66)"
+   }
+  },
+  {
+   "name": "sc-if",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(6) > sc-for:nth-child(1) > button:nth-child(1) > span:nth-child(5) > span:nth-child(3) > sc-if:nth-child(2) > span:nth-child(1)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "{{t.count}}",
+   "box": {
+    "x": 301,
+    "y": 686.3,
+    "w": 71,
+    "h": 17
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13,
+    "weight": "700",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(184, 176, 141)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(184, 176, 141)"
+   }
+  },
+  {
+   "name": "rise",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(6) > sc-for:nth-child(1) > button:nth-child(1) > span:nth-child(5) > span:nth-child(3) > sc-if:nth-child(3) > span:nth-child(1)",
+   "tag": "span",
+   "class": "rise",
+   "id": "",
+   "aria": "",
+   "text": "MAX 3",
+   "box": {
+    "x": 382,
+    "y": 684.3,
+    "w": 55,
+    "h": 23
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "700",
+    "spacing": "1.6px",
+    "transform": "none"
+   },
+   "color": "rgb(255, 214, 66)",
+   "bg": "rgba(255, 214, 66, 0.1)",
+   "border": {
+    "width": 1,
+    "color": "rgb(255, 214, 66)"
+   }
+  },
+  {
+   "name": "disp",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(6) > sc-for:nth-child(1) > button:nth-child(1) > sc-if:nth-child(6) > span:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "disp stamp",
+   "id": "",
+   "aria": "",
+   "text": "Honored",
+   "box": {
+    "x": 276.6,
+    "y": 596.5,
+    "w": 191.7,
+    "h": 67.9
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 15,
+    "weight": "800",
+    "spacing": "0.15px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(255, 214, 66)",
+   "bg": "rgba(11, 12, 9, 0.9)",
+   "border": {
+    "width": 3,
+    "color": "rgb(255, 214, 66)"
+   }
+  },
+  {
+   "name": "{{awardAria}}",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(7) > sc-if:nth-child(1) > button:nth-child(1)",
+   "tag": "button",
+   "class": "btn cut",
+   "id": "",
+   "aria": "{{awardAria}}",
+   "text": "",
+   "box": {
+    "x": 244,
+    "y": 733.3,
+    "w": 202.5,
+    "h": 58
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13.3,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(239, 239, 239, 0.3)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "hazard",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(7) > sc-if:nth-child(1) > button:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "hazard crawl",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 244,
+    "y": 733.3,
+    "w": 202.5,
+    "h": 58
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13.3,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "disp",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(7) > sc-if:nth-child(1) > button:nth-child(1) > span:nth-child(2) > span:nth-child(1)",
+   "tag": "span",
+   "class": "disp",
+   "id": "",
+   "aria": "",
+   "text": "{{awardText}}",
+   "box": {
+    "x": 250,
+    "y": 745.3,
+    "w": 190.5,
+    "h": 18
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 19,
+    "weight": "800",
+    "spacing": "0.19px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "span",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(7) > sc-if:nth-child(1) > button:nth-child(1) > span:nth-child(2) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "{{awardSub}}",
+   "box": {
+    "x": 296.8,
+    "y": 766.3,
+    "w": 96.8,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "700",
+    "spacing": "2.4px",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "ghost",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(7) > sc-if:nth-child(1) > a:nth-child(2)",
+   "tag": "a",
+   "class": "ghost",
+   "id": "",
+   "aria": "",
+   "text": "SKIP",
+   "box": {
+    "x": 244,
+    "y": 791.3,
+    "w": 128,
+    "h": 58
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 12,
+    "weight": "700",
+    "spacing": "1.92px",
+    "transform": "none"
+   },
+   "color": "rgb(184, 176, 141)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 1,
+    "color": "rgb(69, 74, 54)"
+   }
+  },
+  {
+   "name": "rise",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(7) > sc-if:nth-child(2) > div:nth-child(1)",
+   "tag": "div",
+   "class": "rise",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 456.5,
+    "y": 747.3,
+    "w": 294.3,
+    "h": 38
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgb(19, 21, 15)",
+   "border": {
+    "width": 1,
+    "color": "rgb(44, 48, 34)"
+   }
+  },
+  {
+   "name": "hex",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(7) > sc-if:nth-child(2) > div:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "hex",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 473.5,
+    "y": 758.3,
+    "w": 14,
+    "h": 16
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgb(255, 214, 66)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "lbl",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(7) > sc-if:nth-child(2) > div:nth-child(1) > span:nth-child(2) > span:nth-child(1)",
+   "tag": "span",
+   "class": "lbl",
+   "id": "",
+   "aria": "",
+   "text": "Token banked",
+   "box": {
+    "x": 499.5,
+    "y": 748.3,
+    "w": 137,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "600",
+    "spacing": "1.8px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "span",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(7) > sc-if:nth-child(2) > div:nth-child(1) > span:nth-child(2) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "{{bankedText}}",
+   "box": {
+    "x": 499.5,
+    "y": 764.3,
+    "w": 137,
+    "h": 20
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 15,
+    "weight": "700",
+    "spacing": "1.5px",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "btn",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(7) > sc-if:nth-child(2) > a:nth-child(2)",
+   "tag": "a",
+   "class": "btn cut rise",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 456.5,
+    "y": 785.3,
+    "w": 294.3,
+    "h": 58
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(20, 20, 16)",
+   "bg": "rgb(255, 214, 66)",
+   "border": {
+    "width": 0,
+    "color": "rgb(20, 20, 16)"
+   }
+  },
+  {
+   "name": "disp",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > main:nth-child(2) > div:nth-child(7) > sc-if:nth-child(2) > a:nth-child(2) > span:nth-child(1)",
+   "tag": "span",
+   "class": "disp",
+   "id": "",
+   "aria": "",
+   "text": "Next mission · 2/3",
+   "box": {
+    "x": 478.5,
+    "y": 805.8,
+    "w": 228.3,
+    "h": 17.1
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 18,
+    "weight": "800",
+    "spacing": "0.18px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(20, 20, 16)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(20, 20, 16)"
+   }
+  },
+  {
+   "name": "Reward tokens",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3)",
+   "tag": "aside",
+   "class": "",
+   "id": "",
+   "aria": "Reward tokens",
+   "text": "",
+   "box": {
+    "x": 1156,
+    "y": 144,
+    "w": 284,
+    "h": 704
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgb(14, 16, 11)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "lbl",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "lbl",
+   "id": "",
+   "aria": "",
+   "text": "Reward tokens",
+   "box": {
+    "x": 1177,
+    "y": 167,
+    "w": 121.8,
+    "h": 14
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "600",
+    "spacing": "1.98px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(255, 214, 66)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(255, 214, 66)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(1) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "CAP 3",
+   "box": {
+    "x": 1383,
+    "y": 167.5,
+    "w": 37,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "700",
+    "spacing": "1.4px",
+    "transform": "none"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "cut-sm",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(2) > sc-for:nth-child(1) > div:nth-child(1) > span:nth-child(1)",
+   "tag": "span",
+   "class": "cut-sm disp",
+   "id": "",
+   "aria": "",
+   "text": "{{b.init}}",
+   "box": {
+    "x": 1187,
+    "y": 209,
+    "w": 26,
+    "h": 26
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 12,
+    "weight": "800",
+    "spacing": "0.12px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(2) > sc-for:nth-child(1) > div:nth-child(1) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "{{b.name}}",
+   "box": {
+    "x": 1223,
+    "y": 213.5,
+    "w": 81.4,
+    "h": 17
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13,
+    "weight": "700",
+    "spacing": "1.04px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(2) > sc-for:nth-child(1) > div:nth-child(1) > span:nth-child(4)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "{{b.count}}",
+   "box": {
+    "x": 1384,
+    "y": 213.5,
+    "w": 26,
+    "h": 17
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13,
+    "weight": "700",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "lbl",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(3) > span:nth-child(1)",
+   "tag": "span",
+   "class": "lbl",
+   "id": "",
+   "aria": "",
+   "text": "Spend in a draft",
+   "box": {
+    "x": 1177,
+    "y": 275,
+    "w": 243,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "600",
+    "spacing": "1.8px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "span",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(3) > div:nth-child(2) > span:nth-child(2) > span:nth-child(1)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "REROLL",
+   "box": {
+    "x": 1225,
+    "y": 299.5,
+    "w": 119,
+    "h": 17
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13,
+    "weight": "700",
+    "spacing": "1.82px",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "span",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(3) > div:nth-child(2) > span:nth-child(2) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "New ceiling, new offer",
+   "box": {
+    "x": 1225,
+    "y": 318.5,
+    "w": 119,
+    "h": 14
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "span",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(3) > div:nth-child(3) > span:nth-child(2) > span:nth-child(1)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "BAN",
+   "box": {
+    "x": 1225,
+    "y": 345.5,
+    "w": 133,
+    "h": 17
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13,
+    "weight": "700",
+    "spacing": "1.82px",
+    "transform": "none"
+   },
+   "color": "rgb(255, 75, 62)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(255, 75, 62)"
+   }
+  },
+  {
+   "name": "span",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(3) > div:nth-child(3) > span:nth-child(2) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "Purge items · forfeit pick",
+   "box": {
+    "x": 1225,
+    "y": 364.5,
+    "w": 133,
+    "h": 14
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 11,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "lbl",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(4) > span:nth-child(1)",
+   "tag": "span",
+   "class": "lbl",
+   "id": "",
+   "aria": "",
+   "text": "Your draft",
+   "box": {
+    "x": 1177,
+    "y": 411,
+    "w": 243,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "600",
+    "spacing": "1.8px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "span",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(4) > div:nth-child(2) > span:nth-child(2) > span:nth-child(1)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "Quasar Cannon",
+   "box": {
+    "x": 1250,
+    "y": 449,
+    "w": 123.1,
+    "h": 17
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 13,
+    "weight": "700",
+    "spacing": "0.78px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "disp",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(4) > div:nth-child(2) > span:nth-child(2) > span:nth-child(2) > span:nth-child(1)",
+   "tag": "span",
+   "class": "disp",
+   "id": "",
+   "aria": "",
+   "text": "S",
+   "box": {
+    "x": 1250,
+    "y": 471,
+    "w": 22,
+    "h": 18
+   },
+   "font": {
+    "family": "Archivo",
+    "size": 10,
+    "weight": "800",
+    "spacing": "0.1px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(255, 214, 66)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 1,
+    "color": "rgb(255, 214, 66)"
+   }
+  },
+  {
+   "name": "span",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(4) > div:nth-child(2) > span:nth-child(2) > span:nth-child(2) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "BANKED",
+   "box": {
+    "x": 1278,
+    "y": 473.5,
+    "w": 49.6,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "700",
+    "spacing": "1.6px",
+    "transform": "none"
+   },
+   "color": "rgb(255, 214, 66)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(255, 214, 66)"
+   }
+  },
+  {
+   "name": "Honors cadence: 4 divers every mission, 2 or 3 divers every other mission, solo every third mission",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(6)",
+   "tag": "div",
+   "class": "",
+   "id": "",
+   "aria": "Honors cadence: 4 divers every mission, 2 or 3 divers every other mission, solo every third mission",
+   "text": "",
+   "box": {
+    "x": 1177,
+    "y": 717,
+    "w": 243,
+    "h": 111
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 1,
+    "color": "rgb(44, 48, 34)"
+   }
+  },
+  {
+   "name": "lbl",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(6) > span:nth-child(1)",
+   "tag": "span",
+   "class": "lbl",
+   "id": "",
+   "aria": "",
+   "text": "Honors cadence",
+   "box": {
+    "x": 1190,
+    "y": 730,
+    "w": 217,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "600",
+    "spacing": "1.8px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(6) > div:nth-child(2) > span:nth-child(1)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "4",
+   "box": {
+    "x": 1190,
+    "y": 751,
+    "w": 34,
+    "h": 16
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 12,
+    "weight": "700",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(6) > div:nth-child(2) > span:nth-child(3)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "NOW",
+   "box": {
+    "x": 1378.8,
+    "y": 752.5,
+    "w": 28.2,
+    "h": 13
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 10,
+    "weight": "700",
+    "spacing": "1.4px",
+    "transform": "none"
+   },
+   "color": "rgb(255, 214, 66)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(255, 214, 66)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(6) > div:nth-child(3) > span:nth-child(1)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "2–3",
+   "box": {
+    "x": 1190,
+    "y": 775,
+    "w": 34,
+    "h": 16
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 12,
+    "weight": "700",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > div:nth-child(3) > aside:nth-child(3) > div:nth-child(6) > div:nth-child(4) > span:nth-child(1)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "1",
+   "box": {
+    "x": 1190,
+    "y": 799,
+    "w": 34,
+    "h": 16
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 12,
+    "weight": "700",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(154, 155, 130)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(154, 155, 130)"
+   }
+  },
+  {
+   "name": "Mission phases",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > nav:nth-child(4)",
+   "tag": "nav",
+   "class": "",
+   "id": "",
+   "aria": "Mission phases",
+   "text": "",
+   "box": {
+    "x": 0,
+    "y": 848,
+    "w": 1440,
+    "h": 52
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgb(11, 12, 9)",
+   "border": {
+    "width": 1,
+    "color": "rgb(35, 38, 28)"
+   }
+  },
+  {
+   "name": "{{s.cls}}",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > nav:nth-child(4) > sc-for:nth-child(1) > div:nth-child(1)",
+   "tag": "div",
+   "class": "{{s.cls}}",
+   "id": "",
+   "aria": "",
+   "text": "",
+   "box": {
+    "x": 24,
+    "y": 857,
+    "w": 121.4,
+    "h": 36
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 16,
+    "weight": "400",
+    "spacing": "normal",
+    "transform": "none"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  },
+  {
+   "name": "div",
+   "path": "body > x-dc:nth-child(1) > div:nth-child(2) > nav:nth-child(4) > sc-for:nth-child(1) > div:nth-child(1) > span:nth-child(2)",
+   "tag": "span",
+   "class": "",
+   "id": "",
+   "aria": "",
+   "text": "{{s.label}}",
+   "box": {
+    "x": 50,
+    "y": 867,
+    "w": 95.4,
+    "h": 16
+   },
+   "font": {
+    "family": "Chakra Petch",
+    "size": 12,
+    "weight": "700",
+    "spacing": "2.4px",
+    "transform": "uppercase"
+   },
+   "color": "rgb(236, 234, 218)",
+   "bg": "rgba(0, 0, 0, 0)",
+   "border": {
+    "width": 0,
+    "color": "rgb(236, 234, 218)"
+   }
+  }
+ ]
+}

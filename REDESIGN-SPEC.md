@@ -538,13 +538,16 @@ context; no bottom-sheet component (only unused `.sheet-*` CSS in `main.css:766-
 - [ ] **Verify per screen** — `pnpm lint && pnpm typecheck && pnpm test`, plus a screenshot check via
       `.orca/*.mjs` at 1440×900 and 390×844. (`lint` / `typecheck` / `test` / `test:e2e` green at
       HEAD; screenshot check outstanding.)
-- [ ] **Visual QA vs. the design** — render each screen at 1440×900 and diff it against the
-      extracted page (`.orca/drops/extracted/<NN>-*.html`); fix per-page/global layout divergences
-      that the component work missed. **In progress.**
-      - Extraction is reproducible: `node /tmp/extract-all.mjs` writes the 19 page templates to
-        `.orca/drops/extracted/<NN>-<name>.html`; `/tmp/prep-render.mjs` inlines the bundled fonts
-        into `.orca/drops/extracted/_render/`; `.orca/shoot-design.mjs <pages…>` screenshots them to
-        `/tmp/design-shots/`. App screens are captured by `e2e/zz-shot.spec.ts` (throwaway) to
+- [ ] **Visual QA vs. the design** — render each screen at its design state and diff it against
+      the extracted page; fix per-page/global layout divergences that the component work missed.
+      **In progress.**
+      - **Automated now.** The design contract + conformance harness landed (see `design/README.md`):
+        `pnpm design:extract` rebuilds `design/spec/*.json` from the bundle; `e2e/design-conformance.spec.ts`
+        seeds each screen via `design/states.ts` and diffs static-text styling against the contract;
+        `pnpm design:report` writes the worklist to `design/report/summary.md`. Baseline at first run:
+        **19 pages, 155 mismatches** (mostly small-label sizes, `.cap` transforms, and `/kit` parity).
+      - Manual screenshots remain for pixel/layout checks: `.orca/shoot-design.mjs <pages…>` renders
+        the design to `/tmp/design-shots/`; app screens via a throwaway `e2e/zz-shot.spec.ts` to
         `/tmp/app-shots/`.
       - **Shell — done this pass** (verified at 1440×900):
         - `PhaseRail.vue` now renders chevron segments (`.chev-first` on step 0, `.chev` after) like
