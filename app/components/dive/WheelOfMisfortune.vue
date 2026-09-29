@@ -16,6 +16,12 @@ const R = 226
 const CX = SIZE / 2
 const CY = SIZE / 2
 
+// The design draws every segment dark — risk rides a 6×6 pip at the outer rim,
+// never the wedge fill, so a roll never spoils its own draw. The landed segment
+// alone lifts to a dark gold.
+const SEG_DARK = ['#1B1E15', '#15170F']
+const SEG_HIT = '#3B3413'
+
 const segments = computed(() =>
   eligibleMisfortunes(props.difficulty).map((misfortune) => {
     const risk = Math.min(5, Math.max(1, MISFORTUNE_RISK[misfortune.id] ?? 1))
@@ -24,6 +30,12 @@ const segments = computed(() =>
   }))
 
 const step = computed(() => (segments.value.length ? 360 / segments.value.length : 360))
+
+const drawn = computed(() =>
+  props.seed === null ? null : deriveMisfortune(props.seed, props.difficulty))
+const drawnIndex = computed(() =>
+  drawn.value ? segments.value.findIndex(segment => segment.id === drawn.value!.id) : -1)
+const drawnRisk = computed(() => (drawn.value ? MISFORTUNE_RISK[drawn.value.id] ?? 0 : 0))
 
 function polar(radius: number, deg: number): [number, number] {
   const a = (deg * Math.PI) / 180
@@ -37,16 +49,37 @@ function slicePath(startDeg: number, endDeg: number): string {
   return `M ${CX} ${CY} L ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} Z`
 }
 
-// Risk pips: one 6px square per point of team risk, stacked radially in the
-// segment so the wheel reads its own odds at a glance (matches the legend).
+function segmentFill(i: number): string {
+  return i === drawnIndex.value ? SEG_HIT : SEG_DARK[i % 2]!
+}
+
+// Risk pips: one 6×6 square per point of team risk, stacked tangentially along
+// the outer rim so the wheel reads its own odds at a glance (matches the legend).
 const pips = computed(() =>
-  segments.value.flatMap((segment, i) =>
-    Array.from({ length: segment.risk }, (_, k) => {
-      const [x, y] = polar(R - 24 - k * 9, i * step.value)
-      return { key: `${segment.id}-${k}`, x: x - 3, y: y - 3, tone: segment.tone }
-    })))
+  segments.value.flatMap((segment, i) => {
+    const a = ((i * step.value) * Math.PI) / 180
+    const radius = R - 19
+    const bx = CX + radius * Math.cos(a)
+    const by = CY + radius * Math.sin(a)
+    const tx = -Math.sin(a)
+    const ty = Math.cos(a)
+    return Array.from({ length: segment.risk }, (_, k) => {
+      const off = (k - (segment.risk - 1) / 2) * 9
+      return { key: `${segment.id}-${k}`, x: bx + off * tx - 3, y: by + off * ty - 3, tone: segment.tone }
+    })
+  }))
+
+function labelSize(name: string): string {
+  return `${Math.min(11.5, 116 / (name.length * 0.66)).toFixed(1)}px`
+}
+
+const reduced = import.meta.client
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 const rotation = ref(0)
+const isSpinning = ref(false)
+let spinTimer: ReturnType<typeof setTimeout> | undefined
+onBeforeUnmount(() => clearTimeout(spinTimer))
 
 // Spins are seeds: every client derives the same misfortune from the same
 // integer and lands the pointer on its segment. The wheel only ever turns
@@ -54,12 +87,13 @@ const rotation = ref(0)
 watch(
   () => props.seed,
   (seed) => {
+    clearTimeout(spinTimer)
     if (seed === null) {
       rotation.value = 0
+      isSpinning.value = false
       return
     }
-    const drawn = deriveMisfortune(seed, props.difficulty)
-    const index = segments.value.findIndex(segment => segment.id === drawn.id)
+    const index = segments.value.findIndex(segment => segment.id === deriveMisfortune(seed, props.difficulty).id)
     if (index < 0) {
       return
     }
@@ -69,14 +103,27 @@ watch(
       target += 360
     }
     rotation.value = target
+    if (!reduced) {
+      isSpinning.value = true
+      spinTimer = setTimeout(() => {
+        isSpinning.value = false
+      }, 2800)
+    }
   },
   { immediate: true },
 )
 
+const spinning = computed(() => isSpinning.value || props.spinning)
+const hubText = computed(() =>
+  props.seed === null ? 'Spin' : spinning.value ? '···' : `+${drawnRisk.value}`)
+const hubSub = computed(() =>
+  props.seed === null ? 'HOST' : spinning.value ? 'DRAWING' : 'TEAM RISK')
+// The accessible name keeps the plain "Spin" call-to-action the specs and E2E
+// rely on; the visible hub text carries the design's HOST / TEAM RISK copy.
 const hubLabel = computed(() => {
-  if (props.spinning) return 'Drawing'
-  if (props.seed === null) return props.canControl ? 'Spin' : 'Waiting'
-  return 'Drawn'
+  if (props.seed === null) return 'Spin'
+  if (spinning.value) return 'Spinning'
+  return drawn.value ? `Landed on ${drawn.value.name}` : 'Drawn'
 })
 </script>
 
@@ -121,9 +168,9 @@ const hubLabel = computed(() => {
           >
             <path
               :d="slicePath(i * step - step / 2, i * step + step / 2)"
-              :fill="`color-mix(in srgb, ${segment.tone} 40%, var(--ground))`"
-              :stroke="segment.tone"
-              stroke-width="1.5"
+              :fill="segmentFill(i)"
+              stroke="var(--line-2)"
+              stroke-width="1"
             />
           </g>
           <rect
@@ -152,7 +199,8 @@ const hubLabel = computed(() => {
             v-for="(segment, i) in segments"
             :key="segment.id"
             class="seg-label"
-            :style="{ transform: `rotate(${i * step}deg) translateX(78px)` }"
+            :class="{ hit: i === drawnIndex }"
+            :style="{ transform: `rotate(${i * step}deg) translateX(80px)`, fontSize: labelSize(segment.name) }"
           >{{ segment.name }}</span>
         </div>
       </div>
@@ -171,11 +219,11 @@ const hubLabel = computed(() => {
         :class="{ live: seed === null && canControl, drawing: spinning }"
         type="button"
         :disabled="seed !== null || !canControl"
-        :aria-label="seed === null ? 'Spin' : 'Wheel drawn'"
+        :aria-label="hubLabel"
         @click="emit('spin')"
       >
-        <span class="disp hub-word">{{ hubLabel }}</span>
-        <span class="hub-sub">{{ seed === null ? 'Draw the wheel' : 'Result locked' }}</span>
+        <span class="disp hub-word">{{ hubText }}</span>
+        <span class="hub-sub">{{ hubSub }}</span>
       </button>
     </div>
 
@@ -245,13 +293,13 @@ const hubLabel = computed(() => {
   transform-origin: 0 50%;
   display: flex;
   align-items: center;
-  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
   white-space: nowrap;
   color: var(--khaki);
   text-transform: uppercase;
 }
+.seg-label.hit { color: var(--gold); }
 
 .pointer {
   position: absolute;
@@ -282,9 +330,9 @@ const hubLabel = computed(() => {
   margin: -63px 0 0 -63px;
   border-radius: 50%;
   border: 0;
-  background: var(--raised);
-  color: var(--muted);
-  box-shadow: 0 0 0 6px var(--ground), 0 0 0 7px var(--line-4);
+  background: var(--panel);
+  color: var(--gold);
+  box-shadow: 0 0 0 6px var(--ground), 0 0 0 7px var(--gold);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -300,12 +348,11 @@ const hubLabel = computed(() => {
   animation: glow 2.6s ease-in-out infinite;
 }
 .hub.live:hover { filter: brightness(1.1); }
-.hub.drawing { background: var(--gold); color: var(--on-gold); }
-.hub-word { font-size: 24px; }
-.hub-sub { font-size: 9px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; }
+.hub-word { font-size: 30px; }
+.hub.live .hub-word { font-size: 26px; }
+.hub-sub { font-size: 10px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; }
 
 @media (max-width: 1020px) {
   .wheel-wrap { width: min(100%, 320px); }
-  .seg-label { font-size: 9px; }
 }
 </style>
