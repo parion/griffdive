@@ -1172,6 +1172,8 @@ function rerollLabel(
   min-width: 7rem;
   min-height: 52px;
 }
+.opt-out .disp { font-size: 15px; }
+.opt-out .hold-sub { color: var(--muted); }
 
 /* While a reel is spinning, the card's static content steps aside for it.
    Anything that would spoil the draw is hidden outright (visibility also keeps

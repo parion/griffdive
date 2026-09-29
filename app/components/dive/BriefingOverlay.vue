@@ -359,7 +359,7 @@ function close(): void {
                 v-for="(b, i) in BEATS"
                 :key="b.key"
                 class="railbtn"
-                :class="[i === 0 ? 'chev-first' : 'chev', { cur: i === step }]"
+                :class="[i === 0 ? 'chev-first' : 'chev', { cur: i === step, done: i < step, ahead: i > step && i <= reached }]"
                 type="button"
                 :disabled="i > reached"
                 :aria-current="i === step ? 'step' : undefined"
@@ -1089,11 +1089,13 @@ function close(): void {
   gap: 0.6rem;
   border: 0;
   background: var(--panel);
-  color: var(--muted);
+  color: var(--dim);
   cursor: pointer;
   transition: background-color var(--dur-fast), color var(--dur-fast);
 }
 .railbtn:disabled { cursor: not-allowed; }
+.railbtn.done { background: var(--line-1); color: var(--khaki); }
+.railbtn.ahead { background: #1f2219; color: var(--text); }
 .railbtn.cur { background: var(--gold); color: var(--on-gold); }
 .rail-num { font-size: 0.85rem; }
 .rail-label { font-size: 12px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; }
@@ -1110,7 +1112,7 @@ function close(): void {
   min-height: 0;
 }
 .brief-panel-head { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 1.25rem; }
-.brief-title { margin: 0.35rem 0 0; font-size: var(--fs-h1); color: var(--text); }
+.brief-title { margin: 0.35rem 0 0; font-size: 2.75rem; color: var(--text); }
 .brief-cap { margin: 0.35rem 0 0; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--khaki); }
 .brief-replay { display: flex; align-items: center; gap: 0.5rem; height: 2.75rem; padding: 0 0.9rem; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: none; color: var(--khaki); }
 
@@ -1316,6 +1318,7 @@ function close(): void {
 @media (max-width: 1020px) {
   .brief-grid { grid-template-columns: minmax(0, 1fr); }
   .brief-dossier { display: none; }
+  .brief-title { font-size: 1.75rem; }
   .beat-identify,
   .beat-spin,
   .beat-pact { grid-template-columns: minmax(0, 1fr); }

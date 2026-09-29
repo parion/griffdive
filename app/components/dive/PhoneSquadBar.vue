@@ -75,7 +75,10 @@ function moderatable(diverId: string): boolean {
         />
       </span>
       <span class="meta">
-        <span class="dname">{{ diver.name }}</span>
+        <span
+          class="dname"
+          :class="{ host: diver.id === state.hostId }"
+        >{{ diver.name }}</span>
         <span
           v-if="diver.id === state.hostId"
           class="crown"
@@ -176,6 +179,7 @@ function moderatable(diverId: string): boolean {
   text-overflow: ellipsis;
   color: var(--text);
 }
+.dname.host { color: var(--gold); }
 .crown,
 .state {
   font-size: 9px;
