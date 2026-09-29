@@ -27,7 +27,6 @@ pnpm dev        # http://localhost:3000
 | `pnpm test:e2e` | Playwright (production build on `:3173`) |
 | `pnpm typecheck` | `nuxt typecheck` (vue-tsc) |
 | `pnpm pwa:assets` | Regenerate PWA icons from `public/icon.svg` |
-| `pnpm design:capture` / `design:check` / `design:report` | Design conformance harness (see `design/README.md`) |
 
 ## Documentation
 

@@ -7,10 +7,9 @@ import type { RewardTier } from '~~/shared/engine/types'
 
 useHead({ meta: [{ name: 'robots', content: 'noindex,nofollow' }] })
 
-// Foundations specimen — a port of the redesign's "Foundations" page
-// (design/scenes/Foundations__default.json). It specimens the terminal tokens,
-// atoms and composite components so contributors can sanity-check the language.
-// Dev reference only, reachable at /kit.
+// Foundations specimen — a port of the redesign's "Foundations" page. It
+// specimens the terminal tokens, atoms and composite components so contributors
+// can sanity-check the language. Dev reference only, reachable at /kit.
 
 const GOLD = '#FFD642'
 const ORANGE = '#FF9F43'

@@ -11,9 +11,6 @@ test-results
 playwright-report
 blob-report
 
-# Design conformance report (generated; the contract in design/spec is committed)
-design/report
-
 # Node dependencies
 node_modules
 .pnpm-store/

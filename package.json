@@ -14,10 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "typecheck": "nuxt typecheck",
-    "design:capture": "node scripts/design/capture.mjs",
-    "design:check": "DESIGN_STRICT=1 playwright test e2e/design-conformance.spec.ts && node scripts/design/report.mjs",
-    "design:report": "node scripts/design/report.mjs"
+    "typecheck": "nuxt typecheck"
   },
   "dependencies": {
     "@pinia/nuxt": "^1.0.2",

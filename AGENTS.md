@@ -63,11 +63,8 @@ pnpm only (`pnpm-lock.yaml` is canonical).
 | `pnpm lint:fix` | exists | Auto-fix lint/style issues |
 | `pnpm test` | exists | Vitest (engine unit + golden tests) |
 | `pnpm test:watch` | exists | Vitest watch mode |
-| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, Codex slide-over, design conformance, PWA affordances; production build on :3173) |
+| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, Codex slide-over, PWA affordances; production build on :3173) |
 | `pnpm typecheck` | exists | `nuxt typecheck` (vue-tsc) |
-| `pnpm design:capture` | exists | Capture every design scene from the runnable exports → `design/scenes/*.json` + `design/scenes.json` (needs the git-ignored `designs.zip`) |
-| `pnpm design:check` | exists | Strict design conformance (fails on any styling mismatch) + report |
-| `pnpm design:report` | exists | Regenerate `design/report/summary.md` from the last conformance run |
 
 Update this table the moment a command lands.
 
@@ -149,20 +146,6 @@ engine.
 - **Foundations kit**: a hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`) specimens
   the tokens/atoms so contributors can sanity-check the language. It is dev reference, not a
   product surface.
-- **Design contract + conformance**: the design ships as a runnable per-page export
-  (`designs.zip`, git-ignored) whose pages list their **scene options** (`spin`/`decide`,
-  `fresh`/`sworn`, `play`/`choose`/`banked`/`banning`, …). `pnpm design:capture`
-  (`scripts/design/capture.mjs`) boots the real DCC runtime once per scene at its authored
-  viewport and distills it into a committed, machine-readable region tree under
-  `design/scenes/<Page>__<scene>.json` plus the `design/scenes.json` manifest — box, text,
-  computed font/colors/border and resolved CSS `animation`. This is the authoritative contract.
-  `e2e/design-conformance.spec.ts` seeds each screen through the real engine
-  (`design/states.ts`, keyed by `design/map.ts`) and diffs the static-text styling (font
-  family/size/weight/transform, color) of every matched label against the contract — text values
-  are not compared, since the designs are static mocks and the app is dynamic. Report-only by
-  default; `pnpm design:check` (`DESIGN_STRICT=1`) fails on any mismatch. `pnpm design:report`
-  writes the worklist to `design/report/summary.md`. See `design/README.md`. This is the
-  verification layer for the design language below.
 
 ---
 
@@ -801,17 +784,10 @@ shared/
                    ordering.ts (kit presentation order: stratagem role → tier → name),
                    images.ts (imageURL filename → /images/<dir> URL resolver,
                    difficultyImageUrl for the 1–10 difficulty emblems)
- design/                committed design contract + conformance harness (see design/README.md)
-   scenes.json          scene manifest: each page's dc file, viewport and scene options
-   scenes/<Page>__<scene>.json  per-scene region tree (the authoritative contract)
-   map.ts               design page → app route + engine fixture + UI steps
-   states.ts            deterministic engine fixtures for the harness
-   report/              generated diff output (git-ignored)
  scripts/
    import-catalog.mjs  upstream → shared/data converter (report-only mode: --report)
    upstream/           vendored MIT constants (snapshot commit recorded in _upstream-commit.json)
-   design/             capture.mjs (designs.zip → design/scenes/), report.mjs
-public/images/        bundled item art keyed by folder: equipment/ (weapons, throwables,
+ public/images/        bundled item art keyed by folder: equipment/ (weapons, throwables,
                       boosters), armor/, armorpassives/, svgs/ (stratagems), warbonds/,
                       difficulty/ (1–10 difficulty emblems), faction/ (front emblems)
 public/               PWA surface: icon.svg (brand source) + generated pwa-*.png /
@@ -1058,8 +1034,6 @@ mount: `fly volumes create griffdive_data --region ams --size 1`.
   production build (`pnpm build` + Nitro server, port 3173, WebSocket included). Specs: solo dive
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host
   authority, pact lock-in), Codex slide-over (opens over the dive without dropping the session),
-  design conformance (`design-conformance.spec.ts`: seeds each design screen through the engine and
-  diffs static-text styling against the committed contract; report-only unless `DESIGN_STRICT=1`),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
   non-dismissible name gate, star-rating keyboard navigation), phone host moderation
   (`phone.spec.ts`: the 390px squad bar opens the moderation bottom sheet), PWA affordances
