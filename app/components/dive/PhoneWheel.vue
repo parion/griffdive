@@ -67,6 +67,14 @@ const dealReady = computed(() =>
   && decision.value.decided
   && strainCall.value.decided)
 
+// The gate readout counts the calls still outstanding (misfortune + strain).
+const gateText = computed(() => {
+  const needsStrain = strainVisible.value && Boolean(strain.value)
+  const need = 1 + (needsStrain ? 1 : 0)
+  const made = (decision.value.decided ? 1 : 0) + (needsStrain && strainCall.value.decided ? 1 : 0)
+  return `${made}/${need} CALLS`
+})
+
 const showMo = computed(() => !props.state.frontId)
 
 function acceptDisabled(): boolean {
@@ -146,15 +154,7 @@ function acceptDisabled(): boolean {
       />
     </div>
 
-    <section
-      class="sheet"
-      aria-label="Wheel result"
-    >
-      <span
-        class="sheet-top"
-        aria-hidden="true"
-      />
-
+    <div class="cards">
       <template v-if="showMo">
         <MajorOrderPicker
           :state="state"
@@ -335,14 +335,28 @@ function acceptDisabled(): boolean {
             <span class="disp mo-risk">+{{ MAJOR_ORDER_RISK }} ×{{ opLength }}</span>
           </div>
         </div>
+      </template>
 
+      <template v-else-if="!canControl">
+        <p class="waiting">
+          Waiting for the host to spin…
+        </p>
+      </template>
+    </div>
+
+    <PhoneActionBar
+      v-if="state.wheel"
+      aria-label="Valor and next step"
+    >
+      <template #detail>
         <PhoneValor
           :difficulty="state.difficulty"
           :team-risk="teamRisk"
           :pact-risk="0"
           :pending-text="decision.decided && (!strainVisible || strainCall.decided) ? 'Dealing pacts' : pendingText"
         />
-
+      </template>
+      <template #action>
         <button
           v-if="dealReady && canControl"
           class="deal-btn"
@@ -360,25 +374,25 @@ function acceptDisabled(): boolean {
             aria-hidden="true"
           ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
         </button>
-        <p
-          v-else-if="dealReady"
-          class="waiting"
+        <div
+          v-else
+          class="gate"
+          role="status"
         >
-          Waiting for the host to deal the pacts…
-        </p>
+          <span
+            class="hazard-soft gate-edge"
+            aria-hidden="true"
+          />
+          <span class="disp gate-word">Deal the pacts</span>
+          <span class="gate-meta">{{ dealReady ? 'Waiting for the host' : gateText }}</span>
+        </div>
       </template>
-
-      <template v-else-if="!canControl">
-        <p class="waiting">
-          Waiting for the host to spin…
-        </p>
-      </template>
-    </section>
+    </PhoneActionBar>
   </div>
 </template>
 
 <style scoped>
-.phone-wheel { display: flex; flex-direction: column; min-height: 100%; }
+.phone-wheel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .stage {
   position: relative;
   flex: 1 1 auto;
@@ -446,23 +460,13 @@ function acceptDisabled(): boolean {
 .legend i.orange { background: var(--orange); }
 .legend i.red { background: var(--red); }
 
-.sheet {
-  position: relative;
-  flex-shrink: 0;
+.cards {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 12px;
   background: var(--rail);
   border-top: 1px solid var(--line-3);
-}
-.sheet-top {
-  position: absolute;
-  left: 0;
-  top: -1px;
-  width: 64px;
-  height: 3px;
-  background: var(--gold);
 }
 
 .card {
@@ -582,6 +586,36 @@ function acceptDisabled(): boolean {
   cursor: pointer;
 }
 .deal-btn svg { width: 20px; height: 20px; }
+
+/* The not-ready gate: a dashed, disabled mirror of the deal button. */
+.gate {
+  position: relative;
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px 0 18px;
+  border: 1px dashed var(--line-4);
+  background: var(--ground);
+  overflow: hidden;
+}
+.gate-edge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+}
+.gate-word { font-size: 15px; color: var(--dim); }
+.gate-meta {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  white-space: nowrap;
+}
 
 @keyframes sweepY {
   0% { transform: translateY(-40%); }

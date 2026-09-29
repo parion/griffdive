@@ -274,6 +274,7 @@ function kickDiver(diverId: string): void {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 100%;
   padding: 10px 12px 16px;
 }
 .phone-banner {

@@ -265,55 +265,52 @@ const pendingText = computed(() => {
       </section>
     </div>
 
-    <footer
-      class="sheet"
-      aria-label="Valor and lock-in"
-    >
-      <span
-        class="sheet-top"
-        aria-hidden="true"
-      />
-      <div class="sheet-head">
-        <span class="lbl gold">Valor</span>
-        <span class="disp sheet-val">{{ (self ? selectedRisk + breakdown.total : breakdown.total) }}</span>
-        <span class="sheet-scale">/ 11</span>
-        <span
-          v-if="pendingText"
-          class="sheet-pending"
-        >{{ pendingText }}</span>
-        <span
-          v-else-if="locked"
-          class="sheet-locked"
-        >Locked</span>
-        <span
-          v-else
-          class="sheet-count"
-        >{{ swornText }}</span>
-      </div>
-
-      <div class="sheet-foot">
-        <HoldButton
-          v-if="!locked"
-          :label="canLock ? 'Lock in' : 'Locked out'"
-          :hint="canLock ? 'hold to lock' : ''"
-          tone="gold"
-          :disabled="!canLock"
-          @confirm="emit('lock', selection)"
-        />
-        <div
-          v-else
-          class="locked-row"
-        >
-          <span class="disp stamp locked-stamp">Locked</span>
-          <span class="locked-note">Waiting for the squad…</span>
+    <PhoneActionBar aria-label="Valor and lock-in">
+      <template #detail>
+        <div class="sheet-head">
+          <span class="lbl gold">Valor</span>
+          <span class="disp sheet-val">{{ (self ? selectedRisk + breakdown.total : breakdown.total) }}</span>
+          <span class="sheet-scale">/ 11</span>
+          <span
+            v-if="pendingText"
+            class="sheet-pending"
+          >{{ pendingText }}</span>
+          <span
+            v-else-if="locked"
+            class="sheet-locked"
+          >Locked</span>
+          <span
+            v-else
+            class="sheet-count"
+          >{{ swornText }}</span>
         </div>
-      </div>
-    </footer>
+      </template>
+
+      <template #action>
+        <div class="sheet-foot">
+          <HoldButton
+            v-if="!locked"
+            :label="canLock ? 'Lock in' : 'Locked out'"
+            :hint="canLock ? 'hold to lock' : ''"
+            tone="gold"
+            :disabled="!canLock"
+            @confirm="emit('lock', selection)"
+          />
+          <div
+            v-else
+            class="locked-row"
+          >
+            <span class="disp stamp locked-stamp">Locked</span>
+            <span class="locked-note">Waiting for the squad…</span>
+          </div>
+        </div>
+      </template>
+    </PhoneActionBar>
   </div>
 </template>
 
 <style scoped>
-.phone-pacts { display: flex; flex-direction: column; min-height: 100%; }
+.phone-pacts { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .scroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -488,24 +485,6 @@ const pendingText = computed(() => {
   color: var(--muted);
 }
 
-.sheet {
-  position: relative;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px 12px;
-  background: var(--rail);
-  border-top: 1px solid var(--line-3);
-}
-.sheet-top {
-  position: absolute;
-  left: 0;
-  top: -1px;
-  width: 64px;
-  height: 3px;
-  background: var(--gold);
-}
 .sheet-head { display: flex; align-items: baseline; gap: 7px; }
 .sheet-val { font-size: 24px; color: var(--gold); }
 .sheet-scale { font-size: 11px; font-weight: 700; color: var(--dim); }

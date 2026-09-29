@@ -138,75 +138,79 @@ const honors = computed(() => stars.value >= maxStars.value)
       </section>
     </div>
 
-    <footer class="report-foot">
-      <section
-        class="performance ticks"
-        aria-label="Performance"
-      >
-        <div class="perf-cell">
-          <span class="lbl teal">Performance</span>
-          <span
-            class="disp perf-v teal"
-            aria-live="polite"
-          >+{{ performance.toFixed(1) }}</span>
-        </div>
-        <span class="perf-div" />
-        <div class="perf-cell">
-          <span class="lbl">Valor</span>
-          <span class="perf-valor">
-            <span class="disp">{{ baseValor }}</span>
-            <span class="disp teal">+{{ performance.toFixed(1) }}</span>
-          </span>
-        </div>
-        <div
-          class="perf-options"
-          role="img"
-          :aria-label="`${stars} stars gives ${options} reward options`"
+    <PhoneActionBar aria-label="Performance and report">
+      <template #detail>
+        <section
+          class="performance ticks"
+          aria-label="Performance"
         >
-          <span class="opt-line"><b>{{ stars }}</b>★ → {{ options }} options</span>
-          <span class="opt-crates">
-            <i
-              v-for="n in options"
-              :key="n"
-            />
-          </span>
-        </div>
-      </section>
+          <div class="perf-cell">
+            <span class="lbl teal">Performance</span>
+            <span
+              class="disp perf-v teal"
+              aria-live="polite"
+            >+{{ performance.toFixed(1) }}</span>
+          </div>
+          <span class="perf-div" />
+          <div class="perf-cell">
+            <span class="lbl">Valor</span>
+            <span class="perf-valor">
+              <span class="disp">{{ baseValor }}</span>
+              <span class="disp teal">+{{ performance.toFixed(1) }}</span>
+            </span>
+          </div>
+          <div
+            class="perf-options"
+            role="img"
+            :aria-label="`${stars} stars gives ${options} reward options`"
+          >
+            <span class="opt-line"><b>{{ stars }}</b>★ → {{ options }} options</span>
+            <span class="opt-crates">
+              <i
+                v-for="n in options"
+                :key="n"
+              />
+            </span>
+          </div>
+        </section>
+        <p class="total-note">
+          Valor {{ baseValor }} → {{ total.toFixed(1) }}
+        </p>
+      </template>
 
-      <div class="foot-actions">
-        <button
-          class="btn primary cut file"
-          type="button"
-          @click="emit('submit')"
-        >
-          <span class="disp">File report</span>
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.4"
-            aria-hidden="true"
-          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-        </button>
-        <button
-          class="ghost cancel"
-          type="button"
-          @click="emit('cancel')"
-        >
-          Cancel
-        </button>
-      </div>
-      <p class="total-note">
-        Valor {{ baseValor }} → {{ total.toFixed(1) }}
-      </p>
-    </footer>
+      <template #action>
+        <div class="foot-actions">
+          <button
+            class="btn primary cut file"
+            type="button"
+            @click="emit('submit')"
+          >
+            <span class="disp">File report</span>
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              aria-hidden="true"
+            ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </button>
+          <button
+            class="ghost cancel"
+            type="button"
+            @click="emit('cancel')"
+          >
+            Cancel
+          </button>
+        </div>
+      </template>
+    </PhoneActionBar>
   </div>
 </template>
 
 <style scoped>
-.phone-report { display: flex; flex-direction: column; min-height: 100%; }
+.phone-report { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .scroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -301,15 +305,6 @@ const honors = computed(() => stars.value >= maxStars.value)
   background-image: repeating-linear-gradient(-45deg, rgba(255, 214, 66, 0.28) 0 4px, transparent 4px 8px);
 }
 
-.report-foot {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 16px 14px;
-  border-top: 1px solid var(--line-1);
-  background: var(--ground);
-}
 .performance {
   display: flex;
   align-items: center;

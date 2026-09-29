@@ -721,8 +721,9 @@ app/
                    AchievedOverlay — the full-bleed Griffdive achieved takeover,
                    DivePhone + DivePhoneShell/PhoneTopBar/PhoneCrusadeBar/PhoneSquadBar/
                    PhoneWheel/PhonePacts/PhoneValor/PhoneReport/PhoneDiving/
-                   PhoneRewardDraft — the fixed phone shell and its per-phase
-                   bottom-sheet layouts,
+                   PhoneRewardDraft/PhoneActionBar — the fixed phone shell, its per-phase
+                   layouts and the pinned bottom action bar (Valor detail + the phase's
+                   forward action),
                    WheelPanel, MajorOrderPicker — the pre-spin MO chooser, rendered in
                    the faction card's pre-roll slot,
                    MajorOrderCard — the in-game-style MO panel (emblem, countdown,

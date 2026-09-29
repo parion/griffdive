@@ -58,7 +58,11 @@ function segmentFill(i: number): string {
 // the outer rim so the wheel reads its own odds at a glance (matches the legend).
 const pips = computed(() =>
   segments.value.flatMap((segment, i) => {
-    const a = ((i * step.value) * Math.PI) / 180
+    // Pips ride the segment's leading spoke (the edge the slice starts on), so
+    // the risk readout lines up with the dividers rather than the segment
+    // centre — at every wheel size.
+    const edge = i * step.value - step.value / 2
+    const a = (edge * Math.PI) / 180
     const radius = R - 19
     const bx = CX + radius * Math.cos(a)
     const by = CY + radius * Math.sin(a)
@@ -70,8 +74,18 @@ const pips = computed(() =>
     })
   }))
 
+// The label overlay is HTML, not SVG, so it must scale with the wheel: sizes
+// are expressed in `cqw` against the wheel box (the design's 460px coordinate
+// system) and resolve against whatever width the wheel is given. Without this
+// the labels overflow the smaller phone wheel.
+const LABEL_WIDTH = 122
+const LABEL_FONT_CAP = 11.5
+const WHEEL_UNIT = SIZE
+function wheelUnits(px: number): string {
+  return `${((px / WHEEL_UNIT) * 100).toFixed(3)}cqw`
+}
 function labelSize(name: string): string {
-  return `${Math.min(11.5, 116 / (name.length * 0.66)).toFixed(1)}px`
+  return wheelUnits(Math.min(LABEL_FONT_CAP, 116 / (name.length * 0.66)))
 }
 
 const reduced = import.meta.client
@@ -195,13 +209,14 @@ const hubLabel = computed(() => {
         <div
           class="labels"
           aria-hidden="true"
+          :style="{ '--label-w': wheelUnits(LABEL_WIDTH), '--label-x': wheelUnits(80) }"
         >
           <span
             v-for="(segment, i) in segments"
             :key="segment.id"
             class="seg-label"
             :class="{ hit: i === drawnIndex }"
-            :style="{ transform: `rotate(${i * step}deg) translateX(80px)`, fontSize: labelSize(segment.name) }"
+            :style="{ transform: `rotate(${i * step}deg) translateX(var(--label-x))`, fontSize: labelSize(segment.name) }"
           >{{ segment.name }}</span>
         </div>
       </div>
@@ -253,6 +268,7 @@ const hubLabel = computed(() => {
   aspect-ratio: 1;
   margin-inline: auto;
   flex-shrink: 0;
+  container-type: size;
 }
 .risk-legend {
   display: flex;
@@ -273,7 +289,7 @@ const hubLabel = computed(() => {
 .risk-sw.red { background: var(--red); }
 .halo {
   position: absolute;
-  inset: -18px;
+  inset: -3.913cqw;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255, 214, 66, 0.07) 0%, transparent 62%);
 }
@@ -289,8 +305,8 @@ const hubLabel = computed(() => {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 122px;
-  margin-top: -7px;
+  width: var(--label-w);
+  margin-top: -1.522cqw;
   transform-origin: 0 50%;
   display: flex;
   align-items: center;
@@ -304,21 +320,22 @@ const hubLabel = computed(() => {
 
 .pointer {
   position: absolute;
-  right: -16px;
+  right: -3.478cqw;
   top: 50%;
-  width: 30px;
-  height: 30px;
-  margin-top: -15px;
+  width: 6.522cqw;
+  height: 6.522cqw;
+  margin-top: -3.261cqw;
   background: var(--gold);
   clip-path: polygon(0 50%, 100% 0, 100% 100%);
   filter: drop-shadow(0 0 8px rgba(255, 214, 66, 0.6));
 }
 .pointer-line {
   position: absolute;
-  right: -30px;
+  right: -6.522cqw;
   top: 50%;
-  width: 24px;
+  width: 5.217cqw;
   height: 2px;
+  margin-top: -1px;
   background: var(--gold);
 }
 
@@ -326,14 +343,14 @@ const hubLabel = computed(() => {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 126px;
-  height: 126px;
-  margin: -63px 0 0 -63px;
+  width: 27.391cqw;
+  height: 27.391cqw;
+  margin: -13.696cqw 0 0 -13.696cqw;
   border-radius: 50%;
   border: 0;
   background: var(--panel);
   color: var(--gold);
-  box-shadow: 0 0 0 6px var(--ground), 0 0 0 7px var(--gold);
+  box-shadow: 0 0 0 1.304cqw var(--ground), 0 0 0 1.522cqw var(--gold);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -349,9 +366,9 @@ const hubLabel = computed(() => {
   animation: glow 2.6s ease-in-out infinite;
 }
 .hub.live:hover { filter: brightness(1.1); }
-.hub-word { font-size: 30px; }
-.hub.live .hub-word { font-size: 26px; }
-.hub-sub { font-size: 10px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; }
+.hub-word { font-size: clamp(15px, 6.522cqw, 30px); }
+.hub.live .hub-word { font-size: clamp(13px, 5.652cqw, 26px); }
+.hub-sub { font-size: clamp(7px, 2.174cqw, 10px); font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; }
 
 @media (max-width: 1020px) {
   .wheel-wrap { width: min(100%, 320px); }

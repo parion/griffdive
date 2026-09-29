@@ -125,6 +125,7 @@ function tierOf(option: RewardOption): string {
       :self-id="selfId"
       :self="self"
       :can-control="canControl"
+      compact
       @spin="emit('spinBonus')"
       @award="playerId => emit('awardBonus', playerId)"
       @advance="emit('advance')"
@@ -259,75 +260,74 @@ function tierOf(option: RewardOption): string {
         </div>
       </div>
 
-      <footer
-        class="reward-foot"
-        aria-label="Reward tokens"
-      >
-        <span
-          v-if="banMode"
-          class="ban-bar"
-        />
-        <template v-if="banMode">
-          <button
-            class="ghost cancel"
-            type="button"
-            @click="exitBan"
-          >
-            Cancel
-          </button>
-          <HoldButton
-            class="ban-confirm"
-            :label="selectedBan.length ? `Ban ${selectedBan.length}` : 'Select items'"
-            hint="hold to confirm"
-            tone="red"
-            :disabled="selectedBan.length === 0"
-            @confirm="confirmBan"
+      <PhoneActionBar aria-label="Reward tokens">
+        <template #action>
+          <span
+            v-if="banMode"
+            class="ban-bar"
           />
-        </template>
-        <template v-else-if="resolved">
-          <div class="result">
-            <span class="lbl">{{ banned ? 'Banned' : 'Banked' }}</span>
-            <span class="result-name">{{ banned ? 'Offer purged for the crusade' : chosen?.displayName ?? '—' }}</span>
-          </div>
-          <button
-            class="btn primary cut next"
-            type="button"
-            :disabled="!canControl"
-            @click="emit('advance')"
-          >
-            <span class="disp">{{ advanceLabel }}</span>
-          </button>
-        </template>
-        <template v-else>
-          <span class="foot-tokens">
-            <span class="lbl">Tokens</span>
-            <span class="chit-row">
-              <i
-                v-for="n in 3"
-                :key="n"
-                :class="{ on: n <= rewardTokens }"
-              />
-              <b>{{ rewardTokens }}/3</b>
+          <template v-if="banMode">
+            <button
+              class="ghost cancel"
+              type="button"
+              @click="exitBan"
+            >
+              Cancel
+            </button>
+            <HoldButton
+              class="ban-confirm"
+              :label="selectedBan.length ? `Ban ${selectedBan.length}` : 'Select items'"
+              hint="hold to confirm"
+              tone="red"
+              :disabled="selectedBan.length === 0"
+              @confirm="confirmBan"
+            />
+          </template>
+          <template v-else-if="resolved">
+            <div class="result">
+              <span class="lbl">{{ banned ? 'Banned' : 'Banked' }}</span>
+              <span class="result-name">{{ banned ? 'Offer purged for the crusade' : chosen?.displayName ?? '—' }}</span>
+            </div>
+            <button
+              class="btn primary cut next"
+              type="button"
+              :disabled="!canControl"
+              @click="emit('advance')"
+            >
+              <span class="disp">{{ advanceLabel }}</span>
+            </button>
+          </template>
+          <template v-else>
+            <span class="foot-tokens">
+              <span class="lbl">Tokens</span>
+              <span class="chit-row">
+                <i
+                  v-for="n in 3"
+                  :key="n"
+                  :class="{ on: n <= rewardTokens }"
+                />
+                <b>{{ rewardTokens }}/3</b>
+              </span>
             </span>
-          </span>
-          <button
-            class="ghost act"
-            type="button"
-            :disabled="!canReroll"
-            @click="emit('reroll')"
-          >
-            Reroll
-          </button>
-          <button
-            class="ghost act ban"
-            type="button"
-            :disabled="!canBan"
-            @click="enterBan"
-          >
-            Ban
-          </button>
+            <button
+              class="ghost act"
+              type="button"
+              :disabled="!canReroll"
+              @click="emit('reroll')"
+            >
+              Reroll
+            </button>
+            <button
+              class="ghost act ban"
+              type="button"
+              :disabled="!canBan"
+              @click="enterBan"
+            >
+              Ban
+            </button>
+          </template>
         </template>
-      </footer>
+      </PhoneActionBar>
 
       <p
         v-if="bonusNote && !resolved"
@@ -340,7 +340,7 @@ function tierOf(option: RewardOption): string {
 </template>
 
 <style scoped>
-.phone-rewards { display: flex; flex-direction: column; min-height: 100%; }
+.phone-rewards { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .scroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -493,16 +493,6 @@ function tierOf(option: RewardOption): string {
 }
 .gold-stamp { border-color: var(--gold); color: var(--gold); }
 
-.reward-foot {
-  position: relative;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-top: 1px solid var(--line-2);
-  background: var(--rail);
-}
 .ban-bar {
   position: absolute;
   left: 0;

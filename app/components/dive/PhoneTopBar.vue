@@ -232,7 +232,7 @@ function run(action: () => void): void {
   letter-spacing: 0.24em;
   color: var(--text);
 }
-.room :deep(svg) { color: var(--khaki); flex-shrink: 0; }
+.room :deep(svg) { width: 15px; height: 15px; color: var(--khaki); flex-shrink: 0; }
 
 .solo {
   display: flex;

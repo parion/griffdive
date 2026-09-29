@@ -8,7 +8,8 @@ const props = withDefaults(defineProps<{
   selfId: string | null
   self: DiverState | null
   canControl?: boolean
-}>(), { canControl: true })
+  compact?: boolean
+}>(), { canControl: true, compact: false })
 
 const emit = defineEmits<{
   spin: []
@@ -171,6 +172,7 @@ function tokenChits(count: number): boolean[] {
 <template>
   <section
     class="honors"
+    :class="{ compact }"
     aria-label="Squad honors"
   >
     <header class="honors-head">
@@ -1081,4 +1083,27 @@ function tokenChits(count: number): boolean[] {
   .spin-btn { animation: none; }
   .reel-strip { transition-duration: 0ms !important; }
 }
+
+/* Phone: one column. The header stacks (the host chip no longer collides with
+   the title), the eligibility rail becomes rows, and the reel gets the full
+   width with the CTA beneath it instead of a squeezed side-by-side grid. */
+.honors.compact { gap: 10px; }
+.honors.compact .honors-head { flex-direction: column; align-items: stretch; gap: 8px; }
+.honors.compact .honors-title { font-size: clamp(24px, 7.5vw, 32px); }
+.honors.compact .host-chip { width: 100%; justify-content: center; }
+.honors.compact .elig-bar { flex-direction: column; }
+.honors.compact .elig-cell { height: 40px; padding: 0 12px; border-right: 0; border-bottom: 1px solid var(--line-2); }
+.honors.compact .elig-spacer { display: none; }
+.honors.compact .elig-ok { height: 40px; padding: 0 12px; }
+.honors.compact .stat-stage { grid-template-columns: 1fr; min-height: 0; gap: 10px; }
+.honors.compact .reel-box { min-height: 210px; }
+.honors.compact .reel-row { gap: 10px; padding: 0 12px 0 18px; overflow: hidden; }
+.honors.compact .reel-label { font-size: 1rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.honors.compact .reel-dir { display: none; }
+.honors.compact .action-col { min-height: 64px; }
+.honors.compact .spin-btn { min-height: 64px; }
+.honors.compact .spin-word { font-size: 1.6rem; }
+.honors.compact .prize { min-height: 108px; }
+.honors.compact .name-row { flex-wrap: wrap; }
+.honors.compact .name-ties { margin-left: 0; }
 </style>
