@@ -569,6 +569,7 @@ function launchCrusade(variant: CrusadeVariant): void {
           :failed="state.phase === 'forfeit'"
           :mission-in-operation="state.missionInOperation"
           :op-length="opLength"
+          :route="state.phase === 'lobby'"
         />
       </template>
 

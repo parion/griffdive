@@ -8,19 +8,30 @@ const props = defineProps<{
   failed?: boolean
   missionInOperation: number
   opLength: number
+  // Pre-launch route preview (the lobby): rungs below the start are skipped,
+  // not cleared, and the path ahead reads as a plan rather than a lockout.
+  route?: boolean
 }>()
 
 const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
   const n = i + 3
   const state = props.achieved
     ? (n === 10 ? 'goal' : 'cleared')
-    : n < props.difficulty
-      ? 'cleared'
-      : n === props.difficulty
-        ? 'current'
-        : n === 10
-          ? 'goal'
-          : 'locked'
+    : props.route
+      ? n < props.difficulty
+        ? 'skipped'
+        : n === props.difficulty
+          ? 'current'
+          : n === 10
+            ? 'goal'
+            : 'locked'
+      : n < props.difficulty
+        ? 'cleared'
+        : n === props.difficulty
+          ? 'current'
+          : n === 10
+            ? 'goal'
+            : 'locked'
   return {
     n,
     name: difficultyName(n),
@@ -34,7 +45,7 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
 <template>
   <nav
     class="strip"
-    :class="{ failed }"
+    :class="{ failed, route }"
     aria-label="Crusade ladder, difficulty 3 to 10"
   >
     <div
@@ -186,4 +197,23 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
 .strip.failed [data-state='current'] .name { color: var(--red); }
 [data-state='goal'] { color: var(--dim); border-color: #1e2118; }
 [data-state='goal'] .n { color: var(--dim); }
+
+/* Pre-launch route preview: the path ahead is a plan (muted), the rungs below
+   the start are skipped (hazard), not cleared. */
+.strip.route [data-state='locked'],
+.strip.route [data-state='goal'] { color: var(--muted); border-color: var(--line-2); }
+.strip.route [data-state='locked'] .n,
+.strip.route [data-state='goal'] .n,
+.strip.route [data-state='locked'] .name,
+.strip.route [data-state='goal'] .name { color: var(--muted); }
+.strip.route [data-state='locked'] .tier,
+.strip.route [data-state='goal'] .tier { opacity: 0.7; }
+[data-state='skipped'] {
+  color: var(--line-5);
+  border-color: var(--line-1);
+  background-image: repeating-linear-gradient(-45deg, rgba(255, 214, 66, 0.08) 0 4px, transparent 4px 8px);
+}
+[data-state='skipped'] .n,
+[data-state='skipped'] .name { color: var(--line-5); }
+[data-state='skipped'] .tier { opacity: 0.4; }
 </style>

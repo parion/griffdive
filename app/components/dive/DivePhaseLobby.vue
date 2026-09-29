@@ -86,7 +86,7 @@ const bays = computed<BayView[]>(() => {
       host: false,
       you: false,
       warbonds: 0,
-      light: 'var(--muted)',
+      light: 'var(--dim)',
       status: 'OPEN',
       pulse: !launched.value,
       delay: '0s',
@@ -465,7 +465,10 @@ const checks = computed<CheckView[]>(() => [
             </div>
           </div>
           <span class="vcard-diff">{{ v.diffName }}</span>
-          <span class="vcard-divers">
+          <span
+            class="vcard-divers"
+            :class="{ nofit: !v.fits }"
+          >
             <svg
               width="14"
               height="14"
@@ -735,7 +738,8 @@ const checks = computed<CheckView[]>(() => [
 .vcard-ticks i { flex: 1 1 0; }
 .vcard-diff { margin-top: 0.4rem; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: var(--khaki); white-space: nowrap; }
 .vcard.on .vcard-diff { color: var(--gold); }
-.vcard-divers { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.6rem; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--khaki); white-space: nowrap; }
+.vcard-divers { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.6rem; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--text); white-space: nowrap; }
+.vcard-divers.nofit { color: var(--khaki); }
 .vcard-kit { display: flex; flex-direction: column; gap: 3px; margin-top: 0.45rem; }
 .vcard-kit span { display: flex; align-items: baseline; gap: 0.4rem; font-size: 12px; line-height: 1.2; color: var(--khaki); }
 .vcard-kit b { width: 8px; flex-shrink: 0; color: var(--line-5); }
