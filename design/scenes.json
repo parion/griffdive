@@ -1,0 +1,248 @@
+{
+ "pages": [
+  {
+   "page": "Achieved",
+   "dc": "Achieved.dc.html",
+   "viewport": {
+    "width": 1440,
+    "height": 900
+   },
+   "default": "default",
+   "scenes": [
+    "default"
+   ]
+  },
+  {
+   "page": "Armory",
+   "dc": "Armory.dc.html",
+   "viewport": {
+    "width": 1440,
+    "height": 900
+   },
+   "default": "default",
+   "scenes": [
+    "default"
+   ]
+  },
+  {
+   "page": "Dive",
+   "dc": "Dive.dc.html",
+   "viewport": {
+    "width": 1440,
+    "height": 900
+   },
+   "default": "deployed",
+   "scenes": [
+    "deployed",
+    "pact-broken"
+   ]
+  },
+  {
+   "page": "Forfeit",
+   "dc": "Forfeit.dc.html",
+   "viewport": {
+    "width": 1440,
+    "height": 900
+   },
+   "default": "selected",
+   "scenes": [
+    "choose",
+    "selected",
+    "confiscated"
+   ]
+  },
+  {
+   "page": "Foundations",
+   "dc": "Foundations.dc.html",
+   "viewport": {
+    "width": 1440,
+    "height": 2136
+   },
+   "default": "default",
+   "scenes": [
+    "default"
+   ]
+  },
+  {
+   "page": "Honors",
+   "dc": "Honors.dc.html",
+   "viewport": {
+    "width": 1440,
+    "height": 900
+   },
+   "default": "spin",
+   "scenes": [
+    "spin",
+    "landed",
+    "awarded"
+   ]
+  },
+  {
+   "page": "Lobby",
+   "dc": "Lobby.dc.html",
+   "viewport": {
+    "width": 1440,
+    "height": 900
+   },
+   "default": "prelaunch",
+   "scenes": [
+    "prelaunch",
+    "launched"
+   ]
+  },
+  {
+   "page": "Main",
+   "dc": "Main.dc.html",
+   "viewport": {
+    "width": 1440,
+    "height": 900
+   },
+   "default": "default",
+   "scenes": [
+    "default"
+   ]
+  },
+  {
+   "page": "Pacts",
+   "dc": "Pacts.dc.html",
+   "viewport": {
+    "width": 1440,
+    "height": 900
+   },
+   "default": "sworn",
+   "scenes": [
+    "fresh",
+    "sworn"
+   ]
+  },
+  {
+   "page": "PhoneBridge",
+   "dc": "PhoneBridge.dc.html",
+   "viewport": {
+    "width": 390,
+    "height": 844
+   },
+   "default": "default",
+   "scenes": [
+    "default"
+   ]
+  },
+  {
+   "page": "PhonePacts",
+   "dc": "PhonePacts.dc.html",
+   "viewport": {
+    "width": 390,
+    "height": 844
+   },
+   "default": "sworn",
+   "scenes": [
+    "fresh",
+    "sworn"
+   ]
+  },
+  {
+   "page": "PhoneReport",
+   "dc": "PhoneReport.dc.html",
+   "viewport": {
+    "width": 390,
+    "height": 844
+   },
+   "default": "default",
+   "scenes": [
+    "default"
+   ]
+  },
+  {
+   "page": "PhoneRewards",
+   "dc": "PhoneRewards.dc.html",
+   "viewport": {
+    "width": 390,
+    "height": 844
+   },
+   "default": "play",
+   "scenes": [
+    "play",
+    "choose",
+    "catalog",
+    "banked"
+   ]
+  },
+  {
+   "page": "PhoneWelcome",
+   "dc": "PhoneWelcome.dc.html",
+   "viewport": {
+    "width": 390,
+    "height": 844
+   },
+   "default": "default",
+   "scenes": [
+    "default"
+   ]
+  },
+  {
+   "page": "PhoneWheel",
+   "dc": "PhoneWheel.dc.html",
+   "viewport": {
+    "width": 390,
+    "height": 844
+   },
+   "default": "decide",
+   "scenes": [
+    "spin",
+    "decide"
+   ]
+  },
+  {
+   "page": "Report",
+   "dc": "Report.dc.html",
+   "viewport": {
+    "width": 1440,
+    "height": 900
+   },
+   "default": "default",
+   "scenes": [
+    "default"
+   ]
+  },
+  {
+   "page": "Rewards",
+   "dc": "Rewards.dc.html",
+   "viewport": {
+    "width": 1440,
+    "height": 900
+   },
+   "default": "play",
+   "scenes": [
+    "play",
+    "choose",
+    "banked",
+    "banning"
+   ]
+  },
+  {
+   "page": "Welcome",
+   "dc": "Welcome.dc.html",
+   "viewport": {
+    "width": 1440,
+    "height": 900
+   },
+   "default": "default",
+   "scenes": [
+    "default"
+   ]
+  },
+  {
+   "page": "Wheel",
+   "dc": "Wheel.dc.html",
+   "viewport": {
+    "width": 1440,
+    "height": 900
+   },
+   "default": "spin",
+   "scenes": [
+    "spin",
+    "decide"
+   ]
+  }
+ ]
+}

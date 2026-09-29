@@ -16,6 +16,7 @@
     "test:e2e": "playwright test",
     "typecheck": "nuxt typecheck",
     "design:extract": "node scripts/design/extract.mjs && node scripts/design/spec.mjs",
+    "design:capture": "node scripts/design/capture.mjs",
     "design:check": "DESIGN_STRICT=1 playwright test e2e/design-conformance.spec.ts && node scripts/design/report.mjs",
     "design:report": "node scripts/design/report.mjs"
   },

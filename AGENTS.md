@@ -61,7 +61,8 @@ pnpm only (`pnpm-lock.yaml` is canonical).
 | `pnpm test:watch` | exists | Vitest watch mode |
 | `pnpm test:e2e` | exists | Playwright (solo flow, room sync, Codex slide-over, Guide slide-over, design conformance, PWA affordances; production build on :3173) |
 | `pnpm typecheck` | exists | `nuxt typecheck` (vue-tsc) |
-| `pnpm design:extract` | exists | Rebuild the design contract from the Anima bundle → `design/spec/*.json` (needs the git-ignored bundle) |
+| `pnpm design:capture` | exists | Capture every design scene from the runnable exports → `design/scenes/*.json` + `design/scenes.json` (needs the git-ignored `designs.zip`) |
+| `pnpm design:extract` | exists | Rebuild the default-scene contract from the Anima bundle → `design/spec/*.json` (superseded by `design:capture`) |
 | `pnpm design:check` | exists | Strict design conformance (fails on any styling mismatch) + report |
 | `pnpm design:report` | exists | Regenerate `design/report/summary.md` from the last conformance run |
 
@@ -143,15 +144,21 @@ engine.
 - **Foundations kit**: a hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`) specimens
   the tokens/atoms so contributors can sanity-check the language. It is dev reference, not a
   product surface.
-- **Design contract + conformance**: the Anima export (git-ignored) is distilled into a committed,
-  machine-readable region contract under `design/spec/*.json` (extracted by `scripts/design/`).
-  `e2e/design-conformance.spec.ts` seeds each screen through the real engine (`design/states.ts`,
-  keyed by `design/map.ts`) and diffs the static-text styling (font family/size/weight/transform,
-  color) of every matched label against the contract — text values are not compared, since the
-  designs are static mocks and the app is dynamic. Report-only by default; `pnpm design:check`
-  (`DESIGN_STRICT=1`) fails on any mismatch. `pnpm design:report` writes the worklist to
-  `design/report/summary.md`. See `design/README.md`. This is the verification layer for the design
-  language below.
+- **Design contract + conformance**: the design ships as a runnable per-page export
+  (`designs.zip`, git-ignored) whose pages list their **scene options** (`spin`/`decide`,
+  `fresh`/`sworn`, `play`/`choose`/`banked`/`banning`, …). `pnpm design:capture`
+  (`scripts/design/capture.mjs`) boots the real DCC runtime once per scene at its authored
+  viewport and distills it into a committed, machine-readable region tree under
+  `design/scenes/<Page>__<scene>.json` plus the `design/scenes.json` manifest — box, text,
+  computed font/colors/border and resolved CSS `animation`. This is the authoritative contract
+  (the older default-scene-only `design/spec/*.json` from the static Anima bundle is kept for
+  reference). `e2e/design-conformance.spec.ts` seeds each screen through the real engine
+  (`design/states.ts`, keyed by `design/map.ts`) and diffs the static-text styling (font
+  family/size/weight/transform, color) of every matched label against the contract — text values
+  are not compared, since the designs are static mocks and the app is dynamic. Report-only by
+  default; `pnpm design:check` (`DESIGN_STRICT=1`) fails on any mismatch. `pnpm design:report`
+  writes the worklist to `design/report/summary.md`. See `design/README.md`. This is the
+  verification layer for the design language below.
 
 ---
 
