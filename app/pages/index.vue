@@ -534,7 +534,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
               ><path d="M4 12h15M13 6l6 6-6 6" /></svg>
             </span>
             <div class="valor-num rise">
-              <span class="lbl">Valor</span>
+              <span class="lbl gold">Valor</span>
               <span class="disp valor-big">{{ previewValorLabel }}</span>
               <span class="valor-diff">AT DIFFICULTY {{ PREVIEW_DIFFICULTY }}</span>
             </div>
@@ -1096,7 +1096,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
       class="mo-band mo-empty"
       aria-label="Major Order"
     >
-      <span class="lbl">Major Order</span>
+      <span class="lbl gold">Major Order</span>
       <span class="muted small">
         {{ moStatus === 'none' ? 'No active Major Order — the wheel picks the front' : 'War feed unavailable — the wheel picks the front' }}
       </span>
@@ -1384,7 +1384,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
 }
 .host-btn:hover:not(:disabled) { filter: brightness(1.08) drop-shadow(0 0 16px rgba(255, 214, 66, 0.16)); }
 .host-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-.host-label { font-size: 1.15rem; }
+.host-label { font-size: 1.375rem; }
 .host-chev { display: flex; align-items: center; gap: 0.7rem; }
 .pod-pips { display: flex; gap: 3px; }
 .pod-pips i { width: 9px; height: 9px; border: 2px solid var(--on-gold); }
@@ -1470,6 +1470,9 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
 }
 @media (max-width: 620px) {
   .hero { flex-direction: column; align-items: flex-start; }
+  .hero-word { font-size: 44px; }
+  .hero-tag { font-size: 12px; }
+  .host-label { font-size: 17px; }
   .hero-mark-frame { width: 6.5rem; height: 6.5rem; }
   .valor { grid-template-columns: minmax(0, 1fr); }
   /* Let the ladder scroll instead of squashing its columns into each other. */
@@ -1506,6 +1509,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
   animation: loopLit 6.6s linear infinite both;
 }
 .loop-next { flex: 0 0 3.25rem; }
+.loop-next .loop-cap { font-size: 10px; text-transform: none; }
 .loop-next-cell {
   display: grid;
   place-items: center;
@@ -1620,6 +1624,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
 .code-in:focus { outline: none; }
 .code-in::selection { background: transparent; }
 .join-btn { flex-shrink: 0; width: 6.5rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
+.join-btn .disp { font-size: 15px; }
 
 /* Solo — split drop from variant & warbonds -------------------------------- */
 .solo-row { display: flex; gap: 0.5rem; }

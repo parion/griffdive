@@ -319,6 +319,8 @@ const honors = computed(() => stars.value >= maxStars.value)
   background-color: var(--panel);
 }
 .perf-cell { display: flex; flex-direction: column; gap: 4px; }
+.perf-cell .lbl { font-size: 9px; }
+.file .disp { font-size: 19px; }
 .perf-v { font-size: 22px; }
 .perf-valor { display: flex; align-items: baseline; }
 .perf-valor .disp { font-size: 22px; color: var(--gold); }

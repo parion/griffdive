@@ -744,6 +744,8 @@ const checks = computed<CheckView[]>(() => [
 /* Launch ----------------------------------------------------------------- */
 .launch-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .launch-row :deep(.hold-btn) { width: 24.5rem; flex-shrink: 0; }
+.launch-row :deep(.hold-label) { font-size: 21px; }
+.sum-box .lbl { font-size: 9px; }
 .launch-sum { display: flex; align-items: center; gap: 0.5rem; }
 .sum { display: flex; flex-direction: column; gap: 0.25rem; padding-right: 0.6rem; }
 .sum-name { font-size: 1.25rem; color: var(--text); white-space: nowrap; }

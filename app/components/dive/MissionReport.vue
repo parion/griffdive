@@ -520,7 +520,7 @@ function submit(): void {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.18em;
-  color: var(--khaki);
+  color: var(--text);
 }
 .banner-bread .sep { color: var(--line-4); }
 .teal-line { display: inline-flex; align-items: center; gap: 6px; color: var(--teal); }

@@ -212,8 +212,9 @@ const divers = computed(() => props.state.divers.map(diver => ({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: var(--khaki);
+  color: var(--text);
 }
+.carry-head h2 { color: var(--text); }
 
 .carry-divers {
   display: flex;
@@ -289,7 +290,7 @@ const divers = computed(() => props.state.divers.map(diver => ({
   color: var(--muted);
 }
 .carry-cell-copy { display: flex; flex-direction: column; gap: 2px; }
-.carry-cell-t { font-size: var(--fs-sm); font-weight: 700; letter-spacing: 0.14em; }
+.carry-cell-t { font-size: var(--fs-sm); font-weight: 700; letter-spacing: 0.14em; color: var(--text); }
 .carry-cell-s { font-size: var(--fs-cap); font-weight: 700; letter-spacing: 0.14em; color: var(--muted); }
 .carry-cell-n {
   margin-left: auto;

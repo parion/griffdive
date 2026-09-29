@@ -52,12 +52,25 @@ function accountabilityLabel(pact: Pact | null): string | null {
   return pact ? ACCOUNTABILITY_LABELS[pact.accountability as Accountability] : null
 }
 
+function channelIcon(pact: Pact | null): string {
+  return pact ? CHANNEL_ICON[pact.accountability as Accountability] : CHANNEL_ICON.loadout
+}
+
 function initial(name: string): string {
   return name.trim().slice(0, 1).toUpperCase() || '?'
 }
 
-// Marking a pact failed is one-way in the engine, so the button confirms
-// before it commits.
+const selfSummary = computed(() => {
+  const diver = self.value
+  if (!diver || !diver.pactIds.length) {
+    return 'SAFE DIVE'
+  }
+  return `${diver.pactIds.length} SWORN · +${pactRiskOf(diver)} VALOR`
+})
+
+// Marking a pact failed is one-way in the engine. The diver's own cards use a
+// two-tap confirm; the host's squad rows use a hold (a field call is a
+// deliberate press, not a stray click).
 const confirming = ref<string | null>(null)
 function confirmKey(playerId: string, pactId: string): string {
   return `${playerId}:${pactId}`
@@ -68,33 +81,53 @@ function askConfirm(playerId: string, pactId: string): void {
 }
 function markFailed(playerId: string, pactId: string): void {
   confirming.value = null
+  holding.value = null
   emit('fail', playerId, pactId)
 }
+
+const reduced = import.meta.client
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const holding = ref<string | null>(null)
+let holdTimer: ReturnType<typeof setTimeout> | undefined
+function holdStart(playerId: string, pactId: string): void {
+  if (reduced) {
+    markFailed(playerId, pactId)
+    return
+  }
+  holding.value = confirmKey(playerId, pactId)
+  clearTimeout(holdTimer)
+  holdTimer = setTimeout(() => markFailed(playerId, pactId), 650)
+}
+function holdEnd(): void {
+  holding.value = null
+  clearTimeout(holdTimer)
+}
+onBeforeUnmount(() => clearTimeout(holdTimer))
 </script>
 
 <template>
   <div class="pact-briefing">
-    <h3 class="row spread brief-head">
-      <span class="lbl gold">Your pacts</span>
-      <span class="cap muted">a failed pact is voided — its risk stops counting and it costs one reward option</span>
-    </h3>
-
-    <ul
-      v-if="self && self.pactIds.length"
-      class="self-pacts"
+    <section
+      class="pact-col"
+      aria-label="Your pacts"
     >
-      <li
-        v-for="entry in briefedPacts(self)"
-        :key="entry.pactId"
-        class="self-pact"
-        :class="{ failed: entry.failed }"
+      <div class="col-head">
+        <span class="lbl gold">Your pacts</span>
+        <span class="col-sum">{{ selfSummary }}</span>
+      </div>
+
+      <div
+        v-if="self && self.pactIds.length"
+        class="self-pacts"
       >
-        <div class="pact-body">
-          <div class="row spread pact-top">
-            <span
-              v-if="entry.pact"
-              class="chan"
-            >
+        <article
+          v-for="entry in briefedPacts(self)"
+          :key="entry.pactId"
+          class="self-pact"
+          :class="{ failed: entry.failed }"
+        >
+          <div class="pact-top">
+            <span class="chan">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -104,170 +137,226 @@ function markFailed(playerId: string, pactId: string): void {
                 stroke-linejoin="round"
                 aria-hidden="true"
               >
-                <path :d="CHANNEL_ICON[entry.pact.accountability]" />
+                <path :d="channelIcon(entry.pact)" />
               </svg>
-              {{ CHANNEL_NAME[entry.pact.accountability] }}
+              {{ entry.pact ? CHANNEL_NAME[entry.pact.accountability] : 'Loadout' }}
             </span>
             <RiskPips
               :value="riskOf(entry.pactId)"
               :max="3"
             />
           </div>
-          <span class="pact-name disp">{{ entry.pact?.name ?? entry.pactId }}</span>
-          <p class="pact-rule">
-            {{ entry.pact?.rule ?? entry.pactId }}
-          </p>
-          <span
-            v-if="accountabilityLabel(entry.pact)"
-            class="cap muted watch"
-          >watch · {{ accountabilityLabel(entry.pact) }}</span>
-          <div class="pact-foot">
-            <span class="disp pact-valor">{{ riskOf(entry.pactId) }}</span>
-            <span class="lbl">Valor</span>
-            <span
-              v-if="entry.failed"
-              class="pact-void cap"
-            >risk voided</span>
+
+          <div class="pact-mid">
+            <span class="pact-glyph">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path :d="channelIcon(entry.pact)" />
+              </svg>
+            </span>
+            <span class="pact-name disp">{{ entry.pact?.name ?? entry.pactId }}</span>
+            <span class="pact-rule">{{ entry.pact?.rule ?? entry.pactId }}</span>
           </div>
-        </div>
 
-        <span
-          v-if="entry.failed"
-          class="void-flash"
-          aria-hidden="true"
-        />
-        <span
-          v-if="entry.failed"
-          class="disp stamp voided-stamp"
-        >Voided</span>
+          <div class="pact-spacer" />
+          <span class="pact-divider" />
 
-        <button
-          v-else-if="confirming === confirmKey(self.id, entry.pactId)"
-          class="btn danger tiny armed"
-          type="button"
-          :aria-label="`Confirm voiding ${entry.pact?.name ?? entry.pactId} — this cannot be undone`"
-          @click="markFailed(self.id, entry.pactId)"
-        >
-          Confirm — void it?
-          <span class="armed-hint">can't be undone</span>
-        </button>
-        <button
-          v-else
-          class="btn ghost tiny"
-          type="button"
-          title="I broke this pact in the field — void its risk and forfeit one reward option"
-          @click="askConfirm(self.id, entry.pactId)"
-        >
-          Mark failed
-        </button>
-      </li>
-    </ul>
-    <p
-      v-else
-      class="cap muted"
-    >
-      none — safe dive
-    </p>
+          <div class="pact-foot">
+            <span class="pact-valor disp">{{ riskOf(entry.pactId) }}</span>
+            <span class="pact-valor-lbl lbl">Valor</span>
+            <span class="pact-watch">
+              <template v-if="accountabilityLabel(entry.pact)">watch · {{ accountabilityLabel(entry.pact) }}</template>
+            </span>
+          </div>
 
-    <h3 class="row spread brief-head squad-head">
-      <span class="lbl">Squad pacts</span>
-      <span
-        v-if="isHost"
-        class="cap muted host-tag"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="var(--gold)"
-          aria-hidden="true"
-        ><path d="M3 18h18v2H3zM4 16l2-9 4 4 2-6 2 6 4-4 2 9z" /></svg>
-        host referee
-      </span>
-    </h3>
+          <button
+            v-if="!entry.failed && confirming === confirmKey(self.id, entry.pactId)"
+            class="btn danger tiny armed pact-fail"
+            type="button"
+            :aria-label="`Confirm voiding ${entry.pact?.name ?? entry.pactId} — this cannot be undone`"
+            @click="markFailed(self.id, entry.pactId)"
+          >
+            Confirm — void it?
+          </button>
+          <button
+            v-else-if="!entry.failed"
+            class="pact-fail"
+            type="button"
+            title="I broke this pact in the field — void its risk and forfeit one reward option"
+            @click="askConfirm(self.id, entry.pactId)"
+          >
+            Mark failed
+          </button>
 
-    <ul class="squad-pacts">
-      <li
-        v-for="diver in squadmates"
-        :key="diver.id"
-        class="squad-row"
-      >
-        <div class="squad-row-head">
-          <span class="cut-sm disp avatar">{{ initial(diver.name) }}</span>
-          <span class="squad-name">{{ diver.name }}</span>
-          <span class="squad-valor">
-            <span class="lbl">Valor</span>
-            <span class="disp valor-num">{{ pactRiskOf(diver) }}</span>
-          </span>
-        </div>
-        <div
-          v-if="diver.pactIds.length"
-          class="squad-chips"
-        >
           <span
+            v-if="entry.failed"
+            class="void-flash"
+            aria-hidden="true"
+          />
+          <span
+            v-if="entry.failed"
+            class="disp stamp voided-stamp"
+          >Voided</span>
+        </article>
+      </div>
+      <p
+        v-else
+        class="self-empty"
+      >
+        none — safe dive
+      </p>
+    </section>
+
+    <section
+      class="pact-col squad-col"
+      aria-label="Squad pacts"
+    >
+      <div class="col-head">
+        <span class="lbl">Squad pacts</span>
+        <span
+          v-if="isHost"
+          class="host-tag"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="var(--gold)"
+            aria-hidden="true"
+          ><path d="M3 18h18v2H3zM4 16l2-9 4 4 2-6 2 6 4-4 2 9z" /></svg>
+          HOST REFEREE
+        </span>
+      </div>
+
+      <div class="squad-panel">
+        <div
+          v-for="diver in squadmates"
+          :key="diver.id"
+          class="squad-row"
+        >
+          <div class="squad-row-head">
+            <span class="cut-sm disp avatar">{{ initial(diver.name) }}</span>
+            <span class="squad-name">{{ diver.name }}</span>
+            <span class="squad-valor">
+              <span class="lbl">Valor</span>
+              <span class="disp valor-num">{{ pactRiskOf(diver) }}</span>
+            </span>
+          </div>
+
+          <div
             v-for="entry in briefedPacts(diver)"
             :key="entry.pactId"
-            class="chip squad-chip"
-            :class="{ failed: entry.failed }"
-            :title="entry.pact ? `${entry.pact.name} — ${entry.pact.rule}` : entry.pactId"
+            class="squad-pact"
           >
-            {{ entry.pact?.name ?? entry.pactId }}
+            <svg
+              class="squad-chan"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              role="img"
+              :aria-label="entry.pact ? CHANNEL_NAME[entry.pact.accountability] : 'Loadout'"
+            >
+              <path :d="channelIcon(entry.pact)" />
+            </svg>
+            <div class="squad-pact-copy">
+              <span
+                class="squad-pact-name"
+                :class="{ failed: entry.failed }"
+              >{{ entry.pact?.name ?? entry.pactId }}</span>
+              <div class="squad-pact-risk">
+                <RiskPips
+                  :value="riskOf(entry.pactId)"
+                  :max="3"
+                />
+                <span
+                  class="squad-risk-txt"
+                  :class="{ failed: entry.failed }"
+                >+{{ riskOf(entry.pactId) }}</span>
+              </div>
+            </div>
+
             <span
               v-if="entry.failed"
-              class="failed-tag"
-            >void</span>
-            <template v-else-if="isHost">
-              <button
-                v-if="confirming === confirmKey(diver.id, entry.pactId)"
-                class="chip-fail sure armed"
-                type="button"
-                :aria-label="`Confirm voiding ${entry.pact?.name ?? entry.pactId} for ${diver.name} — this cannot be undone`"
-                @click="markFailed(diver.id, entry.pactId)"
-              >
-                sure?
-              </button>
-              <button
-                v-else
-                class="chip-fail"
-                type="button"
-                :aria-label="`Mark ${entry.pact?.name ?? entry.pactId} failed for ${diver.name}`"
-                title="Broken in the field — void its risk and forfeit one reward option"
-                @click="askConfirm(diver.id, entry.pactId)"
-              >
-                ×
-              </button>
-            </template>
-          </span>
+              class="disp stamp squad-void"
+            >Void</span>
+            <button
+              v-else-if="isHost"
+              class="squad-hold"
+              :class="{ holding: holding === confirmKey(diver.id, entry.pactId) }"
+              type="button"
+              :aria-label="`Hold to void ${entry.pact?.name ?? entry.pactId} for ${diver.name}`"
+              @pointerdown="holdStart(diver.id, entry.pactId)"
+              @pointerup="holdEnd"
+              @pointerleave="holdEnd"
+              @pointercancel="holdEnd"
+            >
+              <span
+                aria-hidden="true"
+                class="hazard-red crawl squad-hold-fill"
+              />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              ><path d="M6 3h12v14l-6 4-6-4zM3 3l18 18" /></svg>
+            </button>
+          </div>
+
+          <div
+            v-if="!diver.pactIds.length"
+            class="squad-none"
+          >
+            <span>TEAM RISK ONLY</span>
+          </div>
         </div>
-        <span
-          v-else
-          class="cap muted team-only"
-        >team risk only</span>
-      </li>
-    </ul>
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
 .pact-briefing {
   display: grid;
-  gap: 0.5rem;
+  grid-template-columns: minmax(0, 540px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
 }
 
-.brief-head {
+.pact-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.col-head {
+  display: flex;
   align-items: baseline;
-  margin: 0;
-  border-bottom: 1px solid var(--line-1);
-  padding-bottom: 0.3rem;
+  justify-content: space-between;
+  gap: 10px;
+  height: 16px;
+}
+.col-sum {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--khaki);
+  white-space: nowrap;
 }
 
-.gold { color: var(--gold); }
-
+/* Your pacts — a two-column card hand ------------------------------------- */
 .self-pacts {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: grid;
-  gap: 0.6rem;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
 .self-pact {
@@ -275,73 +364,106 @@ function markFailed(playerId: string, pactId: string): void {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
-  padding: 0.8rem 0.85rem;
+  gap: 10px;
+  padding: 16px;
   background: var(--panel);
-  border: 1px solid var(--line-3);
+  border: 1px solid var(--line-2);
   transition: border-color var(--dur-fast) var(--ease-out);
 }
-
-.self-pact.failed {
-  border-color: color-mix(in srgb, var(--red) 55%, var(--line-2));
-}
-
-.pact-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  min-width: 0;
-}
+.self-pact.failed { border-color: color-mix(in srgb, var(--red) 55%, var(--line-2)); }
 
 .pact-top {
-  min-height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.pact-name {
-  font-size: 1.2rem;
-  color: var(--text);
+.chan {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--line-2);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--khaki);
 }
+.chan svg { width: 14px; height: 14px; flex-shrink: 0; }
 
+.pact-mid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pact-glyph {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--line-2);
+  background: var(--rail);
+  color: var(--khaki);
+}
+.pact-glyph svg { width: 38px; height: 38px; }
+.pact-name { font-size: 22px; color: var(--text); }
 .self-pact.failed .pact-name {
   text-decoration: line-through;
   text-decoration-color: var(--red);
   text-decoration-thickness: 2px;
   opacity: 0.7;
 }
+.pact-rule { font-size: 15px; line-height: 1.3; color: var(--text); }
 
-.pact-rule {
-  margin: 0;
-  font-size: 0.95rem;
-  line-height: 1.3;
+.pact-spacer { flex-grow: 1; min-height: 4px; }
+.pact-divider {
+  height: 1px;
+  background: repeating-linear-gradient(90deg, var(--line-4) 0 6px, transparent 6px 10px);
 }
 
-.watch { white-space: normal; }
-
-.pact-foot {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  margin-top: 0.15rem;
-  padding-top: 0.5rem;
-  border-top: 1px dashed var(--line-2);
-}
-
-.pact-valor {
-  font-size: 1.9rem;
-  line-height: 1;
-  color: var(--red);
-}
-
+.pact-foot { display: flex; align-items: baseline; gap: 8px; }
+.pact-valor { font-size: 34px; line-height: 1; color: var(--red); }
 .self-pact.failed .pact-valor {
   color: var(--dim);
   text-decoration: line-through;
   text-decoration-thickness: 3px;
   text-decoration-color: var(--red);
 }
-
-.pact-void {
+.pact-valor-lbl { font-size: 10px; }
+.pact-watch {
   margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  white-space: normal;
+  text-align: right;
+}
+
+.pact-fail {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--red);
+  cursor: pointer;
+}
+.pact-fail.armed { padding: 4px 8px; }
+
+.self-empty {
+  margin: 0;
+  padding: 10px 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .void-flash {
@@ -351,7 +473,6 @@ function markFailed(playerId: string, pactId: string): void {
   pointer-events: none;
   animation: void-flash 0.6s ease-out both;
 }
-
 .voided-stamp {
   position: absolute;
   left: 0;
@@ -359,185 +480,163 @@ function markFailed(playerId: string, pactId: string): void {
   top: 44%;
   margin: 0 auto;
   width: max-content;
-  padding: 7px 15px;
-  font-size: 1.4rem;
+  padding: 8px 16px;
+  font-size: 30px;
   color: var(--red);
   border: 3px solid var(--red);
   background: color-mix(in srgb, var(--ground) 82%, transparent);
 }
-
 @keyframes void-flash {
   from { opacity: 0.55; }
   to { opacity: 0; }
 }
 
-.squad-head {
-  margin-top: 0.35rem;
-}
-
+/* Squad pacts — a bordered referee panel ---------------------------------- */
 .host-tag {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--muted);
 }
+.host-tag svg { width: 12px; height: 12px; flex-shrink: 0; }
 
-.host-tag svg,
-.chan svg {
-  width: 13px;
-  height: 13px;
-  flex-shrink: 0;
-}
-
-.chan svg { color: var(--khaki); }
-
-.squad-pacts {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.4rem;
+.squad-panel {
+  border: 1px solid var(--line-1);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
 }
 
 .squad-row {
-  display: grid;
-  gap: 0.4rem;
-  padding: 0.55rem 0.65rem;
-  background: var(--rail);
-  border: 1px solid var(--line-1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-1);
 }
+.squad-row:last-child { border-bottom: 0; }
 
 .squad-row-head {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 10px;
+  height: 30px;
 }
-
 .avatar {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
-  background: var(--raised);
+  background: var(--line-2);
   color: var(--text);
   font-size: 13px;
 }
-
 .squad-name {
-  font-size: 0.82rem;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-
 .squad-valor {
   margin-left: auto;
   display: inline-flex;
   align-items: baseline;
-  gap: 0.35rem;
+  gap: 6px;
 }
+.squad-valor .lbl { font-size: 9px; }
+.valor-num { font-size: 18px; color: var(--gold); }
 
-.valor-num {
-  font-size: 1.1rem;
-  color: var(--gold);
-}
-
-.squad-chips {
+.squad-pact {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  padding-left: 34px;
-}
-
-.squad-chip {
-  display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 10px;
+  min-height: 48px;
+  padding-left: 38px;
 }
-
-.squad-chip.failed {
-  border-color: var(--red);
-  color: var(--red);
+.squad-chan { width: 16px; height: 16px; flex-shrink: 0; color: var(--khaki); }
+.squad-pact-copy {
+  flex-grow: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.squad-pact-name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text);
+}
+.squad-pact-name.failed {
   text-decoration: line-through;
+  text-decoration-color: var(--red);
   text-decoration-thickness: 2px;
+  color: var(--dim);
 }
+.squad-pact-risk { display: flex; align-items: center; gap: 6px; }
+.squad-pact-risk :deep(.pips i) { width: 12px; height: 12px; }
+.squad-risk-txt { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: var(--red); }
+.squad-risk-txt.failed { color: var(--dim); }
 
-.failed-tag {
+.squad-void {
   flex-shrink: 0;
-  padding: 0.05rem 0.3rem;
-  border: 1px solid var(--red);
+  padding: 4px 7px;
+  font-size: 12px;
+  border: 2px solid var(--red);
   color: var(--red);
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-decoration: none;
 }
 
-.team-only { padding-left: 34px; }
-
-.chip-fail {
-  width: 1rem;
-  height: 1rem;
-  display: inline-grid;
+.squad-hold {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: grid;
   place-items: center;
-  padding: 0;
-  border: none;
-  background: none;
+  background: transparent;
+  border: 1px solid var(--line-3);
   color: var(--red);
-  font: inherit;
-  font-weight: 700;
-  line-height: 1;
   cursor: pointer;
 }
-
-.chip-fail.sure {
-  width: auto;
-  height: auto;
-  padding: 0.05rem 0.3rem;
-  border: 1px solid var(--red);
+.squad-hold svg { width: 18px; height: 18px; position: relative; }
+.squad-hold-fill {
+  position: absolute;
+  inset: 0;
+  opacity: 0.6;
+  transform-origin: bottom;
+  transform: scaleY(0);
+  transition: transform 650ms linear;
 }
+.squad-hold.holding .squad-hold-fill { transform: scaleY(1); }
 
-/* The confirm step is a one-way void: make the armed button read as a live,
-   destructive choice rather than an inert label. */
-.armed {
-  background: color-mix(in srgb, var(--red) 24%, transparent);
-  border-color: var(--red);
-  color: var(--red);
-  animation: armed-pulse 1.4s ease-in-out infinite;
+.squad-none {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding-left: 38px;
 }
-
-.armed-hint {
-  margin-left: 0.3rem;
-  font-size: 0.65rem;
-  letter-spacing: 0.02em;
-  opacity: 0.85;
-}
-
-@keyframes armed-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 45%, transparent); }
-  50% { box-shadow: 0 0 0 4px transparent; }
+.squad-none span {
+  padding: 5px 9px;
+  border: 1px dashed var(--line-4);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--muted);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .armed { animation: none; }
+  .void-flash { animation: none; opacity: 0; }
+  .squad-hold-fill { transition: none; }
 }
 
-/* Pointer devices reveal the fail affordance on chip hover; touch devices
-   always show it — there is no hover to rely on. */
-@media (hover: hover) and (pointer: fine) {
-  .chip-fail {
-    width: 0;
-    opacity: 0;
-    overflow: hidden;
-    transition: opacity var(--dur-fast) var(--ease-out), width var(--dur-fast) var(--ease-out);
-  }
-
-  .squad-chip:hover .chip-fail,
-  .chip-fail:focus-visible,
-  .chip-fail.sure {
-    width: auto;
-    min-width: 1rem;
-    opacity: 1;
-  }
+@media (max-width: 1180px) {
+  .pact-briefing { grid-template-columns: minmax(0, 1fr); }
 }
 </style>

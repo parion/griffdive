@@ -363,6 +363,7 @@ const pendingText = computed(() => {
 .s-risk { margin-left: auto; font-size: 14px; }
 .gold { color: var(--gold); }
 .orange { color: var(--orange); }
+.summary-total .lbl { font-size: 9px; }
 .summary-total {
   width: 72px;
   flex-shrink: 0;

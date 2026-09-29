@@ -38,7 +38,7 @@ export const DESIGN_TARGETS: DesignTarget[] = [
   { page: '11-mission-failed', route: 'dive', state: 'forfeit' },
   { page: '12-achieved', route: 'dive', state: 'complete' },
   { page: '13-phone-bridge', route: '/', viewport: PHONE },
-  { page: '14-phone-wheel', route: 'dive', state: 'spin', viewport: PHONE },
+  { page: '14-phone-wheel', route: 'dive', state: 'decision', viewport: PHONE },
   { page: '15-phone-pacts', route: 'dive', state: 'pacts', viewport: PHONE },
   { page: '16-phone-report', route: 'dive', state: 'diving', steps: ['open-report-success'], viewport: PHONE },
   { page: '17-phone-reward', route: 'dive', state: 'rewards', viewport: PHONE },

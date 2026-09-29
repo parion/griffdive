@@ -237,6 +237,7 @@ p { margin: 0.25rem 0; }
   line-height: 11px;
 }
 .cap b { font-weight: 700; color: var(--text); }
+.lbl.gold { color: var(--gold); }
 .sub {
   font-size: 10px;
   font-weight: 700;
@@ -402,7 +403,7 @@ p { margin: 0.25rem 0; }
   flex-shrink: 0;
 }
 .sec-h h2,
-.sh h2 { margin: 0; color: var(--text); }
+.sh h2 { margin: 0; color: var(--muted); }
 .sn { font-size: 13px; color: var(--gold); }
 
 details.panel summary {

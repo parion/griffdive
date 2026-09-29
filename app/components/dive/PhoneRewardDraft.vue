@@ -512,6 +512,7 @@ function tierOf(option: RewardOption): string {
   background-image: repeating-linear-gradient(-45deg, var(--red) 0 8px, var(--ground) 8px 16px);
 }
 .foot-tokens { display: flex; flex-direction: column; gap: 4px; margin-right: auto; }
+.foot-tokens .lbl { font-size: 9px; }
 .chit-row { display: flex; align-items: center; gap: 3px; }
 .chit-row b { margin-left: 4px; font-size: 12px; color: var(--muted); }
 .act {

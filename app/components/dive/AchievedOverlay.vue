@@ -404,7 +404,7 @@ function exportCrusade(): void {
 .ach-crusade { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
 .ach-lbl { font-size: 10px; }
 .ach-crusade-name {
-  font-size: var(--fs-sm);
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -509,7 +509,7 @@ function exportCrusade(): void {
   overflow: hidden;
 }
 .ach-band-inner .disp { font-size: 19px; letter-spacing: 0.12em; color: var(--gold); }
-.ach-band-ink { color: var(--text); }
+.ach-band-inner .ach-band-ink { color: var(--text); }
 .ach-diamond { width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg); }
 
 .ach-top {

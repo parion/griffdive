@@ -141,10 +141,10 @@ onBeforeUnmount(() => clearTimeout(timer))
 }
 .hold-label { font-size: 18px; letter-spacing: 0.02em; }
 .hold-hint {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.24em;
-  text-transform: uppercase;
+  text-transform: none;
   opacity: 0.8;
 }
 </style>

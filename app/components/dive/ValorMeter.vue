@@ -192,7 +192,7 @@ const legend = computed(() => {
 .valor-rail { display: flex; flex-direction: column; gap: 14px; }
 
 .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 20px; }
-.title { color: var(--gold); }
+.title { font-size: 10px; color: var(--muted); }
 .pending {
   padding: 3px 7px;
   font-size: 10px;

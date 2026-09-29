@@ -147,7 +147,12 @@ async function runTarget(page: import('@playwright/test').Page, target: DesignTa
 
   const url = target.route === 'dive' ? `/dive/${SLOT}` : target.route
   await page.goto(url)
-  await page.waitForTimeout(400)
+  // Wait for the screen to actually mount (dev HMR is slower than the prod
+  // build), then let fonts/layout settle.
+  const ready = target.route === 'dive' ? '.dive-page' : target.route === '/' ? '.bridge' : 'main'
+  await page.waitForSelector(ready, { timeout: 15_000 })
+  await page.evaluate(() => document.fonts.ready)
+  await page.waitForTimeout(300)
   await applySteps(page, target.steps ?? [])
 
   const appTexts = await collectAppText(page)
@@ -199,6 +204,9 @@ async function runTarget(page: import('@playwright/test').Page, target: DesignTa
   }
   fs.mkdirSync(REPORT_DIR, { recursive: true })
   fs.writeFileSync(path.join(REPORT_DIR, `${target.page}.json`), `${JSON.stringify(report, null, 1)}\n`)
+  if (process.env.DESIGN_SHOT === '1') {
+    await page.screenshot({ path: path.join(REPORT_DIR, `${target.page}.png`) })
+  }
 
   const summary = mismatches.length
     ? `${target.page}: ${matched} matched, ${mismatches.length} mismatches — ${mismatches.slice(0, 6).map(m => `${m.text}:${m.prop} ${m.design}→${m.app}`).join(', ')}`

@@ -160,9 +160,9 @@ const { online } = useSessionStore()
   flex-direction: column;
   gap: 0.12rem;
   padding: 0.3rem 0.55rem;
-  font-size: 0.62rem;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 .nav-icon { width: 20px; height: 20px; }

@@ -484,6 +484,7 @@ function cancelReport(): void {
 
 .outcome-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
 .outcome-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.outcome-copy .disp { font-size: 18px; }
 
 .report-form {
   display: grid;
@@ -656,7 +657,7 @@ function cancelReport(): void {
 }
 .mc-pod-svg { position: absolute; left: 50%; top: 18px; margin-left: -15px; }
 .mc-live { position: absolute; left: 50%; top: 12px; width: 6px; height: 6px; margin-left: 5px; background: var(--teal); }
-.mc-deployed { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.2em; color: var(--teal); animation: stampFlat 0.35s 1.55s both; }
+.mc-deployed { display: flex; align-items: center; gap: 6px; font-family: var(--font-body); font-stretch: normal; font-size: 12px; font-weight: 700; letter-spacing: 0.2em; text-transform: none; color: var(--teal); animation: stampFlat 0.35s 1.55s both; }
 .mc-deployed-dot { width: 7px; height: 7px; background: var(--teal); }
 .mc-ground { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: var(--muted); }
 .mc-body { display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 0 1.4rem; min-width: 0; }

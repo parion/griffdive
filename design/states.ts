@@ -9,7 +9,7 @@
 import { createDiveState, reduce } from '../shared/engine/reducer'
 import { createLobbyState, joinDiver } from '../shared/engine/room'
 import { createSaveDoc } from '../shared/engine/saves'
-import { MISFORTUNE_RISK, STRAIN_RISK } from '../shared/engine/config'
+import { MISFORTUNE_RISK, STRAIN_RISK, maxStarsFor } from '../shared/engine/config'
 import { diverOptions, pactOfferFor } from '../shared/engine/selectors'
 import type { DiveState } from '../shared/engine/types'
 import type { SaveDoc } from '../shared/types/save'
@@ -17,12 +17,16 @@ import type { SaveDoc } from '../shared/types/save'
 const SETTINGS = { variant: 'standard' as const }
 const HOST = 'host'
 const NAME = 'Griffon'
+// The design mocks are authored at Suicide Mission (difficulty 7); align the
+// presentation fixtures so static labels (difficulty name, mission count)
+// match the contract.
+const PRESENTATION_DIFFICULTY = 7
 
 // A fixed seed per fixture so every run derives the same wheel/offer.
 const SEED = 0x5eed1234
 
 function fresh(): DiveState {
-  return createDiveState(SETTINGS, HOST, NAME)
+  return { ...createDiveState(SETTINGS, HOST, NAME), difficulty: PRESENTATION_DIFFICULTY }
 }
 
 function spun(): DiveState {
@@ -108,7 +112,11 @@ export function buildStates(): Record<string, DiveState> {
   }
   const lobby = joinDiver(createLobbyState(), HOST, NAME)!
   const diving = pactLocked(wheelResolved(true, true))
-  const rewards = reduce(diving, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+  const rewards = reduce(diving, {
+    type: 'REPORT_RESULT',
+    outcome: 'success',
+    stars: maxStarsFor(PRESENTATION_DIFFICULTY),
+  })
   const forfeit = reduce(diving, { type: 'REPORT_RESULT', outcome: 'failure', stars: 0 })
   cache = {
     lobby,

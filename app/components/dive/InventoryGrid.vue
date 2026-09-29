@@ -1146,7 +1146,7 @@ function forfeit(ownerId: string, itemId: string): void {
   align-content: start;
   min-width: 0;
 }
-.rules-lbl { color: var(--khaki); }
+.rules-lbl { color: var(--muted); }
 .rules-row {
   display: flex;
   flex-wrap: wrap;

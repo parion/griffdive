@@ -122,7 +122,7 @@ function tierVar(tier: RewardTier): string {
         <span
           v-if="node.base"
           class="node-base"
-        >Base</span>
+        >BASE</span>
         <span
           v-if="settled && node.ok"
           class="node-mark"
@@ -186,7 +186,7 @@ function tierVar(tier: RewardTier): string {
 .ceiling-stamp {
   margin-left: auto;
   padding: 0.15rem 0.5rem;
-  font-size: 1.3rem;
+  font-size: 26px;
   border: 3px solid var(--tier, var(--gold));
   color: var(--tier, var(--gold));
   background: color-mix(in srgb, var(--tier, var(--gold)) 6%, transparent);
@@ -239,8 +239,7 @@ function tierVar(tier: RewardTier): string {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--teal);
+  color: var(--tier, var(--teal));
 }
 .node-mark {
   position: absolute;

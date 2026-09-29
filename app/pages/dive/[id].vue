@@ -605,7 +605,7 @@ function launchCrusade(variant: CrusadeVariant): void {
           </div>
           <div class="pool-count">
             <span class="disp">{{ wheelPool.count }}</span>
-            <span class="cap">misfortunes on the wheel</span>
+            <span class="cap pool-count-cap">misfortunes on the wheel</span>
           </div>
           <div
             class="pool-bars"
@@ -820,5 +820,6 @@ function launchCrusade(variant: CrusadeVariant): void {
 .pool-count .disp { font-size: 26px; color: var(--text); }
 .pool-bars { display: flex; gap: 3px; }
 .pool-bars span { height: 4px; min-width: 6px; }
-.pool-note { white-space: normal; }
+.pool-note { font-size: 12px; font-weight: 400; letter-spacing: normal; text-transform: none; white-space: normal; }
+.pool-count-cap { font-size: 12px; font-weight: 400; letter-spacing: normal; text-transform: none; }
 </style>

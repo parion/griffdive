@@ -1060,7 +1060,9 @@ function close(): void {
 .dsec-n { width: 1.5rem; font-size: 0.95rem; }
 .dsec-name { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; }
 .dsec-tier { margin-left: auto; font-size: 11px; }
-.dsec-fileno { font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: var(--muted); }
+.dsec-fileno { font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: var(--dim); }
+.dsec.file .dsec-head .lbl { color: var(--text); }
+.reg-head .lbl { color: var(--text); }
 .dfile-row { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; min-height: 2.6rem; border-bottom: 1px dashed var(--line-1); }
 .dfile-name { display: flex; align-items: center; gap: 0.35rem; font-size: 0.95rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text); }
 .dfile-cursor { width: 8px; height: 15px; background: var(--gold); }
@@ -1110,7 +1112,7 @@ function close(): void {
 .brief-panel-head { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 1.25rem; }
 .brief-title { margin: 0.35rem 0 0; font-size: var(--fs-h1); color: var(--text); }
 .brief-cap { margin: 0.35rem 0 0; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--khaki); }
-.brief-replay { display: flex; align-items: center; gap: 0.5rem; height: 2.75rem; padding: 0 0.9rem; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; }
+.brief-replay { display: flex; align-items: center; gap: 0.5rem; height: 2.75rem; padding: 0 0.9rem; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: none; color: var(--khaki); }
 
 .beat { position: relative; flex-grow: 1; min-height: 0; }
 
@@ -1118,7 +1120,7 @@ function close(): void {
 .beat-identify { display: grid; grid-template-columns: 440px minmax(0, 1fr); gap: 2.75rem; align-content: start; }
 .reg { position: relative; display: flex; flex-direction: column; background: var(--rail); border: 1px solid var(--line-4); min-height: 0; }
 .reg-head { display: flex; align-items: center; gap: 0.6rem; height: 2.5rem; padding: 0 1rem; border-bottom: 1px solid var(--line-1); }
-.reg-form { margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: var(--muted); }
+.reg-form { margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: var(--dim); }
 .reg-subject { display: flex; align-items: center; gap: 0.6rem; height: 3.25rem; padding: 0 1rem; border-bottom: 1px dashed var(--line-2); }
 .reg-dot { color: var(--line-5); }
 .reg-subject-name { font-size: 1.25rem; color: var(--text); }
@@ -1151,7 +1153,7 @@ function close(): void {
 .name-count { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: var(--muted); }
 .name-input { height: 3.25rem; padding: 0 0.9rem; font-size: 1rem; font-weight: 600; letter-spacing: 0.06em; }
 .name-hint { display: flex; align-items: center; gap: 0.6rem; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; color: var(--muted); }
-.name-hint b { padding: 0.2rem 0.45rem; border: 1px solid var(--line-4); color: var(--text); }
+.name-hint b { padding: 0.2rem 0.45rem; border: 1px solid var(--line-4); font-weight: 700; color: var(--text); }
 
 /* Spin */
 .beat-spin { display: grid; grid-template-columns: 396px minmax(0, 1fr); gap: 3rem; align-items: center; }
@@ -1293,7 +1295,7 @@ function close(): void {
 .odds-fill[data-tier='A'] { background: var(--tier-a); }
 .odds-fill[data-tier='S'] { background: var(--tier-s); }
 .odds-fill[data-tier='S+'] { background: var(--tier-splus); }
-.odds-pct { width: 3.5rem; text-align: right; font-size: 0.85rem; font-weight: 700; color: var(--text); }
+.odds-pct { width: 3.5rem; text-align: right; font-size: 9px; font-weight: 700; color: var(--khaki); }
 
 /* Footer */
 .brief-foot { display: flex; align-items: center; gap: 1rem; padding: 0 1.75rem; border-top: 1px solid var(--line-1); background: var(--ground); }
@@ -1306,6 +1308,8 @@ function close(): void {
 .brief-foot-spacer { flex-grow: 1; }
 .brief-lock { display: flex; align-items: center; gap: 0.5rem; font-size: 11px; font-weight: 700; letter-spacing: 0.16em; color: var(--muted); }
 .brief-next { display: flex; align-items: center; justify-content: space-between; gap: 1.4rem; min-width: 16.5rem; height: 3.25rem; padding: 0 1.25rem 0 1.5rem; }
+.brief-next .disp { font-size: 18px; }
+.brief-back { text-transform: none; }
 .brief-next-to { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; }
 .brief-next.cta { min-width: 18.75rem; height: 3.5rem; }
 

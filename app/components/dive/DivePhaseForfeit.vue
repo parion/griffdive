@@ -436,7 +436,7 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
   padding: var(--sp-3) var(--sp-4);
   border: 1px dashed color-mix(in srgb, var(--red) 55%, transparent);
   background: color-mix(in srgb, var(--red) 6%, transparent);
-  font-size: var(--fs-cap);
+  font-size: 12px;
   line-height: 1.45;
   color: var(--khaki);
 }
