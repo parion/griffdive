@@ -118,273 +118,275 @@ function acceptDisabled(): boolean {
 
 <template>
   <div class="phone-wheel">
-    <div class="stage">
-      <div
-        class="sweep"
-        aria-hidden="true"
-      />
+    <div class="scroll">
+      <div class="stage">
+        <div
+          class="sweep"
+          aria-hidden="true"
+        />
 
-      <button
-        v-if="state.wheel"
-        class="ghost reroll"
-        type="button"
-        :disabled="!misfortuneReroll.allowed"
-        :aria-label="`Reroll the directive${misfortuneReroll.free ? ' (free)' : `, spends a token (${state.rerollTokens} left)`}`"
-        :title="misfortuneReroll.reason ?? undefined"
-        @click="emit('reroll', 'misfortune')"
-      >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.7"
+        <button
+          v-if="state.wheel"
+          class="ghost reroll"
+          type="button"
+          :disabled="!misfortuneReroll.allowed"
+          :aria-label="`Reroll the directive${misfortuneReroll.free ? ' (free)' : `, spends a token (${state.rerollTokens} left)`}`"
+          :title="misfortuneReroll.reason ?? undefined"
+          @click="emit('reroll', 'misfortune')"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <rect
+              x="3.5"
+              y="3.5"
+              width="17"
+              height="17"
+              rx="2"
+            />
+            <circle
+              cx="8.5"
+              cy="8.5"
+              r="1.3"
+              fill="currentColor"
+            />
+            <circle
+              cx="15.5"
+              cy="15.5"
+              r="1.3"
+              fill="currentColor"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r="1.3"
+              fill="currentColor"
+            />
+          </svg>
+          <span class="reroll-n">{{ state.rerollTokens }}</span>
+        </button>
+
+        <div
+          class="legend"
           aria-hidden="true"
         >
-          <rect
-            x="3.5"
-            y="3.5"
-            width="17"
-            height="17"
-            rx="2"
-          />
-          <circle
-            cx="8.5"
-            cy="8.5"
-            r="1.3"
-            fill="currentColor"
-          />
-          <circle
-            cx="15.5"
-            cy="15.5"
-            r="1.3"
-            fill="currentColor"
-          />
-          <circle
-            cx="12"
-            cy="12"
-            r="1.3"
-            fill="currentColor"
-          />
-        </svg>
-        <span class="reroll-n">{{ state.rerollTokens }}</span>
-      </button>
+          <span><i class="khaki" />1–2</span>
+          <span><i class="orange" />3</span>
+          <span><i class="red" />4–5</span>
+        </div>
 
-      <div
-        class="legend"
-        aria-hidden="true"
-      >
-        <span><i class="khaki" />1–2</span>
-        <span><i class="orange" />3</span>
-        <span><i class="red" />4–5</span>
-      </div>
-
-      <WheelOfMisfortune
-        :difficulty="state.difficulty"
-        :seed="state.wheel?.seed ?? null"
-        :can-control="canControl"
-        @spin="emit('spin')"
-      />
-    </div>
-
-    <div class="cards">
-      <template v-if="showMo">
-        <MajorOrderPicker
-          :state="state"
+        <WheelOfMisfortune
+          :difficulty="state.difficulty"
+          :seed="state.wheel?.seed ?? null"
           :can-control="canControl"
-          @select="emit('setMajorOrder', $event)"
+          @spin="emit('spin')"
         />
-      </template>
-
-      <div
-        v-if="state.wheel && drawing"
-        class="drawing"
-        aria-live="polite"
-      >
-        <span class="disp drawing-word pulse">Drawing</span>
-        <span class="lbl">Directive · front · strain</span>
       </div>
 
-      <template v-else-if="state.wheel">
-        <div
-          class="card"
-          :class="decision.decided ? (decision.accepted ? 'locked' : 'safe') : 'open'"
-        >
-          <div class="card-head">
-            <span class="lbl">Directive · whole squad</span>
-            <span
-              v-if="decision.decided"
-              class="stamp disp"
-              :class="decision.accepted ? 'red' : 'khaki'"
-            >{{ decision.accepted ? 'Sworn' : 'Opted out' }}</span>
-          </div>
-          <div class="mis-name disp">
-            {{ misfortune?.name ?? 'Safe dive' }}
-          </div>
-          <div class="mis-row">
-            <span class="mis-rule">{{ misfortune?.rule ?? 'No directive — a zero-risk dive.' }}</span>
-            <span
-              v-if="misfortune"
-              class="mis-risk"
-            >
-              <span
-                class="disp red"
-              >+{{ directiveValor }}</span>
-              <RiskPips
-                :value="misfortuneRisk"
-                :max="5"
-              />
-            </span>
-          </div>
+      <div class="cards">
+        <template v-if="showMo">
+          <MajorOrderPicker
+            :state="state"
+            :can-control="canControl"
+            @select="emit('setMajorOrder', $event)"
+          />
+        </template>
 
-          <template v-if="!decision.decided">
-            <p
-              v-if="acceptBlocked && canControl"
-              class="block-note"
-            >
-              {{ strandedReason }}
-            </p>
-            <div class="mis-actions">
-              <HoldButton
-                :label="acceptBlocked ? 'Blocked' : 'Lock it in'"
-                hint="hold"
-                tone="gold"
-                :disabled="acceptDisabled()"
-                :aria-label="acceptBlocked ? strandedReason : 'Accept the directive, hold to lock'"
-                @confirm="emit('decide', true)"
-              />
-              <button
-                class="ghost opt-out"
-                type="button"
-                :disabled="!canControl"
-                @click="emit('decide', false)"
-              >
-                <span class="disp">Opt out</span>
-                <span class="sub">+0</span>
-              </button>
-            </div>
-          </template>
-          <template v-else-if="canControl">
-            <button
-              class="ghost change"
-              type="button"
-              @click="emit('decide', !decision.accepted)"
-            >
-              {{ decision.accepted ? 'Switch — opt out' : 'Switch — lock it in' }}
-            </button>
-          </template>
+        <div
+          v-if="state.wheel && drawing"
+          class="drawing"
+          aria-live="polite"
+        >
+          <span class="disp drawing-word pulse">Drawing</span>
+          <span class="lbl">Directive · front · strain</span>
         </div>
 
-        <div
-          v-if="strainVisible && strain"
-          class="card strain-card"
-        >
-          <div class="card-head">
-            <span class="lbl strain-l">Front · strain</span>
-            <span class="head-tools">
-              <button
-                v-if="canControl"
-                class="reroll-dice"
-                type="button"
-                :disabled="!frontReroll.allowed"
-                :aria-label="rerollTitle(frontReroll, 'front')"
-                :title="frontReroll.allowed ? undefined : rerollTitle(frontReroll, 'front')"
-                @click="emit('reroll', 'front')"
-              ><IconDice /><span class="reroll-lbl">Front</span></button>
-              <button
-                v-if="canControl && strain"
-                class="reroll-dice"
-                type="button"
-                :disabled="!strainReroll.allowed"
-                :aria-label="rerollTitle(strainReroll, 'strain')"
-                :title="strainReroll.allowed ? undefined : rerollTitle(strainReroll, 'strain')"
-                @click="emit('reroll', 'strain')"
-              ><IconDice /><span class="reroll-lbl">Strain</span></button>
+        <template v-else-if="state.wheel">
+          <div
+            class="card"
+            :class="decision.decided ? (decision.accepted ? 'locked' : 'safe') : 'open'"
+          >
+            <div class="card-head">
+              <span class="lbl">Directive · whole squad</span>
               <span
-                v-if="strainCall.decided"
+                v-if="decision.decided"
                 class="stamp disp"
-                :class="strainCall.accepted ? 'orange' : 'khaki'"
-              >{{ strainCall.accepted ? 'Committed' : 'Opted out' }}</span>
-            </span>
-          </div>
-          <div class="strain-row">
-            <img
-              v-if="frontImage"
-              :src="frontImage"
-              :alt="front?.displayName ?? 'Front'"
-              class="strain-icon"
-            >
-            <img
-              v-if="strainImage"
-              :src="strainImage"
-              alt=""
-              class="strain-icon strain-sub"
-            >
-            <div class="strain-copy">
-              <span class="strain-name disp">{{ strain.name }}</span>
-              <span class="strain-front">{{ front?.displayName }} · every mission</span>
+                :class="decision.accepted ? 'red' : 'khaki'"
+              >{{ decision.accepted ? 'Sworn' : 'Opted out' }}</span>
             </div>
-            <span class="disp strain-risk orange">+{{ strainRisk }} ×{{ opLength }}</span>
-          </div>
-
-          <template v-if="!strainCall.decided">
-            <div class="mis-actions">
-              <HoldButton
-                label="Commit"
-                hint="hold · whole operation"
-                tone="orange"
-                :disabled="!canControl"
-                @confirm="emit('decideStrain', true)"
-              />
-              <button
-                class="ghost opt-out"
-                type="button"
-                :disabled="!canControl"
-                @click="emit('decideStrain', false)"
+            <div class="mis-name disp">
+              {{ misfortune?.name ?? 'Safe dive' }}
+            </div>
+            <div class="mis-row">
+              <span class="mis-rule">{{ misfortune?.rule ?? 'No directive — a zero-risk dive.' }}</span>
+              <span
+                v-if="misfortune"
+                class="mis-risk"
               >
-                <span class="disp">Opt out</span>
-                <span class="sub">+0</span>
-              </button>
+                <span
+                  class="disp red"
+                >+{{ directiveValor }}</span>
+                <RiskPips
+                  :value="misfortuneRisk"
+                  :max="5"
+                />
+              </span>
             </div>
-          </template>
-          <template v-else-if="canControl">
-            <button
-              class="ghost change"
-              type="button"
-              @click="emit('decideStrain', !strainCall.accepted)"
-            >
-              {{ strainCall.accepted ? 'Switch — opt out' : 'Switch — commit' }}
-            </button>
-          </template>
-        </div>
 
-        <div
-          v-if="mo"
-          class="card mo-card"
-        >
-          <div class="card-head">
-            <span class="lbl mo-l">Major Order · pinned</span>
+            <template v-if="!decision.decided">
+              <p
+                v-if="acceptBlocked && canControl"
+                class="block-note"
+              >
+                {{ strandedReason }}
+              </p>
+              <div class="mis-actions">
+                <HoldButton
+                  :label="acceptBlocked ? 'Blocked' : 'Lock it in'"
+                  hint="hold"
+                  tone="gold"
+                  :disabled="acceptDisabled()"
+                  :aria-label="acceptBlocked ? strandedReason : 'Accept the directive, hold to lock'"
+                  @confirm="emit('decide', true)"
+                />
+                <button
+                  class="ghost opt-out"
+                  type="button"
+                  :disabled="!canControl"
+                  @click="emit('decide', false)"
+                >
+                  <span class="disp">Opt out</span>
+                  <span class="sub">+0</span>
+                </button>
+              </div>
+            </template>
+            <template v-else-if="canControl">
+              <button
+                class="ghost change"
+                type="button"
+                @click="emit('decide', !decision.accepted)"
+              >
+                {{ decision.accepted ? 'Switch — opt out' : 'Switch — lock it in' }}
+              </button>
+            </template>
           </div>
-          <div class="mo-fronts">
-            <img
-              v-for="f in moFronts"
-              :key="f.id"
-              :src="factionImageUrl(f.id)"
-              :alt="f.displayName"
-              class="mo-icon"
-            >
-            <span class="mo-name">{{ moFronts.map(f => f.displayName).join(' / ') }}</span>
-            <span class="disp mo-risk">+{{ MAJOR_ORDER_RISK }} ×{{ opLength }}</span>
-          </div>
-        </div>
-      </template>
 
-      <template v-else-if="!canControl">
-        <p class="waiting">
-          Waiting for the host to spin…
-        </p>
-      </template>
+          <div
+            v-if="strainVisible && strain"
+            class="card strain-card"
+          >
+            <div class="card-head">
+              <span class="lbl strain-l">Front · strain</span>
+              <span class="head-tools">
+                <button
+                  v-if="canControl"
+                  class="reroll-dice"
+                  type="button"
+                  :disabled="!frontReroll.allowed"
+                  :aria-label="rerollTitle(frontReroll, 'front')"
+                  :title="frontReroll.allowed ? undefined : rerollTitle(frontReroll, 'front')"
+                  @click="emit('reroll', 'front')"
+                ><IconDice /><span class="reroll-lbl">Front</span></button>
+                <button
+                  v-if="canControl && strain"
+                  class="reroll-dice"
+                  type="button"
+                  :disabled="!strainReroll.allowed"
+                  :aria-label="rerollTitle(strainReroll, 'strain')"
+                  :title="strainReroll.allowed ? undefined : rerollTitle(strainReroll, 'strain')"
+                  @click="emit('reroll', 'strain')"
+                ><IconDice /><span class="reroll-lbl">Strain</span></button>
+                <span
+                  v-if="strainCall.decided"
+                  class="stamp disp"
+                  :class="strainCall.accepted ? 'orange' : 'khaki'"
+                >{{ strainCall.accepted ? 'Committed' : 'Opted out' }}</span>
+              </span>
+            </div>
+            <div class="strain-row">
+              <img
+                v-if="frontImage"
+                :src="frontImage"
+                :alt="front?.displayName ?? 'Front'"
+                class="strain-icon"
+              >
+              <img
+                v-if="strainImage"
+                :src="strainImage"
+                alt=""
+                class="strain-icon strain-sub"
+              >
+              <div class="strain-copy">
+                <span class="strain-name disp">{{ strain.name }}</span>
+                <span class="strain-front">{{ front?.displayName }} · every mission</span>
+              </div>
+              <span class="disp strain-risk orange">+{{ strainRisk }} ×{{ opLength }}</span>
+            </div>
+
+            <template v-if="!strainCall.decided">
+              <div class="mis-actions">
+                <HoldButton
+                  label="Commit"
+                  hint="hold · whole operation"
+                  tone="orange"
+                  :disabled="!canControl"
+                  @confirm="emit('decideStrain', true)"
+                />
+                <button
+                  class="ghost opt-out"
+                  type="button"
+                  :disabled="!canControl"
+                  @click="emit('decideStrain', false)"
+                >
+                  <span class="disp">Opt out</span>
+                  <span class="sub">+0</span>
+                </button>
+              </div>
+            </template>
+            <template v-else-if="canControl">
+              <button
+                class="ghost change"
+                type="button"
+                @click="emit('decideStrain', !strainCall.accepted)"
+              >
+                {{ strainCall.accepted ? 'Switch — opt out' : 'Switch — commit' }}
+              </button>
+            </template>
+          </div>
+
+          <div
+            v-if="mo"
+            class="card mo-card"
+          >
+            <div class="card-head">
+              <span class="lbl mo-l">Major Order · pinned</span>
+            </div>
+            <div class="mo-fronts">
+              <img
+                v-for="f in moFronts"
+                :key="f.id"
+                :src="factionImageUrl(f.id)"
+                :alt="f.displayName"
+                class="mo-icon"
+              >
+              <span class="mo-name">{{ moFronts.map(f => f.displayName).join(' / ') }}</span>
+              <span class="disp mo-risk">+{{ MAJOR_ORDER_RISK }} ×{{ opLength }}</span>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="!canControl">
+          <p class="waiting">
+            Waiting for the host to spin…
+          </p>
+        </template>
+      </div>
     </div>
 
     <PhoneActionBar aria-label="Valor and next step">
@@ -433,6 +435,18 @@ function acceptDisabled(): boolean {
 
 <style scoped>
 .phone-wheel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+/* One scroll region for the whole phase: the wheel and the decision cards
+   scroll together, so the cards slide up over the wheel rather than being
+   trapped in a short nested viewport. */
+.scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+}
 .stage {
   position: relative;
   flex: 0 0 auto;
@@ -500,9 +514,7 @@ function acceptDisabled(): boolean {
 .legend i.red { background: var(--red); }
 
 .cards {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
