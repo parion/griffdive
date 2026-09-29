@@ -17,8 +17,6 @@ design without pointing at the bundle.
 - `scenes/<Page>__<scene>.json` — per-scene region tree: every element carrying an id, class,
   aria-label or its own text, with its box, text, computed font, colors, border and any resolved
   CSS `animation`. Committed. **This is the authoritative design contract.**
-- `spec/<NN>-<name>.json` — the older default-scene-only extract from the Anima bundle. Kept for
-  reference; superseded by `scenes/`.
 - `map.ts` — design page → app route + engine fixture + UI steps (the conformance targets).
 - `states.ts` — deterministic engine fixtures (lobby, spin, pacts, diving, rewards, forfeit,
   complete) built through the real reducer, so a fixture can never drift from the engine.
@@ -38,12 +36,6 @@ pnpm design:capture Rewards Wheel   # just some pages
 
 `capture.mjs` serves `.orca/designs/`, boots each scene by rewriting the `data-props` default in a
 throwaway copy, waits for the runtime + fonts, and writes the region tree and a screenshot.
-
-The older default-scene extract (from the Anima bundle) is regenerated with:
-
-```sh
-pnpm design:extract   # bundle → .orca/drops/extracted/ → design/spec/*.json
-```
 
 ## Check the app against it
 

@@ -66,7 +66,6 @@ pnpm only (`pnpm-lock.yaml` is canonical).
 | `pnpm test:e2e` | exists | Playwright (solo flow, room sync, Codex slide-over, design conformance, PWA affordances; production build on :3173) |
 | `pnpm typecheck` | exists | `nuxt typecheck` (vue-tsc) |
 | `pnpm design:capture` | exists | Capture every design scene from the runnable exports → `design/scenes/*.json` + `design/scenes.json` (needs the git-ignored `designs.zip`) |
-| `pnpm design:extract` | exists | Rebuild the default-scene contract from the Anima bundle → `design/spec/*.json` (superseded by `design:capture`) |
 | `pnpm design:check` | exists | Strict design conformance (fails on any styling mismatch) + report |
 | `pnpm design:report` | exists | Regenerate `design/report/summary.md` from the last conformance run |
 
@@ -122,8 +121,9 @@ engine.
   .hatch/.scan/.grid-bg/.hex/.tag-shape`; panels `.panel/.sec/.sec-h/.dash`; controls `.btn/
   .ghost/.icon-btn/.chip/.nb`; data atoms `.tb/.tier-badge/.pips/.chit/.chits/.lamp/.stp/.chan`.
 - **Motion**: ambient loops are CSS classes (`.pulse/.rise/.stamp/.slam/.glow/.blinkc/.glitch/…`);
-  one-shot reveals use `motion-v` presets in `app/utils/motion.ts` (`riseIn/popIn/slamIn/dealIn/
-  sheetUp/impactIn`). Animation is presentation, never rules; every effect honours
+  one-shot reveals use `motion-v` presets in `app/utils/motion.ts` (`riseIn/slamIn`, with the
+  `SPRING_SNAP` / `SPRING_POP` transitions). Animation is presentation, never rules; every effect
+  honours
   `prefers-reduced-motion` (global CSS guard + explicit `matchMedia` in JS-driven reels and the
   wheel reveal).
 - **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav) on every
@@ -155,9 +155,8 @@ engine.
   (`scripts/design/capture.mjs`) boots the real DCC runtime once per scene at its authored
   viewport and distills it into a committed, machine-readable region tree under
   `design/scenes/<Page>__<scene>.json` plus the `design/scenes.json` manifest — box, text,
-  computed font/colors/border and resolved CSS `animation`. This is the authoritative contract
-  (the older default-scene-only `design/spec/*.json` from the static Anima bundle is kept for
-  reference). `e2e/design-conformance.spec.ts` seeds each screen through the real engine
+  computed font/colors/border and resolved CSS `animation`. This is the authoritative contract.
+  `e2e/design-conformance.spec.ts` seeds each screen through the real engine
   (`design/states.ts`, keyed by `design/map.ts`) and diffs the static-text styling (font
   family/size/weight/transform, color) of every matched label against the contract — text values
   are not compared, since the designs are static mocks and the app is dynamic. Report-only by
@@ -751,8 +750,6 @@ app/
                    dots, with a rolling back-and-forth state while a wheel draw reels,
                    SampleCanister/SegmentedBar — the report's tinted sample jars and
                    click-to-set time bar, HoldButton — the press-and-hold confirm,
-                   WaitingLight —
-                   the slow-pulsing gold dot that marks a section a diver still has to act on,
                    ChangelogModal — GitHub deploy log shown from the alpha header chip, AppDrawer —
                    the themed right-hand Reka
                     Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer —
@@ -803,15 +800,16 @@ shared/
                    ordering.ts (kit presentation order: stratagem role → tier → name),
                    images.ts (imageURL filename → /images/<dir> URL resolver,
                    difficultyImageUrl for the 1–10 difficulty emblems)
-design/                committed design contract + conformance harness (see design/README.md)
-  spec/<NN>.json       per-page region tree extracted from the Anima export
-  map.ts               design page → app route + engine fixture + UI steps
-  states.ts            deterministic engine fixtures for the harness
-  report/              generated diff output (git-ignored)
-scripts/
-  import-catalog.mjs  upstream → shared/data converter (report-only mode: --report)
-  upstream/           vendored MIT constants (snapshot commit recorded in _upstream-commit.json)
-  design/             extract.mjs (bundle → pages + region spec), spec.mjs, report.mjs, lib.mjs
+ design/                committed design contract + conformance harness (see design/README.md)
+   scenes.json          scene manifest: each page's dc file, viewport and scene options
+   scenes/<Page>__<scene>.json  per-scene region tree (the authoritative contract)
+   map.ts               design page → app route + engine fixture + UI steps
+   states.ts            deterministic engine fixtures for the harness
+   report/              generated diff output (git-ignored)
+ scripts/
+   import-catalog.mjs  upstream → shared/data converter (report-only mode: --report)
+   upstream/           vendored MIT constants (snapshot commit recorded in _upstream-commit.json)
+   design/             capture.mjs (designs.zip → design/scenes/), report.mjs
 public/images/        bundled item art keyed by folder: equipment/ (weapons, throwables,
                       boosters), armor/, armorpassives/, svgs/ (stratagems), warbonds/,
                       difficulty/ (1–10 difficulty emblems), faction/ (front emblems)
@@ -1019,7 +1017,7 @@ mount: `fly volumes create griffdive_data --region ams --size 1`.
   Defaults: `motion-v` (`<Motion>`, `<AnimatePresence>`, `<MotionConfig>`, auto-registered by
   `motion-v/nuxt`) for springs, exits and shared-element/layout work; CSS keyframes + the global
   `name="phase"` Vue transitions for ambient loops and phase swaps; shared spring/pop presets in
-  `app/utils/motion.ts` (`SPRING_SNAP`, `SPRING_POP`, `SPRING_SOFT`, `riseIn`, `popIn`). Easing
+  `app/utils/motion.ts` (`SPRING_SNAP`, `SPRING_POP`, `riseIn`, `slamIn`). Easing
   and duration tokens live in `main.css` (`--ease-out`, `--ease-snap`, `--dur-*`). Reduced motion
   is mandatory: `<MotionConfig reduced-motion="user">` in `app/app.vue` for motion-v, the
   `@media (prefers-reduced-motion: reduce)` guard in `main.css` for CSS, and an explicit

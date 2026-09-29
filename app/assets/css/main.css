@@ -716,11 +716,8 @@ input[type='radio'] { accent-color: var(--gold); width: 1rem; height: 1rem; }
 @keyframes streak { 0% { opacity: 0; transform: scaleY(0.2); } 30% { opacity: 1; } 100% { opacity: 0; transform: scaleY(1); } }
 @keyframes slotIn { 0% { transform: scale(0.6); opacity: 0; border-color: var(--gold); } 70% { transform: scale(1.06); opacity: 1; } 100% { transform: none; opacity: 1; } }
 @keyframes flipIn { 0% { transform: perspective(300px) rotateX(90deg); filter: brightness(2.2); } 100% { transform: none; filter: none; } }
-@keyframes popIn { 0% { transform: scale(1.5); opacity: 0; } 100% { transform: none; opacity: 1; } }
 @keyframes fadeOut { to { opacity: 0; } }
 @keyframes shake { 0%, 100% { transform: none; } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
-@keyframes dealIn { 0% { transform: translate(0, -30px) rotate(-2deg); opacity: 0; } 70% { transform: translate(0, 2px) rotate(0); opacity: 1; } 100% { transform: none; opacity: 1; } }
-@keyframes sheetUp { from { transform: translateY(22px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes flashOut { 0% { opacity: 0; transform: scale(0.3); } 18% { opacity: 1; transform: scale(0.8); } 100% { opacity: 0; transform: scale(1.25); } }
 @keyframes scorch { 0% { opacity: 0; transform: scale(0.4); } 20% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.15); } }
 @keyframes stampFlat { 0% { transform: scale(1.7); opacity: 0; } 60% { transform: scale(0.95); opacity: 1; } 100% { transform: none; opacity: 1; } }
@@ -734,8 +731,6 @@ input[type='radio'] { accent-color: var(--gold); width: 1rem; height: 1rem; }
 @keyframes numOn { from { color: var(--ghost-ink); } }
 @keyframes raysIn { from { opacity: 0; transform: rotate(-12deg) scale(0.8); } to { opacity: 1; transform: none; } }
 @keyframes tagDrop { 0% { transform: translateY(-36px) rotate(-5deg); opacity: 0; } 60% { opacity: 1; } 100% { transform: none; opacity: 1; } }
-/* Nominal utility animation hookups */
-.rise-loop { animation: riseLoop 3s ease-in-out infinite; }
 /* ============================================================================
    Phase swaps (Vue <Transition name="phase" mode="out-in">)
    ========================================================================== */
