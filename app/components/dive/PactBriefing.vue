@@ -639,5 +639,6 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
 
 @media (max-width: 1180px) {
   .pact-briefing { grid-template-columns: minmax(0, 1fr); }
+  .self-pacts { grid-template-columns: 1fr; }
 }
 </style>

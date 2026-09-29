@@ -51,18 +51,17 @@ function slicePath(startDeg: number, endDeg: number): string {
 }
 
 function segmentFill(i: number): string {
-  return i === drawnIndex.value ? SEG_HIT : SEG_DARK[i % 2]!
+  // The landed wedge only lifts once the spin settles — never while it turns,
+  // or the wheel would spoil its own draw.
+  return i === drawnIndex.value && !spinning.value ? SEG_HIT : SEG_DARK[i % 2]!
 }
 
-// Risk pips: one 6×6 square per point of team risk, stacked tangentially along
-// the outer rim so the wheel reads its own odds at a glance (matches the legend).
+// Risk pips: one square per point of team risk, centred on each segment and
+// stacked tangentially along the outer rim, so the wheel reads its own odds at
+// a glance (matches the design and the legend).
 const pips = computed(() =>
   segments.value.flatMap((segment, i) => {
-    // Pips ride the segment's leading spoke (the edge the slice starts on), so
-    // the risk readout lines up with the dividers rather than the segment
-    // centre — at every wheel size.
-    const edge = i * step.value - step.value / 2
-    const a = (edge * Math.PI) / 180
+    const a = ((i * step.value) * Math.PI) / 180
     const radius = R - 19
     const bx = CX + radius * Math.cos(a)
     const by = CY + radius * Math.sin(a)
@@ -215,7 +214,7 @@ const hubLabel = computed(() => {
             v-for="(segment, i) in segments"
             :key="segment.id"
             class="seg-label"
-            :class="{ hit: i === drawnIndex }"
+            :class="{ hit: i === drawnIndex && !spinning }"
             :style="{ transform: `rotate(${i * step}deg) translateX(var(--label-x))`, fontSize: labelSize(segment.name) }"
           >{{ segment.name }}</span>
         </div>
@@ -260,6 +259,7 @@ const hubLabel = computed(() => {
   flex-direction: column;
   align-items: center;
   gap: 14px;
+  width: 100%;
   min-width: 0;
 }
 .wheel-wrap {

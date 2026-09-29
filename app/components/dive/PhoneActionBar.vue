@@ -29,10 +29,6 @@
 
 <style scoped>
 .phone-action {
-  position: sticky;
-  bottom: 0;
-  z-index: 3;
-  margin-top: auto;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;

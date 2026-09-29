@@ -274,8 +274,10 @@ function kickDiver(diverId: string): void {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: 100%;
-  padding: 10px 12px 16px;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 12px 0;
 }
 .phone-banner {
   margin: 0;

@@ -69,6 +69,9 @@ const dealReady = computed(() =>
 
 // The gate readout counts the calls still outstanding (misfortune + strain).
 const gateText = computed(() => {
+  if (!props.state.wheel) {
+    return 'SPIN FIRST'
+  }
   const needsStrain = strainVisible.value && Boolean(strain.value)
   const need = 1 + (needsStrain ? 1 : 0)
   const made = (decision.value.decided ? 1 : 0) + (needsStrain && strainCall.value.decided ? 1 : 0)
@@ -76,6 +79,34 @@ const gateText = computed(() => {
 })
 
 const showMo = computed(() => !props.state.frontId)
+
+// The wheel's own spin clock: while it turns, the result cards stand down for a
+// "Drawing" placeholder so the draw neither spoils itself nor jerks the layout
+// as the bottom sections swap in. Matches WheelOfMisfortune's rotor.
+const SPIN_MS = 2800
+const drawing = ref(false)
+let spinTimer: ReturnType<typeof setTimeout> | undefined
+watch(
+  () => props.state.wheel?.seed,
+  (seed, previous) => {
+    clearTimeout(spinTimer)
+    if (seed === undefined || seed === previous) {
+      drawing.value = false
+      return
+    }
+    const reduced = import.meta.client
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) {
+      drawing.value = false
+      return
+    }
+    drawing.value = true
+    spinTimer = setTimeout(() => {
+      drawing.value = false
+    }, SPIN_MS)
+  },
+)
+onBeforeUnmount(() => clearTimeout(spinTimer))
 
 function acceptDisabled(): boolean {
   return !props.canControl || acceptBlocked.value
@@ -163,7 +194,16 @@ function acceptDisabled(): boolean {
         />
       </template>
 
-      <template v-if="state.wheel">
+      <div
+        v-if="state.wheel && drawing"
+        class="drawing"
+        aria-live="polite"
+      >
+        <span class="disp drawing-word pulse">Drawing</span>
+        <span class="lbl">Misfortune · front · strain</span>
+      </div>
+
+      <template v-else-if="state.wheel">
         <div
           class="card"
           :class="decision.decided ? (decision.accepted ? 'locked' : 'safe') : 'open'"
@@ -248,7 +288,7 @@ function acceptDisabled(): boolean {
                 :aria-label="rerollTitle(frontReroll, 'front')"
                 :title="frontReroll.allowed ? undefined : rerollTitle(frontReroll, 'front')"
                 @click="emit('reroll', 'front')"
-              ><IconDice /></button>
+              ><IconDice /><span class="reroll-lbl">Front</span></button>
               <button
                 v-if="canControl && strain"
                 class="reroll-dice"
@@ -257,7 +297,7 @@ function acceptDisabled(): boolean {
                 :aria-label="rerollTitle(strainReroll, 'strain')"
                 :title="strainReroll.allowed ? undefined : rerollTitle(strainReroll, 'strain')"
                 @click="emit('reroll', 'strain')"
-              ><IconDice /></button>
+              ><IconDice /><span class="reroll-lbl">Strain</span></button>
               <span
                 v-if="strainCall.decided"
                 class="stamp disp"
@@ -344,10 +384,7 @@ function acceptDisabled(): boolean {
       </template>
     </div>
 
-    <PhoneActionBar
-      v-if="state.wheel"
-      aria-label="Valor and next step"
-    >
+    <PhoneActionBar aria-label="Valor and next step">
       <template #detail>
         <PhoneValor
           :difficulty="state.difficulty"
@@ -395,12 +432,11 @@ function acceptDisabled(): boolean {
 .phone-wheel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .stage {
   position: relative;
-  flex: 1 1 auto;
-  min-height: 330px;
+  flex: 0 0 auto;
   display: grid;
   place-items: center;
-  padding: 22px 12px;
-  overflow: hidden;
+  padding: 10px 12px;
+  overflow: visible;
 }
 .sweep {
   position: absolute;
@@ -412,7 +448,7 @@ function acceptDisabled(): boolean {
   animation: sweepY 9s linear infinite;
   pointer-events: none;
 }
-.stage :deep(.wheel-wrap) { width: min(100%, 300px); }
+.stage :deep(.wheel-wrap) { width: 100%; max-width: 340px; }
 
 .reroll {
   position: absolute;
@@ -461,6 +497,9 @@ function acceptDisabled(): boolean {
 .legend i.red { background: var(--red); }
 
 .cards {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -468,6 +507,17 @@ function acceptDisabled(): boolean {
   background: var(--rail);
   border-top: 1px solid var(--line-3);
 }
+
+.drawing {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  min-height: 160px;
+  border: 1px solid var(--line-1);
+  background: rgba(19, 21, 15, 0.6);
+}
+.drawing-word { font-size: 24px; color: var(--gold); }
 
 .card {
   display: flex;
@@ -482,17 +532,19 @@ function acceptDisabled(): boolean {
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .head-tools { display: inline-flex; align-items: center; gap: 8px; }
 .reroll-dice {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 9px;
   border: 1px solid var(--line-3);
   background: var(--ground);
   color: var(--text);
   cursor: pointer;
 }
 .reroll-dice:disabled { opacity: 0.4; cursor: not-allowed; }
-.reroll-dice :deep(svg) { width: 18px; height: 18px; }
+.reroll-dice :deep(svg) { width: 16px; height: 16px; flex-shrink: 0; }
+.reroll-lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
 .stamp {
   padding: 3px 8px;
   font-size: 12px;
