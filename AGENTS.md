@@ -59,8 +59,11 @@ pnpm only (`pnpm-lock.yaml` is canonical).
 | `pnpm lint:fix` | exists | Auto-fix lint/style issues |
 | `pnpm test` | exists | Vitest (engine unit + golden tests) |
 | `pnpm test:watch` | exists | Vitest watch mode |
-| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, Codex slide-over, Guide slide-over, PWA affordances; production build on :3173) |
+| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, Codex slide-over, Guide slide-over, design conformance, PWA affordances; production build on :3173) |
 | `pnpm typecheck` | exists | `nuxt typecheck` (vue-tsc) |
+| `pnpm design:extract` | exists | Rebuild the design contract from the Anima bundle → `design/spec/*.json` (needs the git-ignored bundle) |
+| `pnpm design:check` | exists | Strict design conformance (fails on any styling mismatch) + report |
+| `pnpm design:report` | exists | Regenerate `design/report/summary.md` from the last conformance run |
 
 Update this table the moment a command lands.
 
@@ -140,6 +143,15 @@ engine.
 - **Foundations kit**: a hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`) specimens
   the tokens/atoms so contributors can sanity-check the language. It is dev reference, not a
   product surface.
+- **Design contract + conformance**: the Anima export (git-ignored) is distilled into a committed,
+  machine-readable region contract under `design/spec/*.json` (extracted by `scripts/design/`).
+  `e2e/design-conformance.spec.ts` seeds each screen through the real engine (`design/states.ts`,
+  keyed by `design/map.ts`) and diffs the static-text styling (font family/size/weight/transform,
+  color) of every matched label against the contract — text values are not compared, since the
+  designs are static mocks and the app is dynamic. Report-only by default; `pnpm design:check`
+  (`DESIGN_STRICT=1`) fails on any mismatch. `pnpm design:report` writes the worklist to
+  `design/report/summary.md`. See `design/README.md`. This is the verification layer for the design
+  language below.
 
 ---
 
@@ -756,9 +768,15 @@ shared/
                    ordering.ts (kit presentation order: stratagem role → tier → name),
                    images.ts (imageURL filename → /images/<dir> URL resolver,
                    difficultyImageUrl for the 1–10 difficulty emblems)
+design/                committed design contract + conformance harness (see design/README.md)
+  spec/<NN>.json       per-page region tree extracted from the Anima export
+  map.ts               design page → app route + engine fixture + UI steps
+  states.ts            deterministic engine fixtures for the harness
+  report/              generated diff output (git-ignored)
 scripts/
   import-catalog.mjs  upstream → shared/data converter (report-only mode: --report)
   upstream/           vendored MIT constants (snapshot commit recorded in _upstream-commit.json)
+  design/             extract.mjs (bundle → pages + region spec), spec.mjs, report.mjs, lib.mjs
 public/images/        bundled item art keyed by folder: equipment/ (weapons, throwables,
                       boosters), armor/, armorpassives/, svgs/ (stratagems), warbonds/,
                       difficulty/ (1–10 difficulty emblems), faction/ (front emblems)
@@ -1007,6 +1025,8 @@ mount: `fly volumes create griffdive_data --region ams --size 1`.
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host
   authority, pact lock-in), Codex slide-over (opens over the dive without dropping the session),
   Guide slide-over (the "How a dive works" primer reachable from the header),
+  design conformance (`design-conformance.spec.ts`: seeds each design screen through the engine and
+  diffs static-text styling against the committed contract; report-only unless `DESIGN_STRICT=1`),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
   non-dismissible name gate, star-rating keyboard navigation), PWA affordances
   (manifest content type + icons served, SW reachable, shell head links). Chromium only;

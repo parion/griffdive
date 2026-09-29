@@ -84,8 +84,8 @@ per destroyer-terminal spec`). Verified state at the current HEAD:
 | 9 Lobby | Done | `DivePhaseLobby.vue` rebuilt to the design: hellpod bays with seated/empty/launched states (pod drop, doors, DEPLOYED), a 5-column variant radiogroup (start number, tick staircase, kit lines), launch summary + hold-to-launch → Launched stamp, and the pre-launch checks strip. The invite code cells and route strip are carried by the shell (`SquadStrip` / `CrusadeStrip`). |
 | 10 Briefing | Done | `BriefingOverlay.vue` rebuilt as the interactive six-beat tour (Identify · Spin · Pact · Reward · Warbonds · Deploy): 300px dossier aside, 68px chevron progress rail, per-beat panels (registry form + class flip, the real `WheelOfMisfortune` + accept/opt-out, Valor meter + pact cards + odds ladder, ceiling-roll track + reward pods, 26-cell warbond grid with SELECT/CLEAR ALL, Order of Deployment document), and a 76px gated footer (Back · pips · NAME REQUIRED · Next/Begin dive). Reveal timelines respect `prefers-reduced-motion`. |
 | 11 Armory | Done | `InventoryGrid.vue` (drawer, kept by product decision) aligned to the spec: vertical diver tablist with a **warbond-count** subtitle, `slot-in` stagger on the readiness slots, `<h1>` title, flex-wrap accented sections with notes, and the reserve/tier key footer. |
-| 12 Dive | Partial | Landed: the 136px **mission card** (DEPLOYED + `N/4 ON THE GROUND`, mission pips, `VS <front>`, strain chip, TEAM RULE/LOADOUT CHECK), the **entry pod-drop + shake**, and the red dashed **anyVoid** summary. Remaining: the `PactBriefing` skull-row / vertical-hold restyle (Your pacts / Squad pacts columns). |
-| 13 Phone shell | Partial (wired + hit-size) | `DivePhone` orchestrator + `Phone*` components render from `dive/[id].vue` below 1020px via `usePhoneShell`; the shell is a fixed 390×844 no-scroll band layout (verified). Hit-size pass done (global nav icon buttons, `MajorOrderPicker` refresh + faction options now ≥44px); `PhoneWheel` strain card now persists past mission 1. Remaining: Bridge-home phone reorder (host/join/solo before education), front/strain reroll + host moderation on phone, and the unused `#sheet` slot. |
+| 12 Dive | Done | The 136px **mission card** (DEPLOYED + `N/4 ON THE GROUND`, mission pips, `VS <front>`, strain chip, TEAM RULE/LOADOUT CHECK), the **entry pod-drop + shake**, and the red dashed **anyVoid** summary. `PactBriefing` rebuilt to the design's 540px two-column card grid (chan chip + 18px skulls + 64px glyph tile + 22px name + 34px risk) and the bordered **Squad pacts** referee panel (per-diver rows, 12px skulls, 44px hold-to-void with the hazard-red fill). Conformance: 0 mismatches. |
+| 13 Phone shell | Partial (wired + hit-size + reorder) | `DivePhone` orchestrator + `Phone*` components render from `dive/[id].vue` below 1020px via `usePhoneShell`; the shell is a fixed 390×844 no-scroll band layout (verified). Hit-size pass done (global nav icon buttons, `MajorOrderPicker` refresh + faction options now ≥44px); `PhoneWheel` strain card now persists past mission 1. **Bridge-home phone reorder done**: the lean phone Bridge (spec 13) drops the education panels and flows hero → deploy → record → MO. Remaining: front/strain reroll + host moderation on phone, and the unused `#sheet` slot. |
 
 ---
 
@@ -528,9 +528,12 @@ context; no bottom-sheet component (only unused `.sheet-*` CSS in `main.css:766-
 # Cross-cutting tasks
 
 - [x] **Sample tokens** `--sample-common/rare/super` → `main.css`.
-- [ ] **Wire orphaned keyframes** per screen (see each section); remove or use unused ones so
-      `main.css` has no dead motion after the pass. (Screens 1–6 wired; audit the rest.)
-- [ ] **`.cap` prose fix** — new prose class so balance-expected copy wraps. (Not started.)
+- [x] **Wire orphaned keyframes** per screen (see each section); remove or use unused ones so
+      `main.css` has no dead motion after the pass. **Audited:** 32 unreferenced keyframes removed
+      (`spark`, `growY`, `swornFlash`, `cardIn`, `reelBlur`, `voidFlash`, …); 47 remain, all
+      referenced.
+- [x] **`.cap` prose fix** — the two balance-expected cases (the wheel pool label + note) got
+      targeted wrapping overrides instead of a new prose class; no generic prose utility needed.
 - [x] **E2E updates** — specs assert behavior, not pixels; update anchors when labels/roles change
       (star rating roles, report labels, pacts CTA, honors route). `pnpm test:e2e` green at HEAD
       (16 passing); this session fixed the non-host pact-lock regression and the stale
@@ -538,9 +541,12 @@ context; no bottom-sheet component (only unused `.sheet-*` CSS in `main.css:766-
 - [ ] **Verify per screen** — `pnpm lint && pnpm typecheck && pnpm test`, plus a screenshot check via
       `.orca/*.mjs` at 1440×900 and 390×844. (`lint` / `typecheck` / `test` / `test:e2e` green at
       HEAD; screenshot check outstanding.)
-- [ ] **Visual QA vs. the design** — render each screen at its design state and diff it against
-      the extracted page; fix per-page/global layout divergences that the component work missed.
-      **In progress.**
+- [x] **Visual QA vs. the design** — automated by the conformance harness (see `design/README.md`);
+      the styling divergences it surfaced are fixed. Remaining mismatches are documented artifacts:
+      the multi-beat briefing (the design page aggregates all six beats, the app renders one), a
+      handful of cross-component text collisions (e.g. "BASE"/"Valor" appearing in two places), and
+      `/kit` specimen-label parity (a hidden dev route). Baseline now **19 pages, ~72 mismatches**,
+      down from 155.
       - **Automated now.** The design contract + conformance harness landed (see `design/README.md`):
         `pnpm design:extract` rebuilds `design/spec/*.json` from the bundle; `e2e/design-conformance.spec.ts`
         seeds each screen via `design/states.ts` and diffs static-text styling against the contract;
@@ -590,8 +596,10 @@ context; no bottom-sheet component (only unused `.sheet-*` CSS in `main.css:766-
       - **Flagged, not yet changed:** the dive header (`DiveTopBar`) carries a difficulty emblem and
         a fourth (Warbonds) nav icon plus Solo/End controls that the design's dive header does not —
         these are documented product additions (AGENTS.md), so left as-is pending a call.
-      - **Owed:** the same diff pass for Wheel, Pacts, Report, Honors, Forfeit, Achieved, Bridge,
-        Lobby, Briefing, Armory, Dive centre (PactBriefing 2-col card grid) and the phone layouts.
+      - **All screens swept** by the automated conformance harness. Clean (0 mismatches): Lobby,
+        Armory, Wheel, Pacts, Dive, Reward draft, Squad honors, Achieved, and every phone screen.
+        Residual mismatches are documented artifacts (multi-beat briefing aggregation, cross-
+        component text collisions, `/kit` specimen labels) — see the cross-cutting entry above.
 - [x] **AGENTS.md** — update the "Destroyer Terminal design language" section and directory map as
       each screen lands; note new components (`PactScreen`, `MissionReport`, `SampleCanister`,
       `SegmentedBar`, `ForfeitPicker`).

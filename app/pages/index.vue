@@ -1469,6 +1469,12 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
   .bridge-deploy { overflow: visible; }
 }
 @media (max-width: 620px) {
+  /* The phone Bridge is lean (spec 13): hero → deploy → record → MO, with the
+     education panels (climb / loop / valor) dropped. */
+  .bridge-grid { display: flex; flex-direction: column; }
+  .bridge-main { order: 1; }
+  .bridge-deploy { order: 2; }
+  .bridge-main .sec { display: none; }
   .hero { flex-direction: column; align-items: flex-start; }
   .hero-word { font-size: 44px; }
   .hero-tag { font-size: 12px; }

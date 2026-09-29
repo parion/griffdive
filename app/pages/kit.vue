@@ -103,8 +103,8 @@ const tokenCount = ref(2)
             :style="{ background: hex }"
           />
           <span class="sw-n">{{ name }}</span>
-          <span class="sw-h">{{ role }}</span>
-          <span class="sw-r">{{ hex }}</span>
+          <span class="sw-h">{{ hex }}</span>
+          <span class="sw-r">{{ role }}</span>
         </div>
       </div>
       <div class="swatches">
@@ -118,8 +118,8 @@ const tokenCount = ref(2)
             :style="{ background: hex }"
           />
           <span class="sw-n">{{ name }}</span>
-          <span class="sw-h">{{ role }}</span>
-          <span class="sw-r">{{ hex }}</span>
+          <span class="sw-h">{{ hex }}</span>
+          <span class="sw-r">{{ role }}</span>
         </div>
       </div>
     </section>
@@ -315,8 +315,8 @@ const tokenCount = ref(2)
   margin-bottom: 5px;
 }
 .sw-n { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
-.sw-h { font-size: 11px; color: var(--khaki); }
-.sw-r { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+.sw-h { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--khaki); }
+.sw-r { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; }
 
 .sample-disp { font-size: clamp(1.6rem, 5vw, 3rem); color: var(--text); }
 
