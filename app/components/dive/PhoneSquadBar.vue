@@ -6,7 +6,10 @@ const props = defineProps<{
   selfId: string | null
   online: string[]
   mode: 'local' | 'room'
+  isHost: boolean
 }>()
+
+const emit = defineEmits<{ select: [diverId: string] }>()
 
 function isOnline(diverId: string): boolean {
   return props.online.includes(diverId) || props.mode === 'local'
@@ -38,6 +41,12 @@ function waiting(diverId: string): boolean {
   const status = statusOf(diverId)
   return status === 'choosing pacts' || status === 'choosing reward'
 }
+
+// Host moderation opens a bottom sheet — the host can hand over or kick any
+// diver but themselves.
+function moderatable(diverId: string): boolean {
+  return props.isHost && props.mode === 'room' && diverId !== props.selfId && props.state.divers.length > 1
+}
 </script>
 
 <template>
@@ -45,13 +54,15 @@ function waiting(diverId: string): boolean {
     class="squad-bar"
     aria-label="Squad"
   >
-    <div
+    <component
+      :is="moderatable(diver.id) ? 'button' : 'div'"
       v-for="diver in state.divers"
       :key="diver.id"
       class="diver"
-      :class="{ offline: mode === 'room' && !isOnline(diver.id) }"
-      role="img"
-      :aria-label="`${diver.name}${diver.id === state.hostId ? ', host' : ''}: ${statusOf(diver.id)}`"
+      :class="{ offline: mode === 'room' && !isOnline(diver.id), moderate: moderatable(diver.id) }"
+      :type="moderatable(diver.id) ? 'button' : undefined"
+      :aria-label="`${diver.name}${diver.id === state.hostId ? ', host' : ''}: ${statusOf(diver.id)}${moderatable(diver.id) ? ' — tap to moderate' : ''}`"
+      @click="moderatable(diver.id) ? emit('select', diver.id) : undefined"
     >
       <span class="av-wrap">
         <span
@@ -74,7 +85,30 @@ function waiting(diverId: string): boolean {
           class="state"
         >{{ waiting(diver.id) ? 'waiting' : 'ready' }}</span>
       </span>
-    </div>
+      <svg
+        v-if="moderatable(diver.id)"
+        class="dots"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <circle
+          cx="12"
+          cy="5"
+          r="1.7"
+        />
+        <circle
+          cx="12"
+          cy="12"
+          r="1.7"
+        />
+        <circle
+          cx="12"
+          cy="19"
+          r="1.7"
+        />
+      </svg>
+    </component>
   </section>
 </template>
 
@@ -97,7 +131,15 @@ function waiting(diverId: string): boolean {
   gap: 7px;
   min-width: 0;
   flex: 1 1 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
+.diver.moderate { cursor: pointer; }
+.diver.moderate:active { opacity: 0.7; }
 .diver.offline { opacity: 0.5; }
 
 .av-wrap { position: relative; flex-shrink: 0; }
@@ -123,7 +165,7 @@ function waiting(diverId: string): boolean {
 .light.on { background: var(--teal); }
 .light.wait { background: var(--gold); animation: squadPulse 1.6s ease-in-out infinite; }
 
-.meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
 .dname {
   font-size: 10px;
   font-weight: 700;
@@ -143,6 +185,7 @@ function waiting(diverId: string): boolean {
 }
 .crown { color: var(--gold); }
 .state { color: var(--muted); }
+.dots { width: 16px; height: 16px; flex-shrink: 0; color: var(--muted); }
 
 @keyframes squadPulse {
   0%, 100% { opacity: 1; }

@@ -525,6 +525,8 @@ function launchCrusade(variant: CrusadeVariant): void {
       @claim-catch-up-option="claimCatchUpOption"
       @claim-cache="claimCache"
       @start="launchCrusade"
+      @kick="kick"
+      @transfer-host="transferHost"
       @copy-invite="copyInvite"
       @open-armory="armoryOpen = true"
       @leave="leaveDive"

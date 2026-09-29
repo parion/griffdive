@@ -43,6 +43,14 @@ const mo = computed(() => props.state.majorOrder)
 const moFronts = computed(() => majorOrderFronts(props.state))
 
 const misfortuneReroll = computed(() => canRerollWheel(props.state, 'misfortune'))
+const frontReroll = computed(() => canRerollWheel(props.state, 'front'))
+const strainReroll = computed(() => canRerollWheel(props.state, 'strain'))
+
+function rerollTitle(info: { free: boolean, reason: string | null }, wheel: string): string {
+  return info.reason ?? (info.free
+    ? `Reroll ${wheel} — free: combo already completed`
+    : `Reroll ${wheel} — spends a reroll token (${props.state.rerollTokens} left)`)
+}
 
 const teamRisk = computed(() => teamRiskOf(props.state))
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
@@ -229,11 +237,31 @@ function acceptDisabled(): boolean {
         >
           <div class="card-head">
             <span class="lbl strain-l">Front · strain</span>
-            <span
-              v-if="strainCall.decided"
-              class="stamp disp"
-              :class="strainCall.accepted ? 'orange' : 'khaki'"
-            >{{ strainCall.accepted ? 'Committed' : 'Opted out' }}</span>
+            <span class="head-tools">
+              <button
+                v-if="canControl"
+                class="reroll-dice"
+                type="button"
+                :disabled="!frontReroll.allowed"
+                :aria-label="rerollTitle(frontReroll, 'front')"
+                :title="frontReroll.allowed ? undefined : rerollTitle(frontReroll, 'front')"
+                @click="emit('reroll', 'front')"
+              ><IconDice /></button>
+              <button
+                v-if="canControl && strain"
+                class="reroll-dice"
+                type="button"
+                :disabled="!strainReroll.allowed"
+                :aria-label="rerollTitle(strainReroll, 'strain')"
+                :title="strainReroll.allowed ? undefined : rerollTitle(strainReroll, 'strain')"
+                @click="emit('reroll', 'strain')"
+              ><IconDice /></button>
+              <span
+                v-if="strainCall.decided"
+                class="stamp disp"
+                :class="strainCall.accepted ? 'orange' : 'khaki'"
+              >{{ strainCall.accepted ? 'Committed' : 'Opted out' }}</span>
+            </span>
           </div>
           <div class="strain-row">
             <img
@@ -446,6 +474,19 @@ function acceptDisabled(): boolean {
 .card.locked { border-color: var(--red); }
 .card.safe { border-color: var(--line-4); }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.head-tools { display: inline-flex; align-items: center; gap: 8px; }
+.reroll-dice {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-3);
+  background: var(--ground);
+  color: var(--text);
+  cursor: pointer;
+}
+.reroll-dice:disabled { opacity: 0.4; cursor: not-allowed; }
+.reroll-dice :deep(svg) { width: 18px; height: 18px; }
 .stamp {
   padding: 3px 8px;
   font-size: 12px;

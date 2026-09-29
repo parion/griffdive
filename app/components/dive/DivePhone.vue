@@ -42,6 +42,8 @@ const emit = defineEmits<{
   claimCatchUpOption: [optionId: string]
   claimCache: [cacheOwnerId: string]
   start: [variant: CrusadeVariant]
+  kick: [diverId: string]
+  transferHost: [diverId: string]
   copyInvite: []
   openArmory: []
   leave: []
@@ -53,6 +55,23 @@ const emit = defineEmits<{
 }>()
 
 const phase = computed(() => props.state.phase)
+
+// Host moderation rides the shell's bottom sheet: tapping a squadmate in the
+// bar opens their hand-over / kick actions.
+const modTarget = ref<string | null>(null)
+const modDiver = computed(() => props.state.divers.find(diver => diver.id === modTarget.value) ?? null)
+
+function initial(name: string): string {
+  return name.trim().slice(0, 1).toUpperCase() || '?'
+}
+function handover(diverId: string): void {
+  emit('transferHost', diverId)
+  modTarget.value = null
+}
+function kickDiver(diverId: string): void {
+  emit('kick', diverId)
+  modTarget.value = null
+}
 </script>
 
 <template>
@@ -91,6 +110,8 @@ const phase = computed(() => props.state.phase)
         :self-id="selfId"
         :online="online"
         :mode="mode"
+        :is-host="isHost"
+        @select="modTarget = $event"
       />
     </template>
 
@@ -199,6 +220,52 @@ const phase = computed(() => props.state.phase)
         />
       </template>
     </div>
+
+    <template #sheet>
+      <Transition name="sheet">
+        <div
+          v-if="modDiver"
+          class="mod-sheet"
+          role="dialog"
+          aria-label="Moderate diver"
+        >
+          <span
+            class="sheet-top"
+            aria-hidden="true"
+          />
+          <div class="mod-head">
+            <span class="cut-sm disp mod-av">{{ initial(modDiver.name) }}</span>
+            <div class="mod-copy">
+              <span class="mod-name">{{ modDiver.name }}</span>
+              <span class="mod-sub">Host moderation</span>
+            </div>
+            <button
+              class="btn ghost mod-cancel"
+              type="button"
+              @click="modTarget = null"
+            >
+              Cancel
+            </button>
+          </div>
+          <div class="mod-actions">
+            <button
+              class="btn ghost"
+              type="button"
+              @click="handover(modDiver.id)"
+            >
+              Make host
+            </button>
+            <button
+              class="btn danger"
+              type="button"
+              @click="kickDiver(modDiver.id)"
+            >
+              Kick from squad
+            </button>
+          </div>
+        </div>
+      </Transition>
+    </template>
   </DivePhoneShell>
 </template>
 
@@ -221,4 +288,39 @@ const phase = computed(() => props.state.phase)
 }
 .phone-banner.kicked { border-color: var(--red); }
 .phone-banner.error { border-color: var(--red); color: var(--red); }
+
+.mod-sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 12px calc(14px + env(safe-area-inset-bottom, 0px));
+  background: var(--panel);
+  border-top: 2px solid var(--gold);
+}
+.sheet-top {
+  position: absolute;
+  left: 0;
+  top: -2px;
+  width: 64px;
+  height: 3px;
+  background: var(--gold);
+}
+.mod-head { display: flex; align-items: center; gap: 10px; }
+.mod-av {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  background: var(--line-2);
+  color: var(--text);
+  font-size: 14px;
+}
+.mod-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.mod-name { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.mod-sub { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.mod-cancel { flex-shrink: 0; }
+.mod-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mod-actions .btn { min-height: 48px; }
 </style>

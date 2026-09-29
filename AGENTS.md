@@ -1028,7 +1028,8 @@ mount: `fly volumes create griffdive_data --region ams --size 1`.
   design conformance (`design-conformance.spec.ts`: seeds each design screen through the engine and
   diffs static-text styling against the committed contract; report-only unless `DESIGN_STRICT=1`),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
-  non-dismissible name gate, star-rating keyboard navigation), PWA affordances
+  non-dismissible name gate, star-rating keyboard navigation), phone host moderation
+  (`phone.spec.ts`: the 390px squad bar opens the moderation bottom sheet), PWA affordances
   (manifest content type + icons served, SW reachable, shell head links). Chromium only;
   `pnpm exec playwright install chromium` after a fresh clone.
 
