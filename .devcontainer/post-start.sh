@@ -3,9 +3,43 @@ set -euo pipefail
 
 HEALTH=http://127.0.0.1:6767/api/health
 
-# The dev container runner bypasses the image entrypoint, so the daemon starts here.
-# /api/health is auth-exempt, so it doubles as a reliable "already running" probe
-# (paseo daemon status exits 0 even when the daemon is stopped).
+# Build-time tooling runs as root with HOME=$HOME, so npm/npx caches it wrote are
+# root-owned (see the chown ordering in the Dockerfile), and the home volume can carry
+# that ownership over from an older image. Repair before anything needs to write:
+# Orca's remote relay install otherwise dies with EACCES on .npm/_cacache, and Claude
+# Code cannot write its config volume.
+repair_ownership() {
+  local dir
+  for dir in "$HOME"/.npm "$HOME"/.cache "$HOME"/.config "$HOME"/.local "$HOME"/.claude "$HOME"/.orca-remote; do
+    [ -d "$dir" ] || continue
+    if find "$dir" ! -uid "$(id -u)" -print -quit 2>/dev/null | grep -q .; then
+      echo "Repairing root-owned files in $dir"
+      sudo chown -R "$(id -u):$(id -g)" "$dir"
+    fi
+  done
+}
+repair_ownership
+
+# Orca creates each worktree beside the project (/workspace -> /workspace-<name>), and
+# the container root is read-only for the paseo user, which fails the create with
+# "could not create leading directories ... Permission denied". Root is the writable
+# overlay layer, so this is lost on every rebuild and must be reapplied here. The
+# sticky bit is the /tmp idiom for a shared writable directory — anyone may create
+# entries, only the owner may delete them.
+WORKSPACE_DIR=/workspace
+if [ -d "$WORKSPACE_DIR" ] && [ ! -w "$(dirname "$WORKSPACE_DIR")" ]; then
+  echo "Allowing Orca worktree creation in $(dirname "$WORKSPACE_DIR")"
+  sudo chmod 1777 "$(dirname "$WORKSPACE_DIR")"
+fi
+
+# SSH target for Orca is the primary remote path. Non-fatal: losing Orca access must
+# not block the container.
+bash "$(dirname "${BASH_SOURCE[0]}")/ssh-setup.sh" \
+  || echo "Orca SSH setup failed — see /var/log/sshd.log" >&2
+
+# The Paseo daemon stays available as a fallback. The dev-container runner bypasses the
+# image entrypoint, so it starts here. /api/health is auth-exempt, so it doubles as a
+# reliable "already running" probe (paseo daemon status exits 0 even when stopped).
 if ! curl -fsS "$HEALTH" >/dev/null 2>&1; then
   # Persist relay-on for the daemon (PASEO_RELAY_ENABLED only covers this launch).
   node -e '
@@ -23,13 +57,14 @@ if ! curl -fsS "$HEALTH" >/dev/null 2>&1; then
 fi
 
 if ! curl -fsS "$HEALTH" >/dev/null 2>&1; then
+  # Orca is the primary path, so a daemon hiccup must not mark the container start as
+  # failed — warn and carry on.
   echo "Paseo daemon failed to start — see $PASEO_HOME/daemon.log" >&2
-  exit 1
 fi
 
 paseo project create >/dev/null 2>&1 || true
 
 echo
-echo "Paseo daemon up — web UI: http://localhost:6767"
-echo "Pair a device (relay, E2E-encrypted): paseo daemon pair"
-echo "Agents: paseo run \"task\" · opencode (Context7 MCP preconfigured via opencode.json)"
+echo "Orca SSH target: localhost:2222 (forwarded, see .devcontainer/ssh-setup.sh)"
+echo "Agents: opencode · claude (Context7 MCP preconfigured via opencode.json)"
+echo "Paseo daemon (fallback): http://localhost:6767 · pair a device: paseo daemon pair"
