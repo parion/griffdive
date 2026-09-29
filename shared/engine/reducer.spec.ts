@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS, ITEMS_BY_ID } from '../data/catalog'
 import type { FrontId } from '../data/fronts'
 import { PACTS } from '../data/pacts'
-import { BONUS_STATS, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor, conditionRiskAt } from './config'
+import { BONUS_STATS, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor, directiveValorAt } from './config'
 import { startingItemIds } from './progression'
 import { DIVERS_CHOICE_OPTION_ID, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { allDiversPicked, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverValor, diverOptions, pactOfferFor, pactRiskOf, rewardPoolFor, teamRiskOf } from './selectors'
+import { activeMisfortune, allDiversPicked, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverValor, diverOptions, pactOfferFor, pactRiskOf, rewardPoolFor, teamRiskOf } from './selectors'
 import { deriveFront, deriveStrain } from './wheel'
 import type { DiveState, DiverState, EngineAction } from './types'
 
@@ -97,6 +97,7 @@ const skeletonActions: EngineAction[] = [
   { type: 'DEAL_PACTS' },
   { type: 'SET_PACTS', playerId: 'p1', pactIds: ['thirsty'] },
   { type: 'FAIL_PACT', playerId: 'p1', pactId: 'thirsty' },
+  { type: 'FAIL_MISFORTUNE' },
   { type: 'SET_WARBONDS', playerId: 'p1', warbondCodes: ['warbond3'] },
   { type: 'REPORT_RESULT', outcome: 'success', stars: 5 },
   { type: 'REPORT_RESULT', outcome: 'failure', stars: 2, timePct: 0.5 },
@@ -326,7 +327,7 @@ describe('ACCEPT_STRAIN (optional operation-long team risk)', () => {
     const decided = strainDecided(42, true)
     expect(decided.phase).toBe('pacts')
     const strainRisk = STRAIN_RISK[decided.strainId!] ?? 0
-    const misfortuneRisk = conditionRiskAt(decided.wheel!.misfortuneId, decided.difficulty)
+    const misfortuneRisk = directiveValorAt(decided.wheel!.misfortuneId, decided.difficulty)
     expect(strainRisk).toBeGreaterThan(0)
     expect(teamRiskOf(decided)).toBe(misfortuneRisk + strainRisk)
 
@@ -354,7 +355,7 @@ describe('ACCEPT_STRAIN (optional operation-long team risk)', () => {
     const declined = strainDecided(42, false)
     expect(declined.phase).toBe('pacts')
     expect(declined.strainAccepted).toBe(false)
-    expect(teamRiskOf(declined)).toBe(conditionRiskAt(declined.wheel!.misfortuneId, declined.difficulty))
+    expect(teamRiskOf(declined)).toBe(directiveValorAt(declined.wheel!.misfortuneId, declined.difficulty))
   })
 
   it('reopens on a failure restart with the same draw', () => {
@@ -615,6 +616,69 @@ describe('FAIL_PACT (broken pacts in the field)', () => {
     // Declined wheel: team risk is zero too, so only the base tier remains.
     const declined = { ...failed, misfortuneAccepted: false }
     expect(diverCeiling(declined, requireDiver(declined))).toBe(baseTierFor(declined.difficulty))
+  })
+})
+
+describe('FAIL_MISFORTUNE (broken team directives in the field)', () => {
+  function divingAccepted(seed = 42): DiveState {
+    return reduce(decidedState(seed), { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+  }
+
+  it('marks the accepted directive failed once, during the diving phase', () => {
+    const state = divingAccepted()
+    expect(state.phase).toBe('diving')
+    expect(state.misfortuneAccepted).toBe(true)
+    const failed = reduce(state, { type: 'FAIL_MISFORTUNE' })
+    expect(failed.misfortuneFailed).toBe(true)
+    // The mark does not move the mission along or lift the directive's bans.
+    expect(failed.phase).toBe('diving')
+    expect(activeMisfortune(failed)?.id).toBe(failed.wheel?.misfortuneId)
+  })
+
+  it('is a no-op outside diving, on a declined draw, and on a double mark', () => {
+    const decided = decidedState(42)
+    expect(reduce(decided, { type: 'FAIL_MISFORTUNE' })).toBe(decided)
+    const declined: DiveState = { ...divingAccepted(), misfortuneAccepted: false }
+    expect(reduce(declined, { type: 'FAIL_MISFORTUNE' })).toBe(declined)
+    const once = reduce(divingAccepted(), { type: 'FAIL_MISFORTUNE' })
+    expect(reduce(once, { type: 'FAIL_MISFORTUNE' })).toBe(once)
+  })
+
+  it('voids the shared risk for the whole squad', () => {
+    const state = divingAccepted()
+    expect(teamRiskOf(state)).toBeGreaterThan(0)
+    const failed = reduce(state, { type: 'FAIL_MISFORTUNE' })
+    expect(teamRiskOf(failed)).toBe(0)
+  })
+
+  it('forfeits one reward option per diver, never below one', () => {
+    const state = divingAccepted()
+    const failed = reduce(state, { type: 'FAIL_MISFORTUNE' })
+    // Same mission, same report seed: the only difference is the broken
+    // directive. At diff 3 a lone team rule never reaches S+, so the star count
+    // is unchanged and the cost is exactly one option.
+    const clean = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+    const broken = reduce(failed, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+    const cleanCount = diverOptions(clean, requireDiver(clean)).length
+    const brokenCount = diverOptions(broken, requireDiver(broken)).length
+    expect(brokenCount).toBe(Math.max(1, cleanCount - 1))
+    // The draft still completes: a thinner offer never deadlocks ADVANCE.
+    const picked = diverOptions(broken, requireDiver(broken))[0]!
+    const done = reduce(broken, { type: 'PICK_REWARD', playerId: 'p1', optionId: picked.optionId })
+    expect(allDiversPicked(done)).toBe(true)
+    expect(reduce(done, { type: 'ADVANCE' }).phase).toBe('spin')
+  })
+
+  it('clears the failure mark with the mission reset', () => {
+    let state = reduce(divingAccepted(), { type: 'FAIL_MISFORTUNE' })
+    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+    const option = diverOptions(state, requireDiver(state))[0]
+    if (!option) {
+      throw new Error('expected a reward option')
+    }
+    state = reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: option.optionId })
+    state = reduce(state, { type: 'ADVANCE' })
+    expect(state.misfortuneFailed).toBe(false)
   })
 })
 

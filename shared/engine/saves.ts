@@ -92,6 +92,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 10) {
     migrated = migrateV9toV10(migrated)
   }
+  if (migrated.schemaVersion < 11) {
+    migrated = migrateV10toV11(migrated)
+  }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
   return migrated
@@ -158,6 +161,19 @@ function migrateV9toV10(doc: SaveDoc): SaveDoc {
     state: {
       ...doc.state,
       majorOrder: null,
+    },
+  }
+}
+
+// v11: a broken team directive can be marked failed in the field — its shared
+// risk is voided and each diver forfeits one reward option. Pre-v11 saves carry
+// no failure mark, and the next mission reset clears it anyway.
+function migrateV10toV11(doc: SaveDoc): SaveDoc {
+  return {
+    ...doc,
+    state: {
+      ...doc.state,
+      misfortuneFailed: false,
     },
   }
 }

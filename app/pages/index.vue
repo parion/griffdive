@@ -148,7 +148,7 @@ const ladder = computed(() => Array.from({ length: 8 }, (_, i) => {
 // The six beats of a mission, mirroring the dive's PhaseRail. Each cell lights
 // in sequence (the `.lit` loop overlay) to read as a cycle.
 const loopSteps = [
-  { label: 'Spin', cap: 'Draw a misfortune', d: 'M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0M12 3v18M3 12h18', ic: 'var(--gold)' },
+  { label: 'Spin', cap: 'Draw a directive', d: 'M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0M12 3v18M3 12h18', ic: 'var(--gold)' },
   { label: 'Decide', cap: 'Accept or opt out', d: 'M12 21v-8M12 13L6 7M12 13l6-6M4 3h5v5M20 3h-5v5', ic: 'var(--gold)' },
   { label: 'Pacts', cap: 'Swear personal risk', d: 'M6 3h12v14l-6 4-6-4zM9 8h6M9 12h6', ic: 'var(--red)' },
   { label: 'Dive', cap: 'Play the mission', d: 'M12 3v12M7 10l5 5 5-5M5 21h14', ic: 'var(--khaki)' },
@@ -161,7 +161,7 @@ const loopSteps = [
 // example stakes are fixed display copy; the odds come from the engine.
 const PREVIEW_DIFFICULTY = 7
 const PREVIEW_SOURCES = [
-  { key: 'TEAM', name: 'Misfortune', value: 2, color: 'var(--gold)' },
+  { key: 'TEAM', name: 'Directive', value: 2, color: 'var(--gold)' },
   { key: 'TEAM', name: 'Strain', value: 2, color: 'var(--orange)' },
   { key: 'PACT', name: 'Pacts', value: 4, color: 'var(--red)' },
   { key: 'PERF', name: 'Performance', value: 0.16, color: 'var(--teal)' },

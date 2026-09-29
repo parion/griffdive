@@ -521,7 +521,7 @@ onBeforeUnmount(() => {
           <span class="vl">Valor</span>
           <div
             role="img"
-            aria-label="Valor sources stacked: misfortune, strain or Major Order, pacts, performance"
+            aria-label="Valor sources stacked: directive, strain or Major Order, pacts, performance"
             style="display: flex; gap: 12px"
           >
             <div style="display: flex; flex-direction: column; gap: 2px; width: 20px; padding: 2px; border: 1px solid #2C3022">
@@ -539,7 +539,7 @@ onBeforeUnmount(() => {
             </div>
             <div style="display: flex; flex-direction: column; justify-content: space-between; width: 136px; padding: 1px 0">
               <span
-                v-for="s in [{ n: 'Performance', c: '#4AD7C8' }, { n: 'Pacts', c: '#FF4B3E' }, { n: 'Strain · MO', c: '#FF9F43' }, { n: 'Misfortune', c: '#FFD642' }]"
+                v-for="s in [{ n: 'Performance', c: '#4AD7C8' }, { n: 'Pacts', c: '#FF4B3E' }, { n: 'Strain · MO', c: '#FF9F43' }, { n: 'Directive', c: '#FFD642' }]"
                 :key="s.n"
                 style="display: flex; align-items: center; gap: 7px"
               >
@@ -654,7 +654,7 @@ onBeforeUnmount(() => {
           <span
             class="lbl"
             style="line-height: 13px"
-          >Misfortune · whole squad</span>
+          >Squad Directive · whole squad</span>
           <span
             class="disp"
             style="font-size: 26px; color: #FFD642; line-height: 25px"
@@ -1815,7 +1815,7 @@ onBeforeUnmount(() => {
               aria-valuemin="0"
               aria-valuemax="11"
               aria-valuenow="8"
-              aria-valuetext="8 of 11, locked: misfortune 2, strain 2, pacts 4"
+              aria-valuetext="8 of 11, locked: directive 2, strain 2, pacts 4"
               style="width: 40px; display: flex; flex-direction: column; gap: 3px; padding: 3px; border: 1px solid #2C3022"
             >
               <span
@@ -1846,7 +1846,7 @@ onBeforeUnmount(() => {
                 aria-valuemin="0"
                 aria-valuemax="11"
                 aria-valuenow="8.16"
-                aria-valuetext="8.16 of 11: misfortune 2, strain 2, pacts 4, performance 0.16"
+                aria-valuetext="8.16 of 11: directive 2, strain 2, pacts 4, performance 0.16"
                 style="width: 40px; flex-shrink: 0; display: flex; flex-direction: column; gap: 3px; padding: 3px; border: 1px solid #2C3022"
               >
                 <span
@@ -2871,7 +2871,7 @@ onBeforeUnmount(() => {
               >Ministry notice</span><span
                 class="cap"
                 style="font-size: 9px"
-              >Khaki · briefing + dossier</span></span>Their mercy: the Wheel of Misfortune. Chosen risk raises your Valor, and Valor buys rarer armaments — nothing here is free.
+              >Khaki · briefing + dossier</span></span>Their mercy: the Wheel of Adversity. Chosen risk raises your Valor, and Valor buys rarer armaments — nothing here is free.
             </p>
             <p style="margin: 0; padding: 7px 11px; border: 1px dashed rgba(255,75,62,.55); background: rgba(255,75,62,.06); font-size: 11px; line-height: 1.35; color: #B8B08D; text-wrap: pretty">
               <span style="display: flex; justify-content: space-between; margin-bottom: 4px"><span

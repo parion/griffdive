@@ -6,6 +6,7 @@ import {
   MAJOR_ORDER_RISK,
   STRAIN_RISK,
   conditionRiskAt,
+  directiveValorAt,
   missionsPerOperation,
 } from '~~/shared/engine/config'
 import {
@@ -41,9 +42,15 @@ const majorOrder = computed(() => props.state.majorOrder)
 const misfortuneReroll = computed(() => canRerollWheel(props.state, 'misfortune'))
 const frontReroll = computed(() => canRerollWheel(props.state, 'front'))
 const strainReroll = computed(() => canRerollWheel(props.state, 'strain'))
-const teamRisk = computed(() =>
+const directiveRisk = computed(() =>
   props.state.wheel
     ? conditionRiskAt(props.state.wheel.misfortuneId, props.state.difficulty)
+    : 0,
+)
+// A squad directive stakes 1.5× its risk in Valor — team rules outweigh pacts.
+const directiveValor = computed(() =>
+  props.state.wheel
+    ? directiveValorAt(props.state.wheel.misfortuneId, props.state.difficulty)
     : 0,
 )
 const strainRisk = computed(() =>
@@ -343,12 +350,13 @@ function rerollLabel(
   info: { allowed: boolean, free: boolean, reason: string | null },
   wheel: 'misfortune' | 'front' | 'strain',
 ): string {
+  const name = wheel === 'misfortune' ? 'the directive' : wheel === 'front' ? 'the front' : 'the strain'
   if (!info.allowed) {
-    return info.reason ?? `Reroll ${wheel}`
+    return info.reason ?? `Reroll ${name}`
   }
   return info.free
-    ? `Reroll ${wheel} — free: combo already completed`
-    : `Reroll ${wheel} — spends a reroll token (${props.state.rerollTokens} left)`
+    ? `Reroll ${name} — free: combo already completed`
+    : `Reroll ${name} — spends a reroll token (${props.state.rerollTokens} left)`
 }
 </script>
 
@@ -358,7 +366,7 @@ function rerollLabel(
       <div class="wheel-head-l">
         <span class="lbl">{{ subtitle }}</span>
         <h2 class="disp wheel-title">
-          Wheel of Misfortune
+          Wheel of Adversity
         </h2>
       </div>
       <AppTooltip
@@ -431,7 +439,7 @@ function rerollLabel(
             v-bind="riseIn(0)"
           >
             <div class="card-head">
-              <span class="lbl">Misfortune <span class="dim">· whole squad</span></span>
+              <span class="lbl">Squad Directive <span class="dim">· whole squad</span></span>
               <span
                 v-if="state.wheel"
                 class="head-tools"
@@ -470,15 +478,15 @@ function rerollLabel(
                 {{ ACCOUNTABILITY_LABELS[misfortune.accountability] }}
               </p>
               <div class="risk-row">
-                <span class="cap">Team risk</span>
+                <span class="cap">Directive risk</span>
                 <RiskPips
-                  :value="teamRisk"
+                  :value="directiveRisk"
                   :rolling="misfortuneReeling"
                 />
                 <span
-                  v-if="teamRisk > 0"
+                  v-if="directiveValor > 0"
                   class="risk-plus disp"
-                >+{{ teamRisk }}</span>
+                >+{{ directiveValor }} Valor</span>
               </div>
               <p
                 v-if="acceptBlocked && canControl && !decision.decided"

@@ -86,7 +86,7 @@ const rungs = computed(() => LADDER.map((tier, index) => {
 const legend = computed(() => {
   const rows: { id: string, name: string, value: number }[] = []
   if (props.misfortuneRisk !== undefined || props.strainRisk !== undefined) {
-    rows.push({ id: 'misfortune', name: 'Misfortune', value: props.misfortuneRisk ?? 0 })
+    rows.push({ id: 'misfortune', name: 'Directive', value: props.misfortuneRisk ?? 0 })
     rows.push({ id: 'strain', name: 'Strain', value: props.strainRisk ?? 0 })
     if ((props.majorOrderRisk ?? 0) > 0) {
       rows.push({ id: 'mo', name: 'Major Order', value: props.majorOrderRisk ?? 0 })

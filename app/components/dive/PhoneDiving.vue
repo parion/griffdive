@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MAJOR_ORDER_RISK, STRAIN_RISK, conditionRiskAt, maxStarsFor } from '~~/shared/engine/config'
+import { MAJOR_ORDER_RISK, STRAIN_RISK, conditionRiskAt, directiveValorAt, maxStarsFor } from '~~/shared/engine/config'
 import { activeMisfortune, activeStrain, currentFront, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
 import { factionImageUrl } from '~~/shared/data/images'
 import type { DiverState, DiveState, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
@@ -15,6 +15,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   report: [payload: { outcome: MissionOutcome, stars: number, timePct: number, samples?: SampleCounts }]
   fail: [playerId: string, pactId: string]
+  failDirective: []
 }>()
 
 const misfortune = computed(() => activeMisfortune(props.state))
@@ -31,6 +32,22 @@ const misfortuneRisk = computed(() =>
 const strainRisk = computed(() =>
   props.state.strainAccepted ? STRAIN_RISK[strain.value?.id ?? ''] ?? 0 : 0)
 const majorOrderRisk = computed(() => (props.state.majorOrder?.live ? MAJOR_ORDER_RISK : 0))
+
+// A broken team directive voids its shared Valor entirely.
+const directiveFailed = computed(() => props.state.misfortuneFailed)
+const directiveValor = computed(() =>
+  props.state.misfortuneAccepted && !props.state.misfortuneFailed
+    ? directiveValorAt(misfortune.value?.id ?? '', props.state.difficulty)
+    : 0)
+const confirmFail = ref(false)
+function toggleFail(): void {
+  if (!confirmFail.value) {
+    confirmFail.value = true
+    return
+  }
+  confirmFail.value = false
+  emit('failDirective')
+}
 
 const mode = ref<'none' | 'success' | 'failure'>('none')
 const stars = ref(1)
@@ -99,12 +116,12 @@ function submit(): void {
         </span>
         <div class="status-stack">
           <div class="status-line">
-            <span class="lbl">Misfortune</span>
+            <span class="lbl">Directive</span>
             <span
               v-if="misfortune"
               class="risk-chip red"
               role="img"
-              :aria-label="`Team risk ${misfortuneRisk} of 5`"
+              :aria-label="`Directive risk ${misfortuneRisk} of 5`"
             ><b>{{ misfortuneRisk }}</b><i /></span>
             <span class="status-name">{{ misfortune?.name ?? 'Safe dive' }}</span>
           </div>
@@ -136,6 +153,28 @@ function submit(): void {
           <span class="disp total-n">{{ teamRisk }}</span>
         </div>
       </section>
+
+      <div
+        v-if="directiveFailed"
+        class="directive-failed"
+        role="status"
+      >
+        <span>SQUAD DIRECTIVE FAILED · RISK VOIDED · −1 OPTION</span>
+      </div>
+      <div
+        v-else-if="canControl && state.misfortuneAccepted"
+        class="directive-fail"
+      >
+        <span class="lbl">Directive · {{ misfortune?.name }} · +{{ directiveValor }} Valor</span>
+        <button
+          class="btn danger tiny"
+          type="button"
+          :aria-label="confirmFail ? 'Confirm the directive is broken — this cannot be undone' : 'Mark the squad directive failed'"
+          @click="toggleFail"
+        >
+          {{ confirmFail ? 'Confirm — void it?' : 'Mark failed' }}
+        </button>
+      </div>
 
       <PactBriefing
         :divers="state.divers"
@@ -274,6 +313,25 @@ function submit(): void {
   background: var(--panel);
 }
 .total-n { font-size: 26px; color: var(--text); }
+
+.directive-failed {
+  padding: 8px 10px;
+  border: 1px solid var(--red);
+  background: color-mix(in srgb, var(--red) 10%, var(--panel));
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--red);
+}
+.directive-fail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px dashed color-mix(in srgb, var(--red) 45%, var(--line-3));
+}
+.directive-fail .lbl { color: var(--muted); }
 
 .outcome {
   display: flex;

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
-import { MAJOR_ORDER_RISK, OPTIONS_LOST_PER_FAILED_PACT, STRAIN_RISK, conditionRiskAt, missionsPerOperation } from '~~/shared/engine/config'
+import { MAJOR_ORDER_RISK, OPTIONS_LOST_PER_FAILED_DIRECTIVE, OPTIONS_LOST_PER_FAILED_PACT, STRAIN_RISK, conditionRiskAt, directiveValorAt, missionsPerOperation } from '~~/shared/engine/config'
 import { difficultyName } from '~~/shared/engine/progression'
 import { activeMisfortune, activeStrain, currentFront, teamRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionReport } from '~~/shared/engine/types'
@@ -16,6 +16,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   report: [payload: MissionReport]
   fail: [playerId: string, pactId: string]
+  failDirective: []
 }>()
 
 const misfortune = computed(() => activeMisfortune(props.state))
@@ -29,20 +30,52 @@ const misfortuneRisk = computed(() =>
   props.state.misfortuneAccepted
     ? conditionRiskAt(misfortune.value?.id ?? '', props.state.difficulty)
     : 0)
+// The directive stakes 1.5× its risk in Valor (team rules outweigh pacts), and
+// a broken directive voids it entirely.
+const directiveValor = computed(() =>
+  props.state.misfortuneAccepted && !props.state.misfortuneFailed
+    ? directiveValorAt(misfortune.value?.id ?? '', props.state.difficulty)
+    : 0)
 const strainRisk = computed(() =>
   props.state.strainAccepted ? STRAIN_RISK[strain.value?.id ?? ''] ?? 0 : 0)
 const majorOrderRisk = computed(() => (props.state.majorOrder?.live ? MAJOR_ORDER_RISK : 0))
+
+// Marking the team directive failed is one-way: the host confirms with a
+// second tap (a field call is deliberate, not a stray click).
+const confirmFail = ref(false)
+function toggleFail(): void {
+  if (!confirmFail.value) {
+    confirmFail.value = true
+    return
+  }
+  confirmFail.value = false
+  emit('failDirective')
+}
 
 const frontImage = computed(() => (front.value ? factionImageUrl(front.value.id) : undefined))
 const strainImage = computed(() => (strain.value ? strainImageUrl(strain.value.id) : undefined))
 const deployedCount = computed(() => props.state.divers.length)
 
-// Voided pacts: broken in the field, their risk stops counting and each costs a
-// reward option. The mission card and the rail both read this.
+// Voided stakes: broken pacts and a broken team directive. A failed pact stops
+// counting for its diver; a failed directive stops counting for the whole squad
+// and costs every diver an option.
+const directiveFailed = computed(() => props.state.misfortuneFailed)
 const voidedPacts = computed(() =>
   props.state.divers.reduce((sum, diver) => sum + diver.failedPactIds.length, 0))
-const anyVoid = computed(() => voidedPacts.value > 0)
-const lostOptions = computed(() => voidedPacts.value * OPTIONS_LOST_PER_FAILED_PACT)
+const anyVoid = computed(() => voidedPacts.value > 0 || directiveFailed.value)
+const lostOptions = computed(() =>
+  voidedPacts.value * OPTIONS_LOST_PER_FAILED_PACT
+  + (directiveFailed.value ? OPTIONS_LOST_PER_FAILED_DIRECTIVE : 0))
+const voidLine = computed(() => {
+  const parts: string[] = []
+  if (directiveFailed.value) {
+    parts.push('squad directive failed')
+  }
+  if (voidedPacts.value > 0) {
+    parts.push(`${voidedPacts.value} pact${voidedPacts.value === 1 ? '' : 's'} voided`)
+  }
+  return `${parts.join(' · ')} · risk stopped counting`
+})
 
 // The entry ceremony: a hellpod drop + impact shake, played once on arrival.
 // Reduced motion skips it entirely.
@@ -242,10 +275,20 @@ function cancelReport(): void {
         </div>
       </div>
       <div class="mc-rule">
-        <div class="mc-rule-inner">
+        <div
+          class="mc-rule-inner"
+          :class="{ failed: directiveFailed }"
+        >
           <div class="mc-rule-head">
-            <span class="mc-rule-tag">TEAM RULE</span>
-            <span class="mc-check">
+            <span class="mc-rule-tag">SQUAD DIRECTIVE</span>
+            <span
+              v-if="directiveFailed"
+              class="mc-failed"
+            >FAILED · RISK VOIDED</span>
+            <span
+              v-else
+              class="mc-check"
+            >
               <svg
                 width="15"
                 height="15"
@@ -264,7 +307,17 @@ function cancelReport(): void {
               :value="misfortuneRisk"
               :max="5"
             />
-            <span class="mc-rule-val">+{{ misfortuneRisk }}</span>
+            <span class="mc-rule-val">+{{ directiveValor }}</span>
+            <button
+              v-if="canControl && state.misfortuneAccepted && !directiveFailed"
+              class="mc-fail-btn"
+              :class="{ armed: confirmFail }"
+              type="button"
+              :aria-label="confirmFail ? 'Confirm the directive is broken — this cannot be undone' : 'Mark the squad directive failed'"
+              @click="toggleFail"
+            >
+              {{ confirmFail ? 'Confirm — void it?' : 'Mark failed' }}
+            </button>
           </div>
         </div>
       </div>
@@ -285,7 +338,7 @@ function cancelReport(): void {
         aria-hidden="true"
       ><path d="M6 3h12v14l-6 4-6-4zM3 3l18 18" /></svg>
       <div class="anyvoid-copy">
-        <span class="anyvoid-line">{{ voidedPacts }} pact{{ voidedPacts === 1 ? '' : 's' }} voided · risk stopped counting</span>
+        <span class="anyvoid-line">{{ voidLine }}</span>
         <span class="anyvoid-opt">{{ lostOptions }} reward option{{ lostOptions === 1 ? '' : 's' }} lost · team risk {{ teamRisk }} stands</span>
       </div>
     </div>
@@ -686,6 +739,24 @@ function cancelReport(): void {
 .mc-rule-name { font-size: 1.4rem; color: var(--gold); }
 .mc-rule-risk { display: flex; align-items: center; gap: 0.6rem; }
 .mc-rule-val { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; color: var(--red); }
+.mc-rule-inner.failed { border-color: color-mix(in srgb, var(--red) 60%, var(--line-5)); background: color-mix(in srgb, var(--red) 7%, var(--rail)); }
+.mc-rule-inner.failed .mc-rule-name { color: var(--dim); text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 2px; }
+.mc-rule-inner.failed .mc-rule-tag { background: var(--red); color: var(--text); }
+.mc-rule-inner.failed .mc-rule-val { color: var(--dim); }
+.mc-failed { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: var(--red); }
+.mc-fail-btn {
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--red) 60%, transparent);
+  background: transparent;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--red);
+  cursor: pointer;
+}
+.mc-fail-btn.armed { background: color-mix(in srgb, var(--red) 22%, transparent); color: var(--text); }
 
 /* anyVoid summary (spec 07): broken pacts and their cost. */
 .anyvoid { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.75rem; border: 1px solid color-mix(in srgb, var(--red) 55%, transparent); }

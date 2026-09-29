@@ -32,6 +32,7 @@ const emit = defineEmits<{
   pactRisk: [value: number]
   report: [payload: { outcome: MissionOutcome, stars: number, timePct: number, samples?: SampleCounts }]
   failPact: [playerId: string, pactId: string]
+  failDirective: []
   pick: [optionId: string, choiceItemId?: string]
   rerollRewards: []
   banRewards: [optionIds: string[]]
@@ -188,6 +189,7 @@ function kickDiver(diverId: string): void {
           :is-host="isHost"
           @report="emit('report', $event)"
           @fail="(playerId, pactId) => emit('failPact', playerId, pactId)"
+          @fail-directive="emit('failDirective')"
         />
 
         <PhoneRewardDraft

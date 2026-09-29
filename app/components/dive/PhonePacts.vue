@@ -143,7 +143,7 @@ const pendingText = computed(() => {
           <div
             class="summary-line"
             role="img"
-            :aria-label="`Misfortune ${misfortune?.name ?? 'none'}, plus ${breakdown.misfortuneRisk}`"
+            :aria-label="`Directive ${misfortune?.name ?? 'none'}, plus ${breakdown.misfortuneRisk}`"
           >
             <span class="s-name">{{ misfortune?.name ?? 'Safe dive' }}</span>
             <span class="disp s-risk gold">+{{ breakdown.misfortuneRisk }}</span>

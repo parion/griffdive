@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { WARBONDS } from '../data/catalog'
-import { MAX_DIFFICULTY, MIN_DIFFICULTY, SAMPLE_VALOR_CAP, STRAIN_RISK, TIME_VALOR_MAX, conditionRiskAt } from './config'
+import { MAX_DIFFICULTY, MIN_DIFFICULTY, SAMPLE_VALOR_CAP, STRAIN_RISK, TIME_VALOR_MAX, directiveValorAt } from './config'
 import { oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { activeMisfortune, activeStrain, canRerollWheel, ceilingRange, diverOptions, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
@@ -112,12 +112,12 @@ describe('team misfortune acceptance', () => {
       { type: 'ACCEPT_STRAIN', accepted: true },
     )
     expect(activeStrain(accepted)?.id).toBe(accepted.strainId)
-    const expected = conditionRiskAt(accepted.wheel!.misfortuneId, accepted.difficulty)
+    const expected = directiveValorAt(accepted.wheel!.misfortuneId, accepted.difficulty)
       + (STRAIN_RISK[accepted.strainId!] ?? 0)
     expect(teamRiskOf(accepted)).toBe(expected)
     // Declining the strain leaves only the misfortune's risk.
     const declined = reduce(accepted, { type: 'ACCEPT_STRAIN', accepted: false })
-    expect(teamRiskOf(declined)).toBe(conditionRiskAt(accepted.wheel!.misfortuneId, accepted.difficulty))
+    expect(teamRiskOf(declined)).toBe(directiveValorAt(accepted.wheel!.misfortuneId, accepted.difficulty))
   })
 
   it('strainDecision follows the phase, and later missions inherit it', () => {
@@ -159,11 +159,12 @@ describe('team misfortune acceptance', () => {
 
 describe('maxValorFor (meter scale)', () => {
   it('scales to the strongest team rule, strain, top pacts and performance cap', () => {
-    // At diff 3 the team pool tops at 3, plus a risk-3 strain and two risk-3 pacts.
-    expect(maxValorFor(3)).toBe(3 + 3 + 3 + 3 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
-    // At diff 10 the top team rule reaches 5 and three pacts are dealt, though
-    // inverse personal scaling keeps the pact slice modest.
-    expect(maxValorFor(10)).toBe(5 + 3 + 2 + 2 + 2 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
+    // At diff 3 the team pool tops at 3 — weighted 1.5× because the whole squad
+    // carries it — plus a risk-3 strain and two risk-3 pacts.
+    expect(maxValorFor(3)).toBe(3 * 1.5 + 3 + 3 + 3 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
+    // At diff 10 the top team rule reaches 5 (weighted), three pacts are dealt,
+    // though inverse personal scaling keeps the pact slice modest.
+    expect(maxValorFor(10)).toBe(5 * 1.5 + 3 + 2 + 2 + 2 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
   })
 
   it('grows overall from the floor to the top of the ladder', () => {

@@ -122,6 +122,10 @@ export interface DiveState {
   // each mission draws only a fresh misfortune.
   frontId: FrontId | null
   misfortuneAccepted: boolean
+  // The accepted team directive broken in the field and marked failed by the
+  // host while diving: its shared risk is voided for the whole squad and every
+  // diver forfeits one reward option. Reset with the pacts every mission.
+  misfortuneFailed: boolean
   // The strain is a subfaction rolled with the front and persisting with it.
   // It is optional: the squad accepts or declines it on the operation's first
   // mission (phase 'strain'), and an accepted strain adds its team risk to
@@ -165,6 +169,7 @@ export type EngineAction
     | { type: 'REROLL_WHEEL', wheel: 'misfortune' | 'front' | 'strain', seed: number }
     | { type: 'SET_PACTS', playerId: string, pactIds: string[] }
     | { type: 'FAIL_PACT', playerId: string, pactId: string }
+    | { type: 'FAIL_MISFORTUNE' }
     | { type: 'SET_WARBONDS', playerId: string, warbondCodes: string[] }
     | { type: 'REPORT_RESULT', outcome: MissionOutcome, stars: number, timePct?: number, samples?: SampleCounts }
     | { type: 'FORFEIT_ITEM', itemRef: ItemRef }

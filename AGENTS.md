@@ -2,7 +2,7 @@
 
 Griffdive is a squad roguelike companion app for **Helldivers 2**. It wraps the game's missions in a
 challenge campaign: squads climb the difficulty ladder with scavenged loadouts, spin a Wheel of
-Misfortune before every dive, and individually choose pacts — the more risk accepted, the rarer the
+Adversity before every dive, and individually choose pacts — the more risk accepted, the rarer the
 loot. The name nods to the Halo fan-favorite Griffball, and to Griffin, who dives.
 
 This document is the authority for game rules, architecture, and conventions. It is written for AI
@@ -32,17 +32,22 @@ the room code + copy control · 84px climb strip · three rails · 52px Mission-
 Bridge home fits one desktop view (hero + climb ladder · 6-step mission loop · Valor odds ladder ·
 deploy rail with code-cell join and the service record · a full-width Major Order band and footer),
 the wheel is a real spinning SVG wheel, the Armory marks
-misfortune/pact bans per tile from engine selectors, and an interactive six-beat Griffdiver
+directive/pact bans per tile from engine selectors, and an interactive six-beat Griffdiver
 Briefing (Identify · Spin · Pact · Reward · Warbonds · Deploy) onboards first-time divers. Engine,
 sync, saves and data are untouched; see
 [Destroyer Terminal design language](#destroyer-terminal-design-language). Hybrid **saved
 dives** have landed: any seated diver can pin a room server-side so it outlives the idle TTL and a
 browser clearing its storage, resuming through the existing rejoin path (see Saved dives).
-**The condition catalogue is unified:** misfortunes (team) and pacts (personal) are now one
+**The condition catalogue is unified:** squad directives (team) and pacts (personal) are now one
 catalogue, nothing is gated by difficulty, and a per-condition curve scales each rule's risk/Valor
-with altitude (see Condition scaling). The Field manual slide-over was retired — the Griffdiver
-Briefing covers onboarding.
-**Alpha has landed:** the save schema is frozen at v10 and the migration chain is open (see Save
+with altitude (see Condition scaling). **Team directives outweigh pacts:** an accepted directive
+stakes **1.5×** its scaled risk in Valor (`TEAM_DIRECTIVE_VALOR_WEIGHT`), because the whole squad
+carries it. **Broken directives fail like pacts:** the host can mark an accepted directive failed in
+the field (`FAIL_MISFORTUNE`, host-only, `diving` phase) — its shared risk is voided for every diver
+and each diver forfeits one reward option. UI copy calls the team scope **Squad Directive** and the
+wheel the **Wheel of Adversity**; engine ids and the action union keep the `misfortune` name. The
+Field manual slide-over was retired — the Griffdiver Briefing covers onboarding.
+**Alpha has landed:** the save schema is frozen at v11 and the migration chain is open (see Save
 model). See [Roadmap](#roadmap).
 
 ---
@@ -211,15 +216,20 @@ Bonus is dropped entirely (unobtainable, no reward-pool bearing — its pieces w
 rewards never offer). Reward offers roll against the diver's own catalog — a diver is never
 offered items from warbonds they don't own. Starting kits are not warbond-filtered.
 
-### Team layer — misfortunes (Wheel)
+### Team layer — misfortunes / squad directives (Wheel of Adversity)
 
-Exactly one misfortune per **mission**, drawn from the **team-scoped** slice of the unified
-**condition catalogue** (`shared/data/conditions.ts`). Nothing is gated: every team rule is on the
-wheel at every difficulty — difficulty scales each rule's risk instead (**Condition scaling**,
-below). The draw is an offer, not a verdict: in a dedicated **decision** phase before pacts
+Exactly one misfortune (UI: **Squad Directive**) per **mission**, drawn from the **team-scoped**
+slice of the unified **condition catalogue** (`shared/data/conditions.ts`). Nothing is gated: every
+team rule is on the wheel at every difficulty — difficulty scales each rule's risk instead
+(**Condition scaling**, below). The draw is an offer, not a verdict: in a dedicated **decision**
+phase before pacts
 roll, the squad (host executes, IRL voice vote) **accepts or declines** it. Declining runs a
-zero-team-risk dive; accepting applies the misfortune's **team risk** to every diver's Valor
-for this mission. A reroll redraws and resets the decision (returning the squad to the `decision`
+zero-team-risk dive; accepting stakes the misfortune's **team risk** in Valor for every diver —
+weighted **1.5×** because the whole squad carries it (`TEAM_DIRECTIVE_VALOR_WEIGHT`; the operation-
+long strain and live Major Order keep their own unweighted fixed values). Once accepted, the host
+may mark it **failed** in the field if the squad breaks the rule (`FAIL_MISFORTUNE`, `diving` phase,
+host-only): the shared risk is voided for every diver and each forfeits one reward option — see
+Failed directives. A reroll redraws and resets the decision (returning the squad to the `decision`
 phase, before the deal). A squad-binding rule must be
 fieldable by **every seated diver**: if accepting would strand even one diver below HD2's four
 required stratagems, the engine refuses the accept (the UI disables "Lock it in" and names who
@@ -427,13 +437,24 @@ and the rolled offer drop, and it costs one reward option (`OPTIONS_LOST_PER_FAI
 ADVANCE). Failed pacts ride the diver's state (`failedPactIds`), reset with the pacts every
 mission, and land in the action log for audit.
 
+**Failed directives:** the same rule applies to the squad's team directive. The host marks it
+broken in the field (`FAIL_MISFORTUNE`, host-only, `diving` phase only; the UI asks for a confirm
+since the mark is one-way) and `state.misfortuneFailed` is set. The unconditional restrictions it
+imposed still stand for the mission, but its **shared risk is voided for every diver** — `teamRiskOf`
+drops the directive's contribution, so every diver's Valor and ceiling preview fall — and each diver
+forfeits one reward option (`OPTIONS_LOST_PER_FAILED_DIRECTIVE`, floored at one). The
+operation-long strain and a live Major Order are untouched: they carry no rule to break. The mark
+resets with the pacts every mission.
+
 ### Reward math
 
 ```
 Valor         = teamRisk + pactRisk + performance
-teamRisk      = accepted misfortune (0–5) plus the accepted strain (2–3,
-                felt on every mission of its operation) or the live Major
-                Order commitment (2, same scope); 0 when declined/unset
+teamRisk      = accepted misfortune × TEAM_DIRECTIVE_VALOR_WEIGHT (1.5, because the
+                whole squad carries it) plus the accepted strain (2–3, felt on
+                every mission of its operation) or the live Major Order
+                commitment (2, same scope); 0 when declined/unset, or when the
+                directive was failed in the field
 pactRisk      = sum of the diver's picked pacts (max 8: the rolled
                 2–3-pact offer bounds what a diver can stack)
 performance   = team performance from the mission just reported, squad-level
@@ -441,7 +462,8 @@ performance   = team performance from the mission just reported, squad-level
                 samples (≤ 0.3), so it never exceeds 0.5
 
 (misfortune and pact risk are read through `conditionRiskAt(id, difficulty)`,
- so the same condition is worth different Valor at different altitudes)
+ so the same condition is worth different Valor at different altitudes;
+ the directive's 1.5× weight is applied by `directiveValorAt` on top)
 
 base tier:     diff 3–5 → C   diff 6–7 → B   diff 8–10 → A
 meter:         the Valor gauge tops out at 11; Valor past it is Luck
@@ -633,7 +655,8 @@ every later breaking change bumps `SAVE_SCHEMA_VERSION` and adds a version-gated
 is reverted. `migrateV7toV8` is the alpha baseline — it defaults the fields whose shapes landed
 during pre-alpha (Field Promotion bookkeeping, failed-pact marks, reward tokens, bans, bonus
 honors); `migrateV8toV9` adds the strain fields and widens legacy combo keys; `migrateV9toV10`
-adds the Major Order commitment (`majorOrder: null`). Normalization drops
+adds the Major Order commitment (`majorOrder: null`); `migrateV10toV11` adds the failed-directive
+mark (`misfortuneFailed: false`). Normalization drops
 only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
 `achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, inventories, per-diver warbond declarations,
@@ -857,7 +880,7 @@ rooms every 15 min so the `MAX_ROOMS` backstop rarely matters.
 Canonical engine actions (the reducer union; keep names stable):
 
 `START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
-`DEAL_PACTS{}` `SET_MAJOR_ORDER{order}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `SET_WARBONDS{playerId,warbondCodes}`
+`DEAL_PACTS{}` `SET_MAJOR_ORDER{order}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
 `AWARD_BONUS{playerId}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
@@ -865,12 +888,13 @@ Canonical engine actions (the reducer union; keep names stable):
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
-`ACCEPT_STRAIN`, `DEAL_PACTS`, `SET_MAJOR_ORDER`, `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
+`ACCEPT_STRAIN`, `DEAL_PACTS`, `SET_MAJOR_ORDER`, `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `FAIL_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated
 diver, `unsave-dive` is host-only.
-`FAIL_PACT` is sent by the target diver or the host (server refuses everyone else). Host disconnect →
+`FAIL_PACT` is sent by the target diver or the host (server refuses everyone else); `FAIL_MISFORTUNE`
+is host-only, since the directive binds the whole squad. Host disconnect →
 `TRANSFER_HOST` to the earliest joiner; none left → room hibernates in storage with a TTL.
 Reconnect = re-`hello` with stored playerId → server replays snapshot.
 `KICK_DIVER` (host, any phase, lobby included) removes a diver who left or is blocking the
@@ -1019,7 +1043,8 @@ mount: `fly volumes create griffdive_data --region ams --size 1`.
 ## Testing strategy
 
 - **Engine unit tests** (Vitest, colocated `*.spec.ts`): reducer transitions, reward math at every
-  score boundary (0, 2, 4, 6, 9), pact validity vs each misfortune, reroll rules, forfeit paths,
+  score boundary (0, 2, 4, 6, 9), pact validity vs each misfortune, failed pacts and directives,
+  reroll rules, forfeit paths,
   mid-crusade catch-up (promotion sizing/rolls, cache claims, departure parking, seating window).
 - **Golden tests:** seeded runs (`mulberry32`) recorded as JSON snapshots — spin results, reward
   option sets, full crusade replays. Goldens live in `shared/engine/__goldens__/`; regenerate with
