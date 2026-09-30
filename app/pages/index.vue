@@ -1098,7 +1098,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
     >
       <span class="lbl gold">Major Order</span>
       <span class="muted small">
-        {{ moStatus === 'none' ? 'No active Major Order — the wheel picks the front' : 'War feed unavailable — the wheel picks the front' }}
+        {{ moStatus === 'none' ? 'No active Major Order — the wheel picks the front' : moStatus === 'no-front' ? 'Major Order has no front — the wheel picks the front' : 'War feed unavailable — the wheel picks the front' }}
       </span>
     </section>
 

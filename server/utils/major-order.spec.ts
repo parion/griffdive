@@ -84,7 +84,60 @@ describe('resolveMajorOrder (no order vs unavailable)', () => {
     expect(resolveMajorOrder({}, CAMPAIGN).status).toBe('unavailable')
   })
 
-  it('reads an assignment whose planets do not resolve as unavailable', () => {
-    expect(resolveMajorOrder([assignment()], []).status).toBe('unavailable')
+  it('reads an assignment whose planets do not resolve as no-front', () => {
+    expect(resolveMajorOrder([assignment()], []))
+      .toEqual({ status: 'no-front', order: null })
+  })
+
+  it('reads a front-less order (gather, operations) as no-front', () => {
+    const tasks = [
+      { type: 2, values: [0, 0, 100000], valueTypes: [1, 2, 3] },
+      { type: 9, values: [0, 0, 50000], valueTypes: [1, 2, 3] },
+    ]
+    expect(resolveMajorOrder([assignment({ tasks })], CAMPAIGN).status).toBe('no-front')
+  })
+})
+
+describe('kill orders carry their front in the faction slot', () => {
+  // Live payload, 2026-09-30: Chargers (Terminids) + Shredder Tanks (Automatons).
+  const killTasks = [
+    { type: 3, values: [2, 0, 25000000, 2651633799, 0, 0, 0, 0, 0, 0], valueTypes: [1, 2, 3, 4, 6, 5, 8, 9, 11, 12] },
+    { type: 3, values: [3, 0, 5000000, 2664856027, 0, 0, 0, 0, 0, 0], valueTypes: [1, 2, 3, 4, 6, 5, 8, 9, 11, 12] },
+  ]
+  const kill = (tasks: unknown[]) => assignment({
+    briefing: 'Kill the requisite enemies.',
+    tasks,
+  })
+
+  it('resolves a cross-faction kill order without an enemy table', () => {
+    const order = normalizeMajorOrder([kill(killTasks)], [])
+    expect(order?.fronts).toEqual(['terminids', 'automatons'])
+    expect(order?.planets).toEqual([])
+    expect(order?.live).toBe(true)
+  })
+
+  it('reads slots by label, not position', () => {
+    const shuffled = [{ type: 3, values: [0, 5, 4], valueTypes: [3, 2, 1] }]
+    expect(normalizeMajorOrder([kill(shuffled)], [])?.fronts).toEqual(['illuminate'])
+  })
+
+  it('ignores faction 0 (anything) and Humans', () => {
+    const tasks = [
+      { type: 3, values: [0, 0, 100], valueTypes: [1, 2, 3] },
+      { type: 3, values: [1, 0, 100], valueTypes: [1, 2, 3] },
+    ]
+    expect(normalizeMajorOrder([kill(tasks)], [])).toBeNull()
+  })
+
+  it('still resolves a mixed order from the tasks it can read', () => {
+    const tasks = [
+      { type: 2, values: [0, 0, 100], valueTypes: [1, 2, 3] },
+      ...killTasks.slice(0, 1),
+    ]
+    expect(normalizeMajorOrder([kill(tasks)], [])?.fronts).toEqual(['terminids'])
+  })
+
+  it('reads a resolvable kill order as active', () => {
+    expect(resolveMajorOrder([kill(killTasks)], []).status).toBe('active')
   })
 })
