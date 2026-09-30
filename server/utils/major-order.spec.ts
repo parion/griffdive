@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeMajorOrder, resolveMajorOrder } from './major-order'
+import { normalizeMajorOrder, resolveMajorOrder, unresolvedTasks } from './major-order'
 
 function assignment(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -84,7 +84,79 @@ describe('resolveMajorOrder (no order vs unavailable)', () => {
     expect(resolveMajorOrder({}, CAMPAIGN).status).toBe('unavailable')
   })
 
-  it('reads an assignment whose planets do not resolve as unavailable', () => {
-    expect(resolveMajorOrder([assignment()], []).status).toBe('unavailable')
+  it('reads an assignment whose planets do not resolve as no-front', () => {
+    expect(resolveMajorOrder([assignment()], []))
+      .toEqual({ status: 'no-front', order: null })
+  })
+
+  it('reads a front-less order (gather, operations) as no-front', () => {
+    const tasks = [
+      { type: 2, values: [0, 0, 100000], valueTypes: [1, 2, 3] },
+      { type: 9, values: [0, 0, 50000], valueTypes: [1, 2, 3] },
+    ]
+    expect(resolveMajorOrder([assignment({ tasks })], CAMPAIGN).status).toBe('no-front')
+  })
+})
+
+describe('kill orders carry their front in the faction slot', () => {
+  // Live payload, 2026-09-30: Chargers (Terminids) + Shredder Tanks (Automatons).
+  const killTasks = [
+    { type: 3, values: [2, 0, 25000000, 2651633799, 0, 0, 0, 0, 0, 0], valueTypes: [1, 2, 3, 4, 6, 5, 8, 9, 11, 12] },
+    { type: 3, values: [3, 0, 5000000, 2664856027, 0, 0, 0, 0, 0, 0], valueTypes: [1, 2, 3, 4, 6, 5, 8, 9, 11, 12] },
+  ]
+  const kill = (tasks: unknown[]) => assignment({
+    briefing: 'Kill the requisite enemies.',
+    tasks,
+  })
+
+  it('resolves a cross-faction kill order without an enemy table', () => {
+    const order = normalizeMajorOrder([kill(killTasks)], [])
+    expect(order?.fronts).toEqual(['terminids', 'automatons'])
+    expect(order?.planets).toEqual([])
+    expect(order?.live).toBe(true)
+  })
+
+  it('reads slots by label, not position', () => {
+    const shuffled = [{ type: 3, values: [0, 5, 4], valueTypes: [3, 2, 1] }]
+    expect(normalizeMajorOrder([kill(shuffled)], [])?.fronts).toEqual(['illuminate'])
+  })
+
+  it('ignores faction 0 (anything) and Humans', () => {
+    const tasks = [
+      { type: 3, values: [0, 0, 100], valueTypes: [1, 2, 3] },
+      { type: 3, values: [1, 0, 100], valueTypes: [1, 2, 3] },
+    ]
+    expect(normalizeMajorOrder([kill(tasks)], [])).toBeNull()
+  })
+
+  it('still resolves a mixed order from the tasks it can read', () => {
+    const tasks = [
+      { type: 2, values: [0, 0, 100], valueTypes: [1, 2, 3] },
+      ...killTasks.slice(0, 1),
+    ]
+    expect(normalizeMajorOrder([kill(tasks)], [])?.fronts).toEqual(['terminids'])
+  })
+
+  it('reads a resolvable kill order as active', () => {
+    expect(resolveMajorOrder([kill(killTasks)], []).status).toBe('active')
+  })
+})
+
+describe('unresolvedTasks', () => {
+  const gather = { type: 2, values: [0, 0, 100], valueTypes: [1, 2, 3] }
+  const kill = { type: 3, values: [2, 0, 100, 1], valueTypes: [1, 2, 3, 4] }
+
+  it('lists only the tasks that name no front', () => {
+    expect(unresolvedTasks([assignment({ tasks: [gather, kill] })], CAMPAIGN)).toEqual([gather])
+  })
+
+  it('flags a planet task whose planet is not in the campaign', () => {
+    expect(unresolvedTasks([assignment()], [])).toHaveLength(2)
+  })
+
+  it('is empty for a fully resolved order and for malformed input', () => {
+    expect(unresolvedTasks([assignment()], CAMPAIGN)).toEqual([])
+    expect(unresolvedTasks(null, CAMPAIGN)).toEqual([])
+    expect(unresolvedTasks([], CAMPAIGN)).toEqual([])
   })
 })

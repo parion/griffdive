@@ -18,7 +18,8 @@ export default defineEventHandler(async () => {
   }
   try {
     const result = await fetchMajorOrder()
-    // A clean "no order" and a live order are real API outcomes worth caching;
+    // A clean "no order", a front-less order and a live order are real API
+    // outcomes worth caching;
     // an unavailable one is transient, so retry it on the next request.
     if (result.status !== 'unavailable') {
       cache = { at: now, result }

@@ -335,9 +335,17 @@ anyway, so that space is idle before the roll; the front card then carries the M
 operation. Offline/static builds, a failed fetch, or the `GRIFFDIVE_DISABLE_MO_API=1` kill switch
 all fall back to the manual picker. The proxy caches for 10 minutes, retries once with a 6s
 timeout, and serves its last good order (stale) when a refresh fails — it never caches a failure. It
-answers `{ order, status }` — `active`, `none` (the API replied with an empty list), or
-`unavailable` (a failed or garbled fetch) — so the picker can say "No active Major Order" apart from
-"Failed to retrieve active MO".
+answers `{ order, status }` — `active`, `none` (the API replied with an empty list), `no-front` (an
+order exists but names no front we can resolve — e.g. sample gathering or a faction-less kill order),
+or `unavailable` (a failed or garbled fetch) — so the picker can tell "No active Major Order" and
+"doesn't target a front" apart from "Failed to retrieve active MO". Task payloads are decoded **by
+label**: `valueTypes[i]` labels `values[i]` (community reverse-engineered; 1 = faction, 12 = planet).
+A planet slot resolves through the campaign join; otherwise a faction slot (2 Terminids, 3 Automatons,
+4 Illuminate) names the front directly, so enemy-focused kill orders — including cross-faction ones —
+resolve with no enemy table. Anything unrecognized contributes no front and degrades to the manual
+picker. Each task shape that names no front is
+logged once per process (`[major-order] task names no front: …`, visible in `fly logs`), so a new order
+type surfaces without flooding the stream.
 
 ### Team layer — faction strains
 

@@ -66,7 +66,9 @@ function playSuggestion(): void {
       />
       <span>{{ status === 'none'
         ? 'No active Major Order — the wheel draws the front as usual.'
-        : 'Failed to retrieve active MO' }}</span>
+        : status === 'no-front'
+          ? 'The active Major Order doesn\'t target a front — the wheel draws it as usual.'
+          : 'Failed to retrieve active MO' }}</span>
       <button
         class="mo-refresh"
         type="button"

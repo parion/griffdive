@@ -1,8 +1,9 @@
 import type { MajorOrderSelection } from '~~/shared/engine/types'
 
 // 'active' has an order; 'none' is a clean empty response (no MO running right
-// now); 'unavailable' is a failed or unreadable fetch.
-export type MajorOrderStatus = 'active' | 'none' | 'unavailable'
+// now); 'no-front' is an order that names no front we can resolve; 'unavailable'
+// is a failed or unreadable fetch.
+export type MajorOrderStatus = 'active' | 'none' | 'no-front' | 'unavailable'
 
 export interface MajorOrderResponse {
   order: MajorOrderSelection | null

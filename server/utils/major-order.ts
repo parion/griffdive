@@ -8,8 +8,8 @@ import type { MajorOrderPlanet, MajorOrderSelection } from '~~/shared/engine/typ
 // Sources (both unofficial, unauthenticated, and best-effort):
 //  - assignments: api.helldivers2.dev — active MO, tasks carry target planets
 //  - campaign: helldiverstrainingmanual.com — active planet index → faction + %
-// The two are joined on the planet index; an MO whose planets aren't active
-// resolves to no front and degrades to the manual picker.
+// The two are joined on the planet index; an MO that names no resolvable planet
+// or faction resolves to no front and degrades to the manual picker.
 
 const ASSIGNMENTS_URL = 'https://api.helldivers2.dev/api/v1/assignments'
 const CAMPAIGN_URL = 'https://helldiverstrainingmanual.com/api/v1/war/campaign'
@@ -49,22 +49,34 @@ const FACTION_TO_FRONT: Readonly<Record<string, FrontId>> = {
   illuminate: 'illuminate',
 }
 
-// The MO's target planets: task values[2] is the planet index (valueTypes[2]
-// === 12 marks it on current assignments). Older/other task shapes fall back to
-// the liberation task type. The task schema can shift between orders, so both
-// paths are best-effort and an unresolved index is simply skipped.
-function targetPlanetIndices(assignment: RawAssignment): number[] {
-  const tasks = Array.isArray(assignment.tasks) ? assignment.tasks : []
-  const marked = tasks
-    .filter(task => task.valueTypes?.[2] === 12)
-    .map(task => task.values?.[2])
-  const liberation = tasks
-    .filter(task => task.type === 11)
-    .map(task => task.values?.[2])
-  const source = marked.length > 0 ? marked : liberation
-  return [...new Set(source.filter(
-    (value): value is number => typeof value === 'number' && Number.isInteger(value) && value > 0,
-  ))]
+// Task payloads are self-describing: `valueTypes[i]` labels `values[i]`, so slots
+// are read by label rather than position. The labels are community
+// reverse-engineered (hd2api.py), not official; an unlabelled or unknown task
+// simply contributes no front and the order degrades to the manual picker.
+const VALUE_TYPE_FACTION = 1
+const VALUE_TYPE_PLANET = 12
+const LIBERATION_TASK_TYPE = 11
+const FACTION_ID_TO_FRONT: Readonly<Record<number, FrontId>> = {
+  2: 'terminids',
+  3: 'automatons',
+  4: 'illuminate',
+}
+
+function labelled(task: RawTask, valueType: number): number | undefined {
+  const slot = task.valueTypes?.indexOf(valueType) ?? -1
+  return slot >= 0 ? task.values?.[slot] : undefined
+}
+
+// A task names a planet (liberation, defense) or a bare faction (kill orders).
+// Planet-less liberation tasks from older payloads fall back to values[2].
+function taskTarget(task: RawTask): { planet?: number, front?: FrontId } {
+  const planet = labelled(task, VALUE_TYPE_PLANET)
+    ?? (task.valueTypes === undefined && task.type === LIBERATION_TASK_TYPE ? task.values?.[2] : undefined)
+  if (typeof planet === 'number' && Number.isInteger(planet) && planet > 0) {
+    return { planet }
+  }
+  const faction = labelled(task, VALUE_TYPE_FACTION)
+  return { front: typeof faction === 'number' ? FACTION_ID_TO_FRONT[faction] : undefined }
 }
 
 function planetIndex(campaign: unknown): Map<number, PlanetInfo> {
@@ -84,6 +96,22 @@ function planetIndex(campaign: unknown): Map<number, PlanetInfo> {
   return map
 }
 
+interface ResolvedTask {
+  front?: FrontId
+  planet?: MajorOrderPlanet
+}
+
+function resolveTask(task: RawTask, planets: Map<number, PlanetInfo>): ResolvedTask {
+  const target = taskTarget(task)
+  if (target.planet === undefined) {
+    return { front: target.front }
+  }
+  const info = planets.get(target.planet)
+  return info
+    ? { front: info.front, planet: { index: target.planet, ...info } }
+    : {}
+}
+
 // Pure: normalizes raw API payloads into the selection the host's picker
 // offers. Exported for tests. Returns null when no front resolves.
 export function normalizeMajorOrder(assignments: unknown, campaign: unknown): MajorOrderSelection | null {
@@ -94,20 +122,15 @@ export function normalizeMajorOrder(assignments: unknown, campaign: unknown): Ma
   const planets = planetIndex(campaign)
   const fronts: FrontId[] = []
   const ordered: MajorOrderPlanet[] = []
-  for (const index of targetPlanetIndices(assignment)) {
-    const planet = planets.get(index)
-    if (!planet || ordered.some(entry => entry.index === index)) {
-      continue
+  const tasks = Array.isArray(assignment.tasks) ? assignment.tasks : []
+  for (const task of tasks) {
+    const { front, planet } = resolveTask(task, planets)
+    if (front && !fronts.includes(front)) {
+      fronts.push(front)
     }
-    if (!fronts.includes(planet.front)) {
-      fronts.push(planet.front)
+    if (planet && !ordered.some(entry => entry.index === planet.index)) {
+      ordered.push(planet)
     }
-    ordered.push({
-      index,
-      name: planet.name,
-      front: planet.front,
-      liberation: planet.liberation,
-    })
   }
   if (fronts.length === 0) {
     return null
@@ -121,6 +144,34 @@ export function normalizeMajorOrder(assignments: unknown, campaign: unknown): Ma
     title: title.slice(0, 120),
     planets: ordered.slice(0, 8),
     expiresAt: typeof assignment.expiration === 'string' ? assignment.expiration : undefined,
+  }
+}
+
+// Tasks of the active order that name no front — the shapes worth a human look
+// when the decoder meets a new order type. Pure; the logging sits in the caller.
+export function unresolvedTasks(assignments: unknown, campaign: unknown): RawTask[] {
+  if (!Array.isArray(assignments) || assignments.length === 0) {
+    return []
+  }
+  const planets = planetIndex(campaign)
+  const tasks = (assignments[0] as RawAssignment).tasks
+  return (Array.isArray(tasks) ? tasks : []).filter(task => !resolveTask(task, planets).front)
+}
+
+// One warning per task shape per process (the fetch reruns every ~10 minutes),
+// so a stuck order can't flood the Fly log stream. The planet and count slots
+// are left out of the key: they change every order without changing the shape.
+const reportedShapes = new Set<string>()
+const REPORTED_SHAPES_CAP = 100
+
+function reportUnresolved(tasks: RawTask[]): void {
+  for (const task of tasks) {
+    const shape = `${task.type}:${JSON.stringify(task.valueTypes)}`
+    if (reportedShapes.has(shape) || reportedShapes.size >= REPORTED_SHAPES_CAP) {
+      continue
+    }
+    reportedShapes.add(shape)
+    console.warn(`[major-order] task names no front: ${JSON.stringify(task)}`)
   }
 }
 
@@ -139,13 +190,14 @@ async function fetchJson(url: string, headers: Record<string, string>): Promise<
   throw lastError
 }
 
-// The three outcomes the picker needs to tell apart: a live order, a clean "no
-// active order" (the API answered with an empty list), or a failed/garbled
-// response. Kept separate from normalizeMajorOrder so the distinction is
+// The outcomes the picker needs to tell apart: a live order, a clean "no
+// active order" (the API answered with an empty list), an order that exists but
+// names no front we can resolve (`no-front`), or a failed/garbled response. Kept separate from normalizeMajorOrder so the distinction is
 // testable without a network call.
 export type MajorOrderFetch
   = | { status: 'active', order: MajorOrderSelection }
     | { status: 'none', order: null }
+    | { status: 'no-front', order: null }
     | { status: 'unavailable', order: null }
 
 export function resolveMajorOrder(assignments: unknown, campaign: unknown): MajorOrderFetch {
@@ -156,7 +208,7 @@ export function resolveMajorOrder(assignments: unknown, campaign: unknown): Majo
     return { status: 'none', order: null }
   }
   const order = normalizeMajorOrder(assignments, campaign)
-  return order ? { status: 'active', order } : { status: 'unavailable', order: null }
+  return order ? { status: 'active', order } : { status: 'no-front', order: null }
 }
 
 // Best-effort live fetch. A kill switch (`GRIFFDIVE_DISABLE_MO_API=1`) reads as
@@ -174,5 +226,6 @@ export async function fetchMajorOrder(): Promise<MajorOrderFetch> {
     fetchJson(ASSIGNMENTS_URL, headers),
     fetchJson(CAMPAIGN_URL, { Accept: 'application/json' }),
   ])
+  reportUnresolved(unresolvedTasks(assignments, campaign))
   return resolveMajorOrder(assignments, campaign)
 }
