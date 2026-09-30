@@ -22,6 +22,19 @@ const selected = computed(() => props.state.majorOrder?.fronts ?? [])
 // A pinned front the host picked by hand: it carries no reroll carrot.
 const manual = computed(() => Boolean(props.state.majorOrder) && !props.state.majorOrder?.live)
 
+// A pinned live order the fresh war feed no longer offers (or offers as a
+// different order): shown so the host sees what is carried before replacing it.
+const carried = computed(() => {
+  const pinned = props.state.majorOrder
+  if (!pinned?.live) {
+    return null
+  }
+  const same = suggestion.value
+    && suggestion.value.title === pinned.title
+    && suggestion.value.expiresAt === pinned.expiresAt
+  return same ? null : pinned
+})
+
 function isSelected(frontId: FrontId): boolean {
   return selected.value.includes(frontId)
 }
@@ -39,6 +52,10 @@ function playSuggestion(): void {
 
 <template>
   <div class="mo">
+    <MajorOrderCard
+      v-if="carried"
+      :order="carried"
+    />
     <MajorOrderCard
       v-if="suggestion"
       :order="suggestion"
@@ -124,13 +141,13 @@ function playSuggestion(): void {
       v-if="!canControl"
       class="muted small mo-hint"
     >
-      The host sets the Major Order before the first spin.
+      The host sets the Major Order before an operation's first spin.
     </p>
     <p
-      v-else-if="manual"
+      v-else-if="state.majorOrder"
       class="muted small mo-hint"
     >
-      Manual front pick — no reroll bonus.
+      {{ manual ? 'Manual front pick — no reroll bonus. ' : '' }}Stays pinned for the whole run — pick another order or "No order" to change it.
     </p>
   </div>
 </template>
