@@ -96,6 +96,22 @@ function planetIndex(campaign: unknown): Map<number, PlanetInfo> {
   return map
 }
 
+interface ResolvedTask {
+  front?: FrontId
+  planet?: MajorOrderPlanet
+}
+
+function resolveTask(task: RawTask, planets: Map<number, PlanetInfo>): ResolvedTask {
+  const target = taskTarget(task)
+  if (target.planet === undefined) {
+    return { front: target.front }
+  }
+  const info = planets.get(target.planet)
+  return info
+    ? { front: info.front, planet: { index: target.planet, ...info } }
+    : {}
+}
+
 // Pure: normalizes raw API payloads into the selection the host's picker
 // offers. Exported for tests. Returns null when no front resolves.
 export function normalizeMajorOrder(assignments: unknown, campaign: unknown): MajorOrderSelection | null {
@@ -108,23 +124,13 @@ export function normalizeMajorOrder(assignments: unknown, campaign: unknown): Ma
   const ordered: MajorOrderPlanet[] = []
   const tasks = Array.isArray(assignment.tasks) ? assignment.tasks : []
   for (const task of tasks) {
-    const target = taskTarget(task)
-    if (target.front && !fronts.includes(target.front)) {
-      fronts.push(target.front)
+    const { front, planet } = resolveTask(task, planets)
+    if (front && !fronts.includes(front)) {
+      fronts.push(front)
     }
-    const planet = target.planet === undefined ? undefined : planets.get(target.planet)
-    if (target.planet === undefined || !planet || ordered.some(entry => entry.index === target.planet)) {
-      continue
+    if (planet && !ordered.some(entry => entry.index === planet.index)) {
+      ordered.push(planet)
     }
-    if (!fronts.includes(planet.front)) {
-      fronts.push(planet.front)
-    }
-    ordered.push({
-      index: target.planet,
-      name: planet.name,
-      front: planet.front,
-      liberation: planet.liberation,
-    })
   }
   if (fronts.length === 0) {
     return null
@@ -138,6 +144,34 @@ export function normalizeMajorOrder(assignments: unknown, campaign: unknown): Ma
     title: title.slice(0, 120),
     planets: ordered.slice(0, 8),
     expiresAt: typeof assignment.expiration === 'string' ? assignment.expiration : undefined,
+  }
+}
+
+// Tasks of the active order that name no front — the shapes worth a human look
+// when the decoder meets a new order type. Pure; the logging sits in the caller.
+export function unresolvedTasks(assignments: unknown, campaign: unknown): RawTask[] {
+  if (!Array.isArray(assignments) || assignments.length === 0) {
+    return []
+  }
+  const planets = planetIndex(campaign)
+  const tasks = (assignments[0] as RawAssignment).tasks
+  return (Array.isArray(tasks) ? tasks : []).filter(task => !resolveTask(task, planets).front)
+}
+
+// One warning per task shape per process (the fetch reruns every ~10 minutes),
+// so a stuck order can't flood the Fly log stream. The planet and count slots
+// are left out of the key: they change every order without changing the shape.
+const reportedShapes = new Set<string>()
+const REPORTED_SHAPES_CAP = 100
+
+function reportUnresolved(tasks: RawTask[]): void {
+  for (const task of tasks) {
+    const shape = `${task.type}:${JSON.stringify(task.valueTypes)}`
+    if (reportedShapes.has(shape) || reportedShapes.size >= REPORTED_SHAPES_CAP) {
+      continue
+    }
+    reportedShapes.add(shape)
+    console.warn(`[major-order] task names no front: ${JSON.stringify(task)}`)
   }
 }
 
@@ -192,5 +226,6 @@ export async function fetchMajorOrder(): Promise<MajorOrderFetch> {
     fetchJson(ASSIGNMENTS_URL, headers),
     fetchJson(CAMPAIGN_URL, { Accept: 'application/json' }),
   ])
+  reportUnresolved(unresolvedTasks(assignments, campaign))
   return resolveMajorOrder(assignments, campaign)
 }

@@ -343,7 +343,9 @@ label**: `valueTypes[i]` labels `values[i]` (community reverse-engineered; 1 = f
 A planet slot resolves through the campaign join; otherwise a faction slot (2 Terminids, 3 Automatons,
 4 Illuminate) names the front directly, so enemy-focused kill orders — including cross-faction ones —
 resolve with no enemy table. Anything unrecognized contributes no front and degrades to the manual
-picker.
+picker. Each task shape that names no front is
+logged once per process (`[major-order] task names no front: …`, visible in `fly logs`), so a new order
+type surfaces without flooding the stream.
 
 ### Team layer — faction strains
 

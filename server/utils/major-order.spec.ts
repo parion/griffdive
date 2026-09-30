@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeMajorOrder, resolveMajorOrder } from './major-order'
+import { normalizeMajorOrder, resolveMajorOrder, unresolvedTasks } from './major-order'
 
 function assignment(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -139,5 +139,24 @@ describe('kill orders carry their front in the faction slot', () => {
 
   it('reads a resolvable kill order as active', () => {
     expect(resolveMajorOrder([kill(killTasks)], []).status).toBe('active')
+  })
+})
+
+describe('unresolvedTasks', () => {
+  const gather = { type: 2, values: [0, 0, 100], valueTypes: [1, 2, 3] }
+  const kill = { type: 3, values: [2, 0, 100, 1], valueTypes: [1, 2, 3, 4] }
+
+  it('lists only the tasks that name no front', () => {
+    expect(unresolvedTasks([assignment({ tasks: [gather, kill] })], CAMPAIGN)).toEqual([gather])
+  })
+
+  it('flags a planet task whose planet is not in the campaign', () => {
+    expect(unresolvedTasks([assignment()], [])).toHaveLength(2)
+  })
+
+  it('is empty for a fully resolved order and for malformed input', () => {
+    expect(unresolvedTasks([assignment()], CAMPAIGN)).toEqual([])
+    expect(unresolvedTasks(null, CAMPAIGN)).toEqual([])
+    expect(unresolvedTasks([], CAMPAIGN)).toEqual([])
   })
 })
