@@ -132,6 +132,10 @@ test('a live Major Order renders the panel, pins the front, and tags the card', 
   await expect(page.getByRole('heading', { name: 'Major Order' })).toBeVisible()
   await expect(page.getByText('Marfark')).toBeVisible()
   await page.getByRole('button', { name: /Play this order/ }).click()
+  // Chosen, the order collapses to a pinned strip — the details don't come back.
+  await expect(page.getByText(/pinned for the run/i)).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Major Order' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Change' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   const frontCard = page.locator('.front-card')

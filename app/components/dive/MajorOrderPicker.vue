@@ -22,17 +22,17 @@ const selected = computed(() => props.state.majorOrder?.fronts ?? [])
 // A pinned front the host picked by hand: it carries no reroll carrot.
 const manual = computed(() => Boolean(props.state.majorOrder) && !props.state.majorOrder?.live)
 
-// A pinned live order the fresh war feed no longer offers (or offers as a
-// different order): shown so the host sees what is carried before replacing it.
-const carried = computed(() => {
+// A pinned order is a run-long commitment: from the moment it is chosen the
+// picker collapses to a one-line strip, and the host reopens the full chooser
+// only to replace or clear it.
+const editing = ref(false)
+const pinnedLabel = computed(() => {
   const pinned = props.state.majorOrder
-  if (!pinned?.live) {
-    return null
+  if (!pinned) {
+    return ''
   }
-  const same = suggestion.value
-    && suggestion.value.title === pinned.title
-    && suggestion.value.expiresAt === pinned.expiresAt
-  return same ? null : pinned
+  return pinned.title
+    ?? pinned.fronts.map(id => FRONTS.find(front => front.id === id)?.displayName ?? id).join(' / ')
 })
 
 function isSelected(frontId: FrontId): boolean {
@@ -40,11 +40,13 @@ function isSelected(frontId: FrontId): boolean {
 }
 
 function chooseFront(frontId: FrontId | null): void {
+  editing.value = false
   emit('select', frontId ? { fronts: [frontId] } : null)
 }
 
 function playSuggestion(): void {
   if (suggestion.value) {
+    editing.value = false
     emit('select', suggestion.value)
   }
 }
@@ -52,105 +54,136 @@ function playSuggestion(): void {
 
 <template>
   <div class="mo">
-    <MajorOrderCard
-      v-if="carried"
-      :order="carried"
-    />
-    <MajorOrderCard
-      v-if="suggestion"
-      :order="suggestion"
-      playable
-      :can-control="canControl"
-      @play="playSuggestion"
-    />
-    <p
-      v-else-if="suggestionPending"
-      class="mo-state muted small"
-    >
-      <span
-        class="lamp gold pulse"
-        aria-hidden="true"
-      />
-      Checking the live war…
-    </p>
-    <p
-      v-else
-      class="mo-state small"
-    >
-      <span
-        class="lamp dim"
-        aria-hidden="true"
-      />
-      <span>{{ status === 'none'
-        ? 'No active Major Order — the wheel draws the front as usual.'
-        : status === 'no-front'
-          ? 'The active Major Order doesn\'t target a front — the wheel draws it as usual.'
-          : 'Failed to retrieve active MO' }}</span>
-      <button
-        class="mo-refresh"
-        type="button"
-        aria-label="Refresh Major Order"
-        title="Refresh Major Order"
-        @click="refresh()"
-      >
-        <IconRefresh />
-      </button>
-    </p>
-
-    <p class="lbl mo-pick-label">
-      {{ suggestion ? 'Or pin a front manually' : 'Pin a faction (optional)' }}
-    </p>
-
     <div
-      class="mo-options"
-      role="group"
-      aria-label="Major Order front"
+      v-if="state.majorOrder && !editing"
+      class="mo-pinned cut-sm"
     >
-      <AppTooltip
-        v-for="front in FRONTS"
-        :key="front.id"
-        :content="front.displayName"
+      <span
+        class="mo-pinned-emblems"
+        aria-hidden="true"
       >
-        <button
-          class="mo-option cut-sm"
-          :class="{ selected: isSelected(front.id) }"
-          :style="{ '--mo-accent': front.accent }"
-          type="button"
-          :disabled="!canControl"
-          :aria-pressed="isSelected(front.id)"
-          :aria-label="front.displayName"
-          @click="chooseFront(front.id)"
+        <img
+          v-for="frontId in state.majorOrder.fronts"
+          :key="frontId"
+          :src="factionImageUrl(frontId)"
+          alt=""
+          draggable="false"
         >
-          <img
-            :src="factionImageUrl(front.id)"
-            alt=""
-            draggable="false"
-          >
-        </button>
-      </AppTooltip>
+      </span>
+      <span class="mo-pinned-text">
+        <span class="lbl gold">Major Order · pinned for the run</span>
+        <span class="mo-pinned-title">{{ pinnedLabel }}</span>
+        <span
+          v-if="manual"
+          class="muted small"
+        >Manual front pick — no reroll bonus.</span>
+      </span>
       <button
-        class="mo-option mo-noorder ghost cut-sm"
-        :class="{ selected: selected.length === 0 }"
+        v-if="canControl"
+        class="btn tiny ghost"
         type="button"
-        :disabled="!canControl"
-        :aria-pressed="selected.length === 0"
-        @click="chooseFront(null)"
+        @click="editing = true"
       >
-        No order
+        Change
       </button>
     </div>
-    <p
-      v-if="!canControl"
-      class="muted small mo-hint"
-    >
-      The host sets the Major Order before an operation's first spin.
-    </p>
-    <p
-      v-else-if="state.majorOrder"
-      class="muted small mo-hint"
-    >
-      {{ manual ? 'Manual front pick — no reroll bonus. ' : '' }}Stays pinned for the whole run — pick another order or "No order" to change it.
-    </p>
+    <template v-else>
+      <MajorOrderCard
+        v-if="suggestion"
+        :order="suggestion"
+        playable
+        :can-control="canControl"
+        @play="playSuggestion"
+      />
+      <p
+        v-else-if="suggestionPending"
+        class="mo-state muted small"
+      >
+        <span
+          class="lamp gold pulse"
+          aria-hidden="true"
+        />
+        Checking the live war…
+      </p>
+      <p
+        v-else
+        class="mo-state small"
+      >
+        <span
+          class="lamp dim"
+          aria-hidden="true"
+        />
+        <span>{{ status === 'none'
+          ? 'No active Major Order — the wheel draws the front as usual.'
+          : status === 'no-front'
+            ? 'The active Major Order doesn\'t target a front — the wheel draws it as usual.'
+            : 'Failed to retrieve active MO' }}</span>
+        <button
+          class="mo-refresh"
+          type="button"
+          aria-label="Refresh Major Order"
+          title="Refresh Major Order"
+          @click="refresh()"
+        >
+          <IconRefresh />
+        </button>
+      </p>
+
+      <p class="lbl mo-pick-label">
+        {{ suggestion ? 'Or pin a front manually' : 'Pin a faction (optional)' }}
+      </p>
+
+      <div
+        class="mo-options"
+        role="group"
+        aria-label="Major Order front"
+      >
+        <AppTooltip
+          v-for="front in FRONTS"
+          :key="front.id"
+          :content="front.displayName"
+        >
+          <button
+            class="mo-option cut-sm"
+            :class="{ selected: isSelected(front.id) }"
+            :style="{ '--mo-accent': front.accent }"
+            type="button"
+            :disabled="!canControl"
+            :aria-pressed="isSelected(front.id)"
+            :aria-label="front.displayName"
+            @click="chooseFront(front.id)"
+          >
+            <img
+              :src="factionImageUrl(front.id)"
+              alt=""
+              draggable="false"
+            >
+          </button>
+        </AppTooltip>
+        <button
+          class="mo-option mo-noorder ghost cut-sm"
+          :class="{ selected: selected.length === 0 }"
+          type="button"
+          :disabled="!canControl"
+          :aria-pressed="selected.length === 0"
+          @click="chooseFront(null)"
+        >
+          No order
+        </button>
+      </div>
+      <p
+        v-if="!canControl"
+        class="muted small mo-hint"
+      >
+        The host sets the Major Order before an operation's first spin.
+      </p>
+      <p
+        v-else-if="state.majorOrder"
+        class="muted small mo-hint"
+      >
+        {{ manual ? 'Manual front pick — no reroll bonus. ' : '' }}Stays pinned for the whole run — pick another order or "No order" to change it.
+      </p>
+    </template>
   </div>
 </template>
 
@@ -179,6 +212,27 @@ function playSuggestion(): void {
 }
 .mo-refresh:hover { border-color: var(--gold); color: var(--gold); }
 .mo-refresh svg { width: 1rem; height: 1rem; }
+
+.mo-pinned {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, var(--line-3));
+  background: color-mix(in srgb, var(--gold) 6%, var(--ground));
+}
+.mo-pinned-emblems { display: inline-flex; gap: 0.3rem; flex-shrink: 0; }
+.mo-pinned-emblems img { width: 1.9rem; height: 1.9rem; object-fit: contain; }
+.mo-pinned-text { display: grid; gap: 0.15rem; min-width: 0; flex: 1; }
+.mo-pinned-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--fs-sm);
+}
 
 .mo-pick-label { margin: 0; }
 
