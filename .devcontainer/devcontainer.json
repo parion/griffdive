@@ -40,15 +40,30 @@
     // the v1 CLI — OpenCode reuses the same paths across versions and channels.
     "source=opencode-v2-home-${devcontainerId},target=/home/paseo/.opencode2,type=volume"
   ],
-  "forwardPorts": [3000, 6767, 2222],
+  "forwardPorts": [
+    3000,
+    6767,
+    2222
+  ],
   "portsAttributes": {
-    "3000": { "label": "Nuxt dev", "onAutoForward": "openBrowser" },
-    "6767": { "label": "Paseo web UI (fallback)", "onAutoForward": "openBrowser" },
+    "3000": {
+      "label": "Nuxt dev",
+      "onAutoForward": "openBrowser"
+    },
+    "6767": {
+      "label": "Paseo web UI (fallback)",
+      "onAutoForward": "openBrowser"
+    },
     // Orca's SSH target: the container's sshd, reachable as localhost:2222 on the
     // laptop so Orca Settings -> SSH can dial in (see .devcontainer/ssh-setup.sh).
-    "2222": { "label": "Orca SSH", "onAutoForward": "silent" }
+    "2222": {
+      "label": "Orca SSH",
+      "onAutoForward": "silent"
+    }
   },
-  "otherPortsAttributes": { "onAutoForward": "silent" },
+  "otherPortsAttributes": {
+    "onAutoForward": "silent"
+  },
   "containerEnv": {
     // Relay is opt-in in Paseo; force it on for every daemon launch from this container.
     "PASEO_RELAY_ENABLED": "true",
