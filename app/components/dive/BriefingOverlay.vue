@@ -112,6 +112,10 @@ function next(): void {
   }
   step.value++
 }
+function skip(): void {
+  reached.value = BEATS.length - 1
+  step.value = BEATS.length - 1
+}
 function back(): void {
   if (step.value > 0) {
     step.value--
@@ -232,7 +236,7 @@ function close(): void {
               v-if="!isLast"
               class="btn ghost brief-skip"
               type="button"
-              @click="go(BEATS.length - 1)"
+              @click="skip"
             >
               Skip the tour
             </button>
@@ -1081,7 +1085,7 @@ function close(): void {
 .dsec-notice .lbl { display: block; margin-bottom: 0.4rem; font-size: 9px; }
 
 /* Main column */
-.brief-main { display: grid; grid-template-rows: 68px minmax(0, 1fr) 76px; min-height: 0; }
+.brief-main { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 68px minmax(0, 1fr) 76px; min-height: 0; }
 .brief-rail { display: flex; gap: 4px; padding: 12px 1.5rem; border-bottom: 1px solid var(--line-1); background: var(--rail); }
 .railbtn {
   flex: 1 1 0;
@@ -1325,7 +1329,98 @@ function close(): void {
   .beat-identify,
   .beat-spin,
   .beat-pact { grid-template-columns: minmax(0, 1fr); }
-  .brief-rail { overflow-x: auto; }
+  .brief-rail { overflow-x: auto; padding: 8px 0.85rem; }
   .railbtn { flex: 0 0 9rem; }
+
+  /* Header: drop the redundant label and let the controls wrap rather than
+     blow the column wider than the viewport. */
+  .brief-head {
+    flex-wrap: wrap;
+    gap: 0.4rem 0.75rem;
+    height: auto;
+    min-height: 52px;
+    padding: 0.4rem 0.85rem;
+  }
+  .brief-sep,
+  .brief-brand .lbl { display: none; }
+  .brief-skip { height: 2.4rem; padding: 0 0.75rem; font-size: 10px; letter-spacing: 0.1em; }
+
+  /* Main column: scroll the beat content, keep the rail and footer pinned. */
+  .brief-main { grid-template-rows: 60px minmax(0, 1fr) auto; }
+  .brief-panel {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 1rem;
+    gap: 0.85rem;
+  }
+  .brief-panel > * { flex-shrink: 0; }
+  .brief-panel-head { flex-wrap: wrap; align-items: flex-start; row-gap: 0.5rem; }
+
+  /* Footer: two rows — nav on top, the forward CTA full-width below. */
+  .brief-foot {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    height: auto;
+    padding: 0.55rem 0.85rem calc(0.55rem + env(safe-area-inset-bottom, 0px));
+  }
+  .brief-pips,
+  .brief-step,
+  .brief-foot-spacer { display: none; }
+  .brief-back { order: 1; height: 2.75rem; padding: 0 0.9rem; }
+  .brief-lock { order: 2; margin-left: auto; font-size: 10px; }
+  .brief-next { order: 3; flex: 1 1 100%; min-width: 0; height: 3rem; padding: 0 1rem; gap: 0.5rem; }
+  .brief-next .disp { font-size: 15px; }
+  .brief-next-to { display: none; }
+
+  /* Identify */
+  .beat-identify { gap: 1.1rem; }
+  .reg-stamp,
+  .reg-tag { display: none; }
+  .reg-letter { height: 5.5rem; }
+  .reg-letter-g { font-size: 3.5rem; }
+  .reg-list li { height: 2.5rem; }
+  .beat-copy { gap: 1rem; }
+  .beat-line { font-size: 1.15rem; }
+  .beat-line.big { margin-top: 0; font-size: 1.75rem; }
+  .beat-note { font-size: 0.95rem; }
+
+  /* Spin */
+  .beat-spin { gap: 1.25rem; }
+  .spin-wheel { width: min(300px, 100%); height: auto; aspect-ratio: 1; margin-inline: auto; }
+  .spin-card { min-height: 0; }
+
+  /* Pact */
+  .beat-pact { gap: 1.25rem; }
+  .pact-cards { justify-content: stretch; gap: 0.6rem; }
+  .pact-card { width: calc(50% - 0.3rem); height: auto; min-height: 16rem; padding: 0.75rem; }
+  .pact-glyph { height: 4.5rem; }
+
+  /* Reward */
+  .ceiling {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    height: auto;
+    padding: 0.9rem 1rem;
+  }
+  .ceiling-track { width: 100%; height: 4.5rem; }
+  .ceiling-node { width: 3rem; height: 3rem; }
+  .ceiling-stamp { align-self: flex-start; font-size: 1.25rem; }
+  .draft-cards { flex-wrap: wrap; justify-content: stretch; gap: 0.6rem; }
+  .draft-card { width: calc(50% - 0.3rem); }
+
+  /* Warbonds */
+  .wb-head { flex-wrap: wrap; }
+  .wb-bar { flex-basis: 100%; max-width: none; }
+  .wb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+  /* Deploy */
+  .order { min-width: 0; }
+  .order-head { flex-wrap: wrap; }
+  .order-body { grid-template-columns: minmax(0, 1fr); }
+  .order-col.alt { border-left: 0; border-top: 1px dashed var(--line-2); }
+  .order-row { grid-template-columns: minmax(0, 1fr); gap: 0.3rem; min-height: 0; padding: 0.6rem 0; }
+  .order-stamp { display: none; }
 }
 </style>

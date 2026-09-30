@@ -118,273 +118,280 @@ function acceptDisabled(): boolean {
 
 <template>
   <div class="phone-wheel">
-    <div class="stage">
-      <div
-        class="sweep"
-        aria-hidden="true"
-      />
-
-      <button
-        v-if="state.wheel"
-        class="ghost reroll"
-        type="button"
-        :disabled="!misfortuneReroll.allowed"
-        :aria-label="`Reroll the directive${misfortuneReroll.free ? ' (free)' : `, spends a token (${state.rerollTokens} left)`}`"
-        :title="misfortuneReroll.reason ?? undefined"
-        @click="emit('reroll', 'misfortune')"
-      >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.7"
+    <div class="body">
+      <div class="stage">
+        <div
+          class="sweep"
           aria-hidden="true"
-        >
-          <rect
-            x="3.5"
-            y="3.5"
-            width="17"
-            height="17"
-            rx="2"
-          />
-          <circle
-            cx="8.5"
-            cy="8.5"
-            r="1.3"
-            fill="currentColor"
-          />
-          <circle
-            cx="15.5"
-            cy="15.5"
-            r="1.3"
-            fill="currentColor"
-          />
-          <circle
-            cx="12"
-            cy="12"
-            r="1.3"
-            fill="currentColor"
-          />
-        </svg>
-        <span class="reroll-n">{{ state.rerollTokens }}</span>
-      </button>
-
-      <div
-        class="legend"
-        aria-hidden="true"
-      >
-        <span><i class="khaki" />1–2</span>
-        <span><i class="orange" />3</span>
-        <span><i class="red" />4–5</span>
-      </div>
-
-      <WheelOfMisfortune
-        :difficulty="state.difficulty"
-        :seed="state.wheel?.seed ?? null"
-        :can-control="canControl"
-        @spin="emit('spin')"
-      />
-    </div>
-
-    <div class="cards">
-      <template v-if="showMo">
-        <MajorOrderPicker
-          :state="state"
-          :can-control="canControl"
-          @select="emit('setMajorOrder', $event)"
         />
-      </template>
 
-      <div
-        v-if="state.wheel && drawing"
-        class="drawing"
-        aria-live="polite"
-      >
-        <span class="disp drawing-word pulse">Drawing</span>
-        <span class="lbl">Directive · front · strain</span>
+        <button
+          v-if="state.wheel"
+          class="ghost reroll"
+          type="button"
+          :disabled="!misfortuneReroll.allowed"
+          :aria-label="`Reroll the directive${misfortuneReroll.free ? ' (free)' : `, spends a token (${state.rerollTokens} left)`}`"
+          :title="misfortuneReroll.reason ?? undefined"
+          @click="emit('reroll', 'misfortune')"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <rect
+              x="3.5"
+              y="3.5"
+              width="17"
+              height="17"
+              rx="2"
+            />
+            <circle
+              cx="8.5"
+              cy="8.5"
+              r="1.3"
+              fill="currentColor"
+            />
+            <circle
+              cx="15.5"
+              cy="15.5"
+              r="1.3"
+              fill="currentColor"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r="1.3"
+              fill="currentColor"
+            />
+          </svg>
+          <span class="reroll-n">{{ state.rerollTokens }}</span>
+        </button>
+
+        <WheelOfMisfortune
+          :difficulty="state.difficulty"
+          :seed="state.wheel?.seed ?? null"
+          :can-control="canControl"
+          @spin="emit('spin')"
+        />
       </div>
 
-      <template v-else-if="state.wheel">
-        <div
-          class="card"
-          :class="decision.decided ? (decision.accepted ? 'locked' : 'safe') : 'open'"
-        >
-          <div class="card-head">
-            <span class="lbl">Directive · whole squad</span>
-            <span
-              v-if="decision.decided"
-              class="stamp disp"
-              :class="decision.accepted ? 'red' : 'khaki'"
-            >{{ decision.accepted ? 'Sworn' : 'Opted out' }}</span>
-          </div>
-          <div class="mis-name disp">
-            {{ misfortune?.name ?? 'Safe dive' }}
-          </div>
-          <div class="mis-row">
-            <span class="mis-rule">{{ misfortune?.rule ?? 'No directive — a zero-risk dive.' }}</span>
-            <span
-              v-if="misfortune"
-              class="mis-risk"
-            >
-              <span
-                class="disp red"
-              >+{{ directiveValor }}</span>
-              <RiskPips
-                :value="misfortuneRisk"
-                :max="5"
-              />
-            </span>
-          </div>
+      <div class="cards">
+        <template v-if="showMo">
+          <MajorOrderPicker
+            :state="state"
+            :can-control="canControl"
+            @select="emit('setMajorOrder', $event)"
+          />
+        </template>
 
-          <template v-if="!decision.decided">
-            <p
-              v-if="acceptBlocked && canControl"
-              class="block-note"
-            >
-              {{ strandedReason }}
-            </p>
-            <div class="mis-actions">
-              <HoldButton
-                :label="acceptBlocked ? 'Blocked' : 'Lock it in'"
-                hint="hold"
-                tone="gold"
-                :disabled="acceptDisabled()"
-                :aria-label="acceptBlocked ? strandedReason : 'Accept the directive, hold to lock'"
-                @confirm="emit('decide', true)"
-              />
-              <button
-                class="ghost opt-out"
-                type="button"
-                :disabled="!canControl"
-                @click="emit('decide', false)"
-              >
-                <span class="disp">Opt out</span>
-                <span class="sub">+0</span>
-              </button>
-            </div>
-          </template>
-          <template v-else-if="canControl">
-            <button
-              class="ghost change"
-              type="button"
-              @click="emit('decide', !decision.accepted)"
-            >
-              {{ decision.accepted ? 'Switch — opt out' : 'Switch — lock it in' }}
-            </button>
-          </template>
+        <div
+          v-if="state.wheel && drawing"
+          class="drawing"
+          aria-live="polite"
+        >
+          <span class="disp drawing-word pulse">Drawing</span>
+          <span class="lbl">Directive · front · strain</span>
         </div>
 
-        <div
-          v-if="strainVisible && strain"
-          class="card strain-card"
-        >
-          <div class="card-head">
-            <span class="lbl strain-l">Front · strain</span>
-            <span class="head-tools">
-              <button
-                v-if="canControl"
-                class="reroll-dice"
-                type="button"
-                :disabled="!frontReroll.allowed"
-                :aria-label="rerollTitle(frontReroll, 'front')"
-                :title="frontReroll.allowed ? undefined : rerollTitle(frontReroll, 'front')"
-                @click="emit('reroll', 'front')"
-              ><IconDice /><span class="reroll-lbl">Front</span></button>
-              <button
-                v-if="canControl && strain"
-                class="reroll-dice"
-                type="button"
-                :disabled="!strainReroll.allowed"
-                :aria-label="rerollTitle(strainReroll, 'strain')"
-                :title="strainReroll.allowed ? undefined : rerollTitle(strainReroll, 'strain')"
-                @click="emit('reroll', 'strain')"
-              ><IconDice /><span class="reroll-lbl">Strain</span></button>
+        <template v-else-if="state.wheel">
+          <div
+            class="card"
+            :class="decision.decided ? (decision.accepted ? 'locked' : 'safe') : 'open'"
+          >
+            <div class="card-head">
+              <span class="lbl">Directive · whole squad</span>
               <span
-                v-if="strainCall.decided"
+                v-if="decision.decided"
                 class="stamp disp"
-                :class="strainCall.accepted ? 'orange' : 'khaki'"
-              >{{ strainCall.accepted ? 'Committed' : 'Opted out' }}</span>
-            </span>
-          </div>
-          <div class="strain-row">
-            <img
-              v-if="frontImage"
-              :src="frontImage"
-              :alt="front?.displayName ?? 'Front'"
-              class="strain-icon"
-            >
-            <img
-              v-if="strainImage"
-              :src="strainImage"
-              alt=""
-              class="strain-icon strain-sub"
-            >
-            <div class="strain-copy">
-              <span class="strain-name disp">{{ strain.name }}</span>
-              <span class="strain-front">{{ front?.displayName }} · every mission</span>
+                :class="decision.accepted ? 'red' : 'khaki'"
+              >{{ decision.accepted ? 'Sworn' : 'Opted out' }}</span>
             </div>
-            <span class="disp strain-risk orange">+{{ strainRisk }} ×{{ opLength }}</span>
-          </div>
-
-          <template v-if="!strainCall.decided">
-            <div class="mis-actions">
-              <HoldButton
-                label="Commit"
-                hint="hold · whole operation"
-                tone="orange"
-                :disabled="!canControl"
-                @confirm="emit('decideStrain', true)"
-              />
-              <button
-                class="ghost opt-out"
-                type="button"
-                :disabled="!canControl"
-                @click="emit('decideStrain', false)"
+            <div class="mis-name disp">
+              {{ misfortune?.name ?? 'Safe dive' }}
+            </div>
+            <div class="mis-row">
+              <span class="mis-rule">{{ misfortune?.rule ?? 'No directive — a zero-risk dive.' }}</span>
+              <span
+                v-if="misfortune"
+                class="mis-risk"
               >
-                <span class="disp">Opt out</span>
-                <span class="sub">+0</span>
-              </button>
+                <span
+                  class="disp red"
+                >+{{ directiveValor }}</span>
+                <RiskPips
+                  :value="misfortuneRisk"
+                  :max="5"
+                />
+              </span>
             </div>
-          </template>
-          <template v-else-if="canControl">
-            <button
-              class="ghost change"
-              type="button"
-              @click="emit('decideStrain', !strainCall.accepted)"
-            >
-              {{ strainCall.accepted ? 'Switch — opt out' : 'Switch — commit' }}
-            </button>
-          </template>
-        </div>
 
-        <div
-          v-if="mo"
-          class="card mo-card"
-        >
-          <div class="card-head">
-            <span class="lbl mo-l">Major Order · pinned</span>
+            <template v-if="!decision.decided">
+              <p
+                v-if="acceptBlocked && canControl"
+                class="block-note"
+              >
+                {{ strandedReason }}
+              </p>
+              <div class="mis-actions">
+                <HoldButton
+                  :label="acceptBlocked ? 'Blocked' : 'Lock it in'"
+                  hint="hold"
+                  tone="gold"
+                  :disabled="acceptDisabled()"
+                  :aria-label="acceptBlocked ? strandedReason : 'Accept the directive, hold to lock'"
+                  @confirm="emit('decide', true)"
+                />
+                <button
+                  class="ghost opt-out"
+                  type="button"
+                  :disabled="!canControl"
+                  @click="emit('decide', false)"
+                >
+                  <span class="disp">Opt out</span>
+                  <span class="sub">+0</span>
+                </button>
+              </div>
+            </template>
+            <template v-else-if="canControl">
+              <button
+                class="ghost change"
+                type="button"
+                @click="emit('decide', !decision.accepted)"
+              >
+                {{ decision.accepted ? 'Switch — opt out' : 'Switch — lock it in' }}
+              </button>
+            </template>
           </div>
-          <div class="mo-fronts">
-            <img
-              v-for="f in moFronts"
-              :key="f.id"
-              :src="factionImageUrl(f.id)"
-              :alt="f.displayName"
-              class="mo-icon"
-            >
-            <span class="mo-name">{{ moFronts.map(f => f.displayName).join(' / ') }}</span>
-            <span class="disp mo-risk">+{{ MAJOR_ORDER_RISK }} ×{{ opLength }}</span>
-          </div>
-        </div>
-      </template>
 
-      <template v-else-if="!canControl">
-        <p class="waiting">
-          Waiting for the host to spin…
-        </p>
-      </template>
+          <div
+            v-if="strainVisible && strain"
+            class="card strain-card"
+          >
+            <div class="card-head">
+              <span class="lbl strain-l">Front · strain</span>
+              <span class="head-tools">
+                <button
+                  v-if="canControl"
+                  class="reroll-dice"
+                  type="button"
+                  :disabled="!frontReroll.allowed"
+                  :aria-label="rerollTitle(frontReroll, 'front')"
+                  :title="frontReroll.allowed ? undefined : rerollTitle(frontReroll, 'front')"
+                  @click="emit('reroll', 'front')"
+                ><IconDice /><span class="reroll-lbl">Front</span></button>
+                <button
+                  v-if="canControl && strain"
+                  class="reroll-dice"
+                  type="button"
+                  :disabled="!strainReroll.allowed"
+                  :aria-label="rerollTitle(strainReroll, 'strain')"
+                  :title="strainReroll.allowed ? undefined : rerollTitle(strainReroll, 'strain')"
+                  @click="emit('reroll', 'strain')"
+                ><IconDice /><span class="reroll-lbl">Strain</span></button>
+                <span
+                  v-if="strainCall.decided"
+                  class="stamp disp"
+                  :class="strainCall.accepted ? 'orange' : 'khaki'"
+                >{{ strainCall.accepted ? 'Committed' : 'Opted out' }}</span>
+              </span>
+            </div>
+            <div class="fs-grid">
+              <div class="fs-cell">
+                <span class="fs-icon">
+                  <img
+                    v-if="frontImage"
+                    :src="frontImage"
+                    :alt="front?.displayName ?? 'Front'"
+                  >
+                </span>
+                <span class="fs-copy">
+                  <span class="lbl fs-lbl">Front</span>
+                  <span class="fs-name">{{ front?.displayName ?? 'Unknown' }}</span>
+                </span>
+                <span class="fs-note">all {{ opLength }} missions</span>
+              </div>
+              <div class="fs-cell fs-strain">
+                <span class="fs-icon">
+                  <img
+                    v-if="strainImage"
+                    :src="strainImage"
+                    :alt="strain.name"
+                  >
+                </span>
+                <span class="fs-copy">
+                  <span class="lbl fs-lbl strain-l">Strain</span>
+                  <span class="fs-name disp">{{ strain.name }}</span>
+                </span>
+                <span class="fs-risk">
+                  <b class="disp orange">+{{ strainRisk }}</b>
+                  <i class="lbl">each mission</i>
+                </span>
+              </div>
+            </div>
+
+            <template v-if="!strainCall.decided">
+              <div class="mis-actions">
+                <HoldButton
+                  label="Commit"
+                  :hint="`hold · all ${opLength} missions`"
+                  tone="orange"
+                  :disabled="!canControl"
+                  @confirm="emit('decideStrain', true)"
+                />
+                <button
+                  class="ghost opt-out"
+                  type="button"
+                  :disabled="!canControl"
+                  @click="emit('decideStrain', false)"
+                >
+                  <span class="disp">Opt out</span>
+                  <span class="sub">+0</span>
+                </button>
+              </div>
+            </template>
+            <template v-else-if="canControl">
+              <button
+                class="ghost change"
+                type="button"
+                @click="emit('decideStrain', !strainCall.accepted)"
+              >
+                {{ strainCall.accepted ? 'Switch — opt out' : 'Switch — commit' }}
+              </button>
+            </template>
+          </div>
+
+          <div
+            v-if="mo"
+            class="card mo-card"
+          >
+            <div class="card-head">
+              <span class="lbl mo-l">Major Order · pinned</span>
+            </div>
+            <div class="mo-fronts">
+              <img
+                v-for="f in moFronts"
+                :key="f.id"
+                :src="factionImageUrl(f.id)"
+                :alt="f.displayName"
+                class="mo-icon"
+              >
+              <span class="mo-name">{{ moFronts.map(f => f.displayName).join(' / ') }}</span>
+              <span class="disp mo-risk">+{{ MAJOR_ORDER_RISK }} ×{{ opLength }}</span>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="!canControl">
+          <p class="waiting">
+            Waiting for the host to spin…
+          </p>
+        </template>
+      </div>
     </div>
 
     <PhoneActionBar aria-label="Valor and next step">
@@ -433,13 +440,17 @@ function acceptDisabled(): boolean {
 
 <style scoped>
 .phone-wheel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+/* The wheel is fixed at the top of the phase; the decision cards sit below and
+   tuck up over its lower rim, scrolling within their own sheet — never the
+   page. The wheel stays visible above so the spin hub is always reachable. */
+.body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .stage {
   position: relative;
   flex: 0 0 auto;
   display: grid;
-  place-items: center;
-  padding: 10px 12px;
-  overflow: visible;
+  place-items: start center;
+  padding: 8px 12px 0;
+  overflow: hidden;
 }
 .sweep {
   position: absolute;
@@ -451,7 +462,8 @@ function acceptDisabled(): boolean {
   animation: sweepY 9s linear infinite;
   pointer-events: none;
 }
-.stage :deep(.wheel-wrap) { width: 100%; max-width: 340px; }
+.stage :deep(.wheel-wrap) { width: min(100%, 300px, 46vh); }
+.stage :deep(.risk-legend) { display: none; }
 
 .reroll {
   position: absolute;
@@ -481,34 +493,22 @@ function acceptDisabled(): boolean {
   font-weight: 700;
 }
 
-.legend {
-  position: absolute;
-  right: 12px;
-  top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--muted);
-}
-.legend span { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
-.legend i { width: 7px; height: 7px; }
-.legend i.khaki { background: var(--khaki); }
-.legend i.orange { background: var(--orange); }
-.legend i.red { background: var(--red); }
-
 .cards {
+  position: relative;
+  z-index: 1;
   flex: 1 1 auto;
   min-height: 0;
+  margin-top: -22px;
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 12px;
   background: var(--rail);
   border-top: 1px solid var(--line-3);
+  box-shadow: 0 -16px 28px rgba(11, 12, 9, 0.72);
 }
 
 .drawing {
@@ -600,14 +600,41 @@ function acceptDisabled(): boolean {
   background: linear-gradient(90deg, rgba(255, 75, 62, 0.1), var(--panel) 60%);
   border-color: rgba(255, 75, 62, 0.45);
 }
-.strain-l { color: var(--red); }
-.strain-row { display: flex; align-items: center; gap: 10px; }
-.strain-icon { width: 34px; height: 34px; object-fit: contain; flex-shrink: 0; }
-.strain-sub { width: 22px; height: 22px; margin-left: -14px; }
-.strain-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; }
-.strain-name { font-size: 17px; color: var(--text); }
-.strain-front { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-.strain-risk { font-size: 18px; }
+.strain-l { color: var(--orange); }
+
+/* Front and strain read as two separate, labelled rows — no merged icons. */
+.fs-grid { display: flex; flex-direction: column; }
+.fs-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 6px 0;
+  border-top: 1px dashed var(--line-3);
+}
+.fs-cell:first-child { border-top: 0; }
+.fs-icon {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+.fs-icon img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.fs-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.fs-lbl { font-size: 9px; }
+.fs-name {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.fs-note { flex-shrink: 0; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.fs-risk { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.fs-risk b { font-size: 16px; }
+.fs-risk i { font-size: 8px; font-style: normal; }
 .orange { color: var(--orange); }
 
 .mo-card { background: linear-gradient(90deg, rgba(255, 75, 62, 0.08), var(--panel) 60%); }
