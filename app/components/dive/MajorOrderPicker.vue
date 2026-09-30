@@ -57,6 +57,7 @@ function playSuggestion(): void {
     <div
       v-if="state.majorOrder && !editing"
       class="mo-pinned cut-sm"
+      :title="manual ? 'Manual front pick — no reroll bonus' : pinnedLabel"
     >
       <span
         class="mo-pinned-emblems"
@@ -70,14 +71,7 @@ function playSuggestion(): void {
           draggable="false"
         >
       </span>
-      <span class="mo-pinned-text">
-        <span class="lbl gold">Major Order · pinned for the run</span>
-        <span class="mo-pinned-title">{{ pinnedLabel }}</span>
-        <span
-          v-if="manual"
-          class="muted small"
-        >Manual front pick — no reroll bonus.</span>
-      </span>
+      <span class="lbl gold mo-pinned-label">Major Order Run</span>
       <button
         v-if="canControl"
         class="btn tiny ghost"
@@ -221,18 +215,15 @@ function playSuggestion(): void {
   border: 1px solid color-mix(in srgb, var(--gold) 40%, var(--line-3));
   background: color-mix(in srgb, var(--gold) 6%, var(--ground));
 }
-.mo-pinned-emblems { display: inline-flex; gap: 0.3rem; flex-shrink: 0; }
-.mo-pinned-emblems img { width: 1.9rem; height: 1.9rem; object-fit: contain; }
-.mo-pinned-text { display: grid; gap: 0.15rem; min-width: 0; flex: 1; }
-.mo-pinned-title {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  color: var(--text);
-  font-size: var(--fs-sm);
+.mo-pinned-emblems { display: inline-flex; flex-shrink: 0; }
+.mo-pinned-emblems img {
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+  filter: drop-shadow(-2px 0 0 var(--ground));
 }
+.mo-pinned-emblems img + img { margin-left: -0.7rem; }
+.mo-pinned-label { flex: 1; min-width: 0; }
 
 .mo-pick-label { margin: 0; }
 

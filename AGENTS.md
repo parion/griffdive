@@ -315,8 +315,8 @@ later operation redraws its front within the order's fronts and, when the order 
 reroll bonus and carries the risk again. The engine is pure and has no clock, so nothing expires it
 automatically — the host replaces it (a fresh live order) or clears it ("No order") in any operation's
 `spin` phase before the front is drawn, and `MajorOrderCard` flags an elapsed `expiresAt` as
-"ending". Once chosen, the picker collapses to a one-line pinned strip (emblems, title, host-only
-**Change**) at every operation's start — the full order card only reappears on Change. A manual pick is
+"ending". Once chosen, the picker collapses to a one-line pinned strip (the order's faction
+emblems, stacked with a slight offset, "Major Order Run", host-only **Change**) at every operation's start — the full order card only reappears on Change. A manual pick is
 pinned the same way. A failure restart keeps the order with the locked
 front, like the front itself. Playing toward an MO is
 an **opt-in carrot, never a tax**: a **live** MO-aligned operation banks `MAJOR_ORDER_REROLL_BONUS`
