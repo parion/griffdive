@@ -23,8 +23,8 @@ two-browser room sync, Codex slide-over,
 PWA affordances) against the production build. Mid-crusade catch-up (Field Promotion + legacy caches, `LEAVE_DIVE`)
 has landed, as has the Phase 4 PWA layer (installable manifest, generated icons, Workbox service
 worker with an offline shell + on-demand catalog art), the operation-long **faction strains**
-(N2: optional, accept/decline, compounding team risk) and the operation-long **Major Orders**
-(host-set front commitment, +1 reroll token on completion — manual picker plus the live war API).
+(N2: optional, accept/decline, compounding team risk) and the run-long **Major Orders**
+(host-set front commitment that stays pinned for the whole run, +1 reroll token per completed operation — manual picker plus the live war API).
 **The Destroyer Terminal redesign has landed** — the whole UI moved to a single terminal language
 (dark ground/rail/panel surfaces, gold/red/orange/teal/purple signals, cut frames, hazard stripes,
 scanlines and a signature motion set). The dive is a fixed, no-scroll terminal (60px header with
@@ -285,7 +285,7 @@ zero-kill squad is forced into genuine support builds.
 **Rerolls:** rerolling a wheel result is free if the squad already completed that exact
 (misfortune × front × strain) combo earlier in this crusade (the video's overrule rule). Otherwise
 the squad spends a reroll token — 1 token per operation (`REROLL_TOKENS_PER_OPERATION`), plus
-`MAJOR_ORDER_REROLL_BONUS` (1) banked by completing a Major Order operation, spendable on any wheel
+`MAJOR_ORDER_REROLL_BONUS` (1) banked by each completed live Major Order operation, spendable on any wheel
 result. Never
 rerollable into the result it would replace — a reroll must actually move (`REROLL_WHEEL` refuses a
 same-result seed;
@@ -309,8 +309,14 @@ host sets the operation's MO before its first spin (`SET_MAJOR_ORDER`, host-only
 front(s). The spin still randomizes within them, so a multi-front order never locks one front; a
 single-front order does, and its front reroll is refused. A chosen order draws **no strain** — the
 front *is* the order, so there is no random subfaction and no operation-long subfaction risk. The
-front locks in for the operation exactly as before, and the commitment is re-chosen each operation
-(a failure restart keeps it with the locked front, like the front itself). Playing toward an MO is
+front locks in for the operation exactly as before. **A chosen order is a run-long commitment:** it
+stays pinned across operations (completing one clears only the drawn front, not the order), so every
+later operation redraws its front within the order's fronts and, when the order is live, banks the
+reroll bonus and carries the risk again. The engine is pure and has no clock, so nothing expires it
+automatically — the host replaces it (a fresh live order) or clears it ("No order") in any operation's
+`spin` phase before the front is drawn, and `MajorOrderCard` flags an elapsed `expiresAt` as
+"ending". A manual pick is pinned the same way. A failure restart keeps the order with the locked
+front, like the front itself. Playing toward an MO is
 an **opt-in carrot, never a tax**: a **live** MO-aligned operation banks `MAJOR_ORDER_REROLL_BONUS`
 (1) extra reroll token when it completes, so the next operation starts with two, and carries a fixed
 `MAJOR_ORDER_RISK` (2) team risk on **every mission** of the operation — the operation-long risk the

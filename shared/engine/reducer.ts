@@ -609,9 +609,10 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
             majorOrder: null,
           }, action)
         }
-        // Operation completed: a fresh operation draws a new front and strain
-        // with its first spin, and the Major Order is re-chosen. Playing the
-        // operation toward an MO banks its extra reroll token for the next one.
+        // Operation completed: a fresh operation draws a new front with its
+        // first spin. A chosen Major Order is a run-long commitment, so it stays
+        // pinned (the host replaces or clears it in the next spin phase) and
+        // every operation played toward a live one banks its extra reroll token.
         return commit(state, {
           missionIndex,
           difficulty: nextDifficulty,
@@ -624,7 +625,6 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           strainId: null,
           strainAccepted: false,
           strainDecided: false,
-          majorOrder: null,
           misfortuneAccepted: false,
           phase: 'spin',
         }, action)

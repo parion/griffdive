@@ -1495,10 +1495,10 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
     return reduce(freshState(), { type: 'SET_MAJOR_ORDER', order: { fronts: [front] } })
   }
 
-  function withLiveOrder(front: FrontId): DiveState {
+  function withLiveOrder(...fronts: FrontId[]): DiveState {
     return reduce(freshState(), {
       type: 'SET_MAJOR_ORDER',
-      order: { fronts: [front], live: true },
+      order: { fronts, live: true },
     })
   }
 
@@ -1580,12 +1580,44 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
     expect(canRerollWheel(wideSpun, 'front').allowed).toBe(true)
   })
 
-  it('banks an extra reroll token when a live order operation completes, then clears', () => {
+  it('banks an extra reroll token when a live order operation completes, and stays pinned', () => {
     const completed = playOperation(withLiveOrder('terminids'), [11, 22])
     expect(completed.difficulty).toBe(4)
     expect(completed.missionInOperation).toBe(1)
     expect(completed.rerollTokens).toBe(1 + MAJOR_ORDER_REROLL_BONUS)
-    expect(completed.majorOrder).toBeNull()
+    expect(completed.majorOrder?.fronts).toEqual(['terminids'])
+    expect(completed.frontId).toBeNull()
+  })
+
+  it('carries the order through the run: each operation redraws within it and banks again', () => {
+    const first = playOperation(withLiveOrder('terminids', 'automatons'), [11, 22])
+    expect(first.majorOrder?.live).toBe(true)
+    const spun = reduce(first, { type: 'SPIN_WHEEL', seed: 33 })
+    expect(['terminids', 'automatons']).toContain(spun.frontId)
+    expect(spun.strainId).toBeNull()
+    expect(teamRiskOf(spun)).toBe(MAJOR_ORDER_RISK)
+    const second = playOperation(first, [33, 44])
+    expect(second.difficulty).toBe(5)
+    expect(second.rerollTokens).toBe(1 + MAJOR_ORDER_REROLL_BONUS)
+    expect(second.majorOrder?.fronts).toEqual(['terminids', 'automatons'])
+  })
+
+  it('lets the host replace or clear the carried order in the next spin phase', () => {
+    const carried = playOperation(withLiveOrder('terminids'), [11, 22])
+    const replaced = reduce(carried, {
+      type: 'SET_MAJOR_ORDER',
+      order: { fronts: ['illuminate'], live: true },
+    })
+    expect(replaced.majorOrder?.fronts).toEqual(['illuminate'])
+    const cleared = reduce(carried, { type: 'SET_MAJOR_ORDER', order: null })
+    expect(cleared.majorOrder).toBeNull()
+    expect(cleared.strainId).toBeNull()
+  })
+
+  it('keeps a manual pick pinned too, without a token', () => {
+    const completed = playOperation(withOrder('terminids'), [11, 22])
+    expect(completed.majorOrder?.fronts).toEqual(['terminids'])
+    expect(completed.rerollTokens).toBe(1)
   })
 
   it('banks no token for a manual front pick', () => {
