@@ -3,7 +3,8 @@
 # Griffdive dev container image. It stays on the official Paseo image (node:22-bookworm-slim,
 # non-root `paseo` user, uid 1000) because the Paseo daemon remains a supported fallback, but
 # the primary remote path is Orca over SSH: openssh-server makes this container an SSH target
-# and post-start.sh owns service startup. OpenCode and Claude Code are the agent CLIs.
+# and post-start.sh owns service startup. OpenCode (v1 as `opencode`, v2 as `opencode2`) and
+# Claude Code are the agent CLIs.
 FROM ghcr.io/getpaseo/paseo:latest
 
 USER root
@@ -33,8 +34,25 @@ RUN rm -f /etc/ssh/ssh_host_*
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable \
     && corepack prepare pnpm@11.18.0 --activate \
-    && npm install -g opencode-ai @anthropic-ai/claude-code \
+    && npm install -g opencode-ai @anthropic-ai/claude-code @opencode/cli \
     && npm cache clean --force
+
+# opencode-ai (v1) and @opencode/cli (v2) both declare the `opencode` bin name, so npm
+# points every shim it creates at whichever of the two it linked last. Pin them
+# explicitly instead: v1 keeps `opencode`, v2 is reachable only as `opencode2`. v2's
+# entry point is this launcher rather than npm's symlink, because it redirects v2's XDG
+# roots into the persisted volume below — OpenCode shares config/data/cache/state
+# directories across versions, and v2 must not read v1's config or session database.
+# It lands in lib and is linked from bin afterwards: COPYing straight onto /usr/local/
+# bin/opencode2, which npm just created as a symlink to v2's real binary, would write
+# through the link and overwrite that binary.
+COPY opencode2.sh /usr/local/lib/opencode2-launch.sh
+RUN chmod 0755 /usr/local/lib/opencode2-launch.sh \
+    && rm -f /usr/local/bin/opencode2 \
+    && ln -sfn ../lib/opencode2-launch.sh /usr/local/bin/opencode2 \
+    && ln -sfn ../lib/node_modules/opencode-ai/bin/opencode.exe /usr/local/bin/opencode \
+    && test -x /usr/local/lib/node_modules/@opencode/cli/bin/opencode.exe \
+    && readlink -f /usr/local/bin/opencode | grep -q opencode-ai
 
 # The workspace is a bind mount from the host; trust it for git operations.
 RUN git config --system --add safe.directory /workspace

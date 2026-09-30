@@ -3,7 +3,8 @@
 // to the laptop) and post-start.sh runs .devcontainer/ssh-setup.sh to stand it up —
 // https://www.onorca.dev/docs/ssh. The Paseo daemon on :6767 stays available as a
 // fallback. OpenCode and Claude Code are the agent CLIs, with the Context7 MCP wired up
-// in ../opencode.json; Claude credentials persist in their own volume.
+// in ../opencode.json; Claude credentials persist in their own volume. OpenCode v2 is
+// installed alongside v1 as `opencode2` and keeps its own state volume too.
 {
   "name": "griffdive",
   "build": {
@@ -33,7 +34,11 @@
     // Claude Code auth + settings persist here. ~/.claude.json (the OAuth account) lives
     // beside ~/.claude, so CLAUDE_CONFIG_DIR points both into this one volume — a
     // dedicated volume keeps Claude state independent of the shared home volume.
-    "source=claude-code-config-${devcontainerId},target=/home/paseo/.claude,type=volume"
+    "source=claude-code-config-${devcontainerId},target=/home/paseo/.claude,type=volume",
+    // OpenCode v2 config, sessions, cache and state persist here. v2's launcher
+    // (opencode2.sh) points XDG_* at this volume, so v2 never shares directories with
+    // the v1 CLI — OpenCode reuses the same paths across versions and channels.
+    "source=opencode-v2-home-${devcontainerId},target=/home/paseo/.opencode2,type=volume"
   ],
   "forwardPorts": [3000, 6767, 2222],
   "portsAttributes": {
@@ -56,7 +61,12 @@
   },
   "remoteEnv": {
     // Optional: set PASEO_PASSWORD on the host to password-protect the daemon.
-    "PASEO_PASSWORD": "${localEnv:PASEO_PASSWORD:}"
+    "PASEO_PASSWORD": "${localEnv:PASEO_PASSWORD:}",
+    // Context7 API key for OpenCode v2's MCP server (.devcontainer/opencode-v2.json
+    // reads it as {env:CONTEXT7_API_KEY}). Exported from the host so the key never
+    // lands in a committed file. SSH sessions bypass remoteEnv — put it in
+    // ~/.opencode2/env instead (see .devcontainer/opencode2.sh).
+    "CONTEXT7_API_KEY": "${localEnv:CONTEXT7_API_KEY:}"
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "postStartCommand": "bash .devcontainer/post-start.sh",

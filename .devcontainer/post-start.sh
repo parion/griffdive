@@ -7,10 +7,10 @@ HEALTH=http://127.0.0.1:6767/api/health
 # root-owned (see the chown ordering in the Dockerfile), and the home volume can carry
 # that ownership over from an older image. Repair before anything needs to write:
 # Orca's remote relay install otherwise dies with EACCES on .npm/_cacache, and Claude
-# Code cannot write its config volume.
+# Code and OpenCode v2 cannot write their config volumes.
 repair_ownership() {
   local dir
-  for dir in "$HOME"/.npm "$HOME"/.cache "$HOME"/.config "$HOME"/.local "$HOME"/.claude "$HOME"/.orca-remote; do
+  for dir in "$HOME"/.npm "$HOME"/.cache "$HOME"/.config "$HOME"/.local "$HOME"/.claude "$HOME"/.opencode2 "$HOME"/.orca-remote; do
     [ -d "$dir" ] || continue
     if find "$dir" ! -uid "$(id -u)" -print -quit 2>/dev/null | grep -q .; then
       echo "Repairing root-owned files in $dir"
@@ -19,6 +19,17 @@ repair_ownership() {
   done
 }
 repair_ownership
+
+# Seed OpenCode v2's global config. Its volume mounts empty and the config lives inside
+# it (see .devcontainer/opencode2.sh), so the Context7 MCP wiring has to be copied in.
+# Only ever created, never overwritten — the CLI and the user own that file afterwards.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+V2_CONFIG="$HOME/.opencode2/config/opencode/opencode.json"
+if [ ! -f "$V2_CONFIG" ] && [ -f "$SCRIPT_DIR/opencode-v2.json" ]; then
+  mkdir -p "$(dirname "$V2_CONFIG")"
+  cp "$SCRIPT_DIR/opencode-v2.json" "$V2_CONFIG"
+  echo "Seeded OpenCode v2 config at $V2_CONFIG"
+fi
 
 # Orca creates each worktree beside the project (/workspace -> /workspace-<name>), and
 # the container root is read-only for the paseo user, which fails the create with
@@ -66,5 +77,5 @@ paseo project create >/dev/null 2>&1 || true
 
 echo
 echo "Orca SSH target: localhost:2222 (forwarded, see .devcontainer/ssh-setup.sh)"
-echo "Agents: opencode · claude (Context7 MCP preconfigured via opencode.json)"
+echo "Agents: opencode (v1) · opencode2 (v2) · claude (Context7 MCP preconfigured)"
 echo "Paseo daemon (fallback): http://localhost:6767 · pair a device: paseo daemon pair"

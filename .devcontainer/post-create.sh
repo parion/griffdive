@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Fresh named volumes mount as root-owned; claim them before pnpm or Claude Code
-# writes into them.
-for dir in /workspace/node_modules /workspace/.pnpm-store "$HOME/.claude"; do
+# Fresh named volumes mount as root-owned; claim them before pnpm or the agent CLIs
+# write into them.
+for dir in /workspace/node_modules /workspace/.pnpm-store "$HOME/.claude" "$HOME/.opencode2"; do
   if [ ! -w "$dir" ]; then
     sudo mkdir -p "$dir"
     sudo chown paseo:paseo "$dir"
