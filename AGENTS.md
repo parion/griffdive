@@ -1026,7 +1026,10 @@ mount: `fly volumes create griffdive_data --region ams --size 1`.
 - **Seed source:** constants from [Selenestica/hd2-random-strat](https://github.com/Selenestica/hd2-random-strat)
   (MIT) — vendored at `scripts/upstream/` (snapshot commit recorded there), converted to our
   schema by `node scripts/import-catalog.mjs` (re-run after every upstream refresh), attributed in
-  `shared/data/` headers and CREDITS.
+  `shared/data/` headers and CREDITS. The vendored snapshot spans every released warbond through
+  **Ironclad Democracy** (`warbond27`). A catalog refresh that grows a reward or catch-up pool is
+  expected to move the seeded golden replay — regenerate goldens (`GRIFFDIVE_UPDATE_GOLDENS=1 pnpm
+  test`) instead of treating it as an engine regression.
   Stratagem SVGs from [Nvigneux/Helldivers-2-Stratagems-icons-svg](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg);
   equipment images from [helldivers.wiki.gg](https://helldivers.wiki.gg/wiki/Helldivers_2). Asset
   licensing: respect upstream terms; hot-link or bundle only what the licenses allow.
