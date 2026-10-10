@@ -286,7 +286,10 @@ const pendingText = computed(() => {
       <template #detail>
         <div class="sheet-head">
           <span class="lbl gold">Valor</span>
-          <span class="disp sheet-val">{{ (self ? selectedRisk + breakdown.total : breakdown.total) }}</span>
+          <ValorFigure
+            class="disp sheet-val"
+            :value="self ? selectedRisk + breakdown.total : breakdown.total"
+          />
           <span class="sheet-scale">/ 11</span>
           <span
             v-if="pendingText"

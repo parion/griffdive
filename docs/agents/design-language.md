@@ -84,8 +84,10 @@ engine.
   others keep number + tier; names stay in their accessible labels). The tutorial drops its
   dossier column at ≤1180px. The Valor tab doubles as a readout: the live total over a bar split by source (directive gold,
   strain orange, Major Order teal, mode khaki, pacts red — the same colours as the meter's cells and
-  legend, via `app/utils/valor.ts`). The tab choice is shell state and survives phase changes; it
-  defaults to Kit. The rail carries nothing else: no Valor explainer, no honors token banks, no
+  legend, via `app/utils/valor.ts`). This total, the meter's head and the phone/landing Valor figures
+  all render through `ValorFigure`, which drops the fractional tail — decimal point included — to
+  smaller type so the digits left of the decimal read as the headline. The tab choice is shell state
+  and survives phase changes; it defaults to Kit. The rail carries nothing else: no Valor explainer, no honors token banks, no
   forfeit "carries over" card.
   The left rail collapses to a `56px` icon column (persisted in `localStorage`): the header chevron
   expands it back, while collapsed each diver becomes their first letter with the active lamp to its
