@@ -1,6 +1,6 @@
 // Griffdive dev container: Nuxt 4 toolchain on the official Paseo image. Paseo is the
-// remote client (daemon on :6767). Agent CLIs: opencode (v1), opencode2 (v2, own state
-// volume), claude (native, self-updating).
+// remote client (daemon on :6767). Agent CLIs: opencode (v1, npm), opencode2 (v2, native,
+// own state volume), claude (native). The native CLIs self-update in the home volume.
 {
   "name": "griffdive",
   "build": {
@@ -25,7 +25,8 @@
     // Claude auth + settings; CLAUDE_CONFIG_DIR points ~/.claude and ~/.claude.json here.
     "source=claude-code-config-${devcontainerId},target=/home/paseo/.claude,type=volume",
     // OpenCode v2 config/sessions/cache/state; the launcher points XDG_* here so v2 never
-    // shares directories with the v1 CLI.
+    // shares directories with the v1 CLI. The v2 binary itself lives in ~/.opencode (home
+    // volume) so it persists and self-updates.
     "source=opencode-v2-home-${devcontainerId},target=/home/paseo/.opencode2,type=volume"
   ],
   "forwardPorts": [
