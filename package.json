@@ -5,7 +5,7 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
-    "pwa:assets": "pwa-assets-generator",
+    "pwa:assets": "node scripts/build-icon.mjs && pwa-assets-generator",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
