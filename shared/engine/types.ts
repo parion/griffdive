@@ -53,8 +53,9 @@ export interface DiverState {
   // this diver's offer or to ban offered items from their personal pools.
   rewardTokens: number
   // Requisition currency: sample points recovered in the field, banked into a
-  // personal purse and spent in the post-draft rotating stock. Persists across
-  // the crusade; dies with the diver on leave, like reward tokens.
+  // personal purse and spent in the post-draft rotating stock. Belongs to the
+  // seat, like reward tokens: stepping away keeps it, a benched diver who
+  // rejoins starts empty.
   sampleBank: number
   // Offered items this diver has banned from their personal reward and
   // catch-up pools for the rest of the crusade — never re-offered.
@@ -65,6 +66,11 @@ export interface DiverState {
   // The diver spent this draft on bans instead of a reward: the draft counts
   // as complete without a pick. Reset with the pacts every mission.
   rewardBanned: boolean
+  // The diver stepped away (Leave, or their connection stayed down past the
+  // server's grace window). Their seat, kit and purse stay put, but the squad
+  // never waits on them: pact lock-in, reward picks and squad size count only
+  // divers who are present. Cleared the moment they reconnect.
+  away: boolean
 }
 
 export interface WheelResult {
@@ -193,6 +199,7 @@ export type EngineAction
     | { type: 'SPIN_BONUS', seed: number }
     | { type: 'AWARD_BONUS', playerId: string }
     | { type: 'LEAVE_DIVE', playerId: string }
+    | { type: 'SET_AWAY', playerId: string, away: boolean }
     | { type: 'ADVANCE' }
     | { type: 'END_DIVE' }
     | { type: 'KICK_DIVER', playerId: string }

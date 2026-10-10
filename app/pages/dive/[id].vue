@@ -357,11 +357,31 @@ function endDive(): void {
   dispatch({ type: 'END_DIVE' })
 }
 
-// Dropping out is soft: the diver's inventory parks as a legacy cache, and
-// the same diver rejoining under their stored playerId reclaims it.
-function leaveDive(): void {
-  if (selfId.value) {
-    dispatch({ type: 'LEAVE_DIVE', playerId: selfId.value })
+// Leaving steps away: the seat, kit and purse stay in the room, the squad
+// just stops waiting on this diver. Coming back through RESUME (or the invite
+// link) picks up exactly where they left.
+async function leaveDive(): Promise<void> {
+  const id = selfId.value
+  if (id && session.mode === 'room') {
+    dispatch({ type: 'SET_AWAY', playerId: id, away: true })
+    // Wait for the server to apply it, so the Bridge never reads the room
+    // before the step-away lands.
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(done, 2000)
+      const stop = watch(
+        () => state.value?.divers.find(diver => diver.id === id)?.away ?? true,
+        (away) => {
+          if (away) {
+            done()
+          }
+        },
+      )
+      function done(): void {
+        clearTimeout(timer)
+        stop()
+        resolve()
+      }
+    })
   }
   navigateTo('/')
 }

@@ -470,8 +470,9 @@ haul        = floor(haulValue × (0.5 + 0.5 × clamp(timePct,0,100)/100))
 ```
 
 Extraction speed is a multiplier (`TIME_HAUL_FLOOR` 0.5 at no time left → 1.0 at a full clock), so a
-fast clear funds more gear. The purse persists across missions and operations (schema v12) and is
-lost with the diver on leave, like reward tokens. There is no cap — the game's own sample mix
+fast clear funds more gear. The purse persists across missions and operations (schema v12) and
+belongs to the seat, like reward tokens: stepping away keeps it (the seat never leaves the room),
+but a diver benched by `KICK_DIVER` who later rejoins starts empty. There is no cap — the game's own sample mix
 (commons dominate early, supers appear at diff 6) does the difficulty scaling.
 
 Once a diver's draft resolves (they picked **or** spent it on bans), a per-diver **rotating stock**
@@ -574,8 +575,18 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   `complete`. The server rejects with `dive-locked`. A joiner seated mid-mission
   (`diving`) gets `skipsCurrentDraft` and sits out that mission's reward draft instead of
   blocking it; the flag clears on the mission reset.
-- The last diver out abandons the crusade: the room resets to a fresh lobby (parked caches die
-  with it).
+- **Stepping away (presence):** a diver who leaves, or whose connection stays down past the
+  server's grace window (`AWAY_GRACE_MS`, 30s), is marked `away` (`SET_AWAY{playerId,away}`,
+  self-service; also issued by the server). They keep their seat, kit, purse and tokens, and the
+  squad simply stops waiting on them: pact lock-in, the reward draft (`allDiversPicked`,
+  `awaitingDiverIds`), the misfortune fieldability check and every squad-size rule (directive
+  weight, honors cadence, squad-only pacts) read the **present** divers (`activeDivers` /
+  `squadSize` / `pactsSettled` in `shared/engine/selectors.ts`). A room where everyone stepped
+  away never advances on its own. Reconnecting clears the mark; the host role moves to a present
+  diver when the host steps away, and whoever comes back to a room whose host is offline takes it.
+- **A room is never abandoned:** the last seated diver cannot `LEAVE_DIVE` or be kicked, so a
+  crusade is never reset — it waits for whoever comes back to it. Benching a diver for good is the
+  host's `KICK_DIVER` (their kit parks as a legacy cache).
 
 ### Save model
 
@@ -590,7 +601,8 @@ honors); `migrateV8toV9` adds the strain fields and widens legacy combo keys; `m
 adds the Major Order commitment (`majorOrder: null`); `migrateV10toV11` adds the failed-directive
 mark (`misfortuneFailed: false`); `migrateV11toV12` adds the Requisition sample purse
 (`sampleBank: 0`); `migrateV12toV13` remaps the five squad-size variants onto the three starting
-difficulties (Quickplay becomes the suicide start with the SEAF mode). Normalization drops
+difficulties (Quickplay becomes the suicide start with the SEAF mode); `migrateV13toV14` adds
+presence (`away: false` on every diver). Normalization drops
 only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
 `achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, inventories, per-diver warbond declarations,

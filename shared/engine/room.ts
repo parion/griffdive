@@ -104,6 +104,7 @@ export function joinDiver(state: DiveState, playerId: string, name: string): Div
     bannedItemIds: [],
     rewardRerollSeed: null,
     rewardBanned: false,
+    away: false,
   }
   return {
     ...state,

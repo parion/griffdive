@@ -31,6 +31,8 @@ dives** have landed: any seated diver can pin a room server-side so it outlives 
 browser clearing its storage, resuming through the existing rejoin path (see Saved dives).
 **Steam lobby codes** have landed too: the host can relay the `steam://joinlobby/…` link from the
 in-game Helldivers 2 lobby so every seated diver can jump straight in (see Steam lobby codes).
+**Rooms never reset:** Leave steps a diver away with their seat intact, the squad skips away
+divers, and RESUME reseats them exactly where they were (see Mid-crusade joining).
 **The condition catalogue is unified:** squad directives (team) and pacts (personal) are now one
 catalogue, nothing is gated by difficulty, and a per-condition curve scales each rule's risk/Valor
 with altitude (see Condition scaling). **Team directives outweigh pacts, by squad size:** an

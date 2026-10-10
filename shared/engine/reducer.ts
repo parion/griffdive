@@ -7,7 +7,7 @@ import { STARTING_KITS, startingItemIds } from './progression'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed } from './rng'
-import { activeMisfortune, allDiversPicked, bonusEligible, canBuyItem, catchUpOptionsFor, comboKey, diverOptions, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision } from './selectors'
+import { activeDivers, activeMisfortune, allDiversPicked, bonusEligible, canBuyItem, catchUpOptionsFor, comboKey, diverOptions, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, strainDecision } from './selectors'
 import { itemPrice, missionHaul } from './rewards'
 import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 
@@ -103,8 +103,8 @@ function needsStrainDecision(state: DiveState): boolean {
 
 // A departed diver (kicked or left) parks their inventory as a legacy cache:
 // a late joiner may claim it instead of their Field Promotion, and the same
-// diver rejoining reclaims it. The last diver out abandons the crusade —
-// the room resets to an empty lobby (parked caches die with it).
+// diver rejoining reclaims it. The last diver can never leave: a room is never
+// abandoned or reset — the crusade waits for whoever comes back to it.
 function removeDiver(state: DiveState, diverId: string, action: EngineAction): DiveState {
   const diver = state.divers.find(candidate => candidate.id === diverId)
   if (!diver) {
@@ -119,17 +119,17 @@ function removeDiver(state: DiveState, diverId: string, action: EngineAction): D
   )
   const divers = state.divers.filter(candidate => candidate.id !== diver.id)
   if (divers.length === 0) {
-    return createLobbyState()
+    return state
   }
-  const phase = state.phase === 'pacts' && divers.every(entry => entry.pactsLocked)
+  const phase = state.phase === 'pacts' && pactsSettled(divers)
     ? 'diving'
     : state.phase
   if (diver.id !== state.hostId) {
     return commit(state, { divers, personalInventories, legacyCaches, phase }, action)
   }
-  // The host anchors the squad — hostship moves to the earliest joiner still
-  // seated, mirroring the server's disconnect migration.
-  const nextHost = divers[0]!
+  // The host anchors the squad — hostship moves to the earliest present joiner,
+  // mirroring the server's disconnect migration.
+  const nextHost = divers.find(entry => !entry.away) ?? divers[0]!
   return commit(state, {
     divers: divers.map(entry => ({ ...entry, isHost: entry.id === nextHost.id })),
     hostId: nextHost.id,
@@ -423,7 +423,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       )
       return commit(state, {
         divers,
-        phase: divers.every(entry => entry.pactsLocked) ? 'diving' : 'pacts',
+        phase: pactsSettled(divers) ? 'diving' : 'pacts',
       }, action)
     }
 
@@ -830,7 +830,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // Only one diver can win (solo, or a squad where everyone else sat the
       // draft out): the selection is redundant, so the spin resolves the
       // ceremony and banks the token immediately.
-      const candidates = state.divers.filter(diver => !diver.skipsCurrentDraft)
+      const candidates = activeDivers(state).filter(diver => !diver.skipsCurrentDraft)
       if (candidates.length === 1) {
         const winner = candidates[0]!
         const divers = state.divers.map(diver =>
@@ -882,6 +882,29 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           diver.id === action.playerId ? { ...diver, name } : diver,
         ),
       }, action)
+    }
+
+    // Presence, not play: stepping away keeps the seat and everything on it,
+    // but the squad stops waiting on the diver. The host role moves to a
+    // present diver when there is one. Not logged — it is not a game action.
+    case 'SET_AWAY': {
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      if (!diver || diver.away === action.away) {
+        return state
+      }
+      let divers = state.divers.map(candidate =>
+        candidate.id === diver.id ? { ...candidate, away: action.away } : candidate,
+      )
+      let hostId = state.hostId
+      if (action.away && hostId === diver.id) {
+        const nextHost = divers.find(candidate => !candidate.away)
+        if (nextHost) {
+          hostId = nextHost.id
+          divers = divers.map(candidate => ({ ...candidate, isHost: candidate.id === nextHost.id }))
+        }
+      }
+      const phase = state.phase === 'pacts' && pactsSettled(divers) ? 'diving' : state.phase
+      return { ...state, divers, hostId, phase }
     }
 
     case 'TRANSFER_HOST': {

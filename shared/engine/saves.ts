@@ -101,6 +101,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 13) {
     migrated = migrateV12toV13(migrated)
   }
+  if (migrated.schemaVersion < 14) {
+    migrated = migrateV13toV14(migrated)
+  }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
   return migrated
@@ -227,6 +230,21 @@ function migrateV12toV13(doc: SaveDoc): SaveDoc {
         variant: LEGACY_VARIANT_MAP[legacyVariant] ?? 'medium',
         mode: legacyVariant === 'quickplay' ? 'seaf' : undefined,
       },
+    },
+  }
+}
+
+// v14: presence entered the state — a diver who steps away keeps their seat but
+// stops gating the squad. Every diver in an older save was present.
+function migrateV13toV14(doc: SaveDoc): SaveDoc {
+  return {
+    ...doc,
+    state: {
+      ...doc.state,
+      divers: (doc.state.divers ?? []).map(diver => ({
+        ...diver,
+        away: (diver as Partial<DiverState>).away ?? false,
+      })),
     },
   }
 }

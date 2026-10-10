@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import type { Browser } from '@playwright/test'
 import { dismissWarbondIntro, lockMisfortune } from './helpers'
 
 test('two divers sync one dive; late joiner gets the snapshot', async ({ browser }) => {
@@ -175,6 +176,78 @@ test('the Codex slide-over keeps the host seated', async ({ browser }) => {
   await expect(pageA.locator('.diver-chip')).toHaveCount(2)
   await expect(pageA.locator('.crown')).toHaveCount(1)
   await expect(pageA.locator('.diver-chip').filter({ hasText: 'Duo' })).toBeVisible()
+
+  await contextA.close()
+  await contextB.close()
+})
+
+// Its own address: the rest of the suite spends localhost's room-creation
+// budget (10 a minute), and these specs create rooms of their own.
+const ownAddress = { extraHTTPHeaders: { 'x-forwarded-for': '10.42.0.1' } }
+
+async function squadAtTheWheel(browser: Browser) {
+  const contextA = await browser.newContext(ownAddress)
+  const contextB = await browser.newContext(ownAddress)
+  const pageA = await contextA.newPage()
+  const pageB = await contextB.newPage()
+
+  await pageA.goto('/')
+  await pageA.getByRole('button', { name: 'Host an online dive' }).click()
+  await pageA.getByLabel('Your name').fill('Host')
+  await pageA.getByRole('button', { name: 'Join the dive' }).click()
+  await dismissWarbondIntro(pageA)
+  await pageA.getByRole('button', { name: 'Launch crusade' }).click()
+  await expect(pageA.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
+
+  await pageB.goto(pageA.url())
+  await pageB.getByLabel('Your name').fill('Duo')
+  await pageB.getByRole('button', { name: 'Join the dive' }).click()
+  await dismissWarbondIntro(pageB)
+  await expect(pageB.locator('.diver-chip')).toHaveCount(2)
+  return { contextA, contextB, pageA, pageB, code: pageA.url().split('/').pop()! }
+}
+
+test('when the whole squad leaves, the room waits and RESUME puts everyone back', async ({ browser }) => {
+  const { contextA, contextB, pageA, pageB, code } = await squadAtTheWheel(browser)
+
+  await pageB.getByRole('button', { name: 'Leave', exact: true }).click()
+  await expect(pageB).toHaveURL(/\/$/)
+  await expect(pageA.locator('.diver-chip').filter({ hasText: 'Duo' })).toContainText('away')
+  await pageA.getByRole('button', { name: 'Leave', exact: true }).click()
+  await expect(pageA).toHaveURL(/\/$/)
+
+  // The room is still live on both Bridges — nothing was reset.
+  for (const page of [pageA, pageB]) {
+    await page.reload()
+    await expect(page.getByText(`LIVE ROOM ${code}`)).toBeVisible()
+  }
+
+  // The guest is back first and takes the helm; the host is still away.
+  await pageB.getByRole('link', { name: 'RESUME' }).click()
+  await expect(pageB.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
+  await expect(pageB.locator('.diver-chip')).toHaveCount(2)
+  await expect(pageB.locator('.diver-chip').filter({ hasText: 'Host' })).toContainText('away')
+  await expect(pageB.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled()
+
+  await pageA.getByRole('link', { name: 'RESUME' }).click()
+  await expect(pageA.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
+  await expect(pageB.locator('.diver-chip').filter({ hasText: 'Host' })).not.toContainText('away')
+
+  await contextA.close()
+  await contextB.close()
+})
+
+test('the squad never waits on a diver who left', async ({ browser }) => {
+  const { contextA, contextB, pageA, pageB } = await squadAtTheWheel(browser)
+  await pageB.getByRole('button', { name: 'Leave', exact: true }).click()
+  await expect(pageB).toHaveURL(/\/$/)
+
+  await pageA.getByRole('button', { name: 'Spin', exact: true }).click()
+  await lockMisfortune(pageA)
+  await pageA.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
+  await pageA.getByRole('button', { name: 'Deal the pacts' }).click()
+  await pageA.getByRole('button', { name: 'Lock in & dive' }).click()
+  await expect(pageA.getByRole('heading', { name: 'Briefing' })).toBeVisible()
 
   await contextA.close()
   await contextB.close()

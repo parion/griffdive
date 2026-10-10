@@ -8,7 +8,7 @@ import { DIVERS_CHOICE_OPTION_ID, itemPrice, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { activeMisfortune, allDiversPicked, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverValor, diverOptions, modeValorOf, pactOfferFor, pactRiskOf, rewardPoolFor, shopStockFor, teamRiskOf } from './selectors'
+import { activeMisfortune, allDiversPicked, awaitingDiverIds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverValor, diverOptions, modeValorOf, pactOfferFor, pactRiskOf, rewardPoolFor, shopStockFor, squadSize, teamRiskOf } from './selectors'
 import { deriveFront, deriveStrain } from './wheel'
 import type { DiveState, DiverState, EngineAction } from './types'
 
@@ -79,8 +79,8 @@ function twoDiverState(): DiveState {
   return {
     ...freshState(),
     divers: [
-      { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, sampleBank: 0, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false },
-      { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, sampleBank: 0, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false },
+      { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, sampleBank: 0, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
+      { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, sampleBank: 0, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
     ],
     personalInventories: {
       p1: startingItemIds(SETTINGS.variant),
@@ -952,8 +952,8 @@ describe('identity actions', () => {
     const withTwo: DiveState = {
       ...freshState(),
       divers: [
-        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, sampleBank: 0, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false },
-        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, sampleBank: 0, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false },
+        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, sampleBank: 0, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
+        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, sampleBank: 0, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
       ],
     }
     const moved = reduce(withTwo, { type: 'TRANSFER_HOST', playerId: 'p2' })
@@ -1047,13 +1047,9 @@ describe('LEAVE_DIVE', () => {
     expect(state.legacyCaches.p1).toEqual(startingItemIds(SETTINGS.variant))
   })
 
-  it('resets to a fresh lobby when the last diver leaves', () => {
+  it('never empties the room: the last diver cannot leave', () => {
     const state = reduce(twoDiverState(), { type: 'LEAVE_DIVE', playerId: 'p1' })
-    const emptied = reduce(state, { type: 'LEAVE_DIVE', playerId: 'p2' })
-    expect(emptied.phase).toBe('lobby')
-    expect(emptied.settings).toBeNull()
-    expect(emptied.divers).toEqual([])
-    expect(emptied.legacyCaches).toEqual({})
+    expect(reduce(state, { type: 'LEAVE_DIVE', playerId: 'p2' })).toBe(state)
   })
 
   it('parks no empty cache from a lobby departure', () => {
@@ -1723,5 +1719,53 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
     expect(state.phase).toBe('spin')
     expect(state.majorOrder?.fronts).toEqual(['terminids'])
     expect(state.frontId).toBe('terminids')
+  })
+})
+
+describe('SET_AWAY', () => {
+  function pactsState(): DiveState {
+    return { ...twoDiverState(), phase: 'pacts', wheel: { seed: 42, misfortuneId: 'noBackpacks' }, frontId: 'terminids', misfortuneAccepted: false }
+  }
+
+  it('keeps the seat, kit and purse of a diver who steps away', () => {
+    const base = twoDiverState()
+    const withPurse = { ...base, divers: base.divers.map(diver => diver.id === 'p2' ? { ...diver, sampleBank: 7, rewardTokens: 2 } : diver) }
+    const away = reduce(withPurse, { type: 'SET_AWAY', playerId: 'p2', away: true })
+    const diver = away.divers.find(entry => entry.id === 'p2')!
+    expect(diver).toMatchObject({ away: true, sampleBank: 7, rewardTokens: 2 })
+    expect(away.personalInventories.p2).toEqual(base.personalInventories.p2)
+    expect(away.legacyCaches).toEqual({})
+    expect(reduce(away, { type: 'SET_AWAY', playerId: 'p2', away: false }).divers[1]!.away).toBe(false)
+  })
+
+  it('stops the squad waiting on an away diver at pact lock-in', () => {
+    const locked = reduce(pactsState(), { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+    expect(locked.phase).toBe('pacts')
+    expect(reduce(locked, { type: 'SET_AWAY', playerId: 'p2', away: true }).phase).toBe('diving')
+    const awayFirst = reduce(pactsState(), { type: 'SET_AWAY', playerId: 'p2', away: true })
+    expect(reduce(awayFirst, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] }).phase).toBe('diving')
+  })
+
+  it('never advances a room where everyone stepped away', () => {
+    let state = reduce(pactsState(), { type: 'SET_AWAY', playerId: 'p1', away: true })
+    state = reduce(state, { type: 'SET_AWAY', playerId: 'p2', away: true })
+    expect(state.phase).toBe('pacts')
+  })
+
+  it('skips away divers in the reward draft and squad size', () => {
+    const base = { ...twoDiverState(), phase: 'rewards' as const }
+    const picked = { ...base, divers: base.divers.map(diver => diver.id === 'p1' ? { ...diver, pickedOptionId: 'x' } : diver) }
+    expect(allDiversPicked(picked)).toBe(false)
+    const away = reduce(picked, { type: 'SET_AWAY', playerId: 'p2', away: true })
+    expect(allDiversPicked(away)).toBe(true)
+    expect(awaitingDiverIds(away)).toEqual([])
+    expect(squadSize(away)).toBe(1)
+  })
+
+  it('hands the host role to a present diver', () => {
+    const away = reduce(twoDiverState(), { type: 'SET_AWAY', playerId: 'p1', away: true })
+    expect(away.hostId).toBe('p2')
+    const both = reduce(away, { type: 'SET_AWAY', playerId: 'p2', away: true })
+    expect(both.hostId).toBe('p2')
   })
 })

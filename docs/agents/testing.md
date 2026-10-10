@@ -18,7 +18,8 @@
 - **E2E (Playwright, `e2e/*.spec.ts` via `@playwright/test`):** `playwright.config.ts` boots the
   production build (`pnpm build` + Nitro server, port 3173, WebSocket included). Specs: solo dive
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host
-  authority, pact lock-in), Codex slide-over (opens over the dive without dropping the session),
+  authority, pact lock-in; a squad that all leaves finds its room waiting and RESUME reseats
+  everyone; the squad never waits on a diver who left), Codex slide-over (opens over the dive without dropping the session),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
   non-dismissible name gate, star-rating keyboard navigation), phone host moderation
   (`phone.spec.ts`: the 390px squad bar opens the moderation bottom sheet), phone reward draft

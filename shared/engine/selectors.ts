@@ -105,6 +105,26 @@ export function misfortuneDecision(state: DiveState): MisfortuneDecision {
   return { decided: true, accepted: state.misfortuneAccepted }
 }
 
+// The squad actually playing: divers who stepped away keep their seat but are
+// never waited on and never counted (AGENTS.md: Mid-crusade joining).
+export function activeDivers(state: DiveState): DiverState[] {
+  return state.divers.filter(diver => !diver.away)
+}
+
+// Squad size for every size-scaled rule (directive weight, honors cadence,
+// squad-only pacts). Never below one, so a room whose divers have all stepped
+// away still reads as the solo squad that will come back to it.
+export function squadSize(state: DiveState): number {
+  return Math.max(1, activeDivers(state).length)
+}
+
+// Pact lock-in completes once every present diver has locked. A room where
+// everyone stepped away never advances on its own.
+export function pactsSettled(divers: readonly DiverState[]): boolean {
+  const present = divers.filter(diver => !diver.away)
+  return present.length > 0 && present.every(diver => diver.pactsLocked)
+}
+
 // A misfortune binds the whole squad, so every seated diver must still be able
 // to field HD2's four required stratagems under it — otherwise the squad can
 // never ready up. The drawn rule is the check; pacts (picked later) are the
@@ -114,7 +134,7 @@ export function misfortuneStrandedDivers(state: DiveState): DiverState[] {
   if (!misfortune) {
     return []
   }
-  return state.divers.filter(diver =>
+  return activeDivers(state).filter(diver =>
     !hasLegalLoadout(misfortune.id, [], state.personalInventories[diver.id] ?? []))
 }
 
@@ -151,7 +171,7 @@ export function modeValorOf(state: DiveState): number {
 // same acceptance flags, so the screen and the floor can never disagree.
 export function teamRiskBreakdown(state: DiveState): TeamRiskBreakdown {
   const misfortuneRisk = state.misfortuneAccepted && !state.misfortuneFailed
-    ? directiveValorAt(currentMisfortune(state)?.id ?? '', state.difficulty, state.divers.length)
+    ? directiveValorAt(currentMisfortune(state)?.id ?? '', state.difficulty, squadSize(state))
     : 0
   const strainRisk = state.strainAccepted
     ? STRAIN_RISK[state.strainId ?? ''] ?? 0
@@ -463,7 +483,7 @@ export function bonusEligible(state: DiveState): boolean {
   if (report.stars < maxStarsFor(state.difficulty)) {
     return false
   }
-  return state.missionIndex % bonusIntervalFor(state.divers.length) === 0
+  return state.missionIndex % bonusIntervalFor(squadSize(state)) === 0
 }
 
 // Why this mission has no honors, for the UI — null when it does (or when the
@@ -476,9 +496,9 @@ export function bonusIneligibilityReason(state: DiveState): string | null {
   if (report.stars < maxStarsFor(state.difficulty)) {
     return 'Squad honors need a full-star clear.'
   }
-  const interval = bonusIntervalFor(state.divers.length)
+  const interval = bonusIntervalFor(squadSize(state))
   if (state.missionIndex % interval !== 0) {
-    return `Squad honors are due every ${interval} mission${interval === 1 ? '' : 's'} for a squad of ${state.divers.length}.`
+    return `Squad honors are due every ${interval} mission${interval === 1 ? '' : 's'} for a squad of ${squadSize(state)}.`
   }
   return null
 }
@@ -648,7 +668,7 @@ export function canFailMisfortune(state: DiveState): boolean {
 }
 
 export function allDiversPicked(state: DiveState): boolean {
-  return state.divers.every(
+  return activeDivers(state).every(
     diver => diver.pickedOptionId !== null || diver.rewardBanned || diver.skipsCurrentDraft,
   )
 }
@@ -658,10 +678,10 @@ export function allDiversPicked(state: DiveState): boolean {
 // nobody here.
 export function awaitingDiverIds(state: DiveState): string[] {
   if (state.phase === 'pacts') {
-    return state.divers.filter(diver => !diver.pactsLocked).map(diver => diver.id)
+    return activeDivers(state).filter(diver => !diver.pactsLocked).map(diver => diver.id)
   }
   if (state.phase === 'rewards') {
-    return state.divers
+    return activeDivers(state)
       .filter(diver => diver.pickedOptionId === null && !diver.rewardBanned && !diver.skipsCurrentDraft)
       .map(diver => diver.id)
   }
@@ -716,6 +736,6 @@ export function pactOfferFor(state: DiveState, diverId: string): Pact[] {
     deriveSeed(state.wheel.seed, hashString(diverId)),
     active?.id ?? null,
     state.difficulty,
-    state.divers.length,
+    squadSize(state),
   )
 }

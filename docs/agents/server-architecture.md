@@ -149,8 +149,9 @@ Host-authoritative, room-per-dive. Nitro WebSocket via `nitro.experimental.webso
 `nuxt.config.ts`; single endpoint `/ws?room={code}`.
 Room state lives in `useStorage('rooms')` — Nitro `fs-lite` writing to `./.data/rooms` (the
 `griffdive_data` Fly volume in production), a fake in-memory KV in tests — as
-`StoredRoom { code, state, updatedAt, saved? }`, pruned on access after a 12h TTL unless `saved`
-pins it (see Saved dives). Storage is read-modify-write, so `room-sync.ts` serializes every
+`StoredRoom { code, state, updatedAt, saved? }`, pruned on access after an idle TTL — 12h for an
+unlaunched lobby (`ROOM_TTL_MS`), 30 days once the crusade has launched (`CRUSADE_TTL_MS`), never
+while `saved` pins it (see Saved dives). Storage is read-modify-write, so `room-sync.ts` serializes every
 mutation of a room behind an in-process per-room lock (`withRoomLock`): the process is
 single-threaded but `await` interleaves handlers, and without the lock a joiner's `SET_WARBONDS`
 and the host's `START_DIVE` clobber each other (the memory driver hid this by sharing one object).
@@ -179,7 +180,8 @@ coerced to the sender — a client can never act as another diver.
 `reduce`, so an unknown or malformed action is rejected (`bad-action`) instead of persisting
 `undefined` state; the reducer defaults unknown actions to a no-op and the WS handler catches
 anything else, so one bad message never stops the process-wide server. Joins are rate-limited per
-address (20/min → `rate-limited`), actions per diver (120/10s, silently dropped), and room creation
+client address (20/min → `rate-limited`; keyed on `Fly-Client-IP`, then `X-Forwarded-For`, then the
+socket — behind Fly's proxy the socket address is the proxy's), actions per diver (120/10s, silently dropped), and room creation
 per address (10/min → 429) with a `MAX_ROOMS` cap (503). `server/plugins/room-sweeper.ts` reaps idle
 rooms every 15 min so the `MAX_ROOMS` backstop rarely matters.
 
@@ -191,19 +193,22 @@ Canonical engine actions (the reducer union; keep names stable):
 `BUY_ITEM{playerId,itemId}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
 `AWARD_BONUS{playerId}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
-`LEAVE_DIVE{playerId}` `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
+`LEAVE_DIVE{playerId}` `SET_AWAY{playerId,away}` `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
 `ACCEPT_STRAIN`, `DEAL_PACTS`, `SET_MAJOR_ORDER`, `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `FAIL_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `BUY_ITEM`, `SET_NAME`,
-`REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are
+`REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE`, `SET_AWAY` are
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated
 diver, `unsave-dive` is host-only; the Steam lobby link is likewise outside the union and
 host-only (`set-steam`, blank clears).
 `FAIL_PACT` is sent by the target diver or the host (server refuses everyone else); `FAIL_MISFORTUNE`
 is host-only, since the directive binds the whole squad. Host disconnect →
-`TRANSFER_HOST` to the earliest joiner; none left → room hibernates in storage with a TTL.
+`TRANSFER_HOST` to the earliest joiner still connected; none left → room hibernates in storage
+with a TTL, and the first diver back takes the host role. A diver whose last connection stays down
+for `AWAY_GRACE_MS` is marked away (`SET_AWAY`, issued by the server; also re-checked on every
+`hello` so divers dropped across a server restart are caught) — see Mid-crusade joining.
 Reconnect = re-`hello` with stored playerId → server replays snapshot.
 `KICK_DIVER` (host, any phase, lobby included) removes a diver who left or is blocking the
 squad: their pending pact lock or reward pick stops gating progress, their personal inventory
