@@ -43,12 +43,13 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(valor).toBeVisible()
 
   await page.getByRole('button', { name: 'Mission complete' }).click()
-  // The victory banner + big stars, then stepped sample canisters and the
-  // click-to-set time bar.
+  // The victory banner + big stars, then the sample tube sliders and the
+  // click-to-set time bar. The editable number is the keyboard path.
   await expect(page.getByRole('heading', { name: 'Mission complete' })).toBeVisible()
-  await expect(page.getByRole('group', { name: 'Common: 0 of 18' })).toBeVisible()
-  await page.getByRole('button', { name: 'Add a common' }).click()
-  await expect(page.getByRole('group', { name: 'Common: 1 of 18' })).toBeVisible()
+  const commonSamples = page.getByRole('slider', { name: 'Common samples' })
+  await expect(commonSamples).toHaveAttribute('aria-valuenow', '0')
+  await page.getByLabel('Common sample count').fill('12')
+  await expect(commonSamples).toHaveAttribute('aria-valuenow', '12')
   const timeBar = page.getByRole('progressbar', { name: 'Time remaining percent' })
   await expect(timeBar).toBeVisible()
   await page.getByRole('button', { name: 'Set time remaining percent to 60 percent' }).click()
@@ -61,10 +62,28 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('img', { name: 'choosing reward' })).toBeVisible()
   await page.locator('.pod-card .pod-hit').first().click()
 
-  // Bonus honors is its own screen, reached from the draft's bottom bar: the
-  // host spins the stat contest (on click, like the wheel) and banks the
-  // winner's token.
+  // The draft hands off to the settlement screen: Squad Honors plus the
+  // Requisition shelf (the rotating stock, the sample purse and buy controls).
   await page.getByRole('button', { name: 'Squad Honors' }).click()
+  await expect(page.getByRole('region', { name: 'Squad honors' })).toBeVisible()
+
+  const requisition = page.locator('.req')
+  await expect(requisition.getByRole('heading', { name: 'Brasch\'s Bargains' })).toBeVisible()
+  await expect(requisition.getByRole('img', { name: /sample points banked/ })).toBeVisible()
+  const stockCards = requisition.locator('.req-card')
+  await expect(stockCards.first()).toBeVisible()
+  const beforeCards = await stockCards.count()
+  const buyable = requisition.locator('.req-buy:not([disabled])')
+  if (await buyable.count() > 0) {
+    await buyable.first().click()
+    await expect(stockCards).toHaveCount(beforeCards - 1)
+  }
+  else {
+    await expect(requisition.locator('.req-reason').first()).toBeVisible()
+  }
+
+  // The host spins the stat contest (on click, like the wheel) and banks the
+  // winner's token.
   await expect(page.getByRole('heading', { name: 'Squad Honors' })).toBeVisible()
   // Solo: the only diver is always the winner, so the spin auto-banks the
   // token — no selection step.
@@ -104,6 +123,14 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.waitForTimeout(1000)
   await page.mouse.up()
   await expect(page.getByText('Rewards banned')).toBeVisible()
+
+  // Honors aren't due on mission 2 (the solo cadence is every third mission), so
+  // the settlement opens with the honors panel disabled — the Requisition shelf
+  // still shows and the host can advance.
+  await page.getByRole('button', { name: 'Continue' }).click()
+  await expect(page.getByRole('region', { name: 'Squad honors unavailable' })).toBeVisible()
+  await expect(page.locator('.req')).toBeVisible()
+  await page.getByRole('button', { name: /Complete operation/ }).click()
 })
 
 test('a live Major Order renders the panel, pins the front, and tags the card', async ({ page }) => {

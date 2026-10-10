@@ -7,7 +7,8 @@ import { STARTING_KITS, startingItemIds } from './progression'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed } from './rng'
-import { activeMisfortune, allDiversPicked, bonusEligible, catchUpOptionsFor, comboKey, diverOptions, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision } from './selectors'
+import { activeMisfortune, allDiversPicked, bonusEligible, canBuyItem, catchUpOptionsFor, comboKey, diverOptions, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision } from './selectors'
+import { itemPrice, missionHaul } from './rewards'
 import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 
 export function createDiveState(
@@ -498,9 +499,16 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         : undefined
       const report = { outcome: action.outcome, stars, timePct: action.timePct, samples }
       if (action.outcome === 'success') {
+        // The sample haul banks into every diver's Requisition purse. A diver
+        // seated mid-mission sat out the dive, so the haul isn't theirs.
+        const haul = missionHaul(report)
+        const divers = state.divers.map(diver =>
+          diver.skipsCurrentDraft ? diver : { ...diver, sampleBank: diver.sampleBank + haul },
+        )
         return commit(state, {
           phase: 'rewards',
           lastReport: report,
+          divers,
           offerSeed: deriveSeed(state.wheel.seed, state.missionIndex),
           completedCombos: [
             ...state.completedCombos,
@@ -579,6 +587,35 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         candidate.id === diver.id ? { ...candidate, pickedOptionId: itemId } : candidate,
       )
       // Every reward is personal — stratagems included (no shared pool).
+      const personalInventories = {
+        ...state.personalInventories,
+        [diver.id]: [...(state.personalInventories[diver.id] ?? []), item.id],
+      }
+      return commit(state, { divers, personalInventories }, action)
+    }
+
+    case 'BUY_ITEM': {
+      if (state.phase !== 'rewards') {
+        return state
+      }
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      if (!diver) {
+        return state
+      }
+      // The shelf, the price and the purse are all engine rules: re-derive
+      // the stock server-side and reject anything the diver cannot buy.
+      if (!canBuyItem(state, diver, action.itemId).allowed) {
+        return state
+      }
+      const item = ITEMS_BY_ID.get(action.itemId)
+      if (!item) {
+        return state
+      }
+      const divers = state.divers.map(candidate =>
+        candidate.id === diver.id
+          ? { ...candidate, sampleBank: candidate.sampleBank - itemPrice(item) }
+          : candidate,
+      )
       const personalInventories = {
         ...state.personalInventories,
         [diver.id]: [...(state.personalInventories[diver.id] ?? []), item.id],

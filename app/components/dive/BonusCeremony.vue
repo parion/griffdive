@@ -586,13 +586,7 @@ function tokenChits(count: number): boolean[] {
 
       <template v-else>
         <p
-          v-if="canControl"
-          class="muted small award-note"
-        >
-          Spin to draw the honors contest.
-        </p>
-        <p
-          v-else
+          v-if="!canControl"
           class="muted small award-note"
         >
           Waiting for the host to spin…

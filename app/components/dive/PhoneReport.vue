@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { STARS_TO_OPTIONS, maxStarsFor, sampleAvailability } from '~~/shared/engine/config'
-import { performanceValor } from '~~/shared/engine/rewards'
+import { missionHaul, timeHaulMultiplier } from '~~/shared/engine/rewards'
 import { currentFront } from '~~/shared/engine/selectors'
 import { factionImageUrl } from '~~/shared/data/images'
 import type { DiveState, SampleCounts } from '~~/shared/engine/types'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   state: DiveState
-  baseValor: number
-}>()
+  sampleBank?: number
+}>(), { sampleBank: 0 })
 
 const emit = defineEmits<{
   submit: []
@@ -24,14 +24,14 @@ const sampleMax = computed(() => sampleAvailability(props.state.difficulty))
 const front = computed(() => currentFront(props.state))
 const frontImage = computed(() => (front.value ? factionImageUrl(front.value.id) : undefined))
 
-const performance = computed(() => performanceValor({
+const haul = computed(() => missionHaul({
   outcome: 'success',
   stars: stars.value,
   timePct: time.value,
   samples: { ...samples.value },
 }))
-
-const total = computed(() => props.baseValor + performance.value)
+const multiplier = computed(() => timeHaulMultiplier(time.value))
+const bankAfter = computed(() => props.sampleBank + haul.value)
 const options = computed(() => Math.min(
   STARS_TO_OPTIONS[stars.value] ?? 1,
   STARS_TO_OPTIONS.length - 1,
@@ -138,25 +138,25 @@ const honors = computed(() => stars.value >= maxStars.value)
       </section>
     </div>
 
-    <PhoneActionBar aria-label="Performance and report">
+    <PhoneActionBar aria-label="Requisition and report">
       <template #detail>
         <section
           class="performance ticks"
-          aria-label="Performance"
+          aria-label="Requisition haul"
         >
           <div class="perf-cell">
-            <span class="lbl teal">Performance</span>
+            <span class="lbl teal">Requisition</span>
             <span
               class="disp perf-v teal"
               aria-live="polite"
-            >+{{ performance.toFixed(1) }}</span>
+            >+{{ haul }}</span>
           </div>
           <span class="perf-div" />
           <div class="perf-cell">
-            <span class="lbl">Valor</span>
+            <span class="lbl">Sample bank</span>
             <span class="perf-valor">
-              <span class="disp">{{ baseValor }}</span>
-              <span class="disp teal">+{{ performance.toFixed(1) }}</span>
+              <span class="disp">{{ sampleBank }}</span>
+              <span class="disp teal">→ {{ bankAfter }}</span>
             </span>
           </div>
           <div
@@ -174,7 +174,7 @@ const honors = computed(() => stars.value >= maxStars.value)
           </div>
         </section>
         <p class="total-note">
-          Valor {{ baseValor }} → {{ total.toFixed(1) }}
+          Squad haul ×{{ multiplier.toFixed(2) }}
         </p>
       </template>
 

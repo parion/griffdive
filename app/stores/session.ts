@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import type { DiveState } from '~~/shared/engine/types'
-import type { DiveSaveInfo, ServerMessage } from '~~/shared/types/messages'
+import type { DiveSaveInfo, ServerMessage, SteamLobbyInfo } from '~~/shared/types/messages'
 
 export type SocketStatus = 'connecting' | 'connected' | 'disconnected'
 
@@ -10,6 +10,7 @@ export const useSessionStore = defineStore('session', () => {
   const snapshot = ref<DiveState | null>(null)
   const online = ref<string[]>([])
   const saved = ref<DiveSaveInfo | null>(null)
+  const steam = ref<SteamLobbyInfo | null>(null)
   const status = ref<SocketStatus>('disconnected')
   const lastError = ref<{ code: string, message: string } | null>(null)
 
@@ -19,6 +20,7 @@ export const useSessionStore = defineStore('session', () => {
     snapshot.value = null
     online.value = []
     saved.value = null
+    steam.value = null
     lastError.value = null
     status.value = 'connecting'
   }
@@ -30,6 +32,7 @@ export const useSessionStore = defineStore('session', () => {
         snapshot.value = message.snapshot
         online.value = message.online
         saved.value = message.saved
+        steam.value = message.steam
         status.value = 'connected'
         lastError.value = null
         break
@@ -37,6 +40,7 @@ export const useSessionStore = defineStore('session', () => {
         snapshot.value = message.snapshot
         online.value = message.online
         saved.value = message.saved
+        steam.value = message.steam
         break
       case 'error':
         lastError.value = { code: message.code, message: message.message }
@@ -54,6 +58,7 @@ export const useSessionStore = defineStore('session', () => {
     snapshot,
     online,
     saved,
+    steam,
     status,
     lastError,
     openSession,

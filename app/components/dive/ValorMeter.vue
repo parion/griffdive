@@ -8,7 +8,6 @@ const props = withDefaults(defineProps<{
   difficulty: number
   teamRisk: number
   pactRisk: number
-  performance?: number
   locked?: boolean
   // Before the wheel has drawn anything there is no stake to price: an all-zero
   // gauge read as noise to playtesters, so the rail explains Valor instead.
@@ -16,7 +15,7 @@ const props = withDefaults(defineProps<{
   diverName?: string
   pendingText?: string
   // The team-risk split, when the caller has it: the design's legend reads
-  // Misfortune / Strain / Pacts / Performance rather than one "Team" row.
+  // Misfortune / Strain / Pacts rather than one "Team" row.
   misfortuneRisk?: number
   strainRisk?: number
   majorOrderRisk?: number
@@ -25,7 +24,6 @@ const props = withDefaults(defineProps<{
   modeRisk?: number
   modeLabel?: string
 }>(), {
-  performance: 0,
   locked: false,
   diverName: '',
   pendingText: '',
@@ -38,13 +36,13 @@ const props = withDefaults(defineProps<{
 
 const LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
-const valor = computed(() => valorOf(props.teamRisk, props.pactRisk, props.performance))
+const valor = computed(() => valorOf(props.teamRisk, props.pactRisk))
 const scale = VALOR_METER_MAX
 const overflow = computed(() => Math.max(0, valor.value - VALOR_METER_MAX))
 const range = computed(() =>
-  ceilingRange(props.difficulty, props.teamRisk, props.pactRisk, props.performance))
+  ceilingRange(props.difficulty, props.teamRisk, props.pactRisk))
 
-type CellSource = 'empty' | 'team' | 'pact' | 'performance'
+type CellSource = 'empty' | 'team' | 'pact'
 interface ValorCell {
   key: number
   source: CellSource
@@ -52,13 +50,13 @@ interface ValorCell {
 }
 
 // One cell per meter point, filled from the bottom so the gauge stacks the
-// sources legibly: team risk first, then pacts, then performance.
+// sources legibly: team risk first, then pacts.
 const cells = computed<ValorCell[]>(() => {
   const teamEnd = props.teamRisk
   const pactEnd = props.teamRisk + props.pactRisk
   const bottomUp = Array.from({ length: scale }, (_, index): ValorCell => {
     const source: CellSource
-      = index < teamEnd ? 'team' : index < pactEnd ? 'pact' : 'performance'
+      = index < teamEnd ? 'team' : index < pactEnd ? 'pact' : 'empty'
     const amount = Math.min(1, Math.max(0, valor.value - index))
     return { key: index, source: amount > 0 ? source : 'empty', amount }
   })
@@ -108,7 +106,6 @@ const legend = computed(() => {
     rows.push({ id: 'team', name: 'Team', value: props.teamRisk })
   }
   rows.push({ id: 'pact', name: 'Pacts', value: props.pactRisk })
-  rows.push({ id: 'perf', name: 'Performance', value: props.performance })
   if (overflow.value > 0) {
     rows.push({ id: 'luck', name: 'Luck', value: overflow.value })
   }
@@ -282,7 +279,6 @@ const legend = computed(() => {
 .cell { height: 25px; background: var(--ground); border: 1px solid var(--line-1); }
 .cell.team { background: var(--khaki); border-color: var(--khaki); }
 .cell.pact { background: var(--orange); border-color: var(--orange); }
-.cell.performance { background: var(--teal); border-color: var(--teal); }
 .cell.partial {
   background: linear-gradient(to top, var(--teal) var(--fill, 50%), var(--ground) var(--fill, 50%));
   border-color: var(--teal);
@@ -330,6 +326,5 @@ const legend = computed(() => {
 .swatch.mo { background: var(--teal); }
 .swatch.mode { background: var(--orange); }
 .swatch.pact { background: var(--red); }
-.swatch.perf { background: var(--teal); }
 .swatch.luck { background: var(--purple); }
 </style>

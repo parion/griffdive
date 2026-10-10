@@ -109,10 +109,14 @@ slots are guaranteed instead by three rules, all in `shared/engine/`:
   "Leaves too few stratagems to ready up". A misfortune that strands the loadout on its own is not
   blamed on a pact — that same mandatory-slot tension for **misfortunes** is split out as **N36**.
 
-**DEC-2 — resolved (N6). Landed.** Team performance becomes a small, capped third term on top of
-chosen risk: `timePct` (percent of the timer remaining, 0–100) scales to `TIME_VALOR_MAX` 0.2, and
-squad samples score `common 0.0015 / rare 0.004 / super 0.02` capped at `SAMPLE_VALOR_CAP` 0.3, so
-time + samples never exceed 0.5 against the 13-point chosen ceiling. The per-sample values are
+**DEC-2 — superseded.** The capped team-performance Valor term is gone: samples are now the
+**Requisition currency** (a personal sample purse spent on a post-draft rotating stock), and time
+remaining is a multiplier on the haul, not a Valor bonus. See AGENTS.md *Requisition — samples as
+currency*. The original decision is kept below for history: team performance was a small, capped
+third term on top of
+chosen risk — `timePct` (percent of the timer remaining, 0–100) scaled to `TIME_VALOR_MAX` 0.2, and
+squad samples scored `common 0.0015 / rare 0.004 / super 0.02` capped at `SAMPLE_VALOR_CAP` 0.3, so
+time + samples never exceeded 0.5 against the 13-point chosen ceiling. The per-sample values are
 calibrated against wiki.gg/Sample availability, so the game's own rarity mix scales the term with
 difficulty (~0.03 commons-only Medium haul to ~0.3 Super Helldive haul) without a multiplier.
 `MissionReport` carries `samples?: { common, rare, super }`; the reward form collects them on
@@ -294,7 +298,9 @@ rest with **DEC-1** (see the resolution above). The category pacts stayed **load
 stacking, `RESERVE_STRATAGEMS` guarantees four slots, and `hasLegalLoadout` enforces the floor at
 pick time. Goldens regenerated (the offer draw reshuffles).
 
-**N6 · Time/samples Valor. Done (DEC-2).** `MissionReport` carries `samples?: { common, rare, super }`
+**N6 · Time/samples Valor. Superseded (DEC-2).** Samples no longer feed Valor — they are the
+**Requisition currency** (see AGENTS.md). Historical: `MissionReport` carries `samples?: { common,
+rare, super }`
 and `timePct`; `performanceValor` (in `rewards.ts`) prices time remaining up to `TIME_VALOR_MAX` 0.2
 and samples at `common 0.0015 / rare 0.004 / super 0.02` (wiki.gg/Sample-calibrated) capped at
 `SAMPLE_VALOR_CAP` 0.3, so the squad-level term never exceeds 0.5 and scales itself with difficulty

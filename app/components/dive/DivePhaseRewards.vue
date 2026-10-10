@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ALL_WARBOND_CODES, ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
-import { performanceValor } from '~~/shared/engine/rewards'
-import { allDiversPicked, bonusEligible, canBanAnyReward, canBanReward, canRerollRewards, diverOptions, pactRiskOf, rewardPoolFor, teamRiskOf } from '~~/shared/engine/selectors'
+import { allDiversPicked, bonusEligible, canBanAnyReward, canBanReward, canBuyItem, canRerollRewards, diverOptions, pactRiskOf, rewardPoolFor, shopStockFor, teamRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -17,6 +16,7 @@ const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
   reroll: []
   ban: [optionIds: string[]]
+  buy: [itemId: string]
   spinBonus: []
   awardBonus: [playerId: string]
   advance: []
@@ -95,22 +95,40 @@ const advanceLabel = computed(() =>
 // from, so the track and the rail can never disagree.
 const teamRisk = computed(() => teamRiskOf(props.state))
 const pactRisk = computed(() => (props.self ? pactRiskOf(props.self, props.state.difficulty) : 0))
-const performance = computed(() => performanceValor(props.state.lastReport))
+
+// The rotating Requisition shelf and its per-item buy verdict, both derived by
+// the engine (shopStockFor / canBuyItem) — the draft only renders them.
+const stock = computed(() => (props.self ? shopStockFor(props.state, props.self) : []))
+const stockBuyable = computed(() => {
+  const self = props.self
+  if (!self) {
+    return {}
+  }
+  return Object.fromEntries(
+    stock.value.map(option => [option.item.id, canBuyItem(props.state, self, option.item.id)]),
+  )
+})
 
 const kicker = computed(() =>
   `Mission ${props.state.missionInOperation} of ${props.opLength} · extracted`)
 </script>
 
 <template>
-  <BonusCeremony
-    v-if="view === 'honors' && bonusUp"
+  <RewardsSettlement
+    v-if="view === 'honors'"
     :state="state"
     :self-id="selfId"
     :self="self"
     :can-control="canControl"
+    :bonus-up="bonusUp"
+    :stock="stock"
+    :sample-bank="self?.sampleBank ?? 0"
+    :buyable="stockBuyable"
+    :advance-label="advanceLabel"
     @spin="emit('spinBonus')"
     @award="playerId => emit('awardBonus', playerId)"
     @advance="emit('advance')"
+    @buy="itemId => emit('buy', itemId)"
   />
 
   <RewardDraft
@@ -132,17 +150,14 @@ const kicker = computed(() =>
     :difficulty="state.difficulty"
     :team-risk="teamRisk"
     :pact-risk="pactRisk"
-    :performance="performance"
     :rerolled="Boolean(self?.rewardRerollSeed)"
     :ready="ready"
     :bonus-up="bonusUp"
     :can-control="canControl"
-    :advance-label="advanceLabel"
     :kicker="kicker"
     @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
     @reroll="emit('reroll')"
     @ban="optionIds => emit('ban', optionIds)"
-    @advance="emit('advance')"
     @open-honors="view = 'honors'"
   />
 </template>

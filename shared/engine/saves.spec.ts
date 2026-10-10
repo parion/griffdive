@@ -142,6 +142,35 @@ describe('save migration v10 → v11 (broken team directives)', () => {
   })
 })
 
+describe('save migration v11 → v12 (Requisition samples)', () => {
+  it('defaults the sample purse to empty', () => {
+    const doc: SaveDoc = {
+      ...v1Doc({
+        divers: [
+          { id: 'host', name: 'Griffin', isHost: true, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [] },
+        ],
+      }),
+      schemaVersion: 11,
+    }
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
+    expect(migrated.state.divers[0]?.sampleBank).toBe(0)
+  })
+
+  it('preserves a banked purse', () => {
+    const doc: SaveDoc = {
+      ...v1Doc({
+        divers: [
+          { id: 'host', name: 'Griffin', isHost: true, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [], sampleBank: 42 },
+        ],
+      }),
+      schemaVersion: 11,
+    }
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.state.divers[0]?.sampleBank).toBe(42)
+  })
+})
+
 // v1–v3 wheels carried the front; the legacy shape reads it during migration.
 function legacyWheel(seed: number, misfortuneId: string, front: string): SaveDoc['state']['wheel'] {
   return { seed, misfortuneId, front } as SaveDoc['state']['wheel']
@@ -242,30 +271,30 @@ describe('save migration v3 → v4 (misfortune per mission, front on the state)'
   })
 })
 
-describe('save migration v11 → v12 (three difficulty variants + mode)', () => {
-  function v11Doc(variant: string): SaveDoc {
+describe('save migration v12 → v13 (three difficulty variants + mode)', () => {
+  function v12Doc(variant: string): SaveDoc {
     const doc = v1Doc()
     return {
       ...doc,
-      schemaVersion: 11,
+      schemaVersion: 12,
       state: { ...doc.state, settings: { variant } as unknown as SaveDoc['state']['settings'] },
     }
   }
 
   it('remaps the legacy squad-size variants to the difficulty variants', () => {
     for (const legacy of ['standard', 'soloDuo', 'super', 'soloDuoSuper']) {
-      expect(normalizeSaveDoc(v11Doc(legacy))!.state.settings).toMatchObject({ variant: 'medium' })
+      expect(normalizeSaveDoc(v12Doc(legacy))!.state.settings).toMatchObject({ variant: 'medium' })
     }
   })
 
   it('turns Quickplay into the suicide start with the SEAF mode', () => {
-    expect(normalizeSaveDoc(v11Doc('quickplay'))!.state.settings)
+    expect(normalizeSaveDoc(v12Doc('quickplay'))!.state.settings)
       .toMatchObject({ variant: 'suicide', mode: 'seaf' })
   })
 
   it('leaves a settings-less lobby doc untouched', () => {
     const doc = v1Doc()
-    doc.schemaVersion = 11
+    doc.schemaVersion = 12
     doc.state.settings = null
     expect(normalizeSaveDoc(doc)!.state.settings).toBeNull()
   })

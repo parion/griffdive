@@ -33,6 +33,7 @@ const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const emit = defineEmits<{
   lock: [pactIds: string[]]
   pactRisk: [value: number]
+  preview: [pactIds: string[]]
   openKit: []
 }>()
 
@@ -56,10 +57,15 @@ const offer = computed(() =>
   props.selfId ? pactOfferFor(props.state, props.selfId) : [])
 
 // The Valor rail lives in the shell, so the screen reports its live selection
-// risk upward. Presentation only — `pactRiskTotal` is the engine's own sum.
+// risk upward. Presentation only — `pactRiskTotal` is the engine's own sum. The
+// selection also rides up as a preview, so the Kit can grey what these pacts
+// would ban before the diver locks the hand.
 watch(
   selection,
-  ids => emit('pactRisk', pactRiskTotal(ids, props.state.difficulty)),
+  (ids) => {
+    emit('pactRisk', pactRiskTotal(ids, props.state.difficulty))
+    emit('preview', ids)
+  },
   { immediate: true },
 )
 

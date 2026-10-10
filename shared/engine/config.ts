@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 21
+export const ENGINE_VERSION = 23
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -266,23 +266,44 @@ export function topRungAltitude(difficulty: number): number {
 // below the S floor's opening odds so a reachable S is never hidden.
 export const UPGRADE_PREVIEW_FLOOR = 0.05
 
-// Team performance feeds a small third Valor term on top of chosen risk, from
-// the mission just reported. Capped so chosen risk still dominates: a perfect
-// timed clear is worth 0.2 and samples up to 0.3, so time + samples together
-// never exceed 0.5 against the 16-point chosen ceiling.
-//
-// Sample values are calibrated against wiki.gg/Sample "availability by
-// difficulty": commons 15–18 (diff 3) climb to 40, rares enter at 4 and supers
-// at 6, so the game's own mix does the difficulty scaling — a full haul ramps
-// ~0.03 (Medium) to 0.3 (Helldive+). Small per-sample values keep loads from
-// saturating the cap.
-export const TIME_VALOR_MAX = 0.2
-export const SAMPLE_VALOR_CAP = 0.3
-export const SAMPLE_VALOR_WEIGHTS: Readonly<Record<'common' | 'rare' | 'super', number>> = {
-  common: 0.0015,
-  rare: 0.004,
-  super: 0.02,
+// Samples are the Requisition currency: recovered in the field, banked into a
+// personal purse, and spent in the post-draft rotating stock. They no longer
+// touch Valor — the team-performance term is gone. Values are calibrated
+// against wiki.gg/Sample "availability by difficulty" so the game's own rarity
+// mix does the difficulty scaling (commons dominate early, supers appear at 6).
+export const SAMPLE_POINTS: Readonly<Record<'common' | 'rare' | 'super', number>> = {
+  common: 1,
+  rare: 5,
+  super: 25,
 }
+
+// Team performance is now a multiplier on the sample haul, not a Valor bonus:
+// extraction speed scales the purse, so a fast clear banks more gear money.
+// 0.5 at no time remaining, 1.0 at a full clock.
+export const TIME_HAUL_FLOOR = 0.5
+
+// Requisition prices: tier first, then type. Tier dominates (a C booster is far
+// cheaper than an S passive); the type multiplier is how a booster out-prices
+// an armor passive. The stock only offers tiers the diver's rolled ceiling
+// reached, so risk still gates rarity — samples gate the volume.
+export const SAMPLE_PRICE_TIER: Readonly<Record<'c' | 'b' | 'a' | 's', number>> = {
+  c: 25,
+  b: 70,
+  a: 180,
+  s: 450,
+}
+
+export const SAMPLE_PRICE_TYPE: Readonly<Record<string, number>> = {
+  booster: 1.5,
+  primary: 1.25,
+  armorPassive: 0.75,
+}
+
+export const SAMPLE_PRICE_TYPE_DEFAULT = 1
+
+// The rotating stock is a per-diver, seeded shelf: one item per star the
+// difficulty can award (3–5). Stream salt 5 off the per-diver offer seed.
+export const SAMPLE_SHOP_STREAM = 5
 
 // wiki.gg/Sample "availability by difficulty": the most of each rarity a map
 // can hold at a difficulty (ranges capped at their upper bound). Drives the
@@ -357,10 +378,10 @@ export const CONDITION_RISK: Readonly<Record<string, ConditionRiskCurve>> = {
   noOrbitals: { base: 1, slope: 0.2 },
   primaryOnly: { base: 2, slope: 0.15 },
   oopsAllAirstrikes: { base: 2, slope: 0.2 },
-  zeroDeaths: { base: 2, slope: 0.35 },
+  zeroDeaths: { base: 3, slope: 0.3 },
   noReserves: { base: 2, slope: 0.35 },
   noStratagems: { base: 3, slope: 0.3 },
-  meleeOnly: { base: 3, slope: 0.3 },
+  meleeOnly: { base: 2, slope: 0.35 },
   pacifist: { base: 3, slope: 0.3 },
 
   // Personal rules — pacts. Most rise with altitude: losing healing, anti-tank

@@ -11,10 +11,9 @@ import {
   MAJOR_ORDER_RISK,
   OPTIONS_LOST_PER_FAILED_DIRECTIVE,
   OPTIONS_LOST_PER_FAILED_PACT,
-  SAMPLE_VALOR_CAP,
+  SAMPLE_SHOP_STREAM,
   SQUAD_SIZE_MAX,
   STRAIN_RISK,
-  TIME_VALOR_MAX,
   baseTierFor,
   bonusIntervalFor,
   conditionRiskAt,
@@ -36,7 +35,7 @@ import {
 } from './pacts'
 import type { StratagemBanSource } from './pacts'
 import { startingItemIds } from './progression'
-import { performanceValor, maxCeiling, oddsToReach, optionsForDiver, rollBonus, rollCeiling, rollRewardOptions, valorOf } from './rewards'
+import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, rollBonus, rollCeiling, rollRewardOptions, rollShopStock, valorOf } from './rewards'
 import type { RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
 import type { CrusadeMode, DiveState, DiverState, RewardTier } from './types'
@@ -196,10 +195,29 @@ export function pactRiskOf(diver: DiverState, difficulty: number): number {
   return pactRiskTotal(diver.pactIds.filter(id => !diver.failedPactIds.includes(id)), difficulty)
 }
 
-// Chosen risk lives on the diver and the team; team performance is squad-level
-// and rides the report. Together they are the diver's Valor.
+// Chosen risk lives on the diver and the team; it is the diver's Valor. Samples
+// are a separate currency and never feed it.
 export function diverValor(state: DiveState, diver: DiverState): number {
-  return valorOf(teamRiskOf(state), pactRiskOf(diver, state.difficulty), performanceValor(state.lastReport))
+  return valorOf(teamRiskOf(state), pactRiskOf(diver, state.difficulty))
+}
+
+// The per-diver seed the offer derives from: the mission's offer seed folded
+// with the diver id and with any reward-reroll seed they spent. The draft and
+// the Requisition stock share it, so a reroll moves both.
+function diverOfferSeed(state: DiveState, diver: DiverState): number {
+  const base = deriveSeed(state.offerSeed ?? 0, hashString(diver.id))
+  return diver.rewardRerollSeed === null ? base : deriveSeed(base, diver.rewardRerollSeed)
+}
+
+// The ceiling the diver's Valor actually rolls for this mission's draft (salt 1
+// stream). The stock shares it, so a shelf never reaches a class the diver's
+// risk didn't buy.
+export function diverRolledCeiling(state: DiveState, diver: DiverState): RewardTier {
+  return rollCeiling(
+    mulberry32(deriveSeed(diverOfferSeed(state, diver), 1)),
+    state.difficulty,
+    diverValor(state, diver),
+  )
 }
 
 // Display ceiling: the deterministic best case the diver's Valor can preview.
@@ -217,9 +235,18 @@ export interface ArmoryRule {
   source: 'misfortune' | 'pact'
   /** Whether this rule removes equip choices at all (behavioural rules don't). */
   equipBearing: boolean
+  /** The rule rides the pact screen's unsworn selection, not the loadout. */
+  preview: boolean
 }
 
-export function armoryRules(state: DiveState, diver: DiverState): ArmoryRule[] {
+// The pact screen hands the Kit its pending selection while the diver is still
+// choosing, so the loadout previews what the sworn hand would ban. Preview ids
+// already sworn are deduped — a pact never appears twice.
+export function armoryRules(
+  state: DiveState,
+  diver: DiverState,
+  previewPactIds: readonly string[] = [],
+): ArmoryRule[] {
   const rules: ArmoryRule[] = []
   const misfortune = activeMisfortune(state)
   if (misfortune) {
@@ -229,6 +256,7 @@ export function armoryRules(state: DiveState, diver: DiverState): ArmoryRule[] {
       source: 'misfortune',
       equipBearing: misfortune.id === 'oopsAllAirstrikes'
         || Boolean(MISFORTUNE_BANS_STRATAGEM[misfortune.id]),
+      preview: false,
     })
   }
   for (const id of diver.pactIds) {
@@ -241,19 +269,52 @@ export function armoryRules(state: DiveState, diver: DiverState): ArmoryRule[] {
       name: pact.name,
       source: 'pact',
       equipBearing: Boolean(PACT_BANS_STRATAGEM[id]),
+      preview: false,
+    })
+  }
+  for (const id of previewPactIds) {
+    if (diver.pactIds.includes(id)) {
+      continue
+    }
+    const pact = pactById(id)
+    if (!pact) {
+      continue
+    }
+    rules.push({
+      id,
+      name: pact.name,
+      source: 'pact',
+      equipBearing: Boolean(PACT_BANS_STRATAGEM[id]),
+      preview: true,
     })
   }
   return rules
 }
 
-// Why the Armory greys a stratagem tile: the accepted misfortune or one of the
-// diver's sworn pacts bans it. Null when the item is legal.
+export interface ArmoryBan extends StratagemBanSource {
+  /** The ban rides the pending pact selection, not the sworn loadout. */
+  preview: boolean
+}
+
+// Why the Armory greys a stratagem tile: the accepted misfortune, one of the
+// diver's sworn pacts, or a pact still being weighed on the pact screen. Null
+// when the item is legal.
 export function itemBannedInArmory(
   state: DiveState,
   diver: DiverState,
   item: Item,
-): StratagemBanSource | null {
-  return stratagemBanReason(activeMisfortune(state)?.id ?? null, diver.pactIds, item)
+  previewPactIds: readonly string[] = [],
+): ArmoryBan | null {
+  const sworn = stratagemBanReason(activeMisfortune(state)?.id ?? null, diver.pactIds, item)
+  if (sworn) {
+    return { ...sworn, preview: false }
+  }
+  const pending = stratagemBanReason(
+    null,
+    previewPactIds.filter(id => !diver.pactIds.includes(id)),
+    item,
+  )
+  return pending ? { ...pending, preview: true } : null
 }
 
 export function rewardPoolFor(codes: readonly string[]): Item[] {
@@ -275,17 +336,10 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   if (diver.skipsCurrentDraft) {
     return []
   }
-  const base = deriveSeed(state.offerSeed, hashString(diver.id))
-  // A reward reroll folds a fresh client seed into the derivation, moving both
-  // streams (ceiling and options) at once.
-  const seed = diver.rewardRerollSeed === null ? base : deriveSeed(base, diver.rewardRerollSeed)
+  const seed = diverOfferSeed(state, diver)
   // Two rng streams derived from the offer seed: one rolls the tier ceiling,
   // one rolls the options — every client computes the same offer.
-  const ceiling = rollCeiling(
-    mulberry32(deriveSeed(seed, 1)),
-    state.difficulty,
-    diverValor(state, diver),
-  )
+  const ceiling = diverRolledCeiling(state, diver)
   // The pool is the diver's own: warbonds are personal purchases, so each
   // diver rolls offers against the catalog they can actually use.
   const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
@@ -306,6 +360,63 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
     pool,
     exclude,
   )
+}
+
+// The per-diver rotating Requisition shelf, shown once their draft resolves:
+// one item per star the difficulty can award, tiers from the difficulty's base
+// tier up to the ceiling their Valor rolled (the class the draft bought), the
+// same personal pool as the draft (own warbonds, armor passives only) minus
+// owned, banned and the items the draft already showed.
+export function shopStockFor(state: DiveState, diver: DiverState): RewardOption[] {
+  if (state.offerSeed === null || !state.lastReport || state.lastReport.outcome !== 'success') {
+    return []
+  }
+  if (diver.skipsCurrentDraft) {
+    return []
+  }
+  const seed = diverOfferSeed(state, diver)
+  const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
+  const owned = new Set(state.personalInventories[diver.id] ?? [])
+  const exclude = new Set([...owned, ...diver.bannedItemIds])
+  for (const option of diverOptions(state, diver)) {
+    exclude.add(option.item.id)
+  }
+  return rollShopStock(
+    deriveSeed(seed, SAMPLE_SHOP_STREAM),
+    diverRolledCeiling(state, diver),
+    baseTierFor(state.difficulty),
+    maxStarsFor(state.difficulty),
+    pool,
+    exclude,
+  )
+}
+
+// Whether a diver can buy an item from their Requisition shelf: the reward
+// window is open, their own draft is resolved (picked or banned), the item is
+// on their shelf, and they can afford it. Owned and banned items never reach
+// the shelf, so those cases need no separate reason.
+export function canBuyItem(
+  state: DiveState,
+  diver: DiverState,
+  itemId: string,
+): { allowed: boolean, reason: string | null } {
+  if (state.phase !== 'rewards') {
+    return { allowed: false, reason: 'Not in the reward window' }
+  }
+  if (diver.pickedOptionId === null && !diver.rewardBanned) {
+    return { allowed: false, reason: 'Bank your reward first' }
+  }
+  const option = shopStockFor(state, diver).find(entry => entry.optionId === itemId)
+  if (!option) {
+    return { allowed: false, reason: 'Not in your requisition stock' }
+  }
+  if (diver.bannedItemIds.includes(itemId)) {
+    return { allowed: false, reason: 'Banned for this crusade' }
+  }
+  if (itemPrice(option.item) > diver.sampleBank) {
+    return { allowed: false, reason: 'Not enough samples' }
+  }
+  return { allowed: true, reason: null }
 }
 
 // The Field Promotion: a mid-crusade joiner's catch-up offer. Altitude
@@ -442,8 +553,8 @@ export interface CeilingRange {
 
 // Legibility preview: the base tier a zero-Valor dive gets, the best tier the
 // current Valor can plausibly reach, and the odds of reaching it.
-export function ceilingRange(difficulty: number, teamRisk: number, pactRisk: number, performance = 0): CeilingRange {
-  const valor = valorOf(teamRisk, pactRisk, performance)
+export function ceilingRange(difficulty: number, teamRisk: number, pactRisk: number): CeilingRange {
+  const valor = valorOf(teamRisk, pactRisk)
   const max = maxCeiling(difficulty, valor)
   return {
     min: baseTierFor(difficulty),
@@ -465,11 +576,10 @@ export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0, squa
 }
 
 // The most Valor this difficulty can actually stack — the strongest eligible
-// misfortune, the strongest eligible strain, the top pacts the offer can deal,
-// and the capped team-performance term. The meter itself is scaled to
-// VALOR_METER_MAX (11), so anything this returns above that is potential
-// overflow Luck (AGENTS.md: Reward math). Presentation only; it never gates a
-// roll.
+// misfortune (weighted by squad size), the strongest eligible strain and the
+// top pacts the offer can deal. The meter itself is scaled to VALOR_METER_MAX
+// (11), so anything this returns above that is potential overflow Luck
+// (AGENTS.md: Reward math). Presentation only; it never gates a roll.
 export function maxValorFor(difficulty: number, squadSize = SQUAD_SIZE_MAX): number {
   const misfortuneMax = Math.max(
     0,
@@ -484,7 +594,7 @@ export function maxValorFor(difficulty: number, squadSize = SQUAD_SIZE_MAX): num
     .sort((a, b) => b - a)
     .slice(0, pactOptionsFor(difficulty))
     .reduce((sum, risk) => sum + risk, 0)
-  return misfortuneMax + strainMax + pactMax + TIME_VALOR_MAX + SAMPLE_VALOR_CAP
+  return misfortuneMax + strainMax + pactMax
 }
 
 export function canRerollWheel(

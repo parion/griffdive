@@ -4,8 +4,9 @@ import { createLobbyState, joinDiver, seatingBlocked } from '~~/shared/engine/ro
 import { reduce } from '~~/shared/engine/reducer'
 import type { DiveState, EngineAction } from '~~/shared/engine/types'
 import { isEngineActionType, isHostOnlyAction } from '~~/shared/types/messages'
-import type { DiveSaveInfo, ServerMessage } from '~~/shared/types/messages'
+import type { DiveSaveInfo, ServerMessage, SteamLobbyInfo } from '~~/shared/types/messages'
 import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, isRoomCode } from '~~/shared/utils/room-code'
+import { normalizeSteamLobbyLink } from '~~/shared/utils/steam-lobby'
 import { roomMetrics } from './metrics'
 import type { RateLimiter } from './rate-limit'
 
@@ -44,6 +45,9 @@ export interface StoredRoom {
   // Set when any seated diver pins the dive: the room skips the idle TTL until
   // unpinned. Null/absent means an ordinary transient room.
   saved?: DiveSaveInfo | null
+  // The host-pasted Steam lobby deep link, relayed to every seated diver.
+  // Cosmetic room metadata — never touches DiveState or the idle TTL.
+  steam?: SteamLobbyInfo | null
 }
 
 // Storage abstraction so the sync core stays unit-testable without Nitro.
@@ -129,6 +133,8 @@ function isStoredRoom(raw: unknown): raw is StoredRoom {
     && typeof room.updatedAt === 'number'
     && (room.saved == null
       || (typeof room.saved === 'object' && typeof room.saved.savedAt === 'number'))
+    && (room.steam == null
+      || (typeof room.steam === 'object' && typeof room.steam.link === 'string'))
 }
 
 export async function createRoom(kv: RoomKV, maxRooms: number = MAX_ROOMS): Promise<string> {
@@ -195,6 +201,7 @@ function broadcastState(
   state: DiveState,
   applied: EngineAction | null,
   saved: DiveSaveInfo | null,
+  steam: SteamLobbyInfo | null,
   except?: PeerLike,
 ): void {
   const message = JSON.stringify({
@@ -203,6 +210,7 @@ function broadcastState(
     applied,
     online: onlineIds(peers, roomCode, state),
     saved,
+    steam,
   } satisfies ServerMessage)
   for (const peer of peers.list(roomCode)) {
     if (peer !== except) {
@@ -336,10 +344,11 @@ export async function processHello(
       snapshot: room.state,
       online: onlineIds(peers, requested, room.state),
       saved: room.saved ?? null,
+      steam: room.steam ?? null,
     } satisfies ServerMessage))
 
     if (changed) {
-      broadcastState(peers, requested, room.state, null, room.saved ?? null, peer)
+      broadcastState(peers, requested, room.state, null, room.saved ?? null, room.steam ?? null, peer)
     }
   })
 }
@@ -351,6 +360,7 @@ function enforceSelf(action: EngineAction, playerId: string): EngineAction {
     action.type === 'SET_PACTS'
     || action.type === 'SET_WARBONDS'
     || action.type === 'PICK_REWARD'
+    || action.type === 'BUY_ITEM'
     || action.type === 'SET_NAME'
     || action.type === 'CLAIM_CATCHUP_OPTION'
     || action.type === 'CLAIM_CACHE'
@@ -429,7 +439,7 @@ export async function processAction(
     if (enforced.type === 'START_DIVE') {
       roomMetrics.recordDiveStarted()
     }
-    broadcastState(peers, roomCode, room.state, enforced, room.saved ?? null)
+    broadcastState(peers, roomCode, room.state, enforced, room.saved ?? null, room.steam ?? null)
   })
 }
 
@@ -466,7 +476,7 @@ export async function processSave(
     const name = sanitizeSaveName(payload.name) ?? room.saved?.name ?? defaultSaveName(room)
     room.saved = { name, savedAt: Date.now(), savedBy: playerId }
     await saveRoom(kv, room)
-    broadcastState(peers, roomCode, room.state, null, room.saved)
+    broadcastState(peers, roomCode, room.state, null, room.saved, room.steam ?? null)
     pinned = true
   })
   // Outside the lock: the cap touches other rooms and must not nest locks.
@@ -511,7 +521,55 @@ export async function processUnsave(
     }
     room.saved = null
     await saveRoom(kv, room)
-    broadcastState(peers, roomCode, room.state, null, null)
+    broadcastState(peers, roomCode, room.state, null, null, room.steam ?? null)
+  })
+}
+
+// The Steam lobby link is host-owned room metadata: the host relays the lobby
+// they opened in-game so every seated diver can jump in. A blank link clears
+// it. It never enters DiveState or the reducer — it is presentation, like a
+// saved dive.
+export async function processSetSteam(
+  kv: RoomKV,
+  peers: PeerDirectory,
+  peer: PeerLike,
+  payload: { link?: unknown },
+  limits?: RoomLimits,
+): Promise<void> {
+  const roomCode = peer.context.roomCode
+  const playerId = peer.context.playerId
+  if (!roomCode || !playerId) {
+    sendError(peer, 'not-in-room', 'Join a dive before acting')
+    return
+  }
+  if (limits?.action && !limits.action.take(playerId)) {
+    return
+  }
+  const raw = typeof payload.link === 'string' ? payload.link.trim() : ''
+  // Blank clears; anything non-empty must be a valid Helldivers 2 lobby link.
+  const link = raw ? normalizeSteamLobbyLink(raw) : null
+  if (raw && !link) {
+    sendError(peer, 'bad-action', 'That is not a Helldivers 2 Steam lobby link')
+    return
+  }
+  await withRoomLock(roomCode, async () => {
+    const room = await loadRoom(kv, roomCode)
+    if (!room) {
+      sendError(peer, 'room-not-found', 'Dive not found')
+      return
+    }
+    if (room.state.hostId !== playerId) {
+      sendError(peer, 'not-host', 'Only the host can set the Steam lobby')
+      return
+    }
+    if (link) {
+      room.steam = { link, setAt: Date.now(), setBy: playerId }
+    }
+    else {
+      room.steam = null
+    }
+    await saveRoom(kv, room)
+    broadcastState(peers, roomCode, room.state, null, room.saved ?? null, room.steam)
   })
 }
 
@@ -543,13 +601,13 @@ export async function processClose(kv: RoomKV, peers: PeerDirectory, peer: PeerL
         const action: EngineAction = { type: 'TRANSFER_HOST', playerId: earliest.id }
         room.state = reduce(room.state, action)
         await saveRoom(kv, room)
-        broadcastState(peers, roomCode, room.state, action, room.saved ?? null)
+        broadcastState(peers, roomCode, room.state, action, room.saved ?? null, room.steam ?? null)
         return
       }
     }
 
     // Presence-only refresh: remaining peers must drop the departed diver from
     // their online list immediately, not at the next action.
-    broadcastState(peers, roomCode, room.state, null, room.saved ?? null)
+    broadcastState(peers, roomCode, room.state, null, room.saved ?? null, room.steam ?? null)
   })
 }

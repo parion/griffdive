@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { performanceValor } from '~~/shared/engine/rewards'
 import { diverOptions, majorOrderFronts, pactRiskOf, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
@@ -61,8 +60,12 @@ const riskBreakdown = computed(() =>
     ? teamRiskBreakdown(state.value)
     : { misfortuneRisk: 0, strainRisk: 0, majorOrderRisk: 0, mode: null, modeValor: 0, total: 0 })
 // While a diver is still picking pacts the phase reports its live selection
-// upward, so the shell's Valor rail previews the stake before the lock.
+// upward, so the shell's Valor rail previews the stake before the lock — and
+// the Kit can ghost-grey the items those unsworn pacts would ban.
 const livePactRisk = ref(0)
+const pactPreview = ref<string[]>([])
+const pactPreviewIds = computed(() =>
+  state.value?.phase === 'pacts' && !self.value?.pactsLocked ? pactPreview.value : [])
 const pactRisk = computed(() => {
   const diver = self.value
   if (!diver) {
@@ -72,15 +75,6 @@ const pactRisk = computed(() => {
     return livePactRisk.value
   }
   return state.value ? pactRiskOf(diver, state.value.difficulty) : 0
-})
-const performance = computed(() => {
-  const current = state.value
-  if (!current) {
-    return 0
-  }
-  return current.phase === 'rewards' || current.phase === 'forfeit' || current.phase === 'complete'
-    ? performanceValor(current.lastReport)
-    : 0
 })
 const valorLocked = computed(() => {
   const phase = state.value?.phase
@@ -315,6 +309,13 @@ function banRewards(optionIds: string[]): void {
   }
 }
 
+// Requisition: buy a stocked item with the diver's sample bank (self-service).
+function buyItem(itemId: string): void {
+  if (selfId.value) {
+    dispatch({ type: 'BUY_ITEM', playerId: selfId.value, itemId })
+  }
+}
+
 function spinBonus(): void {
   dispatch({ type: 'SPIN_BONUS', seed: session.newSeed() })
 }
@@ -488,12 +489,14 @@ function launchCrusade(settings: CrusadeSettings): void {
       @reroll="reroll"
       @lock-pacts="lockPacts"
       @pact-risk="livePactRisk = $event"
+      @preview="pactPreview = $event"
       @report="report"
       @fail-pact="failPact"
       @fail-directive="failDirective"
       @pick="pick"
       @reroll-rewards="rerollRewards"
       @ban-rewards="banRewards"
+      @buy-reward="buyItem"
       @spin-bonus="spinBonus"
       @award-bonus="awardBonus"
       @advance="advance"
@@ -558,12 +561,19 @@ function launchCrusade(settings: CrusadeSettings): void {
           :online="session.online.value"
           :mode="session.mode"
           :is-host="session.selfIsHost.value"
-          :name-draft="nameDraft"
           :can-control="canControl"
+          :name-draft="nameDraft"
           @update:name-draft="setNameDraft"
           @commit="commitName"
           @transfer-host="transferHost"
           @kick="kick"
+        />
+
+        <SteamLobbyBox
+          v-if="session.mode === 'room'"
+          :steam="session.steam.value"
+          :is-host="session.selfIsHost.value"
+          @set-steam="session.setSteam"
         />
 
         <div class="rail-lower">
@@ -594,7 +604,6 @@ function launchCrusade(settings: CrusadeSettings): void {
           :mode-risk="riskBreakdown.modeValor"
           :mode-label="riskBreakdown.mode === 'penance' ? 'Super Penance' : 'SEAF Support'"
           :pact-risk="pactRisk"
-          :performance="performance"
           :locked="valorLocked"
           :dormant="state.phase === 'spin'"
           :diver-name="diverName(selfId)"
@@ -677,6 +686,7 @@ function launchCrusade(settings: CrusadeSettings): void {
             :can-control="canControl"
             @lock="lockPacts"
             @pact-risk="livePactRisk = $event"
+            @preview="pactPreview = $event"
             @open-kit="armoryOpen = true"
           />
 
@@ -703,6 +713,7 @@ function launchCrusade(settings: CrusadeSettings): void {
             @pick="pick"
             @reroll="rerollRewards"
             @ban="banRewards"
+            @buy="buyItem"
             @spin-bonus="spinBonus"
             @award-bonus="awardBonus"
             @advance="advance"
@@ -728,6 +739,7 @@ function launchCrusade(settings: CrusadeSettings): void {
         v-model:open="armoryOpen"
         :state="state"
         :self-id="selfId"
+        :preview-pact-ids="pactPreviewIds"
       />
     </DiveFrame>
     <p
@@ -744,6 +756,7 @@ function launchCrusade(settings: CrusadeSettings): void {
       v-model:open="armoryOpen"
       :state="state"
       :self-id="selfId"
+      :preview-pact-ids="pactPreviewIds"
     />
 
     <BriefingOverlay

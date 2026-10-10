@@ -9,15 +9,25 @@ export interface DiveSaveInfo {
   savedBy: string
 }
 
+// A Steam lobby deep link the host pasted so every seated diver can jump
+// straight into the in-game lobby. Like a saved dive, it is room metadata,
+// never DiveState: cosmetic, host-owned, and outside the engine.
+export interface SteamLobbyInfo {
+  link: string
+  setAt: number
+  setBy: string
+}
+
 export type ClientMessage
   = | { type: 'hello', name?: string, playerId?: string }
     | { type: 'action', action: EngineAction }
     | { type: 'save-dive', name?: string }
     | { type: 'unsave-dive' }
+    | { type: 'set-steam', link: string }
 
 export type ServerMessage
-  = | { type: 'welcome', selfId: string, hostId: string | null, roomCode: string, snapshot: DiveState, online: string[], saved: DiveSaveInfo | null }
-    | { type: 'state', snapshot: DiveState, applied: EngineAction | null, online: string[], saved: DiveSaveInfo | null }
+  = | { type: 'welcome', selfId: string, hostId: string | null, roomCode: string, snapshot: DiveState, online: string[], saved: DiveSaveInfo | null, steam: SteamLobbyInfo | null }
+    | { type: 'state', snapshot: DiveState, applied: EngineAction | null, online: string[], saved: DiveSaveInfo | null, steam: SteamLobbyInfo | null }
     | { type: 'error', code: string, message: string }
 
 export const HOST_ONLY_ACTIONS = [
@@ -63,6 +73,7 @@ export const ENGINE_ACTION_TYPES = [
   'REPORT_RESULT',
   'FORFEIT_ITEM',
   'PICK_REWARD',
+  'BUY_ITEM',
   'CLAIM_CATCHUP_OPTION',
   'CLAIM_CACHE',
   'REROLL_REWARDS',

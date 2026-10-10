@@ -98,6 +98,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 12) {
     migrated = migrateV11toV12(migrated)
   }
+  if (migrated.schemaVersion < 13) {
+    migrated = migrateV12toV13(migrated)
+  }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
   return migrated
@@ -181,7 +184,23 @@ function migrateV10toV11(doc: SaveDoc): SaveDoc {
   }
 }
 
-// v12: the five squad-size/kit variants collapsed into three starting
+// v12: samples became Requisition currency — a personal purse banked from each
+// mission's haul and spent in the post-draft rotating stock. Pre-v12 saves have
+// no purse; an empty bank is the truthful default.
+function migrateV11toV12(doc: SaveDoc): SaveDoc {
+  return {
+    ...doc,
+    state: {
+      ...doc.state,
+      divers: (doc.state.divers ?? []).map(diver => ({
+        ...diver,
+        sampleBank: (diver as Partial<DiverState>).sampleBank ?? 0,
+      })),
+    },
+  }
+}
+
+// v13: the five squad-size/kit variants collapsed into three starting
 // difficulties (medium/hard/suicide) with a hard/suicide mode. Old ids remap by
 // start altitude; Quickplay's extra gear becomes the SEAF Support Package mode.
 // The in-flight difficulty is untouched — a legacy difficulty-4 start now reads
@@ -194,7 +213,7 @@ const LEGACY_VARIANT_MAP: Readonly<Record<string, CrusadeVariant>> = {
   quickplay: 'suicide',
 }
 
-function migrateV11toV12(doc: SaveDoc): SaveDoc {
+function migrateV12toV13(doc: SaveDoc): SaveDoc {
   const settings = doc.state.settings
   if (!settings) {
     return doc

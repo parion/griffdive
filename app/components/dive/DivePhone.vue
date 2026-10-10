@@ -30,12 +30,14 @@ const emit = defineEmits<{
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
   lockPacts: [pactIds: string[]]
   pactRisk: [value: number]
+  preview: [pactIds: string[]]
   report: [payload: { outcome: MissionOutcome, stars: number, timePct: number, samples?: SampleCounts }]
   failPact: [playerId: string, pactId: string]
   failDirective: []
   pick: [optionId: string, choiceItemId?: string]
   rerollRewards: []
   banRewards: [optionIds: string[]]
+  buyReward: [itemId: string]
   spinBonus: []
   awardBonus: [playerId: string]
   advance: []
@@ -187,6 +189,7 @@ function kickDiver(diverId: string): void {
           :can-control="canControl"
           @lock="emit('lockPacts', $event)"
           @pact-risk="emit('pactRisk', $event)"
+          @preview="emit('preview', $event)"
         />
 
         <PhoneDiving
@@ -211,6 +214,7 @@ function kickDiver(diverId: string): void {
           @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
           @reroll="emit('rerollRewards')"
           @ban="emit('banRewards', $event)"
+          @buy="emit('buyReward', $event)"
           @spin-bonus="emit('spinBonus')"
           @award-bonus="emit('awardBonus', $event)"
           @advance="emit('advance')"
