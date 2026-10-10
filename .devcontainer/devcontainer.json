@@ -1,10 +1,6 @@
-// Griffdive dev container: Nuxt 4 toolchain on the official Paseo image.
-// Primary remote path is Orca over SSH: the container's sshd listens on :2222 (forwarded
-// to the laptop) and post-start.sh runs .devcontainer/ssh-setup.sh to stand it up —
-// https://www.onorca.dev/docs/ssh. The Paseo daemon on :6767 stays available as a
-// fallback. OpenCode and Claude Code are the agent CLIs, with the Context7 MCP wired up
-// in ../opencode.json; Claude credentials persist in their own volume. OpenCode v2 is
-// installed alongside v1 as `opencode2` and keeps its own state volume too.
+// Griffdive dev container: Nuxt 4 toolchain on the official Paseo image. Paseo is the
+// remote client (daemon on :6767). Agent CLIs: opencode (v1), opencode2 (v2, own state
+// volume), claude (native, self-updating).
 {
   "name": "griffdive",
   "build": {
@@ -19,31 +15,22 @@
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
   "mounts": [
-    // Paseo home: daemon state, device pairing, agent credentials survive rebuilds.
+    // Paseo home: daemon state, pairing and agent credentials survive rebuilds.
     "source=paseo-home-${devcontainerId},target=/home/paseo,type=volume",
-    // Container-side deps live outside the bind mount so host and container
-    // installs never clobber each other's platform-specific binaries.
+    // Container-side deps outside the bind mount so host and container installs can't
+    // clobber each other's binaries.
     "source=paseo-node-modules-${devcontainerId},target=/workspace/node_modules,type=volume",
-    // pnpm falls back to a project-local store when its default store is on a
-    // different filesystem than the project; keep that fallback off the bind mount.
+    // Keeps pnpm's project-local store fallback off the bind mount.
     "source=paseo-pnpm-store-${devcontainerId},target=/workspace/.pnpm-store,type=volume",
-    // Orca's SSH state (host keys, authorized_keys) deliberately does NOT live in the
-    // home volume: a recreate would rotate the keypair and break the laptop's copied
-    // key. Fixed name, so it also survives a change of project path.
-    "source=orca-ssh-griffdive,target=/home/paseo/.orca-ssh,type=volume",
-    // Claude Code auth + settings persist here. ~/.claude.json (the OAuth account) lives
-    // beside ~/.claude, so CLAUDE_CONFIG_DIR points both into this one volume — a
-    // dedicated volume keeps Claude state independent of the shared home volume.
+    // Claude auth + settings; CLAUDE_CONFIG_DIR points ~/.claude and ~/.claude.json here.
     "source=claude-code-config-${devcontainerId},target=/home/paseo/.claude,type=volume",
-    // OpenCode v2 config, sessions, cache and state persist here. v2's launcher
-    // (opencode2.sh) points XDG_* at this volume, so v2 never shares directories with
-    // the v1 CLI — OpenCode reuses the same paths across versions and channels.
+    // OpenCode v2 config/sessions/cache/state; the launcher points XDG_* here so v2 never
+    // shares directories with the v1 CLI.
     "source=opencode-v2-home-${devcontainerId},target=/home/paseo/.opencode2,type=volume"
   ],
   "forwardPorts": [
     3000,
-    6767,
-    2222
+    6767
   ],
   "portsAttributes": {
     "3000": {
@@ -51,14 +38,8 @@
       "onAutoForward": "openBrowser"
     },
     "6767": {
-      "label": "Paseo web UI (fallback)",
+      "label": "Paseo web UI",
       "onAutoForward": "openBrowser"
-    },
-    // Orca's SSH target: the container's sshd, reachable as localhost:2222 on the
-    // laptop so Orca Settings -> SSH can dial in (see .devcontainer/ssh-setup.sh).
-    "2222": {
-      "label": "Orca SSH",
-      "onAutoForward": "silent"
     }
   },
   "otherPortsAttributes": {
@@ -68,19 +49,17 @@
     // Relay is opt-in in Paseo; force it on for every daemon launch from this container.
     "PASEO_RELAY_ENABLED": "true",
     "PASEO_LISTEN": "0.0.0.0:6767",
-    // Keep Claude Code's account/config inside the persisted volume above rather than
-    // the ephemeral home directory, so sign-in survives rebuilds.
-    "CLAUDE_CONFIG_DIR": "/home/paseo/.claude",
-    // The image pins Claude Code; auto-update cannot write the root-owned npm prefix.
-    "DISABLE_AUTOUPDATER": "1"
+    // Keeps Claude's account/config in the volume above so sign-in survives rebuilds.
+    "CLAUDE_CONFIG_DIR": "/home/paseo/.claude"
   },
   "remoteEnv": {
+    // post-start.sh relocates npm's global prefix here so `npm -g` works unprivileged; keep
+    // it ahead of /usr/local so those CLIs win. Non-VS Code shells get it via ~/.profile.
+    "PATH": "/home/paseo/.npm-global/bin:${containerEnv:PATH}",
     // Optional: set PASEO_PASSWORD on the host to password-protect the daemon.
     "PASEO_PASSWORD": "${localEnv:PASEO_PASSWORD:}",
-    // Context7 API key for OpenCode v2's MCP server (.devcontainer/opencode-v2.json
-    // reads it as {env:CONTEXT7_API_KEY}). Exported from the host so the key never
-    // lands in a committed file. SSH sessions bypass remoteEnv — put it in
-    // ~/.opencode2/env instead (see .devcontainer/opencode2.sh).
+    // Context7 key for OpenCode v2's MCP (read as {env:CONTEXT7_API_KEY}). From the host so
+    // the key is never committed; shells outside VS Code use ~/.opencode2/env instead.
     "CONTEXT7_API_KEY": "${localEnv:CONTEXT7_API_KEY:}"
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
