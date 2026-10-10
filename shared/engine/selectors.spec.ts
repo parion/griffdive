@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { WARBONDS } from '../data/catalog'
+import { ITEMS_BY_ID, WARBONDS } from '../data/catalog'
 import { MAX_DIFFICULTY, MIN_DIFFICULTY, SAMPLE_VALOR_CAP, STRAIN_RISK, TIME_VALOR_MAX, conditionRiskAt, directiveValorAt, directiveWeightFor } from './config'
 import { oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { actingDiverIds, activeMisfortune, activeStrain, awaitingDiverIds, canRerollWheel, ceilingRange, diverOptions, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
+import { actingDiverIds, activeMisfortune, activeStrain, armoryRules, awaitingDiverIds, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
 import { isPactSelectable, rollPactOffer } from './pacts'
 import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -314,6 +314,55 @@ describe('awaitingDiverIds', () => {
       ],
     }
     expect(awaitingDiverIds(rewards)).toEqual(['host'])
+  })
+})
+
+describe('armory preview bans', () => {
+  it('flags unsworn pacts as preview rules and dedupes sworn ids', () => {
+    const state = spunState(42, false)
+    const diver = state.divers[0]!
+    expect(armoryRules(state, diver).every(rule => !rule.preview)).toBe(true)
+    const previewed = armoryRules(state, diver, ['packLight'])
+    expect(previewed.find(rule => rule.id === 'packLight')).toMatchObject({
+      source: 'pact',
+      preview: true,
+      equipBearing: true,
+    })
+    // Once sworn, the same pact stays one solid rule, never a preview echo.
+    const sworn = { ...diver, pactIds: ['packLight'] }
+    const rules = armoryRules(state, sworn, ['packLight'])
+    expect(rules.filter(rule => rule.id === 'packLight')).toHaveLength(1)
+    expect(rules.find(rule => rule.id === 'packLight')?.preview).toBe(false)
+  })
+
+  it('greys a previewed pact\'s would-be bans without touching other items', () => {
+    const state = spunState(42, false)
+    const diver = state.divers[0]!
+    const hoverPack = ITEMS_BY_ID.get('lift860hoverpack')!
+    const eagle = ITEMS_BY_ID.get('eagleairstrike')!
+    expect(itemBannedInArmory(state, diver, hoverPack)).toBeNull()
+    expect(itemBannedInArmory(state, diver, hoverPack, ['packLight'])).toMatchObject({
+      source: 'pact',
+      id: 'packLight',
+      preview: true,
+    })
+    expect(itemBannedInArmory(state, diver, hoverPack, ['openField'])).toBeNull()
+    expect(itemBannedInArmory(state, diver, eagle, ['grounded'])).toMatchObject({
+      source: 'pact',
+      id: 'grounded',
+      preview: true,
+    })
+  })
+
+  it('keeps a sworn ban solid even while the same id is previewed', () => {
+    const state = spunState(42, false)
+    const diver = { ...state.divers[0]!, pactIds: ['packLight'] }
+    const hoverPack = ITEMS_BY_ID.get('lift860hoverpack')!
+    expect(itemBannedInArmory(state, diver, hoverPack, ['packLight'])).toMatchObject({
+      source: 'pact',
+      id: 'packLight',
+      preview: false,
+    })
   })
 })
 

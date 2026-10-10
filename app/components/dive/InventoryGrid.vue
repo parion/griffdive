@@ -15,6 +15,7 @@ import {
 import { hasLegalLoadout, legalStratagemCount } from '~~/shared/engine/pacts'
 import type { StratagemBanSource } from '~~/shared/engine/pacts'
 import { armoryRules, itemBannedInArmory } from '~~/shared/engine/selectors'
+import type { ArmoryBan } from '~~/shared/engine/selectors'
 import type { DiveState, DiverState, ItemRef } from '~~/shared/engine/types'
 
 interface DiverKit {
@@ -29,6 +30,7 @@ interface TileView {
   reserve: boolean
   tag: string
   banSource: 'misfortune' | 'pact' | null
+  banPreview: boolean
   reason: string
 }
 
@@ -54,6 +56,7 @@ interface RuleView {
   source: 'misfortune' | 'pact'
   label: string
   bind: boolean
+  preview: boolean
 }
 
 interface SlotView {
@@ -63,6 +66,7 @@ interface SlotView {
 
 interface PipView {
   kind: 'spare' | 'banned'
+  preview?: boolean
   style?: CSSProperties
 }
 
@@ -87,7 +91,8 @@ const props = withDefaults(defineProps<{
   state: DiveState
   selfId?: string | null
   selectMode?: boolean
-}>(), { selfId: null, selectMode: false })
+  previewPactIds?: string[]
+}>(), { selfId: null, selectMode: false, previewPactIds: () => [] })
 
 const emit = defineEmits<{ forfeit: [itemRef: ItemRef] }>()
 
@@ -143,20 +148,26 @@ function sectionItems(sectionId: string, sorted: readonly Item[]): Item[] {
   return sorted.filter(item => sectionOfItem(item) === sectionId)
 }
 
-function banReason(ban: StratagemBanSource): string {
+function banReason(ban: ArmoryBan): string {
   return ban.source === 'misfortune'
     ? misfortuneById(ban.id)?.rule ?? ban.id
     : pactName(ban.id)
 }
 
+// Only the viewer's kit previews their own pending pact selection.
+function previewFor(diver: DiverState): string[] {
+  return diver.id === props.selfId ? props.previewPactIds : []
+}
+
 function tileFor(item: Item, diver: DiverState, reserve: boolean): TileView {
-  const ban = itemBannedInArmory(props.state, diver, item)
+  const ban = itemBannedInArmory(props.state, diver, item, previewFor(diver))
   return {
     item,
     image: itemImageUrl(item),
     reserve,
     tag: reserve ? 'Reserve' : item.antitank ? 'AT' : '',
     banSource: ban?.source ?? null,
+    banPreview: ban?.preview ?? false,
     reason: ban ? banReason(ban) : '',
   }
 }
@@ -166,8 +177,11 @@ function ruleView(rule: ReturnType<typeof armoryRules>[number]): RuleView {
     id: rule.id,
     name: rule.name,
     source: rule.source,
-    label: rule.source === 'misfortune' ? 'Directive' : 'Pact',
+    label: rule.source === 'misfortune'
+      ? 'Directive'
+      : rule.preview ? 'Pact · if sworn' : 'Pact',
     bind: rule.equipBearing,
+    preview: rule.preview,
   }
 }
 
@@ -189,14 +203,16 @@ function displayItems(diver: DiverState): Item[] {
 function buildArmory(diver: DiverState): DiverArmory {
   const items = displayItems(diver)
   const sorted = sortKitItems(items)
-  const rules = armoryRules(props.state, diver)
+  const previewIds = previewFor(diver)
+  const rules = armoryRules(props.state, diver, previewIds)
   const misfortuneId = rules.find(rule => rule.source === 'misfortune')?.id ?? null
+  const activePactIds = rules.filter(rule => rule.source === 'pact').map(rule => rule.id)
   const ownedIds = props.state.personalInventories[diver.id] ?? []
   const candidates = items.filter(item => item.type === 'stratagem')
   const legal: Item[] = []
-  const blocked: { ban: StratagemBanSource, item: Item }[] = []
+  const blocked: { ban: ArmoryBan, item: Item }[] = []
   for (const item of candidates) {
-    const ban = itemBannedInArmory(props.state, diver, item)
+    const ban = itemBannedInArmory(props.state, diver, item, previewIds)
     if (ban) {
       blocked.push({ ban, item })
     }
@@ -205,7 +221,7 @@ function buildArmory(diver: DiverState): DiverArmory {
     }
   }
   const sortedLegal = sortKitItems(legal)
-  const fieldable = legalStratagemCount(misfortuneId, diver.pactIds, ownedIds)
+  const fieldable = legalStratagemCount(misfortuneId, activePactIds, ownedIds)
   const sections: SectionView[] = sectionDefs
     .map(def => ({
       id: def.id,
@@ -239,7 +255,7 @@ function buildArmory(diver: DiverState): DiverArmory {
     sections,
     fieldable,
     available: candidates.length,
-    floorMet: hasLegalLoadout(misfortuneId, diver.pactIds, ownedIds),
+    floorMet: hasLegalLoadout(misfortuneId, activePactIds, ownedIds),
     slots: Array.from({ length: slotCount }, (_, index) => {
       const item = sortedLegal[index]
       const filled = index < Math.min(fieldable, slotCount) && item !== undefined
@@ -252,6 +268,7 @@ function buildArmory(diver: DiverState): DiverArmory {
       ...sortedLegal.slice(slotCount).map((): PipView => ({ kind: 'spare' })),
       ...blocked.map((entry): PipView => ({
         kind: 'banned',
+        preview: entry.ban.preview,
         style: { '--pip': banColor(entry.ban) },
       })),
     ],
@@ -596,7 +613,7 @@ function forfeit(ownerId: string, itemId: string): void {
                         v-for="(pip, index) in entry.pips"
                         :key="index"
                         class="spare-pip"
-                        :class="pip.kind"
+                        :class="[pip.kind, { preview: pip.preview }]"
                         :style="pip.style"
                       />
                     </div>
@@ -614,8 +631,8 @@ function forfeit(ownerId: string, itemId: string): void {
                   <span
                     v-for="rule in entry.rules"
                     :key="`${rule.source}:${rule.id}`"
-                    class="rule"
-                    :class="[`rule-${rule.source}`, { bind: rule.bind }]"
+                    class="active-rule"
+                    :class="[`active-rule-${rule.source}`, { bind: rule.bind, preview: rule.preview }]"
                   >
                     <svg
                       width="13"
@@ -709,7 +726,7 @@ function forfeit(ownerId: string, itemId: string): void {
                     class="tile cut-sm"
                     :class="[
                       tile.banSource ? `banned ban-${tile.banSource}` : '',
-                      { reserve: tile.reserve },
+                      { reserve: tile.reserve, preview: tile.banPreview },
                     ]"
                   >
                     <div class="tile-media scan">
@@ -743,7 +760,14 @@ function forfeit(ownerId: string, itemId: string): void {
                       <span
                         v-if="tile.banSource"
                         class="tile-wash"
-                        :class="tile.banSource === 'misfortune' ? 'hazard' : 'hazard-red'"
+                        :class="tile.banSource === 'misfortune'
+                          ? (tile.banPreview ? 'hazard-soft' : 'hazard')
+                          : (tile.banPreview ? 'hazard-soft-red' : 'hazard-red')"
+                        aria-hidden="true"
+                      />
+                      <span
+                        v-if="tile.banPreview"
+                        class="tile-ghost"
                         aria-hidden="true"
                       />
                       <span
@@ -757,6 +781,7 @@ function forfeit(ownerId: string, itemId: string): void {
                       <span
                         v-if="tile.banSource"
                         class="tile-reason"
+                        :class="{ preview: tile.banPreview }"
                       >
                         <svg
                           width="11"
@@ -765,6 +790,7 @@ function forfeit(ownerId: string, itemId: string): void {
                           fill="none"
                           stroke="currentColor"
                           stroke-width="2.6"
+                          :stroke-dasharray="tile.banPreview ? '2.6 2' : undefined"
                           aria-hidden="true"
                         >
                           <circle
@@ -774,7 +800,10 @@ function forfeit(ownerId: string, itemId: string): void {
                           />
                           <path d="M5.6 5.6l12.8 12.8" />
                         </svg>
-                        <span>{{ tile.reason }}</span>
+                        <span>{{ tile.reason }}<span
+                          v-if="tile.banPreview"
+                          class="sr-only"
+                        > (if sworn)</span></span>
                       </span>
                     </div>
                     <div class="tile-foot">
@@ -815,6 +844,13 @@ function forfeit(ownerId: string, itemId: string): void {
             aria-hidden="true"
           />
           Pact ban
+        </span>
+        <span class="key-item">
+          <span
+            class="key-swatch hazard-soft-red key-preview"
+            aria-hidden="true"
+          />
+          If sworn
         </span>
         <span class="key-item">
           <span
@@ -1140,6 +1176,11 @@ function forfeit(ownerId: string, itemId: string): void {
     transparent 3px 6px
   );
 }
+.spare-pip.banned.preview {
+  border-style: dashed;
+  opacity: 0.7;
+  animation: pulse 1.7s ease-in-out infinite;
+}
 .rules {
   display: grid;
   gap: var(--sp-3);
@@ -1152,7 +1193,7 @@ function forfeit(ownerId: string, itemId: string): void {
   flex-wrap: wrap;
   gap: var(--sp-2);
 }
-.rule {
+.active-rule {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
@@ -1161,13 +1202,17 @@ function forfeit(ownerId: string, itemId: string): void {
   color: var(--muted);
   white-space: nowrap;
 }
-.rule.bind.rule-misfortune {
+.active-rule.bind.active-rule-misfortune {
   border-color: var(--gold);
   color: var(--gold);
 }
-.rule.bind.rule-pact {
+.active-rule.bind.active-rule-pact {
   border-color: var(--red);
   color: var(--red);
+}
+.active-rule.preview {
+  border-style: dashed;
+  opacity: 0.75;
 }
 .rule-name {
   font-size: var(--fs-cap);
@@ -1182,7 +1227,7 @@ function forfeit(ownerId: string, itemId: string): void {
   text-transform: uppercase;
   color: var(--dim);
 }
-.rule.bind .rule-src {
+.active-rule.bind .rule-src {
   color: inherit;
   opacity: 0.75;
 }
@@ -1271,6 +1316,7 @@ function forfeit(ownerId: string, itemId: string): void {
 }
 .tile.ban-misfortune { --ban: var(--gold); }
 .tile.banned { border-color: var(--ban); }
+.tile.preview { border-style: dashed; }
 .tile.reserve {
   border-style: dashed;
   border-color: var(--line-4);
@@ -1299,12 +1345,31 @@ function forfeit(ownerId: string, itemId: string): void {
   filter: grayscale(1);
   opacity: 0.45;
 }
+.tile.preview .tile-media img {
+  opacity: 0.28;
+}
 .tile-empty { color: var(--line-4); }
 .tile-wash {
   position: absolute;
   inset: 0;
   opacity: 0.26;
   pointer-events: none;
+}
+.tile-ghost {
+  position: absolute;
+  inset: 5px;
+  pointer-events: none;
+  border: 1px dashed var(--ban);
+  background: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--ban) 14%, transparent) 0 5px,
+    transparent 5px 10px
+  );
+  animation: ghost-pulse 1.7s var(--ease-out) infinite;
+}
+@keyframes ghost-pulse {
+  0%, 100% { opacity: 0.22; transform: scale(1); }
+  50% { opacity: 0.92; transform: scale(0.96); }
 }
 .tile .tier-badge {
   position: absolute;
@@ -1352,6 +1417,18 @@ function forfeit(ownerId: string, itemId: string): void {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.tile-reason.preview {
+  border-style: dashed;
+  height: auto;
+  min-height: 22px;
+  padding: 3px var(--sp-2);
+  align-items: flex-start;
+}
+.tile-reason.preview span {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.15;
 }
 .tile-foot {
   flex-grow: 1;
@@ -1403,6 +1480,7 @@ function forfeit(ownerId: string, itemId: string): void {
   height: 14px;
   opacity: 0.7;
 }
+.key-preview { border: 1px dashed var(--red); }
 .key-reserve { border: 1px dashed var(--line-5); }
 .key-personal { margin-left: auto; }
 
