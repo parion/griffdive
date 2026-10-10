@@ -240,6 +240,7 @@ function submit(): void {
               v-for="row in sampleRows"
               :key="row.key"
               v-model="samples[row.key]"
+              class="sample-slot"
               :max="row.max"
               :tone="row.tone"
               :label="row.label"
@@ -593,8 +594,12 @@ function submit(): void {
 .sample-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
   align-items: center;
+}
+.sample-slot + .sample-slot {
+  padding-left: 14px;
+  border-left: 1px dashed var(--line-2);
 }
 
 /* Reward preview */
@@ -690,5 +695,11 @@ function submit(): void {
 @media (max-width: 1020px) {
   .report-grid { grid-template-columns: minmax(0, 1fr); }
   .sample-grid { grid-template-columns: minmax(0, 1fr); }
+  .sample-slot + .sample-slot {
+    padding-left: 0;
+    padding-top: 12px;
+    border-left: 0;
+    border-top: 1px dashed var(--line-2);
+  }
 }
 </style>

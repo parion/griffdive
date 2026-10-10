@@ -43,12 +43,13 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(valor).toBeVisible()
 
   await page.getByRole('button', { name: 'Mission complete' }).click()
-  // The victory banner + big stars, then stepped sample canisters and the
-  // click-to-set time bar.
+  // The victory banner + big stars, then the sample tube sliders and the
+  // click-to-set time bar. The editable number is the keyboard path.
   await expect(page.getByRole('heading', { name: 'Mission complete' })).toBeVisible()
-  await expect(page.getByRole('group', { name: 'Common: 0 of 18' })).toBeVisible()
-  await page.getByRole('button', { name: 'Add a common' }).click()
-  await expect(page.getByRole('group', { name: 'Common: 1 of 18' })).toBeVisible()
+  const commonSamples = page.getByRole('slider', { name: 'Common samples' })
+  await expect(commonSamples).toHaveAttribute('aria-valuenow', '0')
+  await page.getByLabel('Common sample count').fill('12')
+  await expect(commonSamples).toHaveAttribute('aria-valuenow', '12')
   const timeBar = page.getByRole('progressbar', { name: 'Time remaining percent' })
   await expect(timeBar).toBeVisible()
   await page.getByRole('button', { name: 'Set time remaining percent to 60 percent' }).click()
