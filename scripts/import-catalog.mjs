@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const UPSTREAM_SHA = '9c4a8aaffd83385a2ca85d1105adfe9c9afe430b'
+const UPSTREAM_SHA = '23d754d4b25f83d7be5619f2099efe3d3e2bb2e9'
 const REPORT_ONLY = process.argv.includes('--report')
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), '..')
