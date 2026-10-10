@@ -135,6 +135,29 @@ if [ -n "$PASEO_CLI" ]; then
   "$PASEO_CLI" daemon config set daemon.listen "${PASEO_LISTEN:-0.0.0.0:6767}" \
     --home "$PASEO_HOME" >/dev/null 2>&1 || true
 
+  # Expose OpenCode v2 as its own Paseo provider. Paseo ships ONE 'opencode' provider and
+  # picks its v1/v2 client from the version of the binary it launches, so the stock config
+  # only ever sees v1 (our `opencode`) and v2 is invisible. A derived provider extends
+  # 'opencode' (same client/factory) but runs the opencode2 launcher, which reports 2.x and
+  # keeps v2's XDG roots in ~/.opencode2. Create-only: an edited/removed entry is respected.
+  PASEO_HOME="$PASEO_HOME" node -e '
+    const fs = require("fs");
+    const path = process.env.PASEO_HOME + "/config.json";
+    const c = JSON.parse(fs.existsSync(path) ? fs.readFileSync(path, "utf8") || "{}" : "{}");
+    c.agents = c.agents ?? {};
+    c.agents.providers = c.agents.providers ?? {};
+    if (!c.agents.providers.opencode2) {
+      c.agents.providers.opencode2 = {
+        extends: "opencode",
+        label: "OpenCode v2",
+        description: "OpenCode v2 (native binary, isolated config)",
+        command: ["/usr/local/bin/opencode2"],
+      };
+      fs.writeFileSync(path, JSON.stringify(c, null, 2) + "\n");
+      console.log("Configured Paseo provider: OpenCode v2 (opencode2)");
+    }
+  '
+
   if ! curl -fsS "$HEALTH" >/dev/null 2>&1; then
     # Persist relay-on (PASEO_RELAY_ENABLED only covers this launch).
     PASEO_HOME="$PASEO_HOME" node -e '
@@ -156,9 +179,12 @@ if [ -n "$PASEO_CLI" ]; then
     echo "Paseo daemon failed to start — see $PASEO_HOME/daemon.log" >&2
   fi
 
+  # Pick up any provider config written above without a full restart.
+  "$PASEO_CLI" daemon reload >/dev/null 2>&1 || true
   "$PASEO_CLI" project create >/dev/null 2>&1 || true
 fi
 
 echo
 echo "Agents: opencode (v1, npm) · opencode2 (v2, native, self-updating) · claude (native, self-updating)"
+echo "Paseo providers: OpenCode (v1) · OpenCode v2 · Claude"
 echo "Paseo daemon: http://localhost:6767 · pair a device: paseo daemon pair"
