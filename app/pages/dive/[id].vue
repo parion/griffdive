@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { useLocalStorage } from '@vueuse/core'
+import { createSaveDoc } from '~~/shared/engine/saves'
 import { diverOptions, majorOrderFronts, pactRiskOf, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
 import type { CrusadeSettings, DiverState, EngineAction, ItemRef, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
-import { rememberDiverName } from '~/composables/useGameSocket'
+import { rememberDiverName, storeSeat } from '~/composables/useGameSocket'
 
 const route = useRoute()
 const slotId = computed(() => String(route.params.id))
@@ -414,6 +415,43 @@ function unsaveDive(): void {
   pushToast('Save removed')
 }
 
+// Any seated diver can continue the crusade as host of a brand-new session:
+// the server seats them where the save stopped and parks the divers who aren't
+// here as claimable caches. The current dive is untouched.
+const newSessionOpen = ref(false)
+const canFork = computed(() =>
+  session.mode === 'room'
+  && !!self.value
+  && !!state.value
+  && state.value.phase !== 'lobby'
+  && state.value.phase !== 'complete')
+
+async function startNewSession(): Promise<void> {
+  const current = state.value
+  const id = selfId.value
+  if (!current || !id) {
+    return
+  }
+  newSessionOpen.value = false
+  try {
+    const res = await $fetch<{ code: string, selfId: string | null }>('/api/rooms', {
+      method: 'POST',
+      body: {
+        save: { ...createSaveDoc(current, session.slotName.value, new Date().toISOString()), ownerId: id },
+        name: self.value?.name ?? '',
+      },
+    })
+    if (res.selfId) {
+      storeSeat(res.code, res.selfId)
+    }
+    pushToast('New session started')
+    navigateTo(`/dive/${res.code}`)
+  }
+  catch {
+    pushToast('Could not start a new session', 'warn')
+  }
+}
+
 function copyInvite(): void {
   if (!import.meta.client) {
     return
@@ -509,6 +547,7 @@ function launchCrusade(settings: CrusadeSettings): void {
       :is-host="session.selfIsHost.value"
       :online="session.online.value"
       :kicked="kicked"
+      :can-fork="canFork"
       :last-error="session.lastError.value?.message ?? null"
       @spin="spin"
       @decide="decideMisfortune"
@@ -542,6 +581,7 @@ function launchCrusade(settings: CrusadeSettings): void {
       @end="endDive"
       @save-dive="saveDive"
       @unsave-dive="unsaveDive"
+      @new-session="newSessionOpen = true"
       @abandon-slot="abandonSlot"
       @dismiss-error="session.dismissError()"
     />
@@ -563,12 +603,14 @@ function launchCrusade(settings: CrusadeSettings): void {
           :can-control="canControl"
           :is-host="session.selfIsHost.value"
           :lone-host="state.divers.length === 1"
+          :can-fork="canFork"
           @copy-invite="copyInvite"
           @open-tutorial="openBriefing"
           @leave="leaveDive"
           @end="endDive"
           @save-dive="saveDive"
           @unsave-dive="unsaveDive"
+          @new-session="newSessionOpen = true"
         />
       </template>
 
@@ -778,6 +820,29 @@ function launchCrusade(settings: CrusadeSettings): void {
       :online="session.online.value"
       @close="closeBriefing"
     />
+
+    <AppDialog
+      v-model:open="newSessionOpen"
+      title="Start a new session?"
+      description="Continue this crusade as host in a fresh room with a new code. Divers who aren't here leave the squad and their kits become claimable caches; this dive stays intact."
+    >
+      <div class="row">
+        <button
+          class="btn primary"
+          type="button"
+          @click="startNewSession"
+        >
+          Start new session
+        </button>
+        <button
+          class="btn ghost"
+          type="button"
+          @click="newSessionOpen = false"
+        >
+          Cancel
+        </button>
+      </div>
+    </AppDialog>
   </div>
 </template>
 

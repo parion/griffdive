@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { createDiveState, reduce } from '~~/shared/engine/reducer'
+import { joinDiver } from '~~/shared/engine/room'
+import { createSaveDoc } from '~~/shared/engine/saves'
 import { pactOfferFor } from '~~/shared/engine/selectors'
-import { CRUSADE_TTL_MS, ROOM_TTL_MS, RoomLimitError, createPeerDirectory, createRoom, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, sweepRooms } from './room-sync'
+import { CRUSADE_TTL_MS, InvalidSaveError, ROOM_TTL_MS, RoomLimitError, createPeerDirectory, createRoom, createRoomFromSave, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, sweepRooms } from './room-sync'
 import type { PeerLike, RoomKV, StoredRoom } from './room-sync'
 import { createRateLimiter } from './rate-limit'
 import type { ServerMessage } from '~~/shared/types/messages'
@@ -730,6 +733,48 @@ describe('room-sync', () => {
     expect((await kv.getItem(oldest) as StoredRoom).saved).toBeNull()
     expect((await kv.getItem(middle) as StoredRoom).saved?.name).toBe(middle)
     expect((await kv.getItem(newest) as StoredRoom).saved?.name).toBe(newest)
+  })
+})
+
+describe('createRoomFromSave (personal session saves)', () => {
+  it('seeds a new room around the saver and parks the other kits as caches', async () => {
+    const kv = fakeKV()
+    let state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    state = joinDiver(state, 'p2', 'Two')!
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
+    const save = {
+      ...createSaveDoc(state, 'Session', new Date().toISOString()),
+      roomCode: 'ABC123',
+      ownerId: 'p2',
+    }
+
+    const { code, selfId } = await createRoomFromSave(kv, save, 'Two Again')
+    expect(selfId).toBe('p2')
+    const room = await loadRoom(kv, code)
+    expect(room?.state.hostId).toBe('p2')
+    expect(room?.state.divers).toHaveLength(1)
+    expect(room?.state.divers[0]!.name).toBe('Two Again')
+    expect(room?.state.personalInventories.p1).toBeUndefined()
+    expect(room?.state.legacyCaches.p1).toBeDefined()
+    expect(room?.state.wheel?.seed).toBe(42)
+  })
+
+  it('starts the new session with an empty purse and no reward tokens', async () => {
+    const kv = fakeKV()
+    const state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    const rich = { ...state, divers: state.divers.map(diver => ({ ...diver, sampleBank: 9, rewardTokens: 2 })) }
+    const { code } = await createRoomFromSave(kv, createSaveDoc(rich, 'Session', new Date().toISOString()), 'Griffin')
+    const room = await loadRoom(kv, code)
+    expect(room?.state.divers[0]).toMatchObject({ sampleBank: 0, rewardTokens: 0 })
+    expect(room?.state.personalInventories.p1).toEqual(state.personalInventories.p1)
+  })
+
+  it('refuses malformed saves and complete crusades', async () => {
+    const kv = fakeKV()
+    await expect(createRoomFromSave(kv, { slotName: 'nope' }, '')).rejects.toBeInstanceOf(InvalidSaveError)
+    const state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    const done = createSaveDoc({ ...state, phase: 'complete' }, 'Done', new Date().toISOString())
+    await expect(createRoomFromSave(kv, done, '')).rejects.toBeInstanceOf(InvalidSaveError)
   })
 })
 

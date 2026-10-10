@@ -54,8 +54,8 @@ export interface DiverState {
   rewardTokens: number
   // Requisition currency: sample points recovered in the field, banked into a
   // personal purse and spent in the post-draft rotating stock. Belongs to the
-  // seat, like reward tokens: stepping away keeps it, a benched diver who
-  // rejoins starts empty.
+  // session, like reward tokens: stepping away keeps it, a benched diver's
+  // rejoin and a forked session start empty.
   sampleBank: number
   // Offered items this diver has banned from their personal reward and
   // catch-up pools for the rest of the crusade — never re-offered.

@@ -27,6 +27,8 @@
   (`phone-layout.spec.ts`: no sideways overflow at 360px with a multi-front live Major Order, the live
   spin CTA, touch-scrubbing the report time bar), tablet layout (`tablet-layout.spec.ts`: at
   1024×768 every phase fits the centre column and the drawn directive's Lock it in is in view; at
-  768×1024 the phone shell widens to the tablet), PWA affordances
+  768×1024 the phone shell widens to the tablet), personal session saves
+  (`session-saves.spec.ts`: a seated diver forks the live room into a new session, a solo save hosts
+  an online session from the home record), PWA affordances
   (manifest content type + icons served, SW reachable, shell head links). Chromium only;
   `pnpm exec playwright install chromium` after a fresh clone.
