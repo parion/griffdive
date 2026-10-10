@@ -566,7 +566,7 @@ function tokenChits(count: number): boolean[] {
           </span>
         </div>
         <button
-          class="btn primary cut next-btn rise"
+          class="btn primary cut next-btn rise cta-sweep"
           type="button"
           :disabled="!canControl"
           @click="emit('advance')"

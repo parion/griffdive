@@ -189,7 +189,7 @@ function submit(): void {
           <span class="lbl">Outcome · host calls it</span>
           <div class="outcome-buttons">
             <button
-              class="btn primary cut outcome-btn"
+              class="btn primary cut outcome-btn cta-sweep"
               type="button"
               @click="open('success')"
             >

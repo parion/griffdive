@@ -375,7 +375,7 @@ const opLabel = computed(() =>
     <div class="pact-cta">
       <button
         v-if="!locked"
-        class="hold cut"
+        class="hold cut cta-sweep"
         type="button"
         :disabled="!canLock"
         aria-label="Lock in &amp; dive — press and hold to lock"

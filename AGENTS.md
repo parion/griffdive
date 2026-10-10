@@ -128,6 +128,16 @@ engine.
   honours
   `prefers-reduced-motion` (global CSS guard + explicit `matchMedia` in JS-driven reels and the
   wheel reveal).
+  **Forward actions sweep:** every control that moves the squad on (Launch, the Spin hub, Deal,
+  Lock in, Mission complete / File report, Squad Honors / Advance, Forfeit, the tutorial's Next)
+  carries `.cta-sweep` — the pending-directive sheen — only while it is actionable (disabled
+  controls never sweep). `--sweep` tints it: on the reward screen the continue buttons take the
+  banked item's tier colour, sweeping faster for S and S+. **Reveals ramp with rarity:** reward
+  pods land worst-to-best (`revealRank`), S and Liberty's Cross hold a beat longer before landing,
+  and emphasis scales with tier — A a quiet tier sheen, S a landing flash plus a pulsing glow,
+  Liberty's Cross turning light rays, a fast sweep and a landing burst. Glows ride the unclipped
+  `.pod-slot` as `drop-shadow` (the card's `clip-path` clips box-shadows); Motion owns the card's
+  transform, so tier effects use filters only. Phone reward rows carry the same tier sheen.
 - **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav) on every
   route except the dive, which renders its own `DiveTopBar` (crusade + difficulty emblem + room
   code/copy + Tutorial + the labelled Kit/Codex/Warbonds ship nav — labels, never bare icons;

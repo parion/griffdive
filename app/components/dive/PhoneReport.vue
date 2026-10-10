@@ -181,7 +181,7 @@ const honors = computed(() => stars.value >= maxStars.value)
       <template #action>
         <div class="foot-actions">
           <button
-            class="btn primary cut file"
+            class="btn primary cut file cta-sweep"
             type="button"
             @click="emit('submit')"
           >

@@ -361,7 +361,7 @@ function cancelReport(): void {
       </div>
       <div class="outcome-buttons">
         <button
-          class="btn primary cut outcome-btn success"
+          class="btn primary cut outcome-btn success cta-sweep"
           type="button"
           @click="openReport('success')"
         >

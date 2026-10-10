@@ -301,7 +301,7 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
 
       <button
         v-if="!confirmed"
-        class="hold cut"
+        class="hold cut cta-sweep"
         type="button"
         :disabled="!canSurrender"
         aria-label="Surrender the selected item. Press and hold."

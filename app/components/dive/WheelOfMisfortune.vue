@@ -231,7 +231,7 @@ const hubLabel = computed(() => {
 
       <button
         class="hub"
-        :class="{ live: seed === null && canControl, drawing: spinning }"
+        :class="{ 'live': seed === null && canControl, 'cta-sweep': seed === null && canControl, 'drawing': spinning }"
         type="button"
         :disabled="seed !== null || !canControl"
         :aria-label="hubLabel"

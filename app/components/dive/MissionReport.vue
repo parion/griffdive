@@ -411,7 +411,7 @@ function submit(): void {
             Cancel
           </button>
           <button
-            class="btn primary cut file-cta"
+            class="btn primary cut file-cta cta-sweep"
             type="button"
             @click="submit"
           >

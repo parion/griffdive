@@ -948,7 +948,7 @@ function close(): void {
               </span>
               <button
                 v-if="!isLast"
-                class="btn primary cut brief-next"
+                class="btn primary cut brief-next cta-sweep"
                 type="button"
                 :disabled="nameRequired"
                 @click="next"
@@ -967,7 +967,7 @@ function close(): void {
               </button>
               <button
                 v-else
-                class="btn primary cut brief-next cta"
+                class="btn primary cut brief-next cta cta-sweep"
                 type="button"
                 @click="close"
               >

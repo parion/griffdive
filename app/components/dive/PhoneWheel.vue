@@ -409,7 +409,7 @@ function acceptDisabled(): boolean {
              action hid in the wheel hub. -->
         <button
           v-if="!state.wheel && canControl"
-          class="deal-btn"
+          class="deal-btn cta-sweep"
           type="button"
           @click="emit('spin')"
         >
@@ -426,7 +426,7 @@ function acceptDisabled(): boolean {
         </button>
         <button
           v-else-if="dealReady && canControl"
-          class="deal-btn"
+          class="deal-btn cta-sweep"
           type="button"
           @click="emit('deal')"
         >
