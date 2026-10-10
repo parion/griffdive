@@ -171,6 +171,40 @@ test('a live Major Order renders the panel, pins the front, and tags the card', 
   await expect(frontCard.getByText(/Major Order/)).toBeVisible()
 })
 
+test('the Bridge campaign CTA seeds a dive with the live order already pinned', async ({ page }) => {
+  await page.route('**/api/war/major-order', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      status: 'active',
+      order: {
+        fronts: ['automatons'],
+        live: true,
+        title: 'Liberate the designated planets.',
+        planets: [{ index: 198, name: 'Marfark', front: 'automatons', liberation: 89.7 }],
+        expiresAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
+      },
+    }),
+  }))
+
+  await page.goto('/')
+  await expect(page.locator('.mo-band.mo-in')).toBeVisible()
+  await page.getByLabel('Diver name').fill('Griffon')
+  // The band's CTA starts the campaign with the order already committed.
+  await page.locator('.mo-start').click()
+
+  await expect(page).toHaveURL(/\/dive\/[0-9a-f-]{36}/)
+  await dismissWarbondIntro(page)
+  // Pre-seeded: the picker opens collapsed to the pinned strip, no second pick.
+  await expect(page.getByRole('heading', { name: 'Major Order' })).toHaveCount(0)
+  await expect(page.getByText(/major order run/i)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Spin', exact: true }).click()
+  const frontCard = page.locator('.front-card')
+  await expect(frontCard.getByText('Automatons')).toBeVisible()
+  await expect(frontCard.getByText(/Major Order/)).toBeVisible()
+})
+
 test('a manual faction pick pins the front without a Major Order tag', async ({ page }) => {
   // Force the no-order state so the manual prompt is deterministic.
   await page.route('**/api/war/major-order', route => route.fulfill({

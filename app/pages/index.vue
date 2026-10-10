@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import {
   MAJOR_ORDER_REROLL_BONUS,
+  MAJOR_ORDER_RISK,
   VALOR_METER_MAX,
   baseTierFor,
   missionsPerOperation,
 } from '~~/shared/engine/config'
 import { catchUpOpsBehind, difficultyName, STARTING_KITS } from '~~/shared/engine/progression'
-import { createDiveState } from '~~/shared/engine/reducer'
+import { createDiveState, reduce } from '~~/shared/engine/reducer'
 import { oddsToReach } from '~~/shared/engine/rewards'
+import { FRONTS } from '~~/shared/data/fronts'
 import { factionImageUrl } from '~~/shared/data/images'
 import { isRoomCode } from '~~/shared/utils/room-code'
 import type { CrusadeMode, CrusadeSettings, CrusadeVariant, DiveState, RewardTier } from '~~/shared/engine/types'
@@ -77,20 +79,33 @@ const VARIANTS_LABELS: Record<CrusadeVariant, string> = {
   suicide: 'Suicide Mission',
 }
 
-function startCrusade(): void {
+function createCrusade(alignToOrder: boolean): void {
   const name = diverName.value.trim() || 'Diver'
   const settings: CrusadeSettings = STARTING_KITS[variant.value].startDifficulty >= 5
     ? { variant: variant.value, mode: mode.value }
     : { variant: variant.value }
-  const state = createDiveState(
+  let state = createDiveState(
     settings,
     crypto.randomUUID(),
     name,
     [...myWarbonds.value],
   )
+  // The band's campaign CTA hands the live order straight to the wheel, so the
+  // front is pinned before the first spin — the host never has to re-pick.
+  if (alignToOrder && liveOrder.value) {
+    state = reduce(state, { type: 'SET_MAJOR_ORDER', order: liveOrder.value })
+  }
   const variantName = VARIANTS_LABELS[variant.value] ?? 'Crusade'
   const id = saves.createSlot(state, `${name} · ${variantName}`)
   navigateTo(`/dive/${id}`)
+}
+
+function startCrusade(): void {
+  createCrusade(false)
+}
+
+function startCrusadeWithMo(): void {
+  createCrusade(true)
 }
 
 async function hostOnlineDive(): Promise<void> {
@@ -216,6 +231,11 @@ const previewValorLabel = computed(() => PREVIEW_VALOR.toFixed(2))
 const now = ref(Date.now())
 const moFront = computed(() => liveOrder.value?.fronts[0] ?? null)
 const moFrontImage = computed(() => (moFront.value ? factionImageUrl(moFront.value) : undefined))
+const moFrontsLabel = computed(() =>
+  (liveOrder.value?.fronts ?? [])
+    .map(id => FRONTS.find(front => front.id === id)?.displayName ?? id)
+    .join(' / '),
+)
 const moPlanet = computed(() => liveOrder.value?.planets?.[0] ?? null)
 const moCountdown = computed(() => {
   const expires = liveOrder.value?.expiresAt ? Date.parse(liveOrder.value.expiresAt) : Number.NaN
@@ -1012,24 +1032,24 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
           class="hazard mo-radar-bar"
           aria-hidden="true"
         />
-        <svg
-          class="pulse"
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--gold)"
-          stroke-width="1.8"
+        <span
+          class="mo-faction-stack"
           aria-hidden="true"
-        ><path d="M5 12a7 7 0 0 1 14 0M8.5 12a3.5 3.5 0 0 1 7 0" /><circle
-          cx="12"
-          cy="12"
-          r="1"
-        /><path d="M12 13v8" /></svg>
+        >
+          <img
+            v-for="f in liveOrder.fronts"
+            :key="f"
+            :src="factionImageUrl(f)"
+            width="30"
+            height="30"
+            alt=""
+            draggable="false"
+          >
+        </span>
       </div>
       <div class="mo-title">
         <span class="lbl gold">Major Order</span>
-        <span class="mo-name">{{ liveOrder.title ?? 'Play the live war front' }}</span>
+        <span class="mo-name">{{ moFrontsLabel }}</span>
       </div>
       <div
         v-if="moPlanet"
@@ -1088,9 +1108,22 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
           <span
             class="hex"
             aria-hidden="true"
+          />+{{ MAJOR_ORDER_RISK }} VALOR
+        </span>
+        <span class="mo-carrot">
+          <span
+            class="hex"
+            aria-hidden="true"
           />+{{ MAJOR_ORDER_REROLL_BONUS }} REROLL
         </span>
       </div>
+      <button
+        class="btn ghost mo-start"
+        type="button"
+        @click="startCrusadeWithMo"
+      >
+        Start campaign
+      </button>
     </section>
     <section
       v-else
@@ -1791,18 +1824,25 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
   border-right: 1px solid var(--line-2);
 }
 .mo-radar-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; }
+.mo-faction-stack { display: flex; align-items: center; }
+.mo-faction-stack img {
+  width: 1.9rem;
+  height: 1.9rem;
+  object-fit: contain;
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.7));
+}
+.mo-faction-stack img + img { margin-left: -0.6rem; }
 .mo-title {
   flex-shrink: 0;
-  width: 24rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 0.35rem;
+  margin-right: auto;
   padding: 0 1.5rem;
-  border-right: 1px solid var(--line-1);
 }
 .mo-name { font-size: 1rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mo-planet { flex-grow: 1; min-width: 0; display: flex; align-items: center; gap: 0.9rem; padding: 0 1.5rem; }
+.mo-planet { flex: 0 1 16rem; min-width: 0; display: flex; align-items: center; gap: 0.9rem; padding: 0 1.5rem; }
 .mo-planet img { width: 2rem; height: 2rem; object-fit: contain; flex-shrink: 0; }
 .mo-planet-body { flex-grow: 1; display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
 .mo-planet-head { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em; }
@@ -1840,6 +1880,18 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
   letter-spacing: 0.14em;
   white-space: nowrap;
 }
+.mo-start {
+  flex-shrink: 0;
+  align-self: center;
+  height: 2.25rem;
+  margin: 0 1.5rem;
+  padding: 0 1rem;
+  border-color: var(--gold);
+  color: var(--gold);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
 .bridge-foot {
   flex-shrink: 0;
   display: flex;
@@ -1860,14 +1912,23 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
 
 @media (max-width: 1020px) {
   .mo-band { flex-wrap: wrap; }
+  .mo-radar { width: 3.5rem; }
   .mo-title,
   .mo-planet,
   .mo-count,
-  .mo-play { width: auto; flex: 1 1 14rem; padding: 0.6rem 1rem; border: 0; }
-  /* A live order's title is long: without min-width: 0 its nowrap text set the
-     flex item's floor and blew phones out to a ~960px layout viewport. */
+  .mo-play { width: auto; flex: 1 1 14rem; margin-right: 0; padding: 0.6rem 1rem; border: 0; }
+  /* The faction indicator can name two fronts: without min-width: 0 a nowrap
+     flex item sets the layout floor and blows phones out to a ~960px viewport. */
   .mo-title,
   .mo-play { min-width: 0; }
+  .mo-play { flex-wrap: wrap; gap: 0.5rem; }
+  .mo-start {
+    flex: 1 1 100%;
+    align-self: stretch;
+    height: auto;
+    margin: 0.6rem 1rem;
+    padding: 0.7rem 1rem;
+  }
   .mo-name {
     white-space: normal;
     display: -webkit-box;

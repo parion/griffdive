@@ -109,7 +109,7 @@ engine.
   drawer — the wheel sticks to the top and the directive/strain sheet scrolls up over it (the phase
   body scrolls, never the page), collapsing for each fresh draw and expanding once the spin lands; nav controls keep their
   text labels on phones; and nothing may widen the layout viewport — flex items holding long live
-  text (the Major Order title) need `min-width: 0`.
+  text (the Major Order's faction indicator) need `min-width: 0`.
 - **Armory detection**: the Armory never computes bans.
   `armoryRules(state, diver, previewPactIds?)` lists the active misfortune/pact rules and
   `itemBannedInArmory(state, diver, item, previewPactIds?)` returns why a stratagem is greyed; both
