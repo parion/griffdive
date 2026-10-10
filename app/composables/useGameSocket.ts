@@ -121,6 +121,11 @@ export function useGameSocket(roomCode: string) {
     send(JSON.stringify(message))
   }
 
+  function setSteam(link: string): void {
+    const message: ClientMessage = { type: 'set-steam', link }
+    send(JSON.stringify(message))
+  }
+
   function connect(): void {
     awaitingName.value = false
     connectionFailed.value = false
@@ -142,5 +147,5 @@ export function useGameSocket(roomCode: string) {
   })
   onBeforeUnmount(close)
 
-  return { store, dispatch, saveDive, unsaveDive, connect, close, awaitingName, connectionFailed }
+  return { store, dispatch, saveDive, unsaveDive, setSteam, connect, close, awaitingName, connectionFailed }
 }

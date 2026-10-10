@@ -307,6 +307,17 @@ const ARMOR_PASSIVES = [
     tier: "a",
     index: 27,
   },
+  {
+    displayName: "Blunt Force Mitigation",
+    type: "Equipment",
+    category: "armor",
+    tags: ["ArmorPassive"],
+    warbondCode: "warbond27",
+    internalName: "bluntforcemitigation",
+    imageURL: "bluntforcemitigation.webp",
+    tier: "b",
+    index: 28,
+  },
 ];
 
 // s: 1

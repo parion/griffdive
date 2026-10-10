@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { pactOfferFor } from '~~/shared/engine/selectors'
-import { ROOM_TTL_MS, RoomLimitError, createPeerDirectory, createRoom, enforceSaveCap, loadRoom, processAction, processClose, processHello, processSave, processUnsave, sweepRooms } from './room-sync'
+import { ROOM_TTL_MS, RoomLimitError, createPeerDirectory, createRoom, enforceSaveCap, loadRoom, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, sweepRooms } from './room-sync'
 import type { PeerLike, RoomKV, StoredRoom } from './room-sync'
 import { createRateLimiter } from './rate-limit'
 import type { ServerMessage } from '~~/shared/types/messages'
@@ -600,6 +600,47 @@ describe('room-sync', () => {
 
     await processUnsave(kv, peers, host)
     expect((await loadRoom(kv, code))?.saved ?? null).toBeNull()
+  })
+
+  it('lets only the host set and clear the Steam lobby link', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    await processHello(kv, peers, joiner, { name: 'B' })
+    sent(host).length = 0
+
+    // Only the host may set the link; a non-host is refused outright.
+    await processSetSteam(kv, peers, joiner, { link: 'steam://joinlobby/553850/42/7' })
+    expect(sent(joiner).some(m => m.type === 'error' && m.code === 'not-host')).toBe(true)
+    expect((await loadRoom(kv, code))?.steam ?? null).toBeNull()
+
+    // Garbage is rejected before it can reach storage.
+    sent(host).length = 0
+    await processSetSteam(kv, peers, host, { link: 'https://example.com' })
+    expect(sent(host).some(m => m.type === 'error' && m.code === 'bad-action')).toBe(true)
+    expect((await loadRoom(kv, code))?.steam ?? null).toBeNull()
+
+    // A valid link is normalized, stored and broadcast to every peer.
+    sent(host).length = 0
+    await processSetSteam(kv, peers, host, {
+      link: '  steam://joinlobby/553850/109775244505390675/76561199111703149  ',
+    })
+    const state = sent(joiner).find(m => m.type === 'state')
+    if (state?.type !== 'state') {
+      throw new Error('no state message received')
+    }
+    expect(state.steam?.link).toBe('steam://joinlobby/553850/109775244505390675/76561199111703149')
+    expect((await loadRoom(kv, code))?.steam?.link).toBe(state.steam?.link)
+
+    // A blank link clears it again.
+    await processSetSteam(kv, peers, host, { link: '' })
+    expect((await loadRoom(kv, code))?.steam ?? null).toBeNull()
   })
 
   it('keeps a saved dive past the TTL and lets it expire once unpinned', async () => {
