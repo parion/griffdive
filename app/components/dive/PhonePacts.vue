@@ -173,6 +173,20 @@ const pendingText = computed(() => {
             <span class="s-name">{{ strain?.name ?? 'Major Order' }}</span>
             <span class="disp s-risk orange">+{{ breakdown.strainRisk || breakdown.majorOrderRisk }} ×{{ opLength }}</span>
           </div>
+          <div
+            v-if="breakdown.modeValor > 0"
+            class="summary-line"
+            role="img"
+            :aria-label="`${breakdown.mode === 'penance' ? 'Super Penance' : 'SEAF Support'}, plus ${breakdown.modeValor} every mission`"
+          >
+            <span
+              v-if="breakdown.mode === 'penance'"
+              class="flames lit"
+              aria-hidden="true"
+            ><i /><i /><i /></span>
+            <span class="s-name">{{ breakdown.mode === 'penance' ? 'Super Penance' : 'SEAF Support' }}</span>
+            <span class="disp s-risk orange">+{{ breakdown.modeValor }} ×{{ opLength }}</span>
+          </div>
         </div>
         <div class="summary-total">
           <span class="lbl">Team</span>

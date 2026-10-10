@@ -5,12 +5,12 @@ import {
   baseTierFor,
   missionsPerOperation,
 } from '~~/shared/engine/config'
-import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
+import { catchUpOpsBehind, difficultyName, STARTING_KITS } from '~~/shared/engine/progression'
 import { createDiveState } from '~~/shared/engine/reducer'
 import { oddsToReach } from '~~/shared/engine/rewards'
 import { factionImageUrl } from '~~/shared/data/images'
 import { isRoomCode } from '~~/shared/utils/room-code'
-import type { CrusadeSettings, CrusadeVariant, DiveState, RewardTier } from '~~/shared/engine/types'
+import type { CrusadeMode, CrusadeSettings, CrusadeVariant, DiveState, RewardTier } from '~~/shared/engine/types'
 import type { DiveSaveInfo } from '~~/shared/types/messages'
 import type { SaveDoc } from '~~/shared/types/save'
 
@@ -19,7 +19,8 @@ const recentRooms = useRecentRooms()
 const { ownedWarbonds: myWarbonds, setOwned: setMyWarbonds } = useOwnedWarbonds()
 
 const diverName = ref('Griffin')
-const variant = ref<CrusadeVariant>('standard')
+const variant = ref<CrusadeVariant>('medium')
+const mode = ref<CrusadeMode>('seaf')
 const slotList = ref<{ id: string, doc: SaveDoc }[]>([])
 const joinCode = ref('')
 const codeFocused = ref(false)
@@ -71,16 +72,16 @@ async function refreshOnlineDives(): Promise<void> {
 }
 
 const VARIANTS_LABELS: Record<CrusadeVariant, string> = {
-  standard: 'Standard',
-  soloDuo: 'Solo/Duo',
-  super: 'Super',
-  soloDuoSuper: 'Solo/Duo Super',
-  quickplay: 'Quickplay',
+  medium: 'Medium',
+  hard: 'Hard',
+  suicide: 'Suicide Mission',
 }
 
 function startCrusade(): void {
   const name = diverName.value.trim() || 'Diver'
-  const settings: CrusadeSettings = { variant: variant.value }
+  const settings: CrusadeSettings = STARTING_KITS[variant.value].startDifficulty >= 5
+    ? { variant: variant.value, mode: mode.value }
+    : { variant: variant.value }
   const state = createDiveState(
     settings,
     crypto.randomUUID(),
@@ -248,7 +249,7 @@ const codeLen = computed(() => cleanCode(joinCode.value).length)
 
 // Service record cards: live rooms and local saves share one shape.
 function opNumber(state: DiveState): number {
-  return catchUpOpsBehind(state.difficulty, state.settings?.variant ?? 'standard') + 1
+  return catchUpOpsBehind(state.difficulty, state.settings?.variant ?? 'medium') + 1
 }
 function missionLabel(state: DiveState): string {
   return `M${state.missionInOperation}/${missionsPerOperation(state.difficulty)}`
@@ -807,7 +808,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
               >
                 <template v-if="dive.state">
                   <div class="rc-head">
-                    <span class="rc-name">{{ dive.state.divers[0]?.name ?? 'Crusade' }} · {{ VARIANTS_LABELS[dive.state.settings?.variant ?? 'standard'] }}</span>
+                    <span class="rc-name">{{ dive.state.divers[0]?.name ?? 'Crusade' }} · {{ VARIANTS_LABELS[dive.state.settings?.variant ?? 'medium'] }}</span>
                     <span class="rc-live"><span
                       class="pulse rc-dot"
                       aria-hidden="true"
@@ -1117,6 +1118,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
     >
       <CrusadeSetup
         v-model:variant="variant"
+        v-model:mode="mode"
         :show-start="false"
       />
       <WarbondPicker

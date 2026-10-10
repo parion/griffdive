@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { WARBONDS } from '~~/shared/data/catalog'
-import { baseTierFor, missionsPerOperation } from '~~/shared/engine/config'
+import { PENANCE_VALOR, SEAF_SUPPORT_VALOR, baseTierFor, missionsPerOperation } from '~~/shared/engine/config'
 import { STARTING_KITS, VARIANTS, difficultyName } from '~~/shared/engine/progression'
-import type { CrusadeVariant, DiveState } from '~~/shared/engine/types'
+import type { CrusadeMode, CrusadeSettings, CrusadeVariant, DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -10,35 +10,41 @@ const props = defineProps<{
   canControl: boolean
 }>()
 
-const emit = defineEmits<{ start: [variant: CrusadeVariant] }>()
+const emit = defineEmits<{ start: [settings: CrusadeSettings] }>()
 
 const { ownedWarbonds } = useOwnedWarbonds()
 
 // The host configures and launches the crusade here. The bays mirror the squad
-// rail live; the variant cards mirror the kit table.
-const variant = ref<CrusadeVariant>('standard')
+// rail live; the variant cards mirror the difficulty ladder.
+const variant = ref<CrusadeVariant>('medium')
+// The hard/suicide mode toggle: the SEAF Support Package (assisted, default)
+// or Super Penance (hellish). Only meaningful on the top two difficulties.
+const mode = ref<CrusadeMode>('seaf')
 const launched = ref(false)
 let launchTimer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(launchTimer))
 
-// Squads each variant can field — the design greys a variant the seated squad
-// cannot use (a solo squad can't take Standard, etc.).
-const SQUAD_RANGE: Record<CrusadeVariant, [number, number]> = {
-  standard: [3, 4],
-  soloDuo: [1, 2],
-  super: [3, 4],
-  soloDuoSuper: [1, 2],
-  quickplay: [1, 4],
-}
-
 // Display kit lines (the design's copy; the real kit is STARTING_KITS).
 const VARIANT_KIT: Record<CrusadeVariant, { m: string, t: string }[]> = {
-  standard: [{ m: '·', t: 'Surplus kit' }],
-  soloDuo: [{ m: '·', t: 'Surplus kit' }, { m: '+', t: 'Orbital Precision Strike' }],
-  super: [{ m: '·', t: 'Melee secondaries' }, { m: '·', t: 'Integrated Explosives' }, { m: '·', t: 'Ballistic Shield' }],
-  soloDuoSuper: [{ m: '·', t: 'Super kit' }, { m: '+', t: 'Orbital Precision Strike' }],
-  quickplay: [{ m: '+', t: 'Extra stratagems' }, { m: '+', t: 'Boosters' }],
+  medium: [{ m: '·', t: 'Surplus kit' }],
+  hard: [{ m: '·', t: 'Surplus kit' }, { m: '±', t: 'SEAF / Penance' }],
+  suicide: [{ m: '·', t: 'Surplus kit' }, { m: '±', t: 'SEAF / Penance' }],
 }
+
+const MODES: readonly { id: CrusadeMode, name: string, blurb: string, kit: string }[] = [
+  {
+    id: 'seaf',
+    name: 'SEAF Support Package',
+    blurb: 'Assisted ride: extra gear and a small Valor boost.',
+    kit: 'Extra stratagems + boosters',
+  },
+  {
+    id: 'penance',
+    name: 'Super Penance',
+    blurb: 'No aid. A larger Valor stake for the wicked.',
+    kit: 'Bare surplus kit',
+  },
+]
 
 const seated = computed(() => props.state.divers.length)
 const warbondCount = computed(() => ownedWarbonds.value.length)
@@ -102,8 +108,7 @@ interface VariantView {
   start: number
   tier: string
   missions: number
-  divers: string
-  fits: boolean
+  hasMode: boolean
   checked: boolean
   off: boolean
   diffName: string
@@ -116,10 +121,9 @@ const variants = computed<VariantView[]>(() => VARIANTS.map((entry) => {
   const start = STARTING_KITS[entry.id].startDifficulty
   const tier = baseTierFor(start)
   const missions = missionsPerOperation(start)
-  const [min, max] = SQUAD_RANGE[entry.id]
-  const fits = seated.value >= min && seated.value <= max
+  const hasMode = start >= 5
   const checked = variant.value === entry.id
-  const off = !fits || (launched.value && !checked)
+  const off = launched.value && !checked
   const startIndex = start - 3
   const kit = VARIANT_KIT[entry.id]
   return {
@@ -128,8 +132,7 @@ const variants = computed<VariantView[]>(() => VARIANTS.map((entry) => {
     start,
     tier,
     missions,
-    divers: fits ? entry.squadSize.toUpperCase() : `${entry.squadSize.toUpperCase()} · ${seated.value} SEATED`,
-    fits,
+    hasMode,
     checked,
     off,
     diffName: `START · ${difficultyName(start).toUpperCase()}`,
@@ -138,12 +141,13 @@ const variants = computed<VariantView[]>(() => VARIANTS.map((entry) => {
       bg: k === startIndex ? (checked ? 'var(--gold)' : 'var(--khaki)') : k < startIndex ? 'transparent' : 'var(--line-3)',
     })),
     kit,
-    aria: `${entry.name}, ${entry.squadSize}, start difficulty ${start} ${difficultyName(start)}, ${kit.map(k => k.t).join(', ')}${off && !fits ? `. Unavailable with ${seated.value} seated` : ''}`,
+    aria: `${entry.name}, start difficulty ${start} ${difficultyName(start)}, ${kit.map(k => k.t).join(', ')}`,
   }
 }))
 
 const selected = computed(() => variants.value.find(v => v.checked) ?? variants.value[0]!)
 const opMissions = computed(() => selected.value.missions)
+const modeActive = computed(() => selected.value.hasMode)
 
 function pick(id: CrusadeVariant): void {
   const entry = variants.value.find(v => v.id === id)
@@ -151,6 +155,13 @@ function pick(id: CrusadeVariant): void {
     return
   }
   variant.value = id
+}
+
+function pickMode(id: CrusadeMode): void {
+  if (!props.canControl || launched.value || !modeActive.value) {
+    return
+  }
+  mode.value = id
 }
 
 const reduced = import.meta.client
@@ -161,7 +172,10 @@ function launchNow(): void {
     return
   }
   launched.value = true
-  launchTimer = setTimeout(() => emit('start', variant.value), reduced ? 0 : 750)
+  const settings: CrusadeSettings = modeActive.value
+    ? { variant: variant.value, mode: mode.value }
+    : { variant: variant.value }
+  launchTimer = setTimeout(() => emit('start', settings), reduced ? 0 : 750)
 }
 
 interface CheckView {
@@ -175,6 +189,9 @@ const checks = computed<CheckView[]>(() => [
   { label: 'Squad', v: `${seated.value} / 4`, ok: true, wait: false },
   { label: 'Ready', v: `${seated.value} / ${seated.value}`, ok: true, wait: false },
   { label: 'Variant', v: selected.value.name.toUpperCase(), ok: true, wait: false },
+  ...(modeActive.value
+    ? [{ label: 'Mode', v: mode.value === 'penance' ? 'SUPER PENANCE' : 'SEAF SUPPORT', ok: true, wait: false }]
+    : []),
   { label: 'Warbonds', v: `${warbondCount.value} / ${WARBONDS.length} DECLARED`, ok: true, wait: false },
   launched.value
     ? { label: 'Operation 1', v: 'SPIN NEXT', ok: true, wait: false }
@@ -466,30 +483,72 @@ const checks = computed<CheckView[]>(() => [
           </div>
           <span class="vcard-diff">{{ v.diffName }}</span>
           <span
-            class="vcard-divers"
-            :class="{ nofit: !v.fits }"
+            v-if="v.hasMode"
+            class="vcard-modes"
           >
             <svg
-              width="14"
-              height="14"
+              width="13"
+              height="13"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              stroke-width="2"
+              stroke-width="1.8"
               aria-hidden="true"
-            ><circle
-              cx="12"
-              cy="8"
-              r="3.5"
-            /><path d="M5 20c.8-3.6 3.6-6 7-6s6.2 2.4 7 6" /></svg>
-            {{ v.divers }}
+            ><path d="M12 3c1.5 3-1 4.2-1 6a2 2 0 0 0 4 .2C16.7 11 18 13 18 15a6 6 0 0 1-12 0c0-3.2 2.2-5.5 3.4-7.6C10.3 5.4 11.3 4 12 3Z" /></svg>
+            SEAF / Super Penance
           </span>
+          <span
+            v-else
+            class="vcard-modes plain"
+          >No mode · play as-is</span>
           <div class="vcard-kit">
             <span
               v-for="(k, i) in v.kit"
               :key="i"
             ><b>{{ k.m }}</b>{{ k.t }}</span>
           </div>
+        </button>
+      </div>
+    </section>
+
+    <section
+      v-if="modeActive"
+      class="modes"
+      aria-label="Starting mode"
+    >
+      <div class="variants-head">
+        <span class="lbl">Starting mode</span>
+        <span class="variants-hint">{{ launched ? 'LOCKED FOR THIS CRUSADE' : 'PICK ONE · SEAF ASSISTS · PENANCE PAYS' }}</span>
+      </div>
+      <div class="mode-grid">
+        <button
+          v-for="m in MODES"
+          :key="m.id"
+          type="button"
+          class="mcard cut-sm"
+          :class="{ on: mode === m.id, penance: m.id === 'penance', lit: m.id === 'penance' && mode === 'penance' }"
+          :aria-pressed="mode === m.id"
+          :disabled="!canControl || launched"
+          @click="pickMode(m.id)"
+        >
+          <span class="mcard-head">
+            <span class="mcard-name">{{ m.name }}</span>
+            <span
+              v-if="m.id === 'penance'"
+              class="flames"
+              aria-hidden="true"
+            >
+              <i /><i /><i />
+            </span>
+            <span
+              v-else
+              class="mcard-badge"
+            >ASSIST</span>
+          </span>
+          <span class="mcard-blurb">{{ m.blurb }}</span>
+          <span class="mcard-kit">
+            +{{ m.id === 'penance' ? (PENANCE_VALOR[selected.start] ?? 0) : (SEAF_SUPPORT_VALOR[selected.start] ?? 0) }} VALOR/MISSION · {{ m.kit }}
+          </span>
         </button>
       </div>
     </section>
@@ -503,6 +562,13 @@ const checks = computed<CheckView[]>(() => [
         <div class="sum-box">
           <span class="lbl">Start</span>
           <span class="sum-v">{{ selected.start }} · {{ difficultyName(selected.start).toUpperCase() }}</span>
+        </div>
+        <div
+          v-if="modeActive"
+          class="sum-box"
+        >
+          <span class="lbl">Mode</span>
+          <span class="sum-v">{{ mode === 'penance' ? 'SUPER PENANCE' : 'SEAF SUPPORT' }}</span>
         </div>
         <div class="sum-box">
           <span class="lbl">Operation 1</span>
@@ -528,7 +594,7 @@ const checks = computed<CheckView[]>(() => [
         hint="HOLD TO LAUNCH · HOST"
         tone="gold"
         :disabled="!canControl"
-        :aria-label="`Launch crusade as ${selected.name}, start at difficulty ${selected.start}. Press and hold.`"
+        :aria-label="`Launch crusade as ${selected.name}, start at difficulty ${selected.start}${modeActive ? `, ${mode === 'penance' ? 'Super Penance' : 'SEAF Support Package'}` : ''}. Press and hold.`"
         @confirm="launchNow"
       />
       <div
@@ -710,7 +776,7 @@ const checks = computed<CheckView[]>(() => [
 .variants { display: flex; flex-direction: column; gap: 0.5rem; }
 .variants-head { display: flex; align-items: center; justify-content: space-between; }
 .variants-hint { font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: var(--muted); }
-.variant-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.75rem; }
+.variant-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
 .vcard {
   display: flex;
   flex-direction: column;
@@ -739,12 +805,49 @@ const checks = computed<CheckView[]>(() => [
 .vcard-ticks i { flex: 1 1 0; }
 .vcard-diff { margin-top: 0.4rem; font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: var(--khaki); white-space: nowrap; }
 .vcard.on .vcard-diff { color: var(--gold); }
-.vcard-divers { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.6rem; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--text); white-space: nowrap; }
-.vcard-divers.nofit { color: var(--khaki); }
+.vcard-modes { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.6rem; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: var(--khaki); white-space: nowrap; text-transform: uppercase; }
+.vcard-modes.plain { color: var(--muted); }
+.vcard-modes svg { color: var(--orange); flex-shrink: 0; }
 .vcard-kit { display: flex; flex-direction: column; gap: 3px; margin-top: 0.45rem; }
 .vcard-kit span { display: flex; align-items: baseline; gap: 0.4rem; font-size: 12px; line-height: 1.2; color: var(--khaki); }
 .vcard-kit b { width: 8px; flex-shrink: 0; color: var(--line-5); }
 .vcard-kit b:not(:empty) { color: var(--gold); }
+
+/* Starting mode (hard/suicide) ------------------------------------------ */
+.modes { display: flex; flex-direction: column; gap: 0.5rem; }
+.mode-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.mcard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  text-align: left;
+  padding: 0.7rem 0.85rem;
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background-color var(--dur-fast);
+}
+.mcard:hover:not(:disabled) { border-color: var(--line-4); }
+.mcard.on { background: var(--raised); border-color: var(--line-5); }
+.mcard.penance.on { border-color: var(--orange); }
+.mcard:disabled { opacity: 0.65; cursor: not-allowed; }
+.mcard-head { display: flex; align-items: center; gap: 0.5rem; }
+.mcard-name { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.mcard.on .mcard-name { color: var(--gold); }
+.mcard.penance.on .mcard-name { color: var(--orange); }
+.mcard-badge {
+  margin-left: auto;
+  padding: 1px 6px;
+  border: 1px solid var(--teal);
+  color: var(--teal);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+.mcard-blurb { font-size: 12px; line-height: 1.3; color: var(--khaki); }
+.mcard-kit { margin-top: 0.15rem; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+.mcard.on .mcard-kit { color: var(--khaki); }
 
 /* Launch ----------------------------------------------------------------- */
 .launch-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }

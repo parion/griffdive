@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 22
+export const ENGINE_VERSION = 23
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -67,6 +67,28 @@ export const MAJOR_ORDER_REROLL_BONUS = 1
 // the Valor a squad gives up by not drawing a strain. Only a live order pays it;
 // a manual front pick is a preference with no risk and no carrot.
 export const MAJOR_ORDER_RISK = 2
+
+// The hard/suicide starts pick one of two mutually exclusive modes. The SEAF
+// Support Package is the assisted ride: extra gear plus a small flat Valor bump
+// on every mission. Super Penance is the hellish one: no support gear and a
+// larger flat Valor stake on every mission — the self-imposed burden that pays
+// in odds. Both are felt for the whole run, like the operation-long strain.
+export const SEAF_SUPPORT_VALOR: Readonly<Record<number, number>> = {
+  5: 1,
+  7: 2,
+}
+export const PENANCE_VALOR: Readonly<Record<number, number>> = {
+  5: 2,
+  7: 3,
+}
+
+export function seafSupportValorAt(difficulty: number): number {
+  return SEAF_SUPPORT_VALOR[difficulty] ?? 0
+}
+
+export function penanceValorAt(difficulty: number): number {
+  return PENANCE_VALOR[difficulty] ?? 0
+}
 
 // Team performance is felt at every star: 1★=1, 2★=2, 3★=3, 4★=4, 5★=4 (cap).
 export const STARS_TO_OPTIONS = [1, 1, 2, 3, 4, 4] as const

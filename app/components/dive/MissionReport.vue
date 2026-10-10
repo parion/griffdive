@@ -75,7 +75,7 @@ const sampleFractions = computed(() => {
 const sampleNote = computed(() => `${sampleFractions.value.total} pts`)
 
 const opNumber = computed(() =>
-  catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'standard') + 1)
+  catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
 
 const ceiling = computed(() => (props.self ? diverCeiling(props.state, props.self) : 'C'))
 const optionCount = computed(() =>

@@ -11,7 +11,7 @@ const props = defineProps<{
   slotName: string
 }>()
 
-const variant = computed(() => props.state.settings?.variant ?? 'standard')
+const variant = computed(() => props.state.settings?.variant ?? 'medium')
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const opNumber = computed(() => catchUpOpsBehind(props.state.difficulty, variant.value) + 1)
 

@@ -3,7 +3,7 @@
 // mirrors the desktop dive page's phase switch, but every phase renders a
 // bottom-sheet composition instead of the three-rail terminal.
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
-import type { CrusadeVariant, DiverState, DiveState, ItemRef, MajorOrderSelection, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
+import type { CrusadeSettings, DiverState, DiveState, ItemRef, MajorOrderSelection, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -44,7 +44,7 @@ const emit = defineEmits<{
   forfeit: [itemRef: ItemRef]
   claimCatchUpOption: [optionId: string]
   claimCache: [cacheOwnerId: string]
-  start: [variant: CrusadeVariant]
+  start: [settings: CrusadeSettings]
   kick: [diverId: string]
   transferHost: [diverId: string]
   copyInvite: []

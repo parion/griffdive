@@ -2,7 +2,7 @@
 import { diverOptions, majorOrderFronts, pactRiskOf, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
-import type { CrusadeVariant, DiverState, EngineAction, ItemRef, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
+import type { CrusadeSettings, DiverState, EngineAction, ItemRef, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
 import { rememberDiverName } from '~/composables/useGameSocket'
 
 const route = useRoute()
@@ -56,7 +56,9 @@ const crusadeLabel = computed(() => `${diverName(selfId.value)} · ${variantName
 
 const teamRisk = computed(() => state.value ? teamRiskOf(state.value) : 0)
 const riskBreakdown = computed(() =>
-  state.value ? teamRiskBreakdown(state.value) : { misfortuneRisk: 0, strainRisk: 0, majorOrderRisk: 0, total: 0 })
+  state.value
+    ? teamRiskBreakdown(state.value)
+    : { misfortuneRisk: 0, strainRisk: 0, majorOrderRisk: 0, mode: null, modeValor: 0, total: 0 })
 // While a diver is still picking pacts the phase reports its live selection
 // upward, so the shell's Valor rail previews the stake before the lock — and
 // the Kit can ghost-grey the items those unsworn pacts would ban.
@@ -413,9 +415,9 @@ function confirmJoinName(name: string): void {
   session.connect()
 }
 
-function launchCrusade(variant: CrusadeVariant): void {
+function launchCrusade(settings: CrusadeSettings): void {
   commitName()
-  dispatch({ type: 'START_DIVE', settings: { variant } })
+  dispatch({ type: 'START_DIVE', settings })
 }
 </script>
 
@@ -599,6 +601,8 @@ function launchCrusade(variant: CrusadeVariant): void {
           :misfortune-risk="riskBreakdown.misfortuneRisk"
           :strain-risk="riskBreakdown.strainRisk"
           :major-order-risk="riskBreakdown.majorOrderRisk"
+          :mode-risk="riskBreakdown.modeValor"
+          :mode-label="riskBreakdown.mode === 'penance' ? 'Super Penance' : 'SEAF Support'"
           :pact-risk="pactRisk"
           :locked="valorLocked"
           :dormant="state.phase === 'spin'"

@@ -75,7 +75,7 @@ export function joinDiver(state: DiveState, playerId: string, name: string): Div
     inventory = restoredCache
   }
   else {
-    inventory = state.settings ? startingItemIds(state.settings.variant) : []
+    inventory = state.settings ? startingItemIds(state.settings.variant, state.settings.mode) : []
     if (state.settings) {
       catchUpGranted = Math.min(
         CATCHUP_CAP,

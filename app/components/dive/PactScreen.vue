@@ -180,7 +180,7 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
 
 const swornText = computed(() => `${selection.value.length}/${offer.value.length} sworn`)
 const opNumber = computed(() =>
-  catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'standard') + 1)
+  catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
 const opLabel = computed(() =>
   `Operation ${opNumber.value} · Mission ${props.state.missionInOperation} of ${opLength.value} · ${props.self?.name ?? 'offer'}'s offer`)
 </script>
@@ -291,6 +291,22 @@ const opLabel = computed(() =>
       </div>
 
       <div
+        v-if="breakdown.modeValor > 0"
+        class="team-cell mode-cell"
+      >
+        <span class="lbl">Mode · run-long</span>
+        <div class="team-cell-row">
+          <span
+            v-if="breakdown.mode === 'penance'"
+            class="flames lit"
+            aria-hidden="true"
+          ><i /><i /><i /></span>
+          <span class="team-name">{{ breakdown.mode === 'penance' ? 'Super Penance' : 'SEAF Support' }}</span>
+          <span class="team-risk disp">+{{ breakdown.modeValor }}</span>
+        </div>
+      </div>
+
+      <div
         class="team-cell team-total"
         role="img"
         :aria-label="`Team risk ${breakdown.total}, the floor under every diver's Valor`"
@@ -306,6 +322,11 @@ const opLabel = computed(() =>
             <span
               v-for="i in opLongRisk"
               :key="`o${i}`"
+              class="total-pip orange"
+            />
+            <span
+              v-for="i in breakdown.modeValor"
+              :key="`d${i}`"
               class="total-pip orange"
             />
           </span>

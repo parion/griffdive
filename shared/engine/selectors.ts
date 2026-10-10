@@ -20,6 +20,8 @@ import {
   directiveValorAt,
   maxStarsFor,
   pactOptionsFor,
+  penanceValorAt,
+  seafSupportValorAt,
 } from './config'
 import type { BonusStat } from './config'
 import {
@@ -36,7 +38,7 @@ import { startingItemIds } from './progression'
 import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, rollBonus, rollCeiling, rollRewardOptions, rollShopStock, valorOf } from './rewards'
 import type { RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
-import type { DiveState, DiverState, RewardTier } from './types'
+import type { CrusadeMode, DiveState, DiverState, RewardTier } from './types'
 import { eligibleMisfortunes, eligibleStrains, frontById, strainById } from './wheel'
 
 // A completed run is tracked by its full draw — misfortune, front and strain —
@@ -116,30 +118,36 @@ export function misfortuneStrandedDivers(state: DiveState): DiverState[] {
     !hasLegalLoadout(misfortune.id, [], state.personalInventories[diver.id] ?? []))
 }
 
-// Team risk stacks the per-mission misfortune (when accepted), the
-// operation-long strain (when accepted) and the live Major Order commitment:
-// the latter two are felt on every mission of the operation, so they compound
-// over the op's 2–3 missions. A live MO replaces the strain, so its fixed risk
-// is what keeps the operation's Valor potential intact.
-export function teamRiskOf(state: DiveState): number {
-  const misfortuneRisk = state.misfortuneAccepted && !state.misfortuneFailed
-    ? directiveValorAt(currentMisfortune(state)?.id ?? '', state.difficulty, state.divers.length)
-    : 0
-  const strainRisk = state.strainAccepted
-    ? STRAIN_RISK[state.strainId ?? ''] ?? 0
-    : 0
-  const majorOrderRisk = state.majorOrder?.live ? MAJOR_ORDER_RISK : 0
-  return misfortuneRisk + strainRisk + majorOrderRisk
-}
-
+// The team term stacks the per-mission misfortune (when accepted), the
+// operation-long strain (when accepted), the live Major Order commitment and
+// the run-long mode (SEAF Support Package or Super Penance): the latter three
+// are felt on every mission of the operation/run, so they compound over its
+// 2–3 missions. A live MO replaces the strain, so its fixed risk is what keeps
+// the operation's Valor potential intact. The SEAF/Penance mode is a flat
+// team Valor stake, not a rule — see config.
 export interface TeamRiskBreakdown {
   misfortuneRisk: number
   strainRisk: number
   majorOrderRisk: number
+  mode: CrusadeMode | null
+  modeValor: number
   total: number
 }
 
-// The legible split of `teamRiskOf` for the pacts summary bar — same inputs,
+// The run-long mode's flat per-mission Valor: SEAF Support Package (assisted)
+// or Super Penance (hellish). Zero on the medium start, which has no mode.
+export function modeValorOf(state: DiveState): number {
+  const mode = state.settings?.mode
+  if (mode === 'seaf') {
+    return seafSupportValorAt(state.difficulty)
+  }
+  if (mode === 'penance') {
+    return penanceValorAt(state.difficulty)
+  }
+  return 0
+}
+
+// The legible split of the team term for the pacts summary bar — same inputs,
 // same acceptance flags, so the screen and the floor can never disagree.
 export function teamRiskBreakdown(state: DiveState): TeamRiskBreakdown {
   const misfortuneRisk = state.misfortuneAccepted && !state.misfortuneFailed
@@ -149,12 +157,19 @@ export function teamRiskBreakdown(state: DiveState): TeamRiskBreakdown {
     ? STRAIN_RISK[state.strainId ?? ''] ?? 0
     : 0
   const majorOrderRisk = state.majorOrder?.live ? MAJOR_ORDER_RISK : 0
+  const modeValor = modeValorOf(state)
   return {
     misfortuneRisk,
     strainRisk,
     majorOrderRisk,
-    total: misfortuneRisk + strainRisk + majorOrderRisk,
+    mode: state.settings?.mode ?? null,
+    modeValor,
+    total: misfortuneRisk + strainRisk + majorOrderRisk + modeValor,
   }
+}
+
+export function teamRiskOf(state: DiveState): number {
+  return teamRiskBreakdown(state).total
 }
 
 export interface StrainDecision {
@@ -423,7 +438,7 @@ export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOp
   const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
   // Bans are personal and crusade-long, so a promotion never re-offers a
   // banned item either.
-  const exclude = new Set([...startingItemIds(state.settings.variant), ...diver.bannedItemIds])
+  const exclude = new Set([...startingItemIds(state.settings.variant, state.settings.mode), ...diver.bannedItemIds])
   const owned = new Set(state.personalInventories[diver.id] ?? [])
   // Catch-up buys altitude, never rarity: the band is the base tier alone.
   const rolled = rollRewardOptions(

@@ -36,15 +36,15 @@ describe('joinDiver', () => {
   })
 
   it('grants the full personal kit to late joiners of a started dive', () => {
-    let state = createDiveState({ variant: 'standard' }, 'p1', 'Griffin')
+    let state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
     state = joinDiver(state, 'late', 'Latecomer')!
-    expect(state.personalInventories.late).toEqual(startingItemIds('standard'))
+    expect(state.personalInventories.late).toEqual(startingItemIds('medium'))
   })
 
   it('owes a mid-crusade joiner one catch-up pick per operation behind, capped', () => {
     // Standard starts at 3; driving the difficulty to 7 leaves 4 ops behind,
     // which is exactly the catch-up cap.
-    let state = createDiveState({ variant: 'standard' }, 'p1', 'Griffin')
+    let state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 11 })
     state = { ...state, difficulty: 7, missionIndex: 10, phase: 'spin', wheel: null }
     state = joinDiver(state, 'late', 'Latecomer')!
@@ -53,7 +53,7 @@ describe('joinDiver', () => {
   })
 
   it('owes nothing to joiners at the variant start difficulty or in the lobby', () => {
-    let state = createDiveState({ variant: 'standard' }, 'p1', 'Griffin')
+    let state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 11 })
     state = { ...state, wheel: null, phase: 'spin' }
     state = joinDiver(state, 'ontime', 'On Time')!
@@ -64,19 +64,19 @@ describe('joinDiver', () => {
 
   it('restores a departed diver\u2019s parked cache when they rejoin', () => {
     let state = joinDiver(joinDiver(createLobbyState(), 'p1', 'Griffin')!, 'p2', 'Two')!
-    state = reduce(state, { type: 'START_DIVE', settings: { variant: 'standard' } })
+    state = reduce(state, { type: 'START_DIVE', settings: { variant: 'medium' } })
     state = reduce(state, { type: 'LEAVE_DIVE', playerId: 'p1' })
-    expect(state.legacyCaches.p1).toEqual(startingItemIds('standard'))
+    expect(state.legacyCaches.p1).toEqual(startingItemIds('medium'))
     expect(state.hostId).toBe('p2')
     const rejoined = joinDiver(state, 'p1', 'Griffin')!
     expect(rejoined.legacyCaches.p1).toBeUndefined()
-    expect(rejoined.personalInventories.p1).toEqual(startingItemIds('standard'))
+    expect(rejoined.personalInventories.p1).toEqual(startingItemIds('medium'))
     // The cache is their old inventory — no promotion owed on top.
     expect(rejoined.divers.find(diver => diver.id === 'p1')?.catchUpOwed).toBe(0)
   })
 
   it('refuses seating while the squad resolves rewards or forfeit', () => {
-    let state = createDiveState({ variant: 'standard' }, 'p1', 'Griffin')
+    let state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 11 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
@@ -96,7 +96,7 @@ describe('joinDiver', () => {
     expect(seatingBlocked(full)).toMatch(/full/)
     let started = reduce(joinDiver(createLobbyState(), 'p1', 'Griffin')!, {
       type: 'START_DIVE',
-      settings: { variant: 'standard' },
+      settings: { variant: 'medium' },
     })
     started = reduce(started, { type: 'SPIN_WHEEL', seed: 11 })
     started = reduce(started, { type: 'ACCEPT_MISFORTUNE', accepted: true })
@@ -119,16 +119,16 @@ describe('joinDiver', () => {
 
 describe('createDiveState (composed from lobby helpers)', () => {
   it('produces the same started state as before the refactor', () => {
-    const state = createDiveState({ variant: 'standard' }, 'p1', 'Griffin')
+    const state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
     expect(state.phase).toBe('spin')
     expect(state.divers).toHaveLength(1)
     expect(state.divers[0]).toMatchObject({ id: 'p1', name: 'Griffin', isHost: true })
-    expect(state.personalInventories.p1).toEqual(startingItemIds('standard'))
+    expect(state.personalInventories.p1).toEqual(startingItemIds('medium'))
   })
 
   it('still flows through the reducer from a lobby state', () => {
     const lobby = joinDiver(createLobbyState(), 'p1', 'Griffin')
-    const started = reduce(lobby!, { type: 'START_DIVE', settings: { variant: 'quickplay' } })
+    const started = reduce(lobby!, { type: 'START_DIVE', settings: { variant: 'suicide', mode: 'seaf' } })
     expect(started.difficulty).toBe(7)
   })
 })

@@ -46,7 +46,12 @@ every diver's purse, and once their draft resolves a per-diver rotating **Requis
 tiers drawn from the ceiling risk bought — lets them buy named items, priced by tier then type. The
 team-performance Valor term is gone; chosen risk is the only thing that moves the ceiling (see
 Requisition — samples as currency).
-**Alpha has landed:** the save schema is frozen at v12 and the migration chain is open (see Save
+**Starting variants are now three difficulties:** squad size no longer gates a start (it fluctuates
+all crusade), so the five squad-size/kit variants collapsed into Medium (3), Hard (5) and Suicide
+Mission (7); the hard/suicide starts choose one of two mutually exclusive modes — the assisted
+**SEAF Support Package** (extra gear + a small flat Valor bump) or **Super Penance** (bare kit + a
+larger flat Valor stake, marked by a Hades-style flame) (see Starting variants).
+**Alpha has landed:** the save schema is frozen at v13 and the migration chain is open (see Save
 model). See [Roadmap](#roadmap).
 
 ## Roadmap

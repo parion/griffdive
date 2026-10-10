@@ -19,14 +19,19 @@ const props = withDefaults(defineProps<{
   misfortuneRisk?: number
   strainRisk?: number
   majorOrderRisk?: number
+  // The run-long mode's flat Valor (SEAF Support Package / Super Penance) and
+  // its label, when the caller has the split.
+  modeRisk?: number
+  modeLabel?: string
 }>(), {
   locked: false,
-  dormant: false,
   diverName: '',
   pendingText: '',
   misfortuneRisk: undefined,
   strainRisk: undefined,
   majorOrderRisk: undefined,
+  modeRisk: undefined,
+  modeLabel: undefined,
 })
 
 const LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
@@ -92,6 +97,9 @@ const legend = computed(() => {
     rows.push({ id: 'strain', name: 'Strain', value: props.strainRisk ?? 0 })
     if ((props.majorOrderRisk ?? 0) > 0) {
       rows.push({ id: 'mo', name: 'Major Order', value: props.majorOrderRisk ?? 0 })
+    }
+    if ((props.modeRisk ?? 0) > 0) {
+      rows.push({ id: 'mode', name: props.modeLabel ?? 'Mode', value: props.modeRisk ?? 0 })
     }
   }
   else {
@@ -316,6 +324,7 @@ const legend = computed(() => {
 .swatch.misfortune { background: var(--gold); }
 .swatch.strain { background: var(--orange); }
 .swatch.mo { background: var(--teal); }
+.swatch.mode { background: var(--orange); }
 .swatch.pact { background: var(--red); }
 .swatch.luck { background: var(--purple); }
 </style>

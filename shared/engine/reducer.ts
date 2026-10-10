@@ -38,7 +38,7 @@ function applyStart(state: DiveState, settings: CrusadeSettings): Partial<DiveSt
   const kit = STARTING_KITS[settings.variant]
   const personalInventories: Record<string, string[]> = {}
   for (const diver of state.divers) {
-    personalInventories[diver.id] = startingItemIds(settings.variant)
+    personalInventories[diver.id] = startingItemIds(settings.variant, settings.mode)
   }
   return {
     settings,

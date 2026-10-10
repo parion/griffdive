@@ -2,17 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS, ITEMS_BY_ID } from '../data/catalog'
 import type { FrontId } from '../data/fronts'
 import { PACTS } from '../data/pacts'
-import { BONUS_STATS, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor, directiveValorAt } from './config'
-import { startingItemIds } from './progression'
+import { BONUS_STATS, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, PENANCE_VALOR, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor, directiveValorAt, seafSupportValorAt } from './config'
+import { SEAF_SUPPORT_KIT, startingItemIds } from './progression'
 import { DIVERS_CHOICE_OPTION_ID, itemPrice, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { activeMisfortune, allDiversPicked, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverValor, diverOptions, pactOfferFor, pactRiskOf, rewardPoolFor, shopStockFor, teamRiskOf } from './selectors'
+import { activeMisfortune, allDiversPicked, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverValor, diverOptions, modeValorOf, pactOfferFor, pactRiskOf, rewardPoolFor, shopStockFor, teamRiskOf } from './selectors'
 import { deriveFront, deriveStrain } from './wheel'
 import type { DiveState, DiverState, EngineAction } from './types'
 
-const SETTINGS = { variant: 'standard' as const }
+const SETTINGS = { variant: 'medium' as const }
 
 function freshState(): DiveState {
   return createDiveState(SETTINGS, 'p1', 'Griffin')
@@ -141,7 +141,7 @@ describe('START_DIVE', () => {
     expect(state.phase).toBe('spin')
     expect(state.difficulty).toBe(3)
     // Every diver owns the full starting kit — stratagems included.
-    expect(state.personalInventories.p1).toEqual(startingItemIds('standard'))
+    expect(state.personalInventories.p1).toEqual(startingItemIds('medium'))
     expect(state.rerollTokens).toBe(1)
   })
 
@@ -150,6 +150,20 @@ describe('START_DIVE', () => {
     const spun = reduce(state, { type: 'SPIN_WHEEL', seed: 5 })
     const restarted = reduce(spun, { type: 'START_DIVE', settings: SETTINGS })
     expect(restarted).toBe(spun)
+  })
+
+  it('grants the SEAF Support Package gear and Valor only in the seaf mode', () => {
+    const seaf = createDiveState({ variant: 'suicide', mode: 'seaf' }, 'p1', 'Griffin')
+    for (const id of [...SEAF_SUPPORT_KIT.stratagems, ...SEAF_SUPPORT_KIT.boosters]) {
+      expect(seaf.personalInventories.p1).toContain(id)
+    }
+    expect(modeValorOf(seaf)).toBe(seafSupportValorAt(7))
+    expect(teamRiskOf(seaf)).toBe(seafSupportValorAt(7))
+
+    const penance = createDiveState({ variant: 'suicide', mode: 'penance' }, 'p1', 'Griffin')
+    expect(penance.personalInventories.p1).toEqual(startingItemIds('suicide'))
+    expect(modeValorOf(penance)).toBe(PENANCE_VALOR[7])
+    expect(teamRiskOf(penance)).toBe(PENANCE_VALOR[7])
   })
 })
 
@@ -295,7 +309,7 @@ describe('ACCEPT_MISFORTUNE (optional team risk)', () => {
   it('accepts a misfortune the squad can field', () => {
     // Quickplay's extra red stratagems clear the four-airstrike floor.
     const state: DiveState = {
-      ...createDiveState({ variant: 'quickplay' }, 'p1', 'Griffin'),
+      ...createDiveState({ variant: 'suicide', mode: 'seaf' }, 'p1', 'Griffin'),
       difficulty: 6,
       wheel: { seed: 1, misfortuneId: 'oopsAllAirstrikes' },
       phase: 'decision',

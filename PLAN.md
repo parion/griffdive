@@ -72,6 +72,7 @@ IDs are stable and append-only; do not renumber.
 | N39 | Team reroll-token economy (more sources for the shared pool) | Balance/Design | M | Todo (DEC-5 follow-on) | new |
 | N41 | Rate limits trust spoofable `X-Forwarded-For` | Infra/Security | S | Todo | new |
 | N42 | Session-abuse bounds: per-IP caps, fast lobby reaping, save TTL | Infra/Security | M | Todo | new |
+| N43 | Starting variants: three difficulties + SEAF/Penance modes | Rules | L | Done | new |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -591,6 +592,19 @@ emplacements/turrets (`Defense`) — and every bucket sorts best-tier-first with
 tiebreaks, so rewards slot into a stable order across catalog refreshes. `InventoryGrid` renders the
 sorted kit. Covered by `shared/data/ordering.spec.ts` (including a total-order check over the real
 stratagem catalog).
+
+**N43 · Starting variants: three difficulties + SEAF/Penance modes. Done.** Squad size no longer
+gates a variant (it fluctuates all crusade), so the five squad-size/kit variants collapsed into
+**three starting difficulties** — `medium` (3), `hard` (5), `suicide` (7) — and the hard/suicide
+starts pick one of two **mutually exclusive modes** (`CrusadeSettings.mode`). **SEAF Support
+Package** (`seaf`, default) is the assisted ride: `SEAF_SUPPORT_KIT` extra stratagems + boosters
+plus a flat per-mission Valor bump (`SEAF_SUPPORT_VALOR` +1/+2 at diffs 5/7). **Super Penance**
+(`penance`) is the hellish task: bare surplus kit and a larger flat Valor stake (`PENANCE_VALOR`
++2/+3), marked by a Hades-style flame animation in the lobby and Bridge setup cards. The mode
+rides `teamRiskOf` as a run-long team term, so every Valor preview/roll/meter picks it up.
+`ENGINE_VERSION` 20 → 21; `SAVE_SCHEMA_VERSION` 11 → 12 (`migrateV11toV12` remaps the legacy ids —
+Quickplay → suicide + `seaf`). Covered by `progression.spec.ts`, the START_DIVE mode test, and the
+v11→v12 migration tests.
 
 ## Accepted / notes
 

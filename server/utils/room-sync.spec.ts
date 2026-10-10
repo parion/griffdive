@@ -134,7 +134,7 @@ describe('room-sync', () => {
 
     // Host launches the crusade first — the room starts in lobby phase.
     await processAction(kv, peers, host, {
-      action: { type: 'START_DIVE', settings: { variant: 'standard' } },
+      action: { type: 'START_DIVE', settings: { variant: 'medium' } },
     })
     sent(host).length = 0
 
@@ -216,7 +216,7 @@ describe('room-sync', () => {
     const joinerId = welcomeOf(joiner).selfId
 
     // Launch, spin, accept, and get both divers into the diving phase.
-    await processAction(kv, peers, host, { action: { type: 'START_DIVE', settings: { variant: 'standard' } } })
+    await processAction(kv, peers, host, { action: { type: 'START_DIVE', settings: { variant: 'medium' } } })
     await processAction(kv, peers, host, { action: { type: 'SPIN_WHEEL', seed: 42 } })
     await processAction(kv, peers, host, { action: { type: 'ACCEPT_MISFORTUNE', accepted: true } })
     await processAction(kv, peers, host, { action: { type: 'ACCEPT_STRAIN', accepted: false } })
@@ -302,7 +302,7 @@ describe('room-sync', () => {
     const joinerId = joinerWelcome.selfId
 
     await processAction(kv, peers, host, {
-      action: { type: 'START_DIVE', settings: { variant: 'standard' } },
+      action: { type: 'START_DIVE', settings: { variant: 'medium' } },
     })
     sent(host).length = 0
 
@@ -339,7 +339,7 @@ describe('room-sync', () => {
     const joinerId = joinerWelcome.selfId
 
     await processAction(kv, peers, host, {
-      action: { type: 'START_DIVE', settings: { variant: 'standard' } },
+      action: { type: 'START_DIVE', settings: { variant: 'medium' } },
     })
     const banked = (await lastSnapshot(host)).personalInventories[joinerId]?.length ?? 0
     expect(banked).toBeGreaterThan(0)
@@ -368,7 +368,7 @@ describe('room-sync', () => {
     host.context.roomCode = code
     await processHello(kv, peers, host, { name: 'Host' })
 
-    await processAction(kv, peers, host, { action: { type: 'START_DIVE', settings: { variant: 'standard' } } })
+    await processAction(kv, peers, host, { action: { type: 'START_DIVE', settings: { variant: 'medium' } } })
     await processAction(kv, peers, host, { action: { type: 'SPIN_WHEEL', seed: 42 } })
     await processAction(kv, peers, host, { action: { type: 'ACCEPT_MISFORTUNE', accepted: true } })
     await processAction(kv, peers, host, { action: { type: 'ACCEPT_STRAIN', accepted: false } })
@@ -684,7 +684,7 @@ describe('room-sync', () => {
     // write clobbers the first; with it both land.
     await Promise.all([
       processAction(kv, peers, host, {
-        action: { type: 'START_DIVE', settings: { variant: 'standard' } },
+        action: { type: 'START_DIVE', settings: { variant: 'medium' } },
       }),
       processAction(kv, peers, host, {
         action: { type: 'SET_WARBONDS', playerId: hostId, warbondCodes: ['warbond3'] },
@@ -692,7 +692,7 @@ describe('room-sync', () => {
     ])
 
     const room = await loadRoom(kv, code)
-    expect(room?.state.settings).toEqual({ variant: 'standard' })
+    expect(room?.state.settings).toEqual({ variant: 'medium' })
     expect(room?.state.divers.find(diver => diver.id === hostId)?.warbondCodes).toEqual(['warbond3'])
   })
 

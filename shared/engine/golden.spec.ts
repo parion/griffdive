@@ -9,7 +9,7 @@ import { diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
 import type { DiveState } from './types'
 
 const UPDATE = process.env.GRIFFDIVE_UPDATE_GOLDENS === '1'
-const goldenPath = join(dirname(fileURLToPath(import.meta.url)), '__goldens__', 'crusade-standard.json')
+const goldenPath = join(dirname(fileURLToPath(import.meta.url)), '__goldens__', 'crusade-medium.json')
 
 // Always-selectable pacts (none appear in BLOCKED_UNDER_MISFORTUNE), so the
 // scripted rotation is meaningful under every possible misfortune. Each
@@ -45,7 +45,7 @@ interface MissionRecord {
 }
 
 function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptions: string[] } {
-  let state = createDiveState({ variant: 'standard' }, 'host', 'Griffin')
+  let state = createDiveState({ variant: 'medium' }, 'host', 'Griffin')
   const records: MissionRecord[] = []
   let firstOptions: string[] = []
   let firstRecorded = false
@@ -159,7 +159,7 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
   return { state, records, firstOptions }
 }
 
-describe('golden: full scripted crusade (standard, diff 3 → 10)', () => {
+describe('golden: full scripted crusade (medium, diff 3 → 10)', () => {
   it('replays deterministically and matches the recorded snapshot', () => {
     const { state, records, firstOptions } = playCrusade()
 
@@ -168,7 +168,7 @@ describe('golden: full scripted crusade (standard, diff 3 → 10)', () => {
     expect(records.length).toBeGreaterThan(20)
 
     const snapshot = {
-      variant: 'standard',
+      variant: 'medium',
       missions: records,
       firstOptions,
       final: {

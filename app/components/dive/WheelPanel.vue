@@ -104,7 +104,7 @@ const preRoll = computed(() => !props.state.wheel && !props.state.frontId)
 
 // The operation ordinal (each cleared operation bumps difficulty by one), so
 // the title reads "Operation 5 · Mission 1 of 3" like the rest of the terminal.
-const variant = computed(() => props.state.settings?.variant ?? 'standard')
+const variant = computed(() => props.state.settings?.variant ?? 'medium')
 const opNumber = computed(() => catchUpOpsBehind(props.state.difficulty, variant.value) + 1)
 const subtitle = computed(() => {
   const base = `Operation ${opNumber.value} · Mission ${props.state.missionInOperation} of ${opLength.value}`

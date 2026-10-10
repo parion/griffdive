@@ -1,5 +1,5 @@
 import { ITEMS_BY_ID } from '../data/catalog'
-import type { CrusadeVariant } from './types'
+import type { CrusadeMode, CrusadeVariant } from './types'
 
 export const DIFFICULTY_NAMES: Readonly<Record<number, string>> = {
   3: 'Medium',
@@ -19,40 +19,27 @@ export function difficultyName(difficulty: number): string {
 export interface VariantDefinition {
   id: CrusadeVariant
   name: string
-  squadSize: string
   description: string
 }
 
+// Three starting difficulties; squad size never gates a variant (it fluctuates
+// mid-crusade). The hard and suicide starts also choose a mode — the SEAF
+// Support Package or Super Penance — see STARTING_KITS below.
 export const VARIANTS: readonly VariantDefinition[] = [
   {
-    id: 'standard',
-    name: 'Standard',
-    squadSize: '3–4 divers',
+    id: 'medium',
+    name: 'Medium',
     description: 'Start at difficulty 3 with surplus, outdated gear.',
   },
   {
-    id: 'soloDuo',
-    name: 'Solo/Duo',
-    squadSize: '1–2 divers',
-    description: 'Difficulty 3, plus the Orbital Precision Strike.',
+    id: 'hard',
+    name: 'Hard',
+    description: 'Start at difficulty 5. Choose the SEAF Support Package or Super Penance.',
   },
   {
-    id: 'super',
-    name: 'Super',
-    squadSize: '3–4 divers',
-    description: 'Difficulty 4. Melee secondaries only, Integrated Explosives, Ballistic Shield.',
-  },
-  {
-    id: 'soloDuoSuper',
-    name: 'Solo/Duo Super',
-    squadSize: '1–2 divers',
-    description: 'Super kit, plus the Orbital Precision Strike.',
-  },
-  {
-    id: 'quickplay',
-    name: 'Quickplay',
-    squadSize: 'any squad',
-    description: 'Straight in at difficulty 7 with extra stratagems and boosters.',
+    id: 'suicide',
+    name: 'Suicide Mission',
+    description: 'Start at difficulty 7. Choose the SEAF Support Package or Super Penance.',
   },
 ]
 
@@ -67,7 +54,9 @@ export interface StartingKit {
 }
 
 // Starting kits mirror Penitent Crusade's surplus loadouts (upstream
-// getStartingItems.js), expressed as catalog ids.
+// getStartingItems.js), expressed as catalog ids. Every starting difficulty
+// fields the same surplus kit; the SEAF Support Package (below) is the only
+// kit difference, and it is an explicit mode choice.
 const BASE_KIT = {
   stratagems: [
     'onetrueflag',
@@ -92,53 +81,34 @@ const BASE_KIT = {
   boosters: [],
 } satisfies Omit<StartingKit, 'startDifficulty'>
 
-const MELEE_SECONDARIES = BASE_KIT.secondaries.filter(id => id !== 'p2peacemaker')
-const SOLO_STRIKE = ['orbitalprecisionstrike']
-const BALLISTIC_SHIELD = ['sh20ballisticshieldbackpack']
-const QUICKPLAY_STRATS = [
-  ...BALLISTIC_SHIELD,
-  ...SOLO_STRIKE,
-  'grenadierbattlement',
-  'antitankmines',
-  'eagle110mmrocketpods',
-  'orbitalgatlingbarrage',
-  'arc3arcthrower',
-]
-const QUICKPLAY_BOOSTERS = ['uavrecon', 'muscleenhancement']
-
 export const STARTING_KITS: Readonly<Record<CrusadeVariant, StartingKit>> = {
-  standard: { ...BASE_KIT, startDifficulty: 3 },
-  soloDuo: {
-    ...BASE_KIT,
-    startDifficulty: 3,
-    stratagems: [...BASE_KIT.stratagems, ...SOLO_STRIKE],
-  },
-  super: {
-    ...BASE_KIT,
-    startDifficulty: 4,
-    secondaries: MELEE_SECONDARIES,
-    armorPassives: ['integratedexplosives'],
-    stratagems: [...BASE_KIT.stratagems, ...BALLISTIC_SHIELD],
-  },
-  soloDuoSuper: {
-    ...BASE_KIT,
-    startDifficulty: 4,
-    secondaries: MELEE_SECONDARIES,
-    armorPassives: ['integratedexplosives'],
-    stratagems: [...BASE_KIT.stratagems, ...BALLISTIC_SHIELD, ...SOLO_STRIKE],
-  },
-  quickplay: {
-    ...BASE_KIT,
-    startDifficulty: 7,
-    stratagems: [...BASE_KIT.stratagems, ...QUICKPLAY_STRATS],
-    boosters: QUICKPLAY_BOOSTERS,
-  },
+  medium: { ...BASE_KIT, startDifficulty: 3 },
+  hard: { ...BASE_KIT, startDifficulty: 5 },
+  suicide: { ...BASE_KIT, startDifficulty: 7 },
+}
+
+// The SEAF Support Package: the assisted ride's extra gear, granted only when
+// the squad picks mode 'seaf'. Super Penance grants none of it.
+export const SEAF_SUPPORT_KIT: Pick<StartingKit, 'stratagems' | 'boosters'> = {
+  stratagems: [
+    'sh20ballisticshieldbackpack',
+    'orbitalprecisionstrike',
+    'grenadierbattlement',
+    'antitankmines',
+    'eagle110mmrocketpods',
+    'orbitalgatlingbarrage',
+    'arc3arcthrower',
+  ],
+  boosters: ['uavrecon', 'muscleenhancement'],
 }
 
 // The full starting kit every diver owns personally — stratagems included
 // (no shared pool: earned stratagems belong to the diver who rolled them).
-export function startingItemIds(variant: CrusadeVariant): string[] {
+// Only the SEAF mode appends the support package; 'penance' (and no mode) get
+// the bare surplus.
+export function startingItemIds(variant: CrusadeVariant, mode?: CrusadeMode): string[] {
   const kit = STARTING_KITS[variant]
+  const support = mode === 'seaf' ? SEAF_SUPPORT_KIT : null
   return [
     ...kit.stratagems,
     ...kit.primaries,
@@ -146,6 +116,8 @@ export function startingItemIds(variant: CrusadeVariant): string[] {
     ...kit.throwables,
     ...kit.armorPassives,
     ...kit.boosters,
+    ...(support?.stratagems ?? []),
+    ...(support?.boosters ?? []),
   ]
 }
 
@@ -157,9 +129,12 @@ export function catchUpOpsBehind(difficulty: number, variant: CrusadeVariant): n
 
 export function assertKitsValid(): void {
   for (const variant of Object.keys(STARTING_KITS) as CrusadeVariant[]) {
-    for (const id of startingItemIds(variant)) {
-      if (!ITEMS_BY_ID.has(id)) {
-        throw new Error(`Starting kit "${variant}" references unknown item "${id}"`)
+    for (const mode of [undefined, 'seaf'] as (CrusadeMode | undefined)[]) {
+      const label = `${variant}${mode ? `+${mode}` : ''}`
+      for (const id of startingItemIds(variant, mode)) {
+        if (!ITEMS_BY_ID.has(id)) {
+          throw new Error(`Starting kit "${label}" references unknown item "${id}"`)
+        }
       }
     }
   }
