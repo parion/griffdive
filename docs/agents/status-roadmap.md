@@ -40,8 +40,13 @@ a solo diver's directive is effectively personal. **Broken directives fail like 
 the field (`FAIL_MISFORTUNE`, host-only, `diving` phase) — its shared risk is voided for every diver
 and each diver forfeits one reward option. UI copy calls the team scope **Squad Directive** and the
 wheel the **Wheel of Adversity**; engine ids and the action union keep the `misfortune` name. The
-Field manual slide-over was retired — the Griffdiver Briefing covers onboarding.
-**Alpha has landed:** the save schema is frozen at v11 and the migration chain is open (see Save
+Field manual slide-over was retired — the Griffdiver Briefing covers onboarding. **Samples became
+Requisition currency:** a successful report banks a sample haul (time remaining is a multiplier) into
+every diver's purse, and once their draft resolves a per-diver rotating **Requisition stock** — its
+tiers drawn from the ceiling risk bought — lets them buy named items, priced by tier then type. The
+team-performance Valor term is gone; chosen risk is the only thing that moves the ceiling (see
+Requisition — samples as currency).
+**Alpha has landed:** the save schema is frozen at v12 and the migration chain is open (see Save
 model). See [Roadmap](#roadmap).
 
 ## Roadmap

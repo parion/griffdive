@@ -19,9 +19,12 @@ Design principles — every gameplay decision must honor these:
    current risk buys (skull icons à la Dead Cells cursed-biome doors / Hades' Erebus gates). No
    hidden math.
 3. **Reward scales with stakes.** Flat drops regardless of difficulty is the documented failure of
-   both Penitent Crusade and Dead Cells' late-game cursed chests. Risk must move the odds.
+   both Penitent Crusade and Dead Cells' late-game cursed chests. Risk must move the odds — and the
+   shelf: chosen risk rolls the draft ceiling, and the same ceiling caps the Requisition stock.
 4. **Guarantee rarity class, never specific items** (Balatro skip tags). Players buy a *chance* at
-   better gear, not a shopping list.
+   better gear, not a shopping list — with one deliberate exception: the **Requisition stock** sells
+   named items for sample currency, priced by the tier risk bought (see Requisition — samples as
+   currency). The wheel and the draft still guarantee classes.
 5. **Misfortunes reshape decisions, not stats** (Deep Rock Galactic's mutator design). A misfortune
    should change loadout strategy, route, or behavior — not just make numbers bigger.
 6. **Team risk is shared; personal risk is personal** (Slay the Spire 2 co-op model). The whole squad
@@ -82,9 +85,12 @@ engine.
   `ValorMeter` is `dormant` during `spin` (a short Valor explainer + the reward floor instead of an
   all-zero gauge), and the old wheel-pool card was dropped (the wheel already shows every rule).
   `WheelOfMisfortune.vue` is a real SVG wheel whose rotation is derived from the wheel seed.
-  On the `rewards` phase the centre swaps between the `RewardDraft` pod cabinet and the dedicated
-  `BonusCeremony` honors screen — the left rail gains `MissionReportSummary` and the right rail
-  swaps `ValorMeter` for `RewardTokensRail` on honors.
+  On the `rewards` phase the centre swaps between the `RewardDraft` pod cabinet and the
+  `RewardsSettlement` screen — the draft's post-pick CTA hands off to the settlement, which carries
+  the `BonusCeremony` honors contest **and** the `RequisitionStock` shelf (the shop lives here, never
+  in the draft); when honors aren't due that turn the ceremony is replaced by a disabled panel and the
+  shelf stays available. The left rail gains `MissionReportSummary` and the right rail swaps
+  `ValorMeter` for `RewardTokensRail` on the settlement.
   The Armory is an in-app drawer (`ArmoryDrawer.vue`) titled **Kit** in every player-facing
   string (code keeps the `armory` names); the pact screen links to it ("Check your kit"). The
   Griffdiver Briefing (`BriefingOverlay.vue`) is presented as the **Griffdive tutorial**: a framed

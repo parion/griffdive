@@ -98,6 +98,9 @@ export function joinDiver(state: DiveState, playerId: string, name: string): Div
     catchUpOwed: catchUpGranted,
     skipsCurrentDraft: state.phase === 'diving',
     rewardTokens: 0,
+    // Requisition currency is personal and does not survive leaving a dive:
+    // a rejoining Helldiver starts their purse empty again.
+    sampleBank: 0,
     bannedItemIds: [],
     rewardRerollSeed: null,
     rewardBanned: false,

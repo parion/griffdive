@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { performanceValor } from '~~/shared/engine/rewards'
 import { diverOptions, majorOrderFronts, pactRiskOf, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
@@ -74,15 +73,6 @@ const pactRisk = computed(() => {
     return livePactRisk.value
   }
   return state.value ? pactRiskOf(diver, state.value.difficulty) : 0
-})
-const performance = computed(() => {
-  const current = state.value
-  if (!current) {
-    return 0
-  }
-  return current.phase === 'rewards' || current.phase === 'forfeit' || current.phase === 'complete'
-    ? performanceValor(current.lastReport)
-    : 0
 })
 const valorLocked = computed(() => {
   const phase = state.value?.phase
@@ -317,6 +307,13 @@ function banRewards(optionIds: string[]): void {
   }
 }
 
+// Requisition: buy a stocked item with the diver's sample bank (self-service).
+function buyItem(itemId: string): void {
+  if (selfId.value) {
+    dispatch({ type: 'BUY_ITEM', playerId: selfId.value, itemId })
+  }
+}
+
 function spinBonus(): void {
   dispatch({ type: 'SPIN_BONUS', seed: session.newSeed() })
 }
@@ -497,6 +494,7 @@ function launchCrusade(variant: CrusadeVariant): void {
       @pick="pick"
       @reroll-rewards="rerollRewards"
       @ban-rewards="banRewards"
+      @buy-reward="buyItem"
       @spin-bonus="spinBonus"
       @award-bonus="awardBonus"
       @advance="advance"
@@ -602,7 +600,6 @@ function launchCrusade(variant: CrusadeVariant): void {
           :strain-risk="riskBreakdown.strainRisk"
           :major-order-risk="riskBreakdown.majorOrderRisk"
           :pact-risk="pactRisk"
-          :performance="performance"
           :locked="valorLocked"
           :dormant="state.phase === 'spin'"
           :diver-name="diverName(selfId)"
@@ -712,6 +709,7 @@ function launchCrusade(variant: CrusadeVariant): void {
             @pick="pick"
             @reroll="rerollRewards"
             @ban="banRewards"
+            @buy="buyItem"
             @spin-bonus="spinBonus"
             @award-bonus="awardBonus"
             @advance="advance"

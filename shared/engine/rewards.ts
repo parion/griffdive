@@ -4,8 +4,10 @@ import {
   MAX_OPTIONS,
   OVERFLOW_S_LUCK,
   OVERFLOW_S_PLUS_LUCK,
-  SAMPLE_VALOR_CAP,
-  SAMPLE_VALOR_WEIGHTS,
+  SAMPLE_POINTS,
+  SAMPLE_PRICE_TIER,
+  SAMPLE_PRICE_TYPE,
+  SAMPLE_PRICE_TYPE_DEFAULT,
   S_PLUS_BONUS_OPTIONS,
   S_PLUS_OVERFLOW_CAP,
   S_PLUS_UPGRADE_DIVISOR,
@@ -13,7 +15,7 @@ import {
   S_UPGRADE_DIVISOR,
   STARS_TO_OPTIONS,
   TIER_ROLL_WEIGHT_BASE,
-  TIME_VALOR_MAX,
+  TIME_HAUL_FLOOR,
   UPGRADE_CAP,
   UPGRADE_PREVIEW_FLOOR,
   VALOR_METER_MAX,
@@ -28,7 +30,7 @@ import {
 import type { BonusStat } from './config'
 import { deriveSeed, mulberry32, pickIndex, pickWeighted } from './rng'
 import type { Rng } from './rng'
-import type { MissionReport, RewardTier } from './types'
+import type { MissionReport, RewardTier, SampleCounts } from './types'
 
 const TIER_INDEX: Readonly<Record<Tier, number>> = { c: 0, b: 1, a: 2, s: 3 }
 const CEILING_LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
@@ -77,32 +79,48 @@ export const DIVERS_CHOICE_ITEM: Item = {
   tier: 's',
 }
 
-// Chosen risk (accepted team misfortune + personal pacts) plus the small
-// team-performance term is the diver's Valor — it buys odds, not tiers.
-export function valorOf(teamRisk: number, pactRisk: number, performance = 0): number {
-  return teamRisk + pactRisk + performance
+// Chosen risk (accepted team misfortune + personal pacts) is the diver's Valor
+// — it buys odds, not tiers. Samples are a separate currency and never feed it.
+export function valorOf(teamRisk: number, pactRisk: number): number {
+  return teamRisk + pactRisk
 }
 
-// Team performance from the mission just reported: a fast clear is worth up to
-// TIME_VALOR_MAX, samples up to SAMPLE_VALOR_CAP. Squad-level, so every diver
-// carries it; zero on the first mission and on any failed mission.
-export function performanceValor(report: MissionReport | null): number {
+// The sample haul's raw worth, before the extraction-speed multiplier. No cap:
+// this is currency, not Valor — difficulty already scales it through the
+// game's own sample mix (commons dominate early, supers appear at 6).
+export function haulValue(samples: SampleCounts | undefined): number {
+  if (!samples) {
+    return 0
+  }
+  return (
+    Math.max(0, samples.common) * SAMPLE_POINTS.common
+    + Math.max(0, samples.rare) * SAMPLE_POINTS.rare
+    + Math.max(0, samples.super) * SAMPLE_POINTS.super
+  )
+}
+
+// Extraction speed scales the purse: TIME_HAUL_FLOOR at no time remaining, 1.0
+// at a full clock. An absent time reading counts as none.
+export function timeHaulMultiplier(timePct: number | undefined): number {
+  const fraction = timePct === undefined ? 0 : Math.min(1, Math.max(0, timePct / 100))
+  return TIME_HAUL_FLOOR + (1 - TIME_HAUL_FLOOR) * fraction
+}
+
+// Sample points a successful mission banks into every diver's purse. Rounded
+// down — a partial point is not currency.
+export function missionHaul(report: MissionReport | null): number {
   if (!report) {
     return 0
   }
-  const time = report.timePct === undefined
-    ? 0
-    : Math.min(1, Math.max(0, report.timePct / 100)) * TIME_VALOR_MAX
-  const samples = report.samples
-  const sample = samples
-    ? Math.min(
-        SAMPLE_VALOR_CAP,
-        Math.max(0, samples.common) * SAMPLE_VALOR_WEIGHTS.common
-        + Math.max(0, samples.rare) * SAMPLE_VALOR_WEIGHTS.rare
-        + Math.max(0, samples.super) * SAMPLE_VALOR_WEIGHTS.super,
-      )
-    : 0
-  return time + sample
+  return Math.floor(haulValue(report.samples) * timeHaulMultiplier(report.timePct))
+}
+
+// Requisition price: tier first, then type (a booster out-prices an armor
+// passive). Unknown categories cost the default multiplier.
+export function itemPrice(item: Item): number {
+  const base = SAMPLE_PRICE_TIER[item.tier]
+  const multiplier = SAMPLE_PRICE_TYPE[item.category] ?? SAMPLE_PRICE_TYPE_DEFAULT
+  return Math.round(base * multiplier)
 }
 
 // The offer's tier ceiling is rolled: start at the difficulty's base tier,
@@ -263,4 +281,22 @@ export function rollRewardOptions(
     taken.add(item.id)
   }
   return picked
+}
+
+// The rotating Requisition stock: one item per star the difficulty can award,
+// drawn from the band the diver's Valor bought for the draft (base tier up to
+// the rolled ceiling) and weighted toward the top, like the draft. No item
+// carries S+, and the stock is not Liberty's Cross, so an S+ ceiling maps to S
+// (its bonus slot stays in the draft). Armor pieces never appear
+// (rewardPoolFor already excludes them).
+export function rollShopStock(
+  seed: number,
+  ceiling: RewardTier,
+  floor: RewardTier,
+  count: number,
+  pool: readonly Item[],
+  excludeIds: ReadonlySet<string>,
+): RewardOption[] {
+  const mappedCeiling: RewardTier = ceiling === 'S+' ? 'S' : ceiling
+  return rollRewardOptions(seed, mappedCeiling, floor, count, pool, excludeIds)
 }

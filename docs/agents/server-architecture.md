@@ -47,7 +47,14 @@ app/
                    PactPicker, RewardDraft — the reward draft (a stars→options
                    badge, the per-step CeilingTrack with a sliding marker, a
                    pod-drop cabinet of RewardPod reveal cards stamped Banked/Banned,
-                   and the always-on reward-token bar that links to honors),
+                   and the always-on reward-token bar whose post-pick CTA opens the settlement),
+                   RewardsSettlement — the post-draft screen: the Squad Honors
+                   contest above the Requisition shelf when honors is due, or the
+                   shelf above a disabled honors panel when it isn't; desktop and
+                   phone share it,
+                   RequisitionStock — the post-draft rotating shelf (per-diver
+                   seeded items with tier×type prices, the sample purse and
+                   buy controls; titled **Brasch's Bargains**),
                    MissionReportSummary — the left-rail report card,
                    RewardTokensRail — the honors rail's per-diver token banks,
                    ValorMeter — the live Valor gauge
@@ -65,8 +72,10 @@ app/
                    resolves on hover/focus/tap, click toggles),
                    ui/ (BrandMark — the Griffdive chevron mark, ItemCard, TierBadge, RiskPips — risk
                    dots, with a rolling back-and-forth state while a wheel draw reels,
-                   SampleCanister/SegmentedBar — the report's tinted sample jars and
-                   click-to-set time bar (touch scrubs: press and drag sets the value), HoldButton — the press-and-hold confirm,
+                   SampleCanister/SegmentedBar — the report's tinted sample tubes and
+                   click-to-set time bar (both scrub: press and drag sets the value; the
+                   tube's liquid level is the indicator and its editable number the keyboard
+                   path), HoldButton — the press-and-hold confirm,
                    ChangelogModal — GitHub deploy log shown from the alpha header chip, AppDrawer —
                    the themed right-hand Reka
                     Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer —
@@ -161,7 +170,7 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 | S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `dive-locked`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message`, `rate-limited` |
 
 REST fallbacks: `POST /api/rooms` → `{ code }`; `GET /api/rooms/:code` → `{ code, state }` (404).
-Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`,
+Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `BUY_ITEM`,
 `SET_NAME`) are
 coerced to the sender — a client can never act as another diver.
 
@@ -178,6 +187,7 @@ Canonical engine actions (the reducer union; keep names stable):
 `START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
 `DEAL_PACTS{}` `SET_MAJOR_ORDER{order}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
+`BUY_ITEM{playerId,itemId}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
 `AWARD_BONUS{playerId}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
 `LEAVE_DIVE{playerId}` `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
@@ -185,7 +195,7 @@ Canonical engine actions (the reducer union; keep names stable):
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
 `ACCEPT_STRAIN`, `DEAL_PACTS`, `SET_MAJOR_ORDER`, `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `FAIL_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
-`KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
+`KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `BUY_ITEM`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated
 diver, `unsave-dive` is host-only; the Steam lobby link is likewise outside the union and

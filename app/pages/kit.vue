@@ -521,7 +521,7 @@ onBeforeUnmount(() => {
           <span class="vl">Valor</span>
           <div
             role="img"
-            aria-label="Valor sources stacked: directive, strain or Major Order, pacts, performance"
+            aria-label="Valor sources stacked: directive, strain or Major Order, pacts"
             style="display: flex; gap: 12px"
           >
             <div style="display: flex; flex-direction: column; gap: 2px; width: 20px; padding: 2px; border: 1px solid #2C3022">
@@ -539,7 +539,7 @@ onBeforeUnmount(() => {
             </div>
             <div style="display: flex; flex-direction: column; justify-content: space-between; width: 136px; padding: 1px 0">
               <span
-                v-for="s in [{ n: 'Performance', c: '#4AD7C8' }, { n: 'Pacts', c: '#FF4B3E' }, { n: 'Strain · MO', c: '#FF9F43' }, { n: 'Directive', c: '#FFD642' }]"
+                v-for="s in [{ n: 'Pacts', c: '#FF4B3E' }, { n: 'Strain · MO', c: '#FF9F43' }, { n: 'Directive', c: '#FFD642' }]"
                 :key="s.n"
                 style="display: flex; align-items: center; gap: 7px"
               >
@@ -1104,47 +1104,13 @@ onBeforeUnmount(() => {
           </div><span class="cap"><b>Star radio</b> · {{ stars }}/5</span>
         </div>
         <div class="cell">
-          <div
-            role="group"
-            :aria-label="`Common samples, ${samples}`"
-            style="display: flex; align-items: center; gap: 4px"
-          >
-            <button
-              class="ghost step"
-              aria-label="Remove a common sample"
-              :disabled="samples <= 0"
-              type="button"
-              @click="samples = Math.max(0, samples - 1)"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.4"
-                aria-hidden="true"
-              ><path d="M5 12h14" /></svg>
-            </button><span
-              class="disp"
-              style="width: 50px; text-align: center; font-size: 24px"
-            >{{ samples }}</span><button
-              class="ghost step"
-              aria-label="Add a common sample"
-              type="button"
-              @click="samples += 1"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.4"
-                aria-hidden="true"
-              ><path d="M5 12h14M12 5v14" /></svg>
-            </button>
-          </div><span class="cap"><b>−/+ stepper</b> · 44</span>
+          <SampleCanister
+            v-model="samples"
+            :max="40"
+            tone="common"
+            label="Common"
+            icon="/images/svgs/Common_Sample_Icon.svg"
+          /><span class="cap"><b>Tube slider</b> · {{ samples }}/40</span>
         </div>
       </div>
     </section>
@@ -1832,7 +1798,7 @@ onBeforeUnmount(() => {
             <span
               class="sub"
               style="color: #ECEADA"
-            >+ Performance · odds</span>
+            >+ Valor · odds</span>
             <div style="height: 32px; display: flex; align-items: baseline; gap: 5px">
               <span
                 class="disp"
@@ -1842,11 +1808,11 @@ onBeforeUnmount(() => {
             <div style="display: flex; gap: 12px">
               <div
                 role="progressbar"
-                aria-label="Valor with performance"
+                aria-label="Valor gauge"
                 aria-valuemin="0"
                 aria-valuemax="11"
                 aria-valuenow="8.16"
-                aria-valuetext="8.16 of 11: directive 2, strain 2, pacts 4, performance 0.16"
+                aria-valuetext="8.16 of 11: directive 2, strain 2, pacts 4"
                 style="width: 40px; flex-shrink: 0; display: flex; flex-direction: column; gap: 3px; padding: 3px; border: 1px solid #2C3022"
               >
                 <span

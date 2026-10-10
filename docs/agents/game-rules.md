@@ -31,11 +31,15 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
 4. **Dive** — play the mission in Helldivers 2. Success = main objectives complete **and** the squad
    extracts. Objectives complete + squad wipe = failure (extraction rule).
 5. **Report** — squad records outcome: success (stars 1–max, optional time %) or failure (no stars).
-6. **Rewards** (success only) — each diver is offered N options rolled against their personal tier
-   ceiling and picks one. All rewards go to the diver's personal inventory — stratagems included.
-   Armor rewards are **passives**, never armor pieces (see inventory model). On a full-star clear,
-   once every diver has picked, the squad spins **bonus honors** — a random end-screen stat the host
-   resolves to a winner, who banks a reward token (see Reward tokens & squad honors).
+6. **Rewards** (success only) — the host files the report (stars + time + the samples the squad
+   extracted), which banks a sample haul into every diver's purse. Each diver is then offered N
+   options rolled against their personal tier ceiling and picks one; all rewards go to the diver's
+   personal inventory — stratagems included. Armor rewards are **passives**, never armor pieces (see
+   inventory model). Once a diver's draft resolves, their **Requisition stock** opens: a seeded shelf
+   of named items they may buy with the sample purse (see Requisition — samples as currency). On a
+   full-star clear, once every diver has picked, the squad spins **bonus honors** — a random
+   end-screen stat the host resolves to a winner, who banks a reward token (see Reward tokens & squad
+   honors).
 7. **Advance** — next mission, which draws a fresh misfortune (the front and strain persist).
    Completing all missions of an operation bumps the crusade difficulty by +1 and the next
    operation draws a fresh front+strain. Failure restarts the operation (mission 1) at the same
@@ -98,10 +102,10 @@ top of the ladder:
 | No Orbitals | No orbital stratagems | 1 → 2 | loadout |
 | Primary Only | Primaries only — no support weapons, no pickups or swaps (stratagems allowed) | 2 → 3 | field |
 | Oops, All Airstrikes | Eagle and orbital ("red") stratagems only | 2 → 3 | loadout |
-| Zero Deaths | Any diver death = mission failure | 2 → 4 | field |
+| Zero Deaths | Any diver death = mission failure | 3 → 5 | field |
 | No Reserves | No one gets reinforced this mission | 2 → 4 | field |
 | No Stratagems | No stratagems at all, not even resupply | 3 → 5 | loadout |
-| Melee Only | Melee weapons only | 3 → 5 | field |
+| Melee Only | Melee weapons only | 2 → 4 | field |
 | Pacifist | No diver scores a kill | 3 → 5 | stats |
 
 **Condition scaling.** Misfortunes (team) and pacts (personal) are one catalogue, and the only
@@ -319,8 +323,8 @@ resets with the pacts every mission.
 
 ### Reward math
 
-```
-Valor         = teamRisk + pactRisk + performance
+```text
+Valor         = teamRisk + pactRisk
 teamRisk      = accepted misfortune × directiveWeightFor(squad size)
                 (1 / 1.25 / 1.5 / 1.75 for 1–4 divers) plus the accepted strain (2–3, felt on
                 every mission of its operation) or the live Major Order
@@ -328,9 +332,9 @@ teamRisk      = accepted misfortune × directiveWeightFor(squad size)
                 directive was failed in the field
 pactRisk      = sum of the diver's picked pacts (max 12 at diff 7+: the
                 rolled 2–3-pact offer bounds what a diver can stack)
-performance   = team performance from the mission just reported, squad-level
-                and applied to every diver: time remaining (≤ 0.2) plus
-                samples (≤ 0.3), so it never exceeds 0.5
+
+(samples are NOT Valor. They bank as Requisition currency — see
+ Requisition — samples as currency — and never move the ceiling.)
 
 (misfortune and pact risk are read through `conditionRiskAt(id, difficulty)`,
  so the same condition is worth different Valor at different altitudes;
@@ -381,18 +385,15 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   past it "breaks" the gauge and banks as **Luck**, which adds flat odds to the S / S+ rungs
   (`OVERFLOW_S_LUCK` / `OVERFLOW_S_PLUS_LUCK`), so overstacking is never wasted. Even absolute max
   overstack (Valor 24.25 — a four-diver squad, strain included) leaves S+ a longshot (≤20% at altitude;
-  `S_PLUS_OVERFLOW_CAP`). A zero-Valor dive always rolls its base tier. Team performance is a
-  deliberate exception: it can nudge a zero-chosen-risk clear off its base tier, but caps at 0.5
-  against a chosen ceiling of 12.5–24, so skill never carries a run (`TIME_VALOR_MAX`, `SAMPLE_VALOR_CAP`,
-  `SAMPLE_VALOR_WEIGHTS`). Sample values are calibrated to the game's own rarity mix (wiki.gg/Sample
-  availability), so the term scales with difficulty without a multiplier: a Medium haul (commons
-  only) is worth ~0.03, a Super Helldive haul with rares and supers ~0.3.
+  `S_PLUS_OVERFLOW_CAP`). A zero-Valor dive always rolls its base tier. Samples are a separate
+  currency and never nudge Valor: chosen risk alone moves the ceiling, so skill and loot never carry a
+  run (they fund the Requisition shelf instead).
 - **Valor is surfaced as the Valor meter** (`app/components/dive/ValorMeter.vue`): a live gauge
-  stacking the three sources (team risk — misfortune plus strain — pacts, performance) with a tier
+  stacking the two sources (team risk — misfortune plus strain — pacts) with a tier
   ladder from the difficulty's base tier to the previewed ceiling and the odds of reaching it. It
   explains itself while dormant (the `spin` phase, before any stake exists), then renders in the
   decision and pacts windows (live, reacting to pact toggles and the misfortune decision), the
-  diving Briefing (locked) and the reward draft (locked, including the performance term). Its
+  diving Briefing (locked) and the reward draft (locked). Its
   display scale is the
   fixed `VALOR_METER_MAX` (11) in `shared/engine/config.ts`; once Valor exceeds it the gauge reads
   "Meter broken" and shows the banked Luck. `maxValorFor(difficulty)` in
@@ -420,7 +421,7 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   `choiceItemId`. `pickedOptionId` always records the banked item's id.
 - Previews stay legible: the UI shows base tier → best plausible tier (`maxCeiling`, per-step odds
   ≥ `UPGRADE_PREVIEW_FLOOR`, 0.05) with the odds of reaching it (`oddsToReach`).
-- **Option count** comes from stars (team performance), lookup table `starsToOptions`:
+- **Option count** comes from stars (mission performance), lookup table `starsToOptions`:
   `[1,1,2,3,4,4]` (index = stars), capped at 4; S+ grants +1 (cap 5). Stars themselves are
   difficulty-capped per the game (wiki.gg/Missions): max 3 at diffs 3–4, 4 at 5–6, 5 at 7+; a
   completed mission never awards 0 and a failed mission awards none (`maxStarsFor` in
@@ -436,6 +437,45 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   directive's share: the strongest diff-10 directive alone is worth Valor 5 solo (S ~22%), 7.5 for
   a trio (S ~50%) and 8.75 for four divers (S ~64%, S+ ~6%). Risk pays at every altitude; nothing is
   guaranteed, but everything gets likelier.
+
+### Requisition — samples as currency
+
+Samples recovered on a mission are no longer a Valor term — they are **Requisition currency**. A
+successful report banks each diver (who dove the mission — a mid-mission joiner who
+`skipsCurrentDraft` earns nothing) a haul of sample points into their personal **sample purse**
+(`DiverState.sampleBank`):
+
+```text
+haulValue   = common × 1 + rare × 5 + super × 25   (SAMPLE_POINTS)
+haul        = floor(haulValue × (0.5 + 0.5 × clamp(timePct,0,100)/100))
+```
+
+Extraction speed is a multiplier (`TIME_HAUL_FLOOR` 0.5 at no time left → 1.0 at a full clock), so a
+fast clear funds more gear. The purse persists across missions and operations (schema v12) and is
+lost with the diver on leave, like reward tokens. There is no cap — the game's own sample mix
+(commons dominate early, supers appear at diff 6) does the difficulty scaling.
+
+Once a diver's draft resolves (they picked **or** spent it on bans), a per-diver **rotating stock**
+opens in the same reward window — the Requisition shelf (`shopStockFor`, and `BUY_ITEM` self-service,
+`rewards` phase only; UI copy titles it **Brasch's Bargains**). It is the one deliberate exception to
+design principle 4 (it names items):
+
+- **Size:** one item per star the difficulty can award (`maxStarsFor`): 3 at diff 3–4, 4 at 5–6, 5 at
+  7+.
+- **Tiers follow the diver's rolled ceiling** — the same class their Valor bought for the draft (base
+  tier → rolled ceiling), weighted like the draft. Risk buys rarity access; samples buy the item.
+- **Pool:** the diver's personal pool (declared warbonds, armor passives only) minus owned, banned,
+  and the items the draft already showed. Derived from the per-diver offer seed (stream salt 5) —
+  deterministic, never stored. An S+ ceiling maps to S (the Cross slot stays in the draft).
+- **Prices:** tier first, then type — `itemPrice = SAMPLE_PRICE_TIER[tier] × SAMPLE_PRICE_TYPE[category]`
+  (C/B/A/S = 25/70/180/450; booster ×1.5, primary ×1.25, armor passive ×0.75, everything else ×1), so a
+  booster always out-prices an armor passive at the same tier. The shelf only shows what the ceiling
+  reached, so early squads see C gear at a few missions' wages and
+  S/A stock only once risk has bought it.
+- A diver may buy **any number** of stocked items while they can afford it; each purchase banks
+  immediately (`BUY_ITEM` deducts the price and appends to `personalInventories`) and the bought item
+  leaves the shelf. Buying is **soft** — like the honors ceremony it never gates `ADVANCE`; a broke
+  diver simply sees every card disabled with its reason.
 
 ### Reward tokens & squad honors
 
@@ -529,9 +569,10 @@ is reverted. `migrateV7toV8` is the alpha baseline — it defaults the fields wh
 during pre-alpha (Field Promotion bookkeeping, failed-pact marks, reward tokens, bans, bonus
 honors); `migrateV8toV9` adds the strain fields and widens legacy combo keys; `migrateV9toV10`
 adds the Major Order commitment (`majorOrder: null`); `migrateV10toV11` adds the failed-directive
-mark (`misfortuneFailed: false`). Normalization drops
+mark (`misfortuneFailed: false`); `migrateV11toV12` adds the Requisition sample purse
+(`sampleBank: 0`). Normalization drops
 only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
 `achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, inventories, per-diver warbond declarations,
 `completedCombos` (misfortune × front × strain), reroll tokens, action log (capped), RNG seed
-history, legacy caches parked by departed divers, per-diver catch-up bookkeeping.
+history, legacy caches parked by departed divers, per-diver catch-up bookkeeping and sample purses.

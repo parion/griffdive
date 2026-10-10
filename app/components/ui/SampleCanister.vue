@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// A sample canister: the report screen's stepped counter. The jar is tinted per
-// rarity; the count and step buttons are the only interactive parts. Purely
+// A sample canister: the report screen's per-rarity control. The test tube is
+// the slider — drag or tap along it to set the count; the liquid level is the
+// indicator. The number below is an editable field for keyboard entry. Purely
 // presentational — the parent owns the value and the engine owns its meaning.
 const props = defineProps<{
   modelValue: number
@@ -22,27 +23,157 @@ const TONE: Record<'common' | 'rare' | 'super', string> = {
 
 const toneColor = computed(() => TONE[props.tone])
 
-function step(delta: number): void {
-  const next = Math.min(props.max, Math.max(0, props.modelValue + delta))
+// Chamber bounds inside the 0..100 viewBox — liquid lives between these rows.
+const CHAMBER_TOP = 16
+const CHAMBER_BOTTOM = 84
+const CHAMBER_H = CHAMBER_BOTTOM - CHAMBER_TOP
+
+const pct = computed(() => (props.max > 0 ? Math.min(1, Math.max(0, props.modelValue / props.max)) : 0))
+const fillH = computed(() => pct.value * CHAMBER_H)
+const fillY = computed(() => CHAMBER_BOTTOM - fillH.value)
+// Distance from the tube's bottom to the liquid line, used to seat the collar.
+const knobBottom = computed(() => CHAMBER_TOP + fillH.value)
+
+function clamp(n: number): number {
+  return Math.min(props.max, Math.max(0, Math.round(n)))
+}
+
+function setValue(n: number): void {
+  const next = clamp(n)
   if (next !== props.modelValue) {
     emit('update:modelValue', next)
   }
+}
+
+// ---- The tube as a vertical scrubber -------------------------------------
+const jarEl = ref<HTMLElement | null>(null)
+const dragging = ref(false)
+
+function valueFromPointer(clientY: number): number {
+  const el = jarEl.value
+  if (!el) {
+    return props.modelValue
+  }
+  const rect = el.getBoundingClientRect()
+  const top = rect.top + rect.height * (CHAMBER_TOP / 100)
+  const bottom = rect.top + rect.height * (CHAMBER_BOTTOM / 100)
+  return clamp(((bottom - clientY) / (bottom - top)) * props.max)
+}
+
+function onPointerDown(event: PointerEvent): void {
+  dragging.value = true
+  jarEl.value?.setPointerCapture(event.pointerId)
+  jarEl.value?.focus()
+  setValue(valueFromPointer(event.clientY))
+}
+
+function onPointerMove(event: PointerEvent): void {
+  if (dragging.value) {
+    setValue(valueFromPointer(event.clientY))
+  }
+}
+
+function endDrag(): void {
+  dragging.value = false
+}
+
+function onKeydown(event: KeyboardEvent): void {
+  const big = Math.max(1, Math.round(props.max / 10))
+  switch (event.key) {
+    case 'ArrowUp':
+    case 'ArrowRight':
+      setValue(props.modelValue + 1)
+      break
+    case 'ArrowDown':
+    case 'ArrowLeft':
+      setValue(props.modelValue - 1)
+      break
+    case 'PageUp':
+      setValue(props.modelValue + big)
+      break
+    case 'PageDown':
+      setValue(props.modelValue - big)
+      break
+    case 'Home':
+      setValue(0)
+      break
+    case 'End':
+      setValue(props.max)
+      break
+    default:
+      return
+  }
+  event.preventDefault()
+}
+
+// ---- The editable number --------------------------------------------------
+const editing = ref(false)
+const draft = ref(String(props.modelValue))
+
+watch(() => props.modelValue, (value) => {
+  if (!editing.value) {
+    draft.value = String(value)
+  }
+})
+
+function onFocus(event: FocusEvent): void {
+  editing.value = true
+  ;(event.target as HTMLInputElement).select()
+}
+
+function onInput(event: Event): void {
+  const raw = (event.target as HTMLInputElement).value.replace(/[^0-9]/g, '')
+  draft.value = raw
+  if (raw !== '') {
+    setValue(Number.parseInt(raw, 10))
+  }
+}
+
+function commitInput(): void {
+  editing.value = false
+  const parsed = draft.value === '' ? 0 : Number.parseInt(draft.value, 10)
+  setValue(Number.isFinite(parsed) ? parsed : 0)
+  draft.value = String(clamp(Number.isFinite(parsed) ? parsed : 0))
+}
+
+function commitOnEnter(event: KeyboardEvent): void {
+  ;(event.target as HTMLInputElement).blur()
+}
+
+function cancelInput(event: KeyboardEvent): void {
+  draft.value = String(props.modelValue)
+  ;(event.target as HTMLInputElement).blur()
 }
 </script>
 
 <template>
   <div
     class="canister"
-    role="group"
-    :aria-label="`${label}: ${modelValue} of ${max}`"
     :style="{ '--tone': toneColor }"
   >
-    <div class="jar">
+    <div
+      ref="jarEl"
+      class="jar"
+      role="slider"
+      tabindex="0"
+      aria-orientation="vertical"
+      :aria-label="`${label} samples`"
+      :aria-valuemin="0"
+      :aria-valuemax="max"
+      :aria-valuenow="modelValue"
+      :aria-valuetext="`${modelValue} of ${max}`"
+      @pointerdown="onPointerDown"
+      @pointermove="onPointerMove"
+      @pointerup="endDrag"
+      @pointercancel="endDrag"
+      @keydown="onKeydown"
+    >
       <svg
         viewBox="0 0 48 100"
         width="48"
         height="100"
         aria-hidden="true"
+        class="tube"
       >
         <rect
           x="12"
@@ -75,6 +206,35 @@ function step(delta: number): void {
           fill="var(--tone)"
           fill-opacity="0.09"
         />
+        <rect
+          class="liquid"
+          x="8"
+          :y="fillY"
+          width="32"
+          :height="fillH"
+          fill="var(--tone)"
+          fill-opacity="0.5"
+        />
+        <line
+          class="meniscus"
+          x1="8"
+          x2="40"
+          :y1="fillY"
+          :y2="fillY"
+          stroke="var(--tone)"
+          stroke-width="2"
+          :opacity="pct > 0 ? 1 : 0"
+        />
+        <line
+          v-for="t in 5"
+          :key="t"
+          :x1="9"
+          :x2="13"
+          :y1="CHAMBER_BOTTOM - (t / 5) * CHAMBER_H"
+          :y2="CHAMBER_BOTTOM - (t / 5) * CHAMBER_H"
+          stroke="var(--line-4)"
+          stroke-width="1"
+        />
         <path
           d="M13 22v56"
           stroke="var(--tone)"
@@ -99,60 +259,39 @@ function step(delta: number): void {
       <img
         :src="icon"
         alt=""
-        width="28"
-        height="28"
+        width="24"
+        height="24"
         class="jar-icon"
       >
+      <span
+        class="collar"
+        :style="{ bottom: `${knobBottom}px` }"
+        aria-hidden="true"
+      >
+        <i /><i />
+      </span>
     </div>
     <div class="canister-body">
       <span class="canister-label">{{ label }}</span>
       <div class="canister-count">
-        <span class="disp count-num">{{ modelValue }}</span>
-        <span
-          v-if="value"
-          class="count-val"
-        >{{ value }}</span>
-        <span
-          v-else
-          class="count-max"
-        >/ {{ max }}</span>
-      </div>
-      <div class="step-row">
-        <button
-          class="ghost step"
-          type="button"
-          :aria-label="`Remove a ${label.toLowerCase()}`"
-          :disabled="modelValue <= 0"
-          @click="step(-1)"
+        <input
+          class="count-input disp"
+          type="text"
+          inputmode="numeric"
+          :aria-label="`${label} sample count`"
+          :value="draft"
+          @focus="onFocus"
+          @input="onInput"
+          @blur="commitInput"
+          @keydown.enter.prevent="commitOnEnter"
+          @keydown.esc="cancelInput"
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.4"
-            aria-hidden="true"
-          >
-            <path d="M5 12h14" />
-          </svg>
-        </button>
-        <button
-          class="ghost step"
-          type="button"
-          :aria-label="`Add a ${label.toLowerCase()}`"
-          :disabled="modelValue >= max"
-          @click="step(1)"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.4"
-            aria-hidden="true"
-          >
-            <path d="M5 12h14M12 5v14" />
-          </svg>
-        </button>
+        <span class="count-max">/ {{ max }}</span>
       </div>
+      <span
+        v-if="value"
+        class="count-val"
+      >{{ value }}</span>
     </div>
   </div>
 </template>
@@ -169,15 +308,40 @@ function step(delta: number): void {
   width: 48px;
   height: 100px;
   flex-shrink: 0;
+  cursor: ns-resize;
+  touch-action: none;
 }
 .jar svg { display: block; }
+.liquid,
+.meniscus { pointer-events: none; }
 .jar-icon {
   position: absolute;
-  left: 10px;
-  top: 36px;
-  width: 28px;
-  height: 28px;
+  left: 12px;
+  top: 38px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
+  pointer-events: none;
+}
+.collar {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 12px;
+  transform: translateY(50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid color-mix(in srgb, var(--tone) 75%, var(--line-5));
+  background: color-mix(in srgb, var(--tone) 26%, var(--ground));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tone) 35%, transparent);
+  pointer-events: none;
+}
+.collar i {
+  width: 1px;
+  height: 6px;
+  background: color-mix(in srgb, var(--tone) 70%, var(--text));
 }
 .canister-body {
   display: flex;
@@ -194,18 +358,31 @@ function step(delta: number): void {
 .canister-count {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 6px;
 }
-.count-num { font-size: 2rem; color: var(--text); }
+.count-input {
+  width: 3ch;
+  min-height: 2.4rem;
+  padding: 2px 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: 2px solid var(--line-4);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-weight: 800;
+  font-size: 2rem;
+  line-height: 1;
+  text-align: center;
+  caret-color: var(--tone);
+}
+.count-input:hover { border-bottom-color: color-mix(in srgb, var(--tone) 60%, var(--line-4)); }
+.count-input:focus-visible {
+  border-color: transparent;
+  border-bottom-color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 8%, transparent);
+  outline: none;
+}
 .count-max { font-size: 11px; font-weight: 700; color: var(--dim); }
 .count-val { font-size: 11px; font-weight: 700; color: var(--teal); }
-.step-row { display: flex; gap: 6px; }
-.step {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  color: var(--text);
-}
-.step svg { width: 16px; height: 16px; }
 </style>

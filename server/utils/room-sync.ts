@@ -360,6 +360,7 @@ function enforceSelf(action: EngineAction, playerId: string): EngineAction {
     action.type === 'SET_PACTS'
     || action.type === 'SET_WARBONDS'
     || action.type === 'PICK_REWARD'
+    || action.type === 'BUY_ITEM'
     || action.type === 'SET_NAME'
     || action.type === 'CLAIM_CATCHUP_OPTION'
     || action.type === 'CLAIM_CACHE'

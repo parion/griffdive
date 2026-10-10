@@ -9,15 +9,14 @@ const props = withDefaults(defineProps<{
   settled: boolean
   teamRisk: number
   pactRisk: number
-  performance?: number
   rerolled?: boolean
-}>(), { performance: 0, rerolled: false })
+}>(), { rerolled: false })
 
 const LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
 const baseTier = computed(() => baseTierFor(props.difficulty))
 const baseIndex = computed(() => LADDER.indexOf(baseTier.value))
-const valor = computed(() => valorOf(props.teamRisk, props.pactRisk, props.performance))
+const valor = computed(() => valorOf(props.teamRisk, props.pactRisk))
 const ceilingIndex = computed(() => Math.max(baseIndex.value, LADDER.indexOf(props.ceiling)))
 // Four nodes at most, but always wide enough to land the marker on the ceiling
 // node: a C base reaching S+ needs the fifth node or the marker runs off the
