@@ -8,6 +8,7 @@ import {
 import { catchUpOpsBehind, difficultyName, STARTING_KITS } from '~~/shared/engine/progression'
 import { createDiveState } from '~~/shared/engine/reducer'
 import { oddsToReach } from '~~/shared/engine/rewards'
+import { FRONTS } from '~~/shared/data/fronts'
 import { factionImageUrl } from '~~/shared/data/images'
 import { isRoomCode } from '~~/shared/utils/room-code'
 import type { CrusadeMode, CrusadeSettings, CrusadeVariant, DiveState, RewardTier } from '~~/shared/engine/types'
@@ -216,6 +217,11 @@ const previewValorLabel = computed(() => PREVIEW_VALOR.toFixed(2))
 const now = ref(Date.now())
 const moFront = computed(() => liveOrder.value?.fronts[0] ?? null)
 const moFrontImage = computed(() => (moFront.value ? factionImageUrl(moFront.value) : undefined))
+const moFrontsLabel = computed(() =>
+  (liveOrder.value?.fronts ?? [])
+    .map(id => FRONTS.find(front => front.id === id)?.displayName ?? id)
+    .join(' / '),
+)
 const moPlanet = computed(() => liveOrder.value?.planets?.[0] ?? null)
 const moCountdown = computed(() => {
   const expires = liveOrder.value?.expiresAt ? Date.parse(liveOrder.value.expiresAt) : Number.NaN
@@ -1029,7 +1035,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
       </div>
       <div class="mo-title">
         <span class="lbl gold">Major Order</span>
-        <span class="mo-name">{{ liveOrder.title ?? 'Play the live war front' }}</span>
+        <span class="mo-name">{{ moFrontsLabel }}</span>
       </div>
       <div
         v-if="moPlanet"
@@ -1864,8 +1870,8 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
   .mo-planet,
   .mo-count,
   .mo-play { width: auto; flex: 1 1 14rem; padding: 0.6rem 1rem; border: 0; }
-  /* A live order's title is long: without min-width: 0 its nowrap text set the
-     flex item's floor and blew phones out to a ~960px layout viewport. */
+  /* The faction indicator can name two fronts: without min-width: 0 a nowrap
+     flex item sets the layout floor and blows phones out to a ~960px viewport. */
   .mo-title,
   .mo-play { min-width: 0; }
   .mo-name {

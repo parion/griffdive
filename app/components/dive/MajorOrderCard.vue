@@ -96,13 +96,6 @@ function liberationWidth(value: number): string {
       >{{ countdown }}</span>
     </header>
 
-    <p
-      v-if="order.title"
-      class="mo-brief"
-    >
-      {{ order.title }}
-    </p>
-
     <section
       v-if="order.planets?.length"
       class="mo-overview"
@@ -144,11 +137,11 @@ function liberationWidth(value: number): string {
 
     <div class="mo-stats">
       <div class="mo-stat">
-        <span class="lbl">Front</span>
+        <span class="lbl">{{ order.fronts.length > 1 ? 'Fronts' : 'Front' }}</span>
         <span
           class="mo-stat-val"
           :style="{ color: accent }"
-        >Pinned</span>
+        >{{ frontsLabel }}</span>
       </div>
       <div class="mo-stat">
         <span class="lbl">Each mission</span>
@@ -203,14 +196,6 @@ function liberationWidth(value: number): string {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text);
-}
-
-.mo-brief {
-  margin: 0;
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1.3;
 }
 
 .mo-overview { display: grid; gap: 0.5rem; }

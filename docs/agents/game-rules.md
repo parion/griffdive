@@ -201,7 +201,9 @@ rewards are untouched — risk stays the only thing that buys rarity (principle 
 
 The MO's front(s) and display metadata (`title`, `planets` — index, name, front and current
 liberation % — and `expiresAt`) live on `state.majorOrder`; the metadata is pass-through for the
-in-game-style panel (`MajorOrderCard`) and syncs with the snapshot. **The
+in-game-style panel (`MajorOrderCard`) and syncs with the snapshot. The card renders the pinned
+front(s) by name and the planets, but **not** the `title`: the in-game order text is long and says
+nothing about the match, so Griffdive omits it (the title still rides the wheel's tooltip). **The
 engine is pure** — it consumes a front list it was handed and never knows about HTTP. **The live
 API (Phase B) only fills the host's choice:** a cached server proxy
 (`server/api/war/major-order.get.ts` → `server/utils/major-order.ts`) normalizes the community war

@@ -107,7 +107,7 @@ engine.
   gate on the diver's own state, never on `canControl`, which is host control; short phones
   (≤740px tall) shrink the wheel so the decision sheet stays reachable; nav controls keep their
   text labels on phones; and nothing may widen the layout viewport — flex items holding long live
-  text (the Major Order title) need `min-width: 0`.
+  text (the Major Order's faction indicator) need `min-width: 0`.
 - **Armory detection**: the Armory never computes bans.
   `armoryRules(state, diver, previewPactIds?)` lists the active misfortune/pact rules and
   `itemBannedInArmory(state, diver, item, previewPactIds?)` returns why a stratagem is greyed; both
