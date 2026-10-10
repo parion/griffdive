@@ -1,11 +1,28 @@
 import { useWebSocket } from '@vueuse/core'
-import type { EngineAction } from '~~/shared/engine/types'
+import { VARIANTS } from '~~/shared/engine/progression'
+import type { DiveState, EngineAction } from '~~/shared/engine/types'
 import { useRecentRooms } from './useRecentRooms'
+import { useSessionSaves } from './useSessionSaves'
 import { useSessionStore } from '~/stores/session'
 import type { ClientMessage, ServerMessage } from '~~/shared/types/messages'
 
 function playerKey(roomCode: string): string {
   return `griffdive:player:${roomCode}`
+}
+
+// The seat this browser holds in a room, if any. A new session seeded from a
+// save pre-stores the owner's seat here so the first hello reattaches it.
+export function storedSeat(roomCode: string): string | null {
+  if (!import.meta.client) {
+    return null
+  }
+  return localStorage.getItem(playerKey(roomCode))
+}
+
+export function storeSeat(roomCode: string, playerId: string): void {
+  if (import.meta.client) {
+    localStorage.setItem(playerKey(roomCode), playerId)
+  }
 }
 
 export function storedDiverName(): string {
@@ -96,6 +113,47 @@ export function useGameSocket(roomCode: string) {
     }
   })
 
+  // Every seated diver keeps a personal copy of the session (AGENTS.md,
+  // Personal session saves), so any of them can seed a new room from it. The
+  // write is debounced: a mission's phases emit a handful of snapshots each.
+  const sessionSaves = useSessionSaves()
+  let mirrorTimer: ReturnType<typeof setTimeout> | undefined
+
+  // The last snapshot this browser held a seat in. Leaving (or a kick) drops
+  // the seat, so the pending write must flush that one, not the seatless next.
+  let pendingMirror: DiveState | null = null
+
+  function mirrorSnapshot(): void {
+    clearTimeout(mirrorTimer)
+    const snapshot = pendingMirror
+    const id = store.selfId
+    pendingMirror = null
+    if (!snapshot || !id) {
+      return
+    }
+    const variant = VARIANTS.find(entry => entry.id === snapshot.settings?.variant)?.name
+    const leader = snapshot.divers.find(diver => diver.id === snapshot.hostId) ?? snapshot.divers[0]
+    sessionSaves.mirrorSession({
+      roomCode,
+      ownerId: id,
+      state: snapshot,
+      slotName: store.saved?.name ?? `${leader?.name ?? 'Crusade'} · ${variant ?? 'Crusade'}`,
+      savedAt: new Date().toISOString(),
+    })
+  }
+
+  watch(() => store.snapshot, (snapshot) => {
+    const id = store.selfId
+    if (snapshot && id && snapshot.divers.some(diver => diver.id === id)) {
+      pendingMirror = snapshot
+      clearTimeout(mirrorTimer)
+      mirrorTimer = setTimeout(mirrorSnapshot, 750)
+    }
+    else {
+      mirrorSnapshot()
+    }
+  })
+
   function hello(): void {
     const stored = import.meta.client ? localStorage.getItem(playerKey(roomCode)) : null
     const message: ClientMessage = {
@@ -145,7 +203,12 @@ export function useGameSocket(roomCode: string) {
       connect()
     }
   })
-  onBeforeUnmount(close)
+  onBeforeUnmount(() => {
+    // Flush the pending mirror before the socket closes so the last snapshot
+    // (a just-banked reward, a just-reported mission) survives the navigation.
+    mirrorSnapshot()
+    close()
+  })
 
   return { store, dispatch, saveDive, unsaveDive, setSteam, connect, close, awaitingName, connectionFailed }
 }

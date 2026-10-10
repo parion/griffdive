@@ -1,7 +1,8 @@
 import { customAlphabet, nanoid } from 'nanoid'
 import { SQUAD_SIZE_MAX, MAX_NAME_LENGTH } from '~~/shared/engine/config'
-import { createLobbyState, joinDiver, seatingBlocked } from '~~/shared/engine/room'
+import { createLobbyState, forkCrusade, joinDiver, seatingBlocked } from '~~/shared/engine/room'
 import { reduce } from '~~/shared/engine/reducer'
+import { normalizeSaveDoc } from '~~/shared/engine/saves'
 import type { DiveState, EngineAction } from '~~/shared/engine/types'
 import { isEngineActionType, isHostOnlyAction } from '~~/shared/types/messages'
 import type { DiveSaveInfo, ServerMessage, SteamLobbyInfo } from '~~/shared/types/messages'
@@ -18,6 +19,7 @@ export const ROOM_TTL_MS = 12 * 60 * 60 * 1000
 
 // A launched crusade takes weeks of evenings, so its room waits far longer than
 // an unlaunched lobby — a squad that steps away resumes exactly where it was.
+// Personal session saves cover anything older (AGENTS.md: Personal session saves).
 export const CRUSADE_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 // How long a dropped diver keeps gating the squad before they are marked away:
@@ -45,6 +47,8 @@ export const MAX_SAVED_DIVES = 500
 export const SAVE_NAME_MAX_LENGTH = 60
 
 export class RoomLimitError extends Error {}
+
+export class InvalidSaveError extends Error {}
 
 // Optional transport-level throttles, injected by the WS route so the sync
 // core stays unit-testable. Keyed by address for joins (brute-force guard) and
@@ -153,7 +157,11 @@ function isStoredRoom(raw: unknown): raw is StoredRoom {
       || (typeof room.steam === 'object' && typeof room.steam.link === 'string'))
 }
 
-export async function createRoom(kv: RoomKV, maxRooms: number = MAX_ROOMS): Promise<string> {
+export async function createRoom(
+  kv: RoomKV,
+  maxRooms: number = MAX_ROOMS,
+  seed?: DiveState,
+): Promise<string> {
   if ((await kv.getKeys()).length >= maxRooms) {
     throw new RoomLimitError('Room capacity reached')
   }
@@ -161,8 +169,30 @@ export async function createRoom(kv: RoomKV, maxRooms: number = MAX_ROOMS): Prom
   while (await kv.getItem(code) != null) {
     code = newRoomCode()
   }
-  await kv.setItem(code, { code, state: createLobbyState(), updatedAt: Date.now() } satisfies StoredRoom)
+  await kv.setItem(code, { code, state: seed ?? createLobbyState(), updatedAt: Date.now() } satisfies StoredRoom)
   return code
+}
+
+// Continues a personal session save as a brand-new room: normalizeSaveDoc runs
+// the save migrations, forkCrusade seats the saver as host and parks every
+// other diver's kit as a claimable legacy cache. The save is client-supplied,
+// so a malformed doc is refused rather than seated.
+export async function createRoomFromSave(
+  kv: RoomKV,
+  rawSave: unknown,
+  name: string,
+  maxRooms: number = MAX_ROOMS,
+): Promise<{ code: string, selfId: string | null }> {
+  const doc = normalizeSaveDoc(rawSave)
+  if (!doc) {
+    throw new InvalidSaveError('Not a valid Griffdive save')
+  }
+  const ownerId = (rawSave as { ownerId?: unknown }).ownerId
+  const forked = forkCrusade(doc.state, typeof ownerId === 'string' ? ownerId : null, name)
+  if (!forked) {
+    throw new InvalidSaveError('This crusade cannot be continued')
+  }
+  return { code: await createRoom(kv, maxRooms, forked), selfId: forked.hostId }
 }
 
 // Reap idle rooms in the background so they do not sit in memory until the

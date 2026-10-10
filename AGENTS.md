@@ -44,7 +44,7 @@ pnpm only (`pnpm-lock.yaml` is canonical).
 | `pnpm lint:fix` | exists | Auto-fix lint/style issues |
 | `pnpm test` | exists | Vitest (engine unit + golden tests) |
 | `pnpm test:watch` | exists | Vitest watch mode |
-| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, Codex slide-over, PWA affordances; production build on :3173) |
+| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, Codex slide-over, session saves, PWA affordances; production build on :3173) |
 | `pnpm typecheck` | exists | `nuxt typecheck` (vue-tsc) |
 
 Update this table the moment a command lands.

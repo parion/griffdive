@@ -471,8 +471,9 @@ haul        = floor(haulValue × (0.5 + 0.5 × clamp(timePct,0,100)/100))
 
 Extraction speed is a multiplier (`TIME_HAUL_FLOOR` 0.5 at no time left → 1.0 at a full clock), so a
 fast clear funds more gear. The purse persists across missions and operations (schema v12) and
-belongs to the seat, like reward tokens: stepping away keeps it (the seat never leaves the room),
-but a diver benched by `KICK_DIVER` who later rejoins starts empty. There is no cap — the game's own sample mix
+belongs to the session, like reward tokens: stepping away keeps it (the seat never leaves the room),
+but a diver benched by `KICK_DIVER` who later rejoins and a new session forked from a save both
+start empty. There is no cap — the game's own sample mix
 (commons dominate early, supers appear at diff 6) does the difficulty scaling.
 
 Once a diver's draft resolves (they picked **or** spent it on bans), a per-diver **rotating stock**
