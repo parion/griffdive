@@ -220,9 +220,18 @@ export interface ArmoryRule {
   source: 'misfortune' | 'pact'
   /** Whether this rule removes equip choices at all (behavioural rules don't). */
   equipBearing: boolean
+  /** The rule rides the pact screen's unsworn selection, not the loadout. */
+  preview: boolean
 }
 
-export function armoryRules(state: DiveState, diver: DiverState): ArmoryRule[] {
+// The pact screen hands the Kit its pending selection while the diver is still
+// choosing, so the loadout previews what the sworn hand would ban. Preview ids
+// already sworn are deduped — a pact never appears twice.
+export function armoryRules(
+  state: DiveState,
+  diver: DiverState,
+  previewPactIds: readonly string[] = [],
+): ArmoryRule[] {
   const rules: ArmoryRule[] = []
   const misfortune = activeMisfortune(state)
   if (misfortune) {
@@ -232,6 +241,7 @@ export function armoryRules(state: DiveState, diver: DiverState): ArmoryRule[] {
       source: 'misfortune',
       equipBearing: misfortune.id === 'oopsAllAirstrikes'
         || Boolean(MISFORTUNE_BANS_STRATAGEM[misfortune.id]),
+      preview: false,
     })
   }
   for (const id of diver.pactIds) {
@@ -244,19 +254,52 @@ export function armoryRules(state: DiveState, diver: DiverState): ArmoryRule[] {
       name: pact.name,
       source: 'pact',
       equipBearing: Boolean(PACT_BANS_STRATAGEM[id]),
+      preview: false,
+    })
+  }
+  for (const id of previewPactIds) {
+    if (diver.pactIds.includes(id)) {
+      continue
+    }
+    const pact = pactById(id)
+    if (!pact) {
+      continue
+    }
+    rules.push({
+      id,
+      name: pact.name,
+      source: 'pact',
+      equipBearing: Boolean(PACT_BANS_STRATAGEM[id]),
+      preview: true,
     })
   }
   return rules
 }
 
-// Why the Armory greys a stratagem tile: the accepted misfortune or one of the
-// diver's sworn pacts bans it. Null when the item is legal.
+export interface ArmoryBan extends StratagemBanSource {
+  /** The ban rides the pending pact selection, not the sworn loadout. */
+  preview: boolean
+}
+
+// Why the Armory greys a stratagem tile: the accepted misfortune, one of the
+// diver's sworn pacts, or a pact still being weighed on the pact screen. Null
+// when the item is legal.
 export function itemBannedInArmory(
   state: DiveState,
   diver: DiverState,
   item: Item,
-): StratagemBanSource | null {
-  return stratagemBanReason(activeMisfortune(state)?.id ?? null, diver.pactIds, item)
+  previewPactIds: readonly string[] = [],
+): ArmoryBan | null {
+  const sworn = stratagemBanReason(activeMisfortune(state)?.id ?? null, diver.pactIds, item)
+  if (sworn) {
+    return { ...sworn, preview: false }
+  }
+  const pending = stratagemBanReason(
+    null,
+    previewPactIds.filter(id => !diver.pactIds.includes(id)),
+    item,
+  )
+  return pending ? { ...pending, preview: true } : null
 }
 
 export function rewardPoolFor(codes: readonly string[]): Item[] {

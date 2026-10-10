@@ -30,6 +30,7 @@ const emit = defineEmits<{
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
   lockPacts: [pactIds: string[]]
   pactRisk: [value: number]
+  preview: [pactIds: string[]]
   report: [payload: { outcome: MissionOutcome, stars: number, timePct: number, samples?: SampleCounts }]
   failPact: [playerId: string, pactId: string]
   failDirective: []
@@ -188,6 +189,7 @@ function kickDiver(diverId: string): void {
           :can-control="canControl"
           @lock="emit('lockPacts', $event)"
           @pact-risk="emit('pactRisk', $event)"
+          @preview="emit('preview', $event)"
         />
 
         <PhoneDiving
