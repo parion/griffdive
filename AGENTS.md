@@ -168,9 +168,12 @@ engine.
   `ValorMeter` is `dormant` during `spin` (a short Valor explainer + the reward floor instead of an
   all-zero gauge), and the old wheel-pool card was dropped (the wheel already shows every rule).
   `WheelOfMisfortune.vue` is a real SVG wheel whose rotation is derived from the wheel seed.
-  On the `rewards` phase the centre swaps between the `RewardDraft` pod cabinet and the dedicated
-  `BonusCeremony` honors screen — the left rail gains `MissionReportSummary` and the right rail
-  swaps `ValorMeter` for `RewardTokensRail` on honors.
+  On the `rewards` phase the centre swaps between the `RewardDraft` pod cabinet and the
+  `RewardsSettlement` screen — the draft's post-pick CTA hands off to the settlement, which carries
+  the `BonusCeremony` honors contest **and** the `RequisitionStock` shelf (the shop lives here, never
+  in the draft); when honors aren't due that turn the ceremony is replaced by a disabled panel and the
+  shelf stays available. The left rail gains `MissionReportSummary` and the right rail swaps
+  `ValorMeter` for `RewardTokensRail` on the settlement.
   The Armory is an in-app drawer (`ArmoryDrawer.vue`) titled **Kit** in every player-facing
   string (code keeps the `armory` names); the pact screen links to it ("Check your kit"). The
   Griffdiver Briefing (`BriefingOverlay.vue`) is presented as the **Griffdive tutorial**: a framed
@@ -666,7 +669,7 @@ opens in the same reward window — the Requisition shelf (`shopStockFor`, and `
   and the items the draft already showed. Derived from the per-diver offer seed (stream salt 5) —
   deterministic, never stored. An S+ ceiling maps to S (the Cross slot stays in the draft).
 - **Prices:** tier first, then type — `itemPrice = SAMPLE_PRICE_TIER[tier] × SAMPLE_PRICE_TYPE[category]`
-  (C/B/A/S = 15/50/140/400; booster ×1.5, primary ×1.25, armor passive ×0.75, everything else ×1), so a
+  (C/B/A/S = 25/70/180/450; booster ×1.5, primary ×1.25, armor passive ×0.75, everything else ×1), so a
   booster always out-prices an armor passive at the same tier. The shelf only shows what the ceiling
   reached, so early squads see C gear at a few missions' wages and
   S/A stock only once risk has bought it.
@@ -871,10 +874,13 @@ app/
                    PactPicker, RewardDraft — the reward draft (a stars→options
                    badge, the per-step CeilingTrack with a sliding marker, a
                    pod-drop cabinet of RewardPod reveal cards stamped Banked/Banned,
-                   and the always-on reward-token bar that links to honors),
+                   and the always-on reward-token bar whose post-pick CTA opens the settlement),
+                   RewardsSettlement — the post-draft screen: the Squad Honors
+                   contest (or a disabled panel when honors aren't due) above the
+                   Requisition shelf; desktop and phone share it,
                    RequisitionStock — the post-draft rotating shelf (per-diver
                    seeded items with tier×type prices, the sample purse and
-                   buy controls; shared by the desktop draft and the phone),
+                   buy controls),
                    MissionReportSummary — the left-rail report card,
                    RewardTokensRail — the honors rail's per-diver token banks,
                    ValorMeter — the live Valor gauge

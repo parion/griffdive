@@ -49,10 +49,10 @@ describe('haulValue / timeHaulMultiplier / missionHaul', () => {
 
 describe('itemPrice', () => {
   it('is tier first, then type', () => {
-    expect(SAMPLE_PRICE_TIER.c).toBe(15)
-    expect(SAMPLE_PRICE_TIER.s).toBe(400)
-    expect(itemPrice(makeItem('c', 'armorPassive'))).toBe(Math.round(15 * (SAMPLE_PRICE_TYPE.armorPassive ?? 1)))
-    expect(itemPrice(makeItem('c', 'booster'))).toBe(Math.round(15 * 1.5))
+    expect(SAMPLE_PRICE_TIER.c).toBe(25)
+    expect(SAMPLE_PRICE_TIER.s).toBe(450)
+    expect(itemPrice(makeItem('c', 'armorPassive'))).toBe(Math.round(25 * (SAMPLE_PRICE_TYPE.armorPassive ?? 1)))
+    expect(itemPrice(makeItem('c', 'booster'))).toBe(Math.round(25 * 1.5))
     // A booster always out-prices an armor passive at the same tier.
     expect(itemPrice(makeItem('s', 'booster'))).toBeGreaterThan(itemPrice(makeItem('s', 'armorPassive')))
     // Unknown categories fall back to the default multiplier.

@@ -114,15 +114,21 @@ const kicker = computed(() =>
 </script>
 
 <template>
-  <BonusCeremony
-    v-if="view === 'honors' && bonusUp"
+  <RewardsSettlement
+    v-if="view === 'honors'"
     :state="state"
     :self-id="selfId"
     :self="self"
     :can-control="canControl"
+    :bonus-up="bonusUp"
+    :stock="stock"
+    :sample-bank="self?.sampleBank ?? 0"
+    :buyable="stockBuyable"
+    :advance-label="advanceLabel"
     @spin="emit('spinBonus')"
     @award="playerId => emit('awardBonus', playerId)"
     @advance="emit('advance')"
+    @buy="itemId => emit('buy', itemId)"
   />
 
   <RewardDraft
@@ -145,19 +151,13 @@ const kicker = computed(() =>
     :team-risk="teamRisk"
     :pact-risk="pactRisk"
     :rerolled="Boolean(self?.rewardRerollSeed)"
-    :stock="stock"
-    :sample-bank="self?.sampleBank ?? 0"
-    :stock-buyable="stockBuyable"
     :ready="ready"
     :bonus-up="bonusUp"
     :can-control="canControl"
-    :advance-label="advanceLabel"
     :kicker="kicker"
     @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
     @reroll="emit('reroll')"
     @ban="optionIds => emit('ban', optionIds)"
-    @buy="itemId => emit('buy', itemId)"
-    @advance="emit('advance')"
     @open-honors="view = 'honors'"
   />
 </template>

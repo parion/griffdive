@@ -145,16 +145,22 @@ function tierOf(option: RewardOption): string {
 
 <template>
   <div class="phone-rewards">
-    <BonusCeremony
-      v-if="bonusUp"
+    <RewardsSettlement
+      v-if="ready"
       :state="state"
       :self-id="selfId"
       :self="self"
       :can-control="canControl"
+      :bonus-up="bonusUp"
+      :stock="stock"
+      :sample-bank="self?.sampleBank ?? 0"
+      :buyable="stockBuyable"
+      :advance-label="advanceLabel"
       compact
       @spin="emit('spinBonus')"
       @award="playerId => emit('awardBonus', playerId)"
       @advance="emit('advance')"
+      @buy="itemId => emit('buy', itemId)"
     />
 
     <template v-else>
@@ -283,14 +289,6 @@ function tierOf(option: RewardOption): string {
             </button>
           </template>
         </div>
-
-        <RequisitionStock
-          v-if="resolved && stock.length > 0"
-          :stock="stock"
-          :sample-bank="self?.sampleBank ?? 0"
-          :buyable="stockBuyable"
-          @buy="itemId => emit('buy', itemId)"
-        />
       </div>
 
       <PhoneActionBar aria-label="Reward tokens">

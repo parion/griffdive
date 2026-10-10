@@ -41,18 +41,11 @@ const props = withDefaults(defineProps<{
   teamRisk?: number
   pactRisk?: number
   rerolled?: boolean
-  // The rotating Requisition shelf, shown once the diver's draft resolves:
-  // the engine-derived stock, their sample purse, and the per-item buy
-  // verdict from `canBuyItem` (so the UI never invents a reason).
-  stock?: RewardOption[]
-  sampleBank?: number
-  stockBuyable?: Record<string, { allowed: boolean, reason: string | null }>
-  // Squad-draft state: everyone has picked, and whether the full-star honors
-  // ceremony is due. `advanceLabel` is the host's next-mission CTA.
+  // Squad-draft state: whether the full-star honors ceremony is due (the CTA
+  // label follows it) and that everyone has picked.
   ready?: boolean
   bonusUp?: boolean
   canControl?: boolean
-  advanceLabel?: string
   kicker?: string
 }>(), {
   squadPicks: () => [],
@@ -68,13 +61,9 @@ const props = withDefaults(defineProps<{
   teamRisk: 0,
   pactRisk: 0,
   rerolled: false,
-  stock: () => [],
-  sampleBank: 0,
-  stockBuyable: () => ({}),
   ready: false,
   bonusUp: false,
   canControl: false,
-  advanceLabel: 'Next mission',
   kicker: 'Reward draft',
 })
 
@@ -82,8 +71,6 @@ const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
   reroll: []
   ban: [optionIds: string[]]
-  buy: [itemId: string]
-  advance: []
   openHonors: []
 }>()
 
@@ -297,9 +284,12 @@ const selfResolved = computed(() =>
   props.resolved || props.pickedId !== null || props.banned)
 const choosing = computed(() =>
   props.squadPicks.find(pick => !pick.item && !pick.skipped) ?? null)
-const statusKind = computed<'honors' | 'advance' | 'wait' | 'pick'>(() => {
+const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
+  // Once every diver has picked, the draft hands off to the settlement screen
+  // (Squad Honors + the Requisition shelf) — that screen advances, whatever the
+  // honors verdict.
   if (props.ready) {
-    return props.bonusUp ? 'honors' : 'advance'
+    return 'honors'
   }
   if (selfResolved.value || lockedOptions.value.length === 0) {
     return 'wait'
@@ -481,14 +471,6 @@ const statusKind = computed<'honors' | 'advance' | 'wait' | 'pick'>(() => {
       </div>
     </Transition>
 
-    <RequisitionStock
-      v-if="selfResolved && stock.length > 0"
-      :stock="stock"
-      :sample-bank="sampleBank"
-      :buyable="stockBuyable"
-      @buy="itemId => emit('buy', itemId)"
-    />
-
     <footer
       class="token-bar"
       :class="{ banning: banMode }"
@@ -596,27 +578,7 @@ const statusKind = computed<'honors' | 'advance' | 'wait' | 'pick'>(() => {
             :style="bankedSweep"
             @click="emit('openHonors')"
           >
-            <span class="disp honors-word">Squad Honors</span>
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.4"
-              aria-hidden="true"
-            ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-          </button>
-          <button
-            v-else-if="statusKind === 'advance'"
-            class="btn primary cut advance-btn cta-sweep"
-            type="button"
-            :data-banked="bankedTier ?? undefined"
-            :style="bankedSweep"
-            :disabled="!canControl"
-            @click="emit('advance')"
-          >
-            <span class="disp advance-label">{{ advanceLabel }}</span>
+            <span class="disp honors-word">{{ bonusUp ? 'Squad Honors' : 'Continue' }}</span>
             <svg
               width="20"
               height="20"
@@ -860,15 +822,6 @@ const statusKind = computed<'honors' | 'advance' | 'wait' | 'pick'>(() => {
   cursor: pointer;
 }
 .honors-word { font-size: 1rem; }
-.advance-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  height: 46px;
-  padding: 0 1.1rem;
-}
-.advance-label { font-size: 0.95rem; letter-spacing: 0.04em; white-space: nowrap; }
-.advance-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .cta-sweep[data-banked='S']::after { animation-duration: 2.2s; }
 .cta-sweep[data-banked='S+']::after { animation-duration: 1.6s; }
 

@@ -265,10 +265,10 @@ export const TIME_HAUL_FLOOR = 0.5
 // an armor passive. The stock only offers tiers the diver's rolled ceiling
 // reached, so risk still gates rarity — samples gate the volume.
 export const SAMPLE_PRICE_TIER: Readonly<Record<'c' | 'b' | 'a' | 's', number>> = {
-  c: 15,
-  b: 50,
-  a: 140,
-  s: 400,
+  c: 25,
+  b: 70,
+  a: 180,
+  s: 450,
 }
 
 export const SAMPLE_PRICE_TYPE: Readonly<Record<string, number>> = {
