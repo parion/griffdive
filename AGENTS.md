@@ -38,6 +38,8 @@ sync, saves and data are untouched; see
 [Destroyer Terminal design language](#destroyer-terminal-design-language). Hybrid **saved
 dives** have landed: any seated diver can pin a room server-side so it outlives the idle TTL and a
 browser clearing its storage, resuming through the existing rejoin path (see Saved dives).
+**Steam lobby codes** have landed too: the host can relay the `steam://joinlobby/…` link from the
+in-game Helldivers 2 lobby so every seated diver can jump straight in (see Steam lobby codes).
 **The condition catalogue is unified:** squad directives (team) and pacts (personal) are now one
 catalogue, nothing is gated by difficulty, and a per-condition curve scales each rule's risk/Valor
 with altitude (see Condition scaling). **Team directives outweigh pacts, by squad size:** an
@@ -751,6 +753,27 @@ reducer.
   fake in-memory KV. The same single-machine constraint as live rooms applies (see Deployment);
   Redis remains the swap for horizontal scale.
 
+### Steam lobby codes
+
+Helldivers squads in Discord organise around in-game **Steam lobbies**: the host opens a lobby and
+shares a `steam://joinlobby/553850/<lobbyId>[/<steamId>]` deep link so everyone jumps straight in.
+Griffdive relays that link — the host pastes it, every seated diver clicks it — as
+**host-owned room metadata**, exactly like a saved dive: `StoredRoom.steam`
+(`SteamLobbyInfo { link, setAt, setBy }` in `shared/types/messages.ts`). It never enters
+`DiveState`, the save schema or the reducer, so a cosmetic URL never touches the pure engine.
+
+- **Only the host sets it** (`set-steam` client message, handled in `server/utils/room-sync.ts`,
+  outside the engine union); a blank link clears it. Any seated diver can click it.
+- **Validation is shared and pure:** `normalizeSteamLobbyLink` in `shared/utils/steam-lobby.ts`
+  scans the pasted text for the Helldivers 2 pattern (app id `553850`) and returns the normalized
+  link or `null`, so surrounding chat paste never fails and another game's link never lands. The
+  server re-validates; a non-link is refused (`bad-action`) before it reaches storage.
+- **Presentation:** `SteamLobbyBox` sits under the squad strip in the dive's left rail (room mode
+  only) — a Steam-blue join card that opens the deep link (the OS asks before launching Steam),
+  plus copy/change/clear. The `IconSteam` mark comes from Simple Icons (CC0).
+- **Undecorated by the engine:** no TTL weight, no reroll economy, no game-rule bearing. It rides
+  `welcome`/`state` snapshots like `saved`.
+
 ---
 
 ## Architecture
@@ -922,9 +945,10 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 | C→S | `action` | `{ action: EngineAction }` (validated server-side) |
 | C→S | `save-dive` | `{ name? }` — any seated diver pins the room past the idle TTL (see Saved dives) |
 | C→S | `unsave-dive` | host-only: returns the room to the ordinary idle TTL |
+| C→S | `set-steam` | `{ link }` — host-only: relays a `steam://joinlobby/…` link to the room; blank clears it (see Steam lobby codes) |
 | C→S | `ping` | heartbeat — answered with `pong` |
-| S→C | `welcome` | `{ selfId, hostId, roomCode, snapshot, online, saved }` |
-| S→C | `state` | `{ snapshot, applied (EngineAction \| null), online, saved }` — after each applied change; also an `applied: null` presence refresh the moment a seated diver's last connection drops; `online` = diver ids with live connections |
+| S→C | `welcome` | `{ selfId, hostId, roomCode, snapshot, online, saved, steam }` |
+| S→C | `state` | `{ snapshot, applied (EngineAction \| null), online, saved, steam }` — after each applied change; also an `applied: null` presence refresh the moment a seated diver's last connection drops; `online` = diver ids with live connections |
 | S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `dive-locked`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message`, `rate-limited` |
 
 REST fallbacks: `POST /api/rooms` → `{ code }`; `GET /api/rooms/:code` → `{ code, state }` (404).
@@ -955,7 +979,8 @@ Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFO
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated
-diver, `unsave-dive` is host-only.
+diver, `unsave-dive` is host-only; the Steam lobby link is likewise outside the union and
+host-only (`set-steam`, blank clears).
 `FAIL_PACT` is sent by the target diver or the host (server refuses everyone else); `FAIL_MISFORTUNE`
 is host-only, since the directive binds the whole squad. Host disconnect →
 `TRANSFER_HOST` to the earliest joiner; none left → room hibernates in storage with a TTL.
