@@ -1,6 +1,5 @@
 import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import type { Item } from '~~/shared/data/types'
-import { RESERVE_STRATAGEMS } from '~~/shared/engine/config'
 import type { DiveState } from '~~/shared/engine/types'
 
 export type KitSectionId = 'primary' | 'secondary' | 'throwables' | 'armor' | 'boosters' | 'stratagems'
@@ -39,13 +38,10 @@ export function kitSectionOf(item: Item): KitSectionId {
   }
 }
 
-const RESERVE: ReadonlySet<string> = new Set(RESERVE_STRATAGEMS)
-
-// What a diver actually carries: the reserve stratagems every diver shares are
-// left out, so the rail's Kit shows only what sets this kit apart.
+// Everything the diver owns, reserve stratagems included: at the start they
+// are most of the stratagem loadout, so hiding them reads as a missing kit.
 export function ownedKitItems(state: DiveState, diverId: string | null): Item[] {
   return (diverId ? state.personalInventories[diverId] ?? [] : [])
-    .filter(id => !RESERVE.has(id))
     .map(id => ITEMS_BY_ID.get(id))
     .filter((item): item is Item => item !== undefined)
 }
