@@ -542,6 +542,20 @@ export function awaitingDiverIds(state: DiveState): string[] {
   return []
 }
 
+// Whoever the squad is waiting on right now: the divers with an open pact hand
+// or reward draft, otherwise the host for host-run beats. Nobody while the
+// squad is in game or the crusade is over.
+export function actingDiverIds(state: DiveState): string[] {
+  if (state.phase === 'diving' || state.phase === 'complete') {
+    return []
+  }
+  const awaiting = awaitingDiverIds(state)
+  if (awaiting.length > 0) {
+    return awaiting
+  }
+  return state.hostId ? [state.hostId] : []
+}
+
 // Legacy caches a mid-crusade joiner can claim instead of their promotion.
 export function availableCaches(state: DiveState): { ownerId: string, itemIds: string[] }[] {
   return Object.entries(state.legacyCaches).map(([ownerId, itemIds]) => ({

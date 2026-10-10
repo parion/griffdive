@@ -557,6 +557,7 @@ function launchCrusade(variant: CrusadeVariant): void {
           :mode="session.mode"
           :is-host="session.selfIsHost.value"
           :name-draft="nameDraft"
+          :can-control="canControl"
           @update:name-draft="setNameDraft"
           @commit="commitName"
           @transfer-host="transferHost"
@@ -622,13 +623,6 @@ function launchCrusade(variant: CrusadeVariant): void {
           Dismiss
         </button>
       </p>
-
-      <PhaseCue
-        v-if="!kicked"
-        :state="state"
-        :self-id="selfId"
-        :can-control="canControl"
-      />
 
       <!-- The Field Promotion persists across phases: a mid-crusade joiner
            catches up whenever it suits them, never gating the squad. -->

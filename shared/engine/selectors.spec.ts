@@ -3,7 +3,7 @@ import { WARBONDS } from '../data/catalog'
 import { MAX_DIFFICULTY, MIN_DIFFICULTY, SAMPLE_VALOR_CAP, STRAIN_RISK, TIME_VALOR_MAX, directiveValorAt } from './config'
 import { oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { activeMisfortune, activeStrain, awaitingDiverIds, canRerollWheel, ceilingRange, diverOptions, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
+import { actingDiverIds, activeMisfortune, activeStrain, awaitingDiverIds, canRerollWheel, ceilingRange, diverOptions, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
 import { isPactSelectable } from './pacts'
 import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -279,6 +279,15 @@ describe('awaitingDiverIds', () => {
 
   it('reports nobody on host-only beats', () => {
     expect(awaitingDiverIds(spunState(42, false))).toEqual([])
+  })
+
+  it('hands host-run beats to the host and in-game time to nobody', () => {
+    expect(actingDiverIds(spunState(42, false))).toEqual(['host'])
+    const pacts = pactsWithTwoDivers()
+    expect(actingDiverIds(pacts)).toEqual(['host', 'p2'])
+    const locked = reduce(pacts, { type: 'SET_PACTS', playerId: 'host', pactIds: [] })
+    expect(actingDiverIds(locked)).toEqual(['p2'])
+    expect(actingDiverIds({ ...pacts, phase: 'diving' })).toEqual([])
   })
 
   it('lists the divers whose pact hand is still open', () => {

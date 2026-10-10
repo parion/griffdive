@@ -9,7 +9,10 @@ const props = withDefaults(defineProps<{
   // The phone shell renders the cue as a slim fixed band between the squad bar
   // and the phase, so the phase body keeps its no-scroll layout.
   band?: boolean
-}>(), { band: false })
+  // On desktop the cue lives in the squad rail under the Squad heading: a
+  // banner atop the centre column pushed the fixed dive terminal into scroll.
+  rail?: boolean
+}>(), { band: false, rail: false })
 
 // One line that answers "whose move is it?" for the current beat. Playtesters
 // lost the thread between phases because every panel spoke at once.
@@ -80,7 +83,7 @@ const cue = computed<{ tone: Tone, tag: string, text: string } | null>(() => {
   <div
     v-if="cue"
     class="cue"
-    :class="{ band }"
+    :class="{ band, rail }"
     :data-tone="cue.tone"
     role="status"
     aria-live="polite"
@@ -141,6 +144,16 @@ const cue = computed<{ tone: Tone, tag: string, text: string } | null>(() => {
   border-width: 0 0 1px;
   border-left-width: 3px;
 }
+.cue.rail {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-height: 0;
+  padding: 8px 10px;
+  border-width: 0 0 0 3px;
+}
+.cue.rail .cue-tag { font-size: 10px; letter-spacing: 0.16em; }
+.cue.rail .cue-text { font-size: 13px; line-height: 1.4; }
 .cue.band .cue-tag { font-size: 10px; letter-spacing: 0.16em; }
 .cue.band .cue-text { font-size: 13px; line-height: 1.3; }
 </style>

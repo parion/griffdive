@@ -133,11 +133,15 @@ engine.
   code/copy + Tutorial + the labelled Kit/Codex/Warbonds ship nav — labels, never bare icons;
   playtesters could not find the Kit behind an icon). `components/dive/DiveFrame.vue` is the
   no-scroll dive shell — grid rows `60px 84px minmax(0,1fr) 52px` and columns `216px 1fr 284px`:
-  header · `CrusadeStrip` (the horizontal 3→10 climb) · left rail (Squad) · centre phase, led by
-  `PhaseCue` · right rail (`ValorMeter` with ceiling odds) · `PhaseRail` (bottom Mission phases).
-  **One lead per beat:** `PhaseCue` is a single line atop the centre column answering "whose move
-  is it?" (`Your move` gold / `Stand by` teal), fed by `awaitingDiverIds` + `canControl` — the
-  answer to playtesters losing the thread between phases. `PhaseRail` is a progress readout, never
+  header · `CrusadeStrip` (the horizontal 3→10 climb) · left rail (Squad, led by `PhaseCue`) ·
+  centre phase · right rail (`ValorMeter` with ceiling odds) · `PhaseRail` (bottom Mission phases).
+  **One lead per beat:** `PhaseCue` answers "whose move is it?" (`Your move` gold / `Stand by`
+  teal), fed by `awaitingDiverIds` + `canControl` — the answer to playtesters losing the thread
+  between phases. On desktop it sits in the squad rail under the Squad heading (`rail`; a banner
+  atop the centre column pushed the fixed terminal into scroll), and every diver chip carries the
+  matching lamp — gold and pulsing on whoever `actingDiverIds` says the squad is waiting on (the
+  host on host-run beats), teal otherwise — with a status naming the beat ("spinning", "choosing
+  pacts", "in game", …). `PhaseRail` is a progress readout, never
   a control: the current beat is an underlined gold label (a filled gold chevron read as a second
   Spin button) and finished beats show a check. The rails hide what has no value yet: the
   `ValorMeter` is `dormant` during `spin` (a short Valor explainer + the reward floor instead of an
@@ -746,8 +750,8 @@ app/
                    Squad/wheel-pool rail · phase · Valor rail · Mission-phases bar), DiveTopBar —
                    the dive header (crusade · difficulty emblem · room code/copy · nav),
                    CrusadeStrip — the horizontal 3→10 climb, PhaseRail — the bottom six mission
-                   beats (a readout, not a control), PhaseCue — the one-line "whose move"
-                   lead atop the centre column, WheelOfMisfortune — the seeded spinning SVG wheel,
+                   beats (a readout, not a control), PhaseCue — the "whose move" lead
+                   (squad rail on desktop, a band on phones), WheelOfMisfortune — the seeded spinning SVG wheel,
                    BriefingOverlay — the first-run Griffdiver dossier, ArmoryDrawer — the in-dive
                    Armory overlay (kit + loadout readiness + active-rule bans), CrusadeLadder —
                    the vertical 3→10 ladder (achieved screen), SquadStrip — diver rail, presence,
