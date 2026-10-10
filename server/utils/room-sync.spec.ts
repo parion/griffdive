@@ -836,3 +836,32 @@ describe('stepping away (the room never resets)', () => {
     expect(peers.list(code)).toHaveLength(2)
   })
 })
+
+describe('rooms written by earlier builds (unversioned storage)', () => {
+  async function legacyRoom(): Promise<{ kv: RoomKV, code: string }> {
+    const kv = fakeKV()
+    const code = await createRoom(kv)
+    const raw = await kv.getItem(code) as StoredRoom
+    raw.state = { ...raw.state, settings: { variant: 'standard' } } as unknown as StoredRoom['state']
+    await kv.setItem(code, raw)
+    return { kv, code }
+  }
+
+  it('normalizes the stored state on load', async () => {
+    const { kv, code } = await legacyRoom()
+    const room = await loadRoom(kv, code)
+    expect(room?.state.settings).toMatchObject({ variant: 'medium' })
+  })
+
+  it('seats a joiner against the normalized settings', async () => {
+    const { kv, code } = await legacyRoom()
+    const peers = createPeerDirectory()
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Griffin' })
+
+    const welcome = welcomeOf(host)
+    expect(welcome.snapshot.settings).toMatchObject({ variant: 'medium' })
+    expect(welcome.snapshot.personalInventories[welcome.selfId!]).toBeDefined()
+  })
+})

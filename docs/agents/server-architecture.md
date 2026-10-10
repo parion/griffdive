@@ -153,7 +153,11 @@ Room state lives in `useStorage('rooms')` — Nitro `fs-lite` writing to `./.dat
 `griffdive_data` Fly volume in production), a fake in-memory KV in tests — as
 `StoredRoom { code, state, updatedAt, saved? }`, pruned on access after an idle TTL — 12h for an
 unlaunched lobby (`ROOM_TTL_MS`), 30 days once the crusade has launched (`CRUSADE_TTL_MS`), never
-while `saved` pins it (see Saved dives). Storage is read-modify-write, so `room-sync.ts` serializes every
+while `saved` pins it (see Saved dives). Stored states are normalized on read: rooms carry no
+schema version, so `loadRoom` applies the idempotent subset of the save migrations
+(`normalizeRoomState` in `shared/engine/saves.ts` — pre-v13 variant ids, fields added after the
+room was written) before serving or reducing it, since rooms survive deploys on the Fly volume.
+Storage is read-modify-write, so `room-sync.ts` serializes every
 mutation of a room behind an in-process per-room lock (`withRoomLock`): the process is
 single-threaded but `await` interleaves handlers, and without the lock a joiner's `SET_WARBONDS`
 and the host's `START_DIVE` clobber each other (the memory driver hid this by sharing one object).

@@ -106,7 +106,11 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
-  return migrated
+  // A session mirror can carry a pre-v13 room's settings under the current
+  // schema version (a room is normalized on read, but a mirror written before
+  // that normalization existed is not), so the variant remap and the field
+  // defaults also run unconditionally.
+  return { ...migrated, state: normalizeRoomState(migrated.state) }
 }
 
 // v8 (alpha baseline): the schema freezes here. Pre-alpha docs predate the
@@ -231,6 +235,39 @@ function migrateV12toV13(doc: SaveDoc): SaveDoc {
         mode: legacyVariant === 'quickplay' ? 'seaf' : undefined,
       },
     },
+  }
+}
+
+// Rooms persist without a schema version (see server-architecture.md), so the
+// versioned chain above cannot run on them: it would wipe live fields that
+// predate a step (a re-run of v9→v10 would drop a pinned Major Order). This is
+// the idempotent subset applied to stored room states and to every save doc as
+// the chain's tail — it remaps pre-v13 variant ids and fills only fields that
+// are absent, never overwriting a value the state already holds.
+export function normalizeRoomState(state: DiveState): DiveState {
+  let settings = state.settings
+  if (settings) {
+    const legacyVariant = settings.variant as string
+    const mapped = LEGACY_VARIANT_MAP[legacyVariant]
+    if (mapped) {
+      settings = {
+        variant: mapped,
+        mode: legacyVariant === 'quickplay' ? 'seaf' : undefined,
+      }
+    }
+  }
+  return {
+    ...state,
+    settings,
+    misfortuneFailed: state.misfortuneFailed ?? false,
+    divers: (state.divers ?? []).map((diver) => {
+      const legacy = diver as Partial<DiverState>
+      return {
+        ...diver,
+        sampleBank: legacy.sampleBank ?? 0,
+        away: legacy.away ?? false,
+      }
+    }),
   }
 }
 
