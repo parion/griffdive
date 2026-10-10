@@ -39,9 +39,7 @@
       "front": "terminids",
       "strainId": "predatorStrain",
       "strainAccepted": true,
-      "pactIds": [
-        "deadWeight"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 3,
       "optionId": "sampleextricator",
@@ -51,14 +49,12 @@
     {
       "mission": 3,
       "seed": 3668339987,
-      "misfortuneId": "noOrbitals",
+      "misfortuneId": "fragileLiberty",
       "misfortuneAccepted": false,
       "front": "terminids",
       "strainId": "predatorStrain",
       "strainAccepted": true,
-      "pactIds": [
-        "deadWeight"
-      ],
+      "pactIds": [],
       "outcome": "failure",
       "stars": 0,
       "optionId": null,
@@ -158,7 +154,7 @@
     {
       "mission": 10,
       "seed": 774553834,
-      "misfortuneId": "fragileLiberty",
+      "misfortuneId": "noEagles",
       "misfortuneAccepted": false,
       "front": "terminids",
       "strainId": "predatorStrain",
@@ -173,7 +169,7 @@
     {
       "mission": 11,
       "seed": 3428989595,
-      "misfortuneId": "stealth",
+      "misfortuneId": "oopsAllAirstrikes",
       "misfortuneAccepted": false,
       "front": "terminids",
       "strainId": "predatorStrain",
@@ -208,9 +204,7 @@
       "front": "illuminate",
       "strainId": "mindlessMasses",
       "strainAccepted": true,
-      "pactIds": [
-        "stimAbstinent"
-      ],
+      "pactIds": [],
       "outcome": "failure",
       "stars": 0,
       "optionId": null,
@@ -250,8 +244,8 @@
     {
       "mission": 16,
       "seed": 3816266512,
-      "misfortuneId": "stealth",
-      "misfortuneAccepted": false,
+      "misfortuneId": "oopsAllAirstrikes",
+      "misfortuneAccepted": true,
       "front": "illuminate",
       "strainId": "mindlessMasses",
       "strainAccepted": true,
@@ -342,14 +336,12 @@
     {
       "mission": 22,
       "seed": 2563011894,
-      "misfortuneId": "stealth",
+      "misfortuneId": "primaryOnly",
       "misfortuneAccepted": true,
       "front": "terminids",
       "strainId": "ruptureStrain",
       "strainAccepted": true,
-      "pactIds": [
-        "loadoutLoyalist"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 5,
       "optionId": "gasmortarsentry",
@@ -374,7 +366,7 @@
     {
       "mission": 24,
       "seed": 3576916120,
-      "misfortuneId": "noBoosters",
+      "misfortuneId": "noSentries",
       "misfortuneAccepted": false,
       "front": "terminids",
       "strainId": "ruptureStrain",
@@ -404,13 +396,13 @@
     {
       "mission": 26,
       "seed": 295853050,
-      "misfortuneId": "oopsAllAirstrikes",
+      "misfortuneId": "zeroDeaths",
       "misfortuneAccepted": true,
       "front": "terminids",
       "strainId": "ruptureStrain",
       "strainAccepted": true,
       "pactIds": [
-        "deadWeight"
+        "antiTankAbstinent"
       ],
       "outcome": "success",
       "stars": 4,
@@ -426,9 +418,7 @@
       "front": "illuminate",
       "strainId": "mindlessMasses",
       "strainAccepted": false,
-      "pactIds": [
-        "loadoutLoyalist"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 5,
       "optionId": "speargun",
@@ -443,9 +433,7 @@
       "front": "illuminate",
       "strainId": "mindlessMasses",
       "strainAccepted": false,
-      "pactIds": [
-        "loadoutLoyalist"
-      ],
+      "pactIds": [],
       "outcome": "failure",
       "stars": 0,
       "optionId": null,
@@ -506,8 +494,7 @@
       "strainId": "ruptureStrain",
       "strainAccepted": true,
       "pactIds": [
-        "antiTankAbstinent",
-        "deadWeight"
+        "antiTankAbstinent"
       ],
       "outcome": "success",
       "stars": 0,
@@ -524,7 +511,7 @@
       "strainId": "ruptureStrain",
       "strainAccepted": true,
       "pactIds": [
-        "deadWeight",
+        "stimAbstinent",
         "loadoutLoyalist"
       ],
       "outcome": "failure",
@@ -556,12 +543,10 @@
       "front": "terminids",
       "strainId": "ruptureStrain",
       "strainAccepted": true,
-      "pactIds": [
-        "deadWeight"
-      ],
+      "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "las99quasarcannon",
+      "optionId": "truegrit",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -576,7 +561,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "warppack",
+      "optionId": "gr8recoillessrifle",
       "choiceItemId": null,
       "forfeitedItemId": null
     }
@@ -596,7 +581,6 @@
       "fragileLiberty:automatons:jetBrigade",
       "fragileLiberty:illuminate:mindlessMasses",
       "fragileLiberty:terminids:predatorStrain",
-      "fragileLiberty:terminids:predatorStrain",
       "meleeOnly:terminids:predatorStrain",
       "meleeOnly:terminids:ruptureStrain",
       "noBackpacks:illuminate:mindlessMasses",
@@ -604,24 +588,25 @@
       "noBackpacks:terminids:ruptureStrain",
       "noBoosters:automatons:jetBrigade",
       "noBoosters:illuminate:mindlessMasses",
-      "noBoosters:terminids:ruptureStrain",
       "noEagles:illuminate:mindlessMasses",
+      "noEagles:terminids:predatorStrain",
       "noOrbitals:terminids:predatorStrain",
       "noResupplies:illuminate:mindlessMasses",
       "noResupplies:terminids:ruptureStrain",
       "noSentries:illuminate:mindlessMasses",
+      "noSentries:terminids:ruptureStrain",
+      "oopsAllAirstrikes:illuminate:mindlessMasses",
       "oopsAllAirstrikes:illuminate:mindlessMasses",
       "oopsAllAirstrikes:illuminate:mindlessMasses",
       "oopsAllAirstrikes:illuminate:mindlessMasses",
       "oopsAllAirstrikes:terminids:predatorStrain",
-      "oopsAllAirstrikes:terminids:ruptureStrain",
+      "oopsAllAirstrikes:terminids:predatorStrain",
       "oopsAllAirstrikes:terminids:ruptureStrain",
       "pacifist:illuminate:mindlessMasses",
       "primaryOnly:illuminate:mindlessMasses",
-      "stealth:illuminate:mindlessMasses",
-      "stealth:terminids:predatorStrain",
-      "stealth:terminids:ruptureStrain",
-      "zeroDeaths:terminids:predatorStrain"
+      "primaryOnly:terminids:ruptureStrain",
+      "zeroDeaths:terminids:predatorStrain",
+      "zeroDeaths:terminids:ruptureStrain"
     ],
     "personalInventory": [
       "aflam40flamesentry",
@@ -640,10 +625,10 @@
       "g89smokescreen",
       "gasmortarsentry",
       "gp31grenadepistol",
+      "gr8recoillessrifle",
       "inflammable",
       "k2throwingknife",
       "las7dagger",
-      "las99quasarcannon",
       "lift850jumppack",
       "m90a",
       "machinegunsentry",
@@ -664,7 +649,7 @@
       "sh20shieldgeneratorpack",
       "speargun",
       "sta52assaultrifle",
-      "warppack"
+      "truegrit"
     ],
     "seedHistory": [
       0,

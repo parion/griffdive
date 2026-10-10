@@ -18,7 +18,7 @@ const emit = defineEmits<{
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
 }>()
 
-const wheelRange = computed(() => ceilingRangeForDifficulty(props.state.difficulty))
+const wheelRange = computed(() => ceilingRangeForDifficulty(props.state.difficulty, 0, props.state.divers.length))
 </script>
 
 <template>

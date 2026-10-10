@@ -22,9 +22,9 @@ const emit = defineEmits<{
 const misfortune = computed(() => currentMisfortune(props.state))
 const misfortuneRisk = computed(() =>
   misfortune.value ? conditionRiskAt(misfortune.value.id, props.state.difficulty) : 0)
-// A squad directive stakes 1.5× its risk in Valor — team rules outweigh pacts.
+// A squad directive stakes its risk × the squad-size weight in Valor — team rules outweigh pacts.
 const directiveValor = computed(() =>
-  misfortune.value ? directiveValorAt(misfortune.value.id, props.state.difficulty) : 0)
+  misfortune.value ? directiveValorAt(misfortune.value.id, props.state.difficulty, props.state.divers.length) : 0)
 const decision = computed(() => misfortuneDecision(props.state))
 const stranded = computed(() => misfortuneStrandedDivers(props.state))
 const acceptBlocked = computed(() => stranded.value.length > 0)

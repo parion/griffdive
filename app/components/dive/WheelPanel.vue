@@ -47,10 +47,10 @@ const directiveRisk = computed(() =>
     ? conditionRiskAt(props.state.wheel.misfortuneId, props.state.difficulty)
     : 0,
 )
-// A squad directive stakes 1.5× its risk in Valor — team rules outweigh pacts.
+// A squad directive stakes its risk × the squad-size weight in Valor — team rules outweigh pacts.
 const directiveValor = computed(() =>
   props.state.wheel
-    ? directiveValorAt(props.state.wheel.misfortuneId, props.state.difficulty)
+    ? directiveValorAt(props.state.wheel.misfortuneId, props.state.difficulty, props.state.divers.length)
     : 0,
 )
 const strainRisk = computed(() =>
