@@ -89,7 +89,16 @@ const showMo = computed(() => !props.state.frontId)
 const SPIN_MS = 2800
 const drawing = ref(false)
 const drawer = ref<HTMLElement | null>(null)
+const sheet = ref<HTMLElement | null>(null)
 let spinTimer: ReturnType<typeof setTimeout> | undefined
+
+// Once the draw lands, the drawer opens so the calls it asks for are in reach.
+async function expandDrawer(behavior: ScrollBehavior) {
+  await nextTick()
+  if (drawer.value && sheet.value) {
+    drawer.value.scrollTo({ top: sheet.value.offsetTop, behavior })
+  }
+}
 watch(
   () => props.state.wheel?.seed,
   (seed, previous) => {
@@ -104,11 +113,13 @@ watch(
     drawer.value?.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' })
     if (reduced) {
       drawing.value = false
+      void expandDrawer('auto')
       return
     }
     drawing.value = true
     spinTimer = setTimeout(() => {
       drawing.value = false
+      void expandDrawer('smooth')
     }, SPIN_MS)
   },
 )
@@ -186,7 +197,10 @@ function acceptDisabled(): boolean {
         />
       </div>
 
-      <div class="cards">
+      <div
+        ref="sheet"
+        class="cards"
+      >
         <span
           class="grabber"
           aria-hidden="true"

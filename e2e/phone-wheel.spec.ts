@@ -32,6 +32,12 @@ test('phone wheel: decision sheet expands over the wheel', async ({ browser }) =
     sheetTop: document.querySelector('.phone-wheel .cards')!.getBoundingClientRect().top,
   }))
 
+  // Once the spin lands the drawer opens on its own.
+  await expect.poll(() => drawer.evaluate(el => el.scrollTop)).toBeGreaterThan(0)
+  await drawer.evaluate((el) => {
+    el.scrollTop = 0
+  })
+
   // Collapsed: the sheet tucks over the wheel's lower rim, the wheel on screen.
   const collapsed = await geometry()
   expect(collapsed.sheetTop).toBeLessThan(collapsed.wheel.bottom)
