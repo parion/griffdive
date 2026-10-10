@@ -18,6 +18,7 @@ const props = defineProps<{
   isHost: boolean
   online: string[]
   kicked: boolean
+  canFork: boolean
   lastError: string | null
 }>()
 
@@ -54,6 +55,7 @@ const emit = defineEmits<{
   end: []
   saveDive: []
   unsaveDive: []
+  newSession: []
   abandonSlot: []
   dismissError: []
 }>()
@@ -89,6 +91,7 @@ function kickDiver(diverId: string): void {
         :can-control="canControl"
         :is-host="isHost"
         :lone-host="state.divers.length === 1"
+        :can-fork="canFork"
         @copy-invite="emit('copyInvite')"
         @open-armory="emit('openArmory')"
         @open-tutorial="emit('openTutorial')"
@@ -96,6 +99,7 @@ function kickDiver(diverId: string): void {
         @end="emit('end')"
         @save-dive="emit('saveDive')"
         @unsave-dive="emit('unsaveDive')"
+        @new-session="emit('newSession')"
       />
     </template>
 

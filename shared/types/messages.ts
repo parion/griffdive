@@ -81,6 +81,7 @@ export const ENGINE_ACTION_TYPES = [
   'SPIN_BONUS',
   'AWARD_BONUS',
   'LEAVE_DIVE',
+  'SET_AWAY',
   'ADVANCE',
   'END_DIVE',
   'KICK_DIVER',

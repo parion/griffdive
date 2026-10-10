@@ -85,7 +85,9 @@ app/
                    on),
   composables/     useDiveSession (unified local/room driver), useDiveView (session-derived
                    shell state: self/phase/canControl/name draft), useDiveEngine (local reducer +
-                   persist),                    useGameSocket (WS, reconnect, stored playerId), useSaves,
+                   persist),                    useGameSocket (WS, reconnect, stored playerId,
+                   per-person session mirror), useSaves, useSessionSaves (personal session
+                   mirrors: list/mirror/delete/export),
                    useDrawers (global Codex/Warbonds slide-over visibility, so the dive can
                    open the Warbonds panel without unmounting), useWarbondIntro (one-shot
                    dive-start Warbonds prompt memory), useDiveIntro (one-shot dive-start
@@ -112,12 +114,12 @@ server/
                    best-effort fetch)
   plugins/         metrics.ts (binds the gauges, serves /metrics on internal :9091),
                    room-sweeper.ts (reaps idle rooms every 15 min)
-  api/             rooms/index.post.ts (create), rooms/[code].get.ts (snapshot),
+  api/             rooms/index.post.ts (create; an optional save body seeds a new session), rooms/[code].get.ts (snapshot),
                    war/major-order.get.ts (cached live MO proxy)
 shared/
   engine/          config.ts, types.ts, reducer.ts, rng.ts, wheel.ts, pacts.ts,
                    rewards.ts, progression.ts, selectors.ts, saves.ts, room.ts
-  types/           save.ts (SaveDoc + SAVE_SCHEMA_VERSION), messages.ts (WS contracts,
+  types/           save.ts (SaveDoc + SessionSave + SAVE_SCHEMA_VERSION), messages.ts (WS contracts,
                    host-only action list)
   utils/           room-code.ts (room-code alphabet + validator)
   data/            items (equipment.ts, stratagems.ts), warbonds.ts, fronts.ts,
@@ -149,8 +151,9 @@ Host-authoritative, room-per-dive. Nitro WebSocket via `nitro.experimental.webso
 `nuxt.config.ts`; single endpoint `/ws?room={code}`.
 Room state lives in `useStorage('rooms')` — Nitro `fs-lite` writing to `./.data/rooms` (the
 `griffdive_data` Fly volume in production), a fake in-memory KV in tests — as
-`StoredRoom { code, state, updatedAt, saved? }`, pruned on access after a 12h TTL unless `saved`
-pins it (see Saved dives). Storage is read-modify-write, so `room-sync.ts` serializes every
+`StoredRoom { code, state, updatedAt, saved? }`, pruned on access after an idle TTL — 12h for an
+unlaunched lobby (`ROOM_TTL_MS`), 30 days once the crusade has launched (`CRUSADE_TTL_MS`), never
+while `saved` pins it (see Saved dives). Storage is read-modify-write, so `room-sync.ts` serializes every
 mutation of a room behind an in-process per-room lock (`withRoomLock`): the process is
 single-threaded but `await` interleaves handlers, and without the lock a joiner's `SET_WARBONDS`
 and the host's `START_DIVE` clobber each other (the memory driver hid this by sharing one object).
@@ -170,7 +173,8 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 | S→C | `state` | `{ snapshot, applied (EngineAction \| null), online, saved, steam }` — after each applied change; also an `applied: null` presence refresh the moment a seated diver's last connection drops; `online` = diver ids with live connections |
 | S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `dive-locked`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message`, `rate-limited` |
 
-REST fallbacks: `POST /api/rooms` → `{ code }`; `GET /api/rooms/:code` → `{ code, state }` (404).
+REST fallbacks: `POST /api/rooms` → `{ code, selfId }` (an optional `{ save, name }` body seeds the
+room from a personal session save; `selfId` is the seeded owner seat, `null` for a fresh lobby); `GET /api/rooms/:code` → `{ code, state }` (404).
 Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `BUY_ITEM`,
 `SET_NAME`) are
 coerced to the sender — a client can never act as another diver.
@@ -179,7 +183,8 @@ coerced to the sender — a client can never act as another diver.
 `reduce`, so an unknown or malformed action is rejected (`bad-action`) instead of persisting
 `undefined` state; the reducer defaults unknown actions to a no-op and the WS handler catches
 anything else, so one bad message never stops the process-wide server. Joins are rate-limited per
-address (20/min → `rate-limited`), actions per diver (120/10s, silently dropped), and room creation
+client address (20/min → `rate-limited`; keyed on `Fly-Client-IP`, then `X-Forwarded-For`, then the
+socket — behind Fly's proxy the socket address is the proxy's), actions per diver (120/10s, silently dropped), and room creation
 per address (10/min → 429) with a `MAX_ROOMS` cap (503). `server/plugins/room-sweeper.ts` reaps idle
 rooms every 15 min so the `MAX_ROOMS` backstop rarely matters.
 
@@ -191,19 +196,22 @@ Canonical engine actions (the reducer union; keep names stable):
 `BUY_ITEM{playerId,itemId}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
 `AWARD_BONUS{playerId}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
-`LEAVE_DIVE{playerId}` `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
+`LEAVE_DIVE{playerId}` `SET_AWAY{playerId,away}` `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
 `ACCEPT_STRAIN`, `DEAL_PACTS`, `SET_MAJOR_ORDER`, `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `FAIL_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `BUY_ITEM`, `SET_NAME`,
-`REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE` are
+`REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE`, `SET_AWAY` are
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated
 diver, `unsave-dive` is host-only; the Steam lobby link is likewise outside the union and
 host-only (`set-steam`, blank clears).
 `FAIL_PACT` is sent by the target diver or the host (server refuses everyone else); `FAIL_MISFORTUNE`
 is host-only, since the directive binds the whole squad. Host disconnect →
-`TRANSFER_HOST` to the earliest joiner; none left → room hibernates in storage with a TTL.
+`TRANSFER_HOST` to the earliest joiner still connected; none left → room hibernates in storage
+with a TTL, and the first diver back takes the host role. A diver whose last connection stays down
+for `AWAY_GRACE_MS` is marked away (`SET_AWAY`, issued by the server; also re-checked on every
+`hello` so divers dropped across a server restart are caught) — see Mid-crusade joining.
 Reconnect = re-`hello` with stored playerId → server replays snapshot.
 `KICK_DIVER` (host, any phase, lobby included) removes a diver who left or is blocking the
 squad: their pending pact lock or reward pick stops gating progress, their personal inventory
@@ -243,6 +251,50 @@ reducer.
   `griffdive_data` Fly volume in production — so saves and live rooms survive deploys. Tests use a
   fake in-memory KV. The same single-machine constraint as live rooms applies (see Deployment);
   Redis remains the swap for horizontal scale.
+
+### Personal session saves
+
+A crusade can take hours, and the exact same friend group will rarely all be back online at once —
+so saves must be per person, per session, not just per room. Every seated diver's browser keeps a
+personal **session save**: a `SaveDoc` mirror of the room plus `roomCode` and `ownerId` (`SessionSave`
+in `shared/types/save.ts`), written to `localStorage` (`griffdive:sessions:v1`) on each synced
+snapshot by `useSessionSaves`/`useGameSocket` (debounced, capped at the 20 most recent; the last
+*seated* snapshot is flushed the moment the seat disappears — a kick — and on unmount). It is
+convenience state, never engine state — the room stays authoritative, and the mirror outlives the
+server record. **Leaving never loses the crusade:** Leave marks the diver away (`SET_AWAY`) — their
+seat, kit, purse and tokens stay in the room, the squad stops waiting on them, and RESUME on the
+Bridge puts them back exactly where they were. A room is never reset (see Mid-crusade joining), so
+RESUME is the way back to the same squad's room and **HOST** on a session save is the way to carry
+the crusade on with someone else.
+
+Any save — a session mirror or a local solo `SaveDoc` — can seed a **new session**: `POST /api/rooms`
+accepts an optional `{ save, name }` body, runs `normalizeSaveDoc` (so save migrations apply), then
+the pure `forkCrusade(state, ownerId, name)` in `shared/engine/room.ts`. The rules:
+
+- **The continuing diver keeps their seat as host**, exactly where the crusade stopped — same
+  difficulty, mission, front/strain, wheel, rerolls, Major Order and personal inventory. The purse
+  and reward tokens belong to the session they were earned in, so the new session starts them at
+  zero. The client
+  pre-stores the returned `selfId` as the new room's seat before navigating, so the first `hello`
+  reattaches that seat.
+- **Every other diver leaves the squad and their kit parks as an ordinary legacy cache** — a new
+  joiner claims a fallen diver's kit instead of their Field Promotion (or joins at the start
+  difficulty with the variant's kit). There is deliberately no past-player recognition: caches are
+  communal gear, not identity.
+- **A fork is a copy, never a move**: the original room, its pin and its invite link are untouched.
+  New joiners seat through the existing mid-crusade path (see Mid-crusade joining).
+- **Refusals and sanitizing**: a complete crusade is refused; an unstarted lobby continues as a fresh
+  lobby; a malformed snapshot (no wheel where a decision needs one, no front past the spin, bad
+  settings) is refused; the client-supplied seed is sanitized (divers defaulted, difficulty and array
+  bounds clamped) before storage.
+- **No forfeit deadlock**: a forked host stranded at `forfeit` with nothing to lose — their kit
+  empty, the missing kits parked as caches the picker never offers — resolves the failure (one item
+  stripped from a cache when one exists) and restarts the operation.
+
+Entry points: the Bridge Service record (**HOST** on any save, **NEW SESSION** on a live card that has
+a mirror) and the dive header's **New session** control for any seated diver (room mode, never in
+lobby/complete), with a confirm dialog. The server-side pin (Saved dives) still exists and remains
+the resume-the-same-room anchor; session saves are what make the crusade portable between squads.
 
 ### Steam lobby codes
 

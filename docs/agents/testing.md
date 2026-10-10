@@ -18,7 +18,8 @@
 - **E2E (Playwright, `e2e/*.spec.ts` via `@playwright/test`):** `playwright.config.ts` boots the
   production build (`pnpm build` + Nitro server, port 3173, WebSocket included). Specs: solo dive
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host
-  authority, pact lock-in), Codex slide-over (opens over the dive without dropping the session),
+  authority, pact lock-in; a squad that all leaves finds its room waiting and RESUME reseats
+  everyone; the squad never waits on a diver who left), Codex slide-over (opens over the dive without dropping the session),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
   non-dismissible name gate, star-rating keyboard navigation), phone host moderation
   (`phone.spec.ts`: the 390px squad bar opens the moderation bottom sheet), phone reward draft
@@ -26,6 +27,8 @@
   (`phone-layout.spec.ts`: no sideways overflow at 360px with a multi-front live Major Order, the live
   spin CTA, touch-scrubbing the report time bar), tablet layout (`tablet-layout.spec.ts`: at
   1024×768 every phase fits the centre column and the drawn directive's Lock it in is in view; at
-  768×1024 the phone shell widens to the tablet), PWA affordances
+  768×1024 the phone shell widens to the tablet), personal session saves
+  (`session-saves.spec.ts`: a seated diver forks the live room into a new session, a solo save hosts
+  an online session from the home record), PWA affordances
   (manifest content type + icons served, SW reachable, shell head links). Chromium only;
   `pnpm exec playwright install chromium` after a fresh clone.

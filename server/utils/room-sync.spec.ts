@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { createDiveState, reduce } from '~~/shared/engine/reducer'
+import { joinDiver } from '~~/shared/engine/room'
+import { createSaveDoc } from '~~/shared/engine/saves'
 import { pactOfferFor } from '~~/shared/engine/selectors'
-import { ROOM_TTL_MS, RoomLimitError, createPeerDirectory, createRoom, enforceSaveCap, loadRoom, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, sweepRooms } from './room-sync'
+import { CRUSADE_TTL_MS, InvalidSaveError, ROOM_TTL_MS, RoomLimitError, createPeerDirectory, createRoom, createRoomFromSave, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, sweepRooms } from './room-sync'
 import type { PeerLike, RoomKV, StoredRoom } from './room-sync'
 import { createRateLimiter } from './rate-limit'
 import type { ServerMessage } from '~~/shared/types/messages'
@@ -552,6 +555,21 @@ describe('room-sync', () => {
     expect((await loadRoom(kv, code))?.state.divers).toHaveLength(1)
   })
 
+  it('budgets joins per client, not per proxy', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+    const limits = { hello: createRateLimiter(1, 60_000) }
+    for (const [id, clientIp] of [['ws-a', '198.51.100.1'], ['ws-b', '198.51.100.2']] as const) {
+      const peer = fakePeer(id)
+      peer.context.roomCode = code
+      peer.context.clientIp = clientIp
+      peer.remoteAddress = '10.0.0.1'
+      await processHello(kv, peers, peer, { name: id }, limits)
+      expect(sent(peer).some(m => m.type === 'welcome')).toBe(true)
+    }
+  })
+
   it('refuses room creation past capacity', async () => {
     const kv = fakeKV()
     await createRoom(kv, 1)
@@ -715,5 +733,106 @@ describe('room-sync', () => {
     expect((await kv.getItem(oldest) as StoredRoom).saved).toBeNull()
     expect((await kv.getItem(middle) as StoredRoom).saved?.name).toBe(middle)
     expect((await kv.getItem(newest) as StoredRoom).saved?.name).toBe(newest)
+  })
+})
+
+describe('createRoomFromSave (personal session saves)', () => {
+  it('seeds a new room around the saver and parks the other kits as caches', async () => {
+    const kv = fakeKV()
+    let state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    state = joinDiver(state, 'p2', 'Two')!
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
+    const save = {
+      ...createSaveDoc(state, 'Session', new Date().toISOString()),
+      roomCode: 'ABC123',
+      ownerId: 'p2',
+    }
+
+    const { code, selfId } = await createRoomFromSave(kv, save, 'Two Again')
+    expect(selfId).toBe('p2')
+    const room = await loadRoom(kv, code)
+    expect(room?.state.hostId).toBe('p2')
+    expect(room?.state.divers).toHaveLength(1)
+    expect(room?.state.divers[0]!.name).toBe('Two Again')
+    expect(room?.state.personalInventories.p1).toBeUndefined()
+    expect(room?.state.legacyCaches.p1).toBeDefined()
+    expect(room?.state.wheel?.seed).toBe(42)
+  })
+
+  it('starts the new session with an empty purse and no reward tokens', async () => {
+    const kv = fakeKV()
+    const state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    const rich = { ...state, divers: state.divers.map(diver => ({ ...diver, sampleBank: 9, rewardTokens: 2 })) }
+    const { code } = await createRoomFromSave(kv, createSaveDoc(rich, 'Session', new Date().toISOString()), 'Griffin')
+    const room = await loadRoom(kv, code)
+    expect(room?.state.divers[0]).toMatchObject({ sampleBank: 0, rewardTokens: 0 })
+    expect(room?.state.personalInventories.p1).toEqual(state.personalInventories.p1)
+  })
+
+  it('refuses malformed saves and complete crusades', async () => {
+    const kv = fakeKV()
+    await expect(createRoomFromSave(kv, { slotName: 'nope' }, '')).rejects.toBeInstanceOf(InvalidSaveError)
+    const state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    const done = createSaveDoc({ ...state, phase: 'complete' }, 'Done', new Date().toISOString())
+    await expect(createRoomFromSave(kv, done, '')).rejects.toBeInstanceOf(InvalidSaveError)
+  })
+})
+
+describe('stepping away (the room never resets)', () => {
+  async function launchedRoom() {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    const guest = fakePeer('ws-b')
+    guest.context.roomCode = code
+    await processHello(kv, peers, guest, { name: 'Guest' })
+    await processAction(kv, peers, host, { action: { type: 'START_DIVE', settings: { variant: 'medium' } } })
+    return { kv, peers, code, host, guest, hostId: welcomeOf(host).selfId, guestId: welcomeOf(guest).selfId }
+  }
+
+  it('keeps every seat when the whole squad leaves, and the first one back hosts', async () => {
+    const { kv, peers, code, host, guest, hostId, guestId } = await launchedRoom()
+    await processAction(kv, peers, guest, { action: { type: 'SET_AWAY', playerId: 'spoofed', away: true } })
+    await processClose(kv, peers, guest)
+    await processAction(kv, peers, host, { action: { type: 'SET_AWAY', playerId: hostId, away: true } })
+    await processClose(kv, peers, host)
+
+    const left = await loadRoom(kv, code)
+    expect(left?.state.phase).toBe('spin')
+    expect(left?.state.divers.map(diver => [diver.id, diver.away])).toEqual([[hostId, true], [guestId, true]])
+
+    const back = fakePeer('ws-b2')
+    back.context.roomCode = code
+    await processHello(kv, peers, back, { name: 'Guest', playerId: guestId })
+    const welcome = welcomeOf(back)
+    expect(welcome.selfId).toBe(guestId)
+    expect(welcome.snapshot.hostId).toBe(guestId)
+    expect(welcome.snapshot.divers.find(diver => diver.id === guestId)?.away).toBe(false)
+    expect(welcome.snapshot.divers.find(diver => diver.id === hostId)?.away).toBe(true)
+  })
+
+  it('marks a dropped diver away only while they stay offline', async () => {
+    const { kv, peers, code, guest, guestId, hostId } = await launchedRoom()
+    await markAwayIfOffline(kv, peers, code, guestId)
+    expect((await loadRoom(kv, code))?.state.divers.find(diver => diver.id === guestId)?.away).toBe(false)
+
+    await processClose(kv, peers, guest)
+    await markAwayIfOffline(kv, peers, code, guestId)
+    const room = await loadRoom(kv, code)
+    expect(room?.state.divers.find(diver => diver.id === guestId)?.away).toBe(true)
+    expect(room?.state.hostId).toBe(hostId)
+  })
+
+  it('keeps a launched crusade far past the lobby TTL', async () => {
+    const { kv, peers, code } = await launchedRoom()
+    const raw = await kv.getItem(code) as StoredRoom
+    raw.updatedAt = Date.now() - ROOM_TTL_MS - 1
+    expect(await loadRoom(kv, code)).not.toBeNull()
+    raw.updatedAt = Date.now() - CRUSADE_TTL_MS - 1
+    expect(await loadRoom(kv, code)).toBeNull()
+    expect(peers.list(code)).toHaveLength(2)
   })
 })

@@ -10,7 +10,8 @@ const props = withDefaults(defineProps<{
   canControl?: boolean
   isHost?: boolean
   loneHost?: boolean
-}>(), { saved: false, canControl: false, isHost: false, loneHost: false })
+  canFork?: boolean
+}>(), { saved: false, canControl: false, isHost: false, loneHost: false, canFork: false })
 
 const emit = defineEmits<{
   copyInvite: []
@@ -20,6 +21,7 @@ const emit = defineEmits<{
   end: []
   saveDive: []
   unsaveDive: []
+  newSession: []
 }>()
 
 const { codexOpen, warbondsOpen } = useDrawers()
@@ -136,6 +138,15 @@ function run(action: () => void): void {
           @click="run(() => emit('openTutorial'))"
         >
           Tutorial
+        </button>
+        <button
+          v-if="canFork"
+          class="menu-item"
+          type="button"
+          role="menuitem"
+          @click="run(() => emit('newSession'))"
+        >
+          New session
         </button>
         <span
           v-if="mode === 'room'"

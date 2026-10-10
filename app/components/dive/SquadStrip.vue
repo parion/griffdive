@@ -55,6 +55,9 @@ function isActing(diverId: string): boolean {
 
 function statusOf(diverId: string): string {
   const diver = props.state.divers.find(entry => entry.id === diverId)
+  if (diver?.away) {
+    return 'away'
+  }
   if (props.mode === 'room' && !isOnline(diverId)) {
     return 'reconnecting'
   }

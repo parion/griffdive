@@ -13,7 +13,8 @@ const props = withDefaults(defineProps<{
   canControl?: boolean
   isHost?: boolean
   loneHost?: boolean
-}>(), { saved: false, canControl: false, isHost: false, loneHost: false })
+  canFork?: boolean
+}>(), { saved: false, canControl: false, isHost: false, loneHost: false, canFork: false })
 
 const emit = defineEmits<{
   copyInvite: []
@@ -22,6 +23,7 @@ const emit = defineEmits<{
   end: []
   saveDive: []
   unsaveDive: []
+  newSession: []
 }>()
 
 const { codexOpen, warbondsOpen } = useDrawers()
@@ -102,6 +104,14 @@ const roomCode = computed(() => (props.slotName || '').toUpperCase())
         @click="emit('openTutorial')"
       >
         Tutorial
+      </button>
+      <button
+        v-if="canFork"
+        class="btn ghost tiny"
+        type="button"
+        @click="emit('newSession')"
+      >
+        New session
       </button>
       <button
         v-if="mode === 'room' && !saved"

@@ -9,21 +9,26 @@ import {
 import { catchUpOpsBehind, difficultyName, STARTING_KITS } from '~~/shared/engine/progression'
 import { createDiveState, reduce } from '~~/shared/engine/reducer'
 import { oddsToReach } from '~~/shared/engine/rewards'
+import { createSaveDoc } from '~~/shared/engine/saves'
 import { FRONTS } from '~~/shared/data/fronts'
 import { factionImageUrl } from '~~/shared/data/images'
 import { isRoomCode } from '~~/shared/utils/room-code'
 import type { CrusadeMode, CrusadeSettings, CrusadeVariant, DiveState, RewardTier } from '~~/shared/engine/types'
 import type { DiveSaveInfo } from '~~/shared/types/messages'
-import type { SaveDoc } from '~~/shared/types/save'
+import type { SaveDoc, SessionSave } from '~~/shared/types/save'
+import { storeSeat, storedDiverName, storedSeat } from '~/composables/useGameSocket'
 
 const saves = useSaves()
+const sessions = useSessionSaves()
 const recentRooms = useRecentRooms()
+const { push: pushToast } = useToasts()
 const { ownedWarbonds: myWarbonds, setOwned: setMyWarbonds } = useOwnedWarbonds()
 
 const diverName = ref('Griffin')
 const variant = ref<CrusadeVariant>('medium')
 const mode = ref<CrusadeMode>('seaf')
 const slotList = ref<{ id: string, doc: SaveDoc }[]>([])
+const sessionList = ref<SessionSave[]>([])
 const joinCode = ref('')
 const codeFocused = ref(false)
 const variantOpen = ref(false)
@@ -41,6 +46,7 @@ const onlineLoading = ref(true)
 let moTimer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
   slotList.value = saves.listSaves()
+  sessionList.value = sessions.listSessions()
   refreshOnlineDives()
   moTimer = setInterval(() => {
     now.value = Date.now()
@@ -69,8 +75,79 @@ async function refreshOnlineDives(): Promise<void> {
       return { code, state: null, saved: null }
     }
   }))
-  onlineDives.value = results.filter((entry): entry is OnlineDive => entry !== null)
+  onlineDives.value = results.filter((entry): entry is OnlineDive => {
+    // An unlaunched lobby nobody ever joined has nothing to resume.
+    if (entry?.state && entry.state.phase === 'lobby' && entry.state.divers.length === 0) {
+      recentRooms.forgetRoom(entry.code)
+      return false
+    }
+    return entry !== null
+  })
   onlineLoading.value = false
+}
+
+// Personal session saves: the browser-local mirrors every seated diver keeps.
+// A live card carries the New session action; mirrors whose room is gone (or
+// unreachable) stand on their own.
+const sessionByCode = computed(() => new Map(sessionList.value.map(save => [save.roomCode, save])))
+const staleSessions = computed(() =>
+  sessionList.value.filter(save => !onlineDives.value.some(dive => dive.code === save.roomCode && dive.state)))
+const recordCount = computed(() => onlineDives.value.length + slotList.value.length + staleSessions.value.length)
+
+// Continue any save as a brand-new session: the server seats the saver as host
+// where the crusade stopped and parks the missing divers' kits as claimable
+// legacy caches for whoever comes aboard next.
+async function hostNewSession(state: DiveState, ownerId: string | null, label: string): Promise<void> {
+  if (state.phase === 'complete') {
+    pushToast('This crusade is already achieved — start a fresh one', 'warn')
+    return
+  }
+  hosting.value = true
+  try {
+    // The continuing diver's name wins; a local save's owner keeps the name it
+    // was played under when this browser never introduced itself.
+    const stored = storedDiverName()
+    const owner = state.divers.find(diver => diver.id === ownerId)
+      ?? state.divers.find(diver => diver.id === state.hostId)
+      ?? state.divers[0]
+    const fallback = owner?.name?.trim() || diverName.value.trim() || 'Diver'
+    const name = stored.trim() && stored !== 'Diver' ? stored : fallback
+    const save = { ...createSaveDoc(state, label, new Date().toISOString()), ...(ownerId ? { ownerId } : {}) }
+    const res = await $fetch<{ code: string, selfId: string | null }>('/api/rooms', {
+      method: 'POST',
+      body: { save, name },
+    })
+    if (res.selfId) {
+      storeSeat(res.code, res.selfId)
+    }
+    recentRooms.rememberRoom(res.code)
+    navigateTo(`/dive/${res.code}`)
+  }
+  catch {
+    hosting.value = false
+    pushToast('Could not start a new session', 'warn')
+  }
+}
+
+function hostFromLive(dive: OnlineDive): void {
+  if (!dive.state) {
+    return
+  }
+  const mirror = sessionByCode.value.get(dive.code)
+  void hostNewSession(dive.state, storedSeat(dive.code) ?? mirror?.ownerId ?? null, dive.saved?.name ?? mirror?.slotName ?? 'Session')
+}
+
+function hostFromSession(save: SessionSave): void {
+  void hostNewSession(save.state, save.ownerId, save.slotName)
+}
+
+function hostFromLocal(doc: SaveDoc): void {
+  void hostNewSession(doc.state, null, doc.slotName)
+}
+
+function removeSession(roomCode: string): void {
+  sessions.deleteSession(roomCode)
+  sessionList.value = sessions.listSessions()
 }
 
 const VARIANTS_LABELS: Record<CrusadeVariant, string> = {
@@ -797,7 +874,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
               id="rec-h"
               class="lbl"
             >
-              Service record <span class="muted">· {{ onlineDives.length + slotList.length }}</span>
+              Service record <span class="muted">· {{ recordCount }}</span>
             </h2>
             <label class="import small muted">
               <input
@@ -883,6 +960,24 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
                         aria-hidden="true"
                       ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
                     </NuxtLink>
+                    <button
+                      v-if="sessionByCode.has(dive.code)"
+                      class="btn ghost rc-resume rc-new"
+                      type="button"
+                      :disabled="hosting"
+                      @click="hostFromLive(dive)"
+                    >
+                      <span>NEW SESSION</span>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.4"
+                        aria-hidden="true"
+                      ><path d="M12 5v14M5 12h14" /></svg>
+                    </button>
                   </div>
                   <div
                     class="rc-ladder"
@@ -927,6 +1022,78 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
             </ul>
 
             <ul
+              v-if="staleSessions.length > 0"
+              class="slot-list"
+            >
+              <li
+                v-for="save in staleSessions"
+                :key="save.roomCode"
+                class="record-card local"
+              >
+                <div class="rc-local-body">
+                  <div class="rc-local-head">
+                    <span class="rc-name">{{ save.slotName }}</span>
+                    <span class="rc-local-tag">SESSION SAVE · {{ save.roomCode }}</span>
+                  </div>
+                  <div
+                    class="rc-ladder"
+                    role="img"
+                    :aria-label="`Ladder: on difficulty ${save.state.difficulty} of 10`"
+                  >
+                    <div class="rc-lad">
+                      <i
+                        v-for="(c, i) in ladderCells(save.state.difficulty)"
+                        :key="i"
+                        :class="c"
+                      />
+                    </div>
+                    <span class="rc-lad-end">{{ difficultyName(save.state.difficulty) }}</span>
+                  </div>
+                </div>
+                <button
+                  class="btn ghost rc-open"
+                  type="button"
+                  :disabled="hosting"
+                  @click="hostFromSession(save)"
+                >
+                  HOST
+                </button>
+                <button
+                  class="icon-btn rc-icon"
+                  type="button"
+                  :aria-label="`Export ${save.slotName}`"
+                  @click="sessions.exportSession(save.roomCode)"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    aria-hidden="true"
+                  ><path d="M12 3v12M7 10l5 5 5-5M4 21h16" /></svg>
+                </button>
+                <button
+                  class="icon-btn rc-icon danger"
+                  type="button"
+                  :aria-label="`Delete ${save.slotName}`"
+                  @click="removeSession(save.roomCode)"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.2"
+                    aria-hidden="true"
+                  ><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              </li>
+            </ul>
+
+            <ul
               v-if="slotList.length > 0"
               class="slot-list"
             >
@@ -967,6 +1134,14 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
                     ><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></svg>
                   </div>
                 </div>
+                <button
+                  class="btn ghost rc-open"
+                  type="button"
+                  :disabled="hosting"
+                  @click="hostFromLocal(doc)"
+                >
+                  HOST
+                </button>
                 <NuxtLink
                   class="btn ghost rc-open"
                   :to="`/dive/${id}`"
@@ -1007,7 +1182,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
             </ul>
 
             <div
-              v-if="onlineDives.length === 0 && slotList.length === 0"
+              v-if="recordCount === 0"
               class="empty cut-sm"
             >
               <BrandMark
@@ -1732,6 +1907,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
 }
 .record-card.local {
   flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.6rem;
   padding: 0.7rem 0.7rem 0.7rem 1rem;
@@ -1765,7 +1941,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
   color: var(--text);
 }
 .rc-avatar.host { background: var(--gold); color: var(--on-gold); }
-.rc-body { display: flex; align-items: center; gap: 0.9rem; }
+.rc-body { display: flex; flex-wrap: wrap; align-items: center; gap: 0.9rem; row-gap: 0.5rem; }
 .rc-diff { font-size: 2.75rem; color: var(--gold); line-height: 1; }
 .rc-meta { display: flex; flex-direction: column; gap: 0.35rem; flex-grow: 1; min-width: 0; }
 .rc-diffname { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.12em; color: var(--gold); }
@@ -1786,6 +1962,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
   font-weight: 700;
   letter-spacing: 0.16em;
 }
+.rc-new { border-color: var(--line-4); color: var(--khaki); }
 .rc-ladder { display: flex; align-items: center; gap: 0.5rem; }
 .rc-lad-end { font-size: 10px; font-weight: 700; color: var(--muted); }
 .rc-lad { flex-grow: 1; display: flex; gap: 3px; }

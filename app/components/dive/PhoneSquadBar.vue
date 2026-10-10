@@ -25,6 +25,9 @@ function statusOf(diverId: string): string {
   if (!diver) {
     return ''
   }
+  if (diver.away) {
+    return 'away'
+  }
   if (props.state.phase === 'deal' || props.state.phase === 'pacts') {
     return diver.pactsLocked ? 'ready' : 'choosing pacts'
   }

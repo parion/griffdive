@@ -20,6 +20,13 @@ export default defineWebSocketHandler({
   upgrade(request) {
     const url = new URL(request.url, 'http://localhost')
     ;(request.context as Record<string, unknown>).roomCode = url.searchParams.get('room') ?? ''
+    // Behind Fly's proxy the socket address is the proxy's, so every diver
+    // would share one join budget. Fly-Client-IP is set by the proxy itself.
+    const forwarded = request.headers.get('fly-client-ip')
+      ?? request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    if (forwarded) {
+      ;(request.context as Record<string, unknown>).clientIp = forwarded
+    }
   },
 
   async message(peer, message) {

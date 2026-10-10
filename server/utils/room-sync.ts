@@ -1,7 +1,8 @@
 import { customAlphabet, nanoid } from 'nanoid'
 import { SQUAD_SIZE_MAX, MAX_NAME_LENGTH } from '~~/shared/engine/config'
-import { createLobbyState, joinDiver, seatingBlocked } from '~~/shared/engine/room'
+import { createLobbyState, forkCrusade, joinDiver, seatingBlocked } from '~~/shared/engine/room'
 import { reduce } from '~~/shared/engine/reducer'
+import { normalizeSaveDoc } from '~~/shared/engine/saves'
 import type { DiveState, EngineAction } from '~~/shared/engine/types'
 import { isEngineActionType, isHostOnlyAction } from '~~/shared/types/messages'
 import type { DiveSaveInfo, ServerMessage, SteamLobbyInfo } from '~~/shared/types/messages'
@@ -16,6 +17,23 @@ const newPlayerId = () => nanoid(12)
 // Rooms idle in storage this long before they are pruned on access.
 export const ROOM_TTL_MS = 12 * 60 * 60 * 1000
 
+// A launched crusade takes weeks of evenings, so its room waits far longer than
+// an unlaunched lobby — a squad that steps away resumes exactly where it was.
+// Personal session saves cover anything older (AGENTS.md: Personal session saves).
+export const CRUSADE_TTL_MS = 30 * 24 * 60 * 60 * 1000
+
+// How long a dropped diver keeps gating the squad before they are marked away:
+// long enough to ride out a reconnect or a page refresh.
+export const AWAY_GRACE_MS = 30 * 1000
+
+function roomExpired(room: StoredRoom, now: number): boolean {
+  if (room.saved) {
+    return false
+  }
+  const ttl = room.state.phase === 'lobby' ? ROOM_TTL_MS : CRUSADE_TTL_MS
+  return now - room.updatedAt > ttl
+}
+
 // A backstop against unbounded room growth on the single 256 MB machine, in
 // case rate-limited creation is still sustained. The sweeper below reaps
 // expired rooms so the ceiling rarely matters in normal play.
@@ -29,6 +47,8 @@ export const MAX_SAVED_DIVES = 500
 export const SAVE_NAME_MAX_LENGTH = 60
 
 export class RoomLimitError extends Error {}
+
+export class InvalidSaveError extends Error {}
 
 // Optional transport-level throttles, injected by the WS route so the sync
 // core stays unit-testable. Keyed by address for joins (brute-force guard) and
@@ -60,7 +80,7 @@ export interface RoomKV {
 
 export interface PeerLike {
   id: string
-  context: { roomCode?: string, playerId?: string }
+  context: { roomCode?: string, playerId?: string, clientIp?: string }
   remoteAddress?: string
   send(text: string): void
 }
@@ -137,7 +157,11 @@ function isStoredRoom(raw: unknown): raw is StoredRoom {
       || (typeof room.steam === 'object' && typeof room.steam.link === 'string'))
 }
 
-export async function createRoom(kv: RoomKV, maxRooms: number = MAX_ROOMS): Promise<string> {
+export async function createRoom(
+  kv: RoomKV,
+  maxRooms: number = MAX_ROOMS,
+  seed?: DiveState,
+): Promise<string> {
   if ((await kv.getKeys()).length >= maxRooms) {
     throw new RoomLimitError('Room capacity reached')
   }
@@ -145,8 +169,30 @@ export async function createRoom(kv: RoomKV, maxRooms: number = MAX_ROOMS): Prom
   while (await kv.getItem(code) != null) {
     code = newRoomCode()
   }
-  await kv.setItem(code, { code, state: createLobbyState(), updatedAt: Date.now() } satisfies StoredRoom)
+  await kv.setItem(code, { code, state: seed ?? createLobbyState(), updatedAt: Date.now() } satisfies StoredRoom)
   return code
+}
+
+// Continues a personal session save as a brand-new room: normalizeSaveDoc runs
+// the save migrations, forkCrusade seats the saver as host and parks every
+// other diver's kit as a claimable legacy cache. The save is client-supplied,
+// so a malformed doc is refused rather than seated.
+export async function createRoomFromSave(
+  kv: RoomKV,
+  rawSave: unknown,
+  name: string,
+  maxRooms: number = MAX_ROOMS,
+): Promise<{ code: string, selfId: string | null }> {
+  const doc = normalizeSaveDoc(rawSave)
+  if (!doc) {
+    throw new InvalidSaveError('Not a valid Griffdive save')
+  }
+  const ownerId = (rawSave as { ownerId?: unknown }).ownerId
+  const forked = forkCrusade(doc.state, typeof ownerId === 'string' ? ownerId : null, name)
+  if (!forked) {
+    throw new InvalidSaveError('This crusade cannot be continued')
+  }
+  return { code: await createRoom(kv, maxRooms, forked), selfId: forked.hostId }
 }
 
 // Reap idle rooms in the background so they do not sit in memory until the
@@ -156,7 +202,7 @@ export async function sweepRooms(kv: RoomKV, now: number = Date.now()): Promise<
   for (const code of await kv.getKeys()) {
     const raw = await kv.getItem(code)
     // Saved dives are pinned: the squad is coming back, however long that takes.
-    if (isStoredRoom(raw) && !raw.saved && now - raw.updatedAt > ROOM_TTL_MS) {
+    if (isStoredRoom(raw) && roomExpired(raw, now)) {
       await kv.removeItem(code)
       removed += 1
     }
@@ -169,7 +215,7 @@ export async function loadRoom(kv: RoomKV, code: string): Promise<StoredRoom | n
   if (!isStoredRoom(raw)) {
     return null
   }
-  if (!raw.saved && Date.now() - raw.updatedAt > ROOM_TTL_MS) {
+  if (roomExpired(raw, Date.now())) {
     await kv.removeItem(code)
     return null
   }
@@ -290,7 +336,7 @@ export async function processHello(
 
   // Throttle joins before any storage work: this is the room-code brute-force
   // guard as much as a connection-flood guard.
-  if (limits?.hello && !limits.hello.take(peer.remoteAddress ?? 'unknown')) {
+  if (limits?.hello && !limits.hello.take(peer.context.clientIp ?? peer.remoteAddress ?? 'unknown')) {
     sendError(peer, 'rate-limited', 'Too many join attempts — try again shortly')
     return
   }
@@ -304,6 +350,7 @@ export async function processHello(
 
     const storedId = typeof payload.playerId === 'string' ? payload.playerId : null
     const known = storedId ? room.state.divers.find(diver => diver.id === storedId) : undefined
+    const hostOnline = isOnline(peers, requested, room.state.hostId)
     // A stored id whose seat is gone but whose inventory sits in legacyCaches is
     // the same diver rejoining: reuse the id so joinDiver reclaims the cache.
     const reclaiming = !!storedId && !known && !!room.state.legacyCaches[storedId]
@@ -312,6 +359,10 @@ export async function processHello(
 
     if (known) {
       playerId = known.id
+      if (known.away) {
+        room.state = reduce(room.state, { type: 'SET_AWAY', playerId, away: false })
+        changed = true
+      }
     }
     else {
       const blocked = seatingBlocked(room.state)
@@ -329,9 +380,24 @@ export async function processHello(
       changed = true
     }
 
+    // Whoever comes back to a room whose host is gone takes the helm — a
+    // crusade never waits on one particular diver.
+    if (room.state.hostId !== playerId && !hostOnline) {
+      room.state = reduce(room.state, { type: 'TRANSFER_HOST', playerId })
+      changed = true
+    }
+
     peer.context.roomCode = requested
     peer.context.playerId = playerId
     peers.add(requested, peer)
+
+    // Divers who dropped while the server was down never sent a close: give
+    // them the same grace, then stop waiting on them.
+    for (const diver of room.state.divers) {
+      if (!diver.away && !isOnline(peers, requested, diver.id)) {
+        scheduleAway(kv, peers, requested, diver.id)
+      }
+    }
 
     if (changed) {
       await saveRoom(kv, room)
@@ -367,6 +433,7 @@ function enforceSelf(action: EngineAction, playerId: string): EngineAction {
     || action.type === 'REROLL_REWARDS'
     || action.type === 'BAN_REWARDS'
     || action.type === 'LEAVE_DIVE'
+    || action.type === 'SET_AWAY'
   ) {
     return { ...action, playerId }
   }
@@ -593,10 +660,12 @@ export async function processClose(kv: RoomKV, peers: PeerDirectory, peer: PeerL
       return
     }
 
-    // Host connection dropped: transfer to the earliest joiner still seated
+    scheduleAway(kv, peers, roomCode, playerId)
+
+    // Host connection dropped: transfer to the earliest joiner still connected
     // (AGENTS.md: host migration). The diver stays seated for reconnect.
-    if (room.state.hostId === playerId && room.state.divers.length > 1) {
-      const earliest = room.state.divers.find(diver => diver.id !== playerId)
+    if (room.state.hostId === playerId) {
+      const earliest = room.state.divers.find(diver => diver.id !== playerId && isOnline(peers, roomCode, diver.id))
       if (earliest) {
         const action: EngineAction = { type: 'TRANSFER_HOST', playerId: earliest.id }
         room.state = reduce(room.state, action)
@@ -610,4 +679,33 @@ export async function processClose(kv: RoomKV, peers: PeerDirectory, peer: PeerL
     // their online list immediately, not at the next action.
     broadcastState(peers, roomCode, room.state, null, room.saved ?? null, room.steam ?? null)
   })
+}
+
+function isOnline(peers: PeerDirectory, roomCode: string, playerId: string | null): boolean {
+  return !!playerId && peers.list(roomCode).some(peer => peer.context.playerId === playerId)
+}
+
+// A diver whose connection stays down past the grace window steps away: their
+// seat and kit stay, but the squad stops waiting on them (AGENTS.md:
+// Mid-crusade joining — stepping away).
+export async function markAwayIfOffline(kv: RoomKV, peers: PeerDirectory, roomCode: string, playerId: string): Promise<void> {
+  await withRoomLock(roomCode, async () => {
+    const room = await loadRoom(kv, roomCode)
+    const diver = room?.state.divers.find(entry => entry.id === playerId)
+    if (!room || !diver || diver.away || isOnline(peers, roomCode, playerId)) {
+      return
+    }
+    const action: EngineAction = { type: 'SET_AWAY', playerId, away: true }
+    room.state = reduce(room.state, action)
+    await saveRoom(kv, room)
+    broadcastState(peers, roomCode, room.state, action, room.saved ?? null, room.steam ?? null)
+  })
+}
+
+function scheduleAway(kv: RoomKV, peers: PeerDirectory, roomCode: string, playerId: string): void {
+  const timer = setTimeout(() => {
+    markAwayIfOffline(kv, peers, roomCode, playerId).catch(() => {})
+  }, AWAY_GRACE_MS)
+  // Never hold the process open for a presence check.
+  timer.unref?.()
 }
