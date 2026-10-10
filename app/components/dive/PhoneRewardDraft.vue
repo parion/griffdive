@@ -172,7 +172,7 @@ function tierOf(option: RewardOption): string {
 
         <div
           class="rows"
-          role="list"
+          role="group"
           aria-label="Reward options"
         >
           <template
@@ -182,20 +182,18 @@ function tierOf(option: RewardOption): string {
             <div
               v-if="option.choice"
               class="cross-row"
-              role="listitem"
               :class="{ picked: self?.pickedOptionId === option.optionId }"
             >
               <DiversChoiceCard
                 :pool="rewardPool"
                 :owned-ids="ownedIds"
-                :disabled="!canControl || resolved || banMode"
+                :disabled="!self || resolved || banMode"
                 @choose="itemId => emit('pick', option.optionId, itemId)"
               />
             </div>
             <button
               v-else
               class="row"
-              role="listitem"
               :class="{
                 lead: index === 0,
                 picked: self?.pickedOptionId === option.optionId,
@@ -205,7 +203,7 @@ function tierOf(option: RewardOption): string {
                 bannable: bannableIds.includes(option.optionId),
               }"
               type="button"
-              :disabled="!canControl || (resolved && !banMode) || (banMode && !bannableIds.includes(option.optionId))"
+              :disabled="!self || (resolved && !banMode) || (banMode && !bannableIds.includes(option.optionId))"
               :aria-label="`${option.item.displayName}, tier ${tierOf(option)}${index === 0 ? ', ceiling pick' : ''}${banMode ? ', toggle ban' : ', claim'}`"
               @click="banMode ? toggleBan(option.optionId) : emit('pick', option.optionId)"
             >
@@ -289,13 +287,18 @@ function tierOf(option: RewardOption): string {
               <span class="result-name">{{ banned ? 'Offer purged for the crusade' : chosen?.displayName ?? '—' }}</span>
             </div>
             <button
+              v-if="canControl"
               class="btn primary cut next"
               type="button"
-              :disabled="!canControl"
+              :disabled="!ready"
               @click="emit('advance')"
             >
-              <span class="disp">{{ advanceLabel }}</span>
+              <span class="disp">{{ ready ? advanceLabel : 'Waiting on squad' }}</span>
             </button>
+            <span
+              v-else
+              class="host-advances"
+            >{{ ready ? 'Host advances' : 'Waiting on squad' }}</span>
           </template>
           <template v-else>
             <span class="foot-tokens">
@@ -340,6 +343,15 @@ function tierOf(option: RewardOption): string {
 </template>
 
 <style scoped>
+.host-advances {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
 .phone-rewards { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .scroll {
   flex: 1 1 auto;
