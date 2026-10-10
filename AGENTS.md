@@ -39,7 +39,7 @@ pnpm only (`pnpm-lock.yaml` is canonical).
 | `pnpm build` | exists | Production build (Node/Nitro server) |
 | `pnpm preview` | exists | Preview production build |
 | `pnpm generate` | exists | Static build (pure client-side SPA — solo/offline only — no WebSocket server) |
-| `pnpm pwa:assets` | exists | Regenerate PWA icons + head links from `public/icon.svg` (`@vite-pwa/assets-generator`) |
+| `pnpm pwa:assets` | exists | Write `public/icon.svg` from `app/utils/brandMark.ts`, then regenerate PWA icons, favicon + head links from it (`@vite-pwa/assets-generator`) |
 | `pnpm lint` | exists | ESLint via `@nuxt/eslint` module |
 | `pnpm lint:fix` | exists | Auto-fix lint/style issues |
 | `pnpm test` | exists | Vitest (engine unit + golden tests) |

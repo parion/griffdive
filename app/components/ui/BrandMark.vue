@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { BRAND_MARK } from '~/utils/brandMark'
+
 withDefaults(defineProps<{ size?: number, title?: string }>(), { size: 26, title: '' })
 </script>
 
@@ -6,18 +8,34 @@ withDefaults(defineProps<{ size?: number, title?: string }>(), { size: 26, title
   <svg
     :width="size"
     :height="size"
-    viewBox="0 0 512 512"
+    :viewBox="BRAND_MARK.viewBox"
     :role="title ? 'img' : undefined"
     :aria-label="title || undefined"
     :aria-hidden="title ? undefined : 'true'"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="48"
-    stroke-linecap="round"
-    stroke-linejoin="round"
+    fill="currentColor"
   >
-    <path d="M256 84 L256 200" />
-    <path d="M160 226 L256 322 L352 226" />
-    <path d="M188 362 L256 430 L324 362" />
+    <g
+      class="dial"
+      fill="none"
+      stroke="currentColor"
+    >
+      <path
+        :d="BRAND_MARK.rim"
+        :stroke-width="BRAND_MARK.rimWidth"
+      />
+      <path
+        :d="BRAND_MARK.ticks"
+        :stroke-width="BRAND_MARK.tickWidth"
+      />
+    </g>
+    <path :d="BRAND_MARK.wings" />
+    <path
+      fill-rule="evenodd"
+      :d="BRAND_MARK.head"
+    />
   </svg>
 </template>
+
+<style scoped>
+.dial { opacity: 0.6; }
+</style>
