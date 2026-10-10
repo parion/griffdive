@@ -1,54 +1,92 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS } from '../data/catalog'
-import { VALOR_METER_MAX, sPlusValorFloorFor, sValorFloorFor } from './config'
-import { DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, maxCeiling, oddsToReach, optionsForDiver, optionsForStars, performanceValor, rollCeiling, rollRewardOptions, tierWeight, valorOf } from './rewards'
+import type { Item, ItemCategory, Tier } from '../data/types'
+import { SAMPLE_POINTS, SAMPLE_PRICE_TIER, SAMPLE_PRICE_TYPE, TIME_HAUL_FLOOR, VALOR_METER_MAX, sPlusValorFloorFor, sValorFloorFor } from './config'
+import { DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, haulValue, itemPrice, maxCeiling, missionHaul, oddsToReach, optionsForDiver, optionsForStars, rollCeiling, rollRewardOptions, rollShopStock, tierWeight, timeHaulMultiplier, valorOf } from './rewards'
 import { mulberry32 } from './rng'
 import type { RewardTier } from './types'
 
+function makeItem(tier: Tier, category: ItemCategory): Item {
+  return { id: `${category}-${tier}`, displayName: 'x', type: 'equipment', category, tags: [], warbondCode: 'none', tier }
+}
+
 describe('valorOf', () => {
-  it('adds team risk, pact risk, and the team-performance term', () => {
+  it('adds chosen team and pact risk only — samples are a separate currency', () => {
     expect(valorOf(0, 0)).toBe(0)
     expect(valorOf(5, 6)).toBe(11)
-    expect(valorOf(5, 6, 0.5)).toBe(11.5)
   })
 })
 
-describe('performanceValor', () => {
-  it('is zero with no report', () => {
-    expect(performanceValor(null)).toBe(0)
+describe('haulValue / timeHaulMultiplier / missionHaul', () => {
+  it('prices samples by rarity', () => {
+    expect(haulValue(undefined)).toBe(0)
+    expect(haulValue({ common: 2, rare: 0, super: 0 })).toBe(2 * SAMPLE_POINTS.common)
+    expect(haulValue({ common: 0, rare: 2, super: 0 })).toBe(2 * SAMPLE_POINTS.rare)
+    expect(haulValue({ common: 0, rare: 0, super: 2 })).toBe(2 * SAMPLE_POINTS.super)
+    expect(haulValue({ common: 1, rare: 1, super: 1 })).toBe(SAMPLE_POINTS.common + SAMPLE_POINTS.rare + SAMPLE_POINTS.super)
   })
 
-  it('prices time remaining up to the time cap', () => {
-    expect(performanceValor({ outcome: 'success', stars: 3, timePct: 0 })).toBe(0)
-    expect(performanceValor({ outcome: 'success', stars: 3, timePct: 50 })).toBeCloseTo(0.1)
-    expect(performanceValor({ outcome: 'success', stars: 3, timePct: 100 })).toBeCloseTo(0.2)
-    expect(performanceValor({ outcome: 'success', stars: 3, timePct: 250 })).toBeCloseTo(0.2)
+  it('floors negative counts to zero', () => {
+    expect(haulValue({ common: -5, rare: 0, super: 0 })).toBe(0)
   })
 
-  it('prices samples at the chart-calibrated per-rarity rates', () => {
-    expect(performanceValor({ outcome: 'success', stars: 3, samples: { common: 2, rare: 0, super: 0 } })).toBeCloseTo(0.003)
-    expect(performanceValor({ outcome: 'success', stars: 3, samples: { common: 0, rare: 2, super: 0 } })).toBeCloseTo(0.008)
-    expect(performanceValor({ outcome: 'success', stars: 3, samples: { common: 0, rare: 0, super: 2 } })).toBeCloseTo(0.04)
-    expect(performanceValor({ outcome: 'success', stars: 3, samples: { common: 99, rare: 99, super: 99 } })).toBeCloseTo(0.3)
+  it('scales from the floor to a full clock', () => {
+    expect(timeHaulMultiplier(undefined)).toBe(TIME_HAUL_FLOOR)
+    expect(timeHaulMultiplier(0)).toBe(TIME_HAUL_FLOOR)
+    expect(timeHaulMultiplier(50)).toBeCloseTo(0.75)
+    expect(timeHaulMultiplier(100)).toBe(1)
+    expect(timeHaulMultiplier(250)).toBe(1)
   })
 
-  it('scales with the difficulty-shaped sample mix', () => {
-    // wiki.gg/Sample midpoints: Medium is commons only; Super Helldive adds
-    // rares and supers, so the same extraction effort is worth more at altitude.
-    const medium = performanceValor({ outcome: 'success', stars: 3, samples: { common: 17, rare: 0, super: 0 } })
-    const helldive = performanceValor({ outcome: 'success', stars: 3, samples: { common: 40, rare: 38, super: 5 } })
-    expect(medium).toBeGreaterThan(0)
-    expect(medium).toBeLessThan(helldive)
-    expect(helldive).toBeCloseTo(0.3)
+  it('banks the floored haul, zero without a report or samples', () => {
+    expect(missionHaul(null)).toBe(0)
+    expect(missionHaul({ outcome: 'success', stars: 3, timePct: 100, samples: { common: 18, rare: 0, super: 0 } })).toBe(18)
+    expect(missionHaul({ outcome: 'success', stars: 3, timePct: 0, samples: { common: 18, rare: 0, super: 0 } })).toBe(9)
+    expect(missionHaul({ outcome: 'success', stars: 3, timePct: 50, samples: { common: 0, rare: 2, super: 0 } })).toBe(7)
+    expect(missionHaul({ outcome: 'success', stars: 3, timePct: 100 })).toBe(0)
+  })
+})
+
+describe('itemPrice', () => {
+  it('is tier first, then type', () => {
+    expect(SAMPLE_PRICE_TIER.c).toBe(25)
+    expect(SAMPLE_PRICE_TIER.s).toBe(450)
+    expect(itemPrice(makeItem('c', 'armorPassive'))).toBe(Math.round(25 * (SAMPLE_PRICE_TYPE.armorPassive ?? 1)))
+    expect(itemPrice(makeItem('c', 'booster'))).toBe(Math.round(25 * 1.5))
+    // A booster always out-prices an armor passive at the same tier.
+    expect(itemPrice(makeItem('s', 'booster'))).toBeGreaterThan(itemPrice(makeItem('s', 'armorPassive')))
+    // Unknown categories fall back to the default multiplier.
+    expect(itemPrice(makeItem('b', 'Orbital'))).toBe(SAMPLE_PRICE_TIER.b)
+  })
+})
+
+describe('rollShopStock', () => {
+  const pool = ALL_ITEMS
+  const none = new Set<string>()
+
+  it('is deterministic and returns distinct items', () => {
+    const a = rollShopStock(1234, 'C', 'C', 3, pool, none)
+    const b = rollShopStock(1234, 'C', 'C', 3, pool, none)
+    expect(a.map(o => o.optionId)).toEqual(b.map(o => o.optionId))
+    expect(new Set(a.map(o => o.optionId)).size).toBe(a.length)
   })
 
-  it('combines time and samples but never exceeds 0.5', () => {
-    expect(performanceValor({
-      outcome: 'success',
-      stars: 3,
-      timePct: 100,
-      samples: { common: 40, rare: 38, super: 5 },
-    })).toBeCloseTo(0.5)
+  it('never injects the Liberty’s Cross choice slot, even at an S+ ceiling', () => {
+    const stock = rollShopStock(99, 'S+', 'C', 5, pool, none)
+    expect(stock.every(option => !option.choice)).toBe(true)
+    expect(stock.every(option => option.optionId !== DIVERS_CHOICE_OPTION_ID)).toBe(true)
+  })
+
+  it('honors the exclusion set', () => {
+    const poolIds = new Set(pool.map(item => item.id))
+    const excluded = pool.find(item => item.tier === 's' && item.category !== 'armor')
+    if (!excluded) {
+      throw new Error('expected a tier-s item')
+    }
+    const exclude = new Set([excluded.id])
+    const stock = rollShopStock(7, 'S', 'S', 4, pool, exclude)
+    expect(stock.every(option => option.optionId !== excluded.id)).toBe(true)
+    expect(poolIds.has(excluded.id)).toBe(true)
   })
 })
 

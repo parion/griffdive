@@ -45,6 +45,10 @@ export interface DiverState {
   // Bonus-honors reward tokens: banked across the crusade, spent to reroll
   // this diver's offer or to ban offered items from their personal pools.
   rewardTokens: number
+  // Requisition currency: sample points recovered in the field, banked into a
+  // personal purse and spent in the post-draft rotating stock. Persists across
+  // the crusade; dies with the diver on leave, like reward tokens.
+  sampleBank: number
   // Offered items this diver has banned from their personal reward and
   // catch-up pools for the rest of the crusade — never re-offered.
   bannedItemIds: string[]
@@ -174,6 +178,7 @@ export type EngineAction
     | { type: 'REPORT_RESULT', outcome: MissionOutcome, stars: number, timePct?: number, samples?: SampleCounts }
     | { type: 'FORFEIT_ITEM', itemRef: ItemRef }
     | { type: 'PICK_REWARD', playerId: string, optionId: string, choiceItemId?: string }
+    | { type: 'BUY_ITEM', playerId: string, itemId: string }
     | { type: 'CLAIM_CATCHUP_OPTION', playerId: string, optionId: string }
     | { type: 'CLAIM_CACHE', playerId: string, cacheOwnerId: string }
     | { type: 'REROLL_REWARDS', playerId: string, seed: number }

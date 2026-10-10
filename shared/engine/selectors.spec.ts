@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { ITEMS_BY_ID, WARBONDS } from '../data/catalog'
-import { MAX_DIFFICULTY, MIN_DIFFICULTY, SAMPLE_VALOR_CAP, STRAIN_RISK, TIME_VALOR_MAX, conditionRiskAt, directiveValorAt, directiveWeightFor } from './config'
-import { oddsToReach } from './rewards'
+import { MAX_DIFFICULTY, MIN_DIFFICULTY, STRAIN_RISK, conditionRiskAt, directiveValorAt, directiveWeightFor, maxStarsFor } from './config'
+import { itemPrice, oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { actingDiverIds, activeMisfortune, activeStrain, armoryRules, awaitingDiverIds, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
+import { actingDiverIds, activeMisfortune, activeStrain, armoryRules, awaitingDiverIds, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, shopStockFor, strainDecision, teamRiskOf } from './selectors'
 import { isPactSelectable, rollPactOffer } from './pacts'
 import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -158,15 +158,15 @@ describe('team misfortune acceptance', () => {
 })
 
 describe('maxValorFor (meter scale)', () => {
-  it('scales to the strongest team rule, strain, top pacts and performance cap', () => {
+  it('scales to the strongest team rule, strain and top pacts — samples are not Valor', () => {
     // At diff 3 the team pool tops at 3 — weighted 1.75× for a full squad — plus a
     // risk-3 strain and two risk-3 pacts.
-    expect(maxValorFor(3)).toBe(3 * 1.75 + 3 + 3 + 3 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
+    expect(maxValorFor(3)).toBe(3 * 1.75 + 3 + 3 + 3)
     // At diff 10 the top team rule reaches 5 (weighted) and three risk-4 pacts
     // are dealt.
-    expect(maxValorFor(10)).toBe(5 * 1.75 + 3 + 4 + 4 + 4 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
+    expect(maxValorFor(10)).toBe(5 * 1.75 + 3 + 4 + 4 + 4)
     // A solo diver's directive weighs like a pact.
-    expect(maxValorFor(10, 1)).toBe(5 + 3 + 4 + 4 + 4 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
+    expect(maxValorFor(10, 1)).toBe(5 + 3 + 4 + 4 + 4)
   })
 
   it('grows overall from the floor to the top of the ladder', () => {
@@ -227,6 +227,63 @@ describe('diverOptions', () => {
   })
 })
 
+describe('shopStockFor / canBuyItem (Requisition)', () => {
+  function rewardsState(seed = 1234): DiveState {
+    let state = createDiveState({ variant: 'standard' }, 'host', 'Griffin')
+    state = reduce(state, { type: 'SPIN_WHEEL', seed })
+    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
+    state = reduce(state, { type: 'DEAL_PACTS' })
+    state = reduce(state, { type: 'SET_PACTS', playerId: 'host', pactIds: [] })
+    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
+    return state
+  }
+  const host = (state: DiveState): DiverState => state.divers.find(diver => diver.id === 'host')!
+
+  it('stocks one item per star the difficulty can award, and no armor pieces', () => {
+    const state = rewardsState()
+    expect(state.difficulty).toBe(3)
+    const stock = shopStockFor(state, host(state))
+    expect(stock).toHaveLength(maxStarsFor(3))
+    expect(stock.every(option => option.item.category !== 'armor')).toBe(true)
+    // Deterministic derivation — same seed, same shelf on every client.
+    expect(shopStockFor(state, host(state)).map(option => option.optionId))
+      .toEqual(stock.map(option => option.optionId))
+  })
+
+  it('excludes the draft options and owned items', () => {
+    const state = rewardsState()
+    const diver = host(state)
+    const draftIds = new Set(diverOptions(state, diver).map(option => option.optionId))
+    const stock = shopStockFor(state, diver)
+    expect(stock.length).toBeGreaterThan(0)
+    for (const option of stock) {
+      expect(draftIds.has(option.optionId)).toBe(false)
+      expect(state.personalInventories.host ?? []).not.toContain(option.item.id)
+    }
+  })
+
+  it('refuses a buy until the draft is resolved', () => {
+    const state = rewardsState()
+    const diver = host(state)
+    const option = shopStockFor(state, diver)[0]!
+    expect(canBuyItem(state, diver, option.item.id).allowed).toBe(false)
+  })
+
+  it('allows an affordable buy once resolved, and refuses when broke', () => {
+    const state = rewardsState()
+    const diver = host(state)
+    const option = shopStockFor(state, diver)[0]!
+    const price = itemPrice(option.item)
+    const resolved: DiverState = { ...diver, pickedOptionId: 'x', sampleBank: price }
+    expect(canBuyItem(state, resolved, option.item.id)).toEqual({ allowed: true, reason: null })
+    expect(canBuyItem(state, { ...resolved, sampleBank: price - 1 }, option.item.id).allowed).toBe(false)
+    expect(canBuyItem(state, { ...resolved, pickedOptionId: null }, option.item.id).allowed).toBe(false)
+    expect(canBuyItem(state, { ...resolved, pickedOptionId: null, rewardBanned: true }, option.item.id).allowed).toBe(true)
+    expect(canBuyItem(state, resolved, 'definitely-not-stocked').allowed).toBe(false)
+  })
+})
+
 describe('misfortuneStrandedDivers', () => {
   it('reports every diver the drawn rule would strand', () => {
     const state = createDiveState({ variant: 'standard' }, 'host', 'Griffin')
@@ -252,6 +309,7 @@ describe('misfortuneStrandedDivers', () => {
       catchUpOwed: 0,
       skipsCurrentDraft: false,
       rewardTokens: 0,
+      sampleBank: 0,
       bannedItemIds: [],
       rewardRerollSeed: null,
       rewardBanned: false,

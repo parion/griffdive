@@ -10,25 +10,23 @@ const props = withDefaults(defineProps<{
   difficulty: number
   teamRisk: number
   pactRisk: number
-  performance?: number
   pendingText?: string
   locked?: boolean
-}>(), { performance: 0, pendingText: '', locked: false })
+}>(), { pendingText: '', locked: false })
 
 const LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
-const valor = computed(() => valorOf(props.teamRisk, props.pactRisk, props.performance))
+const valor = computed(() => valorOf(props.teamRisk, props.pactRisk))
 const scale = VALOR_METER_MAX
 const overflow = computed(() => Math.max(0, valor.value - scale))
 const range = computed(() =>
-  ceilingRange(props.difficulty, props.teamRisk, props.pactRisk, props.performance))
+  ceilingRange(props.difficulty, props.teamRisk, props.pactRisk))
 
-type Source = 'empty' | 'team' | 'pact' | 'performance'
+type Source = 'empty' | 'team' | 'pact'
 const SOURCE_COLOR: Readonly<Record<Source, string>> = {
   empty: 'var(--ground)',
   team: 'var(--gold)',
   pact: 'var(--orange)',
-  performance: 'var(--teal)',
 }
 const cells = computed<{ key: number, source: Source, amount: number }[]>(() => {
   const teamEnd = props.teamRisk
@@ -37,7 +35,7 @@ const cells = computed<{ key: number, source: Source, amount: number }[]>(() => 
     const amount = Math.min(1, Math.max(0, valor.value - index))
     const source: Source = amount <= 0
       ? 'empty'
-      : index < teamEnd ? 'team' : index < pactEnd ? 'pact' : 'performance'
+      : index < teamEnd ? 'team' : index < pactEnd ? 'pact' : 'empty'
     return { key: index, source, amount }
   })
   return bottomUp.reverse()
@@ -158,7 +156,6 @@ function format(value: number): string {
 }
 .cell.team { background: var(--gold); border-color: var(--gold); }
 .cell.pact { background: var(--orange); border-color: var(--orange); }
-.cell.performance { background: var(--teal); border-color: var(--teal); }
 .cell.partial {
   background: linear-gradient(to top, var(--cell-color) var(--fill, 50%), var(--ground) var(--fill, 50%));
   border-color: var(--cell-color);

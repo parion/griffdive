@@ -1,21 +1,18 @@
 <script setup lang="ts">
 import {
   MAX_OPTIONS,
-  SAMPLE_VALOR_CAP,
-  SAMPLE_VALOR_WEIGHTS,
+  SAMPLE_POINTS,
   STARS_TO_OPTIONS,
-  TIME_VALOR_MAX,
+  TIME_HAUL_FLOOR,
   bonusIntervalFor,
   maxStarsFor,
   sampleAvailability,
 } from '~~/shared/engine/config'
 import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
-import { performanceValor, optionsForDiver } from '~~/shared/engine/rewards'
+import { missionHaul, optionsForDiver, timeHaulMultiplier } from '~~/shared/engine/rewards'
 import {
   currentFront,
   diverCeiling,
-  pactRiskOf,
-  teamRiskOf,
 } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionOutcome, MissionReport, SampleCounts } from '~~/shared/engine/types'
 
@@ -51,20 +48,21 @@ const report = computed<MissionReport>(() => ({
   samples: props.outcome === 'success' ? { ...samples.value } : undefined,
 }))
 
-const performance = computed(() => performanceValor(props.outcome === 'success' ? report.value : null))
-const performanceText = computed(() => performance.value <= 0 ? '0' : `+${performance.value.toFixed(2)}`)
+const haul = computed(() => missionHaul(props.outcome === 'success' ? report.value : null))
 
 const timeFrac = computed(() => Math.min(1, Math.max(0, timePct.value / 100)))
+const timeMultiplier = computed(() => timeHaulMultiplier(timePct.value))
 const timeNote = computed(() =>
-  `${(timeFrac.value * TIME_VALOR_MAX).toFixed(3)} / .${Math.round(TIME_VALOR_MAX * 1000).toString().padStart(3, '0')}`)
+  `×${timeMultiplier.value.toFixed(2)} · FLOOR ${TIME_HAUL_FLOOR.toFixed(2)}`)
 
-// Sample contribution to the performance cap, per rarity — the tri-color bar.
+// Sample points by rarity — the tri-color bar, in Requisition units.
+const samplePoints = computed(() => ({
+  common: Math.max(0, samples.value.common) * SAMPLE_POINTS.common,
+  rare: Math.max(0, samples.value.rare) * SAMPLE_POINTS.rare,
+  super: Math.max(0, samples.value.super) * SAMPLE_POINTS.super,
+}))
 const sampleFractions = computed(() => {
-  const raw = [
-    Math.max(0, samples.value.common) * SAMPLE_VALOR_WEIGHTS.common,
-    Math.max(0, samples.value.rare) * SAMPLE_VALOR_WEIGHTS.rare,
-    Math.max(0, samples.value.super) * SAMPLE_VALOR_WEIGHTS.super,
-  ]
+  const raw = [samplePoints.value.common, samplePoints.value.rare, samplePoints.value.super]
   const total = raw.reduce((sum, n) => sum + n, 0)
   return {
     total,
@@ -73,13 +71,8 @@ const sampleFractions = computed(() => {
     super: total > 0 ? raw[2]! / total : 0,
   }
 })
-const sampleCapFrac = computed(() => Math.min(1, sampleFractions.value.total / SAMPLE_VALOR_CAP))
-// The design surfaces the raw valor contribution against its cap, not a label.
-const sampleNote = computed(() => {
-  const cap = `.${Math.round(SAMPLE_VALOR_CAP * 1000).toString().padStart(3, '0')}`
-  const capped = sampleFractions.value.total > SAMPLE_VALOR_CAP ? ' CAPPED' : ''
-  return `${sampleFractions.value.total.toFixed(3)} / ${cap}${capped}`
-})
+// The raw haul against the extraction multiplier, before the floor.
+const sampleNote = computed(() => `${sampleFractions.value.total} pts`)
 
 const opNumber = computed(() =>
   catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'standard') + 1)
@@ -88,15 +81,9 @@ const ceiling = computed(() => (props.self ? diverCeiling(props.state, props.sel
 const optionCount = computed(() =>
   optionsForDiver(stars.value, ceiling.value, props.self?.failedPactIds.length ?? 0))
 
-// The diver's locked Valor floor: shared team risk plus their own pact risk
-// (failed pacts already voided by the selector).
-const valorBase = computed(() =>
-  teamRiskOf(props.state) + (props.self ? pactRiskOf(props.self, props.state.difficulty) : 0))
-const valorWithPerf = computed(() => valorBase.value + performance.value)
-const valorDelta = computed(() => {
-  const delta = valorWithPerf.value - valorBase.value
-  return delta <= 0 ? '' : `+${delta.toFixed(2)}`
-})
+// The Requisition purse this report will top up (sample points).
+const purseBefore = computed(() => props.self?.sampleBank ?? 0)
+const purseAfter = computed(() => purseBefore.value + haul.value)
 
 const frontLabel = computed(() => front.value?.displayName ?? 'Unknown front')
 const honorsEligible = computed(() =>
@@ -110,7 +97,7 @@ const sampleRows = computed(() => [
   { key: 'super' as const, label: 'Super', tone: 'super' as const, icon: '/images/svgs/Super_Sample_Icon.svg', max: sampleMax.value.super },
 ].filter(row => row.max > 0).map(row => ({
   ...row,
-  value: (samples.value[row.key] * SAMPLE_VALOR_WEIGHTS[row.key]).toFixed(3),
+  value: `${samples.value[row.key] * SAMPLE_POINTS[row.key]} pts`,
 })))
 
 // The design's reward table is a stars→options distribution, not the tier
@@ -343,22 +330,22 @@ function submit(): void {
 
         <section
           class="rcard perf-card"
-          aria-label="Performance"
+          aria-label="Requisition haul"
         >
           <div class="rcard-head">
-            <span class="lbl teal-note">Performance</span>
-            <span class="rcard-note">SQUAD-WIDE</span>
+            <span class="lbl teal-note">Requisition</span>
+            <span class="rcard-note">SQUAD HAUL × TIME</span>
           </div>
           <div
             class="disp perf-value"
             aria-live="polite"
           >
-            {{ performanceText }}
+            +{{ haul }}
           </div>
           <div class="perf-bar">
             <div class="perf-bar-head">
-              <span>TIME</span>
-              <span>{{ Math.round(timeFrac * 100) }}%</span>
+              <span>TIME LEFT</span>
+              <span>{{ Math.round(timeFrac * 100) }}% · {{ timeNote }}</span>
             </div>
             <div class="perf-track">
               <span
@@ -370,33 +357,29 @@ function submit(): void {
           <div class="perf-bar">
             <div class="perf-bar-head">
               <span>SAMPLES</span>
-              <span>{{ Math.round(sampleCapFrac * 100) }}%</span>
+              <span>{{ sampleFractions.total }} pts</span>
             </div>
             <div class="perf-track tri">
               <span
                 class="perf-fill common"
-                :style="{ width: `${sampleFractions.common * sampleCapFrac * 100}%` }"
+                :style="{ width: `${sampleFractions.common * 100}%` }"
               />
               <span
                 class="perf-fill rare"
-                :style="{ width: `${sampleFractions.rare * sampleCapFrac * 100}%` }"
+                :style="{ width: `${sampleFractions.rare * 100}%` }"
               />
               <span
                 class="perf-fill super"
-                :style="{ width: `${sampleFractions.super * sampleCapFrac * 100}%` }"
+                :style="{ width: `${sampleFractions.super * 100}%` }"
               />
             </div>
           </div>
           <div class="perf-valor">
-            <span class="lbl">Valor</span>
+            <span class="lbl">Sample bank</span>
             <span class="perf-valor-nums">
-              <span class="disp v-base">{{ valorBase }}</span>
+              <span class="disp v-base">{{ purseBefore }}</span>
               <span class="disp v-arrow">→</span>
-              <span class="disp v-final">{{ valorWithPerf.toFixed(1) }}</span>
-              <span
-                v-if="valorDelta"
-                class="disp v-delta"
-              >{{ valorDelta }}</span>
+              <span class="disp v-final">{{ purseAfter }}</span>
             </span>
           </div>
         </section>

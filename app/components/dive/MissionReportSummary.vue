@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { maxStarsFor } from '~~/shared/engine/config'
-import { performanceValor } from '~~/shared/engine/rewards'
+import { missionHaul } from '~~/shared/engine/rewards'
 import type { DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{ state: DiveState }>()
@@ -11,7 +11,7 @@ const stars = computed(() => report.value?.stars ?? 0)
 const maxStars = computed(() => maxStarsFor(props.state.difficulty))
 const samples = computed(() => report.value?.samples ?? null)
 const timePct = computed(() => report.value?.timePct ?? 0)
-const performance = computed(() => performanceValor(report.value))
+const haul = computed(() => missionHaul(report.value))
 </script>
 
 <template>
@@ -99,8 +99,8 @@ const performance = computed(() => performanceValor(report.value))
     </div>
 
     <div class="rc-perf">
-      <span class="lbl">Performance</span>
-      <span class="disp rc-perf-val">+{{ performance.toFixed(2) }}</span>
+      <span class="lbl">Requisition</span>
+      <span class="disp rc-perf-val">+{{ haul }} samples</span>
     </div>
   </section>
 </template>

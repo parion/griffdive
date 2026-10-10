@@ -95,6 +95,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 11) {
     migrated = migrateV10toV11(migrated)
   }
+  if (migrated.schemaVersion < 12) {
+    migrated = migrateV11toV12(migrated)
+  }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
   return migrated
@@ -174,6 +177,22 @@ function migrateV10toV11(doc: SaveDoc): SaveDoc {
     state: {
       ...doc.state,
       misfortuneFailed: false,
+    },
+  }
+}
+
+// v12: samples became Requisition currency — a personal purse banked from each
+// mission's haul and spent in the post-draft rotating stock. Pre-v12 saves have
+// no purse; an empty bank is the truthful default.
+function migrateV11toV12(doc: SaveDoc): SaveDoc {
+  return {
+    ...doc,
+    state: {
+      ...doc.state,
+      divers: (doc.state.divers ?? []).map(diver => ({
+        ...diver,
+        sampleBank: (diver as Partial<DiverState>).sampleBank ?? 0,
+      })),
     },
   }
 }
