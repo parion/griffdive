@@ -47,6 +47,7 @@ const emit = defineEmits<{
   transferHost: [diverId: string]
   copyInvite: []
   openArmory: []
+  openTutorial: []
   leave: []
   end: []
   saveDive: []
@@ -88,6 +89,7 @@ function kickDiver(diverId: string): void {
         :lone-host="state.divers.length === 1"
         @copy-invite="emit('copyInvite')"
         @open-armory="emit('openArmory')"
+        @open-tutorial="emit('openTutorial')"
         @leave="emit('leave')"
         @end="emit('end')"
         @save-dive="emit('saveDive')"

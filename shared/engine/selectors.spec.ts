@@ -3,7 +3,7 @@ import { WARBONDS } from '../data/catalog'
 import { MAX_DIFFICULTY, MIN_DIFFICULTY, SAMPLE_VALOR_CAP, STRAIN_RISK, TIME_VALOR_MAX, directiveValorAt } from './config'
 import { oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { activeMisfortune, activeStrain, canRerollWheel, ceilingRange, diverOptions, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
+import { activeMisfortune, activeStrain, awaitingDiverIds, canRerollWheel, ceilingRange, diverOptions, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
 import { isPactSelectable } from './pacts'
 import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -263,5 +263,45 @@ describe('misfortuneStrandedDivers', () => {
     }
     // The guest can field the rule; the host cannot, so the accept still fails.
     expect(misfortuneStrandedDivers(wheeled).map(diver => diver.id)).toEqual(['host'])
+  })
+})
+
+describe('awaitingDiverIds', () => {
+  function pactsWithTwoDivers(): DiveState {
+    let state = reduce(spunState(42, false), { type: 'ACCEPT_MISFORTUNE', accepted: false })
+    if (state.phase === 'strain') {
+      state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
+    }
+    state = reduce(state, { type: 'DEAL_PACTS' })
+    const host = state.divers[0]!
+    return { ...state, divers: [host, { ...host, id: 'p2', name: 'Sparrow' }] }
+  }
+
+  it('reports nobody on host-only beats', () => {
+    expect(awaitingDiverIds(spunState(42, false))).toEqual([])
+  })
+
+  it('lists the divers whose pact hand is still open', () => {
+    const state = pactsWithTwoDivers()
+    expect(state.phase).toBe('pacts')
+    expect(awaitingDiverIds(state)).toEqual(['host', 'p2'])
+    const locked = reduce(state, { type: 'SET_PACTS', playerId: 'host', pactIds: [] })
+    expect(awaitingDiverIds(locked)).toEqual(['p2'])
+  })
+
+  it('lists the divers with an open reward draft, skipping banned and sat-out drafts', () => {
+    const base = pactsWithTwoDivers()
+    const host = base.divers[0]!
+    const rewards: DiveState = {
+      ...base,
+      phase: 'rewards',
+      divers: [
+        { ...host, pickedOptionId: null, rewardBanned: false, skipsCurrentDraft: false },
+        { ...host, id: 'p2', pickedOptionId: 'x', rewardBanned: false, skipsCurrentDraft: false },
+        { ...host, id: 'p3', pickedOptionId: null, rewardBanned: true, skipsCurrentDraft: false },
+        { ...host, id: 'p4', pickedOptionId: null, rewardBanned: false, skipsCurrentDraft: true },
+      ],
+    }
+    expect(awaitingDiverIds(rewards)).toEqual(['host'])
   })
 })

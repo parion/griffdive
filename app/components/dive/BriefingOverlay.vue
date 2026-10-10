@@ -25,7 +25,7 @@ const props = withDefaults(defineProps<{
   online?: string[]
 }>(), { online: () => [] })
 
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: [name: string] }>()
 
 const { ownedWarbonds, setOwned } = useOwnedWarbonds()
 
@@ -111,10 +111,6 @@ function next(): void {
     return
   }
   step.value++
-}
-function skip(): void {
-  reached.value = BEATS.length - 1
-  step.value = BEATS.length - 1
 }
 function back(): void {
   if (step.value > 0) {
@@ -202,7 +198,7 @@ const kit = computed(() => STARTING_KITS[props.state.settings?.variant ?? 'stand
 const rewardTierLabel = computed(() => (rewardClimb.value ? 'A' : 'B'))
 
 function close(): void {
-  emit('close')
+  emit('close', name.value.trim())
 }
 </script>
 
@@ -215,37 +211,35 @@ function close(): void {
       <DialogOverlay class="brief-overlay" />
       <DialogContent class="brief">
         <DialogTitle class="sr-only">
-          Griffdiver briefing
+          Griffdive tutorial
         </DialogTitle>
         <DialogDescription class="sr-only">
-          A six-beat tour of how a Griffdive mission works.
+          A six-step tutorial on how a Griffdive mission works. Nothing here affects your dive.
         </DialogDescription>
 
         <header class="brief-head">
           <div class="brief-brand">
-            <BrandMark
-              :size="26"
-              class="brief-mark"
-            />
-            <span class="disp brief-word">Griffdive</span>
+            <span class="brief-training">Training</span>
+            <span class="brief-kicker">Tutorial · how a Griffdive mission works</span>
             <span class="brief-sep" />
-            <span class="lbl">Griffdiver briefing</span>
+            <span class="lbl brief-safe">Practice only — nothing here affects your dive</span>
           </div>
           <div class="brief-head-r">
-            <button
-              v-if="!isLast"
-              class="btn ghost brief-skip"
-              type="button"
-              @click="skip"
-            >
-              Skip the tour
-            </button>
             <button
               class="btn ghost brief-skip"
               type="button"
               @click="close"
             >
-              Back to base
+              Skip tutorial
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.4"
+                aria-hidden="true"
+              ><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </div>
         </header>
@@ -360,7 +354,7 @@ function close(): void {
           <div class="brief-main">
             <nav
               class="brief-rail"
-              aria-label="Briefing progress"
+              aria-label="Tutorial progress"
             >
               <button
                 v-for="(b, i) in BEATS"
@@ -370,7 +364,7 @@ function close(): void {
                 type="button"
                 :disabled="i > reached"
                 :aria-current="i === step ? 'step' : undefined"
-                :aria-label="`Beat ${i + 1} of 6, ${b.title}`"
+                :aria-label="`Step ${i + 1} of ${BEATS.length}, ${b.title}`"
                 @click="go(i)"
               >
                 <span class="disp rail-num">0{{ i + 1 }}</span>
@@ -401,7 +395,7 @@ function close(): void {
             <main class="brief-panel grid-bg scan">
               <div class="brief-panel-head">
                 <div aria-live="polite">
-                  <span class="lbl">Beat 0{{ step + 1 }} / 06</span>
+                  <span class="lbl">Step {{ step + 1 }} of {{ BEATS.length }}</span>
                   <h1 class="disp brief-title">
                     {{ current.title }}
                   </h1>
@@ -412,7 +406,7 @@ function close(): void {
                 <button
                   class="btn ghost brief-replay"
                   type="button"
-                  aria-label="Replay this beat"
+                  aria-label="Replay this step"
                   @click="replay"
                 >
                   <svg
@@ -935,7 +929,7 @@ function close(): void {
                   :class="{ on: i === step, done: i <= reached && i !== step }"
                 />
               </span>
-              <span class="brief-step">Beat 0{{ step + 1 }} of 06 · {{ current.title }}</span>
+              <span class="brief-step">Step {{ step + 1 }} of {{ BEATS.length }} · {{ current.title }}</span>
               <span class="brief-foot-spacer" />
               <span
                 v-if="nameRequired"
@@ -975,10 +969,9 @@ function close(): void {
                 v-else
                 class="btn primary cut brief-next cta"
                 type="button"
-                aria-label="Begin dive"
                 @click="close"
               >
-                <span class="disp">{{ isJoin ? 'Join the dive' : 'Enter Griffdive' }}</span>
+                <span class="disp">{{ isJoin ? 'Join the dive' : 'Start my dive' }}</span>
                 <svg
                   width="22"
                   height="22"
@@ -998,16 +991,34 @@ function close(): void {
 </template>
 
 <style scoped>
-.brief-overlay { position: fixed; inset: 0; background: rgba(11, 12, 9, 0.9); z-index: 60; }
-.brief {
+/* A framed dialog over a dimmed dive, never a full-bleed takeover: players read
+   the old briefing as the game itself. The live dive stays visible behind it. */
+.brief-overlay {
   position: fixed;
   inset: 0;
+  background: rgba(11, 12, 9, 0.72);
+  backdrop-filter: blur(3px);
+  z-index: 60;
+}
+.brief {
+  position: fixed;
+  inset: clamp(12px, 3vh, 36px) clamp(12px, 3vw, 48px);
+  max-width: 1480px;
+  margin-inline: auto;
   z-index: 61;
   display: flex;
   flex-direction: column;
   background: var(--ground);
   color: var(--text);
+  border: 1px solid var(--gold);
+  box-shadow: 0 0 0 1px rgba(11, 12, 9, 0.8), 0 30px 80px rgba(0, 0, 0, 0.65);
   overflow: hidden;
+}
+.brief::before {
+  content: '';
+  flex-shrink: 0;
+  height: 6px;
+  background-image: repeating-linear-gradient(-45deg, var(--gold) 0 8px, var(--ground) 8px 16px);
 }
 
 .brief-head {
@@ -1020,12 +1031,21 @@ function close(): void {
   border-bottom: 1px solid var(--line-1);
   background: var(--ground);
 }
-.brief-brand { display: flex; align-items: center; gap: 0.6rem; }
-.brief-mark { color: var(--gold); }
-.brief-word { font-size: 1rem; color: var(--gold); letter-spacing: 0.06em; }
+.brief-brand { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+.brief-training {
+  padding: 0.3rem 0.7rem;
+  background: var(--gold);
+  color: var(--on-gold);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+.brief-kicker { font-size: 14px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+.brief-safe { color: var(--muted); white-space: nowrap; }
 .brief-sep { width: 1px; height: 1.75rem; background: var(--line-2); margin: 0 0.4rem; }
 .brief-head-r { margin-left: auto; display: flex; gap: 0.5rem; }
-.brief-skip { display: flex; align-items: center; height: 2.75rem; padding: 0 1rem; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; white-space: nowrap; }
+.brief-skip { display: flex; align-items: center; gap: 0.6rem; height: 2.75rem; padding: 0 1rem; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; white-space: nowrap; }
 
 .brief-grid {
   flex-grow: 1;
@@ -1322,7 +1342,14 @@ function close(): void {
 .brief-next-to { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; }
 .brief-next.cta { min-width: 18.75rem; height: 3.5rem; }
 
+@media (max-width: 1280px) {
+  .brief-safe,
+  .brief-sep { display: none; }
+}
+
 @media (max-width: 1020px) {
+  .brief { inset: 0; border: 0; box-shadow: none; }
+  .brief-kicker { font-size: 11px; white-space: normal; }
   .brief-grid { grid-template-columns: minmax(0, 1fr); }
   .brief-dossier { display: none; }
   .brief-title { font-size: 1.75rem; }
@@ -1342,7 +1369,7 @@ function close(): void {
     padding: 0.4rem 0.85rem;
   }
   .brief-sep,
-  .brief-brand .lbl { display: none; }
+  .brief-safe { display: none; }
   .brief-skip { height: 2.4rem; padding: 0 0.75rem; font-size: 10px; letter-spacing: 0.1em; }
 
   /* Main column: scroll the beat content, keep the rail and footer pinned. */

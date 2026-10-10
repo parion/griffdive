@@ -31,7 +31,7 @@ scanlines and a signature motion set). The dive is a fixed, no-scroll terminal (
 the room code + copy control · 84px climb strip · three rails · 52px Mission-phases bar), the
 Bridge home fits one desktop view (hero + climb ladder · 6-step mission loop · Valor odds ladder ·
 deploy rail with code-cell join and the service record · a full-width Major Order band and footer),
-the wheel is a real spinning SVG wheel, the Armory marks
+the wheel is a real spinning SVG wheel, the Kit (UI name of the Armory) marks
 directive/pact bans per tile from engine selectors, and an interactive six-beat Griffdiver
 Briefing (Identify · Spin · Pact · Reward · Warbonds · Deploy) onboards first-time divers. Engine,
 sync, saves and data are untouched; see
@@ -130,16 +130,29 @@ engine.
   wheel reveal).
 - **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav) on every
   route except the dive, which renders its own `DiveTopBar` (crusade + difficulty emblem + room
-  code/copy + Armory/Codex/Warbonds/Field manual). `components/dive/DiveFrame.vue` is the
+  code/copy + Tutorial + the labelled Kit/Codex/Warbonds ship nav — labels, never bare icons;
+  playtesters could not find the Kit behind an icon). `components/dive/DiveFrame.vue` is the
   no-scroll dive shell — grid rows `60px 84px minmax(0,1fr) 52px` and columns `216px 1fr 284px`:
-  header · `CrusadeStrip` (the horizontal 3→10 climb) · left rail (Squad + wheel pool) · centre
-  phase · right rail (`ValorMeter` with ceiling odds) · `PhaseRail` (bottom Mission phases).
+  header · `CrusadeStrip` (the horizontal 3→10 climb) · left rail (Squad) · centre phase, led by
+  `PhaseCue` · right rail (`ValorMeter` with ceiling odds) · `PhaseRail` (bottom Mission phases).
+  **One lead per beat:** `PhaseCue` is a single line atop the centre column answering "whose move
+  is it?" (`Your move` gold / `Stand by` teal), fed by `awaitingDiverIds` + `canControl` — the
+  answer to playtesters losing the thread between phases. `PhaseRail` is a progress readout, never
+  a control: the current beat is an underlined gold label (a filled gold chevron read as a second
+  Spin button) and finished beats show a check. The rails hide what has no value yet: the
+  `ValorMeter` is `dormant` during `spin` (a short Valor explainer + the reward floor instead of an
+  all-zero gauge), and the old wheel-pool card was dropped (the wheel already shows every rule).
   `WheelOfMisfortune.vue` is a real SVG wheel whose rotation is derived from the wheel seed.
   On the `rewards` phase the centre swaps between the `RewardDraft` pod cabinet and the dedicated
   `BonusCeremony` honors screen — the left rail gains `MissionReportSummary` and the right rail
   swaps `ValorMeter` for `RewardTokensRail` on honors.
-  Armory is an in-app drawer (`ArmoryDrawer.vue`); the Griffdiver Briefing
-  (`BriefingOverlay.vue`) is the first-run dossier. One structural breakpoint (1020px) flows the
+  The Armory is an in-app drawer (`ArmoryDrawer.vue`) titled **Kit** in every player-facing
+  string (code keeps the `armory` names); the pact screen links to it ("Check your kit"). The
+  Griffdiver Briefing (`BriefingOverlay.vue`) is presented as the **Griffdive tutorial**: a framed
+  dialog (hazard edge, `TRAINING` badge, "Step n of 6") over the dimmed dive, never a full-bleed
+  takeover — players mistook the old briefing for the game. It opens once at first seat, commits
+  the name typed on its Identify step, never chains into the Warbonds panel (its Warbonds step
+  covers ownership), and is replayable from the dive header's Tutorial control. One structural breakpoint (1020px) flows the
   shell and stacks the rails. Below it `usePhoneShell` swaps the whole three-rail tree for
   `DivePhone` (`DivePhoneShell` + `Phone*`), a fixed-band shell whose phase content is a
   bottom-sheet/fixed-footer layout.
@@ -533,7 +546,8 @@ option roll:   the draft leads with one option at the ceiling (or the highest
 - **Valor is surfaced as the Valor meter** (`app/components/dive/ValorMeter.vue`): a live gauge
   stacking the three sources (team risk — misfortune plus strain — pacts, performance) with a tier
   ladder from the difficulty's base tier to the previewed ceiling and the odds of reaching it. It
-  renders in the pacts window (live, reacting to pact toggles and the misfortune decision), the
+  explains itself while dormant (the `spin` phase, before any stake exists), then renders in the
+  decision and pacts windows (live, reacting to pact toggles and the misfortune decision), the
   diving Briefing (locked) and the reward draft (locked, including the performance term). Its
   display scale is the
   fixed `VALOR_METER_MAX` (11) in `shared/engine/config.ts`; once Valor exceeds it the gauge reads
@@ -725,7 +739,8 @@ app/
                    Squad/wheel-pool rail · phase · Valor rail · Mission-phases bar), DiveTopBar —
                    the dive header (crusade · difficulty emblem · room code/copy · nav),
                    CrusadeStrip — the horizontal 3→10 climb, PhaseRail — the bottom six mission
-                   beats, WheelOfMisfortune — the seeded spinning SVG wheel,
+                   beats (a readout, not a control), PhaseCue — the one-line "whose move"
+                   lead atop the centre column, WheelOfMisfortune — the seeded spinning SVG wheel,
                    BriefingOverlay — the first-run Griffdiver dossier, ArmoryDrawer — the in-dive
                    Armory overlay (kit + loadout readiness + active-rule bans), CrusadeLadder —
                    the vertical 3→10 ladder (achieved screen), SquadStrip — diver rail, presence,

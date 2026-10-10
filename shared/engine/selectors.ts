@@ -527,6 +527,21 @@ export function allDiversPicked(state: DiveState): boolean {
   )
 }
 
+// The divers whose own move still gates the squad: an unlocked pact hand, or an
+// open reward draft. Host-only beats gate on the host instead, so they report
+// nobody here.
+export function awaitingDiverIds(state: DiveState): string[] {
+  if (state.phase === 'pacts') {
+    return state.divers.filter(diver => !diver.pactsLocked).map(diver => diver.id)
+  }
+  if (state.phase === 'rewards') {
+    return state.divers
+      .filter(diver => diver.pickedOptionId === null && !diver.rewardBanned && !diver.skipsCurrentDraft)
+      .map(diver => diver.id)
+  }
+  return []
+}
+
 // Legacy caches a mid-crusade joiner can claim instead of their promotion.
 export function availableCaches(state: DiveState): { ownerId: string, itemIds: string[] }[] {
   return Object.entries(state.legacyCaches).map(([ownerId, itemIds]) => ({

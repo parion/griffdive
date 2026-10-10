@@ -59,7 +59,7 @@ function stateOf(i: number): 'done' | 'current' | 'reachable' | 'locked' {
         stroke-width="2"
         aria-hidden="true"
       >
-        <path :d="s.d" />
+        <path :d="stateOf(i) === 'done' ? 'M5 12l5 5 9-10' : s.d" />
       </svg>
       <span>{{ s.label }}</span>
     </div>
@@ -91,14 +91,20 @@ function stateOf(i: number): 'done' | 'current' | 'reachable' | 'locked' {
   text-transform: uppercase;
   white-space: nowrap;
   min-width: max-content;
-  transition: background-color var(--dur-fast), color var(--dur-fast);
+  cursor: default;
+  user-select: none;
+  transition: background-color var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast);
 }
+/* A progress readout, never a control: a filled gold chevron sat right under
+   the wheel's Spin and playtesters clicked it. The current beat is an
+   underlined gold label instead of a gold slab. */
 [data-state='done'] { color: var(--khaki); background: var(--line-1); }
 [data-state='reachable'] { color: var(--khaki); }
 [data-state='locked'] { color: var(--dim); background: var(--panel); }
 [data-state='current'] {
-  background: var(--gold);
-  color: var(--on-gold);
+  background: color-mix(in srgb, var(--gold) 10%, var(--ground));
+  color: var(--gold);
+  box-shadow: inset 0 -3px 0 var(--gold);
   animation: tagFlash 0.4s var(--ease-out);
 }
 </style>
