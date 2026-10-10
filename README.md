@@ -30,5 +30,6 @@ pnpm dev        # http://localhost:3000
 
 ## Documentation
 
-[`AGENTS.md`](./AGENTS.md) is the source of truth for game rules, architecture and conventions;
+[`AGENTS.md`](./AGENTS.md) is the index and source of truth for game rules, architecture and
+conventions — topic detail lives in [`docs/agents/`](./docs/agents/);
 [`PLAN.md`](./PLAN.md) tracks playtest findings and the work between releases.
