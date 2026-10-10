@@ -1,4 +1,4 @@
-import { processAction, processClose, processHello, processSave, processUnsave } from '../utils/room-sync'
+import { processAction, processClose, processHello, processSave, processSetSteam, processUnsave } from '../utils/room-sync'
 import type { PeerLike, RoomLimits } from '../utils/room-sync'
 import { roomKV } from '../utils/room-storage'
 import { peers as directory } from '../utils/peers'
@@ -27,7 +27,7 @@ export default defineWebSocketHandler({
       peer.send('pong')
       return
     }
-    let payload: { type?: string, name?: unknown, playerId?: unknown, action?: unknown }
+    let payload: { type?: string, name?: unknown, playerId?: unknown, action?: unknown, link?: unknown }
     try {
       payload = JSON.parse(message.text())
     }
@@ -49,6 +49,9 @@ export default defineWebSocketHandler({
       }
       else if (payload.type === 'unsave-dive') {
         await processUnsave(kv, directory, like, limits)
+      }
+      else if (payload.type === 'set-steam') {
+        await processSetSteam(kv, directory, like, payload, limits)
       }
       else {
         like.send(JSON.stringify({ type: 'error', code: 'bad-message', message: 'Unknown message type' }))

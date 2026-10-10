@@ -32,6 +32,11 @@ Griffdive stands on the work of the Helldivers community. Thank you.
   `public/images/strains/` (many traced by Dogo314) and resolved by `shared/data/images.ts`.
   Griffdive is non-commercial, so the license's non-commercial term is satisfied.
 
+## Platform marks
+
+- Steam logo mark (`IconSteam.vue`): [Simple Icons](https://simpleicons.org/) — CC0 1.0. Steam is a
+  trademark of Valve Corporation; the mark labels the host's Steam lobby link only.
+
 ## Fonts
 
 - Body/UI typeface: [Chakra Petch](https://fonts.google.com/specimen/Chakra+Petch) by Cadson Demak —
