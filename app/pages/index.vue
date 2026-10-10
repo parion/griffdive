@@ -1862,6 +1862,16 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
   .mo-planet,
   .mo-count,
   .mo-play { width: auto; flex: 1 1 14rem; padding: 0.6rem 1rem; border: 0; }
+  /* A live order's title is long: without min-width: 0 its nowrap text set the
+     flex item's floor and blew phones out to a ~960px layout viewport. */
+  .mo-title,
+  .mo-play { min-width: 0; }
+  .mo-name {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
   .rc-ladder { flex-wrap: wrap; }
 }
 </style>

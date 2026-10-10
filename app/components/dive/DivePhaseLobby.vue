@@ -523,6 +523,7 @@ const checks = computed<CheckView[]>(() => [
       </div>
       <HoldButton
         v-if="!launched"
+        class="cta-sweep"
         label="Launch crusade"
         hint="HOLD TO LAUNCH · HOST"
         tone="gold"

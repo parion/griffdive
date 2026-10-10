@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { REWARD_TOKEN_CAP } from '~~/shared/engine/config'
+import { actingDiverIds } from '~~/shared/engine/selectors'
 import type { DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -9,6 +10,7 @@ const props = defineProps<{
   mode: 'local' | 'room'
   isHost: boolean
   nameDraft: string
+  canControl: boolean
 }>()
 
 const emit = defineEmits<{
@@ -31,32 +33,42 @@ function initial(diverName: string): string {
   return diverName.trim().slice(0, 1).toUpperCase() || '?'
 }
 
-const statuses = computed<Record<string, string>>(() => {
-  const result: Record<string, string> = {}
-  for (const diver of props.state.divers) {
-    if (props.state.phase === 'deal' || props.state.phase === 'pacts') {
-      result[diver.id] = diver.pactsLocked ? 'ready' : 'choosing pacts'
-    }
-    else if (props.state.phase === 'rewards') {
-      if (diver.skipsCurrentDraft) {
-        result[diver.id] = 'skips this draft'
-      }
-      else {
-        result[diver.id] = diver.pickedOptionId !== null ? 'ready' : 'choosing reward'
-      }
-    }
-  }
-  return result
-})
+// The squad's lamps match the rail cue: gold and pulsing on whoever the squad
+// is waiting on, teal for everyone else who is connected.
+const acting = computed(() => new Set(actingDiverIds(props.state)))
 
-function statusOf(diverId: string): string {
-  return statuses.value[diverId]
-    ?? (isOnline(diverId) || props.mode === 'local' ? 'ready' : 'reconnecting')
+const ACTING_STATUS: Partial<Record<DiveState['phase'], string>> = {
+  lobby: 'launching',
+  spin: 'spinning',
+  decision: 'deciding',
+  strain: 'deciding',
+  deal: 'dealing',
+  pacts: 'choosing pacts',
+  forfeit: 'picking forfeit',
 }
 
-function isWaiting(diverId: string): boolean {
-  const status = statuses.value[diverId]
-  return status === 'choosing pacts' || status === 'choosing reward'
+function isActing(diverId: string): boolean {
+  return acting.value.has(diverId)
+}
+
+function statusOf(diverId: string): string {
+  const diver = props.state.divers.find(entry => entry.id === diverId)
+  if (props.mode === 'room' && !isOnline(diverId)) {
+    return 'reconnecting'
+  }
+  if (props.state.phase === 'diving') {
+    return 'in game'
+  }
+  if (props.state.phase === 'rewards' && diver?.skipsCurrentDraft) {
+    return 'skips this draft'
+  }
+  if (isActing(diverId)) {
+    if (props.state.phase === 'rewards') {
+      return diver?.pickedOptionId === null && !diver.rewardBanned ? 'choosing reward' : 'advancing'
+    }
+    return ACTING_STATUS[props.state.phase] ?? 'ready'
+  }
+  return 'ready'
 }
 
 function canModerate(diverId: string): boolean {
@@ -79,6 +91,12 @@ const selfIsHost = computed(() => props.state.hostId === props.selfId)
       <span class="lbl">Squad</span>
       <span class="count">{{ state.divers.length }}/4</span>
     </div>
+    <PhaseCue
+      :state="state"
+      :self-id="selfId"
+      :can-control="canControl"
+      rail
+    />
     <ul class="divers">
       <li
         v-for="diver in state.divers"
@@ -126,8 +144,8 @@ const selfIsHost = computed(() => props.state.hostId === props.selfId)
               :content="statusOf(diver.id)"
             >
               <span
-                class="dot"
-                :class="{ on: isOnline(diver.id) || mode === 'local', waiting: isWaiting(diver.id) }"
+                class="lamp"
+                :class="isActing(diver.id) ? 'gold pulse' : isOnline(diver.id) || mode === 'local' ? 'teal' : 'dim'"
                 role="img"
                 :aria-label="statusOf(diver.id)"
               />
@@ -308,17 +326,6 @@ const selfIsHost = computed(() => props.state.hostId === props.selfId)
 .kick:hover { border-color: var(--red); }
 
 .solo-hint { margin: 0; font-size: 10px; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; }
-
-.dot { width: 7px; height: 7px; background: var(--dim); display: inline-block; flex-shrink: 0; }
-.dot.on { background: var(--teal); }
-.dot.waiting { background: var(--gold); animation: dot-wait 2s ease-in-out infinite; }
-@keyframes dot-wait {
-  0%, 100% { opacity: 0.55; box-shadow: 0 0 0 0 rgba(255, 214, 66, 0.55); }
-  50% { opacity: 1; box-shadow: 0 0 0 4px transparent; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .dot.waiting { animation: none; opacity: 1; box-shadow: 0 0 0 3px rgba(255, 214, 66, 0.35); }
-}
 
 @media (hover: hover) and (pointer: fine) {
   .mods { opacity: 0; transition: opacity var(--dur-fast) var(--ease-out); }

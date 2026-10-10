@@ -61,6 +61,17 @@ const resolved = computed(() =>
 const banned = computed(() => props.self?.rewardBanned ?? false)
 const chosen = computed(() =>
   props.self?.pickedOptionId ? ITEMS_BY_ID.get(props.self.pickedOptionId) ?? null : null)
+// The advance sweep takes the colour of what the diver banked. Liberty's Cross
+// banks a catalog item that was never among the rolled options.
+const bankedSweep = computed(() => {
+  const pickedId = props.self?.pickedOptionId
+  if (!pickedId) {
+    return undefined
+  }
+  const rolled = options.value.find(option => option.optionId === pickedId && !option.choice)
+  const tier = rolled ? rolled.item.tier : options.value.some(option => option.choice) ? 'splus' : chosen.value?.tier
+  return tier ? { '--sweep': `color-mix(in srgb, var(--tier-${tier}) 70%, white)` } : undefined
+})
 const optionsLost = computed(() => props.self?.failedPactIds.length ?? 0)
 
 const advanceLabel = computed(() =>
@@ -172,7 +183,7 @@ function tierOf(option: RewardOption): string {
 
         <div
           class="rows"
-          role="list"
+          role="group"
           aria-label="Reward options"
         >
           <template
@@ -182,20 +193,18 @@ function tierOf(option: RewardOption): string {
             <div
               v-if="option.choice"
               class="cross-row"
-              role="listitem"
               :class="{ picked: self?.pickedOptionId === option.optionId }"
             >
               <DiversChoiceCard
                 :pool="rewardPool"
                 :owned-ids="ownedIds"
-                :disabled="!canControl || resolved || banMode"
+                :disabled="!self || resolved || banMode"
                 @choose="itemId => emit('pick', option.optionId, itemId)"
               />
             </div>
             <button
               v-else
               class="row"
-              role="listitem"
               :class="{
                 lead: index === 0,
                 picked: self?.pickedOptionId === option.optionId,
@@ -205,7 +214,8 @@ function tierOf(option: RewardOption): string {
                 bannable: bannableIds.includes(option.optionId),
               }"
               type="button"
-              :disabled="!canControl || (resolved && !banMode) || (banMode && !bannableIds.includes(option.optionId))"
+              :data-tier="tierOf(option)"
+              :disabled="!self || (resolved && !banMode) || (banMode && !bannableIds.includes(option.optionId))"
               :aria-label="`${option.item.displayName}, tier ${tierOf(option)}${index === 0 ? ', ceiling pick' : ''}${banMode ? ', toggle ban' : ', claim'}`"
               @click="banMode ? toggleBan(option.optionId) : emit('pick', option.optionId)"
             >
@@ -289,13 +299,19 @@ function tierOf(option: RewardOption): string {
               <span class="result-name">{{ banned ? 'Offer purged for the crusade' : chosen?.displayName ?? '—' }}</span>
             </div>
             <button
-              class="btn primary cut next"
+              v-if="canControl"
+              class="btn primary cut next cta-sweep"
               type="button"
-              :disabled="!canControl"
+              :style="bankedSweep"
+              :disabled="!ready"
               @click="emit('advance')"
             >
-              <span class="disp">{{ advanceLabel }}</span>
+              <span class="disp">{{ ready ? advanceLabel : 'Waiting on squad' }}</span>
             </button>
+            <span
+              v-else
+              class="host-advances"
+            >{{ ready ? 'Host advances' : 'Waiting on squad' }}</span>
           </template>
           <template v-else>
             <span class="foot-tokens">
@@ -340,6 +356,15 @@ function tierOf(option: RewardOption): string {
 </template>
 
 <style scoped>
+.host-advances {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
 .phone-rewards { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .scroll {
   flex: 1 1 auto;
@@ -408,7 +433,34 @@ function tierOf(option: RewardOption): string {
 
 .rows { display: flex; flex-direction: column; gap: 8px; }
 
-.cross-row { border: 1px solid var(--red); }
+.cross-row { border: 1px solid var(--red); animation: cross-glow 1.6s ease-in-out infinite; }
+.cross-row.picked { animation: none; }
+@keyframes cross-glow {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 20px 2px color-mix(in srgb, var(--tier-splus) 45%, transparent); }
+}
+
+/* Rarity reads at a glance: A and S rows carry a tier-tinted sheen, S faster. */
+.row[data-tier='A']:not(:disabled),
+.row[data-tier='S']:not(:disabled) { overflow: hidden; }
+.row[data-tier='A']:not(:disabled)::after,
+.row[data-tier='S']:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--row-tier) 30%, transparent) 50%, transparent 70%);
+  transform: translateX(-130%);
+  animation: ctaSweep 4.4s var(--ease-out) infinite;
+}
+.row[data-tier='A'] { --row-tier: var(--tier-a); }
+.row[data-tier='S'] { --row-tier: var(--tier-s); }
+.row[data-tier='S']:not(:disabled)::after { animation-duration: 2.6s; }
+.row[data-tier='S'] .row-tier { background: var(--tier-s); }
+@media (prefers-reduced-motion: reduce) {
+  .cross-row { animation: none; }
+  .row::after { display: none; }
+}
 .cross-row.picked { box-shadow: 0 0 18px color-mix(in srgb, var(--red) 30%, transparent); }
 
 .row {

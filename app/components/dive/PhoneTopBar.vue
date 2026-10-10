@@ -15,6 +15,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   copyInvite: []
   openArmory: []
+  openTutorial: []
   leave: []
   end: []
   saveDive: []
@@ -128,6 +129,14 @@ function run(action: () => void): void {
         >
           Warbonds
         </button>
+        <button
+          class="menu-item"
+          type="button"
+          role="menuitem"
+          @click="run(() => emit('openTutorial'))"
+        >
+          Tutorial
+        </button>
         <span
           v-if="mode === 'room'"
           class="menu-sep"
@@ -172,23 +181,13 @@ function run(action: () => void): void {
     </div>
 
     <button
-      class="icon-btn"
+      class="icon-btn kit"
       type="button"
-      aria-label="Armory"
+      aria-haspopup="dialog"
       @click="emit('openArmory')"
     >
-      <svg
-        width="22"
-        height="22"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.7"
-        aria-hidden="true"
-      >
-        <path d="M3 7l9-4 9 4v10l-9 4-9-4z" />
-        <path d="M3 7l9 4 9-4M12 11v10" />
-      </svg>
+      <IconKit class="kit-icon" />
+      <span>Kit</span>
     </button>
   </header>
 </template>
@@ -214,6 +213,19 @@ function run(action: () => void): void {
   flex-shrink: 0;
 }
 .grow { flex: 1 1 auto; }
+.icon-btn.kit {
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.kit-icon { width: 18px; height: 18px; }
 
 .room {
   display: flex;

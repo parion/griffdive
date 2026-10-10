@@ -28,20 +28,18 @@ test('the Warbonds drawer toggles ownership and persists it', async ({ page }) =
   ).toHaveAttribute('aria-pressed', 'false')
 })
 
-test('the Warbonds panel opens at dive start once, then stays quiet', async ({ page }) => {
+test('the tutorial opens at dive start once, without chaining the Warbonds panel', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
   await page.getByRole('button', { name: 'Solo drop' }).click()
 
-  // The briefing primes the loop first, then hands off to the Warbonds panel.
-  const briefing = page.getByRole('dialog', { name: 'Griffdiver briefing' })
-  await expect(briefing).toBeVisible()
-  await briefing.getByRole('button', { name: 'Back to base' }).click()
-  await expect(briefing).toBeHidden()
-
+  // The tutorial's Warbonds step covers ownership, so closing it lands on the dive.
+  const tutorial = page.getByRole('dialog', { name: 'Griffdive tutorial' })
   const drawer = page.getByRole('dialog', { name: 'Warbonds' })
-  await expect(drawer).toBeVisible()
-  await drawer.getByRole('button', { name: 'Close warbonds' }).click()
+  await expect(tutorial).toBeVisible()
+  await tutorial.getByRole('button', { name: 'Skip tutorial' }).click()
+  await expect(tutorial).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeVisible()
   await expect(drawer).toBeHidden()
 
   // A second crusade in the same browser keeps everything closed (seen once).
@@ -49,5 +47,9 @@ test('the Warbonds panel opens at dive start once, then stays quiet', async ({ p
   await page.getByRole('button', { name: 'Solo drop' }).click()
   await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeVisible()
   await expect(drawer).toBeHidden()
-  await expect(page.getByRole('dialog', { name: 'Griffdiver briefing' })).toBeHidden()
+  await expect(tutorial).toBeHidden()
+
+  // It stays reachable from the dive header.
+  await page.getByRole('button', { name: 'Tutorial', exact: true }).click()
+  await expect(tutorial).toBeVisible()
 })

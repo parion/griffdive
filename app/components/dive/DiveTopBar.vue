@@ -18,6 +18,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   copyInvite: []
   openArmory: []
+  openTutorial: []
   leave: []
   end: []
   saveDive: []
@@ -96,6 +97,14 @@ const roomCode = computed(() => (props.slotName || '').toUpperCase())
 
     <div class="session">
       <button
+        class="btn ghost tiny"
+        type="button"
+        aria-haspopup="dialog"
+        @click="emit('openTutorial')"
+      >
+        Tutorial
+      </button>
+      <button
         v-if="mode === 'room' && !saved"
         class="btn ghost tiny"
         type="button"
@@ -136,39 +145,31 @@ const roomCode = computed(() => (props.slotName || '').toUpperCase())
       <button
         class="icon-btn navb"
         type="button"
-        aria-label="Armory"
+        aria-haspopup="dialog"
         @click="emit('openArmory')"
       >
-        <svg
-          width="22"
-          height="22"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.7"
-          aria-hidden="true"
-        >
-          <path d="M3 7l9-4 9 4v10l-9 4-9-4z" />
-          <path d="M3 7l9 4 9-4M12 11v10" />
-        </svg>
+        <IconKit class="nav-icon" />
+        <span>Kit</span>
       </button>
       <button
         class="icon-btn navb"
         type="button"
-        aria-label="Codex"
+        aria-haspopup="dialog"
         :aria-expanded="codexOpen"
         @click="codexOpen = true"
       >
-        <IconBook />
+        <IconBook class="nav-icon" />
+        <span>Codex</span>
       </button>
       <button
         class="icon-btn navb"
         type="button"
-        aria-label="Warbonds"
+        aria-haspopup="dialog"
         :aria-expanded="warbondsOpen"
         @click="warbondsOpen = true"
       >
-        <IconWarbond />
+        <IconWarbond class="nav-icon" />
+        <span>Warbonds</span>
       </button>
     </nav>
   </header>
@@ -233,15 +234,19 @@ const roomCode = computed(() => (props.slotName || '').toUpperCase())
 .room-copy svg { width: 15px; height: 15px; }
 .saved { font-size: 9px; }
 .session { display: flex; gap: 4px; }
-.ship-nav { display: flex; gap: 4px; }
+.ship-nav { display: flex; gap: 2px; }
+/* Labelled like the Bridge header: players couldn't find the Kit behind a bare icon. */
 .navb {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  padding: 0;
+  flex-direction: column;
+  gap: 0.12rem;
+  height: 48px;
+  padding: 0.3rem 0.6rem;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
-.navb svg { width: 22px; height: 22px; }
+.nav-icon { width: 20px; height: 20px; }
 
 @media (max-width: 760px) {
   .top { height: auto; min-height: 52px; padding: var(--sp-3) var(--sp-4); gap: var(--sp-3); flex-wrap: wrap; }

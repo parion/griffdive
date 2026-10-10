@@ -26,6 +26,40 @@ function setFromCell(index: number): void {
   emit('update:modelValue', Math.min(props.max, value))
 }
 
+// On a phone each cell is ~6px wide, so a tap was a coin flip. The bar scrubs
+// instead: press anywhere and drag, and the finger's position sets the value.
+const scrubbing = ref(false)
+
+function setFromPointer(event: PointerEvent): void {
+  const bar = event.currentTarget as HTMLElement
+  const rect = bar.getBoundingClientRect()
+  const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width))
+  const index = Math.min(props.cells - 1, Math.floor(ratio * props.cells))
+  const value = Math.min(props.max, Math.round((index + 1) * step.value))
+  if (value !== props.modelValue) {
+    emit('update:modelValue', value)
+  }
+}
+
+function onPointerDown(event: PointerEvent): void {
+  if (event.pointerType === 'mouse') {
+    return
+  }
+  scrubbing.value = true
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+  setFromPointer(event)
+}
+
+function onPointerMove(event: PointerEvent): void {
+  if (scrubbing.value) {
+    setFromPointer(event)
+  }
+}
+
+function endScrub(): void {
+  scrubbing.value = false
+}
+
 function nudge(delta: number): void {
   const value = Math.max(0, Math.min(props.max, props.modelValue + delta))
   if (value !== props.modelValue) {
@@ -75,6 +109,10 @@ function nudge(delta: number): void {
         :aria-valuemax="max"
         :aria-valuenow="modelValue"
         :aria-valuetext="`${modelValue} percent`"
+        @pointerdown="onPointerDown"
+        @pointermove="onPointerMove"
+        @pointerup="endScrub"
+        @pointercancel="endScrub"
       >
         <button
           v-for="i in cells"
@@ -126,6 +164,7 @@ function nudge(delta: number): void {
   gap: 3px;
   height: 44px;
   padding: 0;
+  touch-action: none;
 }
 .seg-cell {
   flex-grow: 1;

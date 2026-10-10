@@ -129,12 +129,44 @@ const pickedPodId = computed(() => {
   return match?.optionId ?? lockedOptions.value.find(option => option.choice)?.optionId ?? null
 })
 
+// The cabinet keeps its order, but the pods land worst-to-best so the reveal
+// builds to the top pull.
+const TIER_ORDER = ['c', 'b', 'a', 's']
+const revealRanks = computed(() => {
+  const score = (option: RewardOption) => option.choice ? TIER_ORDER.length : TIER_ORDER.indexOf(option.item.tier)
+  const order = lockedOptions.value
+    .map((option, index) => ({ index, score: score(option) }))
+    .sort((a, b) => a.score - b.score || a.index - b.index)
+  const ranks: number[] = []
+  order.forEach((entry, rank) => {
+    ranks[entry.index] = rank
+  })
+  return ranks
+})
+
 // Liberty's Cross banks the picked item's id, which is not among the rolled
 // options — resolve it from the catalog for the banked banner.
 const pickedItem = computed(() =>
   lockedOptions.value.find(option => option.optionId === props.pickedId)?.item
   ?? (props.pickedId ? ITEMS_BY_ID.get(props.pickedId) ?? null : null),
 )
+// The advance sweep takes the colour of what the diver banked, so a Liberty's
+// Cross or S-tier pull keeps glowing on the way out.
+const bankedTier = computed(() => {
+  const pod = lockedOptions.value.find(option => option.optionId === pickedPodId.value)
+  if (!pod) {
+    return null
+  }
+  return pod.choice ? 'S+' : pod.item.tier.toUpperCase()
+})
+const bankedSweep = computed(() => {
+  if (!bankedTier.value) {
+    return undefined
+  }
+  const tier = bankedTier.value === 'S+' ? 'splus' : bankedTier.value.toLowerCase()
+  return { '--sweep': `color-mix(in srgb, var(--tier-${tier}) 70%, white)` }
+})
+
 const pickedImage = computed(() =>
   pickedItem.value ? itemImageUrl(pickedItem.value) : undefined)
 
@@ -386,6 +418,7 @@ const statusKind = computed<'honors' | 'advance' | 'wait' | 'pick'>(() => {
         :choice-pool="pool"
         :owned-ids="ownedIds"
         :index="index"
+        :reveal-rank="revealRanks[index]"
         :instant="instant || podsDone"
         :can-pick="allSettled && !resolved"
         :picked="pickedPodId === option.optionId"
@@ -542,8 +575,10 @@ const statusKind = computed<'honors' | 'advance' | 'wait' | 'pick'>(() => {
         >
           <button
             v-if="statusKind === 'honors'"
-            class="btn gold honors-link cut"
+            class="btn gold honors-link cut cta-sweep"
             type="button"
+            :data-banked="bankedTier ?? undefined"
+            :style="bankedSweep"
             @click="emit('openHonors')"
           >
             <span class="disp honors-word">Squad Honors</span>
@@ -559,8 +594,10 @@ const statusKind = computed<'honors' | 'advance' | 'wait' | 'pick'>(() => {
           </button>
           <button
             v-else-if="statusKind === 'advance'"
-            class="btn primary cut advance-btn"
+            class="btn primary cut advance-btn cta-sweep"
             type="button"
+            :data-banked="bankedTier ?? undefined"
+            :style="bankedSweep"
             :disabled="!canControl"
             @click="emit('advance')"
           >
@@ -817,6 +854,8 @@ const statusKind = computed<'honors' | 'advance' | 'wait' | 'pick'>(() => {
 }
 .advance-label { font-size: 0.95rem; letter-spacing: 0.04em; white-space: nowrap; }
 .advance-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.cta-sweep[data-banked='S']::after { animation-duration: 2.2s; }
+.cta-sweep[data-banked='S+']::after { animation-duration: 1.6s; }
 
 .wait-pill,
 .pick-pill {

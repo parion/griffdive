@@ -47,6 +47,7 @@ const emit = defineEmits<{
   transferHost: [diverId: string]
   copyInvite: []
   openArmory: []
+  openTutorial: []
   leave: []
   end: []
   saveDive: []
@@ -88,6 +89,7 @@ function kickDiver(diverId: string): void {
         :lone-host="state.divers.length === 1"
         @copy-invite="emit('copyInvite')"
         @open-armory="emit('openArmory')"
+        @open-tutorial="emit('openTutorial')"
         @leave="emit('leave')"
         @end="emit('end')"
         @save-dive="emit('saveDive')"
@@ -113,6 +115,13 @@ function kickDiver(diverId: string): void {
         :mode="mode"
         :is-host="isHost"
         @select="modTarget = $event"
+      />
+      <PhaseCue
+        v-if="!kicked"
+        :state="state"
+        :self-id="selfId"
+        :can-control="canControl"
+        band
       />
     </template>
 

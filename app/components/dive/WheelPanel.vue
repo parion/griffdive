@@ -822,7 +822,7 @@ function rerollLabel(
     <footer class="wheel-foot row">
       <button
         v-if="dealReady && canControl"
-        class="btn primary cut deal-cta"
+        class="btn primary cut deal-cta cta-sweep"
         type="button"
         @click="emit('deal')"
       >

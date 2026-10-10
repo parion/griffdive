@@ -290,6 +290,7 @@ const pendingText = computed(() => {
         <div class="sheet-foot">
           <HoldButton
             v-if="!locked"
+            class="cta-sweep"
             :label="canLock ? 'Lock in' : 'Locked out'"
             :hint="canLock ? 'hold to lock' : ''"
             tone="gold"
