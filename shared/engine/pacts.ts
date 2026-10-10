@@ -160,7 +160,7 @@ export function stratagemBanReason(
   item: Item,
 ): StratagemBanSource | null {
   if (misfortuneId) {
-    if (misfortuneId === 'oopsAllAirstrikes' && !isAirstrikeStratagem(item)) {
+    if (misfortuneId === 'oopsAllAirstrikes' && item.type === 'stratagem' && !isAirstrikeStratagem(item)) {
       return { source: 'misfortune', id: misfortuneId }
     }
     if (MISFORTUNE_BANS_STRATAGEM[misfortuneId]?.(item)) {
