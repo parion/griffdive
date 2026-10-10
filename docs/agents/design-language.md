@@ -108,7 +108,11 @@ engine.
   in the draft); when honors aren't due that turn the ceremony is replaced by a disabled panel and the
   shelf stays available. The left rail gains `MissionReportSummary` on the rewards phase.
   The Kit (`KitPanel.vue`) is deliberately lean: an optional row of diver names (no warbonds, no
-  token chits), then the diver's own items by category with live ban washes. Every owned item shows,
+  token chits), a sticky toolbar (an **Earned only** switch that hides the starting kit, and jump
+  chips that scroll to each group), then the diver's own items by category with live ban washes.
+  Stratagems split by type (Eagle / Orbital / Supply / Defense) and every group always renders —
+  an empty one reads "None" (or "None earned yet" in earned mode) so a missing booster is stated,
+  not implied. Every owned item shows,
   the shared reserve stratagems included (they are most of a fresh diver's stratagem loadout);
   the separate reserve block, the "stratagems fieldable" readiness block and the key bar are
   gone — playtesters could not read them. On desktop it is the rail's Kit tab and has no other entry
