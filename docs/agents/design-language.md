@@ -68,16 +68,15 @@ engine.
   transform, so tier effects use filters only. Phone reward rows carry the same tier sheen.
 - **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav) on every
   route except the dive, which renders its own `DiveTopBar` (crusade + difficulty emblem + room
-  code/copy + Tutorial + the labelled Kit/Codex/Warbonds ship nav — labels, never bare icons;
-  playtesters could not find the Kit behind an icon). `components/dive/DiveFrame.vue` is the
+  code/copy + Tutorial + the labelled Codex/Warbonds ship nav — labels, never bare icons; the
+  Kit needs no header entry on desktop because it lives in the right rail). `components/dive/DiveFrame.vue` is the
   no-scroll dive shell — grid rows `60px 84px minmax(0,1fr) 52px` and columns `216px 1fr 284px`:
   header · `CrusadeStrip` (the horizontal 3→10 climb) · left rail (Squad, led by `PhaseCue`) ·
   centre phase · right rail (`KitValorRail`: **Kit** and **Valor** tabs) · `PhaseRail` (bottom
-  Mission phases). Each rail tab is also a readout: Kit shows the diver's item count over a bar
-  split by category colour, Valor shows the live total over a bar split by source (directive gold,
+  Mission phases). The Valor tab doubles as a readout: the live total over a bar split by source (directive gold,
   strain orange, Major Order teal, mode khaki, pacts red — the same colours as the meter's cells and
   legend, via `app/utils/valor.ts`). The tab choice is shell state and survives phase changes; it
-  defaults to Valor. The rail carries nothing else: no Valor explainer, no honors token banks, no
+  defaults to Kit. The rail carries nothing else: no Valor explainer, no honors token banks, no
   forfeit "carries over" card.
   **One lead per beat:** `PhaseCue` answers "whose move is it?" (`Your move` gold / `Stand by`
   teal), fed by `awaitingDiverIds` + `canControl` — the answer to playtesters losing the thread
@@ -98,10 +97,9 @@ engine.
   The Kit (`KitPanel.vue`) is deliberately lean: an optional row of diver names (no warbonds, no
   token chits), then the diver's own items by category with live ban washes. The reserve
   stratagems every diver shares, the "stratagems fieldable" readiness block and the key bar are
-  gone — playtesters could not read them. On desktop it is the rail's Kit tab; the dive header's
-  Kit button and the pact screen's "Check your kit" switch the rail to it. The phone shell (and
-  the desktop lobby, which has no right rail) shows the same panel in an in-app drawer
-  (`ArmoryDrawer.vue`), titled **Kit** in every player-facing string (code keeps the `armory`
+  gone — playtesters could not read them. On desktop it is the rail's Kit tab and has no other entry
+  point (the desktop lobby, which has no right rail, shows no Kit). The phone shell's header
+  opens the same panel in an in-app drawer (`ArmoryDrawer.vue`), titled **Kit** in every player-facing string (code keeps the `armory`
   names). The
   Griffdiver Briefing (`BriefingOverlay.vue`) is presented as the **Griffdive tutorial**: a framed
   dialog (hazard edge, `TRAINING` badge, "Step n of 6") over the dimmed dive, never a full-bleed

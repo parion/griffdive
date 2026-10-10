@@ -36,18 +36,8 @@ const dispatch = (action: EngineAction) => session.dispatch(action)
 const armoryOpen = ref(false)
 
 // The desktop right rail tabs between the Kit and Valor. It is shell state, so
-// the diver's choice survives phase changes; the lobby has no rail, so its Kit
-// button still opens the drawer.
-const railTab = ref<'kit' | 'valor'>('valor')
-const hasRail = computed(() => state.value?.phase !== 'lobby')
-
-function openKit(): void {
-  if (!isPhone.value && hasRail.value) {
-    railTab.value = 'kit'
-    return
-  }
-  armoryOpen.value = true
-}
+// the diver's choice survives phase changes.
+const railTab = ref<'kit' | 'valor'>('kit')
 
 // The rail and the climb strip are shell state, not phase state: the page
 // composes them from selectors so every phase shares one rail.
@@ -521,7 +511,7 @@ function launchCrusade(settings: CrusadeSettings): void {
       @kick="kick"
       @transfer-host="transferHost"
       @copy-invite="copyInvite"
-      @open-armory="openKit"
+      @open-armory="armoryOpen = true"
       @open-tutorial="openBriefing"
       @leave="leaveDive"
       @end="endDive"
@@ -534,7 +524,7 @@ function launchCrusade(settings: CrusadeSettings): void {
     <DiveFrame
       v-else-if="state"
       :left="state.phase !== 'forfeit'"
-      :right="hasRail"
+      :right="state.phase !== 'lobby'"
     >
       <template #header>
         <DiveTopBar
@@ -548,7 +538,6 @@ function launchCrusade(settings: CrusadeSettings): void {
           :is-host="session.selfIsHost.value"
           :lone-host="state.divers.length === 1"
           @copy-invite="copyInvite"
-          @open-armory="openKit"
           @open-tutorial="openBriefing"
           @leave="leaveDive"
           @end="endDive"
@@ -684,7 +673,6 @@ function launchCrusade(settings: CrusadeSettings): void {
             @lock="lockPacts"
             @pact-risk="livePactRisk = $event"
             @preview="pactPreview = $event"
-            @open-kit="openKit"
           />
 
           <DivePhaseDiving
@@ -730,13 +718,6 @@ function launchCrusade(settings: CrusadeSettings): void {
           />
         </div>
       </Transition>
-
-      <ArmoryDrawer
-        v-model:open="armoryOpen"
-        :state="state"
-        :self-id="selfId"
-        :preview-pact-ids="pactPreviewIds"
-      />
     </DiveFrame>
     <p
       v-else
@@ -745,8 +726,8 @@ function launchCrusade(settings: CrusadeSettings): void {
       Loading dive…
     </p>
 
-    <!-- The phone shell swaps out DiveFrame, which owns the desktop Armory
-         drawer — so the phone branch needs its own mount for the same ref. -->
+    <!-- Desktop carries the Kit in its right rail; the phone shell has no rail,
+         so its header opens the Kit in a drawer. -->
     <ArmoryDrawer
       v-if="state && isPhone"
       v-model:open="armoryOpen"

@@ -23,7 +23,7 @@ app/
                    beats (a readout, not a control), PhaseCue — the "whose move" lead
                    (squad rail on desktop, a band on phones), WheelOfMisfortune — the seeded spinning SVG wheel,
                    BriefingOverlay — the first-run Griffdiver dossier, ArmoryDrawer — the Kit
-                   drawer (phone shell and desktop lobby), KitPanel — the lean Kit (diver
+                   drawer (phone shell only), KitPanel — the lean Kit (diver
                    names, owned items by category, ban washes), KitValorRail — the desktop
                    right rail's Kit/Valor tabs with their status bars, CrusadeLadder —
                    the vertical 3→10 ladder (achieved screen), SquadStrip — diver rail, presence,
@@ -32,7 +32,7 @@ app/
                    DivePhaseForfeit/DivePhaseComplete — one panel per engine phase, each
                    owning its local form state and emitting intents,
                    PactScreen — the dedicated pacts screen (team-risk summary bar,
-                   filter/floor notes, hold-to-lock CTA), MissionReport +
+                   hold-to-lock CTA), MissionReport +
                    SampleCanister/SegmentedBar — the dedicated two-column mission
                    report, ForfeitPicker — the per-diver surrender picker,
                    AchievedOverlay — the full-bleed Griffdive achieved takeover,

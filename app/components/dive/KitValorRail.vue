@@ -3,7 +3,6 @@ import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
 import { VALOR_METER_MAX } from '~~/shared/engine/config'
 import { valorOf } from '~~/shared/engine/rewards'
 import type { DiveState } from '~~/shared/engine/types'
-import { KIT_SECTIONS, kitSectionOf, ownedKitItems } from '~/utils/kit'
 import { valorSegments } from '~/utils/valor'
 import type { ValorSources } from '~/utils/valor'
 
@@ -26,17 +25,6 @@ const tab = defineModel<'kit' | 'valor'>({ required: true })
 function format(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
 }
-
-const kitItems = computed(() => ownedKitItems(props.state, props.selfId))
-
-// The Kit tab's bar is the kit's make-up: one run per category, sized by count.
-const kitBar = computed(() => KIT_SECTIONS
-  .map(def => ({
-    id: def.id,
-    color: def.accent,
-    size: kitItems.value.filter(item => kitSectionOf(item) === def.id).length,
-  }))
-  .filter(segment => segment.size > 0))
 
 const valorTotal = computed(() => valorOf(props.valor.teamRisk, props.valor.pactRisk))
 
@@ -63,20 +51,7 @@ const valorBar = computed(() => {
         value="kit"
         class="tab"
       >
-        <span class="tab-row">
-          <span class="tab-name">Kit</span>
-          <span class="tab-value disp">{{ kitItems.length }}<span class="tab-unit">items</span></span>
-        </span>
-        <span
-          class="tab-bar"
-          aria-hidden="true"
-        >
-          <i
-            v-for="segment in kitBar"
-            :key="segment.id"
-            :style="{ background: segment.color, flexGrow: segment.size }"
-          />
-        </span>
+        <span class="tab-name">Kit</span>
       </TabsTrigger>
       <TabsTrigger
         value="valor"
@@ -137,6 +112,7 @@ const valorBar = computed(() => {
 .tab {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: var(--sp-2);
   min-width: 0;
   padding: var(--sp-3) var(--sp-3) var(--sp-3);
@@ -164,17 +140,6 @@ const valorBar = computed(() => {
   color: var(--text);
 }
 .tab[data-state='active'] .tab-value { color: var(--gold); }
-.tab-unit {
-  margin-left: 4px;
-  font-family: var(--font-body);
-  font-size: var(--fs-cap);
-  font-stretch: normal;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
 .tab-bar {
   display: flex;
   gap: 2px;

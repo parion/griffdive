@@ -30,21 +30,17 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // The squad strip shows who still has to decide.
   await expect(page.getByRole('img', { name: 'choosing pacts' })).toBeVisible()
 
-  // The Valor meter reflects the team risk and grows as pacts are added.
+  // The rail opens on the Kit; the Valor tab swaps in the meter, which
+  // reflects the team risk and grows as pacts are added.
   const valor = page.getByRole('progressbar', { name: 'Valor' })
-  await expect(valor).toBeVisible()
-  const teamValor = Number(await valor.getAttribute('aria-valuenow'))
-  await page.locator('.pact:not([disabled])').first().click()
-  expect(Number(await valor.getAttribute('aria-valuenow'))).toBeGreaterThan(teamValor)
-
-  // The rail tabs between Valor and the Kit; "Check your kit" lands on the tab.
-  const kitTab = page.getByRole('tab', { name: /^Kit/ })
-  await page.getByRole('button', { name: 'Check your kit' }).click()
-  await expect(kitTab).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tab', { name: 'Kit' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('region', { name: 'Kit' })).toBeVisible()
   await expect(valor).toBeHidden()
   await page.getByRole('tab', { name: /^Valor/ }).click()
   await expect(valor).toBeVisible()
+  const teamValor = Number(await valor.getAttribute('aria-valuenow'))
+  await page.locator('.pact:not([disabled])').first().click()
+  expect(Number(await valor.getAttribute('aria-valuenow'))).toBeGreaterThan(teamValor)
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
 
   // The briefing carries the same locked Valor through (QA-U1).

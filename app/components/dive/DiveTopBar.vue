@@ -17,7 +17,6 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   copyInvite: []
-  openArmory: []
   openTutorial: []
   leave: []
   end: []
@@ -142,15 +141,6 @@ const roomCode = computed(() => (props.slotName || '').toUpperCase())
       class="ship-nav"
       aria-label="Ship"
     >
-      <button
-        class="icon-btn navb"
-        type="button"
-        aria-haspopup="dialog"
-        @click="emit('openArmory')"
-      >
-        <IconKit class="nav-icon" />
-        <span>Kit</span>
-      </button>
       <button
         class="icon-btn navb"
         type="button"
