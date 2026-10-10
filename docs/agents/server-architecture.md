@@ -22,8 +22,10 @@ app/
                    CrusadeStrip — the horizontal 3→10 climb, PhaseRail — the bottom six mission
                    beats (a readout, not a control), PhaseCue — the "whose move" lead
                    (squad rail on desktop, a band on phones), WheelOfMisfortune — the seeded spinning SVG wheel,
-                   BriefingOverlay — the first-run Griffdiver dossier, ArmoryDrawer — the in-dive
-                   Armory overlay (kit + loadout readiness + active-rule bans), CrusadeLadder —
+                   BriefingOverlay — the first-run Griffdiver dossier, ArmoryDrawer — the Kit
+                   drawer (phone shell and desktop lobby), KitPanel — the lean Kit (diver
+                   names, owned items by category, ban washes), KitValorRail — the desktop
+                   right rail's Kit/Valor tabs with their status bars, CrusadeLadder —
                    the vertical 3→10 ladder (achieved screen), SquadStrip — diver rail, presence,
                    name, host moderation,
                    DivePhaseLobby/DivePhaseWheel/DivePhaseDiving/DivePhaseRewards/
@@ -32,8 +34,7 @@ app/
                    PactScreen — the dedicated pacts screen (team-risk summary bar,
                    filter/floor notes, hold-to-lock CTA), MissionReport +
                    SampleCanister/SegmentedBar — the dedicated two-column mission
-                   report, ForfeitPicker/ForfeitCarriesOver — the per-diver surrender
-                   picker and the forfeit "carries over" rail,
+                   report, ForfeitPicker — the per-diver surrender picker,
                    AchievedOverlay — the full-bleed Griffdive achieved takeover,
                    DivePhone + DivePhoneShell/PhoneTopBar/PhoneCrusadeBar/PhoneSquadBar/
                    PhoneWheel/PhonePacts/PhoneValor/PhoneReport/PhoneDiving/
@@ -56,7 +57,6 @@ app/
                    seeded items with tier×type prices, the sample purse and
                    buy controls; titled **Brasch's Bargains**),
                    MissionReportSummary — the left-rail report card,
-                   RewardTokensRail — the honors rail's per-diver token banks,
                    ValorMeter — the live Valor gauge
                    and tier-ceiling ladder, BonusCeremony — the dedicated
                    end-of-mission honors screen (iconographic seeded reel,
@@ -64,7 +64,7 @@ app/
                    FieldPromotionCard — the mid-crusade
                    catch-up ceremony, DiversChoiceCard — the special
                    S+ "Liberty's Cross" offer card, DiversChoicePicker — its minified codex
-                   modal, InventoryGrid, CrusadeSetup, WarbondPicker,
+                   modal, CrusadeSetup, WarbondPicker,
                    JoinNameGate — name gate held while joining),
                    codex/CodexBrowser — the shared catalog browser (filter + tier grid),
                    warbonds/WarbondBrowser — the shared warbond owner list (single column,
@@ -98,7 +98,8 @@ app/
                    usePhoneShell (the 1020px breakpoint as JS, so the dive can swap the whole
                    three-rail tree for the phone shell)
   stores/          session.ts (Pinia: selfId, snapshot, online)
-  utils/           seed.ts (client seed generation)
+  utils/           seed.ts (client seed generation), kit.ts (Kit categories + owned-item list),
+                   valor.ts (Valor source split + colours shared by the rail tab and meter)
   assets/css/      main.css — global HD2 theme (two-font system, see Conventions)
 server/
   routes/ws.ts     defineWebSocketHandler — single endpoint, ?room={code}

@@ -35,21 +35,22 @@ const dispatch = (action: EngineAction) => session.dispatch(action)
 
 const armoryOpen = ref(false)
 
-// The rewards phase holds two screens — the draft and the honors ceremony.
-// The page owns the toggle so the shell's rails can follow it (draft → Valor,
-// honors → the squad's token banks); the phase component drives the value.
-const rewardsView = ref<'draft' | 'honors'>('draft')
+// The desktop right rail tabs between the Kit and Valor. It is shell state, so
+// the diver's choice survives phase changes; the lobby has no rail, so its Kit
+// button still opens the drawer.
+const railTab = ref<'kit' | 'valor'>('valor')
+const hasRail = computed(() => state.value?.phase !== 'lobby')
 
-// The rewards phase unmounts between missions, so reset the toggle whenever
-// the dive leaves rewards — the next draft always opens on the draft.
-watch(phase, (current) => {
-  if (current !== 'rewards') {
-    rewardsView.value = 'draft'
+function openKit(): void {
+  if (!isPhone.value && hasRail.value) {
+    railTab.value = 'kit'
+    return
   }
-})
+  armoryOpen.value = true
+}
 
-// The Valor rail and the climb strip are shell state, not phase state: the
-// page composes them from selectors so every phase shares one rail.
+// The rail and the climb strip are shell state, not phase state: the page
+// composes them from selectors so every phase shares one rail.
 const variantName = computed(() =>
   VARIANTS.find(variant => variant.id === state.value?.settings?.variant)?.name ?? 'Crusade')
 const crusadeLabel = computed(() => `${diverName(selfId.value)} · ${variantName.value}`)
@@ -90,6 +91,19 @@ const pendingText = computed(() => {
     default: return ''
   }
 })
+const valorReadout = computed(() => ({
+  difficulty: state.value?.difficulty ?? 0,
+  teamRisk: teamRisk.value,
+  misfortuneRisk: riskBreakdown.value.misfortuneRisk,
+  strainRisk: riskBreakdown.value.strainRisk,
+  majorOrderRisk: riskBreakdown.value.majorOrderRisk,
+  modeRisk: riskBreakdown.value.modeValor,
+  modeLabel: riskBreakdown.value.mode === 'penance' ? 'Super Penance' : 'SEAF Support',
+  pactRisk: pactRisk.value,
+  locked: valorLocked.value,
+  diverName: diverName(selfId.value),
+  pendingText: pendingText.value,
+}))
 
 // Warbonds are what each diver actually owns — declared per diver, any phase,
 // and driven by the global Warbonds drawer. A local save seeds the working list
@@ -507,7 +521,7 @@ function launchCrusade(settings: CrusadeSettings): void {
       @kick="kick"
       @transfer-host="transferHost"
       @copy-invite="copyInvite"
-      @open-armory="armoryOpen = true"
+      @open-armory="openKit"
       @open-tutorial="openBriefing"
       @leave="leaveDive"
       @end="endDive"
@@ -520,7 +534,7 @@ function launchCrusade(settings: CrusadeSettings): void {
     <DiveFrame
       v-else-if="state"
       :left="state.phase !== 'forfeit'"
-      :right="state.phase !== 'lobby'"
+      :right="hasRail"
     >
       <template #header>
         <DiveTopBar
@@ -534,7 +548,7 @@ function launchCrusade(settings: CrusadeSettings): void {
           :is-host="session.selfIsHost.value"
           :lone-host="state.divers.length === 1"
           @copy-invite="copyInvite"
-          @open-armory="armoryOpen = true"
+          @open-armory="openKit"
           @open-tutorial="openBriefing"
           @leave="leaveDive"
           @end="endDive"
@@ -585,29 +599,12 @@ function launchCrusade(settings: CrusadeSettings): void {
       </template>
 
       <template #right>
-        <ForfeitCarriesOver
-          v-if="state.phase === 'forfeit'"
-          :state="state"
-        />
-        <RewardTokensRail
-          v-else-if="state.phase === 'rewards' && rewardsView === 'honors'"
+        <KitValorRail
+          v-model="railTab"
           :state="state"
           :self-id="selfId"
-        />
-        <ValorMeter
-          v-else
-          :difficulty="state.difficulty"
-          :team-risk="teamRisk"
-          :misfortune-risk="riskBreakdown.misfortuneRisk"
-          :strain-risk="riskBreakdown.strainRisk"
-          :major-order-risk="riskBreakdown.majorOrderRisk"
-          :mode-risk="riskBreakdown.modeValor"
-          :mode-label="riskBreakdown.mode === 'penance' ? 'Super Penance' : 'SEAF Support'"
-          :pact-risk="pactRisk"
-          :locked="valorLocked"
-          :dormant="state.phase === 'spin'"
-          :diver-name="diverName(selfId)"
-          :pending-text="pendingText"
+          :valor="valorReadout"
+          :preview-pact-ids="pactPreviewIds"
         />
       </template>
 
@@ -687,7 +684,7 @@ function launchCrusade(settings: CrusadeSettings): void {
             @lock="lockPacts"
             @pact-risk="livePactRisk = $event"
             @preview="pactPreview = $event"
-            @open-kit="armoryOpen = true"
+            @open-kit="openKit"
           />
 
           <DivePhaseDiving
@@ -704,7 +701,6 @@ function launchCrusade(settings: CrusadeSettings): void {
 
           <DivePhaseRewards
             v-if="phase === 'rewards'"
-            v-model:view="rewardsView"
             :state="state"
             :self-id="selfId"
             :self="self"

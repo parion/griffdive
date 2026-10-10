@@ -30,7 +30,7 @@ withDefaults(defineProps<{ left?: boolean, right?: boolean }>(), { left: true, r
       <aside
         v-if="right"
         class="rail rail-right"
-        aria-label="Valor"
+        aria-label="Kit and Valor"
       >
         <slot name="right" />
       </aside>

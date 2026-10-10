@@ -3,15 +3,13 @@ import { VALOR_METER_MAX, baseTierFor } from '~~/shared/engine/config'
 import { ceilingRange } from '~~/shared/engine/selectors'
 import { oddsToReach, valorOf } from '~~/shared/engine/rewards'
 import type { RewardTier } from '~~/shared/engine/types'
+import { valorSegments } from '~/utils/valor'
 
 const props = withDefaults(defineProps<{
   difficulty: number
   teamRisk: number
   pactRisk: number
   locked?: boolean
-  // Before the wheel has drawn anything there is no stake to price: an all-zero
-  // gauge read as noise to playtesters, so the rail explains Valor instead.
-  dormant?: boolean
   diverName?: string
   pendingText?: string
   // The team-risk split, when the caller has it: the design's legend reads
@@ -42,23 +40,27 @@ const overflow = computed(() => Math.max(0, valor.value - VALOR_METER_MAX))
 const range = computed(() =>
   ceilingRange(props.difficulty, props.teamRisk, props.pactRisk))
 
-type CellSource = 'empty' | 'team' | 'pact'
+const segments = computed(() => valorSegments(props))
+
 interface ValorCell {
   key: number
-  source: CellSource
+  color: string | null
   amount: number
 }
 
-// One cell per meter point, filled from the bottom so the gauge stacks the
-// sources legibly: team risk first, then pacts.
+// One cell per meter point, filled from the bottom in legend order so the
+// gauge stacks the sources legibly.
 const cells = computed<ValorCell[]>(() => {
-  const teamEnd = props.teamRisk
-  const pactEnd = props.teamRisk + props.pactRisk
+  const bounds: { end: number, color: string }[] = []
+  let end = 0
+  for (const segment of segments.value) {
+    end += segment.value
+    bounds.push({ end, color: segment.color })
+  }
   const bottomUp = Array.from({ length: scale }, (_, index): ValorCell => {
-    const source: CellSource
-      = index < teamEnd ? 'team' : index < pactEnd ? 'pact' : 'empty'
     const amount = Math.min(1, Math.max(0, valor.value - index))
-    return { key: index, source: amount > 0 ? source : 'empty', amount }
+    const color = bounds.find(bound => index < bound.end)?.color ?? null
+    return { key: index, color: amount > 0 ? color : null, amount }
   })
   return bottomUp.reverse()
 })
@@ -91,23 +93,10 @@ const rungs = computed(() => LADDER.map((tier, index) => {
 }).reverse())
 
 const legend = computed(() => {
-  const rows: { id: string, name: string, value: number }[] = []
-  if (props.misfortuneRisk !== undefined || props.strainRisk !== undefined) {
-    rows.push({ id: 'misfortune', name: 'Directive', value: props.misfortuneRisk ?? 0 })
-    rows.push({ id: 'strain', name: 'Strain', value: props.strainRisk ?? 0 })
-    if ((props.majorOrderRisk ?? 0) > 0) {
-      rows.push({ id: 'mo', name: 'Major Order', value: props.majorOrderRisk ?? 0 })
-    }
-    if ((props.modeRisk ?? 0) > 0) {
-      rows.push({ id: 'mode', name: props.modeLabel ?? 'Mode', value: props.modeRisk ?? 0 })
-    }
-  }
-  else {
-    rows.push({ id: 'team', name: 'Team', value: props.teamRisk })
-  }
-  rows.push({ id: 'pact', name: 'Pacts', value: props.pactRisk })
+  const rows: { id: string, name: string, value: number, color: string }[] = segments.value
+    .filter(segment => segment.always || segment.value > 0)
   if (overflow.value > 0) {
-    rows.push({ id: 'luck', name: 'Luck', value: overflow.value })
+    rows.push({ id: 'luck', name: 'Luck', value: overflow.value, color: 'var(--purple)' })
   }
   return rows
 })
@@ -127,30 +116,7 @@ const legend = computed(() => {
       >Locked</span>
     </div>
 
-    <div
-      v-if="dormant"
-      class="dormant"
-    >
-      <p class="dormant-lead">
-        Valor is the risk you choose to carry.
-      </p>
-      <p class="dormant-copy">
-        Every directive and pact you accept adds Valor. More Valor raises the odds that your reward
-        lands above the floor.
-      </p>
-      <div class="dormant-floor">
-        <span class="lbl">Reward floor here</span>
-        <span
-          class="tb"
-          :data-tier="baseTier"
-        >{{ baseTier }}</span>
-      </div>
-    </div>
-
-    <div
-      v-if="!dormant"
-      class="big"
-    >
+    <div class="big">
       <span class="disp value">{{ format(valor) }}</span>
       <span class="scale">/ {{ format(scale) }}</span>
       <span
@@ -159,10 +125,7 @@ const legend = computed(() => {
       >+{{ format(overflow) }} Luck</span>
     </div>
 
-    <div
-      v-if="!dormant"
-      class="grid"
-    >
+    <div class="grid">
       <div
         role="progressbar"
         aria-label="Valor"
@@ -176,8 +139,8 @@ const legend = computed(() => {
           v-for="cell in cells"
           :key="cell.key"
           class="cell"
-          :class="[cell.source, cell.amount > 0 && cell.amount < 1 ? 'partial' : '']"
-          :style="cell.amount > 0 && cell.amount < 1 ? { '--fill': `${cell.amount * 100}%` } : undefined"
+          :class="{ on: cell.color, partial: cell.amount > 0 && cell.amount < 1 }"
+          :style="cell.color ? { '--seg': cell.color, '--fill': `${cell.amount * 100}%` } : undefined"
         />
       </div>
 
@@ -204,10 +167,7 @@ const legend = computed(() => {
       </div>
     </div>
 
-    <div
-      v-if="!dormant"
-      class="legend"
-    >
+    <div class="legend">
       <div
         v-for="l in legend"
         :key="l.id"
@@ -216,7 +176,7 @@ const legend = computed(() => {
       >
         <span
           class="swatch"
-          :class="l.id"
+          :style="{ background: l.color }"
           aria-hidden="true"
         />
         <span>{{ l.name }}</span>
@@ -228,17 +188,6 @@ const legend = computed(() => {
 
 <style scoped>
 .valor-rail { display: flex; flex-direction: column; gap: 14px; }
-
-.dormant { display: flex; flex-direction: column; gap: var(--sp-3); }
-.dormant-lead { margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text); }
-.dormant-copy { margin: 0; font-size: var(--fs-sm); line-height: 1.5; color: var(--khaki); }
-.dormant-floor {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: var(--sp-3);
-  border-top: 1px dashed var(--line-2);
-}
 
 .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 20px; }
 .title { font-size: 10px; color: var(--muted); }
@@ -277,11 +226,9 @@ const legend = computed(() => {
   height: 100%;
 }
 .cell { height: 25px; background: var(--ground); border: 1px solid var(--line-1); }
-.cell.team { background: var(--khaki); border-color: var(--khaki); }
-.cell.pact { background: var(--orange); border-color: var(--orange); }
+.cell.on { background: var(--seg); border-color: var(--seg); }
 .cell.partial {
-  background: linear-gradient(to top, var(--teal) var(--fill, 50%), var(--ground) var(--fill, 50%));
-  border-color: var(--teal);
+  background: linear-gradient(to top, var(--seg) var(--fill, 50%), var(--ground) var(--fill, 50%));
 }
 
 .odds { display: flex; flex-direction: column; gap: 8px; }
@@ -319,12 +266,5 @@ const legend = computed(() => {
   color: var(--khaki);
 }
 .legend-v { margin-left: auto; color: var(--text); }
-.swatch { width: 10px; height: 10px; background: var(--line-2); flex-shrink: 0; }
-.swatch.team { background: var(--khaki); }
-.swatch.misfortune { background: var(--gold); }
-.swatch.strain { background: var(--orange); }
-.swatch.mo { background: var(--teal); }
-.swatch.mode { background: var(--orange); }
-.swatch.pact { background: var(--red); }
-.swatch.luck { background: var(--purple); }
+.swatch { width: 10px; height: 10px; flex-shrink: 0; }
 </style>

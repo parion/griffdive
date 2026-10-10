@@ -403,11 +403,10 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   `S_PLUS_OVERFLOW_CAP`). A zero-Valor dive always rolls its base tier. Samples are a separate
   currency and never nudge Valor: chosen risk alone moves the ceiling, so skill and loot never carry a
   run (they fund the Requisition shelf instead).
-- **Valor is surfaced as the Valor meter** (`app/components/dive/ValorMeter.vue`): a live gauge
-  stacking the two sources (team risk — misfortune plus strain — pacts) with a tier
-  ladder from the difficulty's base tier to the previewed ceiling and the odds of reaching it. It
-  explains itself while dormant (the `spin` phase, before any stake exists), then renders in the
-  decision and pacts windows (live, reacting to pact toggles and the misfortune decision), the
+- **Valor is surfaced as the Valor meter** (`app/components/dive/ValorMeter.vue`, the desktop
+  rail's Valor tab): a live gauge stacking each source (directive, strain, Major Order, run mode,
+  pacts) with a tier ladder from the difficulty's base tier to the previewed ceiling and the odds
+  of reaching it. It reads zero during `spin`, then renders in the decision and pacts windows (live, reacting to pact toggles and the misfortune decision), the
   diving Briefing (locked) and the reward draft (locked). Its
   display scale is the
   fixed `VALOR_METER_MAX` (11) in `shared/engine/config.ts`; once Valor exceeds it the gauge reads

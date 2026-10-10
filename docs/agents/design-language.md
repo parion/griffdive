@@ -72,7 +72,13 @@ engine.
   playtesters could not find the Kit behind an icon). `components/dive/DiveFrame.vue` is the
   no-scroll dive shell — grid rows `60px 84px minmax(0,1fr) 52px` and columns `216px 1fr 284px`:
   header · `CrusadeStrip` (the horizontal 3→10 climb) · left rail (Squad, led by `PhaseCue`) ·
-  centre phase · right rail (`ValorMeter` with ceiling odds) · `PhaseRail` (bottom Mission phases).
+  centre phase · right rail (`KitValorRail`: **Kit** and **Valor** tabs) · `PhaseRail` (bottom
+  Mission phases). Each rail tab is also a readout: Kit shows the diver's item count over a bar
+  split by category colour, Valor shows the live total over a bar split by source (directive gold,
+  strain orange, Major Order teal, mode khaki, pacts red — the same colours as the meter's cells and
+  legend, via `app/utils/valor.ts`). The tab choice is shell state and survives phase changes; it
+  defaults to Valor. The rail carries nothing else: no Valor explainer, no honors token banks, no
+  forfeit "carries over" card.
   **One lead per beat:** `PhaseCue` answers "whose move is it?" (`Your move` gold / `Stand by`
   teal), fed by `awaitingDiverIds` + `canControl` — the answer to playtesters losing the thread
   between phases. On desktop it sits in the squad rail under the Squad heading (`rail`; a banner
@@ -81,18 +87,22 @@ engine.
   host on host-run beats), teal otherwise — with a status naming the beat ("spinning", "choosing
   pacts", "in game", …). `PhaseRail` is a progress readout, never
   a control: the current beat is an underlined gold label (a filled gold chevron read as a second
-  Spin button) and finished beats show a check. The rails hide what has no value yet: the
-  `ValorMeter` is `dormant` during `spin` (a short Valor explainer + the reward floor instead of an
-  all-zero gauge), and the old wheel-pool card was dropped (the wheel already shows every rule).
+  Spin button) and finished beats show a check. The old wheel-pool card was dropped (the wheel
+  already shows every rule).
   `WheelOfMisfortune.vue` is a real SVG wheel whose rotation is derived from the wheel seed.
   On the `rewards` phase the centre swaps between the `RewardDraft` pod cabinet and the
   `RewardsSettlement` screen — the draft's post-pick CTA hands off to the settlement, which carries
   the `BonusCeremony` honors contest **and** the `RequisitionStock` shelf (the shop lives here, never
   in the draft); when honors aren't due that turn the ceremony is replaced by a disabled panel and the
-  shelf stays available. The left rail gains `MissionReportSummary` and the right rail swaps
-  `ValorMeter` for `RewardTokensRail` on the settlement.
-  The Armory is an in-app drawer (`ArmoryDrawer.vue`) titled **Kit** in every player-facing
-  string (code keeps the `armory` names); the pact screen links to it ("Check your kit"). The
+  shelf stays available. The left rail gains `MissionReportSummary` on the rewards phase.
+  The Kit (`KitPanel.vue`) is deliberately lean: an optional row of diver names (no warbonds, no
+  token chits), then the diver's own items by category with live ban washes. The reserve
+  stratagems every diver shares, the "stratagems fieldable" readiness block and the key bar are
+  gone — playtesters could not read them. On desktop it is the rail's Kit tab; the dive header's
+  Kit button and the pact screen's "Check your kit" switch the rail to it. The phone shell (and
+  the desktop lobby, which has no right rail) shows the same panel in an in-app drawer
+  (`ArmoryDrawer.vue`), titled **Kit** in every player-facing string (code keeps the `armory`
+  names). The
   Griffdiver Briefing (`BriefingOverlay.vue`) is presented as the **Griffdive tutorial**: a framed
   dialog (hazard edge, `TRAINING` badge, "Step n of 6") over the dimmed dive, never a full-bleed
   takeover — players mistook the old briefing for the game. It opens once at first seat, commits

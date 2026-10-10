@@ -36,6 +36,15 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   const teamValor = Number(await valor.getAttribute('aria-valuenow'))
   await page.locator('.pact:not([disabled])').first().click()
   expect(Number(await valor.getAttribute('aria-valuenow'))).toBeGreaterThan(teamValor)
+
+  // The rail tabs between Valor and the Kit; "Check your kit" lands on the tab.
+  const kitTab = page.getByRole('tab', { name: /^Kit/ })
+  await page.getByRole('button', { name: 'Check your kit' }).click()
+  await expect(kitTab).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('region', { name: 'Kit' })).toBeVisible()
+  await expect(valor).toBeHidden()
+  await page.getByRole('tab', { name: /^Valor/ }).click()
+  await expect(valor).toBeVisible()
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
 
   // The briefing carries the same locked Valor through (QA-U1).
