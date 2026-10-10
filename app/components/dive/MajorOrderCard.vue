@@ -162,12 +162,6 @@ function liberationWidth(value: number): string {
     >
       Play this order — {{ frontsLabel }}
     </button>
-    <p
-      v-if="playable"
-      class="mo-play-note cap"
-    >
-      +{{ MAJOR_ORDER_RISK }} team risk · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll token on completion
-    </p>
   </article>
 </template>
 
@@ -262,9 +256,4 @@ function liberationWidth(value: number): string {
 .mo-stat-val.gold { color: var(--gold); }
 
 .mo-play { width: 100%; }
-.mo-play-note {
-  margin: 0;
-  color: var(--muted);
-  white-space: normal;
-}
 </style>
