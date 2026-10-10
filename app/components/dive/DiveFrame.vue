@@ -56,15 +56,19 @@ withDefaults(defineProps<{ left?: boolean, right?: boolean, leftCollapsed?: bool
   overflow: hidden;
   background: var(--ground);
 }
+/* The rails give ground on small laptops and landscape tablets so the centre
+   phase keeps a usable width; they reach their design widths by ~1360px. */
 .body {
+  --rail-l: clamp(184px, 15vw, 216px);
+  --rail-r: clamp(248px, 21vw, 284px);
   display: grid;
-  grid-template-columns: 216px minmax(0, 1fr) 284px;
+  grid-template-columns: var(--rail-l) minmax(0, 1fr) var(--rail-r);
   min-height: 0;
   transition: grid-template-columns var(--dur-med) var(--ease-out);
 }
-.body.no-right { grid-template-columns: 216px minmax(0, 1fr); }
-.body.no-left { grid-template-columns: minmax(0, 1fr) 284px; }
-.body.left-collapsed { grid-template-columns: 56px minmax(0, 1fr) 284px; }
+.body.no-right { grid-template-columns: var(--rail-l) minmax(0, 1fr); }
+.body.no-left { grid-template-columns: minmax(0, 1fr) var(--rail-r); }
+.body.left-collapsed { grid-template-columns: 56px minmax(0, 1fr) var(--rail-r); }
 .body.left-collapsed.no-right { grid-template-columns: 56px minmax(0, 1fr); }
 
 .rail {
@@ -90,6 +94,7 @@ withDefaults(defineProps<{ left?: boolean, right?: boolean, leftCollapsed?: bool
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  container: center / inline-size;
 }
 .center :deep(> *) { min-width: 0; }
 

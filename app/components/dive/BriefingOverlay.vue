@@ -1347,6 +1347,14 @@ function close(): void {
   .brief-sep { display: none; }
 }
 
+/* Landscape tablets and small laptops: the dossier is a recap of what the
+   beats already show, so it gives its column to the lesson. */
+@media (max-width: 1180px) {
+  .brief-grid { grid-template-columns: minmax(0, 1fr); }
+  .brief-dossier { display: none; }
+  .brief-rail { overflow-x: auto; }
+}
+
 @media (max-width: 1020px) {
   .brief { inset: 0; border: 0; box-shadow: none; }
   .brief-kicker { font-size: 11px; white-space: normal; }

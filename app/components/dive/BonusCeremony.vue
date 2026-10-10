@@ -190,7 +190,7 @@ function tokenChits(count: number): boolean[] {
           fill="currentColor"
           aria-hidden="true"
         ><path d="M3 18h18v2H3zM4 16l2-9 4 4 2-6 2 6 4-4 2 9z" /></svg>
-        Host calls it · {{ hostName }}
+        <span class="host-text">Host calls it · {{ hostName }}</span>
       </span>
     </header>
 
@@ -609,15 +609,17 @@ function tokenChits(count: number): boolean[] {
   flex-direction: column;
   gap: 14px;
   min-height: 0;
+  container: honors / inline-size;
 }
 
 .honors-head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
 }
-.head-l { display: flex; flex-direction: column; gap: 6px; }
+.head-l { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .honors-title { margin: 0; font-size: var(--fs-h1); color: var(--text); }
 .host-chip {
   display: flex;
@@ -632,7 +634,11 @@ function tokenChits(count: number): boolean[] {
   text-transform: uppercase;
   color: var(--khaki);
   white-space: nowrap;
+  min-width: 0;
+  max-width: 100%;
 }
+.host-chip svg { flex-shrink: 0; }
+.host-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 .elig-bar {
   display: flex;
@@ -1081,6 +1087,19 @@ function tokenChits(count: number): boolean[] {
 /* Phone: one column. The header stacks (the host chip no longer collides with
    the title), the eligibility rail becomes rows, and the reel gets the full
    width with the CTA beneath it instead of a squeezed side-by-side grid. */
+/* A narrow centre column (small laptops, landscape tablets) stacks the reel
+   over the spin, like the phone, but keeps the desktop type. */
+@container honors (max-width: 640px) {
+  .stat-stage { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .reel-box { min-height: 210px; }
+  .action-col { min-height: 72px; }
+  .reel-row { gap: 12px; padding: 0 30px 0 28px; overflow: hidden; }
+  .reel-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+}
+@container honors (max-width: 480px) {
+  .reel-dir { display: none; }
+}
+
 .honors.compact { gap: 10px; }
 .honors.compact .honors-head { flex-direction: column; align-items: stretch; gap: 8px; }
 .honors.compact .honors-title { font-size: clamp(24px, 7.5vw, 32px); }

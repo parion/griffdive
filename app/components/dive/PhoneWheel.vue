@@ -602,8 +602,11 @@ function acceptDisabled(): boolean {
 }
 .card.locked { border-color: var(--red); }
 .card.safe { border-color: var(--line-4); }
-.card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.head-tools { display: inline-flex; align-items: center; gap: 8px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.card-head > .lbl { white-space: nowrap; }
+/* Two reroll dice plus a decision stamp outgrow a 360px card: wrap the
+   stamp under the dice rather than past the card edge. */
+.head-tools { display: inline-flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; min-width: 0; margin-left: auto; }
 .reroll-dice {
   display: inline-flex;
   align-items: center;

@@ -520,6 +520,9 @@ const pendingText = computed(() => {
 .sheet-locked { color: var(--gold); }
 .sheet-count { color: var(--muted); }
 .sheet-foot { display: flex; }
+/* Full-width like every other pinned phase CTA, so it never strands at the
+   left edge of a wide (tablet) sheet. */
+.sheet-foot > * { flex: 1 1 auto; }
 .locked-row { display: flex; align-items: center; gap: 12px; width: 100%; }
 .locked-stamp {
   padding: 6px 12px;

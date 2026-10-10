@@ -70,10 +70,19 @@ engine.
   route except the dive, which renders its own `DiveTopBar` (crusade + difficulty emblem + room
   code/copy + Tutorial + the labelled Codex/Warbonds ship nav — labels, never bare icons; the
   Kit needs no header entry on desktop because it lives in the right rail). `components/dive/DiveFrame.vue` is the
-  no-scroll dive shell — grid rows `60px 84px minmax(0,1fr) 52px` and columns `216px 1fr 284px`:
+  no-scroll dive shell — grid rows `60px 84px minmax(0,1fr) 52px` and fluid columns
+  `clamp(184px,15vw,216px) 1fr clamp(248px,21vw,284px)` (the rails give ground on landscape
+  tablets and small laptops and reach their design widths by ~1360px):
   header · `CrusadeStrip` (the horizontal 3→10 climb) · left rail (Squad, led by `PhaseCue`) ·
   centre phase · right rail (`KitValorRail`: **Kit** and **Valor** tabs) · `PhaseRail` (bottom
-  Mission phases). The Valor tab doubles as a readout: the live total over a bar split by source (directive gold,
+  Mission phases). The centre is a named `center` inline-size container and each wide phase
+  (`WheelPanel`, `MissionReport`, `DivePhaseDiving`, `BonusCeremony`) is its own container, so
+  phases adapt to the width they actually get, not the viewport: the wheel stacks its decision
+  cards under a smaller wheel below ~620px (scrolling the drawn directive into view once the spin
+  lands), the report drops to one column below 720px, the honors reel stacks over its Spin, and
+  the reward token bar wraps. A narrow `CrusadeStrip` keeps names only on the current rung (the
+  others keep number + tier; names stay in their accessible labels). The tutorial drops its
+  dossier column at ≤1180px. The Valor tab doubles as a readout: the live total over a bar split by source (directive gold,
   strain orange, Major Order teal, mode khaki, pacts red — the same colours as the meter's cells and
   legend, via `app/utils/valor.ts`). The tab choice is shell state and survives phase changes; it
   defaults to Kit. The rail carries nothing else: no Valor explainer, no honors token banks, no
@@ -112,7 +121,9 @@ engine.
   covers ownership), and is replayable from the dive header's Tutorial control. One structural breakpoint (1020px) flows the
   shell and stacks the rails. Below it `usePhoneShell` swaps the whole three-rail tree for
   `DivePhone` (`DivePhoneShell` + `Phone*`), a fixed-band shell whose phase content is a
-  bottom-sheet/fixed-footer layout. `PhaseCue` rides there as a slim fixed band under the squad
+  bottom-sheet/fixed-footer layout. Portrait tablets share that shell: its column grows to
+  `min(100vw, 720px)` rather than floating as a phone strip, and phone phase bodies must stay
+  fluid to that width (pinned CTAs fill the sheet). `PhaseCue` rides there as a slim fixed band under the squad
   bar (`band` prop) so phase bodies keep their no-scroll layout. Phone rules from the mobile
   checkup: the pinned footer CTA is always the phase's *live* action (the wheel's is "Spin the
   wheel" before the draw, never a dead deal gate); self-service actions (`PICK_REWARD` and kin)

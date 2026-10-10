@@ -288,8 +288,8 @@ const selfIsHost = computed(() => props.state.hostId === props.selfId)
 .rail-toggle {
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 1px solid var(--line-2);
   background: transparent;
@@ -389,9 +389,11 @@ const selfIsHost = computed(() => props.state.hostId === props.selfId)
 }
 
 .self-name {
-  width: 9ch;
-  min-width: 5ch;
+  flex: 1 1 9ch;
+  width: 0;
+  min-width: 4ch;
   padding: 0;
+  text-overflow: ellipsis;
   background: transparent;
   border: none;
   border-bottom: 1px dashed var(--line-4);

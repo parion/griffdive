@@ -175,12 +175,15 @@ const haul = computed(() => missionHaul(report.value))
 
 .rc-perf {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
+  gap: 4px 8px;
   padding-top: 9px;
   border-top: 1px solid var(--line-2);
 }
 .rc-perf-val {
+  margin-left: auto;
   font-size: 0.95rem;
   color: var(--teal);
 }

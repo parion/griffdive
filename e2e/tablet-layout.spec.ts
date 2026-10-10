@@ -1,0 +1,75 @@
+import { expect, test, type Page } from '@playwright/test'
+import { dismissWarbondIntro } from './helpers'
+
+// Tablet guards from the responsive audit. Just above the 1020px breakpoint the
+// three-rail terminal once squeezed the centre phase until the wheel's decision
+// cards, the report and the reward pods spilled under the Kit rail; just below
+// it the phone shell floated as a 430px strip in empty gutters.
+const LANDSCAPE_TABLET = { width: 1024, height: 768 }
+const PORTRAIT_TABLET = { width: 768, height: 1024 }
+
+async function expectNoHorizontalOverflow(page: Page): Promise<void> {
+  const overflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth - document.documentElement.clientWidth)
+  expect(overflow).toBeLessThanOrEqual(0)
+}
+
+// The centre column clips sideways (overflow-x: hidden), so a too-wide phase
+// never shows up as page overflow — compare its scroll width instead.
+async function expectCentreFits(page: Page): Promise<void> {
+  const overflow = await page.locator('#main-content').evaluate(el => el.scrollWidth - el.clientWidth)
+  expect(overflow).toBeLessThanOrEqual(0)
+}
+
+test('landscape tablet: the terminal keeps every phase inside the centre column', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: LANDSCAPE_TABLET, reducedMotion: 'reduce' })
+  const page = await context.newPage()
+
+  await page.goto('/')
+  await expectNoHorizontalOverflow(page)
+  await page.getByLabel('Diver name').fill('Griff')
+  await page.getByRole('button', { name: 'Solo drop' }).click()
+  await dismissWarbondIntro(page)
+
+  await page.getByRole('button', { name: 'Spin', exact: true }).click()
+  // The cards stack under the wheel here; the drawn directive scrolls into view.
+  await expect(page.locator('.misfortune').getByRole('button', { name: 'Lock it in' })).toBeInViewport()
+  await expectCentreFits(page)
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const optOut = page.getByRole('button', { name: /^Opt out/ }).first()
+    if (await optOut.isVisible().catch(() => false)) {
+      await optOut.click()
+    }
+  }
+  await page.getByRole('button', { name: 'Deal the pacts' }).click()
+  await page.getByRole('button', { name: /^Lock in & dive/ }).click()
+  await expectCentreFits(page)
+
+  await page.getByRole('button', { name: 'Mission complete' }).click()
+  await expect(page.getByRole('heading', { name: 'Mission complete' })).toBeVisible()
+  await expectCentreFits(page)
+
+  await page.getByRole('button', { name: 'File report' }).click()
+  await expect(page.getByRole('heading', { name: 'Reward Draft' })).toBeVisible()
+  await expectCentreFits(page)
+
+  await context.close()
+})
+
+test('portrait tablet: the phone shell widens to the tablet', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: PORTRAIT_TABLET, reducedMotion: 'reduce', hasTouch: true })
+  const page = await context.newPage()
+
+  await page.goto('/')
+  await page.getByLabel('Diver name').fill('Griff')
+  await page.getByRole('button', { name: 'Solo drop' }).click()
+  await dismissWarbondIntro(page)
+
+  const shell = await page.locator('.phone-shell').boundingBox()
+  expect(shell?.width).toBeGreaterThanOrEqual(700)
+  await expect(page.getByRole('button', { name: 'Spin the wheel' })).toBeInViewport()
+  await expectNoHorizontalOverflow(page)
+
+  await context.close()
+})
