@@ -1,5 +1,9 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ left?: boolean, right?: boolean }>(), { left: true, right: true })
+withDefaults(defineProps<{ left?: boolean, right?: boolean, leftCollapsed?: boolean }>(), {
+  left: true,
+  right: true,
+  leftCollapsed: false,
+})
 </script>
 
 <template>
@@ -9,11 +13,12 @@ withDefaults(defineProps<{ left?: boolean, right?: boolean }>(), { left: true, r
 
     <div
       class="body"
-      :class="{ 'no-left': !left, 'no-right': !right }"
+      :class="{ 'left-collapsed': leftCollapsed && left, 'no-left': !left, 'no-right': !right }"
     >
       <aside
         v-if="left"
         class="rail rail-left scan"
+        :class="{ collapsed: leftCollapsed }"
         aria-label="Crusade"
       >
         <slot name="left" />
@@ -55,9 +60,12 @@ withDefaults(defineProps<{ left?: boolean, right?: boolean }>(), { left: true, r
   display: grid;
   grid-template-columns: 216px minmax(0, 1fr) 284px;
   min-height: 0;
+  transition: grid-template-columns var(--dur-med) var(--ease-out);
 }
 .body.no-right { grid-template-columns: 216px minmax(0, 1fr); }
 .body.no-left { grid-template-columns: minmax(0, 1fr) 284px; }
+.body.left-collapsed { grid-template-columns: 56px minmax(0, 1fr) 284px; }
+.body.left-collapsed.no-right { grid-template-columns: 56px minmax(0, 1fr); }
 
 .rail {
   display: flex;
@@ -69,6 +77,7 @@ withDefaults(defineProps<{ left?: boolean, right?: boolean }>(), { left: true, r
   overflow-y: auto;
 }
 .rail-left { border-right: 1px solid var(--line-1); }
+.rail-left.collapsed { padding-left: var(--sp-2); padding-right: var(--sp-2); }
 .rail-right { border-left: 1px solid var(--line-1); }
 
 .center {

@@ -72,8 +72,12 @@ engine.
   playtesters could not find the Kit behind an icon). `components/dive/DiveFrame.vue` is the
   no-scroll dive shell — grid rows `60px 84px minmax(0,1fr) 52px` and columns `216px 1fr 284px`:
   header · `CrusadeStrip` (the horizontal 3→10 climb) · left rail (Squad, led by `PhaseCue`) ·
-  centre phase · right rail (`ValorMeter` with ceiling odds) · `PhaseRail` (bottom Mission phases).
-  **One lead per beat:** `PhaseCue` answers "whose move is it?" (`Your move` gold / `Stand by`
+centre phase · right rail (`ValorMeter` with ceiling odds) · `PhaseRail` (bottom Mission phases).
+The left rail collapses to a `56px` icon column (persisted in `localStorage`): the header chevron
+expands it back, while collapsed each diver becomes their first letter with the active lamp to its
+left and thin token bars beneath, the Steam card shrinks to a single icon button (no labels), and
+the Squad heading, `PhaseCue` and `MissionReportSummary` drop out.
+**One lead per beat:** `PhaseCue` answers "whose move is it?" (`Your move` gold / `Stand by`
   teal), fed by `awaitingDiverIds` + `canControl` — the answer to playtesters losing the thread
   between phases. On desktop it sits in the squad rail under the Squad heading (`rail`; a banner
   atop the centre column pushed the fixed terminal into scroll), and every diver chip carries the
