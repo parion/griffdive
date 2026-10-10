@@ -14,10 +14,10 @@ defineEmits<{ 'update:open': [value: boolean] }>()
   <AppDrawer
     :open="open"
     title="Kit"
-    description="Every diver's kit — yours and the squad's."
+    description="What each diver carries, with this mission's bans."
     @update:open="$emit('update:open', $event)"
   >
-    <InventoryGrid
+    <KitPanel
       :state="state"
       :self-id="selfId"
       :preview-pact-ids="previewPactIds"

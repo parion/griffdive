@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { STRATAGEM_SLOTS_REQUIRED, conditionRiskAt, missionsPerOperation } from '~~/shared/engine/config'
+import { conditionRiskAt, missionsPerOperation } from '~~/shared/engine/config'
 import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
 import { pactName } from '~~/shared/data/pacts'
 import {
   applyPactToggle,
   hasLegalLoadout,
-  legalStratagemCount,
   pactConflictsWith,
   pactRiskTotal,
   pactSubsumedBy,
@@ -14,7 +13,6 @@ import {
   activeMisfortune,
   currentFront,
   currentStrain,
-  filteredPactsFor,
   pactOfferFor,
   teamRiskBreakdown,
 } from '~~/shared/engine/selectors'
@@ -34,7 +32,6 @@ const emit = defineEmits<{
   lock: [pactIds: string[]]
   pactRisk: [value: number]
   preview: [pactIds: string[]]
-  openKit: []
 }>()
 
 const selection = ref<string[]>([])
@@ -123,15 +120,6 @@ const breakdown = computed(() => teamRiskBreakdown(props.state))
 const frontImage = computed(() => (front.value ? factionImageUrl(front.value.id) : undefined))
 const strainImage = computed(() => (strain.value ? strainImageUrl(strain.value.id) : undefined))
 const opLongRisk = computed(() => breakdown.value.strainRisk + breakdown.value.majorOrderRisk)
-
-// ---- Filter / floor notes ----------------------------------------------
-
-const filtered = computed(() => filteredPactsFor(props.state))
-const floorCount = computed(() => {
-  const misfortuneId = activeMisfortune(props.state)?.id ?? null
-  const owned = props.state.personalInventories[props.selfId ?? ''] ?? []
-  return legalStratagemCount(misfortuneId, selection.value, owned)
-})
 
 // ---- Hold-to-lock ------------------------------------------------------
 
@@ -344,61 +332,6 @@ const opLabel = computed(() =>
       @toggle="toggle"
     />
 
-    <div class="pact-notes">
-      <div
-        v-if="filtered.length"
-        class="filter-note"
-        role="note"
-        :aria-label="`${filtered.length} pacts filtered from the offer`"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          aria-hidden="true"
-        >
-          <path d="M3 4h18l-7 8.5V19l-4 2v-8.5z" />
-        </svg>
-        <span class="filter-count">{{ filtered.length }} FILTERED</span>
-        <span class="filter-sep">·</span>
-        <span
-          v-for="(pact, i) in filtered.slice(0, 2)"
-          :key="pact.id"
-          class="filter-name"
-        >{{ pactName(pact.id) }}<template v-if="i < Math.min(filtered.length, 2) - 1">, </template></span>
-        <span v-if="misfortune">— {{ misfortune.name }} ALREADY BANS IT</span>
-      </div>
-
-      <button
-        class="btn ghost tiny kit-link"
-        type="button"
-        aria-haspopup="dialog"
-        @click="emit('openKit')"
-      >
-        <IconKit class="kit-link-icon" />
-        Check your kit
-      </button>
-
-      <div
-        class="floor-note"
-        role="note"
-        :aria-label="`Loadout floor: ${floorCount} stratagems still legal`"
-      >
-        <span class="floor-label">LOADOUT FLOOR · {{ STRATAGEM_SLOTS_REQUIRED }} STRATAGEMS</span>
-        <span class="floor-count disp">{{ floorCount }}</span>
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="3"
-          aria-hidden="true"
-        >
-          <path d="M5 12l5 5 9-10" />
-        </svg>
-      </div>
-    </div>
-
     <div class="pact-cta">
       <button
         v-if="!locked"
@@ -548,54 +481,8 @@ const opLabel = computed(() =>
 .total-pip.orange { background: var(--orange); }
 .total-num { font-size: 2rem; color: var(--text); }
 
-/* ---- Notes ---- */
-.pact-notes {
-  margin-top: 1rem;
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.filter-note,
-.floor-note {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  height: 32px;
-  padding: 0 12px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  white-space: nowrap;
-  overflow: hidden;
-}
-.filter-note {
-  border: 1px dashed var(--line-4);
-  background: var(--ground);
-  color: var(--muted);
-}
-.filter-note svg { width: 14px; height: 14px; color: var(--khaki); flex-shrink: 0; }
-.filter-count { color: var(--text); }
-.filter-name { color: var(--khaki); text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 2px; }
-.filter-sep { color: var(--muted); }
-.kit-link {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 32px;
-}
-.kit-link-icon { width: 15px; height: 15px; }
-.floor-note {
-  border: 1px solid color-mix(in srgb, var(--teal) 45%, transparent);
-  background: color-mix(in srgb, var(--teal) 5%, transparent);
-  color: var(--teal);
-}
-.floor-note svg { width: 14px; height: 14px; }
-.floor-count { font-size: 1rem; }
-
 /* ---- CTA ---- */
-.pact-cta { margin-top: 18px; }
+.pact-cta { margin-top: 1rem; }
 .hold {
   position: relative;
   overflow: hidden;
