@@ -194,7 +194,7 @@ const oddsRungs = computed(() => {
   })
 })
 
-const kit = computed(() => STARTING_KITS[props.state.settings?.variant ?? 'standard'])
+const kit = computed(() => STARTING_KITS[props.state.settings?.variant ?? 'medium'])
 const rewardTierLabel = computed(() => (rewardClimb.value ? 'A' : 'B'))
 
 function close(): void {

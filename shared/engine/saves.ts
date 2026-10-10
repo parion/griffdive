@@ -4,7 +4,7 @@ import { SAVE_SCHEMA_VERSION } from '../types/save'
 import type { SaveDoc } from '../types/save'
 import { ENGINE_VERSION } from './config'
 import { resetOperation } from './reducer'
-import type { DiveState, DiverState } from './types'
+import type { CrusadeVariant, DiveState, DiverState } from './types'
 
 // Pre-v8 (pre-alpha) divers may be missing any field whose shape landed after
 // their save was written — Field Promotion bookkeeping, failed-pact marks,
@@ -95,6 +95,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 11) {
     migrated = migrateV10toV11(migrated)
   }
+  if (migrated.schemaVersion < 12) {
+    migrated = migrateV11toV12(migrated)
+  }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
   return migrated
@@ -174,6 +177,37 @@ function migrateV10toV11(doc: SaveDoc): SaveDoc {
     state: {
       ...doc.state,
       misfortuneFailed: false,
+    },
+  }
+}
+
+// v12: the five squad-size/kit variants collapsed into three starting
+// difficulties (medium/hard/suicide) with a hard/suicide mode. Old ids remap by
+// start altitude; Quickplay's extra gear becomes the SEAF Support Package mode.
+// The in-flight difficulty is untouched — a legacy difficulty-4 start now reads
+// against a difficulty-3 baseline, which only shifts joiner catch-up by one op.
+const LEGACY_VARIANT_MAP: Readonly<Record<string, CrusadeVariant>> = {
+  standard: 'medium',
+  soloDuo: 'medium',
+  super: 'medium',
+  soloDuoSuper: 'medium',
+  quickplay: 'suicide',
+}
+
+function migrateV11toV12(doc: SaveDoc): SaveDoc {
+  const settings = doc.state.settings
+  if (!settings) {
+    return doc
+  }
+  const legacyVariant = settings.variant as string
+  return {
+    ...doc,
+    state: {
+      ...doc.state,
+      settings: {
+        variant: LEGACY_VARIANT_MAP[legacyVariant] ?? 'medium',
+        mode: legacyVariant === 'quickplay' ? 'seaf' : undefined,
+      },
     },
   }
 }

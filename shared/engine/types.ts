@@ -2,10 +2,17 @@ import type { FrontId } from '../data/fronts'
 
 export type RewardTier = 'C' | 'B' | 'A' | 'S' | 'S+'
 
-export type CrusadeVariant = 'standard' | 'soloDuo' | 'super' | 'soloDuoSuper' | 'quickplay'
+export type CrusadeVariant = 'medium' | 'hard' | 'suicide'
+
+// The optional mode layered on the hard/suicide starts, mutually exclusive:
+// 'seaf' ships the SEAF Support Package (extra gear + a flat per-mission Valor
+// bump), 'penance' is Super Penance (bare surplus kit + a larger flat Valor
+// stake). Undefined on the medium start, which offers neither.
+export type CrusadeMode = 'seaf' | 'penance'
 
 export interface CrusadeSettings {
   variant: CrusadeVariant
+  mode?: CrusadeMode
 }
 
 export type DivePhase

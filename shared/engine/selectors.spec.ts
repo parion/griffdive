@@ -9,7 +9,7 @@ import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
 
 function spunState(seed = 42, accepted = false) {
-  const spun = reduce(createDiveState({ variant: 'standard' }, 'host', 'Griffin'), {
+  const spun = reduce(createDiveState({ variant: 'medium' }, 'host', 'Griffin'), {
     type: 'SPIN_WHEEL',
     seed,
   })
@@ -194,7 +194,7 @@ describe('rewardPoolFor', () => {
 
 describe('diverOptions', () => {
   it('offers no armor pieces even with every warbond owned', () => {
-    let state = createDiveState({ variant: 'standard' }, 'host', 'Griffin')
+    let state = createDiveState({ variant: 'medium' }, 'host', 'Griffin')
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 1234 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
@@ -210,7 +210,7 @@ describe('diverOptions', () => {
   })
 
   it('rolls each diver against their own warbonds, not the squad\'s', () => {
-    let state = createDiveState({ variant: 'standard' }, 'host', 'Griffin')
+    let state = createDiveState({ variant: 'medium' }, 'host', 'Griffin')
     state = reduce(state, { type: 'SET_WARBONDS', playerId: 'host', warbondCodes: [] })
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 1234 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
@@ -229,7 +229,7 @@ describe('diverOptions', () => {
 
 describe('misfortuneStrandedDivers', () => {
   it('reports every diver the drawn rule would strand', () => {
-    const state = createDiveState({ variant: 'standard' }, 'host', 'Griffin')
+    const state = createDiveState({ variant: 'medium' }, 'host', 'Griffin')
     const wheeled = { ...state, difficulty: 6, wheel: { seed: 1, misfortuneId: 'oopsAllAirstrikes' } }
     expect(misfortuneStrandedDivers(wheeled).map(diver => diver.id)).toEqual(['host'])
     // A fieldable rule strands nobody, and so does an empty wheel.
@@ -238,7 +238,7 @@ describe('misfortuneStrandedDivers', () => {
   })
 
   it('is squad-wide — one stranded diver blocks the rule for everyone', () => {
-    const state = createDiveState({ variant: 'standard' }, 'host', 'Griffin')
+    const state = createDiveState({ variant: 'medium' }, 'host', 'Griffin')
     const guest: DiverState = {
       id: 'guest',
       name: 'Guest',
@@ -261,7 +261,7 @@ describe('misfortuneStrandedDivers', () => {
       difficulty: 6,
       wheel: { seed: 1, misfortuneId: 'oopsAllAirstrikes' },
       divers: [...state.divers, guest],
-      personalInventories: { ...state.personalInventories, guest: startingItemIds('quickplay') },
+      personalInventories: { ...state.personalInventories, guest: startingItemIds('suicide', 'seaf') },
     }
     // The guest can field the rule; the host cannot, so the accept still fails.
     expect(misfortuneStrandedDivers(wheeled).map(diver => diver.id)).toEqual(['host'])

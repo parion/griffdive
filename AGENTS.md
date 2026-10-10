@@ -48,7 +48,7 @@ the field (`FAIL_MISFORTUNE`, host-only, `diving` phase) — its shared risk is 
 and each diver forfeits one reward option. UI copy calls the team scope **Squad Directive** and the
 wheel the **Wheel of Adversity**; engine ids and the action union keep the `misfortune` name. The
 Field manual slide-over was retired — the Griffdiver Briefing covers onboarding.
-**Alpha has landed:** the save schema is frozen at v11 and the migration chain is open (see Save
+**Alpha has landed:** the save schema is frozen at v12 and the migration chain is open (see Save
 model). See [Roadmap](#roadmap).
 
 ---
@@ -235,13 +235,26 @@ difficulty 10. The run may then end, or continue in endless mode (post-v1).
 
 ### Starting variants
 
-| Variant | Squad size | Start difficulty | Start kit notes |
-| --- | --- | --- | --- |
-| Standard | 3–4 | 3 (Medium) | Surplus/outdated starting gear |
-| Solo/Duo | 1–2 | 3 | + Orbital Precision Strike |
-| Super | 3–4 | 4 (Challenging) | Melee secondaries only, Integrated Explosives, Ballistic Shield |
-| Solo/Duo Super | 1–2 | 4 | Same as Super + Orbital Precision Strike |
-| Quickplay | any | 7 (Suicide Mission) | Extra stratagems + boosters at start |
+Squad size never gates a variant — a squad rarely fills before the first mission and its count
+fluctuates all crusade. The host picks one of **three starting difficulties**; the hard and suicide
+starts also pick a **mode**.
+
+| Variant | Start difficulty | Kit notes |
+| --- | --- | --- |
+| Medium | 3 (Medium) | Surplus/outdated starting gear |
+| Hard | 5 (Hard) | Surplus gear + a mode: SEAF Support Package or Super Penance |
+| Suicide Mission | 7 (Suicide Mission) | Surplus gear + a mode: SEAF Support Package or Super Penance |
+
+The two modes are **mutually exclusive**, chosen at launch and locked for the run
+(`CrusadeSettings.mode`). They are the only kit difference between starts — every difficulty fields
+the same surplus `BASE_KIT`:
+
+- **SEAF Support Package** (`mode: 'seaf'`, the default) — the assisted ride. Adds
+  `SEAF_SUPPORT_KIT` (extra stratagems + boosters) to every diver's inventory and a small flat
+  per-mission Valor bump (`SEAF_SUPPORT_VALOR`: +1 at diff 5, +2 at diff 7).
+- **Super Penance** (`mode: 'penance'`) — the hellish task, for the wicked. No support gear (bare
+  surplus kit) and a larger flat per-mission Valor stake (`PENANCE_VALOR`: +2 at diff 5, +3 at
+  diff 7). Marked in the launch UI by a Hades-style flame animation.
 
 Warbonds are premium, per-player purchases, so ownership is declared **per diver**, never by the
 host: each diver self-declares their owned warbonds (`SET_WARBONDS`, self-service, any phase;
@@ -513,7 +526,9 @@ Valor         = teamRisk + pactRisk + performance
 teamRisk      = accepted misfortune × directiveWeightFor(squad size)
                 (1 / 1.25 / 1.5 / 1.75 for 1–4 divers) plus the accepted strain (2–3, felt on
                 every mission of its operation) or the live Major Order
-                commitment (2, same scope); 0 when declined/unset, or when the
+                commitment (2, same scope); plus the run-long mode's flat stake
+                (SEAF +1/+2 or Super Penance +2/+3 at diffs 5/7, felt on every
+                mission of the run); 0 when declined/unset, or when the
                 directive was failed in the field
 pactRisk      = sum of the diver's picked pacts (max 12 at diff 7+: the
                 rolled 2–3-pact offer bounds what a diver can stack)
@@ -718,7 +733,8 @@ is reverted. `migrateV7toV8` is the alpha baseline — it defaults the fields wh
 during pre-alpha (Field Promotion bookkeeping, failed-pact marks, reward tokens, bans, bonus
 honors); `migrateV8toV9` adds the strain fields and widens legacy combo keys; `migrateV9toV10`
 adds the Major Order commitment (`majorOrder: null`); `migrateV10toV11` adds the failed-directive
-mark (`misfortuneFailed: false`). Normalization drops
+mark (`misfortuneFailed: false`); `migrateV11toV12` remaps the five squad-size variants onto the
+three starting difficulties (Quickplay becomes the suicide start with the SEAF mode). Normalization drops
 only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
 `achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, inventories, per-diver warbond declarations,

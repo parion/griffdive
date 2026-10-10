@@ -90,7 +90,7 @@ describe('pact exclusivity', () => {
 })
 
 describe('reserve and loadout legality', () => {
-  const baseKit = startingItemIds('standard')
+  const baseKit = startingItemIds('medium')
 
   it('keeps a full pact offer legal with only the baseline kit', () => {
     expect(hasLegalLoadout(null, PACTS.map(pact => pact.id), baseKit)).toBe(true)
@@ -130,7 +130,7 @@ describe('reserve and loadout legality', () => {
     // the rule needs four. A kit with enough red stratagems (Quickplay's
     // extras) clears it.
     expect(hasLegalLoadout('oopsAllAirstrikes', [], baseKit)).toBe(false)
-    expect(hasLegalLoadout('oopsAllAirstrikes', [], startingItemIds('quickplay'))).toBe(true)
+    expect(hasLegalLoadout('oopsAllAirstrikes', [], startingItemIds('suicide', 'seaf'))).toBe(true)
   })
 
   it('keeps No Stratagems behavioral — four slots still equip', () => {
