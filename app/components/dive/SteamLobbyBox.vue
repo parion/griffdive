@@ -2,12 +2,13 @@
 import type { SteamLobbyInfo } from '~~/shared/types/messages'
 import { normalizeSteamLobbyLink } from '~~/shared/utils/steam-lobby'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   steam: SteamLobbyInfo | null
   isHost: boolean
-}>()
+  collapsed?: boolean
+}>(), { collapsed: false })
 
-const emit = defineEmits<{ setSteam: [link: string] }>()
+const emit = defineEmits<{ setSteam: [link: string], expand: [] }>()
 
 const { push: pushToast } = useToasts()
 
@@ -57,116 +58,140 @@ function copy(): void {
   <section
     v-if="steam || isHost"
     class="steam"
+    :class="{ collapsed }"
     aria-labelledby="steam-h"
   >
-    <div class="steam-h">
-      <IconSteam class="steam-glyph" />
-      <h2
-        id="steam-h"
-        class="lbl steam-lbl"
-      >
-        Steam Lobby
-      </h2>
-      <span class="dash" />
-    </div>
-
-    <template v-if="steam && !showEditor">
+    <template v-if="collapsed">
       <a
-        class="join cut-sm"
+        v-if="steam"
+        class="steam-icon cut-sm"
         :href="steam.link"
         rel="noopener"
+        aria-label="Join Steam lobby"
       >
-        <IconSteam class="join-glyph" />
-        <span class="join-text">
-          <span class="join-label">Join Lobby</span>
-          <span class="join-sub">Steam link</span>
-        </span>
-        <svg
-          class="join-arrow"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.4"
-          aria-hidden="true"
-        ><path d="M7 17L17 7M9 7h8v8" /></svg>
+        <IconSteam class="steam-glyph" />
       </a>
-      <div class="steam-actions">
-        <button
-          class="steam-btn"
-          type="button"
-          @click="copy"
-        >
-          Copy link
-        </button>
-        <button
-          v-if="isHost"
-          class="steam-btn"
-          type="button"
-          @click="startEdit"
-        >
-          Change
-        </button>
-        <button
-          v-if="isHost"
-          class="steam-btn danger"
-          type="button"
-          @click="clear"
-        >
-          Clear
-        </button>
-      </div>
+      <button
+        v-else
+        class="steam-icon cut-sm"
+        type="button"
+        aria-label="Set Steam lobby link"
+        @click="$emit('expand')"
+      >
+        <IconSteam class="steam-glyph" />
+      </button>
     </template>
 
-    <form
-      v-else
-      class="steam-editor"
-      @submit.prevent="save"
-    >
-      <label
-        class="sr-only"
-        for="steam-link"
-      >Steam lobby link</label>
-      <input
-        id="steam-link"
-        v-model="draft"
-        class="steam-input"
-        type="text"
-        inputmode="url"
-        autocomplete="off"
-        spellcheck="false"
-        placeholder="steam://joinlobby/553850/…"
-        @keydown.esc="cancel"
-      >
-      <p
-        v-if="invalid"
-        class="steam-hint err"
-      >
-        Not a Helldivers 2 lobby link.
-      </p>
-      <p
-        v-else
-        class="steam-hint"
-      >
-        Paste the <code>steam://joinlobby/…</code> link from your in-game lobby.
-      </p>
-      <div class="steam-actions">
-        <button
-          class="steam-btn primary"
-          type="submit"
-          :disabled="!normalized"
+    <template v-else>
+      <div class="steam-h">
+        <IconSteam class="steam-glyph" />
+        <h2
+          id="steam-h"
+          class="lbl steam-lbl"
         >
-          Pin lobby
-        </button>
-        <button
-          v-if="editing"
-          class="steam-btn"
-          type="button"
-          @click="cancel"
-        >
-          Cancel
-        </button>
+          Steam Lobby
+        </h2>
+        <span class="dash" />
       </div>
-    </form>
+
+      <template v-if="steam && !showEditor">
+        <a
+          class="join cut-sm"
+          :href="steam.link"
+          rel="noopener"
+        >
+          <IconSteam class="join-glyph" />
+          <span class="join-text">
+            <span class="join-label">Join Lobby</span>
+            <span class="join-sub">Steam link</span>
+          </span>
+          <svg
+            class="join-arrow"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            aria-hidden="true"
+          ><path d="M7 17L17 7M9 7h8v8" /></svg>
+        </a>
+        <div class="steam-actions">
+          <button
+            class="steam-btn"
+            type="button"
+            @click="copy"
+          >
+            Copy link
+          </button>
+          <button
+            v-if="isHost"
+            class="steam-btn"
+            type="button"
+            @click="startEdit"
+          >
+            Change
+          </button>
+          <button
+            v-if="isHost"
+            class="steam-btn danger"
+            type="button"
+            @click="clear"
+          >
+            Clear
+          </button>
+        </div>
+      </template>
+
+      <form
+        v-else
+        class="steam-editor"
+        @submit.prevent="save"
+      >
+        <label
+          class="sr-only"
+          for="steam-link"
+        >Steam lobby link</label>
+        <input
+          id="steam-link"
+          v-model="draft"
+          class="steam-input"
+          type="text"
+          inputmode="url"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="steam://joinlobby/553850/…"
+          @keydown.esc="cancel"
+        >
+        <p
+          v-if="invalid"
+          class="steam-hint err"
+        >
+          Not a Helldivers 2 lobby link.
+        </p>
+        <p
+          v-else
+          class="steam-hint"
+        >
+          Paste the <code>steam://joinlobby/…</code> link from your in-game lobby.
+        </p>
+        <div class="steam-actions">
+          <button
+            class="steam-btn primary"
+            type="submit"
+            :disabled="!normalized"
+          >
+            Pin lobby
+          </button>
+          <button
+            v-if="editing"
+            class="steam-btn"
+            type="button"
+            @click="cancel"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </template>
   </section>
 </template>
 
@@ -202,6 +227,27 @@ function copy(): void {
 }
 
 .steam-h { display: flex; align-items: center; gap: 8px; }
+
+/* Collapsed: the whole Steam card shrinks to one icon-sized button. */
+.steam.collapsed {
+  flex-direction: row;
+  justify-content: center;
+  gap: 0;
+  padding: var(--sp-1);
+}
+.steam-icon {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  background: linear-gradient(180deg, #67c1f5 0%, #417a9b 100%);
+  color: var(--steam-deep);
+  text-decoration: none;
+  transition: filter var(--dur-fast) var(--ease-out);
+}
+.steam-icon:hover { filter: brightness(1.08); color: var(--steam-deep); text-decoration: none; }
+.steam.collapsed .steam-glyph { width: 20px; height: 20px; }
+
 .steam-glyph { width: 15px; height: 15px; color: var(--steam-blue); flex-shrink: 0; }
 .steam-lbl { color: var(--steam-blue); }
 .steam-h .dash { flex-grow: 1; }

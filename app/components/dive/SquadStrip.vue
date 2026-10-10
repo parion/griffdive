@@ -3,7 +3,7 @@ import { REWARD_TOKEN_CAP } from '~~/shared/engine/config'
 import { actingDiverIds } from '~~/shared/engine/selectors'
 import type { DiveState } from '~~/shared/engine/types'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   state: DiveState
   selfId: string | null
   online: string[]
@@ -11,13 +11,15 @@ const props = defineProps<{
   isHost: boolean
   nameDraft: string
   canControl: boolean
-}>()
+  collapsed?: boolean
+}>(), { collapsed: false })
 
 const emit = defineEmits<{
   'update:nameDraft': [name: string]
   'commit': []
   'transferHost': [diverId: string]
   'kick': [diverId: string]
+  'toggle': []
 }>()
 
 const name = computed({
@@ -82,16 +84,50 @@ function chits(count: number): boolean[] {
   return Array.from({ length: REWARD_TOKEN_CAP }, (_, i) => i < count)
 }
 
+function lampClass(diverId: string): string {
+  if (isActing(diverId)) {
+    return 'gold pulse'
+  }
+  return isOnline(diverId) || props.mode === 'local' ? 'teal' : 'dim'
+}
+
 const selfIsHost = computed(() => props.state.hostId === props.selfId)
 </script>
 
 <template>
-  <div class="squad">
+  <div
+    class="squad"
+    :class="{ collapsed }"
+  >
     <div class="squad-head">
-      <span class="lbl">Squad</span>
-      <span class="count">{{ state.divers.length }}/4</span>
+      <span
+        v-if="!collapsed"
+        class="lbl"
+      >Squad</span>
+      <div class="head-right">
+        <span
+          v-if="!collapsed"
+          class="count"
+        >{{ state.divers.length }}/4</span>
+        <button
+          class="rail-toggle"
+          type="button"
+          :aria-label="collapsed ? 'Expand squad rail' : 'Collapse squad rail'"
+          :aria-expanded="!collapsed"
+          @click="$emit('toggle')"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            aria-hidden="true"
+          ><path d="M15 6l-6 6 6 6" /></svg>
+        </button>
+      </div>
     </div>
     <PhaseCue
+      v-if="!collapsed"
       :state="state"
       :self-id="selfId"
       :can-control="canControl"
@@ -102,112 +138,139 @@ const selfIsHost = computed(() => props.state.hostId === props.selfId)
         v-for="diver in state.divers"
         :key="diver.id"
         class="diver-chip"
-        :class="{ offline: !isOnline(diver.id) && mode === 'room', self: diver.id === selfId }"
+        :class="{ collapsed, offline: !isOnline(diver.id) && mode === 'room', self: diver.id === selfId }"
       >
-        <span
-          aria-hidden="true"
-          class="node"
-        />
-        <span
-          class="avatar cut-sm disp"
-          aria-hidden="true"
-        >{{ initial(diver.name) }}</span>
-        <div class="meta">
-          <div class="line">
-            <input
-              v-if="diver.id === selfId"
-              v-model="name"
-              class="self-name"
-              type="text"
-              maxlength="32"
-              title="Your name"
-              aria-label="Your name"
-              @change="$emit('commit')"
-            >
+        <template v-if="collapsed">
+          <span class="sr-only">{{ diver.name }} — {{ statusOf(diver.id) }}</span>
+          <div class="compact-row">
             <span
-              v-else
-              class="diver-name"
-            >{{ diver.name }}</span>
+              class="active-bar"
+              :class="lampClass(diver.id)"
+              aria-hidden="true"
+            />
             <span
-              v-if="diver.id === state.hostId"
-              class="crown"
-              role="img"
-              aria-label="Host"
-            >★</span>
-            <span
-              v-if="diver.id === selfId"
-              class="you"
-            >(you)</span>
+              class="avatar cut-sm disp"
+              aria-hidden="true"
+            >{{ initial(diver.name) }}</span>
           </div>
-          <div class="line status">
-            <AppTooltip
-              :content="statusOf(diver.id)"
-            >
-              <span
-                class="lamp"
-                :class="isActing(diver.id) ? 'gold pulse' : isOnline(diver.id) || mode === 'local' ? 'teal' : 'dim'"
-                role="img"
-                :aria-label="statusOf(diver.id)"
-              />
-            </AppTooltip>
-            <span class="status-text">{{ statusOf(diver.id) }}</span>
-            <span
-              v-if="diver.catchUpOwed > 0"
-              class="catchup-chip"
-              role="img"
-              :aria-label="`Field Promotion: ${diver.catchUpOwed} picks owed`"
-            >+{{ diver.catchUpOwed }}</span>
+          <div
+            class="token-bars"
+            :aria-label="`${diver.rewardTokens} reward tokens banked`"
+          >
+            <i
+              v-for="(on, i) in chits(diver.rewardTokens)"
+              :key="i"
+              class="token-bar"
+              :class="{ on }"
+            />
           </div>
-        </div>
-        <div
-          v-if="diver.rewardTokens > 0"
-          class="chits"
-          :aria-label="`${diver.rewardTokens} reward tokens banked`"
-        >
-          <i
-            v-for="(on, i) in chits(diver.rewardTokens)"
-            :key="i"
-            class="chit"
-            :class="{ on }"
+        </template>
+        <template v-else>
+          <span
+            aria-hidden="true"
+            class="node"
           />
-        </div>
-        <div
-          v-if="canModerate(diver.id)"
-          class="mods"
-        >
-          <AppTooltip :content="`Hand host to ${diver.name}`">
-            <button
-              class="handover"
-              type="button"
-              :aria-label="`Hand host to ${diver.name}`"
-              @click="$emit('transferHost', diver.id)"
-            >
-              host
-            </button>
-          </AppTooltip>
-          <AppTooltip :content="`Kick ${diver.name} from the squad`">
-            <button
-              class="kick"
-              type="button"
-              :aria-label="`Kick ${diver.name} from the squad`"
-              @click="$emit('kick', diver.id)"
-            >
-              <svg
-                width="11"
-                height="11"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.6"
-                aria-hidden="true"
-              ><path d="M6 6l12 12M18 6L6 18" /></svg>
-            </button>
-          </AppTooltip>
-        </div>
+          <span
+            class="avatar cut-sm disp"
+            aria-hidden="true"
+          >{{ initial(diver.name) }}</span>
+          <div class="meta">
+            <div class="line">
+              <input
+                v-if="diver.id === selfId"
+                v-model="name"
+                class="self-name"
+                type="text"
+                maxlength="32"
+                title="Your name"
+                aria-label="Your name"
+                @change="$emit('commit')"
+              >
+              <span
+                v-else
+                class="diver-name"
+              >{{ diver.name }}</span>
+              <span
+                v-if="diver.id === state.hostId"
+                class="crown"
+                role="img"
+                aria-label="Host"
+              >★</span>
+              <span
+                v-if="diver.id === selfId"
+                class="you"
+              >(you)</span>
+            </div>
+            <div class="line status">
+              <AppTooltip
+                :content="statusOf(diver.id)"
+              >
+                <span
+                  class="lamp"
+                  :class="lampClass(diver.id)"
+                  role="img"
+                  :aria-label="statusOf(diver.id)"
+                />
+              </AppTooltip>
+              <span class="status-text">{{ statusOf(diver.id) }}</span>
+              <span
+                v-if="diver.catchUpOwed > 0"
+                class="catchup-chip"
+                role="img"
+                :aria-label="`Field Promotion: ${diver.catchUpOwed} picks owed`"
+              >+{{ diver.catchUpOwed }}</span>
+            </div>
+          </div>
+          <div
+            v-if="diver.rewardTokens > 0"
+            class="chits"
+            :aria-label="`${diver.rewardTokens} reward tokens banked`"
+          >
+            <i
+              v-for="(on, i) in chits(diver.rewardTokens)"
+              :key="i"
+              class="chit"
+              :class="{ on }"
+            />
+          </div>
+          <div
+            v-if="canModerate(diver.id)"
+            class="mods"
+          >
+            <AppTooltip :content="`Hand host to ${diver.name}`">
+              <button
+                class="handover"
+                type="button"
+                :aria-label="`Hand host to ${diver.name}`"
+                @click="$emit('transferHost', diver.id)"
+              >
+                host
+              </button>
+            </AppTooltip>
+            <AppTooltip :content="`Kick ${diver.name} from the squad`">
+              <button
+                class="kick"
+                type="button"
+                :aria-label="`Kick ${diver.name} from the squad`"
+                @click="$emit('kick', diver.id)"
+              >
+                <svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.6"
+                  aria-hidden="true"
+                ><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </AppTooltip>
+          </div>
+        </template>
       </li>
     </ul>
     <p
-      v-if="selfIsHost && state.divers.length === 1 && mode === 'room'"
+      v-if="!collapsed && selfIsHost && state.divers.length === 1 && mode === 'room'"
       class="solo-hint"
     >
       Invite a diver — copy the room code above.
@@ -217,8 +280,30 @@ const selfIsHost = computed(() => props.state.hostId === props.selfId)
 
 <style scoped>
 .squad { display: flex; flex-direction: column; gap: 10px; }
-.squad-head { display: flex; justify-content: space-between; align-items: baseline; }
+.squad-head { display: flex; justify-content: space-between; align-items: center; }
+.squad.collapsed .squad-head { justify-content: center; }
+.head-right { display: flex; align-items: center; gap: var(--sp-3); }
 .count { font-size: 12px; font-weight: 700; color: var(--khaki); }
+
+.rail-toggle {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color var(--dur-fast), color var(--dur-fast);
+}
+.rail-toggle:hover { border-color: var(--gold); color: var(--gold); }
+.rail-toggle svg {
+  width: 12px;
+  height: 12px;
+  transition: transform var(--dur-med) var(--ease-out);
+}
+.squad.collapsed .rail-toggle svg { transform: rotate(180deg); }
 
 .divers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 
@@ -233,6 +318,27 @@ const selfIsHost = computed(() => props.state.hostId === props.selfId)
 }
 .diver-chip.self { border-color: var(--line-4); background: var(--raised); }
 .diver-chip.offline { opacity: 0.55; }
+
+.diver-chip.collapsed {
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 0;
+}
+.compact-row { display: flex; align-items: center; gap: 3px; }
+.active-bar {
+  width: 3px;
+  height: 22px;
+  flex-shrink: 0;
+  background: var(--line-2);
+}
+.active-bar.gold { background: var(--gold); }
+.active-bar.teal { background: var(--teal); }
+.active-bar.dim { background: var(--dim); }
+.active-bar.pulse { animation: pulse 1.6s ease-in-out infinite; }
+.token-bars { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.token-bar { width: 18px; height: 2px; background: var(--line-2); }
+.token-bar.on { background: var(--gold); }
 
 .node {
   position: absolute;
