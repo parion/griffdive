@@ -274,7 +274,7 @@ const opLabel = computed(() =>
           <span
             v-if="opLongRisk > 0"
             class="team-risk disp op-long"
-          >+{{ opLongRisk }} ×{{ opLength }}</span>
+          >+{{ opLongRisk }}</span>
         </div>
         <div
           v-if="opLongRisk > 0"
