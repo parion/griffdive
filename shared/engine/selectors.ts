@@ -12,6 +12,7 @@ import {
   OPTIONS_LOST_PER_FAILED_DIRECTIVE,
   OPTIONS_LOST_PER_FAILED_PACT,
   SAMPLE_VALOR_CAP,
+  SQUAD_SIZE_MAX,
   STRAIN_RISK,
   TIME_VALOR_MAX,
   baseTierFor,
@@ -123,7 +124,7 @@ export function misfortuneStrandedDivers(state: DiveState): DiverState[] {
 // is what keeps the operation's Valor potential intact.
 export function teamRiskOf(state: DiveState): number {
   const misfortuneRisk = state.misfortuneAccepted && !state.misfortuneFailed
-    ? directiveValorAt(currentMisfortune(state)?.id ?? '', state.difficulty)
+    ? directiveValorAt(currentMisfortune(state)?.id ?? '', state.difficulty, state.divers.length)
     : 0
   const strainRisk = state.strainAccepted
     ? STRAIN_RISK[state.strainId ?? ''] ?? 0
@@ -143,7 +144,7 @@ export interface TeamRiskBreakdown {
 // same acceptance flags, so the screen and the floor can never disagree.
 export function teamRiskBreakdown(state: DiveState): TeamRiskBreakdown {
   const misfortuneRisk = state.misfortuneAccepted && !state.misfortuneFailed
-    ? directiveValorAt(currentMisfortune(state)?.id ?? '', state.difficulty)
+    ? directiveValorAt(currentMisfortune(state)?.id ?? '', state.difficulty, state.divers.length)
     : 0
   const strainRisk = state.strainAccepted
     ? STRAIN_RISK[state.strainId ?? ''] ?? 0
@@ -436,10 +437,10 @@ export function ceilingRange(difficulty: number, teamRisk: number, pactRisk: num
   }
 }
 
-export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): CeilingRange {
+export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0, squadSize = SQUAD_SIZE_MAX): CeilingRange {
   const misfortuneMax = Math.max(
     0,
-    ...eligibleMisfortunes().map(misfortune => directiveValorAt(misfortune.id, difficulty)),
+    ...eligibleMisfortunes().map(misfortune => directiveValorAt(misfortune.id, difficulty, squadSize)),
   )
   const strainMax = Math.max(
     0,
@@ -454,10 +455,10 @@ export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): Cei
 // VALOR_METER_MAX (11), so anything this returns above that is potential
 // overflow Luck (AGENTS.md: Reward math). Presentation only; it never gates a
 // roll.
-export function maxValorFor(difficulty: number): number {
+export function maxValorFor(difficulty: number, squadSize = SQUAD_SIZE_MAX): number {
   const misfortuneMax = Math.max(
     0,
-    ...eligibleMisfortunes().map(misfortune => directiveValorAt(misfortune.id, difficulty)),
+    ...eligibleMisfortunes().map(misfortune => directiveValorAt(misfortune.id, difficulty, squadSize)),
   )
   const strainMax = Math.max(
     0,
@@ -590,5 +591,6 @@ export function pactOfferFor(state: DiveState, diverId: string): Pact[] {
     deriveSeed(state.wheel.seed, hashString(diverId)),
     active?.id ?? null,
     state.difficulty,
+    state.divers.length,
   )
 }

@@ -40,9 +40,10 @@ dives** have landed: any seated diver can pin a room server-side so it outlives 
 browser clearing its storage, resuming through the existing rejoin path (see Saved dives).
 **The condition catalogue is unified:** squad directives (team) and pacts (personal) are now one
 catalogue, nothing is gated by difficulty, and a per-condition curve scales each rule's risk/Valor
-with altitude (see Condition scaling). **Team directives outweigh pacts:** an accepted directive
-stakes **1.5×** its scaled risk in Valor (`TEAM_DIRECTIVE_VALOR_WEIGHT`), because the whole squad
-carries it. **Broken directives fail like pacts:** the host can mark an accepted directive failed in
+with altitude (see Condition scaling). **Team directives outweigh pacts, by squad size:** an
+accepted directive stakes its scaled risk × **1 / 1.25 / 1.5 / 1.75** for a squad of 1 / 2 / 3 / 4
+(`TEAM_DIRECTIVE_VALOR_WEIGHTS`), because the more divers must hold one rule the harder it is — and
+a solo diver's directive is effectively personal. **Broken directives fail like pacts:** the host can mark an accepted directive failed in
 the field (`FAIL_MISFORTUNE`, host-only, `diving` phase) — its shared risk is voided for every diver
 and each diver forfeits one reward option. UI copy calls the team scope **Squad Directive** and the
 wheel the **Wheel of Adversity**; engine ids and the action union keep the `misfortune` name. The
@@ -259,8 +260,10 @@ team rule is on the wheel at every difficulty — difficulty scales each rule's 
 phase before pacts
 roll, the squad (host executes, IRL voice vote) **accepts or declines** it. Declining runs a
 zero-team-risk dive; accepting stakes the misfortune's **team risk** in Valor for every diver —
-weighted **1.5×** because the whole squad carries it (`TEAM_DIRECTIVE_VALOR_WEIGHT`; the operation-
-long strain and live Major Order keep their own unweighted fixed values). Once accepted, the host
+weighted by squad size — **1× solo, 1.25× duo, 1.5× trio, 1.75× four divers** — because the more
+divers must hold one rule the harder it is (`TEAM_DIRECTIVE_VALOR_WEIGHTS` / `directiveWeightFor`,
+read from the live roster; the operation-long strain and live Major Order keep their own unweighted
+fixed values). Once accepted, the host
 may mark it **failed** in the field if the squad breaks the rule (`FAIL_MISFORTUNE`, `diving` phase,
 host-only): the shared risk is voided for every diver and each forfeits one reward option — see
 Failed directives. A reroll redraws and resets the decision (returning the squad to the `decision`
@@ -283,7 +286,6 @@ top of the ladder:
 | Fragile Liberty | Light armor only | 1 → 2 | loadout |
 | No Orbitals | No orbital stratagems | 1 → 2 | loadout |
 | Primary Only | Primaries only — no support weapons, no pickups or swaps (stratagems allowed) | 2 → 3 | field |
-| Stealth | No raised alarms or bot detections | 2 → 3 | field |
 | Oops, All Airstrikes | Eagle and orbital ("red") stratagems only | 2 → 3 | loadout |
 | Zero Deaths | Any diver death = mission failure | 2 → 4 | field |
 | No Reserves | No one gets reinforced this mission | 2 → 4 | field |
@@ -299,10 +301,16 @@ difficulty 3) and a `slope` (risk points per difficulty step):
 conditionRiskAt(id, difficulty) = clamp(round(base + slope × (difficulty − 3)), 1, 5)
 ```
 
-Slopes are per condition and may be **negative** (inverse — a self-imposed burden that matters
-less once the war itself is the threat, e.g. *Stim Abstinent*, *Untouchable*). The proposed
-defaults are plain and easy to tune; because some slopes are inverse, `maxValorFor(difficulty)` is
-not strictly monotonic (it grows overall from the floor to the top of the ladder). `CONDITION_RISK`
+Slopes are per condition. The formula allows **negative** (inverse) slopes, but no condition uses
+one today: the inverse *Stim Abstinent* and *Untouchable* curves were reversed in the balance pass —
+losing healing or your life costs more where the enemy hits harder, not less. Flat is the right
+shape when a burden's cost cancels out with altitude (*Dead Weight*: you die more often up high,
+but so do squadmates, so the shared reinforce comes sooner). `maxValorFor(difficulty)` is only
+guaranteed to grow from the floor to the top of the ladder, not per rung.
+
+*Stealth* ("no raised alarms or bot detections") was **removed**: a drop gets called on nearly every
+mission, so the rule was all but unfieldable. A bot-only *Commando* modifier is the backlog idea for
+reviving it. `CONDITION_RISK`
 in `shared/engine/config.ts` is the single source of truth; every Valor/odds computation reads
 through `conditionRiskAt`.
 
@@ -422,7 +430,9 @@ client computes the same 2–3 pacts with no extra sync; it is never stored. The
 pacts the **accepted** misfortune makes redundant or impossible; a declined draw offers from the
 full catalog. Pacts are the **personal-scoped** slice of the same condition catalogue, and their
 **pact risk** scales with the operation's difficulty exactly like a misfortune's (`conditionRiskAt`;
-some are inverse, see Condition scaling), adding only to that diver's Valor.
+see Condition scaling), adding only to that diver's Valor. **Squad-only pacts** (`SQUAD_ONLY_PACTS`:
+*Dead Weight*) are never dealt to a solo diver — with no squadmate to share a reinforce, the rule
+collapses into "stay dead".
 
 **Accountability rule:** every pact in the catalog must be verifiable in Helldivers 2 through one
 of three channels — the **loadout screen** (equipped gear and stratagems, visible pre-dive), the
@@ -434,20 +444,20 @@ weapon slot).
 
 Starter catalog:
 
-| Pact | Rule | Pact risk | Accountable via |
+| Pact | Rule | Risk d3→10 | Accountable via |
 | --- | --- | --- | --- |
-| Pack Light | I bring no backpack | 1 | loadout |
-| Thirsty | I call and take no resupplies | 1 | field |
-| Empty Pockets | I equip no booster | 1 | loadout |
-| Anti-Tank Abstinent | I carry nothing anti-tank | 2 | loadout |
-| Dead Weight | If I die, I refuse reinforcement — I stay dead | 2 | field |
-| Stim Abstinent | I use no stims | 3 | stats |
-| Loadout Loyalist | I use only my equipped loadout; no pickups or swaps | 2 | field |
-| Primary Concern | I bring no support weapon | 2 | loadout |
-| Grounded | I bring no offensive Eagle stratagems | 2 | loadout |
-| Ship Silent | I bring no offensive orbital stratagems | 2 | loadout |
-| Open Field | I bring no offensive sentries, mines, or emplacements | 2 | loadout |
-| Untouchable | I finish the mission without dying | 3 | field |
+| Pack Light | I bring no backpack | 1 → 1 | loadout |
+| Thirsty | I call and take no resupplies | 1 → 2 | field |
+| Empty Pockets | I equip no booster | 1 → 1 | loadout |
+| Anti-Tank Abstinent | I carry nothing anti-tank | 1 → 4 | loadout |
+| Dead Weight | If I die, I can't be reinforced on my own — I return only when another diver needs reinforcing (squad only) | 2 → 2 | field |
+| Stim Abstinent | I use no stims | 3 → 4 | stats |
+| Loadout Loyalist | I use only my equipped loadout; no pickups or swaps | 2 → 2 | field |
+| Primary Concern | I bring no support weapon | 1 → 3 | loadout |
+| Grounded | I bring no offensive Eagle stratagems | 2 → 2 | loadout |
+| Ship Silent | I bring no offensive orbital stratagems | 2 → 2 | loadout |
+| Open Field | I bring no offensive sentries, mines, or emplacements | 2 → 2 | loadout |
+| Untouchable | I finish the mission without dying | 3 → 4 | field |
 
 **Redundant and conflicting picks:** a pact strictly implied by another picked pact never stacks
 risk. `SET_PACTS` refuses it via `pactSubsumedBy` / `applyPactToggle` (`PACT_SUBSUMES` in
@@ -500,20 +510,20 @@ resets with the pacts every mission.
 
 ```
 Valor         = teamRisk + pactRisk + performance
-teamRisk      = accepted misfortune × TEAM_DIRECTIVE_VALOR_WEIGHT (1.5, because the
-                whole squad carries it) plus the accepted strain (2–3, felt on
+teamRisk      = accepted misfortune × directiveWeightFor(squad size)
+                (1 / 1.25 / 1.5 / 1.75 for 1–4 divers) plus the accepted strain (2–3, felt on
                 every mission of its operation) or the live Major Order
                 commitment (2, same scope); 0 when declined/unset, or when the
                 directive was failed in the field
-pactRisk      = sum of the diver's picked pacts (max 8: the rolled
-                2–3-pact offer bounds what a diver can stack)
+pactRisk      = sum of the diver's picked pacts (max 12 at diff 7+: the
+                rolled 2–3-pact offer bounds what a diver can stack)
 performance   = team performance from the mission just reported, squad-level
                 and applied to every diver: time remaining (≤ 0.2) plus
                 samples (≤ 0.3), so it never exceeds 0.5
 
 (misfortune and pact risk are read through `conditionRiskAt(id, difficulty)`,
  so the same condition is worth different Valor at different altitudes;
- the directive's 1.5× weight is applied by `directiveValorAt` on top)
+ the directive's squad-size weight is applied by `directiveValorAt` on top)
 
 base tier:     diff 3–5 → C   diff 6–7 → B   diff 8–10 → A
 meter:         the Valor gauge tops out at 11; Valor past it is Luck
@@ -559,10 +569,10 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   appear instead of a flat longshot. **The Valor meter tops out at 11** (`VALOR_METER_MAX`): Valor
   past it "breaks" the gauge and banks as **Luck**, which adds flat odds to the S / S+ rungs
   (`OVERFLOW_S_LUCK` / `OVERFLOW_S_PLUS_LUCK`), so overstacking is never wasted. Even absolute max
-  overstack (Valor 16.5, strain included) leaves S+ a longshot (≤20% at altitude;
+  overstack (Valor 24.25 — a four-diver squad, strain included) leaves S+ a longshot (≤20% at altitude;
   `S_PLUS_OVERFLOW_CAP`). A zero-Valor dive always rolls its base tier. Team performance is a
   deliberate exception: it can nudge a zero-chosen-risk clear off its base tier, but caps at 0.5
-  against the 16-point chosen ceiling, so skill never carries a run (`TIME_VALOR_MAX`, `SAMPLE_VALOR_CAP`,
+  against a chosen ceiling of 12.5–24, so skill never carries a run (`TIME_VALOR_MAX`, `SAMPLE_VALOR_CAP`,
   `SAMPLE_VALOR_WEIGHTS`). Sample values are calibrated to the game's own rarity mix (wiki.gg/Sample
   availability), so the term scales with difficulty without a multiplier: a Medium haul (commons
   only) is worth ~0.03, a Super Helldive haul with rares and supers ~0.3.
@@ -608,11 +618,12 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   its risk — Valor, previews and the rolled offer all drop — and costs one reward option, floored
   at one so the draft always completes.
 - Example curves: at diff 3 a single strong pact (Valor 3) reaches **S** ~4% of the time and two
-  (Valor 6) ~16%; the strongest early stack without a strain (Valor 10) reaches **S** about a third
-  of the time, **S+** rarely (a maxed early stack, Valor 15.5 with a strain, reaches S ~52%, S+
-  ~9%). Diff 10 with zero Valor → **A**, never S. At diff 6 (where super samples appear) a strong
-  build (Valor 10–11) reaches **S+** ~6–7%, climbing to ~12–14% at diff 10; max overstack (Valor
-  16.5, strain included) reaches **S+** ~19% there. Risk pays at every altitude; nothing is
+  (Valor 6) ~16%; a maxed early stack (a four-diver squad, Valor 14.75 with a strain) reaches S
+  ~49%, S+ ~8%. Diff 10 with zero Valor → **A**, never S. At diff 6 (where super samples appear) a
+  strong build (Valor 10–11) reaches **S+** ~6–7%, climbing to ~12–14% at diff 10; max overstack
+  reaches **S+** ~19% there (the cap binds for every squad size from diff 8). Squad size moves the
+  directive's share: the strongest diff-10 directive alone is worth Valor 5 solo (S ~22%), 7.5 for
+  a trio (S ~50%) and 8.75 for four divers (S ~64%, S+ ~6%). Risk pays at every altitude; nothing is
   guaranteed, but everything gets likelier.
 
 ### Reward tokens & squad honors

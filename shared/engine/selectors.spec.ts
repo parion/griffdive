@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { WARBONDS } from '../data/catalog'
-import { MAX_DIFFICULTY, MIN_DIFFICULTY, SAMPLE_VALOR_CAP, STRAIN_RISK, TIME_VALOR_MAX, directiveValorAt } from './config'
+import { MAX_DIFFICULTY, MIN_DIFFICULTY, SAMPLE_VALOR_CAP, STRAIN_RISK, TIME_VALOR_MAX, conditionRiskAt, directiveValorAt, directiveWeightFor } from './config'
 import { oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { actingDiverIds, activeMisfortune, activeStrain, awaitingDiverIds, canRerollWheel, ceilingRange, diverOptions, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
-import { isPactSelectable } from './pacts'
+import { isPactSelectable, rollPactOffer } from './pacts'
 import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
 
@@ -112,12 +112,12 @@ describe('team misfortune acceptance', () => {
       { type: 'ACCEPT_STRAIN', accepted: true },
     )
     expect(activeStrain(accepted)?.id).toBe(accepted.strainId)
-    const expected = directiveValorAt(accepted.wheel!.misfortuneId, accepted.difficulty)
+    const expected = directiveValorAt(accepted.wheel!.misfortuneId, accepted.difficulty, accepted.divers.length)
       + (STRAIN_RISK[accepted.strainId!] ?? 0)
     expect(teamRiskOf(accepted)).toBe(expected)
     // Declining the strain leaves only the misfortune's risk.
     const declined = reduce(accepted, { type: 'ACCEPT_STRAIN', accepted: false })
-    expect(teamRiskOf(declined)).toBe(directiveValorAt(accepted.wheel!.misfortuneId, accepted.difficulty))
+    expect(teamRiskOf(declined)).toBe(directiveValorAt(accepted.wheel!.misfortuneId, accepted.difficulty, accepted.divers.length))
   })
 
   it('strainDecision follows the phase, and later missions inherit it', () => {
@@ -159,17 +159,19 @@ describe('team misfortune acceptance', () => {
 
 describe('maxValorFor (meter scale)', () => {
   it('scales to the strongest team rule, strain, top pacts and performance cap', () => {
-    // At diff 3 the team pool tops at 3 — weighted 1.5× because the whole squad
-    // carries it — plus a risk-3 strain and two risk-3 pacts.
-    expect(maxValorFor(3)).toBe(3 * 1.5 + 3 + 3 + 3 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
-    // At diff 10 the top team rule reaches 5 (weighted), three pacts are dealt,
-    // though inverse personal scaling keeps the pact slice modest.
-    expect(maxValorFor(10)).toBe(5 * 1.5 + 3 + 2 + 2 + 2 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
+    // At diff 3 the team pool tops at 3 — weighted 1.75× for a full squad — plus a
+    // risk-3 strain and two risk-3 pacts.
+    expect(maxValorFor(3)).toBe(3 * 1.75 + 3 + 3 + 3 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
+    // At diff 10 the top team rule reaches 5 (weighted) and three risk-4 pacts
+    // are dealt.
+    expect(maxValorFor(10)).toBe(5 * 1.75 + 3 + 4 + 4 + 4 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
+    // A solo diver's directive weighs like a pact.
+    expect(maxValorFor(10, 1)).toBe(5 + 3 + 4 + 4 + 4 + TIME_VALOR_MAX + SAMPLE_VALOR_CAP)
   })
 
   it('grows overall from the floor to the top of the ladder', () => {
-    // Inverse scaling means a rung can dip, so the invariant is the endpoints,
-    // not a per-step monotonic climb.
+    // Curves may be inverse, so the invariant is the endpoints, not a
+    // per-step monotonic climb.
     expect(maxValorFor(MAX_DIFFICULTY)).toBeGreaterThan(maxValorFor(MIN_DIFFICULTY))
     for (let difficulty = MIN_DIFFICULTY; difficulty <= MAX_DIFFICULTY; difficulty++) {
       expect(maxValorFor(difficulty)).toBeGreaterThan(0)
@@ -312,5 +314,38 @@ describe('awaitingDiverIds', () => {
       ],
     }
     expect(awaitingDiverIds(rewards)).toEqual(['host'])
+  })
+})
+
+describe('directive weight by squad size', () => {
+  it('weighs a directive by how many divers must hold it', () => {
+    expect([1, 2, 3, 4].map(directiveWeightFor)).toEqual([1, 1.25, 1.5, 1.75])
+    expect(directiveWeightFor(0)).toBe(1)
+    expect(directiveWeightFor(9)).toBe(1.75)
+    expect(directiveValorAt('pacifist', 10, 4)).toBe(conditionRiskAt('pacifist', 10) * 1.75)
+  })
+
+  it('reads the live squad size for team risk', () => {
+    const solo = reduce(spunState(42, false), { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    const id = solo.wheel!.misfortuneId
+    expect(teamRiskOf({ ...solo, strainAccepted: false })).toBe(conditionRiskAt(id, solo.difficulty))
+    const host = solo.divers[0]!
+    const squad: DiveState = {
+      ...solo,
+      strainAccepted: false,
+      divers: [host, { ...host, id: 'p2' }, { ...host, id: 'p3' }, { ...host, id: 'p4' }],
+    }
+    expect(teamRiskOf(squad)).toBe(conditionRiskAt(id, solo.difficulty) * 1.75)
+  })
+})
+
+describe('squad-only pacts', () => {
+  it('never deals Dead Weight to a solo diver', () => {
+    for (let seed = 1; seed <= 300; seed++) {
+      expect(rollPactOffer(seed, null, 10, 1).map(pact => pact.id)).not.toContain('deadWeight')
+    }
+    const offeredInSquad = Array.from({ length: 300 }, (_, seed) => rollPactOffer(seed + 1, null, 10, 2))
+      .some(offer => offer.some(pact => pact.id === 'deadWeight'))
+    expect(offeredInSquad).toBe(true)
   })
 })

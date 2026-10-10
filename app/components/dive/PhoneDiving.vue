@@ -37,7 +37,7 @@ const majorOrderRisk = computed(() => (props.state.majorOrder?.live ? MAJOR_ORDE
 const directiveFailed = computed(() => props.state.misfortuneFailed)
 const directiveValor = computed(() =>
   props.state.misfortuneAccepted && !props.state.misfortuneFailed
-    ? directiveValorAt(misfortune.value?.id ?? '', props.state.difficulty)
+    ? directiveValorAt(misfortune.value?.id ?? '', props.state.difficulty, props.state.divers.length)
     : 0)
 const confirmFail = ref(false)
 function toggleFail(): void {

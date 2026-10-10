@@ -30,11 +30,11 @@ const misfortuneRisk = computed(() =>
   props.state.misfortuneAccepted
     ? conditionRiskAt(misfortune.value?.id ?? '', props.state.difficulty)
     : 0)
-// The directive stakes 1.5× its risk in Valor (team rules outweigh pacts), and
+// The directive stakes its risk × the squad-size weight in Valor (team rules outweigh pacts), and
 // a broken directive voids it entirely.
 const directiveValor = computed(() =>
   props.state.misfortuneAccepted && !props.state.misfortuneFailed
-    ? directiveValorAt(misfortune.value?.id ?? '', props.state.difficulty)
+    ? directiveValorAt(misfortune.value?.id ?? '', props.state.difficulty, props.state.divers.length)
     : 0)
 const strainRisk = computed(() =>
   props.state.strainAccepted ? STRAIN_RISK[strain.value?.id ?? ''] ?? 0 : 0)

@@ -213,8 +213,14 @@ export function hasLegalLoadout(
 // seeds"): once the wheel decision is in, every client rolls the same 2–3
 // pacts for a diver. Stream salt 3 — the wheel uses 1 (misfortune) and 2
 // (front) on the same seed.
-export function rollPactOffer(seed: number, misfortuneId: string | null, difficulty: number): Pact[] {
-  const pool = PACTS.filter(pact => isPactSelectable(pact.id, misfortuneId))
+// Pacts whose rule leans on a squadmate. Dead Weight returns you only with
+// another diver's reinforce, so a solo diver would simply stay dead.
+export const SQUAD_ONLY_PACTS: readonly string[] = ['deadWeight']
+
+export function rollPactOffer(seed: number, misfortuneId: string | null, difficulty: number, squadSize: number): Pact[] {
+  const pool = PACTS.filter(pact =>
+    isPactSelectable(pact.id, misfortuneId)
+    && (squadSize > 1 || !SQUAD_ONLY_PACTS.includes(pact.id)))
   const rng = mulberry32(deriveSeed(seed, 3))
   const remaining = [...pool]
   const count = Math.min(pactOptionsFor(difficulty), remaining.length)
