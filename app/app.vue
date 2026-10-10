@@ -158,13 +158,22 @@ const { online } = useSessionStore()
   .brand-word { font-size: 14px; letter-spacing: 0.04em; }
   .alpha-chip { display: none; }
   .uplink { display: none; }
-  .navb span { display: none; }
-  /* Phone hit-size floor: icon-only nav controls stay a 44px touch target. */
+  /* Labels stay on phones — playtesters never found Codex/Warbonds behind bare
+     icons. Icon and label sit side by side to fit beside the brand. */
   .navb {
-    padding: 0;
-    width: 44px;
+    flex-direction: row;
+    gap: 6px;
     height: 44px;
-    justify-content: center;
+    padding: 0 8px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
   }
+  .nav-icon { width: 18px; height: 18px; }
+}
+
+@media (max-width: 380px) {
+  .term-header { gap: 6px; padding: 0 8px; }
+  .brand-word { font-size: 13px; }
+  .navb { padding: 0 6px; letter-spacing: 0.08em; }
 }
 </style>

@@ -404,8 +404,28 @@ function acceptDisabled(): boolean {
         />
       </template>
       <template #action>
+        <!-- Before the draw the pinned CTA is the spin itself: a dead "Deal the
+             pacts" here was the biggest control on screen while the only live
+             action hid in the wheel hub. -->
         <button
-          v-if="dealReady && canControl"
+          v-if="!state.wheel && canControl"
+          class="deal-btn"
+          type="button"
+          @click="emit('spin')"
+        >
+          <span class="disp">Spin the wheel</span>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            aria-hidden="true"
+          ><path d="M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 3v18M3 12h18" /></svg>
+        </button>
+        <button
+          v-else-if="dealReady && canControl"
           class="deal-btn"
           type="button"
           @click="emit('deal')"
@@ -430,8 +450,8 @@ function acceptDisabled(): boolean {
             class="hazard-soft gate-edge"
             aria-hidden="true"
           />
-          <span class="disp gate-word">Deal the pacts</span>
-          <span class="gate-meta">{{ dealReady ? 'Waiting for the host' : gateText }}</span>
+          <span class="disp gate-word">{{ state.wheel ? 'Deal the pacts' : 'Spin the wheel' }}</span>
+          <span class="gate-meta">{{ dealReady || !state.wheel ? 'Waiting for the host' : gateText }}</span>
         </div>
       </template>
     </PhoneActionBar>
@@ -463,6 +483,11 @@ function acceptDisabled(): boolean {
   pointer-events: none;
 }
 .stage :deep(.wheel-wrap) { width: min(100%, 300px, 46vh); }
+/* Short phones: the fixed bands leave ~290px, which the wheel used to take
+   whole, starving the decision sheet. Shrink it so the cards stay reachable. */
+@media (max-height: 740px) {
+  .stage :deep(.wheel-wrap) { width: min(100%, 300px, 34vh); }
+}
 .stage :deep(.risk-legend) { display: none; }
 
 .reroll {

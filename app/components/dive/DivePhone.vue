@@ -116,6 +116,13 @@ function kickDiver(diverId: string): void {
         :is-host="isHost"
         @select="modTarget = $event"
       />
+      <PhaseCue
+        v-if="!kicked"
+        :state="state"
+        :self-id="selfId"
+        :can-control="canControl"
+        band
+      />
     </template>
 
     <div class="phone-scroll">

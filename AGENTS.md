@@ -155,7 +155,14 @@ engine.
   covers ownership), and is replayable from the dive header's Tutorial control. One structural breakpoint (1020px) flows the
   shell and stacks the rails. Below it `usePhoneShell` swaps the whole three-rail tree for
   `DivePhone` (`DivePhoneShell` + `Phone*`), a fixed-band shell whose phase content is a
-  bottom-sheet/fixed-footer layout.
+  bottom-sheet/fixed-footer layout. `PhaseCue` rides there as a slim fixed band under the squad
+  bar (`band` prop) so phase bodies keep their no-scroll layout. Phone rules from the mobile
+  checkup: the pinned footer CTA is always the phase's *live* action (the wheel's is "Spin the
+  wheel" before the draw, never a dead deal gate); self-service actions (`PICK_REWARD` and kin)
+  gate on the diver's own state, never on `canControl`, which is host control; short phones
+  (≤740px tall) shrink the wheel so the decision sheet stays reachable; nav controls keep their
+  text labels on phones; and nothing may widen the layout viewport — flex items holding long live
+  text (the Major Order title) need `min-width: 0`.
 - **Armory detection**: the Armory never computes bans. `armoryRules(state, diver)` lists the
   active misfortune/pact rules and `itemBannedInArmory(state, diver, item)` returns why a
   stratagem is greyed; both wrap `stratagemBanReason` in `shared/engine/pacts.ts` — the same
@@ -785,7 +792,7 @@ app/
                    ui/ (BrandMark — the Griffdive chevron mark, ItemCard, TierBadge, RiskPips — risk
                    dots, with a rolling back-and-forth state while a wheel draw reels,
                    SampleCanister/SegmentedBar — the report's tinted sample jars and
-                   click-to-set time bar, HoldButton — the press-and-hold confirm,
+                   click-to-set time bar (touch scrubs: press and drag sets the value), HoldButton — the press-and-hold confirm,
                    ChangelogModal — GitHub deploy log shown from the alpha header chip, AppDrawer —
                    the themed right-hand Reka
                     Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer —
@@ -1090,7 +1097,10 @@ mount: `fly volumes create griffdive_data --region ams --size 1`.
   authority, pact lock-in), Codex slide-over (opens over the dive without dropping the session),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
   non-dismissible name gate, star-rating keyboard navigation), phone host moderation
-  (`phone.spec.ts`: the 390px squad bar opens the moderation bottom sheet), PWA affordances
+  (`phone.spec.ts`: the 390px squad bar opens the moderation bottom sheet), phone reward draft
+  (`phone-rewards.spec.ts`: a non-host phone diver banks their own pick), phone layout
+  (`phone-layout.spec.ts`: no sideways overflow at 360px with a long live Major Order, the live
+  spin CTA, touch-scrubbing the report time bar), PWA affordances
   (manifest content type + icons served, SW reachable, shell head links). Chromium only;
   `pnpm exec playwright install chromium` after a fresh clone.
 

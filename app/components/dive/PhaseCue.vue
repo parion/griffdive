@@ -2,11 +2,14 @@
 import { allDiversPicked, awaitingDiverIds, strainDecision } from '~~/shared/engine/selectors'
 import type { DiveState } from '~~/shared/engine/types'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   state: DiveState
   selfId: string | null
   canControl: boolean
-}>()
+  // The phone shell renders the cue as a slim fixed band between the squad bar
+  // and the phase, so the phase body keeps its no-scroll layout.
+  band?: boolean
+}>(), { band: false })
 
 // One line that answers "whose move is it?" for the current beat. Playtesters
 // lost the thread between phases because every panel spoke at once.
@@ -35,11 +38,11 @@ const cue = computed<{ tone: Tone, tag: string, text: string } | null>(() => {
     case 'lobby':
       return lead('Launch the crusade once your squad is seated.', `Waiting on ${host} to launch the crusade.`)
     case 'spin':
-      return lead('Spin the Wheel of Adversity to draw this mission\'s directive.', `${host} spins the Wheel of Adversity.`)
+      return lead('Spin the wheel to draw this mission\'s directive.', `${host} spins the Wheel of Adversity.`)
     case 'decision':
       return strainDecision(state).decided
-        ? lead('Talk it over with the squad, then lock in the directive or opt out.', `Squad call — ${host} locks in the directive or opts out.`)
-        : lead('Talk it over with the squad, then lock in or opt out of the directive and the strain.', `Squad call — ${host} locks in or opts out of the directive and the strain.`)
+        ? lead('Squad call: lock in the directive or opt out.', `Squad call — ${host} locks in the directive or opts out.`)
+        : lead('Squad call: lock in or opt out of the directive and the strain.', `Squad call — ${host} decides the directive and the strain.`)
     case 'strain':
       return lead('Accept or decline the strain — it holds for the whole operation.', `Squad call — ${host} accepts or declines the strain.`)
     case 'deal':
@@ -47,13 +50,13 @@ const cue = computed<{ tone: Tone, tag: string, text: string } | null>(() => {
     case 'pacts': {
       const waiting = awaitingDiverIds(state)
       if (props.selfId && waiting.includes(props.selfId)) {
-        return { tone: 'act', tag: 'Your move', text: 'Pick your personal pacts — or none — then hold to lock in.' }
+        return { tone: 'act', tag: 'Your move', text: 'Pick your pacts — or none — then hold to lock in.' }
       }
       return { tone: 'wait', tag: 'Locked in', text: `Waiting on ${names(waiting)} to lock their pacts.` }
     }
     case 'diving':
       return props.canControl
-        ? { tone: 'act', tag: 'In game', text: 'Play the mission in Helldivers 2, then report the result here.' }
+        ? { tone: 'act', tag: 'In game', text: 'Play the mission in Helldivers 2, then report it here.' }
         : { tone: 'act', tag: 'In game', text: `Play the mission in Helldivers 2 — ${host} reports the result.` }
     case 'rewards': {
       const waiting = awaitingDiverIds(state)
@@ -77,6 +80,7 @@ const cue = computed<{ tone: Tone, tag: string, text: string } | null>(() => {
   <div
     v-if="cue"
     class="cue"
+    :class="{ band }"
     :data-tone="cue.tone"
     role="status"
     aria-live="polite"
@@ -129,4 +133,14 @@ const cue = computed<{ tone: Tone, tag: string, text: string } | null>(() => {
   color: var(--text);
   min-width: 0;
 }
+
+.cue.band {
+  gap: var(--sp-3);
+  min-height: 0;
+  padding: 7px 12px;
+  border-width: 0 0 1px;
+  border-left-width: 3px;
+}
+.cue.band .cue-tag { font-size: 10px; letter-spacing: 0.16em; }
+.cue.band .cue-text { font-size: 13px; line-height: 1.3; }
 </style>
