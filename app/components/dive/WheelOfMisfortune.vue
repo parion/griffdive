@@ -359,13 +359,42 @@ const hubLabel = computed(() => {
   cursor: default;
   transition: background-color var(--dur-fast), color var(--dur-fast);
 }
+/* The call to action: the hub breathes and emits sonar rings. The rings live on
+   pseudo-elements so the hub keeps its static gold bezel (an animated
+   box-shadow would replace it). */
 .hub.live {
   background: var(--gold);
   color: var(--on-gold);
   cursor: pointer;
-  animation: glow 2.6s ease-in-out infinite;
+  animation: hub-breathe 1.8s ease-in-out infinite;
 }
-.hub.live:hover { filter: brightness(1.1); }
+.hub.live::before,
+.hub.live::after {
+  content: '';
+  position: absolute;
+  inset: -1.522cqw;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  opacity: 0;
+  pointer-events: none;
+  animation: hub-ring 2.4s ease-out infinite;
+}
+.hub.live::after { animation-delay: 1.2s; }
+.hub.live:hover { filter: brightness(1.1); animation-play-state: paused; }
+@keyframes hub-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+@keyframes hub-ring {
+  0% { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(1.75); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub.live,
+  .hub.live::before,
+  .hub.live::after { animation: none; }
+  .hub.live { box-shadow: 0 0 0 1.304cqw var(--ground), 0 0 0 1.522cqw var(--gold), 0 0 18px 2px rgba(255, 214, 66, 0.35); }
+}
 .hub-word { font-size: clamp(15px, 6.522cqw, 30px); }
 .hub.live .hub-word { font-size: clamp(13px, 5.652cqw, 26px); }
 .hub-sub { font-size: clamp(7px, 2.174cqw, 10px); font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; }

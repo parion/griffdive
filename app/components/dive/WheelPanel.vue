@@ -435,7 +435,7 @@ function rerollLabel(
           <Motion
             as="article"
             class="wheel-card misfortune cut-sm"
-            :class="[state.wheel ? cardTone : 'pending', { reeling: misfortuneReeling }]"
+            :class="[state.wheel ? cardTone : 'idle', { reeling: misfortuneReeling }]"
             v-bind="riseIn(0)"
           >
             <div class="card-head">
@@ -999,6 +999,7 @@ function rerollLabel(
   transition: border-color var(--dur-med) var(--ease-out);
 }
 
+.wheel-card.misfortune.idle { border-style: dashed; border-color: var(--line-3); }
 .wheel-card.misfortune.pending { border-style: dashed; border-color: color-mix(in srgb, var(--gold) 50%, var(--line-2)); }
 .wheel-card.misfortune.pending::after {
   content: '';
@@ -1021,7 +1022,7 @@ function rerollLabel(
 .wheel-card.misfortune.safe { opacity: 0.85; }
 .wheel-card.misfortune.safe .misfortune-name { color: var(--muted); }
 
-/* Pre-spin the card is face down: the wheel's hub is the spin control. */
+/* Pre-spin the card is face down and still: the wheel's hub carries the motion. */
 .spin-hint {
   display: grid;
   place-items: center;
