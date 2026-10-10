@@ -7,7 +7,7 @@ Griffdive stands on the work of the Helldivers community. Thank you.
 - Source: [Selenestica/hd2-random-strat](https://github.com/Selenestica/hd2-random-strat) by
   Selenestica — MIT license.
 - Vendored snapshot: `scripts/upstream/`, upstream commit
-  `9c4a8aaffd83385a2ca85d1105adfe9c9afe430b`.
+  `23d754d4b25f83d7be5619f2099efe3d3e2bb2e9`.
 - Converted to the Griffdive schema by `scripts/import-catalog.mjs` into `shared/data/`.
   Regenerate with: `node scripts/import-catalog.mjs`.
 
@@ -31,6 +31,11 @@ Griffdive stands on the work of the Helldivers community. Thank you.
   (CC BY-NC-SA 4.0) — paraphrased into `shared/data/strains.ts`; the emblems are bundled in
   `public/images/strains/` (many traced by Dogo314) and resolved by `shared/data/images.ts`.
   Griffdive is non-commercial, so the license's non-commercial term is satisfied.
+
+## Platform marks
+
+- Steam logo mark (`IconSteam.vue`): [Simple Icons](https://simpleicons.org/) — CC0 1.0. Steam is a
+  trademark of Valve Corporation; the mark labels the host's Steam lobby link only.
 
 ## Fonts
 

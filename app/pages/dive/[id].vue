@@ -561,12 +561,19 @@ function launchCrusade(variant: CrusadeVariant): void {
           :online="session.online.value"
           :mode="session.mode"
           :is-host="session.selfIsHost.value"
-          :name-draft="nameDraft"
           :can-control="canControl"
+          :name-draft="nameDraft"
           @update:name-draft="setNameDraft"
           @commit="commitName"
           @transfer-host="transferHost"
           @kick="kick"
+        />
+
+        <SteamLobbyBox
+          v-if="session.mode === 'room'"
+          :steam="session.steam.value"
+          :is-host="session.selfIsHost.value"
+          @set-steam="session.setSteam"
         />
 
         <div class="rail-lower">
