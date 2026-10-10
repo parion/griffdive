@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 21
+export const ENGINE_VERSION = 22
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -335,10 +335,10 @@ export const CONDITION_RISK: Readonly<Record<string, ConditionRiskCurve>> = {
   noOrbitals: { base: 1, slope: 0.2 },
   primaryOnly: { base: 2, slope: 0.15 },
   oopsAllAirstrikes: { base: 2, slope: 0.2 },
-  zeroDeaths: { base: 2, slope: 0.35 },
+  zeroDeaths: { base: 3, slope: 0.3 },
   noReserves: { base: 2, slope: 0.35 },
   noStratagems: { base: 3, slope: 0.3 },
-  meleeOnly: { base: 3, slope: 0.3 },
+  meleeOnly: { base: 2, slope: 0.35 },
   pacifist: { base: 3, slope: 0.3 },
 
   // Personal rules — pacts. Most rise with altitude: losing healing, anti-tank

@@ -295,10 +295,10 @@ top of the ladder:
 | No Orbitals | No orbital stratagems | 1 → 2 | loadout |
 | Primary Only | Primaries only — no support weapons, no pickups or swaps (stratagems allowed) | 2 → 3 | field |
 | Oops, All Airstrikes | Eagle and orbital ("red") stratagems only | 2 → 3 | loadout |
-| Zero Deaths | Any diver death = mission failure | 2 → 4 | field |
+| Zero Deaths | Any diver death = mission failure | 3 → 5 | field |
 | No Reserves | No one gets reinforced this mission | 2 → 4 | field |
 | No Stratagems | No stratagems at all, not even resupply | 3 → 5 | loadout |
-| Melee Only | Melee weapons only | 3 → 5 | field |
+| Melee Only | Melee weapons only | 2 → 4 | field |
 | Pacifist | No diver scores a kill | 3 → 5 | stats |
 
 **Condition scaling.** Misfortunes (team) and pacts (personal) are one catalogue, and the only

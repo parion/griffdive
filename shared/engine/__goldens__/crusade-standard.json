@@ -35,11 +35,13 @@
       "mission": 2,
       "seed": 1013904226,
       "misfortuneId": "zeroDeaths",
-      "misfortuneAccepted": false,
+      "misfortuneAccepted": true,
       "front": "terminids",
       "strainId": "predatorStrain",
       "strainAccepted": true,
-      "pactIds": [],
+      "pactIds": [
+        "antiTankAbstinent"
+      ],
       "outcome": "success",
       "stars": 3,
       "optionId": "sampleextricator",
