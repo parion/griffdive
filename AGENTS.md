@@ -32,7 +32,8 @@ the room code + copy control · 84px climb strip · three rails · 52px Mission-
 Bridge home fits one desktop view (hero + climb ladder · 6-step mission loop · Valor odds ladder ·
 deploy rail with code-cell join and the service record · a full-width Major Order band and footer),
 the wheel is a real spinning SVG wheel, the Kit (UI name of the Armory) marks
-directive/pact bans per tile from engine selectors, and an interactive six-beat Griffdiver
+directive/pact bans per tile from engine selectors and ghost-previews the pact
+screen's unsworn selection, and an interactive six-beat Griffdiver
 Briefing (Identify · Spin · Pact · Reward · Warbonds · Deploy) onboards first-time divers. Engine,
 sync, saves and data are untouched; see
 [Destroyer Terminal design language](#destroyer-terminal-design-language). Hybrid **saved
@@ -177,11 +178,16 @@ engine.
   (≤740px tall) shrink the wheel so the decision sheet stays reachable; nav controls keep their
   text labels on phones; and nothing may widen the layout viewport — flex items holding long live
   text (the Major Order title) need `min-width: 0`.
-- **Armory detection**: the Armory never computes bans. `armoryRules(state, diver)` lists the
-  active misfortune/pact rules and `itemBannedInArmory(state, diver, item)` returns why a
-  stratagem is greyed; both wrap `stratagemBanReason` in `shared/engine/pacts.ts` — the same
-  predicate `legalStratagemCount` / `hasLoadout` use, so the screen and the floor can never
-  disagree.
+- **Armory detection**: the Armory never computes bans.
+  `armoryRules(state, diver, previewPactIds?)` lists the active misfortune/pact rules and
+  `itemBannedInArmory(state, diver, item, previewPactIds?)` returns why a stratagem is greyed; both
+  wrap `stratagemBanReason` in `shared/engine/pacts.ts` — the same predicate `legalStratagemCount` /
+  `hasLoadout` use, so the screen and the floor can never disagree. The pact screen reports its
+  unsworn selection up as preview ids: the Kit ghost-greys what those pacts *would* ban — dashed
+  frames, a pulsing ghost overlay on the tile media, dashed reason labels, dashed
+  `Pact · if sworn` rule chips and preview-banned floor pips — while the count drops live, and the
+  preview clears the moment the hand is locked (sworn bounds show solid, never ghosted). Preview
+  ids already sworn are deduped.
 - **Foundations kit**: a hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`) specimens
   the tokens/atoms so contributors can sanity-check the language. It is dev reference, not a
   product surface.

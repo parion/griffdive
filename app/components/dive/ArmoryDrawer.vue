@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import type { DiveState } from '~~/shared/engine/types'
 
-defineProps<{ open: boolean, state: DiveState, selfId: string | null }>()
+withDefaults(defineProps<{
+  open: boolean
+  state: DiveState
+  selfId: string | null
+  previewPactIds?: string[]
+}>(), { previewPactIds: () => [] })
 defineEmits<{ 'update:open': [value: boolean] }>()
 </script>
 
@@ -15,6 +20,7 @@ defineEmits<{ 'update:open': [value: boolean] }>()
     <InventoryGrid
       :state="state"
       :self-id="selfId"
+      :preview-pact-ids="previewPactIds"
     />
   </AppDrawer>
 </template>

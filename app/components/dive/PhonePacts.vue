@@ -30,6 +30,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   lock: [pactIds: string[]]
   pactRisk: [value: number]
+  preview: [pactIds: string[]]
 }>()
 
 const selection = ref<string[]>([])
@@ -46,7 +47,10 @@ const offer = computed(() =>
 
 watch(
   selection,
-  ids => emit('pactRisk', pactRiskTotal(ids, props.state.difficulty)),
+  (ids) => {
+    emit('pactRisk', pactRiskTotal(ids, props.state.difficulty))
+    emit('preview', ids)
+  },
   { immediate: true },
 )
 

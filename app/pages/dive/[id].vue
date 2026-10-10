@@ -59,8 +59,12 @@ const teamRisk = computed(() => state.value ? teamRiskOf(state.value) : 0)
 const riskBreakdown = computed(() =>
   state.value ? teamRiskBreakdown(state.value) : { misfortuneRisk: 0, strainRisk: 0, majorOrderRisk: 0, total: 0 })
 // While a diver is still picking pacts the phase reports its live selection
-// upward, so the shell's Valor rail previews the stake before the lock.
+// upward, so the shell's Valor rail previews the stake before the lock — and
+// the Kit can ghost-grey the items those unsworn pacts would ban.
 const livePactRisk = ref(0)
+const pactPreview = ref<string[]>([])
+const pactPreviewIds = computed(() =>
+  state.value?.phase === 'pacts' && !self.value?.pactsLocked ? pactPreview.value : [])
 const pactRisk = computed(() => {
   const diver = self.value
   if (!diver) {
@@ -486,6 +490,7 @@ function launchCrusade(variant: CrusadeVariant): void {
       @reroll="reroll"
       @lock-pacts="lockPacts"
       @pact-risk="livePactRisk = $event"
+      @preview="pactPreview = $event"
       @report="report"
       @fail-pact="failPact"
       @fail-directive="failDirective"
@@ -673,6 +678,7 @@ function launchCrusade(variant: CrusadeVariant): void {
             :can-control="canControl"
             @lock="lockPacts"
             @pact-risk="livePactRisk = $event"
+            @preview="pactPreview = $event"
             @open-kit="armoryOpen = true"
           />
 
@@ -724,6 +730,7 @@ function launchCrusade(variant: CrusadeVariant): void {
         v-model:open="armoryOpen"
         :state="state"
         :self-id="selfId"
+        :preview-pact-ids="pactPreviewIds"
       />
     </DiveFrame>
     <p
@@ -740,6 +747,7 @@ function launchCrusade(variant: CrusadeVariant): void {
       v-model:open="armoryOpen"
       :state="state"
       :self-id="selfId"
+      :preview-pact-ids="pactPreviewIds"
     />
 
     <BriefingOverlay
