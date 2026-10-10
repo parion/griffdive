@@ -1104,47 +1104,13 @@ onBeforeUnmount(() => {
           </div><span class="cap"><b>Star radio</b> · {{ stars }}/5</span>
         </div>
         <div class="cell">
-          <div
-            role="group"
-            :aria-label="`Common samples, ${samples}`"
-            style="display: flex; align-items: center; gap: 4px"
-          >
-            <button
-              class="ghost step"
-              aria-label="Remove a common sample"
-              :disabled="samples <= 0"
-              type="button"
-              @click="samples = Math.max(0, samples - 1)"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.4"
-                aria-hidden="true"
-              ><path d="M5 12h14" /></svg>
-            </button><span
-              class="disp"
-              style="width: 50px; text-align: center; font-size: 24px"
-            >{{ samples }}</span><button
-              class="ghost step"
-              aria-label="Add a common sample"
-              type="button"
-              @click="samples += 1"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.4"
-                aria-hidden="true"
-              ><path d="M5 12h14M12 5v14" /></svg>
-            </button>
-          </div><span class="cap"><b>−/+ stepper</b> · 44</span>
+          <SampleCanister
+            v-model="samples"
+            :max="40"
+            tone="common"
+            label="Common"
+            icon="/images/svgs/Common_Sample_Icon.svg"
+          /><span class="cap"><b>Tube slider</b> · {{ samples }}/40</span>
         </div>
       </div>
     </section>

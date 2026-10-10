@@ -847,8 +847,10 @@ app/
                    resolves on hover/focus/tap, click toggles),
                    ui/ (BrandMark — the Griffdive chevron mark, ItemCard, TierBadge, RiskPips — risk
                    dots, with a rolling back-and-forth state while a wheel draw reels,
-                   SampleCanister/SegmentedBar — the report's tinted sample jars and
-                   click-to-set time bar (touch scrubs: press and drag sets the value), HoldButton — the press-and-hold confirm,
+                   SampleCanister/SegmentedBar — the report's tinted sample tubes and
+                   click-to-set time bar (both scrub: press and drag sets the value; the
+                   tube's liquid level is the indicator and its editable number the keyboard
+                   path), HoldButton — the press-and-hold confirm,
                    ChangelogModal — GitHub deploy log shown from the alpha header chip, AppDrawer —
                    the themed right-hand Reka
                     Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer —
