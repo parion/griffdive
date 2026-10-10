@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { ALL_ITEMS } from '../data/catalog'
 import { PACTS, pactById } from '../data/pacts'
 import { RESERVE_STRATAGEMS, STRATAGEM_SLOTS_REQUIRED, conditionRiskAt, pactOptionsFor } from './config'
 import { startingItemIds } from './progression'
@@ -8,6 +9,7 @@ import {
   PACT_SUBSUMES,
   applyPactToggle,
   hasLegalLoadout,
+  stratagemBanReason,
   isPactSelectable,
   legalStratagemCount,
   pactConflictsWith,
@@ -131,6 +133,14 @@ describe('reserve and loadout legality', () => {
     // extras) clears it.
     expect(hasLegalLoadout('oopsAllAirstrikes', [], baseKit)).toBe(false)
     expect(hasLegalLoadout('oopsAllAirstrikes', [], startingItemIds('suicide', 'seaf'))).toBe(true)
+  })
+
+  it('limits Oops, All Airstrikes to stratagems — weapons, armor and boosters stay legal', () => {
+    const equipment = ALL_ITEMS.filter(item => item.type === 'equipment')
+    expect(equipment.length).toBeGreaterThan(0)
+    for (const item of equipment) {
+      expect(stratagemBanReason('oopsAllAirstrikes', [], item)).toBeNull()
+    }
   })
 
   it('keeps No Stratagems behavioral — four slots still equip', () => {
