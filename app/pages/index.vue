@@ -1209,9 +1209,11 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
 }
 
 .hero-copy { display: grid; gap: 0.55rem; min-width: 0; }
+/* Sized off the column, not the viewport: the wordmark is ~7em wide and
+   shares the hero with the ~13rem mark + padding. */
 .hero-word {
   margin: 0;
-  font-size: clamp(2.6rem, 8vw, 5rem);
+  font-size: clamp(2.6rem, calc((100cqi - 14rem) / 7.2), 5rem);
   color: var(--text);
 }
 .hero-rule {
@@ -1254,6 +1256,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
   gap: var(--gap-panel);
   align-items: stretch;
 }
+.bridge-main { container: bridge-main / inline-size; }
 .bridge-main,
 .bridge-deploy {
   display: grid;
@@ -1501,6 +1504,18 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
   text-align: center;
 }
 .empty-mark { color: var(--ghost-ink); }
+
+/* A narrow console column (landscape tablets, small laptops): tighten the
+   ladder and loop type, and let each rung claim at least its longest word so
+   "Challenging" widens its own rung instead of running into the next one. */
+@container bridge-main (max-width: 700px) {
+  .rung-item { min-width: min-content; }
+  .rung-name { font-size: 9px; letter-spacing: 0.04em; }
+  .loop-face,
+  .loop-lit { padding: 0 0.25rem; }
+  .loop-label { font-size: 10px; letter-spacing: 0.06em; }
+  .loop-cap { letter-spacing: 0.04em; }
+}
 
 /* Below the fixed desktop shell the Bridge flows and the page scrolls again. */
 @media (max-width: 1020px) {

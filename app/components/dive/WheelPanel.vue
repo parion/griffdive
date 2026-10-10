@@ -157,6 +157,28 @@ watch(
 )
 onBeforeUnmount(() => clearTimeout(spinTimer))
 
+// When the panel is too narrow to sit the cards beside the wheel they stack
+// under it, below the fold on landscape tablets: once a draw lands, bring the
+// directive card (and its Lock it in) into view. `nearest` is a no-op when
+// it is already visible, so the side-by-side layout never moves.
+const resultEl = ref<HTMLElement | null>(null)
+watch(
+  () => [props.state.wheel?.seed, spinning.value] as const,
+  ([seed, spin]) => {
+    if (seed === undefined || spin) {
+      return
+    }
+    void nextTick(() => {
+      const card = resultEl.value?.firstElementChild
+      if (!card) {
+        return
+      }
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      card.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' })
+    })
+  },
+)
+
 // A squad-binding rule every diver must be able to field: a drawn misfortune
 // that strands a diver below HD2's four required stratagems can't be accepted.
 // The reducer refuses it too — this is the legible half.
@@ -430,6 +452,7 @@ function rerollLabel(
         </template>
         <div
           v-else
+          ref="resultEl"
           class="wheel-result"
         >
           <Motion
@@ -854,7 +877,7 @@ function rerollLabel(
 </template>
 
 <style scoped>
-.wheel-panel { gap: var(--gap-panel); }
+.wheel-panel { gap: var(--gap-panel); container: wheel-panel / inline-size; }
 .wheel-head { align-items: flex-end; }
 .wheel-head-l { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
 .wheel-title { margin: 0; font-size: var(--fs-h1); color: var(--text); }
@@ -903,17 +926,25 @@ function rerollLabel(
 
 .wheel-body {
   display: grid;
-  grid-template-columns: minmax(280px, 468px) minmax(0, 1fr);
+  /* The decision cards keep a readable floor; the wheel takes what's left. */
+  grid-template-columns: minmax(0, 468px) minmax(280px, 1fr);
   gap: clamp(14px, 2vw, 26px);
   align-items: start;
   min-height: 0;
 }
 .wheel-side { display: flex; flex-direction: column; gap: var(--gap-panel); min-width: 0; }
-@media (max-width: 1020px) {
-  .wheel-body { grid-template-columns: minmax(0, 1fr); }
-}
 
 .wheel-result { display: grid; gap: 0.6rem; grid-template-columns: 1fr; }
+
+/* Too narrow for the wheel and the cards side by side: stack them, and set
+   the directive and front cards next to each other while they still fit. */
+@container wheel-panel (max-width: 620px) {
+  .wheel-body { grid-template-columns: minmax(0, 1fr); }
+  .wheel-body :deep(.wheel-wrap) { width: min(100%, 340px); }
+}
+@container wheel-panel (min-width: 480px) and (max-width: 620px) {
+  .wheel-result { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
 
 .wheel-card {
   position: relative;

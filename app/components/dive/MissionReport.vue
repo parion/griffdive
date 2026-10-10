@@ -446,7 +446,7 @@ function submit(): void {
 </template>
 
 <style scoped>
-.report { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+.report { display: flex; flex-direction: column; gap: 16px; min-height: 0; container: report / inline-size; }
 
 /* ---- Banner ---- */
 .report-banner {
@@ -492,7 +492,7 @@ function submit(): void {
 }
 .banner-title {
   margin: 0;
-  font-size: clamp(28px, 3.4vw, 44px);
+  font-size: clamp(24px, 5.4cqi, 44px);
   white-space: nowrap;
   color: var(--gold);
   animation: slam 0.5s var(--ease-out) both;
@@ -675,8 +675,10 @@ function submit(): void {
 .failure-note { margin: 0; color: var(--muted); }
 .report-actions { align-items: center; }
 
-@media (max-width: 1020px) {
+@container report (max-width: 720px) {
   .report-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@container report (max-width: 480px) {
   .sample-grid { grid-template-columns: minmax(0, 1fr); }
   .sample-slot + .sample-slot {
     padding-left: 0;

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// The phone terminal: one fixed 390-ish column, no page scroll. Three fixed
-// bands (header · crusade · squad) frame a scrolling body, and an optional
-// bottom sheet pins the phase's Valor + CTA above the fold.
+// The phone terminal: one fixed column, no page scroll. Three fixed bands
+// (header · crusade · squad) frame a scrolling body, and an optional bottom
+// sheet pins the phase's Valor + CTA above the fold. Portrait tablets share
+// the shell; the column widens for them instead of floating in empty gutters.
 </script>
 
 <template>
@@ -24,7 +25,7 @@
 
 <style scoped>
 .phone-shell {
-  width: min(100vw, 430px);
+  width: min(100vw, 720px);
   height: 100dvh;
   margin-inline: auto;
   display: flex;

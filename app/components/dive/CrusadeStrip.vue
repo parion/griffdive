@@ -133,6 +133,7 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
   background: var(--rail);
   min-height: 0;
   overflow-x: auto;
+  container: strip / inline-size;
 }
 .rung {
   position: relative;
@@ -175,6 +176,12 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
   letter-spacing: 0.12em;
   color: var(--text);
   white-space: nowrap;
+}
+
+/* Too narrow for every name: the off-rungs keep number + tier (the name stays
+   in their accessible label) so the current rung reads in full. */
+@container strip (max-width: 1100px) {
+  .rung:not([data-state='current']) .name { display: none; }
 }
 
 [data-state='cleared'] { color: var(--khaki); border-color: var(--line-3); }

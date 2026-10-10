@@ -755,9 +755,10 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   min-height: 64px;
-  padding: 0 10px 0 16px;
+  padding: 8px 10px 8px 16px;
   border: 1px solid var(--line-2);
   background: var(--panel);
 }

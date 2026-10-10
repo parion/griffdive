@@ -429,6 +429,7 @@ function cancelReport(): void {
   position: relative;
   overflow: hidden;
   gap: 0.85rem;
+  container: briefing / inline-size;
 }
 
 .briefing-head { margin: 0; }
@@ -625,7 +626,7 @@ function cancelReport(): void {
   color: var(--gold);
 }
 
-@media (max-width: 620px) {
+@container briefing (max-width: 560px) {
   .status { grid-template-columns: 40px 1fr auto; }
   .front-cell { grid-column: 2 / 4; border-top: 1px solid var(--line-1); }
   .outcome-buttons { grid-template-columns: 1fr; }
@@ -764,7 +765,7 @@ function cancelReport(): void {
 .anyvoid-line { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; color: var(--red); }
 .anyvoid-opt { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--text); }
 
-@media (max-width: 1020px) {
+@container briefing (max-width: 760px) {
   .mission-card { grid-template-columns: 100px minmax(0, 1fr); }
   .mc-rule { grid-column: 1 / -1; border-left: 0; border-top: 1px dashed color-mix(in srgb, var(--red) 30%, transparent); }
 }
