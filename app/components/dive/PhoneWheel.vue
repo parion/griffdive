@@ -88,7 +88,17 @@ const showMo = computed(() => !props.state.frontId)
 // as the bottom sections swap in. Matches WheelOfMisfortune's rotor.
 const SPIN_MS = 2800
 const drawing = ref(false)
+const drawer = ref<HTMLElement | null>(null)
+const sheet = ref<HTMLElement | null>(null)
 let spinTimer: ReturnType<typeof setTimeout> | undefined
+
+// Once the draw lands, the drawer opens so the calls it asks for are in reach.
+async function expandDrawer(behavior: ScrollBehavior) {
+  await nextTick()
+  if (drawer.value && sheet.value) {
+    drawer.value.scrollTo({ top: sheet.value.offsetTop, behavior })
+  }
+}
 watch(
   () => props.state.wheel?.seed,
   (seed, previous) => {
@@ -99,13 +109,17 @@ watch(
     }
     const reduced = import.meta.client
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    // A fresh draw collapses the drawer so the spin plays out in view.
+    drawer.value?.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' })
     if (reduced) {
       drawing.value = false
+      void expandDrawer('auto')
       return
     }
     drawing.value = true
     spinTimer = setTimeout(() => {
       drawing.value = false
+      void expandDrawer('smooth')
     }, SPIN_MS)
   },
 )
@@ -118,7 +132,10 @@ function acceptDisabled(): boolean {
 
 <template>
   <div class="phone-wheel">
-    <div class="body">
+    <div
+      ref="drawer"
+      class="body"
+    >
       <div class="stage">
         <div
           class="sweep"
@@ -180,7 +197,14 @@ function acceptDisabled(): boolean {
         />
       </div>
 
-      <div class="cards">
+      <div
+        ref="sheet"
+        class="cards"
+      >
+        <span
+          class="grabber"
+          aria-hidden="true"
+        />
         <template v-if="showMo">
           <MajorOrderPicker
             :state="state"
@@ -460,13 +484,27 @@ function acceptDisabled(): boolean {
 
 <style scoped>
 .phone-wheel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-/* The wheel is fixed at the top of the phase; the decision cards sit below and
-   tuck up over its lower rim, scrolling within their own sheet — never the
-   page. The wheel stays visible above so the spin hub is always reachable. */
-.body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.stage {
+/* The phase body is a drawer: the wheel sticks to the top while the decision
+   sheet, tucked over its lower rim, rides up over it as the diver scrolls —
+   so a tall directive + strain stack gets the whole phase, not the sliver
+   left under the wheel. The page itself never scrolls. */
+.body {
   position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: y proximity;
+}
+.stage {
+  position: sticky;
+  top: 0;
   flex: 0 0 auto;
+  scroll-snap-align: start;
   display: grid;
   place-items: start center;
   padding: 8px 12px 0;
@@ -521,19 +559,26 @@ function acceptDisabled(): boolean {
 .cards {
   position: relative;
   z-index: 1;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 1 0 auto;
   margin-top: -22px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
+  scroll-snap-align: start;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px;
+  padding: 18px 12px 12px;
   background: var(--rail);
   border-top: 1px solid var(--line-3);
   box-shadow: 0 -16px 28px rgba(11, 12, 9, 0.72);
+}
+
+.grabber {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  width: 40px;
+  height: 3px;
+  transform: translateX(-50%);
+  background: var(--line-4);
 }
 
 .drawing {

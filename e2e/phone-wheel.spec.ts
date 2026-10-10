@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
 import { dismissWarbondIntro } from './helpers'
 
-// The phone wheel stays fixed; the directive/strain decision cards are a sheet
-// that tucks over its lower rim and scrolls internally — never the page.
-test('phone wheel: decision cards scroll over the wheel', async ({ browser }) => {
+// The phone wheel phase is a drawer: the wheel sticks to the top and the
+// directive/strain sheet scrolls up over it — the page itself never scrolls.
+test('phone wheel: decision sheet expands over the wheel', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
   const page = await context.newPage()
 
@@ -21,31 +21,40 @@ test('phone wheel: decision cards scroll over the wheel', async ({ browser }) =>
   await page.locator('.hub').click()
   await expect(page.locator('.phone-wheel .card').first()).toBeVisible()
 
-  // The wheel stays put: the page itself never scrolls.
   const pageScroll = await page.locator('.phone-scroll').evaluate(el => el.scrollHeight <= el.clientHeight + 1)
   expect(pageScroll).toBe(true)
 
-  const sheet = page.locator('.phone-wheel .cards')
-  await expect(sheet).toBeVisible()
-  expect(await sheet.evaluate(el => getComputedStyle(el).overflowY)).toBe('auto')
+  const drawer = page.locator('.phone-wheel .body')
+  expect(await drawer.evaluate(el => getComputedStyle(el).overflowY)).toBe('auto')
 
-  // The cards need more room than the sheet: it scrolls internally.
-  const before = await sheet.evaluate(el => ({ client: el.clientHeight, content: el.scrollHeight }))
-  expect(before.content).toBeGreaterThan(before.client)
+  const geometry = () => page.evaluate(() => ({
+    wheel: document.querySelector('.phone-wheel .wheel-wrap')!.getBoundingClientRect().toJSON() as DOMRect,
+    sheetTop: document.querySelector('.phone-wheel .cards')!.getBoundingClientRect().top,
+  }))
 
-  // The sheet's top edge overlaps the wheel, and the wheel is still on screen.
-  const overlaps = await sheet.evaluate((el) => {
-    const wheel = document.querySelector('.phone-wheel .wheel-wrap')!.getBoundingClientRect()
-    const cardTop = el.getBoundingClientRect().top
-    return cardTop < wheel.bottom && wheel.bottom > 0
+  // Once the spin lands the drawer opens on its own.
+  await expect.poll(() => drawer.evaluate(el => el.scrollTop)).toBeGreaterThan(0)
+  await drawer.evaluate((el) => {
+    el.scrollTop = 0
   })
-  expect(overlaps).toBe(true)
 
-  // Scrolling brings the strain card (whole-operation faction commitment) in.
-  await sheet.evaluate((el) => {
+  // Collapsed: the sheet tucks over the wheel's lower rim, the wheel on screen.
+  const collapsed = await geometry()
+  expect(collapsed.sheetTop).toBeLessThan(collapsed.wheel.bottom)
+  expect(collapsed.sheetTop).toBeGreaterThan(collapsed.wheel.top)
+
+  // The cards need more room than the collapsed sheet: the drawer scrolls.
+  expect(await drawer.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true)
+
+  // Expanded: the wheel holds its place and the sheet rides up over it,
+  // bringing the strain card (whole-operation faction commitment) in.
+  await drawer.evaluate((el) => {
     el.scrollTop = el.scrollHeight
   })
   await expect(page.locator('.phone-wheel .strain-card')).toBeInViewport()
+  const expanded = await geometry()
+  expect(expanded.wheel.top).toBeCloseTo(collapsed.wheel.top, 0)
+  expect(expanded.sheetTop).toBeLessThan(collapsed.sheetTop - 100)
 
   await context.close()
 })
