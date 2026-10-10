@@ -381,7 +381,7 @@ function acceptDisabled(): boolean {
                 class="mo-icon"
               >
               <span class="mo-name">{{ moFronts.map(f => f.displayName).join(' / ') }}</span>
-              <span class="disp mo-risk">+{{ MAJOR_ORDER_RISK }} ×{{ opLength }}</span>
+              <span class="disp mo-risk">+{{ MAJOR_ORDER_RISK }}</span>
             </div>
           </div>
         </template>
