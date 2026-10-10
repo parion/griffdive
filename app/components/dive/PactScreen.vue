@@ -33,6 +33,7 @@ const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const emit = defineEmits<{
   lock: [pactIds: string[]]
   pactRisk: [value: number]
+  openKit: []
 }>()
 
 const selection = ref<string[]>([])
@@ -342,6 +343,16 @@ const opLabel = computed(() =>
         <span v-if="misfortune">— {{ misfortune.name }} ALREADY BANS IT</span>
       </div>
 
+      <button
+        class="btn ghost tiny kit-link"
+        type="button"
+        aria-haspopup="dialog"
+        @click="emit('openKit')"
+      >
+        <IconKit class="kit-link-icon" />
+        Check your kit
+      </button>
+
       <div
         class="floor-note"
         role="note"
@@ -364,7 +375,7 @@ const opLabel = computed(() =>
     <div class="pact-cta">
       <button
         v-if="!locked"
-        class="hold cut"
+        class="hold cut cta-sweep"
         type="button"
         :disabled="!canLock"
         aria-label="Lock in &amp; dive — press and hold to lock"
@@ -540,8 +551,15 @@ const opLabel = computed(() =>
 .filter-count { color: var(--text); }
 .filter-name { color: var(--khaki); text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 2px; }
 .filter-sep { color: var(--muted); }
-.floor-note {
+.kit-link {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+}
+.kit-link-icon { width: 15px; height: 15px; }
+.floor-note {
   border: 1px solid color-mix(in srgb, var(--teal) 45%, transparent);
   background: color-mix(in srgb, var(--teal) 5%, transparent);
   color: var(--teal);

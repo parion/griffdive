@@ -12,6 +12,7 @@ import {
   OPTIONS_LOST_PER_FAILED_DIRECTIVE,
   OPTIONS_LOST_PER_FAILED_PACT,
   SAMPLE_SHOP_STREAM,
+  SQUAD_SIZE_MAX,
   STRAIN_RISK,
   baseTierFor,
   bonusIntervalFor,
@@ -122,7 +123,7 @@ export function misfortuneStrandedDivers(state: DiveState): DiverState[] {
 // is what keeps the operation's Valor potential intact.
 export function teamRiskOf(state: DiveState): number {
   const misfortuneRisk = state.misfortuneAccepted && !state.misfortuneFailed
-    ? directiveValorAt(currentMisfortune(state)?.id ?? '', state.difficulty)
+    ? directiveValorAt(currentMisfortune(state)?.id ?? '', state.difficulty, state.divers.length)
     : 0
   const strainRisk = state.strainAccepted
     ? STRAIN_RISK[state.strainId ?? ''] ?? 0
@@ -142,7 +143,7 @@ export interface TeamRiskBreakdown {
 // same acceptance flags, so the screen and the floor can never disagree.
 export function teamRiskBreakdown(state: DiveState): TeamRiskBreakdown {
   const misfortuneRisk = state.misfortuneAccepted && !state.misfortuneFailed
-    ? directiveValorAt(currentMisfortune(state)?.id ?? '', state.difficulty)
+    ? directiveValorAt(currentMisfortune(state)?.id ?? '', state.difficulty, state.divers.length)
     : 0
   const strainRisk = state.strainAccepted
     ? STRAIN_RISK[state.strainId ?? ''] ?? 0
@@ -504,10 +505,10 @@ export function ceilingRange(difficulty: number, teamRisk: number, pactRisk: num
   }
 }
 
-export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): CeilingRange {
+export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0, squadSize = SQUAD_SIZE_MAX): CeilingRange {
   const misfortuneMax = Math.max(
     0,
-    ...eligibleMisfortunes().map(misfortune => directiveValorAt(misfortune.id, difficulty)),
+    ...eligibleMisfortunes().map(misfortune => directiveValorAt(misfortune.id, difficulty, squadSize)),
   )
   const strainMax = Math.max(
     0,
@@ -517,14 +518,14 @@ export function ceilingRangeForDifficulty(difficulty: number, pactRisk = 0): Cei
 }
 
 // The most Valor this difficulty can actually stack — the strongest eligible
-// misfortune, the strongest eligible strain and the top pacts the offer can
-// deal. The meter itself is scaled to VALOR_METER_MAX (11), so anything this
-// returns above that is potential overflow Luck (AGENTS.md: Reward math).
-// Presentation only; it never gates a roll.
-export function maxValorFor(difficulty: number): number {
+// misfortune (weighted by squad size), the strongest eligible strain and the
+// top pacts the offer can deal. The meter itself is scaled to VALOR_METER_MAX
+// (11), so anything this returns above that is potential overflow Luck
+// (AGENTS.md: Reward math). Presentation only; it never gates a roll.
+export function maxValorFor(difficulty: number, squadSize = SQUAD_SIZE_MAX): number {
   const misfortuneMax = Math.max(
     0,
-    ...eligibleMisfortunes().map(misfortune => directiveValorAt(misfortune.id, difficulty)),
+    ...eligibleMisfortunes().map(misfortune => directiveValorAt(misfortune.id, difficulty, squadSize)),
   )
   const strainMax = Math.max(
     0,
@@ -594,6 +595,35 @@ export function allDiversPicked(state: DiveState): boolean {
   )
 }
 
+// The divers whose own move still gates the squad: an unlocked pact hand, or an
+// open reward draft. Host-only beats gate on the host instead, so they report
+// nobody here.
+export function awaitingDiverIds(state: DiveState): string[] {
+  if (state.phase === 'pacts') {
+    return state.divers.filter(diver => !diver.pactsLocked).map(diver => diver.id)
+  }
+  if (state.phase === 'rewards') {
+    return state.divers
+      .filter(diver => diver.pickedOptionId === null && !diver.rewardBanned && !diver.skipsCurrentDraft)
+      .map(diver => diver.id)
+  }
+  return []
+}
+
+// Whoever the squad is waiting on right now: the divers with an open pact hand
+// or reward draft, otherwise the host for host-run beats. Nobody while the
+// squad is in game or the crusade is over.
+export function actingDiverIds(state: DiveState): string[] {
+  if (state.phase === 'diving' || state.phase === 'complete') {
+    return []
+  }
+  const awaiting = awaitingDiverIds(state)
+  if (awaiting.length > 0) {
+    return awaiting
+  }
+  return state.hostId ? [state.hostId] : []
+}
+
 // Legacy caches a mid-crusade joiner can claim instead of their promotion.
 export function availableCaches(state: DiveState): { ownerId: string, itemIds: string[] }[] {
   return Object.entries(state.legacyCaches).map(([ownerId, itemIds]) => ({
@@ -628,5 +658,6 @@ export function pactOfferFor(state: DiveState, diverId: string): Pact[] {
     deriveSeed(state.wheel.seed, hashString(diverId)),
     active?.id ?? null,
     state.difficulty,
+    state.divers.length,
   )
 }

@@ -383,32 +383,36 @@ function submit(): void {
           </div>
         </section>
 
-        <button
-          class="btn primary cut file-cta"
-          type="button"
-          @click="submit"
-        >
-          <span class="file-copy">
-            <span class="disp">File report</span>
-            <span class="file-sub">MISSION COMPLETE · {{ stars }}/{{ maxStars }} STARS</span>
-          </span>
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.4"
-            aria-hidden="true"
+        <!-- Cancel sits beside the CTA: on its own row it pushed the fixed dive
+             terminal into scroll at 1440×900. -->
+        <div class="file-row">
+          <button
+            class="btn ghost tiny cancel"
+            type="button"
+            @click="emit('cancel')"
           >
-            <path d="M5 12h14M13 6l6 6-6 6" />
-          </svg>
-        </button>
-        <button
-          class="btn ghost tiny cancel"
-          type="button"
-          @click="emit('cancel')"
-        >
-          Cancel
-        </button>
+            Cancel
+          </button>
+          <button
+            class="btn primary cut file-cta cta-sweep"
+            type="button"
+            @click="submit"
+          >
+            <span class="file-copy">
+              <span class="disp">File report</span>
+              <span class="file-sub">{{ stars }}/{{ maxStars }} STARS</span>
+            </span>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </button>
+        </div>
       </aside>
     </div>
 
@@ -651,13 +655,16 @@ function submit(): void {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 22px;
+  gap: 10px;
+  padding: 0 16px 0 20px;
 }
 .file-copy { display: flex; flex-direction: column; gap: 4px; text-align: left; }
-.file-copy .disp { font-size: 1.2rem; }
-.file-sub { font-size: 10px; font-weight: 700; letter-spacing: 0.2em; }
+.file-copy .disp { font-size: 1.2rem; white-space: nowrap; }
+.file-sub { font-size: 10px; font-weight: 700; letter-spacing: 0.2em; white-space: nowrap; }
 .file-cta svg { width: 22px; height: 22px; }
-.cancel { align-self: flex-end; }
+.file-row { flex-shrink: 0; display: flex; align-items: stretch; gap: 8px; }
+.file-row .file-cta { flex: 1 1 auto; min-width: 0; }
+.cancel { flex-shrink: 0; padding: 0 12px; }
 
 .report-failure { display: flex; flex-direction: column; gap: 12px; }
 .failure-note { margin: 0; color: var(--muted); }

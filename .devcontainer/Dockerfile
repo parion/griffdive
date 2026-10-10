@@ -1,51 +1,40 @@
 # syntax=docker/dockerfile:1
 
-# Griffdive dev container image. It stays on the official Paseo image (node:22-bookworm-slim,
-# non-root `paseo` user, uid 1000) because the Paseo daemon remains a supported fallback, but
-# the primary remote path is Orca over SSH: openssh-server makes this container an SSH target
-# and post-start.sh owns service startup. OpenCode (v1 as `opencode`, v2 as `opencode2`) and
-# Claude Code are the agent CLIs.
+# Griffdive dev container. Stays on the official Paseo image (node:22-bookworm-slim, non-root
+# `paseo` uid 1000) so the Paseo daemon runs as designed; post-start.sh owns service startup.
+# Agent CLIs: opencode (v1), opencode2 (v2), claude.
 FROM ghcr.io/getpaseo/paseo:latest
 
 USER root
 
-# sudo for the dev-container user. openssh-server turns the container into an SSH
-# target for Orca (https://www.onorca.dev/docs/ssh — Orca is the client, we are the
-# host), with openssh-sftp-server backing Orca's file transfers. build-essential +
-# python3 are what Orca's remote relay compiles node-pty with: without them Orca
-# connects but remote terminals stay dead. policy-rc.d stops the package postinst
-# from launching sshd at build time — post-start.sh owns service startup.
+# sudo for the dev-container user; build-essential + python3 are the safety net for any
+# dependency that needs to compile natively.
 RUN printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d \
     && chmod +x /usr/sbin/policy-rc.d \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-        sudo openssh-server openssh-sftp-server build-essential python3 \
+        sudo build-essential python3 \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /usr/sbin/policy-rc.d \
     && echo 'paseo ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/paseo \
     && chmod 440 /etc/sudoers.d/paseo
 
-# Host keys belong to the container instance, not a shared image layer; ssh-setup.sh
-# generates them into the Orca volume and symlinks them into /etc/ssh.
-RUN rm -f /etc/ssh/ssh_host_*
-
-# pnpm for the project (packageManager pins the version); OpenCode and Claude Code as
-# agent CLIs.
+# pnpm for the project (packageManager pins the version); OpenCode v1/v2 as the npm agent
+# CLIs. The pins are deliberate: an unpinned `npm install -g` only re-resolves when this
+# layer rebuilds, so it silently freezes rather than upgrading. Claude Code is NOT installed
+# here — npm would make it root-owned, which is what broke `claude upgrade`; it installs
+# natively into the home volume at runtime (see post-start.sh).
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable \
     && corepack prepare pnpm@11.18.0 --activate \
-    && npm install -g opencode-ai @anthropic-ai/claude-code @opencode/cli \
+    && npm install -g opencode-ai@1.18.33 @opencode/cli@2.0.20 \
     && npm cache clean --force
 
-# opencode-ai (v1) and @opencode/cli (v2) both declare the `opencode` bin name, so npm
-# points every shim it creates at whichever of the two it linked last. Pin them
-# explicitly instead: v1 keeps `opencode`, v2 is reachable only as `opencode2`. v2's
-# entry point is this launcher rather than npm's symlink, because it redirects v2's XDG
-# roots into the persisted volume below — OpenCode shares config/data/cache/state
-# directories across versions, and v2 must not read v1's config or session database.
-# It lands in lib and is linked from bin afterwards: COPYing straight onto /usr/local/
-# bin/opencode2, which npm just created as a symlink to v2's real binary, would write
-# through the link and overwrite that binary.
+# opencode-ai (v1) and @opencode/cli (v2) both declare an `opencode` bin, so npm points both
+# shims at whichever linked last — pin them: v1 keeps `opencode`, v2 is `opencode2`. v2 gets
+# this launcher instead of npm's symlink (it redirects v2's XDG roots into the persisted
+# volume; OpenCode shares those dirs across versions). Installed to lib/ then linked, because
+# COPYing onto npm's bin/opencode2 symlink would write through it and clobber v2's binary.
 COPY opencode2.sh /usr/local/lib/opencode2-launch.sh
 RUN chmod 0755 /usr/local/lib/opencode2-launch.sh \
     && rm -f /usr/local/bin/opencode2 \
@@ -54,20 +43,24 @@ RUN chmod 0755 /usr/local/lib/opencode2-launch.sh \
     && test -x /usr/local/lib/node_modules/@opencode/cli/bin/opencode.exe \
     && readlink -f /usr/local/bin/opencode | grep -q opencode-ai
 
+# Claude Code installs natively into ~/.local/bin (inside the home volume), so it
+# self-updates in place and survives rebuilds; post-start.sh installs the binary, since the
+# volume only mounts at runtime. The link sits in /usr/local/bin, which is on every shell's
+# PATH. The updater classifies by resolved path, so upgrading through this link writes into
+# the volume.
+RUN ln -sfn /home/paseo/.local/bin/claude /usr/local/bin/claude
+
 # The workspace is a bind mount from the host; trust it for git operations.
 RUN git config --system --add safe.directory /workspace
 
-# Playwright system dependencies for the E2E suite (pinned to the project's
-# @playwright/test version); baked into the image so rebuilds don't re-apt them
-# through post-create.sh and every restart/rebuild can run pnpm test:e2e.
+# Playwright system deps for the E2E suite, pinned to the project's @playwright/test version
+# and baked in so rebuilds don't re-apt them.
 RUN npx -y playwright@1.62.1 install-deps chromium
 
-# Build-time tooling (npm/corepack/opencode/claude, the npx above) runs as root with
-# HOME pointed at /home/paseo, so it leaves root-owned caches behind — `_cacache` and
-# `_npx` under /home/paseo/.npm. This MUST stay after the last root RUN: reclaiming
-# the home directory earlier let the npx above re-create root-owned files, which the
-# paseo user then could not write, and Orca's remote relay install died with EACCES
-# on /home/paseo/.npm/_cacache.
+# MUST stay the last root RUN: the tooling above runs as root with HOME=/home/paseo and
+# leaves root-owned npm caches (`_cacache`, `_npx`) that the paseo user cannot write —
+# reclaiming earlier let the npx step re-create them, and builds then died with EACCES.
+# post-start.sh also self-heals legacy ownership.
 RUN chown -R paseo:paseo /home/paseo
 
 USER paseo

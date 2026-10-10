@@ -475,7 +475,7 @@ function forfeit(ownerId: string, itemId: string): void {
         <div class="main">
           <header class="armory-head">
             <div class="head-copy">
-              <span class="lbl">Armory · personal inventory · {{ selectedEntry?.count ?? 0 }}</span>
+              <span class="lbl">Kit · personal inventory · {{ selectedEntry?.count ?? 0 }}</span>
               <h1 class="disp armory-title">
                 {{ selectedEntry?.title ?? 'Diver kit' }}
               </h1>
@@ -791,7 +791,7 @@ function forfeit(ownerId: string, itemId: string): void {
 
       <div
         class="keybar"
-        aria-label="Armory key"
+        aria-label="Kit key"
       >
         <span class="lbl">Tier</span>
         <span class="key-tiers">

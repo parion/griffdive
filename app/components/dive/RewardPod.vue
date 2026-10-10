@@ -23,7 +23,10 @@ const props = withDefaults(defineProps<{
   selected?: boolean
   // Resolved overlay stamped over the landed card: 'Banked' or 'Banned'.
   stamp?: string | null
-}>(), { lead: false, banMode: false, bannable: true, selected: false, stamp: null })
+  // Landing order: the draft drops its best pod last so the reveal builds.
+  // Defaults to the cabinet position.
+  revealRank?: number
+}>(), { lead: false, banMode: false, bannable: true, selected: false, stamp: null, revealRank: undefined })
 
 const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
@@ -49,6 +52,10 @@ let timer: ReturnType<typeof setTimeout> | undefined
 
 const DROP = 620
 const STAGGER = 180
+// The top tiers hold a beat longer before they land — Liberty's Cross longest.
+const SUSPENSE: Record<string, number> = { 'S': 220, 'S+': 520 }
+const delay = computed(() =>
+  (props.revealRank ?? props.index) * STAGGER + (SUSPENSE[winnerTier.value] ?? 0))
 
 onMounted(() => {
   if (instant.value) {
@@ -58,7 +65,7 @@ onMounted(() => {
   timer = setTimeout(() => {
     settled.value = true
     emit('settled')
-  }, DROP + props.index * STAGGER)
+  }, DROP + delay.value)
 })
 onBeforeUnmount(() => clearTimeout(timer))
 
@@ -88,7 +95,9 @@ function onHit(): void {
 <template>
   <div
     class="pod-slot"
-    :style="{ '--delay': `${index * STAGGER}ms`, '--tier': tierVar }"
+    :style="{ '--delay': `${delay}ms`, '--tier': tierVar }"
+    :data-tier="winnerTier"
+    :class="{ landed: settled, faded: dimmed || banMode }"
   >
     <div
       class="pod-placeholder cut-sm"
@@ -131,6 +140,11 @@ function onHit(): void {
       <span
         aria-hidden="true"
         class="pod-top"
+      />
+      <span
+        v-if="!banMode && !dimmed && ['A', 'S', 'S+'].includes(winnerTier)"
+        aria-hidden="true"
+        class="pod-flare"
       />
       <header class="pod-head">
         <span
@@ -203,6 +217,11 @@ function onHit(): void {
         @click="onHit"
       />
     </Motion>
+    <span
+      v-if="settled && !instant && option.choice"
+      aria-hidden="true"
+      class="pod-burst"
+    />
   </div>
 </template>
 
@@ -428,5 +447,76 @@ function onHit(): void {
 }
 @keyframes fade-out {
   to { opacity: 0; }
+}
+
+/* Tier emphasis ramps with rarity: A gets a quiet sheen, S a pulsing tier
+   glow, Liberty's Cross the full treatment — turning light rays, a fast sweep
+   and a landing burst. Filters only: Motion owns the card's transform. */
+.pod-flare {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+.pod-flare::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--tier) 40%, transparent) 50%, transparent 70%);
+  transform: translateX(-130%);
+  animation: ctaSweep var(--flare-speed, 4.6s) var(--ease-out) 0.3s infinite;
+}
+.pod-card[data-tier='A'] .pod-flare::after { opacity: 0.55; }
+.pod-card[data-tier='S'] {
+  --flare-speed: 2.8s;
+  animation: tier-land 0.9s ease-out both;
+}
+.pod-card[data-tier='S+'] {
+  --flare-speed: 1.8s;
+  border-color: var(--tier);
+  animation: tier-land 1.2s ease-out both;
+}
+/* The card is clip-pathed (which clips box-shadow), so the glow rides the
+   slot as a drop-shadow that follows the cut shape. */
+.pod-slot.landed:not(.faded)[data-tier='S'] { animation: tier-glow 2.4s ease-in-out 0.9s infinite; }
+.pod-slot.landed:not(.faded)[data-tier='S+'] { animation: tier-glow 1.6s ease-in-out 1.2s infinite; }
+.pod-card[data-tier='S+'] .pod-stage { overflow: hidden; }
+.pod-card[data-tier='S+'] .pod-stage::before {
+  content: '';
+  position: absolute;
+  inset: -60%;
+  z-index: 0;
+  pointer-events: none;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--tier) 24%, transparent) 0deg 7deg, transparent 7deg 22deg);
+  animation: spinSlow 16s linear infinite, rays-on 1.2s ease-out both;
+}
+.pod-card[data-tier='S+'] .pod-stage > * { position: relative; z-index: 1; }
+.pod-card.dimmed,
+.pod-card.banning { animation: none; }
+.pod-card.dimmed .pod-stage::before { display: none; }
+
+.pod-burst {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--tier) 70%, white) 0%, color-mix(in srgb, var(--tier) 35%, transparent) 30%, transparent 62%);
+  animation: flashOut 1s ease-out both;
+}
+
+@keyframes tier-land {
+  0% { filter: brightness(2.6) saturate(1.5); }
+  100% { filter: none; }
+}
+@keyframes tier-glow {
+  0%, 100% { filter: drop-shadow(0 0 0 transparent); }
+  50% { filter: drop-shadow(0 0 14px color-mix(in srgb, var(--tier) 70%, transparent)); }
+}
+@keyframes rays-on { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pod-flare,
+  .pod-burst { display: none; }
 }
 </style>

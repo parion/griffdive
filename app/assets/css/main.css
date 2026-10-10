@@ -749,6 +749,27 @@ input[type='radio'] { accent-color: var(--gold); width: 1rem; height: 1rem; }
 /* ============================================================================
    Reduced motion
    ========================================================================== */
+/* Forward-action sweep: a sheen that crosses whatever control moves the squad
+   on — the same cue as the pending directive card. --sweep tints it (the
+   reward screen passes tier colors); disabled controls never sweep. */
+.cta-sweep { position: relative; overflow: hidden; isolation: isolate; }
+.cta-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 28%, var(--sweep, rgba(255, 255, 255, 0.45)) 50%, transparent 72%);
+  transform: translateX(-130%);
+  animation: ctaSweep 2.8s var(--ease-out) infinite;
+}
+.cta-sweep:disabled::after,
+.cta-sweep[aria-disabled='true']::after { display: none; }
+@keyframes ctaSweep {
+  0% { transform: translateX(-130%); }
+  55%, 100% { transform: translateX(130%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -762,4 +783,8 @@ input[type='radio'] { accent-color: var(--gold); width: 1rem; height: 1rem; }
 
 @media (min-width: 700px) {
   .page { padding-top: 1.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta-sweep::after { display: none; }
 }

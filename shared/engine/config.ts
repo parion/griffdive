@@ -80,10 +80,22 @@ export const OPTIONS_LOST_PER_FAILED_PACT = 1
 export const OPTIONS_LOST_PER_FAILED_DIRECTIVE = 1
 
 // Team directives bind the whole squad (and share the failure), so a point of
-// their risk is worth more Valor than a point of personal pact risk. Applied
-// to the accepted per-mission team condition only — the operation-long strain
-// and Major Order keep their own fixed values (AGENTS.md: Reward math).
-export const TEAM_DIRECTIVE_VALOR_WEIGHT = 1.5
+// their risk is worth more Valor than a point of personal pact risk — and more
+// the more divers must hold the rule together. A solo diver's directive is
+// effectively personal, so it weighs like a pact. Applied to the accepted
+// per-mission team condition only — the operation-long strain and Major Order
+// keep their own fixed values (AGENTS.md: Reward math). Index = squad size.
+export const TEAM_DIRECTIVE_VALOR_WEIGHTS: Readonly<Record<number, number>> = {
+  1: 1,
+  2: 1.25,
+  3: 1.5,
+  4: 1.75,
+}
+
+export function directiveWeightFor(squadSize: number): number {
+  const clamped = Math.min(Math.max(Math.round(squadSize), 1), SQUAD_SIZE_MAX)
+  return TEAM_DIRECTIVE_VALOR_WEIGHTS[clamped] ?? 1
+}
 
 // Bonus honors: after every reward draft the squad spins one end-of-mission
 // stat contest; the host names the winner, who banks one flexible reward
@@ -343,7 +355,6 @@ export const CONDITION_RISK: Readonly<Record<string, ConditionRiskCurve>> = {
   fragileLiberty: { base: 1, slope: 0.15 },
   noOrbitals: { base: 1, slope: 0.2 },
   primaryOnly: { base: 2, slope: 0.15 },
-  stealth: { base: 2, slope: 0.15 },
   oopsAllAirstrikes: { base: 2, slope: 0.2 },
   zeroDeaths: { base: 2, slope: 0.35 },
   noReserves: { base: 2, slope: 0.35 },
@@ -351,21 +362,22 @@ export const CONDITION_RISK: Readonly<Record<string, ConditionRiskCurve>> = {
   meleeOnly: { base: 3, slope: 0.3 },
   pacifist: { base: 3, slope: 0.3 },
 
-  // Personal rules — pacts. A mix: some rise with altitude, some are flat, and
-  // a couple are inverse (the self-imposed burden matters less once the war
-  // itself is the threat).
+  // Personal rules — pacts. Most rise with altitude: losing healing, anti-tank
+  // or your life costs more where the enemy hits harder. Dead Weight stays flat
+  // — you die more often up high, but squadmates do too, so you wait less for
+  // the shared reinforce.
   packLight: { base: 1, slope: 0 },
   thirsty: { base: 1, slope: 0.15 },
   emptyPockets: { base: 1, slope: 0 },
-  antiTankAbstinent: { base: 1, slope: 0.2 },
+  antiTankAbstinent: { base: 1, slope: 0.45 },
   deadWeight: { base: 2, slope: 0 },
-  stimAbstinent: { base: 3, slope: -0.2 },
+  stimAbstinent: { base: 3, slope: 0.15 },
   loadoutLoyalist: { base: 2, slope: 0 },
-  primaryConcern: { base: 1, slope: 0.2 },
+  primaryConcern: { base: 1, slope: 0.3 },
   grounded: { base: 2, slope: 0 },
   shipSilent: { base: 2, slope: 0 },
   openField: { base: 2, slope: 0 },
-  untouchable: { base: 3, slope: -0.1 },
+  untouchable: { base: 2.5, slope: 0.25 },
 }
 
 // A condition's risk at a difficulty, clamped to the 1–5 scale. Unknown ids
@@ -378,11 +390,10 @@ export function conditionRiskAt(conditionId: string, difficulty: number): number
   return Math.min(5, Math.max(1, Math.round(curve.base + curve.slope * (difficulty - MIN_DIFFICULTY))))
 }
 
-// The Valor an accepted team directive stakes: its scaled risk, weighted above
-// a pact's because the whole squad carries it (and eats a failed directive
-// together).
-export function directiveValorAt(conditionId: string, difficulty: number): number {
-  return conditionRiskAt(conditionId, difficulty) * TEAM_DIRECTIVE_VALOR_WEIGHT
+// The Valor an accepted team directive stakes: its scaled risk, weighted by
+// how many divers must hold it (and eat a failed directive together).
+export function directiveValorAt(conditionId: string, difficulty: number, squadSize: number): number {
+  return conditionRiskAt(conditionId, difficulty) * directiveWeightFor(squadSize)
 }
 
 // Strains are an optional, operation-long commitment: the squad accepts or

@@ -327,7 +327,7 @@ describe('ACCEPT_STRAIN (optional operation-long team risk)', () => {
     const decided = strainDecided(42, true)
     expect(decided.phase).toBe('pacts')
     const strainRisk = STRAIN_RISK[decided.strainId!] ?? 0
-    const misfortuneRisk = directiveValorAt(decided.wheel!.misfortuneId, decided.difficulty)
+    const misfortuneRisk = directiveValorAt(decided.wheel!.misfortuneId, decided.difficulty, decided.divers.length)
     expect(strainRisk).toBeGreaterThan(0)
     expect(teamRiskOf(decided)).toBe(misfortuneRisk + strainRisk)
 
@@ -355,7 +355,7 @@ describe('ACCEPT_STRAIN (optional operation-long team risk)', () => {
     const declined = strainDecided(42, false)
     expect(declined.phase).toBe('pacts')
     expect(declined.strainAccepted).toBe(false)
-    expect(teamRiskOf(declined)).toBe(directiveValorAt(declined.wheel!.misfortuneId, declined.difficulty))
+    expect(teamRiskOf(declined)).toBe(directiveValorAt(declined.wheel!.misfortuneId, declined.difficulty, declined.divers.length))
   })
 
   it('reopens on a failure restart with the same draw', () => {

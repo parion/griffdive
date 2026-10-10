@@ -16,7 +16,7 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
-  await expect(pageA.getByText('Wheel of Adversity')).toBeVisible()
+  await expect(pageA.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
   // A lone host is nudged to share the invite — the copy control glows.
   await expect(pageA.getByLabel('Copy invite link')).toHaveClass(/glow/)
 
@@ -73,7 +73,7 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await expect(pageA.getByRole('heading', { name: 'Briefing' })).toBeVisible()
 
   // Presence: both divers show online dots on the host page.
-  await expect(pageA.locator('.dot.on')).toHaveCount(2)
+  await expect(pageA.locator('.diver-chip .lamp.teal')).toHaveCount(2)
 
   // Rewards: the host reports success, then the other diver's banked pick
   // shows as an icon-only squad indicator in the draft (N14).
@@ -109,7 +109,7 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
-  await expect(pageA.getByText('Wheel of Adversity')).toBeVisible()
+  await expect(pageA.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Sidekick')
@@ -153,7 +153,7 @@ test('the Codex slide-over keeps the host seated', async ({ browser }) => {
   await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
-  await expect(pageA.getByText('Wheel of Adversity')).toBeVisible()
+  await expect(pageA.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')

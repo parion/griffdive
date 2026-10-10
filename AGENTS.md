@@ -31,7 +31,7 @@ scanlines and a signature motion set). The dive is a fixed, no-scroll terminal (
 the room code + copy control · 84px climb strip · three rails · 52px Mission-phases bar), the
 Bridge home fits one desktop view (hero + climb ladder · 6-step mission loop · Valor odds ladder ·
 deploy rail with code-cell join and the service record · a full-width Major Order band and footer),
-the wheel is a real spinning SVG wheel, the Armory marks
+the wheel is a real spinning SVG wheel, the Kit (UI name of the Armory) marks
 directive/pact bans per tile from engine selectors, and an interactive six-beat Griffdiver
 Briefing (Identify · Spin · Pact · Reward · Warbonds · Deploy) onboards first-time divers. Engine,
 sync, saves and data are untouched; see
@@ -40,9 +40,10 @@ dives** have landed: any seated diver can pin a room server-side so it outlives 
 browser clearing its storage, resuming through the existing rejoin path (see Saved dives).
 **The condition catalogue is unified:** squad directives (team) and pacts (personal) are now one
 catalogue, nothing is gated by difficulty, and a per-condition curve scales each rule's risk/Valor
-with altitude (see Condition scaling). **Team directives outweigh pacts:** an accepted directive
-stakes **1.5×** its scaled risk in Valor (`TEAM_DIRECTIVE_VALOR_WEIGHT`), because the whole squad
-carries it. **Broken directives fail like pacts:** the host can mark an accepted directive failed in
+with altitude (see Condition scaling). **Team directives outweigh pacts, by squad size:** an
+accepted directive stakes its scaled risk × **1 / 1.25 / 1.5 / 1.75** for a squad of 1 / 2 / 3 / 4
+(`TEAM_DIRECTIVE_VALOR_WEIGHTS`), because the more divers must hold one rule the harder it is — and
+a solo diver's directive is effectively personal. **Broken directives fail like pacts:** the host can mark an accepted directive failed in
 the field (`FAIL_MISFORTUNE`, host-only, `diving` phase) — its shared risk is voided for every diver
 and each diver forfeits one reward option. UI copy calls the team scope **Squad Directive** and the
 wheel the **Wheel of Adversity**; engine ids and the action union keep the `misfortune` name. The
@@ -136,21 +137,55 @@ engine.
   honours
   `prefers-reduced-motion` (global CSS guard + explicit `matchMedia` in JS-driven reels and the
   wheel reveal).
+  **Forward actions sweep:** every control that moves the squad on (Launch, the Spin hub, Deal,
+  Lock in, Mission complete / File report, Squad Honors / Advance, Forfeit, the tutorial's Next)
+  carries `.cta-sweep` — the pending-directive sheen — only while it is actionable (disabled
+  controls never sweep). `--sweep` tints it: on the reward screen the continue buttons take the
+  banked item's tier colour, sweeping faster for S and S+. **Reveals ramp with rarity:** reward
+  pods land worst-to-best (`revealRank`), S and Liberty's Cross hold a beat longer before landing,
+  and emphasis scales with tier — A a quiet tier sheen, S a landing flash plus a pulsing glow,
+  Liberty's Cross turning light rays, a fast sweep and a landing burst. Glows ride the unclipped
+  `.pod-slot` as `drop-shadow` (the card's `clip-path` clips box-shadows); Motion owns the card's
+  transform, so tier effects use filters only. Phone reward rows carry the same tier sheen.
 - **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav) on every
   route except the dive, which renders its own `DiveTopBar` (crusade + difficulty emblem + room
-  code/copy + Armory/Codex/Warbonds/Field manual). `components/dive/DiveFrame.vue` is the
+  code/copy + Tutorial + the labelled Kit/Codex/Warbonds ship nav — labels, never bare icons;
+  playtesters could not find the Kit behind an icon). `components/dive/DiveFrame.vue` is the
   no-scroll dive shell — grid rows `60px 84px minmax(0,1fr) 52px` and columns `216px 1fr 284px`:
-  header · `CrusadeStrip` (the horizontal 3→10 climb) · left rail (Squad + wheel pool) · centre
-  phase · right rail (`ValorMeter` with ceiling odds) · `PhaseRail` (bottom Mission phases).
+  header · `CrusadeStrip` (the horizontal 3→10 climb) · left rail (Squad, led by `PhaseCue`) ·
+  centre phase · right rail (`ValorMeter` with ceiling odds) · `PhaseRail` (bottom Mission phases).
+  **One lead per beat:** `PhaseCue` answers "whose move is it?" (`Your move` gold / `Stand by`
+  teal), fed by `awaitingDiverIds` + `canControl` — the answer to playtesters losing the thread
+  between phases. On desktop it sits in the squad rail under the Squad heading (`rail`; a banner
+  atop the centre column pushed the fixed terminal into scroll), and every diver chip carries the
+  matching lamp — gold and pulsing on whoever `actingDiverIds` says the squad is waiting on (the
+  host on host-run beats), teal otherwise — with a status naming the beat ("spinning", "choosing
+  pacts", "in game", …). `PhaseRail` is a progress readout, never
+  a control: the current beat is an underlined gold label (a filled gold chevron read as a second
+  Spin button) and finished beats show a check. The rails hide what has no value yet: the
+  `ValorMeter` is `dormant` during `spin` (a short Valor explainer + the reward floor instead of an
+  all-zero gauge), and the old wheel-pool card was dropped (the wheel already shows every rule).
   `WheelOfMisfortune.vue` is a real SVG wheel whose rotation is derived from the wheel seed.
   On the `rewards` phase the centre swaps between the `RewardDraft` pod cabinet and the dedicated
   `BonusCeremony` honors screen — the left rail gains `MissionReportSummary` and the right rail
   swaps `ValorMeter` for `RewardTokensRail` on honors.
-  Armory is an in-app drawer (`ArmoryDrawer.vue`); the Griffdiver Briefing
-  (`BriefingOverlay.vue`) is the first-run dossier. One structural breakpoint (1020px) flows the
+  The Armory is an in-app drawer (`ArmoryDrawer.vue`) titled **Kit** in every player-facing
+  string (code keeps the `armory` names); the pact screen links to it ("Check your kit"). The
+  Griffdiver Briefing (`BriefingOverlay.vue`) is presented as the **Griffdive tutorial**: a framed
+  dialog (hazard edge, `TRAINING` badge, "Step n of 6") over the dimmed dive, never a full-bleed
+  takeover — players mistook the old briefing for the game. It opens once at first seat, commits
+  the name typed on its Identify step, never chains into the Warbonds panel (its Warbonds step
+  covers ownership), and is replayable from the dive header's Tutorial control. One structural breakpoint (1020px) flows the
   shell and stacks the rails. Below it `usePhoneShell` swaps the whole three-rail tree for
   `DivePhone` (`DivePhoneShell` + `Phone*`), a fixed-band shell whose phase content is a
-  bottom-sheet/fixed-footer layout.
+  bottom-sheet/fixed-footer layout. `PhaseCue` rides there as a slim fixed band under the squad
+  bar (`band` prop) so phase bodies keep their no-scroll layout. Phone rules from the mobile
+  checkup: the pinned footer CTA is always the phase's *live* action (the wheel's is "Spin the
+  wheel" before the draw, never a dead deal gate); self-service actions (`PICK_REWARD` and kin)
+  gate on the diver's own state, never on `canControl`, which is host control; short phones
+  (≤740px tall) shrink the wheel so the decision sheet stays reachable; nav controls keep their
+  text labels on phones; and nothing may widen the layout viewport — flex items holding long live
+  text (the Major Order title) need `min-width: 0`.
 - **Armory detection**: the Armory never computes bans. `armoryRules(state, diver)` lists the
   active misfortune/pact rules and `itemBannedInArmory(state, diver, item)` returns why a
   stratagem is greyed; both wrap `stratagemBanReason` in `shared/engine/pacts.ts` — the same
@@ -237,8 +272,10 @@ team rule is on the wheel at every difficulty — difficulty scales each rule's 
 phase before pacts
 roll, the squad (host executes, IRL voice vote) **accepts or declines** it. Declining runs a
 zero-team-risk dive; accepting stakes the misfortune's **team risk** in Valor for every diver —
-weighted **1.5×** because the whole squad carries it (`TEAM_DIRECTIVE_VALOR_WEIGHT`; the operation-
-long strain and live Major Order keep their own unweighted fixed values). Once accepted, the host
+weighted by squad size — **1× solo, 1.25× duo, 1.5× trio, 1.75× four divers** — because the more
+divers must hold one rule the harder it is (`TEAM_DIRECTIVE_VALOR_WEIGHTS` / `directiveWeightFor`,
+read from the live roster; the operation-long strain and live Major Order keep their own unweighted
+fixed values). Once accepted, the host
 may mark it **failed** in the field if the squad breaks the rule (`FAIL_MISFORTUNE`, `diving` phase,
 host-only): the shared risk is voided for every diver and each forfeits one reward option — see
 Failed directives. A reroll redraws and resets the decision (returning the squad to the `decision`
@@ -261,7 +298,6 @@ top of the ladder:
 | Fragile Liberty | Light armor only | 1 → 2 | loadout |
 | No Orbitals | No orbital stratagems | 1 → 2 | loadout |
 | Primary Only | Primaries only — no support weapons, no pickups or swaps (stratagems allowed) | 2 → 3 | field |
-| Stealth | No raised alarms or bot detections | 2 → 3 | field |
 | Oops, All Airstrikes | Eagle and orbital ("red") stratagems only | 2 → 3 | loadout |
 | Zero Deaths | Any diver death = mission failure | 2 → 4 | field |
 | No Reserves | No one gets reinforced this mission | 2 → 4 | field |
@@ -277,10 +313,16 @@ difficulty 3) and a `slope` (risk points per difficulty step):
 conditionRiskAt(id, difficulty) = clamp(round(base + slope × (difficulty − 3)), 1, 5)
 ```
 
-Slopes are per condition and may be **negative** (inverse — a self-imposed burden that matters
-less once the war itself is the threat, e.g. *Stim Abstinent*, *Untouchable*). The proposed
-defaults are plain and easy to tune; because some slopes are inverse, `maxValorFor(difficulty)` is
-not strictly monotonic (it grows overall from the floor to the top of the ladder). `CONDITION_RISK`
+Slopes are per condition. The formula allows **negative** (inverse) slopes, but no condition uses
+one today: the inverse *Stim Abstinent* and *Untouchable* curves were reversed in the balance pass —
+losing healing or your life costs more where the enemy hits harder, not less. Flat is the right
+shape when a burden's cost cancels out with altitude (*Dead Weight*: you die more often up high,
+but so do squadmates, so the shared reinforce comes sooner). `maxValorFor(difficulty)` is only
+guaranteed to grow from the floor to the top of the ladder, not per rung.
+
+*Stealth* ("no raised alarms or bot detections") was **removed**: a drop gets called on nearly every
+mission, so the rule was all but unfieldable. A bot-only *Commando* modifier is the backlog idea for
+reviving it. `CONDITION_RISK`
 in `shared/engine/config.ts` is the single source of truth; every Valor/odds computation reads
 through `conditionRiskAt`.
 
@@ -400,7 +442,9 @@ client computes the same 2–3 pacts with no extra sync; it is never stored. The
 pacts the **accepted** misfortune makes redundant or impossible; a declined draw offers from the
 full catalog. Pacts are the **personal-scoped** slice of the same condition catalogue, and their
 **pact risk** scales with the operation's difficulty exactly like a misfortune's (`conditionRiskAt`;
-some are inverse, see Condition scaling), adding only to that diver's Valor.
+see Condition scaling), adding only to that diver's Valor. **Squad-only pacts** (`SQUAD_ONLY_PACTS`:
+*Dead Weight*) are never dealt to a solo diver — with no squadmate to share a reinforce, the rule
+collapses into "stay dead".
 
 **Accountability rule:** every pact in the catalog must be verifiable in Helldivers 2 through one
 of three channels — the **loadout screen** (equipped gear and stratagems, visible pre-dive), the
@@ -412,20 +456,20 @@ weapon slot).
 
 Starter catalog:
 
-| Pact | Rule | Pact risk | Accountable via |
+| Pact | Rule | Risk d3→10 | Accountable via |
 | --- | --- | --- | --- |
-| Pack Light | I bring no backpack | 1 | loadout |
-| Thirsty | I call and take no resupplies | 1 | field |
-| Empty Pockets | I equip no booster | 1 | loadout |
-| Anti-Tank Abstinent | I carry nothing anti-tank | 2 | loadout |
-| Dead Weight | If I die, I refuse reinforcement — I stay dead | 2 | field |
-| Stim Abstinent | I use no stims | 3 | stats |
-| Loadout Loyalist | I use only my equipped loadout; no pickups or swaps | 2 | field |
-| Primary Concern | I bring no support weapon | 2 | loadout |
-| Grounded | I bring no offensive Eagle stratagems | 2 | loadout |
-| Ship Silent | I bring no offensive orbital stratagems | 2 | loadout |
-| Open Field | I bring no offensive sentries, mines, or emplacements | 2 | loadout |
-| Untouchable | I finish the mission without dying | 3 | field |
+| Pack Light | I bring no backpack | 1 → 1 | loadout |
+| Thirsty | I call and take no resupplies | 1 → 2 | field |
+| Empty Pockets | I equip no booster | 1 → 1 | loadout |
+| Anti-Tank Abstinent | I carry nothing anti-tank | 1 → 4 | loadout |
+| Dead Weight | If I die, I can't be reinforced on my own — I return only when another diver needs reinforcing (squad only) | 2 → 2 | field |
+| Stim Abstinent | I use no stims | 3 → 4 | stats |
+| Loadout Loyalist | I use only my equipped loadout; no pickups or swaps | 2 → 2 | field |
+| Primary Concern | I bring no support weapon | 1 → 3 | loadout |
+| Grounded | I bring no offensive Eagle stratagems | 2 → 2 | loadout |
+| Ship Silent | I bring no offensive orbital stratagems | 2 → 2 | loadout |
+| Open Field | I bring no offensive sentries, mines, or emplacements | 2 → 2 | loadout |
+| Untouchable | I finish the mission without dying | 3 → 4 | field |
 
 **Redundant and conflicting picks:** a pact strictly implied by another picked pact never stacks
 risk. `SET_PACTS` refuses it via `pactSubsumedBy` / `applyPactToggle` (`PACT_SUBSUMES` in
@@ -478,20 +522,20 @@ resets with the pacts every mission.
 
 ```text
 Valor         = teamRisk + pactRisk
-teamRisk      = accepted misfortune × TEAM_DIRECTIVE_VALOR_WEIGHT (1.5, because the
-                whole squad carries it) plus the accepted strain (2–3, felt on
+teamRisk      = accepted misfortune × directiveWeightFor(squad size)
+                (1 / 1.25 / 1.5 / 1.75 for 1–4 divers) plus the accepted strain (2–3, felt on
                 every mission of its operation) or the live Major Order
                 commitment (2, same scope); 0 when declined/unset, or when the
                 directive was failed in the field
-pactRisk      = sum of the diver's picked pacts (max 8: the rolled
-                2–3-pact offer bounds what a diver can stack)
+pactRisk      = sum of the diver's picked pacts (max 12 at diff 7+: the
+                rolled 2–3-pact offer bounds what a diver can stack)
 
 (samples are NOT Valor. They bank as Requisition currency — see
  Requisition — samples as currency — and never move the ceiling.)
 
 (misfortune and pact risk are read through `conditionRiskAt(id, difficulty)`,
  so the same condition is worth different Valor at different altitudes;
- the directive's 1.5× weight is applied by `directiveValorAt` on top)
+ the directive's squad-size weight is applied by `directiveValorAt` on top)
 
 base tier:     diff 3–5 → C   diff 6–7 → B   diff 8–10 → A
 meter:         the Valor gauge tops out at 11; Valor past it is Luck
@@ -537,14 +581,15 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   appear instead of a flat longshot. **The Valor meter tops out at 11** (`VALOR_METER_MAX`): Valor
   past it "breaks" the gauge and banks as **Luck**, which adds flat odds to the S / S+ rungs
   (`OVERFLOW_S_LUCK` / `OVERFLOW_S_PLUS_LUCK`), so overstacking is never wasted. Even absolute max
-  overstack (Valor 16.5, strain included) leaves S+ a longshot (≤20% at altitude;
+  overstack (Valor 24.25 — a four-diver squad, strain included) leaves S+ a longshot (≤20% at altitude;
   `S_PLUS_OVERFLOW_CAP`). A zero-Valor dive always rolls its base tier. Samples are a separate
   currency and never nudge Valor: chosen risk alone moves the ceiling, so skill and loot never carry a
   run (they fund the Requisition shelf instead).
 - **Valor is surfaced as the Valor meter** (`app/components/dive/ValorMeter.vue`): a live gauge
   stacking the two sources (team risk — misfortune plus strain — pacts) with a tier
   ladder from the difficulty's base tier to the previewed ceiling and the odds of reaching it. It
-  renders in the pacts window (live, reacting to pact toggles and the misfortune decision), the
+  explains itself while dormant (the `spin` phase, before any stake exists), then renders in the
+  decision and pacts windows (live, reacting to pact toggles and the misfortune decision), the
   diving Briefing (locked) and the reward draft (locked). Its
   display scale is the
   fixed `VALOR_METER_MAX` (11) in `shared/engine/config.ts`; once Valor exceeds it the gauge reads
@@ -582,11 +627,12 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   its risk — Valor, previews and the rolled offer all drop — and costs one reward option, floored
   at one so the draft always completes.
 - Example curves: at diff 3 a single strong pact (Valor 3) reaches **S** ~4% of the time and two
-  (Valor 6) ~16%; the strongest early stack without a strain (Valor 10) reaches **S** about a third
-  of the time, **S+** rarely (a maxed early stack, Valor 15.5 with a strain, reaches S ~52%, S+
-  ~9%). Diff 10 with zero Valor → **A**, never S. At diff 6 (where super samples appear) a strong
-  build (Valor 10–11) reaches **S+** ~6–7%, climbing to ~12–14% at diff 10; max overstack (Valor
-  16.5, strain included) reaches **S+** ~19% there. Risk pays at every altitude; nothing is
+  (Valor 6) ~16%; a maxed early stack (a four-diver squad, Valor 14.75 with a strain) reaches S
+  ~49%, S+ ~8%. Diff 10 with zero Valor → **A**, never S. At diff 6 (where super samples appear) a
+  strong build (Valor 10–11) reaches **S+** ~6–7%, climbing to ~12–14% at diff 10; max overstack
+  reaches **S+** ~19% there (the cap binds for every squad size from diff 8). Squad size moves the
+  directive's share: the strongest diff-10 directive alone is worth Valor 5 solo (S ~22%), 7.5 for
+  a trio (S ~50%) and 8.75 for four divers (S ~64%, S+ ~6%). Risk pays at every altitude; nothing is
   guaranteed, but everything gets likelier.
 
 ### Requisition — samples as currency
@@ -775,7 +821,8 @@ app/
                    Squad/wheel-pool rail · phase · Valor rail · Mission-phases bar), DiveTopBar —
                    the dive header (crusade · difficulty emblem · room code/copy · nav),
                    CrusadeStrip — the horizontal 3→10 climb, PhaseRail — the bottom six mission
-                   beats, WheelOfMisfortune — the seeded spinning SVG wheel,
+                   beats (a readout, not a control), PhaseCue — the "whose move" lead
+                   (squad rail on desktop, a band on phones), WheelOfMisfortune — the seeded spinning SVG wheel,
                    BriefingOverlay — the first-run Griffdiver dossier, ArmoryDrawer — the in-dive
                    Armory overlay (kit + loadout readiness + active-rule bans), CrusadeLadder —
                    the vertical 3→10 ladder (achieved screen), SquadStrip — diver rail, presence,
@@ -823,7 +870,7 @@ app/
                    ui/ (BrandMark — the Griffdive chevron mark, ItemCard, TierBadge, RiskPips — risk
                    dots, with a rolling back-and-forth state while a wheel draw reels,
                    SampleCanister/SegmentedBar — the report's tinted sample jars and
-                   click-to-set time bar, HoldButton — the press-and-hold confirm,
+                   click-to-set time bar (touch scrubs: press and drag sets the value), HoldButton — the press-and-hold confirm,
                    ChangelogModal — GitHub deploy log shown from the alpha header chip, AppDrawer —
                    the themed right-hand Reka
                     Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer —
@@ -1129,7 +1176,10 @@ mount: `fly volumes create griffdive_data --region ams --size 1`.
   authority, pact lock-in), Codex slide-over (opens over the dive without dropping the session),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
   non-dismissible name gate, star-rating keyboard navigation), phone host moderation
-  (`phone.spec.ts`: the 390px squad bar opens the moderation bottom sheet), PWA affordances
+  (`phone.spec.ts`: the 390px squad bar opens the moderation bottom sheet), phone reward draft
+  (`phone-rewards.spec.ts`: a non-host phone diver banks their own pick), phone layout
+  (`phone-layout.spec.ts`: no sideways overflow at 360px with a long live Major Order, the live
+  spin CTA, touch-scrubbing the report time bar), PWA affordances
   (manifest content type + icons served, SW reachable, shell head links). Chromium only;
   `pnpm exec playwright install chromium` after a fresh clone.
 

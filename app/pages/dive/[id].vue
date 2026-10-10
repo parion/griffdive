@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { conditionRiskAt } from '~~/shared/engine/config'
 import { diverOptions, majorOrderFronts, pactRiskOf, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
-import { deriveFront, deriveMisfortune, deriveStrain, eligibleMisfortunes } from '~~/shared/engine/wheel'
+import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
 import type { CrusadeVariant, DiverState, EngineAction, ItemRef, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
 import { rememberDiverName } from '~/composables/useGameSocket'
 
@@ -86,33 +85,6 @@ const pendingText = computed(() => {
   }
 })
 
-// The wheel pool card: the unified condition catalogue is never gated, so
-// every team rule is on the wheel at every difficulty and the card reads how
-// the current difficulty scales their risk bands. Presentation of
-// `eligibleMisfortunes` + `conditionRiskAt`.
-const wheelPool = computed(() => {
-  const current = state.value
-  if (!current || !['spin', 'decision', 'strain', 'deal', 'pacts'].includes(current.phase)) {
-    return null
-  }
-  const list = eligibleMisfortunes()
-  const bars = [0, 0, 0, 0, 0]
-  for (const misfortune of list) {
-    const risk = conditionRiskAt(misfortune.id, current.difficulty)
-    bars[risk - 1] = (bars[risk - 1] ?? 0) + 1
-  }
-  return {
-    count: list.length,
-    bars,
-    note: `Risk scales with difficulty ${current.difficulty} — every condition is always available`,
-  }
-})
-
-const POOL_COLORS = ['var(--khaki)', 'var(--khaki)', 'var(--orange)', 'var(--red)', 'var(--red)']
-function poolColor(index: number): string {
-  return POOL_COLORS[index] ?? 'var(--line-3)'
-}
-
 // Warbonds are what each diver actually owns — declared per diver, any phase,
 // and driven by the global Warbonds drawer. A local save seeds the working list
 // from its own draft; a room join pushes the browser's declared list to the
@@ -146,10 +118,9 @@ watch(ownedWarbonds, (codes) => {
   }
 })
 
-// Dive startup is part of the ritual: a fresh browser gets the Griffdiver
-// briefing the moment the diver is seated (right after the name gate), instead
-// of the old auto-opened guide. Closing it marks the dive intro seen and hands
-// off to the Warbonds panel, so a first-timer reads one surface at a time.
+// A fresh browser gets the tutorial the moment the diver is seated (right after
+// the name gate). Its Warbonds step already declares ownership, so closing it
+// lands straight on the dive — chaining a second panel buried the game itself.
 const briefingOpen = ref(false)
 
 watch([self, state], ([diver, current]) => {
@@ -175,10 +146,18 @@ watch(self, (diver) => {
   openWarbondsIntro()
 }, { immediate: true })
 
-function closeBriefing(): void {
+function closeBriefing(name: string): void {
   briefingOpen.value = false
   markDiveIntroSeen()
-  openWarbondsIntro()
+  markWarbondIntroSeen()
+  if (name && name !== self.value?.name) {
+    setNameDraft(name)
+    commitName()
+  }
+}
+
+function openBriefing(): void {
+  briefingOpen.value = true
 }
 
 // Hostship moves under the squad's feet (disconnect migration) with no other
@@ -522,6 +501,7 @@ function launchCrusade(variant: CrusadeVariant): void {
       @transfer-host="transferHost"
       @copy-invite="copyInvite"
       @open-armory="armoryOpen = true"
+      @open-tutorial="openBriefing"
       @leave="leaveDive"
       @end="endDive"
       @save-dive="saveDive"
@@ -548,6 +528,7 @@ function launchCrusade(variant: CrusadeVariant): void {
           :lone-host="state.divers.length === 1"
           @copy-invite="copyInvite"
           @open-armory="armoryOpen = true"
+          @open-tutorial="openBriefing"
           @leave="leaveDive"
           @end="endDive"
           @save-dive="saveDive"
@@ -574,6 +555,7 @@ function launchCrusade(variant: CrusadeVariant): void {
           :mode="session.mode"
           :is-host="session.selfIsHost.value"
           :name-draft="nameDraft"
+          :can-control="canControl"
           @update:name-draft="setNameDraft"
           @commit="commitName"
           @transfer-host="transferHost"
@@ -585,37 +567,6 @@ function launchCrusade(variant: CrusadeVariant): void {
             v-if="state.phase === 'rewards'"
             :state="state"
           />
-
-          <section
-            v-if="wheelPool"
-            class="sec pool"
-            aria-labelledby="pool-h"
-          >
-            <div class="sec-h">
-              <h2
-                id="pool-h"
-                class="lbl"
-              >
-                Wheel pool
-              </h2>
-              <span class="dash" />
-            </div>
-            <div class="pool-count">
-              <span class="disp">{{ wheelPool.count }}</span>
-              <span class="cap pool-count-cap">directives on the wheel</span>
-            </div>
-            <div
-              class="pool-bars"
-              aria-hidden="true"
-            >
-              <span
-                v-for="(n, i) in wheelPool.bars"
-                :key="i"
-                :style="{ flexGrow: Math.max(n, 1), background: poolColor(i) }"
-              />
-            </div>
-            <span class="cap pool-note">{{ wheelPool.note }}</span>
-          </section>
         </div>
       </template>
 
@@ -638,6 +589,7 @@ function launchCrusade(variant: CrusadeVariant): void {
           :major-order-risk="riskBreakdown.majorOrderRisk"
           :pact-risk="pactRisk"
           :locked="valorLocked"
+          :dormant="state.phase === 'spin'"
           :diver-name="diverName(selfId)"
           :pending-text="pendingText"
         />
@@ -718,6 +670,7 @@ function launchCrusade(variant: CrusadeVariant): void {
             :can-control="canControl"
             @lock="lockPacts"
             @pact-risk="livePactRisk = $event"
+            @open-kit="armoryOpen = true"
           />
 
           <DivePhaseDiving
@@ -822,12 +775,4 @@ function launchCrusade(variant: CrusadeVariant): void {
   gap: var(--gap-panel);
   min-width: 0;
 }
-
-.pool { border-style: dashed; border-color: var(--line-2); background: transparent; }
-.pool-count { display: flex; align-items: baseline; gap: var(--sp-3); }
-.pool-count .disp { font-size: 26px; color: var(--text); }
-.pool-bars { display: flex; gap: 3px; }
-.pool-bars span { height: 4px; min-width: 6px; }
-.pool-note { font-size: 12px; font-weight: 400; letter-spacing: normal; text-transform: none; white-space: normal; }
-.pool-count-cap { font-size: 12px; font-weight: 400; letter-spacing: normal; text-transform: none; }
 </style>

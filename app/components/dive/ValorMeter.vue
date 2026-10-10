@@ -9,6 +9,9 @@ const props = withDefaults(defineProps<{
   teamRisk: number
   pactRisk: number
   locked?: boolean
+  // Before the wheel has drawn anything there is no stake to price: an all-zero
+  // gauge read as noise to playtesters, so the rail explains Valor instead.
+  dormant?: boolean
   diverName?: string
   pendingText?: string
   // The team-risk split, when the caller has it: the design's legend reads
@@ -18,6 +21,7 @@ const props = withDefaults(defineProps<{
   majorOrderRisk?: number
 }>(), {
   locked: false,
+  dormant: false,
   diverName: '',
   pendingText: '',
   misfortuneRisk: undefined,
@@ -115,7 +119,30 @@ const legend = computed(() => {
       >Locked</span>
     </div>
 
-    <div class="big">
+    <div
+      v-if="dormant"
+      class="dormant"
+    >
+      <p class="dormant-lead">
+        Valor is the risk you choose to carry.
+      </p>
+      <p class="dormant-copy">
+        Every directive and pact you accept adds Valor. More Valor raises the odds that your reward
+        lands above the floor.
+      </p>
+      <div class="dormant-floor">
+        <span class="lbl">Reward floor here</span>
+        <span
+          class="tb"
+          :data-tier="baseTier"
+        >{{ baseTier }}</span>
+      </div>
+    </div>
+
+    <div
+      v-if="!dormant"
+      class="big"
+    >
       <span class="disp value">{{ format(valor) }}</span>
       <span class="scale">/ {{ format(scale) }}</span>
       <span
@@ -124,7 +151,10 @@ const legend = computed(() => {
       >+{{ format(overflow) }} Luck</span>
     </div>
 
-    <div class="grid">
+    <div
+      v-if="!dormant"
+      class="grid"
+    >
       <div
         role="progressbar"
         aria-label="Valor"
@@ -166,7 +196,10 @@ const legend = computed(() => {
       </div>
     </div>
 
-    <div class="legend">
+    <div
+      v-if="!dormant"
+      class="legend"
+    >
       <div
         v-for="l in legend"
         :key="l.id"
@@ -187,6 +220,17 @@ const legend = computed(() => {
 
 <style scoped>
 .valor-rail { display: flex; flex-direction: column; gap: 14px; }
+
+.dormant { display: flex; flex-direction: column; gap: var(--sp-3); }
+.dormant-lead { margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text); }
+.dormant-copy { margin: 0; font-size: var(--fs-sm); line-height: 1.5; color: var(--khaki); }
+.dormant-floor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--sp-3);
+  border-top: 1px dashed var(--line-2);
+}
 
 .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 20px; }
 .title { font-size: 10px; color: var(--muted); }

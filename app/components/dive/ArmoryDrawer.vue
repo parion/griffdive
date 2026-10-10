@@ -8,7 +8,7 @@ defineEmits<{ 'update:open': [value: boolean] }>()
 <template>
   <AppDrawer
     :open="open"
-    title="Armory"
+    title="Kit"
     description="Every diver's kit — yours and the squad's."
     @update:open="$emit('update:open', $event)"
   >
