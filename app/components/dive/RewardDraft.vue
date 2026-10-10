@@ -40,8 +40,13 @@ const props = withDefaults(defineProps<{
   difficulty?: number
   teamRisk?: number
   pactRisk?: number
-  performance?: number
   rerolled?: boolean
+  // The rotating Requisition shelf, shown once the diver's draft resolves:
+  // the engine-derived stock, their sample purse, and the per-item buy
+  // verdict from `canBuyItem` (so the UI never invents a reason).
+  stock?: RewardOption[]
+  sampleBank?: number
+  stockBuyable?: Record<string, { allowed: boolean, reason: string | null }>
   // Squad-draft state: everyone has picked, and whether the full-star honors
   // ceremony is due. `advanceLabel` is the host's next-mission CTA.
   ready?: boolean
@@ -62,8 +67,10 @@ const props = withDefaults(defineProps<{
   difficulty: 3,
   teamRisk: 0,
   pactRisk: 0,
-  performance: 0,
   rerolled: false,
+  stock: () => [],
+  sampleBank: 0,
+  stockBuyable: () => ({}),
   ready: false,
   bonusUp: false,
   canControl: false,
@@ -75,6 +82,7 @@ const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
   reroll: []
   ban: [optionIds: string[]]
+  buy: [itemId: string]
   advance: []
   openHonors: []
 }>()
@@ -326,7 +334,6 @@ const statusKind = computed<'honors' | 'advance' | 'wait' | 'pick'>(() => {
       :settled="allSettled"
       :team-risk="teamRisk"
       :pact-risk="pactRisk"
-      :performance="performance"
       :rerolled="rerolled"
     />
 
@@ -440,6 +447,14 @@ const statusKind = computed<'honors' | 'advance' | 'wait' | 'pick'>(() => {
         <strong class="banked-name">{{ pickedItem?.displayName ?? 'Draft resolved' }}</strong>
       </div>
     </Transition>
+
+    <RequisitionStock
+      v-if="selfResolved && stock.length > 0"
+      :stock="stock"
+      :sample-bank="sampleBank"
+      :buyable="stockBuyable"
+      @buy="itemId => emit('buy', itemId)"
+    />
 
     <footer
       class="token-bar"

@@ -521,7 +521,7 @@ onBeforeUnmount(() => {
           <span class="vl">Valor</span>
           <div
             role="img"
-            aria-label="Valor sources stacked: directive, strain or Major Order, pacts, performance"
+            aria-label="Valor sources stacked: directive, strain or Major Order, pacts"
             style="display: flex; gap: 12px"
           >
             <div style="display: flex; flex-direction: column; gap: 2px; width: 20px; padding: 2px; border: 1px solid #2C3022">
@@ -539,7 +539,7 @@ onBeforeUnmount(() => {
             </div>
             <div style="display: flex; flex-direction: column; justify-content: space-between; width: 136px; padding: 1px 0">
               <span
-                v-for="s in [{ n: 'Performance', c: '#4AD7C8' }, { n: 'Pacts', c: '#FF4B3E' }, { n: 'Strain · MO', c: '#FF9F43' }, { n: 'Directive', c: '#FFD642' }]"
+                v-for="s in [{ n: 'Pacts', c: '#FF4B3E' }, { n: 'Strain · MO', c: '#FF9F43' }, { n: 'Directive', c: '#FFD642' }]"
                 :key="s.n"
                 style="display: flex; align-items: center; gap: 7px"
               >
@@ -1832,7 +1832,7 @@ onBeforeUnmount(() => {
             <span
               class="sub"
               style="color: #ECEADA"
-            >+ Performance · odds</span>
+            >+ Valor · odds</span>
             <div style="height: 32px; display: flex; align-items: baseline; gap: 5px">
               <span
                 class="disp"
@@ -1842,11 +1842,11 @@ onBeforeUnmount(() => {
             <div style="display: flex; gap: 12px">
               <div
                 role="progressbar"
-                aria-label="Valor with performance"
+                aria-label="Valor gauge"
                 aria-valuemin="0"
                 aria-valuemax="11"
                 aria-valuenow="8.16"
-                aria-valuetext="8.16 of 11: directive 2, strain 2, pacts 4, performance 0.16"
+                aria-valuetext="8.16 of 11: directive 2, strain 2, pacts 4"
                 style="width: 40px; flex-shrink: 0; display: flex; flex-direction: column; gap: 3px; padding: 3px; border: 1px solid #2C3022"
               >
                 <span

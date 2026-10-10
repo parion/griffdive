@@ -36,6 +36,7 @@ const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
   rerollRewards: []
   banRewards: [optionIds: string[]]
+  buyReward: [itemId: string]
   spinBonus: []
   awardBonus: [playerId: string]
   advance: []
@@ -202,6 +203,7 @@ function kickDiver(diverId: string): void {
           @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
           @reroll="emit('rerollRewards')"
           @ban="emit('banRewards', $event)"
+          @buy="emit('buyReward', $event)"
           @spin-bonus="emit('spinBonus')"
           @award-bonus="emit('awardBonus', $event)"
           @advance="emit('advance')"

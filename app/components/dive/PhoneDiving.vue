@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MAJOR_ORDER_RISK, STRAIN_RISK, conditionRiskAt, directiveValorAt, maxStarsFor } from '~~/shared/engine/config'
-import { activeMisfortune, activeStrain, currentFront, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
+import { activeMisfortune, activeStrain, currentFront, teamRiskOf } from '~~/shared/engine/selectors'
 import { factionImageUrl } from '~~/shared/data/images'
 import type { DiverState, DiveState, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
 
@@ -23,7 +23,6 @@ const front = computed(() => currentFront(props.state))
 const frontImage = computed(() => (front.value ? factionImageUrl(front.value.id) : undefined))
 const strain = computed(() => activeStrain(props.state))
 const teamRisk = computed(() => teamRiskOf(props.state))
-const baseValor = computed(() => teamRisk.value + (props.self ? pactRiskOf(props.self, props.state.difficulty) : 0))
 
 const misfortuneRisk = computed(() =>
   props.state.misfortuneAccepted
@@ -83,7 +82,7 @@ function submit(): void {
     v-model:time="time"
     v-model:samples="samples"
     :state="state"
-    :base-valor="baseValor"
+    :sample-bank="self?.sampleBank ?? 0"
     @submit="submit"
     @cancel="mode = 'none'"
   />

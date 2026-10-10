@@ -8,9 +8,11 @@ import {
   bonusIneligibilityReason,
   canBanAnyReward,
   canBanReward,
+  canBuyItem,
   canRerollRewards,
   diverOptions,
   rewardPoolFor,
+  shopStockFor,
 } from '~~/shared/engine/selectors'
 import type { Item } from '~~/shared/data/types'
 import type { RewardOption } from '~~/shared/engine/rewards'
@@ -28,6 +30,7 @@ const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
   reroll: []
   ban: [optionIds: string[]]
+  buy: [itemId: string]
   spinBonus: []
   awardBonus: [playerId: string]
   advance: []
@@ -62,6 +65,18 @@ const banned = computed(() => props.self?.rewardBanned ?? false)
 const chosen = computed(() =>
   props.self?.pickedOptionId ? ITEMS_BY_ID.get(props.self.pickedOptionId) ?? null : null)
 const optionsLost = computed(() => props.self?.failedPactIds.length ?? 0)
+
+// The rotating Requisition shelf (engine-derived) and its buy verdicts.
+const stock = computed(() => (props.self ? shopStockFor(props.state, props.self) : []))
+const stockBuyable = computed(() => {
+  const self = props.self
+  if (!self) {
+    return {}
+  }
+  return Object.fromEntries(
+    stock.value.map(option => [option.item.id, canBuyItem(props.state, self, option.item.id)]),
+  )
+})
 
 const advanceLabel = computed(() =>
   props.state.missionInOperation >= props.opLength
@@ -258,6 +273,14 @@ function tierOf(option: RewardOption): string {
             </button>
           </template>
         </div>
+
+        <RequisitionStock
+          v-if="resolved && stock.length > 0"
+          :stock="stock"
+          :sample-bank="self?.sampleBank ?? 0"
+          :buyable="stockBuyable"
+          @buy="itemId => emit('buy', itemId)"
+        />
       </div>
 
       <PhoneActionBar aria-label="Reward tokens">

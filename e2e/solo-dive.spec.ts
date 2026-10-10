@@ -61,6 +61,24 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('img', { name: 'choosing reward' })).toBeVisible()
   await page.locator('.pod-card .pod-hit').first().click()
 
+  // The Requisition shelf opens once the reward is banked: the rotating stock,
+  // the sample purse, and buy controls (disabled with a reason when the bank is
+  // short — the report above banks little, so either branch is valid).
+  const requisition = page.locator('.req')
+  await expect(requisition.getByText('Requisition')).toBeVisible()
+  await expect(requisition.getByRole('img', { name: /sample points banked/ })).toBeVisible()
+  const stockCards = requisition.locator('.req-card')
+  await expect(stockCards.first()).toBeVisible()
+  const beforeCards = await stockCards.count()
+  const buyable = requisition.locator('.req-buy:not([disabled])')
+  if (await buyable.count() > 0) {
+    await buyable.first().click()
+    await expect(stockCards).toHaveCount(beforeCards - 1)
+  }
+  else {
+    await expect(requisition.locator('.req-reason').first()).toBeVisible()
+  }
+
   // Bonus honors is its own screen, reached from the draft's bottom bar: the
   // host spins the stat contest (on click, like the wheel) and banks the
   // winner's token.

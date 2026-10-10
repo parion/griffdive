@@ -142,6 +142,35 @@ describe('save migration v10 → v11 (broken team directives)', () => {
   })
 })
 
+describe('save migration v11 → v12 (Requisition samples)', () => {
+  it('defaults the sample purse to empty', () => {
+    const doc: SaveDoc = {
+      ...v1Doc({
+        divers: [
+          { id: 'host', name: 'Griffin', isHost: true, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [] },
+        ],
+      }),
+      schemaVersion: 11,
+    }
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
+    expect(migrated.state.divers[0]?.sampleBank).toBe(0)
+  })
+
+  it('preserves a banked purse', () => {
+    const doc: SaveDoc = {
+      ...v1Doc({
+        divers: [
+          { id: 'host', name: 'Griffin', isHost: true, pactsLocked: false, pactIds: [], pickedOptionId: null, warbondCodes: [], sampleBank: 42 },
+        ],
+      }),
+      schemaVersion: 11,
+    }
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.state.divers[0]?.sampleBank).toBe(42)
+  })
+})
+
 // v1–v3 wheels carried the front; the legacy shape reads it during migration.
 function legacyWheel(seed: number, misfortuneId: string, front: string): SaveDoc['state']['wheel'] {
   return { seed, misfortuneId, front } as SaveDoc['state']['wheel']
