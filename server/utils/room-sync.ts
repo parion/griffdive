@@ -2,7 +2,7 @@ import { customAlphabet, nanoid } from 'nanoid'
 import { SQUAD_SIZE_MAX, MAX_NAME_LENGTH } from '~~/shared/engine/config'
 import { createLobbyState, forkCrusade, joinDiver, seatingBlocked } from '~~/shared/engine/room'
 import { reduce } from '~~/shared/engine/reducer'
-import { normalizeSaveDoc } from '~~/shared/engine/saves'
+import { normalizeRoomState, normalizeSaveDoc } from '~~/shared/engine/saves'
 import type { DiveState, EngineAction } from '~~/shared/engine/types'
 import { isEngineActionType, isHostOnlyAction } from '~~/shared/types/messages'
 import type { DiveSaveInfo, ServerMessage, SteamLobbyInfo } from '~~/shared/types/messages'
@@ -219,6 +219,10 @@ export async function loadRoom(kv: RoomKV, code: string): Promise<StoredRoom | n
     await kv.removeItem(code)
     return null
   }
+  // Rooms survive deploys on disk without a schema version, so states written
+  // by earlier builds are normalized on read. The normalized copy is what
+  // callers reduce and broadcast; the next saveRoom persists it.
+  raw.state = normalizeRoomState(raw.state)
   return raw
 }
 

@@ -603,7 +603,10 @@ adds the Major Order commitment (`majorOrder: null`); `migrateV10toV11` adds the
 mark (`misfortuneFailed: false`); `migrateV11toV12` adds the Requisition sample purse
 (`sampleBank: 0`); `migrateV12toV13` remaps the five squad-size variants onto the three starting
 difficulties (Quickplay becomes the suicide start with the SEAF mode); `migrateV13toV14` adds
-presence (`away: false` on every diver). Normalization drops
+presence (`away: false` on every diver). The chain's tail also runs the idempotent
+`normalizeRoomState` remap unconditionally: session mirrors copy unversioned room state, so a
+legacy variant id or a missing field must be corrected even in a doc stamped with a newer schema.
+Normalization drops
 only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
 `achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, inventories, per-diver warbond declarations,

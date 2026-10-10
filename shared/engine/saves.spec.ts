@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { ITEMS_BY_ID } from '../data/catalog'
 import { SAVE_SCHEMA_VERSION } from '../types/save'
 import { ENGINE_VERSION } from './config'
-import { normalizeSaveDoc } from './saves'
+import { createDiveState } from './reducer'
+import { normalizeRoomState, normalizeSaveDoc } from './saves'
+import type { DiveState } from './types'
 import type { SaveDoc } from '../types/save'
 
 function firstIdOf(category: 'armor' | 'armorPassive'): string {
@@ -297,5 +299,42 @@ describe('save migration v12 → v13 (three difficulty variants + mode)', () => 
     doc.schemaVersion = 12
     doc.state.settings = null
     expect(normalizeSaveDoc(doc)!.state.settings).toBeNull()
+  })
+})
+
+describe('room state normalization (unversioned storage)', () => {
+  it('remaps a legacy variant even under the current schema version', () => {
+    const doc = v1Doc()
+    doc.schemaVersion = SAVE_SCHEMA_VERSION
+    doc.state.settings = { variant: 'quickplay' } as unknown as SaveDoc['state']['settings']
+    expect(normalizeSaveDoc(doc)!.state.settings).toEqual({ variant: 'suicide', mode: 'seaf' })
+  })
+
+  it('remaps pre-v13 variants and fills fields that postdate the room', () => {
+    const state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    const legacy = {
+      ...state,
+      settings: { variant: 'quickplay' },
+      misfortuneFailed: undefined,
+      divers: [{ ...state.divers[0]!, sampleBank: undefined, away: undefined }],
+    } as unknown as DiveState
+    const normalized = normalizeRoomState(legacy)
+    expect(normalized.settings).toEqual({ variant: 'suicide', mode: 'seaf' })
+    expect(normalized.misfortuneFailed).toBe(false)
+    expect(normalized.divers[0]?.sampleBank).toBe(0)
+    expect(normalized.divers[0]?.away).toBe(false)
+  })
+
+  it('never overwrites live state', () => {
+    const state = createDiveState({ variant: 'hard', mode: 'penance' }, 'p1', 'Griffin')
+    const live = {
+      ...state,
+      misfortuneFailed: true,
+      divers: state.divers.map(diver => ({ ...diver, sampleBank: 42, away: true })),
+    }
+    const normalized = normalizeRoomState(live)
+    expect(normalized.settings).toEqual({ variant: 'hard', mode: 'penance' })
+    expect(normalized.misfortuneFailed).toBe(true)
+    expect(normalized.divers[0]).toMatchObject({ sampleBank: 42, away: true })
   })
 })
