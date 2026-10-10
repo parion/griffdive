@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { STRATAGEM_SLOTS_REQUIRED, conditionRiskAt, missionsPerOperation } from '~~/shared/engine/config'
+import { STRATAGEM_SLOTS_REQUIRED, conditionRiskAt } from '~~/shared/engine/config'
 import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
 import { pactName } from '~~/shared/data/pacts'
 import {
@@ -93,7 +93,6 @@ const coverage = computed<Record<string, string>>(() => {
 
 const locked = computed(() => Boolean(props.self?.pactsLocked))
 const selectedRisk = computed(() => pactRiskTotal(selection.value, props.state.difficulty))
-const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 
 const front = computed(() => currentFront(props.state))
 const strain = computed(() => currentStrain(props.state))
@@ -171,7 +170,7 @@ const pendingText = computed(() => {
               class="s-icon s-icon-sub"
             >
             <span class="s-name">{{ strain?.name ?? 'Major Order' }}</span>
-            <span class="disp s-risk orange">+{{ breakdown.strainRisk || breakdown.majorOrderRisk }} ×{{ opLength }}</span>
+            <span class="disp s-risk orange">+{{ breakdown.strainRisk || breakdown.majorOrderRisk }}</span>
           </div>
           <div
             v-if="breakdown.modeValor > 0"
@@ -185,7 +184,7 @@ const pendingText = computed(() => {
               aria-hidden="true"
             ><i /><i /><i /></span>
             <span class="s-name">{{ breakdown.mode === 'penance' ? 'Super Penance' : 'SEAF Support' }}</span>
-            <span class="disp s-risk orange">+{{ breakdown.modeValor }} ×{{ opLength }}</span>
+            <span class="disp s-risk orange">+{{ breakdown.modeValor }}</span>
           </div>
         </div>
         <div class="summary-total">

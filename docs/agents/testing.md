@@ -23,7 +23,7 @@
   non-dismissible name gate, star-rating keyboard navigation), phone host moderation
   (`phone.spec.ts`: the 390px squad bar opens the moderation bottom sheet), phone reward draft
   (`phone-rewards.spec.ts`: a non-host phone diver banks their own pick), phone layout
-  (`phone-layout.spec.ts`: no sideways overflow at 360px with a long live Major Order, the live
+  (`phone-layout.spec.ts`: no sideways overflow at 360px with a multi-front live Major Order, the live
   spin CTA, touch-scrubbing the report time bar), PWA affordances
   (manifest content type + icons served, SW reachable, shell head links). Chromium only;
   `pnpm exec playwright install chromium` after a fresh clone.

@@ -78,6 +78,10 @@ engine.
   legend, via `app/utils/valor.ts`). The tab choice is shell state and survives phase changes; it
   defaults to Kit. The rail carries nothing else: no Valor explainer, no honors token banks, no
   forfeit "carries over" card.
+  The left rail collapses to a `56px` icon column (persisted in `localStorage`): the header chevron
+  expands it back, while collapsed each diver becomes their first letter with the active lamp to its
+  left and thin token bars beneath, the Steam card shrinks to a single icon button (no labels), and
+  the Squad heading, `PhaseCue` and `MissionReportSummary` drop out.
   **One lead per beat:** `PhaseCue` answers "whose move is it?" (`Your move` gold / `Stand by`
   teal), fed by `awaitingDiverIds` + `canControl` — the answer to playtesters losing the thread
   between phases. On desktop it sits in the squad rail under the Squad heading (`rail`; a banner
@@ -117,7 +121,7 @@ engine.
   drawer — the wheel sticks to the top and the directive/strain sheet scrolls up over it (the phase
   body scrolls, never the page), collapsing for each fresh draw and expanding once the spin lands; nav controls keep their
   text labels on phones; and nothing may widen the layout viewport — flex items holding long live
-  text (the Major Order title) need `min-width: 0`.
+  text (the Major Order's faction indicator) need `min-width: 0`.
 - **Armory detection**: the Armory never computes bans.
   `armoryRules(state, diver, previewPactIds?)` lists the active misfortune/pact rules and
   `itemBannedInArmory(state, diver, item, previewPactIds?)` returns why a stratagem is greyed; both

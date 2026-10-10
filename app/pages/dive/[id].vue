@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useLocalStorage } from '@vueuse/core'
 import { diverOptions, majorOrderFronts, pactRiskOf, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
@@ -38,6 +39,10 @@ const armoryOpen = ref(false)
 // The desktop right rail tabs between the Kit and Valor. It is shell state, so
 // the diver's choice survives phase changes.
 const railTab = ref<'kit' | 'valor'>('kit')
+
+// The left rail collapses to an icon column; the choice is per browser so a
+// diver who wants the wider mission centre keeps it across dives.
+const leftCollapsed = useLocalStorage('griffdive:dive:rail-left-collapsed', false)
 
 // The rail and the climb strip are shell state, not phase state: the page
 // composes them from selectors so every phase shares one rail.
@@ -525,6 +530,7 @@ function launchCrusade(settings: CrusadeSettings): void {
       v-else-if="state"
       :left="state.phase !== 'forfeit'"
       :right="state.phase !== 'lobby'"
+      :left-collapsed="leftCollapsed"
     >
       <template #header>
         <DiveTopBar
@@ -566,20 +572,27 @@ function launchCrusade(settings: CrusadeSettings): void {
           :is-host="session.selfIsHost.value"
           :can-control="canControl"
           :name-draft="nameDraft"
+          :collapsed="leftCollapsed"
           @update:name-draft="setNameDraft"
           @commit="commitName"
           @transfer-host="transferHost"
           @kick="kick"
+          @toggle="leftCollapsed = !leftCollapsed"
         />
 
         <SteamLobbyBox
           v-if="session.mode === 'room'"
           :steam="session.steam.value"
           :is-host="session.selfIsHost.value"
+          :collapsed="leftCollapsed"
           @set-steam="session.setSteam"
+          @expand="leftCollapsed = false"
         />
 
-        <div class="rail-lower">
+        <div
+          v-if="!leftCollapsed"
+          class="rail-lower"
+        >
           <MissionReportSummary
             v-if="state.phase === 'rewards'"
             :state="state"
