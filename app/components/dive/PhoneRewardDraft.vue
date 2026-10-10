@@ -211,18 +211,17 @@ function tierOf(option: RewardOption): string {
             v-for="(option, index) in options"
             :key="option.optionId"
           >
-            <div
+            <LibertyCrossBand
               v-if="option.choice"
-              class="cross-row"
-              :class="{ picked: self?.pickedOptionId === option.optionId }"
-            >
-              <DiversChoiceCard
-                :pool="rewardPool"
-                :owned-ids="ownedIds"
-                :disabled="!self || resolved || banMode"
-                @choose="itemId => emit('pick', option.optionId, itemId)"
-              />
-            </div>
+              :pool="rewardPool"
+              :owned-ids="ownedIds"
+              :can-pick="!!self && !resolved"
+              :picked="self?.pickedOptionId === option.optionId"
+              :dimmed="resolved && self?.pickedOptionId !== option.optionId"
+              :ban-mode="banMode"
+              :delay="150"
+              @choose="itemId => emit('pick', option.optionId, itemId)"
+            />
             <button
               v-else
               class="row"
@@ -454,13 +453,6 @@ function tierOf(option: RewardOption): string {
 
 .rows { display: flex; flex-direction: column; gap: 8px; }
 
-.cross-row { border: 1px solid var(--red); animation: cross-glow 1.6s ease-in-out infinite; }
-.cross-row.picked { animation: none; }
-@keyframes cross-glow {
-  0%, 100% { box-shadow: 0 0 0 0 transparent; }
-  50% { box-shadow: 0 0 20px 2px color-mix(in srgb, var(--tier-splus) 45%, transparent); }
-}
-
 /* Rarity reads at a glance: A and S rows carry a tier-tinted sheen, S faster. */
 .row[data-tier='A']:not(:disabled),
 .row[data-tier='S']:not(:disabled) { overflow: hidden; }
@@ -479,10 +471,8 @@ function tierOf(option: RewardOption): string {
 .row[data-tier='S']:not(:disabled)::after { animation-duration: 2.6s; }
 .row[data-tier='S'] .row-tier { background: var(--tier-s); }
 @media (prefers-reduced-motion: reduce) {
-  .cross-row { animation: none; }
   .row::after { display: none; }
 }
-.cross-row.picked { box-shadow: 0 0 18px color-mix(in srgb, var(--red) 30%, transparent); }
 
 .row {
   position: relative;

@@ -1,12 +1,10 @@
 <script setup lang="ts">
+import { POD_DROP, POD_STAGGER } from '~/utils/motion'
 import { itemImageUrl } from '~~/shared/data/images'
-import type { Item } from '~~/shared/data/types'
 import type { RewardOption } from '~~/shared/engine/rewards'
 
 const props = withDefaults(defineProps<{
   option: RewardOption
-  choicePool: Item[]
-  ownedIds: string[]
   index: number
   // The draft was already resolved (or motion is reduced): skip the drop.
   instant: boolean
@@ -17,7 +15,7 @@ const props = withDefaults(defineProps<{
   // The best option the draft rolled — the pod the draft "leads" with.
   lead?: boolean
   // Ban flow: the landed pods toggle a purge selection instead of picking.
-  // `bannable` is the engine's allow-list (Liberty's Cross is never bannable).
+  // `bannable` is the engine's allow-list.
   banMode?: boolean
   bannable?: boolean
   selected?: boolean
@@ -29,16 +27,15 @@ const props = withDefaults(defineProps<{
 }>(), { lead: false, banMode: false, bannable: true, selected: false, stamp: null, revealRank: undefined })
 
 const emit = defineEmits<{
-  pick: [optionId: string, choiceItemId?: string]
+  pick: [optionId: string]
   ban: [optionId: string]
   settled: []
 }>()
 
 const winner = computed(() => props.option.item)
 const imageUrl = computed(() => itemImageUrl(winner.value))
-const tierVar = computed(() =>
-  props.option.choice ? 'var(--tier-splus)' : `var(--tier-${winner.value.tier})`)
-const winnerTier = computed(() => (props.option.choice ? 'S+' : winner.value.tier.toUpperCase()))
+const tierVar = computed(() => `var(--tier-${winner.value.tier})`)
+const winnerTier = computed(() => winner.value.tier.toUpperCase())
 const pod = computed(() => String(props.index + 1).padStart(2, '0'))
 
 // One tiny drop animation per pod, staggered by index — the design's podFall →
@@ -50,12 +47,10 @@ const instant = computed(() => props.instant || reduced)
 const settled = ref(instant.value)
 let timer: ReturnType<typeof setTimeout> | undefined
 
-const DROP = 620
-const STAGGER = 180
-// The top tiers hold a beat longer before they land — Liberty's Cross longest.
-const SUSPENSE: Record<string, number> = { 'S': 220, 'S+': 520 }
+// S holds a beat longer before it lands.
+const SUSPENSE: Record<string, number> = { S: 220 }
 const delay = computed(() =>
-  (props.revealRank ?? props.index) * STAGGER + (SUSPENSE[winnerTier.value] ?? 0))
+  (props.revealRank ?? props.index) * POD_STAGGER + (SUSPENSE[winnerTier.value] ?? 0))
 
 onMounted(() => {
   if (instant.value) {
@@ -65,7 +60,7 @@ onMounted(() => {
   timer = setTimeout(() => {
     settled.value = true
     emit('settled')
-  }, DROP + delay.value)
+  }, POD_DROP + delay.value)
 })
 onBeforeUnmount(() => clearTimeout(timer))
 
@@ -142,7 +137,7 @@ function onHit(): void {
         class="pod-top"
       />
       <span
-        v-if="!banMode && !dimmed && ['A', 'S', 'S+'].includes(winnerTier)"
+        v-if="!banMode && !dimmed && ['A', 'S'].includes(winnerTier)"
         aria-hidden="true"
         class="pod-flare"
       />
@@ -159,15 +154,8 @@ function onHit(): void {
       </header>
 
       <div class="pod-stage grid-bg">
-        <DiversChoiceCard
-          v-if="option.choice"
-          :pool="choicePool"
-          :owned-ids="ownedIds"
-          :disabled="!selectable"
-          @choose="itemId => emit('pick', option.optionId, itemId)"
-        />
         <img
-          v-else-if="imageUrl"
+          v-if="imageUrl"
           class="pod-art"
           :src="imageUrl"
           alt=""
@@ -176,10 +164,7 @@ function onHit(): void {
         >
       </div>
 
-      <div
-        v-if="!option.choice"
-        class="pod-info"
-      >
+      <div class="pod-info">
         <span class="pod-name">{{ winner.displayName }}</span>
         <span class="pod-cat">{{ winner.category }}</span>
       </div>
@@ -210,18 +195,13 @@ function onHit(): void {
       </footer>
 
       <button
-        v-if="selectable && !option.choice"
+        v-if="selectable"
         class="pod-hit"
         type="button"
         :aria-label="hitLabel"
         @click="onHit"
       />
     </Motion>
-    <span
-      v-if="settled && !instant && option.choice"
-      aria-hidden="true"
-      class="pod-burst"
-    />
   </div>
 </template>
 
@@ -307,10 +287,6 @@ function onHit(): void {
   width: 112px;
   height: 112px;
   object-fit: contain;
-}
-.pod-stage :deep(.choice-card) {
-  width: 100%;
-  height: 100%;
 }
 
 .pod-info {
@@ -450,8 +426,8 @@ function onHit(): void {
 }
 
 /* Tier emphasis ramps with rarity: A gets a quiet sheen, S a pulsing tier
-   glow, Liberty's Cross the full treatment — turning light rays, a fast sweep
-   and a landing burst. Filters only: Motion owns the card's transform. */
+   glow (Liberty's Cross has its own band). Filters only: Motion owns the card's
+   transform. */
 .pod-flare {
   position: absolute;
   inset: 0;
@@ -470,53 +446,24 @@ function onHit(): void {
 .pod-card[data-tier='A'] .pod-flare::after { opacity: 0.55; }
 .pod-card[data-tier='S'] {
   --flare-speed: 2.8s;
-  animation: tier-land 0.9s ease-out both;
-}
-.pod-card[data-tier='S+'] {
-  --flare-speed: 1.8s;
-  border-color: var(--tier);
-  animation: tier-land 1.2s ease-out both;
+  animation: tier-land 1.4s ease-out both;
 }
 /* The card is clip-pathed (which clips box-shadow), so the glow rides the
    slot as a drop-shadow that follows the cut shape. */
-.pod-slot.landed:not(.faded)[data-tier='S'] { animation: tier-glow 2.4s ease-in-out 0.9s infinite; }
-.pod-slot.landed:not(.faded)[data-tier='S+'] { animation: tier-glow 1.6s ease-in-out 1.2s infinite; }
-.pod-card[data-tier='S+'] .pod-stage { overflow: hidden; }
-.pod-card[data-tier='S+'] .pod-stage::before {
-  content: '';
-  position: absolute;
-  inset: -60%;
-  z-index: 0;
-  pointer-events: none;
-  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--tier) 24%, transparent) 0deg 7deg, transparent 7deg 22deg);
-  animation: spinSlow 16s linear infinite, rays-on 1.2s ease-out both;
-}
-.pod-card[data-tier='S+'] .pod-stage > * { position: relative; z-index: 1; }
+.pod-slot.landed:not(.faded)[data-tier='S'] { animation: tier-glow 3.6s ease-in-out 1.4s infinite; }
 .pod-card.dimmed,
 .pod-card.banning { animation: none; }
-.pod-card.dimmed .pod-stage::before { display: none; }
-
-.pod-burst {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-  background: radial-gradient(circle, color-mix(in srgb, var(--tier) 70%, white) 0%, color-mix(in srgb, var(--tier) 35%, transparent) 30%, transparent 62%);
-  animation: flashOut 1s ease-out both;
-}
 
 @keyframes tier-land {
-  0% { filter: brightness(2.6) saturate(1.5); }
+  0% { filter: brightness(1.3) saturate(1.2); }
   100% { filter: none; }
 }
 @keyframes tier-glow {
   0%, 100% { filter: drop-shadow(0 0 0 transparent); }
-  50% { filter: drop-shadow(0 0 14px color-mix(in srgb, var(--tier) 70%, transparent)); }
+  50% { filter: drop-shadow(0 0 12px color-mix(in srgb, var(--tier) 50%, transparent)); }
 }
-@keyframes rays-on { from { opacity: 0; } to { opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .pod-flare,
-  .pod-burst { display: none; }
+  .pod-flare { display: none; }
 }
 </style>
