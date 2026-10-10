@@ -17,12 +17,19 @@ describe('condition catalog integrity', () => {
     expect(new Set(MISFORTUNES.map(misfortune => misfortune.name)).size).toBe(MISFORTUNES.length)
   })
 
-  it('scales each condition\'s risk with difficulty, inverse allowed', () => {
+  it('scales each condition\'s risk with difficulty', () => {
     // A team rule that grows into the top band at altitude.
     expect(conditionRiskAt('noStratagems', MIN_DIFFICULTY)).toBeLessThan(conditionRiskAt('noStratagems', 10))
     expect(conditionRiskAt('noStratagems', 10)).toBe(5)
-    // A personal rule that is inverse: it matters less once the war is the threat.
-    expect(conditionRiskAt('stimAbstinent', 10)).toBeLessThan(conditionRiskAt('stimAbstinent', MIN_DIFFICULTY))
+    // Survival pacts cost more where the enemy hits harder.
+    for (const id of ['stimAbstinent', 'untouchable', 'antiTankAbstinent']) {
+      expect(conditionRiskAt(id, 10)).toBeGreaterThan(conditionRiskAt(id, MIN_DIFFICULTY))
+    }
+    // Dead Weight is flat: squadmates die more often up high too, so the wait
+    // for a shared reinforce shrinks as the death rate climbs.
+    expect(conditionRiskAt('deadWeight', 10)).toBe(conditionRiskAt('deadWeight', MIN_DIFFICULTY))
+    // Stealth was retired: retired ids price at 0, never inflating Valor.
+    expect(conditionRiskAt('stealth', 5)).toBe(0)
     // Every condition stays on the 1–5 scale at every rung.
     for (const difficulty of [3, 5, 7, 10]) {
       for (const id of ['noBackpacks', 'pacifist', 'stimAbstinent', 'untouchable']) {

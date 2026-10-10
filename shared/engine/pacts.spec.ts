@@ -71,7 +71,7 @@ describe('pact exclusivity', () => {
     for (const group of PACT_EXCLUSIVE_GROUPS) {
       for (let seed = 0; seed < 500; seed++) {
         for (const difficulty of [3, 7, 10]) {
-          const offered = rollPactOffer(seed, null, difficulty).map(pact => pact.id)
+          const offered = rollPactOffer(seed, null, difficulty, 4).map(pact => pact.id)
           expect(offered.filter(id => group.includes(id)).length).toBeLessThanOrEqual(1)
         }
       }
@@ -149,7 +149,7 @@ describe('pactRiskTotal', () => {
 
   it('scales the sum with the difficulty', () => {
     expect(pactRiskTotal(['thirsty'], 10)).toBeGreaterThan(pactRiskTotal(['thirsty'], 3))
-    expect(pactRiskTotal(['stimAbstinent'], 10)).toBeLessThan(pactRiskTotal(['stimAbstinent'], 3))
+    expect(pactRiskTotal(['stimAbstinent'], 10)).toBeGreaterThan(pactRiskTotal(['stimAbstinent'], 3))
   })
 })
 
@@ -164,23 +164,23 @@ describe('pactOptionsFor', () => {
 
 describe('rollPactOffer', () => {
   it('rolls exactly the difficulty\'s option count from selectable pacts', () => {
-    for (const pact of rollPactOffer(42, null, 3)) {
+    for (const pact of rollPactOffer(42, null, 3, 4)) {
       expect(isPactSelectable(pact.id, null)).toBe(true)
     }
-    expect(rollPactOffer(42, null, 3)).toHaveLength(2)
-    expect(rollPactOffer(42, null, 10)).toHaveLength(3)
+    expect(rollPactOffer(42, null, 3, 4)).toHaveLength(2)
+    expect(rollPactOffer(42, null, 10, 4)).toHaveLength(3)
   })
 
   it('is deterministic for a given seed and never repeats a pact', () => {
-    expect(rollPactOffer(42, null, 10)).toEqual(rollPactOffer(42, null, 10))
-    const ids = rollPactOffer(42, null, 10).map(pact => pact.id)
+    expect(rollPactOffer(42, null, 10, 4)).toEqual(rollPactOffer(42, null, 10, 4))
+    const ids = rollPactOffer(42, null, 10, 4).map(pact => pact.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
 
   it('never offers a pact the accepted misfortune blocks', () => {
     for (const [misfortuneId, blocked] of Object.entries(BLOCKED_UNDER_MISFORTUNE)) {
       for (let seed = 0; seed < 200; seed++) {
-        for (const pact of rollPactOffer(seed, misfortuneId, 10)) {
+        for (const pact of rollPactOffer(seed, misfortuneId, 10, 4)) {
           expect(blocked).not.toContain(pact.id)
         }
       }
@@ -190,7 +190,7 @@ describe('rollPactOffer', () => {
   it('still draws from the whole catalog when the draw is declined', () => {
     const seen = new Set<string>()
     for (let seed = 0; seed < 300; seed++) {
-      for (const pact of rollPactOffer(seed, null, 7)) {
+      for (const pact of rollPactOffer(seed, null, 7, 4)) {
         seen.add(pact.id)
       }
     }
@@ -199,7 +199,7 @@ describe('rollPactOffer', () => {
 
   it('never empties the pool, even under the harshest misfortune', () => {
     for (const misfortuneId of Object.keys(BLOCKED_UNDER_MISFORTUNE)) {
-      expect(rollPactOffer(7, misfortuneId, 10).length).toBeGreaterThanOrEqual(2)
+      expect(rollPactOffer(7, misfortuneId, 10, 4).length).toBeGreaterThanOrEqual(2)
     }
   })
 })
