@@ -40,61 +40,71 @@ const reason = computed(() =>
     class="settlement"
     :class="{ compact }"
   >
-    <BonusCeremony
-      v-if="bonusUp"
-      :state="state"
-      :self-id="selfId"
-      :self="self"
-      :can-control="canControl"
-      :compact="compact"
-      @spin="emit('spin')"
-      @award="playerId => emit('award', playerId)"
-      @advance="emit('advance')"
-    />
+    <template v-if="bonusUp">
+      <BonusCeremony
+        :state="state"
+        :self-id="selfId"
+        :self="self"
+        :can-control="canControl"
+        :compact="compact"
+        @spin="emit('spin')"
+        @award="playerId => emit('award', playerId)"
+        @advance="emit('advance')"
+      />
+      <RequisitionStock
+        v-if="stock.length > 0"
+        :stock="stock"
+        :sample-bank="sampleBank"
+        :buyable="buyable"
+        @buy="itemId => emit('buy', itemId)"
+      />
+    </template>
 
-    <section
-      v-else
-      class="honors-off"
-      aria-label="Squad honors unavailable"
-    >
-      <header class="off-head">
-        <div class="off-l">
-          <span class="lbl">Squad honors</span>
-          <h1 class="disp off-title">
-            Not this mission
-          </h1>
-        </div>
-        <span class="off-badge">Unavailable</span>
-      </header>
-      <p class="muted off-note">
-        {{ reason }}
-      </p>
-      <button
-        class="btn primary cut off-advance cta-sweep"
-        type="button"
-        :disabled="!canControl"
-        @click="emit('advance')"
+    <!-- Honors not due this turn: the bargains come first, the disabled honors
+         panel sits below. -->
+    <template v-else>
+      <RequisitionStock
+        v-if="stock.length > 0"
+        :stock="stock"
+        :sample-bank="sampleBank"
+        :buyable="buyable"
+        @buy="itemId => emit('buy', itemId)"
+      />
+      <section
+        class="honors-off"
+        aria-label="Squad honors unavailable"
       >
-        <span class="disp">{{ advanceLabel }}</span>
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.4"
-          aria-hidden="true"
-        ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-      </button>
-    </section>
-
-    <RequisitionStock
-      v-if="stock.length > 0"
-      :stock="stock"
-      :sample-bank="sampleBank"
-      :buyable="buyable"
-      @buy="itemId => emit('buy', itemId)"
-    />
+        <header class="off-head">
+          <div class="off-l">
+            <span class="lbl">Squad honors</span>
+            <h1 class="disp off-title">
+              Not this mission
+            </h1>
+          </div>
+          <span class="off-badge">Unavailable</span>
+        </header>
+        <p class="muted off-note">
+          {{ reason }}
+        </p>
+        <button
+          class="btn primary cut off-advance cta-sweep"
+          type="button"
+          :disabled="!canControl"
+          @click="emit('advance')"
+        >
+          <span class="disp">{{ advanceLabel }}</span>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            aria-hidden="true"
+          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </button>
+      </section>
+    </template>
   </div>
 </template>
 
@@ -105,7 +115,10 @@ const reason = computed(() =>
   gap: var(--gap-panel);
   min-height: 0;
 }
-.settlement.compact { gap: 12px; }
+/* Keep each block at its natural height — a flex column would otherwise shrink
+   the tall honors reel to nothing — and let the phone screen scroll. */
+.settlement > * { flex-shrink: 0; }
+.settlement.compact { gap: 12px; overflow-y: auto; }
 
 .honors-off {
   display: flex;

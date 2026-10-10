@@ -665,7 +665,8 @@ lost with the diver on leave, like reward tokens. There is no cap — the game's
 
 Once a diver's draft resolves (they picked **or** spent it on bans), a per-diver **rotating stock**
 opens in the same reward window — the Requisition shelf (`shopStockFor`, and `BUY_ITEM` self-service,
-`rewards` phase only). It is the one deliberate exception to design principle 4 (it names items):
+`rewards` phase only; UI copy titles it **Brasch's Bargains**). It is the one deliberate exception to
+design principle 4 (it names items):
 
 - **Size:** one item per star the difficulty can award (`maxStarsFor`): 3 at diff 3–4, 4 at 5–6, 5 at
   7+.
@@ -882,11 +883,12 @@ app/
                    pod-drop cabinet of RewardPod reveal cards stamped Banked/Banned,
                    and the always-on reward-token bar whose post-pick CTA opens the settlement),
                    RewardsSettlement — the post-draft screen: the Squad Honors
-                   contest (or a disabled panel when honors aren't due) above the
-                   Requisition shelf; desktop and phone share it,
+                   contest above the Requisition shelf when honors is due, or the
+                   shelf above a disabled honors panel when it isn't; desktop and
+                   phone share it,
                    RequisitionStock — the post-draft rotating shelf (per-diver
                    seeded items with tier×type prices, the sample purse and
-                   buy controls),
+                   buy controls; titled **Brasch's Bargains**),
                    MissionReportSummary — the left-rail report card,
                    RewardTokensRail — the honors rail's per-diver token banks,
                    ValorMeter — the live Valor gauge

@@ -67,7 +67,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('region', { name: 'Squad honors' })).toBeVisible()
 
   const requisition = page.locator('.req')
-  await expect(requisition.getByText('Requisition')).toBeVisible()
+  await expect(requisition.getByRole('heading', { name: 'Brasch\'s Bargains' })).toBeVisible()
   await expect(requisition.getByRole('img', { name: /sample points banked/ })).toBeVisible()
   const stockCards = requisition.locator('.req-card')
   await expect(stockCards.first()).toBeVisible()

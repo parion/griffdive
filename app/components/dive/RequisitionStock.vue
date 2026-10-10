@@ -29,12 +29,14 @@ function verdict(option: RewardOption): { allowed: boolean, reason: string | nul
 <template>
   <section
     class="req"
-    aria-label="Requisition stock"
+    aria-label="Brasch's bargains"
   >
     <header class="req-head">
       <div class="req-title">
-        <span class="lbl">Requisition</span>
-        <span class="muted small">Rotating stock · spend samples</span>
+        <span class="lbl">Rotating stock · spend samples</span>
+        <h1 class="disp req-name-title">
+          Brasch's Bargains
+        </h1>
       </div>
       <div
         class="req-purse"
@@ -113,6 +115,7 @@ function verdict(option: RewardOption): { allowed: boolean, reason: string | nul
   gap: 1rem;
 }
 .req-title { display: flex; flex-direction: column; gap: 4px; }
+.req-name-title { margin: 0; font-size: var(--fs-h1); color: var(--text); }
 .req-purse {
   display: flex;
   align-items: baseline;
