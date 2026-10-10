@@ -70,7 +70,8 @@ app/
                    warbonds/WarbondBrowser — the shared warbond owner list (single column,
                    acquisition specials last; each banner starts blurred and dimmed, then
                    resolves on hover/focus/tap, click toggles),
-                   ui/ (BrandMark — the Griffdive chevron mark, ItemCard, TierBadge, RiskPips — risk
+                   ui/ (BrandMark — the Griffdive mark, a griffin diving through the Wheel's
+                   rim, kept in step with public/icon.svg; ItemCard, TierBadge, RiskPips — risk
                    dots, with a rolling back-and-forth state while a wheel draw reels,
                    SampleCanister/SegmentedBar — the report's tinted sample tubes and
                    click-to-set time bar (both scrub: press and drag sets the value; the
