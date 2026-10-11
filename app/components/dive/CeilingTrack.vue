@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CEILING_LEAD, CEILING_STEP } from '~/utils/motion'
 import { baseTierFor } from '~~/shared/engine/config'
 import { oddsToReach, valorOf } from '~~/shared/engine/rewards'
 import type { RewardTier } from '~~/shared/engine/types'
@@ -6,318 +7,230 @@ import type { RewardTier } from '~~/shared/engine/types'
 const props = withDefaults(defineProps<{
   difficulty: number
   ceiling: RewardTier
-  settled: boolean
   teamRisk: number
   pactRisk: number
-  rerolled?: boolean
-}>(), { rerolled: false })
+  // Skip the climb (a resolved draft, a reload): land on the ceiling at once.
+  instant?: boolean
+  // Bumped on every redraw so a reroll replays the climb.
+  replayKey?: number
+}>(), { instant: false, replayKey: 0 })
 
 const LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
-const baseTier = computed(() => baseTierFor(props.difficulty))
-const baseIndex = computed(() => LADDER.indexOf(baseTier.value))
+const baseIndex = computed(() => LADDER.indexOf(baseTierFor(props.difficulty)))
 const valor = computed(() => valorOf(props.teamRisk, props.pactRisk))
 const ceilingIndex = computed(() => Math.max(baseIndex.value, LADDER.indexOf(props.ceiling)))
-// Four nodes at most, but always wide enough to land the marker on the ceiling
-// node: a C base reaching S+ needs the fifth node or the marker runs off the
-// track (the low-band, max-risk case).
+// Four nodes at most, but always wide enough to land on the ceiling node: a C
+// base reaching S+ needs the fifth (the low-band, max-risk case).
 const nodes = computed(() => {
   const end = Math.max(baseIndex.value + 4, ceilingIndex.value + 1)
   return LADDER.slice(baseIndex.value, end)
 })
-const markerIndex = computed(() => ceilingIndex.value - baseIndex.value)
-
-interface NodeState {
-  tier: RewardTier
-  base: boolean
-  ok: boolean
-  miss: boolean
-}
-
-const nodeStates = computed<NodeState[]>(() =>
-  nodes.value.map((tier, i) => {
-    const abs = baseIndex.value + i
-    return {
-      tier,
-      base: i === 0,
-      ok: abs <= ceilingIndex.value,
-      miss: abs === ceilingIndex.value + 1,
-    }
-  }))
-
-interface LinkState {
-  tier: RewardTier
-  pct: number
-  win: boolean
-}
+const target = computed(() => ceilingIndex.value - baseIndex.value)
 
 // Per-step chance is the marginal of the chain: reach(target) / reach(from).
 // The engine owns the math (`oddsToReach`); this only divides it for display.
-const linkStates = computed<LinkState[]>(() =>
+const stepPcts = computed(() =>
   nodes.value.slice(1).map((tier, k) => {
-    const from = nodes.value[k]!
-    const start = oddsToReach(props.difficulty, valor.value, from) || 1
+    const start = oddsToReach(props.difficulty, valor.value, nodes.value[k]!) || 1
     const end = oddsToReach(props.difficulty, valor.value, tier)
-    const abs = baseIndex.value + k + 1
-    return {
-      tier,
-      pct: Math.round(Math.min(1, Math.max(0, end / start)) * 100),
-      win: abs <= ceilingIndex.value,
-    }
+    return Math.round(Math.min(1, Math.max(0, end / start)) * 100)
   }))
 
-const trackLabel = computed(() => {
-  if (!props.settled) {
-    return `Rolling the ceiling from base tier ${baseTier.value}`
+// Presentation only: the bar climbs one tier per beat up to the ceiling the
+// engine already rolled, then the failed step stalls red.
+const reached = ref(0)
+const done = ref(false)
+let timers: ReturnType<typeof setTimeout>[] = []
+
+function clearTimers(): void {
+  timers.forEach(clearTimeout)
+  timers = []
+}
+
+function climb(): void {
+  clearTimers()
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (props.instant || reduced) {
+    reached.value = target.value
+    done.value = true
+    return
   }
-  const stops = nodeStates.value.filter(node => node.ok).map(node => node.tier).join(' to ')
-  return `Ceiling climbed ${baseTier.value} to ${stops}. Ceiling ${props.ceiling}.`
-})
+  reached.value = 0
+  done.value = false
+  for (let step = 1; step <= target.value; step++) {
+    timers.push(setTimeout(() => {
+      reached.value = step
+    }, CEILING_LEAD + step * CEILING_STEP))
+  }
+  timers.push(setTimeout(() => {
+    done.value = true
+  }, CEILING_LEAD + (target.value + 1) * CEILING_STEP))
+}
+
+onMounted(climb)
+watch(() => [props.replayKey, props.ceiling], climb)
+onBeforeUnmount(clearTimers)
+
+function tierVar(tier: RewardTier): string {
+  return tier === 'S+' ? 'var(--tier-splus)' : `var(--tier-${tier.toLowerCase()})`
+}
 
 function format(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2)
 }
 
-function tierVar(tier: RewardTier): string {
-  return tier === 'S+' ? 'var(--tier-splus)' : `var(--tier-${tier.toLowerCase()})`
-}
+const trackLabel = computed(() => {
+  const climbed = nodes.value.slice(0, target.value + 1).join(' to ')
+  return `Ceiling roll at Valor ${format(valor.value)}: climbed ${climbed}. Ceiling ${props.ceiling}.`
+})
 </script>
 
 <template>
-  <section
-    class="ceiling-panel"
-    aria-label="Ceiling roll"
+  <div
+    class="ceiling-track"
+    :class="{ done }"
+    role="img"
+    :aria-label="trackLabel"
   >
-    <header class="ceiling-head">
-      <span class="lbl head-title">Ceiling roll</span>
-      <span class="head-note">VALOR {{ format(valor) }} · CHANCE PER STEP</span>
-      <span
-        v-if="settled"
-        class="stamp disp ceiling-stamp"
-      >Ceiling · {{ ceiling }}</span>
-      <span
-        v-else
-        class="lbl pulse climbing"
-      >Climbing</span>
-    </header>
-
-    <div
-      class="track"
-      :style="{ '--span': `calc((100% - 64px) / ${Math.max(1, nodes.length - 1)})` }"
-      role="img"
-      :aria-label="trackLabel"
+    <template
+      v-for="(tier, i) in nodes"
+      :key="tier"
     >
       <span
-        v-for="(node, i) in nodeStates"
-        :key="node.tier"
-        class="node"
-        :class="{ base: node.base, ok: settled && node.ok, miss: settled && node.miss, pending: !settled || (!node.ok && !node.miss) }"
-        :data-tier="node.tier"
-        :style="{ 'left': `calc(${i} * var(--span) + 32px)`, '--tier': tierVar(node.tier) }"
-      >
-        <span class="node-tier disp">{{ node.tier }}</span>
-        <span
-          v-if="node.base"
-          class="node-base"
-        >BASE</span>
-        <span
-          v-if="settled && node.ok"
-          class="node-mark"
-          aria-hidden="true"
-        >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="3.4"
-          ><path d="M5 12l5 5 9-10" /></svg>
-        </span>
-        <span
-          v-else-if="settled && node.miss"
-          class="node-mark miss"
-          aria-hidden="true"
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="3.6"
-          ><path d="M6 6l12 12M18 6L6 18" /></svg>
-        </span>
-      </span>
-
-      <span
-        v-for="(link, i) in linkStates"
-        :key="`${link.tier}-link`"
+        v-if="i > 0"
         class="link"
-        :style="{ 'left': `calc(${i} * var(--span) + 64px)`, 'width': `calc(var(--span) - 64px)`, '--tier': tierVar(link.tier) }"
-      >
-        <span
-          class="link-line"
-          :class="{ tried: settled, win: link.win, miss: settled && !link.win }"
-        />
-        <span
-          class="link-pct"
-          :class="{ win: settled && link.win, miss: settled && !link.win }"
-        >{{ link.pct }}%</span>
-      </span>
-
-      <span
-        class="marker"
+        :class="{
+          win: i <= reached,
+          miss: done && i === target + 1,
+          idle: done && i > target + 1,
+        }"
+        :style="{ '--tier': tierVar(tier) }"
         aria-hidden="true"
-        :style="{ left: `calc(${markerIndex} * var(--span) + 32px)` }"
-      />
-    </div>
-  </section>
+      >
+        <span class="link-fill" />
+        <span class="link-pct">{{ stepPcts[i - 1] }}%</span>
+      </span>
+      <span
+        class="node"
+        :class="{
+          base: i === 0,
+          lit: i <= reached,
+          head: i === reached,
+          ceiling: done && i === target,
+          miss: done && i === target + 1,
+        }"
+        :style="{ '--tier': tierVar(tier) }"
+        aria-hidden="true"
+      >
+        <span class="disp node-tier">{{ tier }}</span>
+      </span>
+    </template>
+  </div>
 </template>
 
 <style scoped>
-.ceiling-panel {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem 1.1rem 0.4rem;
-  border: 1px solid var(--line-2);
-  background: var(--panel);
-}
-
-.ceiling-head {
+.ceiling-track {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-}
-.head-title { color: var(--text); }
-.head-note {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--muted);
-}
-.ceiling-stamp {
-  margin-left: auto;
-  padding: 10px 18px;
-  font-size: 26px;
-  border: 3px solid var(--gold);
-  color: var(--gold);
-  background: color-mix(in srgb, var(--gold) 6%, transparent);
-}
-.climbing { margin-left: auto; color: var(--khaki); }
-
-.track {
-  position: relative;
   width: 100%;
-  max-width: 514px;
-  height: 84px;
-  flex-shrink: 0;
+  max-width: 400px;
+  padding-top: 16px;
 }
 
 .node {
-  position: absolute;
-  top: 0;
-  width: 64px;
-  height: 64px;
-  margin-left: -32px;
+  position: relative;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
+  width: 34px;
+  height: 34px;
   border: 2px solid var(--line-4);
-  background: transparent;
   color: var(--dim);
-  transition: border-color var(--dur-med) var(--ease-out), background-color var(--dur-med) var(--ease-out), color var(--dur-med) var(--ease-out);
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
-.node-tier { font-size: 1.5rem; }
-.node.ok {
-  border-color: var(--tier, var(--gold));
-  background: color-mix(in srgb, var(--tier, var(--gold)) 14%, transparent);
-  color: var(--tier, var(--gold));
-  animation: flipIn 0.4s var(--ease-out) both;
+.node-tier { font-size: 0.85rem; }
+.node.lit {
+  border-color: var(--tier);
+  background: color-mix(in srgb, var(--tier) 16%, transparent);
+  color: var(--tier);
+  animation: node-pop 0.32s var(--ease-snap) both;
+}
+.node.base.lit { animation: none; }
+/* The caret rides whichever node the bar has reached. */
+.node.head::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -11px;
+  width: 10px;
+  height: 7px;
+  margin-left: -5px;
+  background: var(--tier);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.node.ceiling {
+  background: var(--tier);
+  color: var(--on-gold);
+  animation: node-land 0.5s var(--ease-snap) both, ceiling-glow 3.2s ease-in-out 0.5s infinite;
 }
 .node.miss {
   border-style: dashed;
   border-color: var(--red);
-  color: var(--dim);
   animation: shake 0.42s ease both;
 }
-.node.base { border-style: solid; }
-
-.node-base {
-  position: absolute;
-  bottom: -1px;
-  left: 50%;
-  transform: translate(-50%, 50%);
-  padding: 1px 5px;
-  background: var(--panel);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  color: var(--tier, var(--teal));
-}
-.node-mark {
-  position: absolute;
-  top: -9px;
-  right: -9px;
-  width: 20px;
-  height: 20px;
-  display: grid;
-  place-items: center;
-  background: var(--tier, var(--gold));
-  color: var(--on-gold);
-}
-.node-mark.miss { background: var(--red); }
 
 .link {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 14px;
+  height: 4px;
+  background: var(--line-2);
+}
+.link-fill {
   position: absolute;
-  top: 31px;
-  height: 2px;
+  inset: 0;
+  background: var(--tier);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--tier) 60%, transparent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.36s cubic-bezier(0.45, 0, 0.2, 1);
 }
-.link-line {
-  display: block;
-  width: 0;
-  height: 2px;
-  background: var(--line-3);
-  transition: width 0.32s ease-out, background-color var(--dur-med) var(--ease-out);
+.link.win .link-fill { transform: scaleX(1); }
+.link.miss .link-fill {
+  background: var(--red);
+  box-shadow: none;
+  transform: scaleX(0.42);
 }
-.link-line.tried { width: 100%; }
-.link-line.tried.miss { width: 46%; background: var(--red); }
-.link-line.win { background: var(--tier, var(--gold)); }
+.link.idle { opacity: 0.5; }
 
 .link-pct {
   position: absolute;
   left: 50%;
-  top: -12px;
+  bottom: 9px;
   transform: translateX(-50%);
-  padding: 4px 7px;
-  background: var(--panel);
-  border: 1px solid var(--line-2);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
+  letter-spacing: 0.04em;
   line-height: 1;
   color: var(--muted);
   white-space: nowrap;
-  transition: color 0.2s, border-color 0.2s;
+  transition: color var(--dur-fast);
 }
-.link-pct.win { color: var(--tier, var(--gold)); border-color: var(--tier, var(--gold)); }
-.link-pct.miss { color: var(--red); border-color: var(--red); }
+.link.win .link-pct { color: var(--tier); }
+.link.miss .link-pct { color: var(--red); }
 
-.marker {
-  position: absolute;
-  top: 72px;
-  width: 0;
-  display: flex;
-  justify-content: center;
-  transition: left 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+@keyframes node-pop {
+  0% { transform: scale(0.82); filter: brightness(1.8); }
+  60% { transform: scale(1.12); }
+  100% { transform: none; filter: none; }
 }
-.marker::before {
-  content: '';
-  width: 16px;
-  height: 11px;
-  margin-left: -8px;
-  background: var(--gold);
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--gold) 70%, transparent));
+@keyframes node-land {
+  0% { transform: scale(1.35); filter: brightness(2); }
+  100% { transform: none; filter: none; }
+}
+@keyframes ceiling-glow {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 14px 1px color-mix(in srgb, var(--tier) 55%, transparent); }
 }
 </style>

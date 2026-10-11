@@ -44,3 +44,7 @@ export function slamIn(delay = 0, step = 0.06): MotionPreset {
 /** Reward cabinet reveal timing (ms): pods fall for POD_DROP, one rank every POD_STAGGER. */
 export const POD_DROP = 620
 export const POD_STAGGER = 180
+
+/** Ceiling bar climb (ms): one tier step fills every CEILING_STEP, after CEILING_LEAD. */
+export const CEILING_LEAD = 240
+export const CEILING_STEP = 380

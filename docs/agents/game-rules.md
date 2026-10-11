@@ -438,6 +438,17 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   rides a stable sentinel id (`DIVERS_CHOICE_OPTION_ID` in `shared/engine/rewards.ts`); the UI
   opens a minified codex picker for it, and `PICK_REWARD` carries the named item in
   `choiceItemId`. `pickedOptionId` always records the banked item's id.
+- **The offer is frozen at the deal.** `REPORT_RESULT` snapshots each drafting diver's holdings
+  and bans into `DiverState.draftExcludedIds`, and `diverOptions` rolls against that snapshot, not
+  live holdings — so a pick, a Requisition purchase or a ban never reshuffles an offer the squad has
+  seen, and every client (and a reload) re-derives the same pods. `PICK_REWARD` refuses an item the
+  diver has gained since the deal (a catch-up claim), so the frozen offer can't bank a duplicate.
+  The snapshot resets with the pacts. It is optional: a pre-snapshot save falls back to live
+  holdings, so it needs no schema bump.
+- **Drafts are public.** Offers, ceilings and picks are derived state every client already holds,
+  so the draft shows the squad's: `draftSummaryFor` (offer, rolled ceiling, status, the banked
+  option — a Cross pick maps to the Cross slot — and banned options) feeds the squad board, which
+  reveals once the diver's own pods land and stays up after they pick.
 - Previews stay legible: the UI shows base tier → best plausible tier (`maxCeiling`, per-step odds
   ≥ `UPGRADE_PREVIEW_FLOOR`, 0.05) with the odds of reaching it (`oddsToReach`).
 - **Option count** comes from stars (mission performance), lookup table `starsToOptions`:

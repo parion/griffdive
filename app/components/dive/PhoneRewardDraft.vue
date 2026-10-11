@@ -11,8 +11,11 @@ import {
   canBuyItem,
   canRerollRewards,
   diverOptions,
+  draftSummaryFor,
+  pactRiskOf,
   rewardPoolFor,
   shopStockFor,
+  teamRiskOf,
 } from '~~/shared/engine/selectors'
 import type { Item } from '~~/shared/data/types'
 import type { RewardOption } from '~~/shared/engine/rewards'
@@ -94,16 +97,13 @@ const advanceLabel = computed(() =>
     ? `Advance · difficulty ${Math.min(props.state.difficulty + 1, MAX_DIFFICULTY)}`
     : 'Next mission')
 
-const squadPicks = computed(() =>
+const squadDrafts = computed(() =>
   props.state.divers
     .filter(diver => diver.id !== props.selfId)
-    .map(diver => ({
-      id: diver.id,
-      name: diver.name,
-      initial: diver.name.trim().slice(0, 1).toUpperCase() || '?',
-      picked: diver.pickedOptionId !== null,
-      skipped: diver.skipsCurrentDraft,
-    })))
+    .map(diver => ({ id: diver.id, name: diver.name, summary: draftSummaryFor(props.state, diver) })))
+const ceiling = computed(() => (props.self ? draftSummaryFor(props.state, props.self).ceiling : null))
+const teamRisk = computed(() => teamRiskOf(props.state))
+const pactRisk = computed(() => (props.self ? pactRiskOf(props.self, props.state.difficulty) : 0))
 
 // ---- Ban mode ----------------------------------------------------------
 
@@ -179,28 +179,22 @@ function tierOf(option: RewardOption): string {
           </span>
         </div>
 
+        <CeilingTrack
+          v-if="ceiling && options.length"
+          :difficulty="state.difficulty"
+          :ceiling="ceiling"
+          :team-risk="teamRisk"
+          :pact-risk="pactRisk"
+          :instant="resolved"
+          :replay-key="self?.rewardRerollSeed ?? 0"
+        />
+
         <p
           v-if="optionsLost > 0"
           class="lost-note"
         >
           {{ optionsLost }} failed pact{{ optionsLost === 1 ? '' : 's' }} · one fewer option
         </p>
-
-        <div
-          class="squad-picks"
-          aria-label="Squad picks"
-        >
-          <span
-            v-for="d in squadPicks"
-            :key="d.id"
-            class="pick-chip"
-            :class="{ waiting: !d.picked && !d.skipped }"
-          >
-            <span class="pick-init disp">{{ d.initial }}</span>
-            <span class="pick-name">{{ d.name }}</span>
-            <span class="pick-state">{{ d.skipped ? 'skip' : d.picked ? 'ready' : '…' }}</span>
-          </span>
-        </div>
 
         <div
           class="rows"
@@ -288,6 +282,12 @@ function tierOf(option: RewardOption): string {
             </button>
           </template>
         </div>
+
+        <SquadDraftBoard
+          v-if="squadDrafts.length && !banMode"
+          :drafts="squadDrafts"
+          compact
+        />
       </div>
 
       <PhoneActionBar aria-label="Reward tokens">
@@ -420,36 +420,6 @@ function tierOf(option: RewardOption): string {
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-
-.squad-picks { display: flex; gap: 6px; overflow: hidden; }
-.pick-chip {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 6px;
-  border: 1px solid var(--line-2);
-  min-width: 0;
-}
-.pick-chip.waiting { border-color: var(--gold); }
-.pick-init {
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  background: var(--line-2);
-  font-size: 10px;
-}
-.pick-name {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 70px;
-}
-.pick-state { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-.pick-chip.waiting .pick-state { color: var(--gold); }
 
 .rows { display: flex; flex-direction: column; gap: 8px; }
 

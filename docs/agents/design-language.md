@@ -73,6 +73,15 @@ engine.
   band (narrow container query: crest beside the copy, claim button full width). Glows ride the
   unclipped `.pod-slot` as `drop-shadow` (the card's `clip-path` clips box-shadows); Motion owns
   the card's transform, so tier effects use filters only. Phone reward rows carry the same tier sheen.
+  **The ceiling climbs:** `CeilingTrack` is a compact, unlabeled bar in the draft header's top right
+  (the phone puts it under the title). From the base node it fills one tier per `CEILING_STEP`
+  (`app/utils/motion.ts`), popping each node it reaches with the caret riding the head, so the
+  ceiling lands as the pods do; the failed step then stalls red with a shake and the ceiling node
+  fills solid with a slow glow. Per-step odds sit over each link. Reduced motion and resolved drafts
+  land instantly; a reroll replays it. **Drafts are social:** once the diver's own pods land,
+  `SquadDraftBoard` shows each squadmate's offer as small tier-edged tiles with their ceiling and
+  status — the banked tile pops and glows, the rest fade, bans are crossed out — and it stays up
+  after the diver picks so the squad can compare pulls.
 - **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav) on every
   route except the dive, which renders its own `DiveTopBar` (crusade + difficulty emblem + room
   code/copy + Tutorial + the labelled Codex/Warbonds ship nav — labels, never bare icons; the

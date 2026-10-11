@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import { REWARD_TOKEN_CAP, maxStarsFor } from '~~/shared/engine/config'
-import { optionsForStars } from '~~/shared/engine/rewards'
 import { ITEMS_BY_ID, TIER_RANK } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
 import type { RewardOption } from '~~/shared/engine/rewards'
+import type { DraftSummary } from '~~/shared/engine/selectors'
 import type { RewardTier } from '~~/shared/engine/types'
 
-interface SquadPick {
+interface SquadDraft {
   id: string
   name: string
-  item: Item | null
-  skipped: boolean
+  summary: DraftSummary
 }
 
 const props = withDefaults(defineProps<{
@@ -21,9 +20,9 @@ const props = withDefaults(defineProps<{
   ownedIds: string[]
   // How many reward slots failed pacts forfeited — explains a thinner draft.
   optionsLost?: number
-  // The rest of the squad's draft state: what they banked or that they are
-  // still choosing. Presentation only — the squad strip owns moderation.
-  squadPicks?: SquadPick[]
+  // The rest of the squad's drafts — their offers, ceilings and picks — shown
+  // once this diver's own pods land. Presentation only.
+  squadDrafts?: SquadDraft[]
   // Bonus-honors reward tokens: spend one to reroll this offer, or to ban
   // offered items (which forfeits the reward pick). `bannableIds` is the
   // parent's engine-gated allow-list.
@@ -35,12 +34,13 @@ const props = withDefaults(defineProps<{
   resolved?: boolean
   banned?: boolean
   bannedIds?: string[]
-  // Mission report facts for the ceiling preview and the options badge.
+  // The ceiling this diver's Valor rolled (engine-derived; null when sat out)
+  // and the mission report facts behind the header readout.
+  ceiling?: RewardTier | null
   stars?: number
   difficulty?: number
   teamRisk?: number
   pactRisk?: number
-  rerolled?: boolean
   // Squad-draft state: whether the full-star honors ceremony is due (the CTA
   // label follows it) and that everyone has picked.
   ready?: boolean
@@ -48,7 +48,7 @@ const props = withDefaults(defineProps<{
   canControl?: boolean
   kicker?: string
 }>(), {
-  squadPicks: () => [],
+  squadDrafts: () => [],
   tokenCount: 0,
   canReroll: false,
   canBan: false,
@@ -56,11 +56,11 @@ const props = withDefaults(defineProps<{
   resolved: false,
   banned: false,
   bannedIds: () => [],
+  ceiling: null,
   stars: 0,
   difficulty: 3,
   teamRisk: 0,
   pactRisk: 0,
-  rerolled: false,
   ready: false,
   bonusUp: false,
   canControl: false,
@@ -74,14 +74,9 @@ const emit = defineEmits<{
   openHonors: []
 }>()
 
-// A reload lands on a resolved draft whose offer can no longer be re-derived
-// (the banked item is already owned), so the pods can't be rebuilt — show the
-// banner alone. A draft resolved mid-session keeps its frozen pods.
-const wasResolvedOnMount = props.resolved || props.pickedId !== null
-
-// The offer is derived, and claiming an item adds it to the diver's inventory —
-// which re-derives the offer minus the new item. Freeze the draft when it opens
-// so a pick never reshuffles the pods under the diver's finger.
+// The engine freezes the offer at the deal; holding a local copy as well keeps
+// pre-snapshot saves (whose offer re-derives minus the pick) from reshuffling
+// the pods under the diver's finger.
 const lockedOptions = ref<RewardOption[]>(props.options.length > 0 ? [...props.options] : [])
 const settledCount = ref(0)
 // Once the pods have revealed, remounting them must not replay the drop.
@@ -187,28 +182,8 @@ watch(allSettled, (settled) => {
   }
 }, { immediate: true })
 
-// Presentation only: the rolled ceiling is the best tier the frozen offer
-// landed on (the S+ sentinel is Liberty's Cross). The track lights the climb
-// from the band floor to that ceiling; it never rolls anything itself.
-function maxTierOf(options: RewardOption[]): RewardTier {
-  const rolled = options.filter(option => !option.choice)
-  if (options.some(option => option.choice)) {
-    return 'S+'
-  }
-  if (rolled.length === 0) {
-    return 'C'
-  }
-  const best = rolled.reduce((top, option) =>
-    TIER_RANK[option.item.tier] > TIER_RANK[top.item.tier] ? option : top, rolled[0]!)
-  return best.item.tier.toUpperCase() as RewardTier
-}
-
-const ceilingTier = computed(() => maxTierOf(lockedOptions.value))
 const maxStars = computed(() => maxStarsFor(props.difficulty))
-const optionCount = computed(() =>
-  lockedOptions.value.length > 0
-    ? lockedOptions.value.length
-    : optionsForStars(props.stars, ceilingTier.value))
+const optionCount = computed(() => lockedOptions.value.length)
 
 const leadOptionId = computed<string | null>(() => {
   const rolled = lockedOptions.value.filter(option => !option.choice)
@@ -277,17 +252,14 @@ function banEnd(): void {
 }
 onBeforeUnmount(() => clearTimeout(holdTimer))
 
-function squadPickLabel(pick: SquadPick): string {
-  if (pick.skipped) {
-    return `${pick.name} skips this draft`
-  }
-  return pick.item ? `${pick.name} picked ${pick.item.displayName}` : `${pick.name} is choosing`
-}
-
 const selfResolved = computed(() =>
   props.resolved || props.pickedId !== null || props.banned)
 const choosing = computed(() =>
-  props.squadPicks.find(pick => !pick.item && !pick.skipped) ?? null)
+  props.squadDrafts.find(draft => draft.summary.status === 'choosing') ?? null)
+// The squad's offers reveal once this diver's own pods have landed, so
+// nobody's roll steals the moment from yours.
+const showSquad = computed(() =>
+  props.squadDrafts.length > 0 && !banMode.value && (allSettled.value || lockedOptions.value.length === 0))
 const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
   // Once every diver has picked, the draft hands off to the settlement screen
   // (Squad Honors + the Requisition shelf) — that screen advances, whatever the
@@ -313,101 +285,45 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
         <h1 class="disp draft-title">
           Reward Draft
         </h1>
-      </div>
-      <div
-        class="options-badge"
-        role="img"
-        :aria-label="`${stars} of ${maxStars} stars earns ${optionCount} options`"
-      >
-        <span
-          class="badge-stars"
-          aria-hidden="true"
-        >
-          <svg
-            v-for="i in maxStars"
-            :key="i"
-            viewBox="0 0 24 24"
-            class="badge-star"
-            :class="{ on: i <= stars }"
-          ><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6l-5.4 2.9 1.2-6-4.5-4.2 6.1-.7z" /></svg>
-        </span>
-        <svg
-          class="badge-arrow"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          aria-hidden="true"
-        ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-        <span
-          class="badge-slots"
-          aria-hidden="true"
-        >
+        <span class="head-meta">
           <span
-            v-for="i in optionCount"
-            :key="i"
-            class="badge-slot"
-          />
+            class="meta-stars"
+            role="img"
+            :aria-label="`${stars} of ${maxStars} stars`"
+          >
+            <svg
+              v-for="i in maxStars"
+              :key="i"
+              viewBox="0 0 24 24"
+              class="meta-star"
+              :class="{ on: i <= stars }"
+              aria-hidden="true"
+            ><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6l-5.4 2.9 1.2-6-4.5-4.2 6.1-.7z" /></svg>
+          </span>
+          <span
+            v-if="optionCount"
+            class="meta-count"
+          >{{ optionCount }} option{{ optionCount === 1 ? '' : 's' }}</span>
+          <span
+            v-if="optionsLost && !banMode"
+            class="meta-lost"
+          >−{{ optionsLost }} · failed pact{{ optionsLost === 1 ? '' : 's' }}</span>
         </span>
-        <span class="badge-count">{{ optionCount }} Options</span>
       </div>
+      <CeilingTrack
+        v-if="ceiling && lockedOptions.length"
+        class="head-track"
+        :difficulty="difficulty"
+        :ceiling="ceiling"
+        :team-risk="teamRisk"
+        :pact-risk="pactRisk"
+        :instant="instant"
+        :replay-key="draftGeneration"
+      />
     </header>
 
-    <CeilingTrack
-      v-if="lockedOptions.length && !wasResolvedOnMount"
-      :difficulty="difficulty"
-      :ceiling="ceilingTier"
-      :settled="allSettled"
-      :team-risk="teamRisk"
-      :pact-risk="pactRisk"
-      :rerolled="rerolled"
-    />
-
-    <p
-      v-if="optionsLost && !banMode"
-      class="options-lost small"
-    >
-      {{ optionsLost }} pact{{ optionsLost === 1 ? '' : 's' }} failed —
-      {{ optionsLost === 1 ? 'one reward option forfeited' : `${optionsLost} reward options forfeited` }}.
-    </p>
-
     <div
-      v-if="squadPicks.length && !banMode && !resolved"
-      class="squad-row"
-    >
-      <span class="lbl">Squad</span>
-      <AppTooltip
-        v-for="pick in squadPicks"
-        :key="pick.id"
-        :content="squadPickLabel(pick)"
-      >
-        <span
-          class="squad-pick cut-sm"
-          :class="{ done: pick.item !== null, skipped: pick.skipped }"
-          role="img"
-          :aria-label="squadPickLabel(pick)"
-        >
-          <img
-            v-if="pick.item"
-            :src="itemImageUrl(pick.item)"
-            alt=""
-            loading="lazy"
-            draggable="false"
-          >
-          <span
-            v-else-if="pick.skipped"
-            class="skip-mark"
-          >–</span>
-          <span
-            v-else
-            class="wait-dot pulse"
-          />
-        </span>
-      </AppTooltip>
-    </div>
-
-    <div
-      v-if="lockedOptions.length && !wasResolvedOnMount"
+      v-if="lockedOptions.length"
       class="cabinet"
       :class="{ 'banning': banMode, 'has-cross': crossOption }"
       :style="{ '--cols': Math.max(podOptions.length, 1) }"
@@ -449,45 +365,16 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
       />
     </div>
     <p
-      v-else-if="!lockedOptions.length && !resolved"
+      v-else-if="!resolved"
       class="muted small sat-out"
     >
       You sat out this mission's draft — the squad dives without your pick.
     </p>
 
-    <Transition name="phase">
-      <div
-        v-if="resolved && !wasResolvedOnMount"
-        class="banked cut-sm"
-      >
-        <template v-if="banned">
-          <span class="lbl ban-lbl">Draft resolved</span>
-          <strong class="banked-name">Rewards banned</strong>
-          <span class="muted small">— no reward this mission. Your future offers are cleaner.</span>
-        </template>
-        <template v-else>
-          <img
-            v-if="pickedImage"
-            class="banked-art"
-            :src="pickedImage"
-            alt=""
-            draggable="false"
-          >
-          <div class="banked-copy">
-            <span class="lbl">Reward banked</span>
-            <strong class="banked-name">{{ pickedItem?.displayName }}</strong>
-            <span class="muted small">— see the squad inventory below.</span>
-          </div>
-        </template>
-      </div>
-      <div
-        v-else-if="wasResolvedOnMount"
-        class="banked cut-sm"
-      >
-        <span class="lbl">Reward banked</span>
-        <strong class="banked-name">{{ pickedItem?.displayName ?? 'Draft resolved' }}</strong>
-      </div>
-    </Transition>
+    <SquadDraftBoard
+      v-if="showSquad"
+      :drafts="squadDrafts"
+    />
 
     <footer
       class="token-bar"
@@ -499,7 +386,35 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
         aria-hidden="true"
       />
 
-      <template v-if="!banMode">
+      <template v-if="!banMode && selfResolved">
+        <div
+          class="banked"
+          :class="{ purged: banned }"
+        >
+          <template v-if="banned">
+            <span class="lbl ban-lbl">Draft resolved</span>
+            <strong class="banked-name">Rewards banned</strong>
+          </template>
+          <template v-else>
+            <img
+              v-if="pickedImage"
+              class="banked-art"
+              :src="pickedImage"
+              alt=""
+              draggable="false"
+            >
+            <span class="banked-copy">
+              <span class="lbl">Reward banked</span>
+              <strong
+                class="banked-name"
+                :data-tier="bankedTier ?? undefined"
+              >{{ pickedItem?.displayName ?? 'Draft resolved' }}</strong>
+            </span>
+          </template>
+        </div>
+      </template>
+
+      <template v-if="!banMode && !selfResolved">
         <div class="tok-readout">
           <span class="lbl tok-lbl">Reward tokens</span>
           <span
@@ -583,7 +498,9 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
           <span class="bar-word">Ban</span>
           <span class="bar-cost">−1<span class="hex cost-chit" /></span>
         </button>
+      </template>
 
+      <template v-if="!banMode">
         <div
           class="bar-status"
           aria-live="polite"
@@ -679,74 +596,39 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
 
 .draft-head {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem 1.5rem;
   flex-wrap: wrap;
 }
-.head-l { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.head-l { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .draft-title { margin: 0; font-size: var(--fs-h1); color: var(--text); }
-
-.options-badge {
+.head-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
-  height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--line-2);
-  background: color-mix(in srgb, var(--panel) 80%, transparent);
-  flex-shrink: 0;
-}
-.badge-stars { display: flex; gap: 2px; }
-.badge-star { width: 14px; height: 14px; fill: var(--line-3); }
-.badge-star.on { fill: var(--gold); }
-.badge-arrow { width: 18px; height: 18px; color: var(--dim); }
-.badge-slots { display: flex; gap: 3px; }
-.badge-slot {
-  width: 11px;
-  height: 15px;
-  border: 1px solid var(--khaki);
-}
-.badge-count {
-  font-size: 12px;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--text);
-  white-space: nowrap;
 }
-
-.options-lost { margin: 0; color: var(--red); }
-
-.squad-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
-.squad-pick {
-  display: inline-grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  border: 1px solid var(--line-3);
-  background: var(--ground);
-  overflow: hidden;
-}
-.squad-pick img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  padding: 0.15rem;
-}
-.squad-pick.done { border-color: var(--teal); }
-.squad-pick.skipped { opacity: 0.5; }
-.skip-mark { color: var(--muted); font-weight: 700; line-height: 1; }
+.meta-stars { display: flex; gap: 2px; }
+.meta-star { width: 12px; height: 12px; fill: var(--line-3); }
+.meta-star.on { fill: var(--gold); }
+.meta-count { color: var(--khaki); }
+.meta-lost { color: var(--red); }
+.head-track { flex: 0 1 380px; margin-left: auto; }
 
 .cabinet {
   display: grid;
   /* Exactly one equal column per rolled option, so the pods fill the centre
      column (the design's `repeat(4, 1fr)`); `auto-fit` left empty tracks. */
   grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
-  grid-auto-rows: minmax(280px, 1fr);
+  grid-auto-rows: minmax(260px, 1fr);
   gap: 16px;
   flex: 1 1 auto;
-  min-height: 300px;
+  min-height: 260px;
 }
 /* Liberty's Cross takes the whole top row; the pods keep their equal columns. */
 .cabinet.has-cross { grid-template-rows: auto; grid-auto-rows: minmax(260px, 1fr); }
@@ -755,7 +637,7 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
 .sat-out { margin: 0; }
 
 /* Compact "choosing" indicators (the pods own their own glow). */
-.wait-dot,
+
 .pick-dot {
   width: 7px;
   height: 7px;
@@ -906,20 +788,30 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--line-3));
-  background: color-mix(in srgb, var(--gold) 8%, transparent);
+  min-width: 0;
+  padding-left: 4px;
 }
 .banked-art {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
   object-fit: contain;
+  flex-shrink: 0;
 }
-.banked-copy { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
-.banked-name { color: var(--gold); }
+.banked-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.banked-name {
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.banked-name:not([data-tier]) { color: var(--gold); }
+.banked.purged .banked-name { color: var(--red); }
+.banked.purged { flex-direction: column; align-items: flex-start; gap: 4px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .wait-dot,
+
   .pick-dot,
   .wait-dot-lg {
     animation: none;
