@@ -250,7 +250,8 @@ function sanitizeMajorOrder(raw: unknown): MajorOrderSelection | null {
 }
 
 // A forked host is the only diver left at the forfeit screen, so nobody may be
-// left to choose: their own kit empty, a mid-mission seating that dove nothing,
+// left to choose: nothing earned beyond the starting kit, a mid-mission seating
+// that dove nothing,
 // or an item already chosen with every other diver gone. The failure would
 // deadlock. Resolve it the way the reducer settles a forfeit: apply the chosen
 // item, or — when the host owed nothing — strip one item from a parked cache
@@ -266,7 +267,11 @@ function resolveStrandedForfeit(state: DiveState): DiveState {
   }
   const kit = state.personalInventories[owner.id] ?? []
   const chosen = owner.forfeitedItemId ?? null
-  if (!chosen && !owner.skipsCurrentDraft && kit.length > 0) {
+  const starting = new Set(state.settings
+    ? startingItemIds(state.settings.variant, state.settings.mode)
+    : [])
+  const owes = !owner.skipsCurrentDraft && kit.some(id => !starting.has(id))
+  if (!chosen && owes) {
     return state
   }
   let legacyCaches = state.legacyCaches

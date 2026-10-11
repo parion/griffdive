@@ -3,7 +3,7 @@ import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { difficultyImageUrl, factionImageUrl, strainImageUrl } from '~~/shared/data/images'
 import { STRAIN_RISK, maxStarsFor, missionsPerOperation } from '~~/shared/engine/config'
 import { difficultyName } from '~~/shared/engine/progression'
-import { awaitingDiverIds, currentFront, currentStrain, diverRolledCeiling, forfeitOptionsFor, owesForfeit } from '~~/shared/engine/selectors'
+import { awaitingDiverIds, currentFront, currentStrain, forfeitOptionsFor, owesForfeit } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{ state: DiveState, selfId: string | null, self: DiverState | null }>()
@@ -23,17 +23,9 @@ const strainRisk = computed(() => (strain.value ? STRAIN_RISK[strain.value.id] ?
 const kicker = computed(() =>
   `Report · ${difficultyName(props.state.difficulty)} · Mission ${props.state.missionInOperation} of ${opLength.value}`)
 
-// The diver's own dealt offer, and the ceiling their Valor staked it at. The
-// offer is derived state, so every client — and a reload — sees the same one.
+// The diver's own dealt offer: derived state, so every client — and a reload —
+// sees the same one.
 const offer = computed(() => (props.self ? forfeitOptionsFor(props.state, props.self) : []))
-const stakedTier = computed(() => {
-  if (!props.self || offer.value.length === 0) {
-    return null
-  }
-  const ceiling = diverRolledCeiling(props.state, props.self)
-  return ceiling === 'S+' ? 'S' : ceiling
-})
-
 const surrendered = computed(() => {
   const id = props.self?.forfeitedItemId
   return id ? ITEMS_BY_ID.get(id) ?? null : null
@@ -45,12 +37,12 @@ const squad = computed(() => props.state.divers
   .filter(diver => diver.id !== props.selfId)
   .map((diver) => {
     const chosen = diver.forfeitedItemId ? ITEMS_BY_ID.get(diver.forfeitedItemId) : null
-    let status = 'Nothing to lose'
+    let status = 'Nothing to remove'
     if (chosen) {
-      status = `Surrendered ${chosen.displayName}`
+      status = chosen.displayName
     }
     else if (owesForfeit(props.state, diver)) {
-      status = diver.away ? 'Away — keeps their kit' : 'Choosing'
+      status = diver.away ? 'Away' : 'Choosing'
     }
     return { id: diver.id, name: diver.name, status, done: chosen !== null && chosen !== undefined }
   }))
@@ -64,13 +56,6 @@ const shown = computed({
   set: (itemId: string | null) => {
     selected.value = itemId
   },
-})
-
-const pickLabel = computed(() => {
-  if (surrendered.value) {
-    return '1 OF 1 · SURRENDERED'
-  }
-  return selected.value ? '1 OF 1 · READY' : 'PICK 1 ITEM'
 })
 
 const canSurrender = computed(() => owes.value && !confirmed.value && selected.value !== null)
@@ -132,158 +117,7 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
           <span class="flicker">Mission failed</span>
         </h1>
       </div>
-
-      <p class="ff-notice rise">
-        <span class="lbl ff-notice-lbl">Ministry notice</span>
-        Failure is a debt against liberty, and the Ministry does not forgive — it compounds.
-      </p>
-
-      <div class="ff-stars">
-        <div
-          class="ff-star-row"
-          role="img"
-          :aria-label="`0 of ${maxStars} stars`"
-        >
-          <svg
-            v-for="i in maxStars"
-            :key="i"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            aria-hidden="true"
-          >
-            <path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6l-5.4 2.9 1.2-6-4.5-4.2 6.1-.7z" />
-          </svg>
-        </div>
-        <div class="ff-stars-meta">
-          <span class="disp">0 / {{ maxStars }}</span>
-          <span class="ff-no-draft">NO REWARD DRAFT</span>
-        </div>
-      </div>
     </header>
-
-    <div class="ff-cards">
-      <div class="ff-card rise">
-        <span class="ff-card-icon">
-          <svg
-            width="26"
-            height="28"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            aria-hidden="true"
-          ><path d="M4 12a8 8 0 1 0 2.3-5.7" /><path d="M4 4v4h4" /></svg>
-        </span>
-        <div class="ff-card-copy">
-          <span class="disp ff-card-t">Restart</span>
-          <span class="ff-card-s">MISSION 1/{{ opLength }}</span>
-        </div>
-        <div
-          class="ff-card-deco"
-          aria-hidden="true"
-        >
-          <svg
-            width="76"
-            height="16"
-            viewBox="0 0 76 16"
-          ><path
-            d="M66 14 V6 H11 V12"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.6"
-          /><path
-            d="M7 9 L11 14 L15 9"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.6"
-          /></svg>
-          <div class="ff-restart-pips">
-            <span
-              v-for="i in opLength"
-              :key="i"
-              :class="{ on: i === 1 }"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div class="ff-card rise">
-        <span class="ff-card-diff disp">{{ state.difficulty }}</span>
-        <div class="ff-card-copy">
-          <span class="disp ff-card-t">{{ difficultyName(state.difficulty) }}</span>
-          <span class="ff-card-s">HELD</span>
-        </div>
-        <div
-          class="ff-ladder"
-          aria-hidden="true"
-        >
-          <span class="ff-ladder-bar dim" />
-          <span class="ff-ladder-bar gold" />
-          <span class="ff-ladder-bar dashed">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="3"
-            ><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </span>
-        </div>
-        <img
-          :src="difficultyImg"
-          alt=""
-          class="ff-diff-emblem"
-        >
-      </div>
-
-      <div class="ff-card rise">
-        <span class="ff-card-icon">
-          <img
-            v-if="frontImage"
-            :src="frontImage"
-            alt=""
-            width="34"
-            height="34"
-          >
-        </span>
-        <div class="ff-card-copy">
-          <span class="disp ff-card-t">{{ front?.displayName ?? 'Front' }} held</span>
-          <span
-            v-if="strain"
-            class="ff-card-s orange"
-          >STRAIN CALL REOPENS</span>
-          <span
-            v-else
-            class="ff-card-s"
-          >FRONT HELD</span>
-        </div>
-        <span
-          v-if="strain"
-          class="ff-strain"
-          :aria-label="`${strain.name} reopens, plus ${strainRisk} operation-long risk`"
-        >
-          <img
-            v-if="strainImage"
-            :src="strainImage"
-            alt=""
-            width="24"
-            height="24"
-          >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="var(--ground)"
-            stroke="currentColor"
-            stroke-width="2.2"
-            aria-hidden="true"
-          ><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 7.5-2" /></svg>
-        </span>
-      </div>
-    </div>
 
     <div class="ff-surrender-head">
       <span
@@ -294,26 +128,9 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
         id="surrender-h"
         class="disp ff-surrender-t"
       >
-        Surrender one item
+        Choose an item to remove
       </h2>
-      <span
-        v-if="stakedTier"
-        class="ff-host-chip"
-      >
-        STAKED UP TO
-        <span
-          class="tier-badge sm"
-          :data-tier="stakedTier.toLowerCase()"
-        >{{ stakedTier }}</span>
-      </span>
-      <span class="ff-pick-count">{{ pickLabel }}</span>
     </div>
-
-    <p class="ff-explain">
-      Each diver loses one item from their own kit, chosen from a random handful
-      — as many as the stars the mission could have paid. The more risk a diver
-      took on, the better the gear that can be put on the block.
-    </p>
 
     <ForfeitPicker
       v-if="owes"
@@ -327,7 +144,7 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
       v-else
       class="ff-explain"
     >
-      {{ self?.skipsCurrentDraft ? 'You joined mid-mission — nothing of yours is at stake.' : 'Nothing in your kit to surrender.' }}
+      Nothing to remove.
     </p>
 
     <ul
@@ -356,17 +173,17 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
       />
       <div class="ff-bar-copy">
         <span class="lbl ff-bar-lbl">
-          {{ confirmed ? 'Forfeited' : owes ? 'Awaiting your call' : 'Stand by' }}
+          {{ confirmed ? 'Removed' : owes ? 'Your call' : 'Stand by' }}
         </span>
         <span class="disp ff-bar-t">
           <template v-if="confirmed">
-            {{ waitingOn.length > 0 ? `Waiting on ${waitingOn.length} more` : 'Restarting the operation' }}
+            {{ waitingOn.length > 0 ? `Waiting on ${waitingOn.length}` : 'Restarting' }}
           </template>
           <template v-else-if="owes">
-            {{ selected ? 'Ready to surrender' : 'Select one item' }}
+            {{ selected ? 'Hold to confirm' : 'Select one item' }}
           </template>
           <template v-else>
-            {{ waitingOn.length > 0 ? `Waiting on ${waitingOn.length} diver${waitingOn.length === 1 ? '' : 's'}` : 'Restarting the operation' }}
+            {{ waitingOn.length > 0 ? `Waiting on ${waitingOn.length}` : 'Restarting' }}
           </template>
         </span>
       </div>
@@ -377,7 +194,7 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
         class="hold cut cta-sweep"
         type="button"
         :disabled="!canSurrender"
-        aria-label="Surrender the selected item. Press and hold."
+        aria-label="Remove the selected item. Press and hold."
         @pointerdown="down"
         @pointerup="up"
         @pointerleave="up"
@@ -388,8 +205,8 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
           aria-hidden="true"
         />
         <span class="hold-label">
-          <span class="disp">Surrender</span>
-          <span class="hold-sub">HOLD TO CONFIRM</span>
+          <span class="disp">Remove</span>
+          <span class="hold-sub">HOLD</span>
         </span>
         <svg
           width="24"
@@ -409,6 +226,158 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
         <span class="disp ff-confiscated stamp">Confiscated</span>
       </div>
     </section>
+
+    <div class="ff-aftermath">
+      <p class="ff-notice rise">
+        <span class="lbl ff-notice-lbl">Ministry notice</span>
+        Failure is a debt against liberty, and the Ministry does not forgive — it compounds.
+      </p>
+
+      <div class="ff-stars">
+        <div
+          class="ff-star-row"
+          role="img"
+          :aria-label="`0 of ${maxStars} stars`"
+        >
+          <svg
+            v-for="i in maxStars"
+            :key="i"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            aria-hidden="true"
+          >
+            <path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6l-5.4 2.9 1.2-6-4.5-4.2 6.1-.7z" />
+          </svg>
+        </div>
+        <div class="ff-stars-meta">
+          <span class="disp">0 / {{ maxStars }}</span>
+          <span class="ff-no-draft">NO REWARD DRAFT</span>
+        </div>
+      </div>
+      <div class="ff-cards">
+        <div class="ff-card rise">
+          <span class="ff-card-icon">
+            <svg
+              width="26"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            ><path d="M4 12a8 8 0 1 0 2.3-5.7" /><path d="M4 4v4h4" /></svg>
+          </span>
+          <div class="ff-card-copy">
+            <span class="disp ff-card-t">Restart</span>
+            <span class="ff-card-s">MISSION 1/{{ opLength }}</span>
+          </div>
+          <div
+            class="ff-card-deco"
+            aria-hidden="true"
+          >
+            <svg
+              width="76"
+              height="16"
+              viewBox="0 0 76 16"
+            ><path
+              d="M66 14 V6 H11 V12"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+            /><path
+              d="M7 9 L11 14 L15 9"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+            /></svg>
+            <div class="ff-restart-pips">
+              <span
+                v-for="i in opLength"
+                :key="i"
+                :class="{ on: i === 1 }"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="ff-card rise">
+          <span class="ff-card-diff disp">{{ state.difficulty }}</span>
+          <div class="ff-card-copy">
+            <span class="disp ff-card-t">{{ difficultyName(state.difficulty) }}</span>
+            <span class="ff-card-s">HELD</span>
+          </div>
+          <div
+            class="ff-ladder"
+            aria-hidden="true"
+          >
+            <span class="ff-ladder-bar dim" />
+            <span class="ff-ladder-bar gold" />
+            <span class="ff-ladder-bar dashed">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+              ><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </span>
+          </div>
+          <img
+            :src="difficultyImg"
+            alt=""
+            class="ff-diff-emblem"
+          >
+        </div>
+
+        <div class="ff-card rise">
+          <span class="ff-card-icon">
+            <img
+              v-if="frontImage"
+              :src="frontImage"
+              alt=""
+              width="34"
+              height="34"
+            >
+          </span>
+          <div class="ff-card-copy">
+            <span class="disp ff-card-t">{{ front?.displayName ?? 'Front' }} held</span>
+            <span
+              v-if="strain"
+              class="ff-card-s orange"
+            >STRAIN CALL REOPENS</span>
+            <span
+              v-else
+              class="ff-card-s"
+            >FRONT HELD</span>
+          </div>
+          <span
+            v-if="strain"
+            class="ff-strain"
+            :aria-label="`${strain.name} reopens, plus ${strainRisk} operation-long risk`"
+          >
+            <img
+              v-if="strainImage"
+              :src="strainImage"
+              alt=""
+              width="24"
+              height="24"
+            >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="var(--ground)"
+              stroke="currentColor"
+              stroke-width="2.2"
+              aria-hidden="true"
+            ><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 7.5-2" /></svg>
+          </span>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -528,6 +497,14 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
   white-space: nowrap;
 }
 
+.ff-aftermath {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-panel);
+}
+.ff-aftermath .ff-notice { flex: none; margin: 0; }
+
 .ff-cards {
   position: relative;
   display: grid;
@@ -642,34 +619,12 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  margin-top: var(--sp-3);
 }
 .ff-hz { width: 8px; height: 26px; }
 .ff-surrender-t {
   margin: 0;
   font-size: 20px;
   color: var(--text);
-}
-.ff-host-chip {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  margin-left: var(--sp-2);
-  padding: 4px var(--sp-3);
-  border: 1px solid var(--line-4);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  color: var(--khaki);
-  white-space: nowrap;
-}
-.ff-pick-count {
-  margin-left: auto;
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--khaki);
-  white-space: nowrap;
 }
 
 .ff-bar {

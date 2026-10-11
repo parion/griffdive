@@ -388,21 +388,34 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   )
 }
 
-// The forfeit offer: after a failed mission each diver surrenders one item of
-// their own kit, chosen from a seeded handful — one per star the difficulty can
-// award — so a spare scrap can't be picked on purpose. The offer rolls like a
-// reward draft: capped at the diver's rolled Valor ceiling (risk raises the
-// tier at stake, as it raises the tier on offer) and led by the best item that
-// ceiling reaches. Armor passives and stratagems are all fair game. A pool
-// with nothing under the ceiling falls back to the whole kit, so a diver
-// holding anything always owes something. S+ has no items, so it stakes as S.
+// What a diver has earned this crusade: their kit beyond the variant's
+// starting gear (drafted rewards, Requisition buys, a Field Promotion or a
+// claimed cache). Failure only ever takes from this — the surplus kit every
+// diver starts with was never won, so it is never at stake.
+export function earnedItemsOf(state: DiveState, diver: DiverState): Item[] {
+  const starting = new Set(state.settings
+    ? startingItemIds(state.settings.variant, state.settings.mode)
+    : [])
+  return (state.personalInventories[diver.id] ?? [])
+    .filter(id => !starting.has(id))
+    .map(id => ITEMS_BY_ID.get(id))
+    .filter((item): item is Item => item !== undefined)
+}
+
+// The forfeit offer: after a failed mission each diver surrenders one item they
+// earned, chosen from a seeded handful — one per star the difficulty can award
+// — so a spare scrap can't be picked on purpose. The offer rolls like a reward
+// draft: capped at the diver's rolled Valor ceiling (risk raises the tier at
+// stake, as it raises the tier on offer) and led by the best item that ceiling
+// reaches. Armor passives and stratagems are all fair game. A pool with nothing
+// under the ceiling falls back to everything earned, so a diver holding any
+// earned gear always owes something; one who has earned nothing owes nothing.
+// S+ has no items, so it stakes as S.
 export function forfeitOptionsFor(state: DiveState, diver: DiverState): Item[] {
   if (state.lastReport?.outcome !== 'failure' || diver.skipsCurrentDraft) {
     return []
   }
-  const kit = (state.personalInventories[diver.id] ?? [])
-    .map(id => ITEMS_BY_ID.get(id))
-    .filter((item): item is Item => item !== undefined)
+  const kit = earnedItemsOf(state, diver)
   if (kit.length === 0) {
     return []
   }

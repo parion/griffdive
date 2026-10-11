@@ -61,7 +61,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "extrapadding"
+      "forfeitedItemId": "p72crisper"
     },
     {
       "mission": 4,
@@ -89,7 +89,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "extrapadding",
+      "optionId": "acclimated",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -299,7 +299,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "acclimated",
+      "optionId": "integratedextinguishers",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -363,7 +363,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "orbital380mmhebarrage"
+      "forfeitedItemId": "guarddogarc"
     },
     {
       "mission": 24,
@@ -468,7 +468,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "fastreconvehicle",
+      "optionId": "portablehellbomb",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -624,7 +624,6 @@
       "emsmortarsentry",
       "epoch",
       "extrapadding",
-      "fastreconvehicle",
       "g12highexplosivegrenade",
       "g16impactgrenade",
       "g3smokegrenade",
@@ -632,7 +631,7 @@
       "g89smokescreen",
       "gasmortarsentry",
       "gp31grenadepistol",
-      "guarddogarc",
+      "integratedextinguishers",
       "k2throwingknife",
       "las16sickle",
       "las99quasarcannon",
@@ -640,12 +639,13 @@
       "m90a",
       "medkit",
       "onetrueflag",
+      "orbital380mmhebarrage",
       "orbitalemsstrike",
       "orbitalsmokestrike",
       "orbitalwalkingbarrage",
       "p2peacemaker",
       "p35reeducator",
-      "p72crisper",
+      "portablehellbomb",
       "r2124constitution",
       "rocksolid",
       "sampleextricator",

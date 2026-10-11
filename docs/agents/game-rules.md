@@ -513,22 +513,25 @@ design principle 4 (it names items):
 
 ### Mission failure — the forfeit offer
 
-A failed mission costs every diver one item, and the diver never picks freely from their whole kit
-(that made the loss a formality: surrender the scrap). Instead the engine **deals each diver a
-forfeit offer** and they choose the one item they lose:
+A failed mission costs every diver one item, and the diver never picks freely (that made the loss a
+formality: surrender the scrap). Instead the engine **deals each diver a forfeit offer** and they
+choose the one item they lose. Only **earned gear** is ever at stake: the pool is the diver's kit
+beyond the variant's starting kit (`earnedItemsOf` — drafted rewards, Requisition buys, a Field
+Promotion or a claimed cache). The surplus starting kit was never won, so it is never taken.
 
-- **Who owes:** every present diver who dove the mission and holds something to lose. A mid-mission
-  joiner (`skipsCurrentDraft`) sat it out and owes nothing; a diver who stepped away is not waited
-  on and keeps their kit. If no diver owes, the operation restarts immediately.
+- **Who owes:** every present diver who dove the mission and has earned something. A diver with
+  only the starting kit (e.g. a failure on the crusade's first mission), a mid-mission joiner
+  (`skipsCurrentDraft`) and a diver who stepped away owe nothing. If no diver owes, the operation
+  restarts immediately.
 - **Offer size:** one item per star the difficulty could have awarded (`maxStarsFor`: 3 at diff 3–4,
-  4 at 5–6, 5 at 7+), capped by the kit.
+  4 at 5–6, 5 at 7+), capped by the earned pool.
 - **The Valor ceiling applies to the loss too.** The offer rolls through the same machinery as a
   reward draft (`rollRewardOptions`) against the diver's own kit, capped at the **same rolled
   ceiling** their Valor bought for the mission (`diverRolledCeiling`; S+ stakes as S). It leads with
   the best item the ceiling reaches, then fills weighted toward the top, from the floor tier C up —
   so risk raises the tier at stake exactly as it raises the tier on offer. A zero-Valor dive only
   exposes gear up to the difficulty's base tier. A kit with nothing under the ceiling falls back to
-  the whole kit, so a diver holding anything always owes something. Failed pacts and a failed
+  every earned item, so a diver holding any earned gear always owes something. Failed pacts and a failed
   directive void their risk first, as they do for rewards.
 - **Seeded, never stored:** the offer derives from the mission's offer seed (set at the report, as
   on a clear) folded with the diver id, stream `FORFEIT_STREAM` (salt 6). Every client computes the
@@ -584,8 +587,9 @@ class, never specific items" — it narrows a pool, it never names a reward.
   rating) is freely wearable as long as its passive is owned; the catalog's armor pieces exist as
   the passive → piece mapping (codex display). Losing a passive in a forfeit removes the ability to
   wear armor carrying it.
-- **Forfeit on failure:** each diver loses exactly one item from their own personal inventory
-  (stratagems included), chosen by that diver from a seeded, Valor-capped offer — see Mission
+- **Forfeit on failure:** each diver loses exactly one earned item (stratagems included; never the
+  starting kit) from their own personal inventory, chosen by that diver from a seeded, Valor-capped
+  offer — see Mission
   failure — the forfeit offer. There is no squad-wide pick and no host call.
 
 ### Mid-crusade joining — Field Promotion & legacy caches
