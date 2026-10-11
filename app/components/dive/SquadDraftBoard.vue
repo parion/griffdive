@@ -82,7 +82,7 @@ function statusLabel(card: typeof cards.value[number]): string {
       <article
         v-for="(card, index) in cards"
         :key="card.id"
-        class="squad-pick cut-sm"
+        class="squad-pick"
         :class="{
           done: card.summary.status === 'banked',
           banned: card.summary.status === 'banned',
@@ -99,17 +99,6 @@ function statusLabel(card: typeof cards.value[number]): string {
             :data-tier="card.summary.ceiling"
             :aria-label="`Ceiling ${card.summary.ceiling}`"
           >{{ card.summary.ceiling }}</span>
-          <span
-            class="card-status"
-            :class="card.summary.status"
-          >
-            <span
-              v-if="card.summary.status === 'choosing'"
-              class="pulse status-dot"
-              aria-hidden="true"
-            />
-            {{ statusLabel(card) }}
-          </span>
         </header>
 
         <ul
@@ -140,10 +129,6 @@ function statusLabel(card: typeof cards.value[number]): string {
                   v-else
                   class="disp tile-glyph"
                 >{{ tile.tier }}</span>
-                <span
-                  class="tile-tier disp"
-                  aria-hidden="true"
-                >{{ tile.tier }}</span>
                 <svg
                   v-if="tile.banned"
                   class="tile-ban"
@@ -162,14 +147,6 @@ function statusLabel(card: typeof cards.value[number]): string {
           class="card-note"
         >
           Sat out this mission’s draft.
-        </p>
-
-        <p
-          v-if="card.bankedItem"
-          class="card-banked"
-          :data-tier="card.tiles.find(tile => tile.banked)?.tier"
-        >
-          {{ card.bankedItem.displayName }}
         </p>
       </article>
     </div>
@@ -195,14 +172,8 @@ function statusLabel(card: typeof cards.value[number]): string {
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-  padding: 9px 10px 10px;
-  border: 1px solid var(--line-2);
-  background: var(--panel);
   animation: riseIn 0.42s var(--ease-out) calc(var(--i) * 90ms) both;
-  transition: border-color var(--dur-med) var(--ease-out);
 }
-.squad-pick.done { border-color: color-mix(in srgb, var(--gold) 40%, var(--line-3)); }
-.squad-pick.banned { border-color: color-mix(in srgb, var(--red) 45%, var(--line-3)); }
 .squad-pick.skipped { opacity: 0.6; }
 
 .card-head { display: flex; align-items: center; gap: 7px; min-width: 0; }
@@ -224,22 +195,6 @@ function statusLabel(card: typeof cards.value[number]): string {
   font-size: 10px;
   border: 1px solid currentColor;
 }
-.card-status {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-left: auto;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.card-status.choosing { color: var(--gold); }
-.card-status.banked { color: var(--gold); }
-.card-status.banned { color: var(--red); }
-.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
 
 .tiles {
   display: flex;
@@ -263,13 +218,6 @@ function statusLabel(card: typeof cards.value[number]): string {
 }
 .tile img { width: 34px; height: 34px; object-fit: contain; pointer-events: none; }
 .tile-glyph { font-size: 0.8rem; }
-.tile-tier {
-  position: absolute;
-  top: 1px;
-  left: 2px;
-  font-size: 8px;
-  line-height: 1;
-}
 .tile.cross { background: color-mix(in srgb, var(--tier-splus) 10%, var(--ground)); }
 .tile.faded { opacity: 0.32; filter: grayscale(0.8); }
 .tile.banked {
@@ -280,18 +228,14 @@ function statusLabel(card: typeof cards.value[number]): string {
 .tile.banned { opacity: 0.6; }
 .tile-ban { position: absolute; inset: 6px; color: var(--red); }
 
-.card-banked,
 .card-note {
   margin: 0;
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.card-note { color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
 
 @keyframes tile-bank {
   0% { transform: scale(1.35); filter: brightness(2); }
