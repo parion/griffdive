@@ -278,10 +278,11 @@ export function topRungAltitude(difficulty: number): number {
   const span = MAX_DIFFICULTY - MIN_DIFFICULTY
   return 1 + (difficulty - MIN_DIFFICULTY) / span
 }
-// Tiers with per-step odds below this are too unlikely to preview. Kept at or
-// below the S+ cap so the jackpot can still preview at max Valor, and at or
-// below the S floor's opening odds so a reachable S is never hidden.
-export const UPGRADE_PREVIEW_FLOOR = 0.05
+// A tier previews only when the odds of actually reaching it (the whole climb,
+// not one step) would read as at least 1% — anything rarer shows as 0% and
+// unlit, so the ladder never lights a tier it prices at 0% or fades one it
+// prices above zero.
+export const CEILING_PREVIEW_FLOOR = 0.01
 
 // Samples are the Requisition currency: recovered in the field, banked into a
 // personal purse, and spent in the post-draft rotating stock. They no longer

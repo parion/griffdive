@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VALOR_METER_MAX, baseTierFor } from '~~/shared/engine/config'
-import { oddsToReach, valorOf } from '~~/shared/engine/rewards'
+import { ceilingOddsPercent, valorOf } from '~~/shared/engine/rewards'
 import { ceilingRange } from '~~/shared/engine/selectors'
 import type { RewardTier } from '~~/shared/engine/types'
 
@@ -49,7 +49,7 @@ const chips = computed(() => LADDER
   .map(entry => ({
     tier: entry.tier,
     base: entry.index === baseIndex.value,
-    pct: entry.index <= baseIndex.value ? 100 : Math.round(oddsToReach(props.difficulty, valor.value, entry.tier) * 100),
+    pct: ceilingOddsPercent(props.difficulty, valor.value, entry.tier),
   })))
 
 function format(value: number): string {

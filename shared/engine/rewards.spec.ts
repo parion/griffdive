@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS } from '../data/catalog'
 import type { Item, ItemCategory, Tier } from '../data/types'
 import { SAMPLE_POINTS, SAMPLE_PRICE_TIER, SAMPLE_PRICE_TYPE, TIME_HAUL_FLOOR, VALOR_METER_MAX, sPlusValorFloorFor, sValorFloorFor } from './config'
-import { DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, haulValue, itemPrice, maxCeiling, missionHaul, oddsToReach, optionsForDiver, optionsForStars, rollCeiling, rollRewardOptions, rollShopStock, tierWeight, timeHaulMultiplier, valorOf } from './rewards'
+import { ceilingOddsPercent, DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, haulValue, itemPrice, maxCeiling, missionHaul, oddsToReach, optionsForDiver, optionsForStars, rollCeiling, rollRewardOptions, rollShopStock, tierWeight, timeHaulMultiplier, valorOf } from './rewards'
 import { mulberry32 } from './rng'
 import type { RewardTier } from './types'
 
@@ -193,6 +193,21 @@ describe('maxCeiling / oddsToReach (legibility preview)', () => {
     expect(oddsToReach(3, 11, 'S')).toBeLessThan(0.05)
     expect(oddsToReach(3, 11, 'S+')).toBeLessThan(0.005)
     expect(oddsToReach(3, 2, 'B')).toBeLessThan(oddsToReach(5, 2, 'B'))
+  })
+})
+
+describe('ceilingOddsPercent (preview ladder)', () => {
+  it('lights exactly the tiers it prices above 0%', () => {
+    const ladder = ['C', 'B', 'A', 'S', 'S+'] as const
+    for (let difficulty = 3; difficulty <= 10; difficulty++) {
+      for (let valor = 0; valor <= 16; valor += 0.25) {
+        const max = ladder.indexOf(maxCeiling(difficulty, valor))
+        ladder.forEach((tier, index) => {
+          const pct = ceilingOddsPercent(difficulty, valor, tier)
+          expect(pct > 0).toBe(index <= max)
+        })
+      }
+    }
   })
 })
 

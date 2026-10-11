@@ -461,8 +461,10 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   so the draft shows the squad's: `draftSummaryFor` (offer, rolled ceiling, status, the banked
   option — a Cross pick maps to the Cross slot — and banned options) feeds the squad board, which
   reveals once the diver's own pods land and stays up after they pick.
-- Previews stay legible: the UI shows base tier → best plausible tier (`maxCeiling`, per-step odds
-  ≥ `UPGRADE_PREVIEW_FLOOR`, 0.05) with the odds of reaching it (`oddsToReach`).
+- Previews stay legible: the UI shows base tier → best plausible tier (`maxCeiling`: the highest tier whose
+  odds of being reached are ≥ `CEILING_PREVIEW_FLOOR`, 1%) with the odds of reaching it
+  (`ceilingOddsPercent`, whole percent). A tier under the floor reads 0% and unlit, so the ladder
+  never fades a tier priced above 0% or lights one priced at 0%.
 - **Option count** comes from stars (mission performance), lookup table `starsToOptions`:
   `[1,1,2,3,4,4]` (index = stars), capped at 4; S+ grants +1 (cap 5). Stars themselves are
   difficulty-capped per the game (wiki.gg/Missions): max 3 at diffs 3–4, 4 at 5–6, 5 at 7+; a
