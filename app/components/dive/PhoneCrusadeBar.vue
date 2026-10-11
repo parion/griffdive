@@ -42,7 +42,7 @@ const pips = computed(() => Array.from(
     <span
       class="pips"
       role="img"
-      :aria-label="`Mission ${missionInOperation} of ${opLength}`"
+      :aria-label="failed ? `Mission ${missionInOperation} of ${opLength} failed` : `Mission ${missionInOperation} of ${opLength}`"
     >
       <span
         v-for="p in pips"
@@ -55,8 +55,6 @@ const pips = computed(() => Array.from(
         }"
       />
     </span>
-
-    <span class="pos">{{ failed ? 'Failed' : `M${missionInOperation}/${opLength}` }}</span>
 
     <span
       class="rail"
@@ -93,7 +91,7 @@ const pips = computed(() => Array.from(
   color: var(--gold);
   white-space: nowrap;
 }
-.pips { display: flex; gap: 3px; margin-left: 4px; }
+.pips { display: flex; gap: 3px; margin-left: auto; }
 .pip {
   width: 16px;
   height: 5px;
@@ -103,14 +101,6 @@ const pips = computed(() => Array.from(
 .pip.on { background: var(--gold); border-color: var(--gold); }
 .pip.now { animation: pipPulse 1.6s ease-in-out infinite; }
 .pip.failed { background: var(--red); border-color: var(--red); }
-.pos {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--text);
-  white-space: nowrap;
-}
 .rail {
   position: absolute;
   left: 0;

@@ -166,10 +166,10 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
 }
 .mark { width: 14px; height: 14px; margin-left: auto; flex-shrink: 0; }
 
-.pips-row { display: flex; align-items: center; gap: 5px; margin-left: var(--sp-2); flex-shrink: 0; }
+.pips-row { display: flex; align-items: center; gap: 5px; margin-left: auto; flex-shrink: 0; }
 .rung-pip { width: 22px; height: 6px; border: 1px solid var(--line-4); background: transparent; }
 .rung-pip.filled { border-color: var(--gold); background: var(--gold); animation: pulse 2s ease-in-out infinite; }
-.failed-mark { display: inline-flex; color: var(--red); margin-left: var(--sp-2); }
+.failed-mark { display: inline-flex; color: var(--red); margin-left: auto; }
 .failed-mark svg { width: 14px; height: 14px; }
 
 /* Difficulty 10 is the summit: a slow gold breath and a light sweep, nothing louder. */
@@ -212,7 +212,7 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
   .rung .name { display: none; }
   .n { font-size: 18px; }
   .mark { display: none; }
-  .pips-row { gap: 3px; margin-left: 2px; }
+  .pips-row { gap: 3px; }
   .rung-pip { width: 12px; }
 }
 
