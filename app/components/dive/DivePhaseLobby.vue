@@ -567,7 +567,7 @@ const checks = computed<CheckView[]>(() => [
           >
             <div class="sum">
               <span class="lbl">Preparing to launch</span>
-              <span class="disp sum-name">{{ selected.name }}</span>
+              <span class="disp sum-name">{{ phone ? 'Launch' : selected.name }}</span>
             </div>
             <div class="sum-box">
               <span class="lbl">Start</span>
@@ -888,6 +888,7 @@ const checks = computed<CheckView[]>(() => [
 .sum-tier { min-width: 1.1rem; }
 /* Pinned in the phone action bar: one compact strip of launch facts. */
 .launch-sum.docked { display: grid; grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr)); gap: 6px; }
+.launch-sum.docked .sum-name { font-size: 2rem; line-height: 1; }
 .launch-sum.docked .sum { grid-column: 1 / -1; flex-direction: row; align-items: baseline; gap: 8px; padding: 0; }
 .launch-sum.docked .sum-box { height: auto; gap: 4px; padding: 6px 8px; min-width: 0; }
 .launch-sum.docked .sum-v { font-size: 0.7rem; letter-spacing: 0.06em; white-space: normal; }

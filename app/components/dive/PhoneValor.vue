@@ -49,7 +49,6 @@ const chips = computed(() => LADDER
   .map(entry => ({
     tier: entry.tier,
     base: entry.index === baseIndex.value,
-    top: entry.index === maxIndex.value && entry.index > baseIndex.value,
     pct: entry.index <= baseIndex.value ? 100 : Math.round(oddsToReach(props.difficulty, valor.value, entry.tier) * 100),
   })))
 
@@ -109,7 +108,7 @@ function format(value: number): string {
         v-for="c in chips"
         :key="c.tier"
         class="chip"
-        :class="{ base: c.base, top: c.top }"
+        :class="{ base: c.base }"
         :style="{ '--tier-color': `var(--tier-${c.tier === 'S+' ? 'splus' : c.tier.toLowerCase()})`, '--odds': c.pct }"
         role="listitem"
         :aria-label="`${c.tier}${c.base ? ', base tier' : ''}: ${c.pct} percent`"
@@ -195,7 +194,4 @@ function format(value: number): string {
   white-space: nowrap;
 }
 .chip.base b { color: var(--text); }
-.chip.top { border-color: var(--gold); }
-.chip.top b,
-.chip.top i { color: var(--gold); }
 </style>
