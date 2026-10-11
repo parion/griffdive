@@ -25,7 +25,9 @@
   (`phone.spec.ts`: the 390px squad bar opens the moderation bottom sheet), phone reward draft
   (`phone-rewards.spec.ts`: a non-host phone diver banks their own pick), phone layout
   (`phone-layout.spec.ts`: no sideways overflow at 360px with a multi-front live Major Order, the live
-  spin CTA, touch-scrubbing the report time bar), tablet layout (`tablet-layout.spec.ts`: at
+  spin CTA, touch-scrubbing the report time bar), the phone action bar
+  (`phone-action-bar.spec.ts`: the bar is pinned to the bottom edge with a live primary action on every
+  screen from lobby to honors, plus confirm-failure and the surrender bar), tablet layout (`tablet-layout.spec.ts`: at
   1024×768 every phase fits the centre column and the drawn directive's Lock it in is in view; at
   768×1024 the phone shell widens to the tablet), personal session saves
   (`session-saves.spec.ts`: a seated diver forks the live room into a new session, a solo save hosts

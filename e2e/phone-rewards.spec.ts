@@ -38,7 +38,7 @@ test('phone draft: a non-host diver can bank their reward', async ({ browser }) 
   const option = pageB.locator('.phone-rewards .row').first()
   await expect(option).toBeEnabled()
   await option.click()
-  await expect(pageB.locator('.phone-rewards .result')).toContainText('Banked')
+  await expect(pageB.locator('.phone-bar .result')).toContainText('Banked')
   await expect(pageA.locator('.squad-pick.done')).toHaveCount(1)
 
   // The joiner never sees a dead advance control: they wait on the squad, then

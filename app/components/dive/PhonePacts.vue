@@ -282,48 +282,38 @@ const pendingText = computed(() => {
       </section>
     </div>
 
-    <PhoneActionBar aria-label="Valor and lock-in">
+    <PhoneActionBar>
       <template #detail>
-        <div class="sheet-head">
-          <span class="lbl gold">Valor</span>
-          <ValorFigure
-            class="disp sheet-val"
-            :value="self ? selectedRisk + breakdown.total : breakdown.total"
-          />
-          <span class="sheet-scale">/ 11</span>
-          <span
-            v-if="pendingText"
-            class="sheet-pending"
-          >{{ pendingText }}</span>
-          <span
-            v-else-if="locked"
-            class="sheet-locked"
-          >Locked</span>
-          <span
-            v-else
-            class="sheet-count"
-          >{{ swornText }}</span>
-        </div>
+        <PhoneValor
+          :difficulty="state.difficulty"
+          :team-risk="breakdown.total"
+          :pact-risk="self ? selectedRisk : 0"
+          :pending-text="locked ? '' : pendingText"
+          :locked="locked"
+        />
       </template>
 
-      <template #action>
-        <div class="sheet-foot">
-          <HoldButton
-            v-if="!locked"
-            class="cta-sweep"
-            :label="canLock ? 'Lock in' : 'Locked out'"
-            :hint="canLock ? 'hold to lock' : ''"
-            tone="gold"
-            :disabled="!canLock"
-            @confirm="emit('lock', selection)"
+      <template #primary>
+        <HoldButton
+          v-if="!locked"
+          class="cut cta-sweep"
+          :label="canLock ? 'Lock in' : 'Locked out'"
+          :hint="canLock ? `${swornText} · hold to lock` : ''"
+          tone="gold"
+          :disabled="!canLock"
+          @confirm="emit('lock', selection)"
+        />
+        <div
+          v-else
+          class="bar-gate"
+          role="status"
+        >
+          <span
+            class="hazard-soft bar-gate-edge"
+            aria-hidden="true"
           />
-          <div
-            v-else
-            class="locked-row"
-          >
-            <span class="disp stamp locked-stamp">Locked</span>
-            <span class="locked-note">Waiting for the squad…</span>
-          </div>
+          <span class="disp bar-gate-word">Locked</span>
+          <span class="bar-gate-meta">Waiting for the squad…</span>
         </div>
       </template>
     </PhoneActionBar>
@@ -506,40 +496,6 @@ const pendingText = computed(() => {
   color: var(--muted);
 }
 
-.sheet-head { display: flex; align-items: baseline; gap: 7px; }
-.sheet-val { font-size: 24px; color: var(--gold); }
-.sheet-scale { font-size: 11px; font-weight: 700; color: var(--dim); }
-.sheet-pending,
-.sheet-locked,
-.sheet-count {
-  margin-left: auto;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.sheet-pending { color: var(--red); }
-.sheet-locked { color: var(--gold); }
-.sheet-count { color: var(--muted); }
-.sheet-foot { display: flex; }
-/* Full-width like every other pinned phase CTA, so it never strands at the
-   left edge of a wide (tablet) sheet. */
-.sheet-foot > * { flex: 1 1 auto; }
-.locked-row { display: flex; align-items: center; gap: 12px; width: 100%; }
-.locked-stamp {
-  padding: 6px 12px;
-  font-size: 16px;
-  border: 3px solid var(--gold);
-  color: var(--gold);
-}
-.locked-note {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
 .wait-note {
   margin: 0;
   font-size: 10px;

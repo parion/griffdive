@@ -348,7 +348,10 @@ function tokenChits(count: number): boolean[] {
         >{{ landed && contest ? `Winning stat: ${contest.label}, ${direction}` : '' }}</span>
       </div>
 
-      <div class="action-col">
+      <div
+        v-if="!compact || spun"
+        class="action-col"
+      >
         <button
           v-if="!spun"
           class="spin-btn"
@@ -526,7 +529,7 @@ function tokenChits(count: number): boolean[] {
         </p>
       </template>
 
-      <template v-else-if="spun && !awarded">
+      <template v-else-if="spun && !awarded && !compact">
         <button
           class="hold-award cut"
           type="button"
@@ -574,6 +577,7 @@ function tokenChits(count: number): boolean[] {
           </span>
         </div>
         <button
+          v-if="!compact"
           class="btn primary cut next-btn rise cta-sweep"
           type="button"
           :disabled="!canControl"
@@ -592,7 +596,7 @@ function tokenChits(count: number): boolean[] {
         </button>
       </template>
 
-      <template v-else>
+      <template v-else-if="!compact">
         <p
           v-if="!canControl"
           class="muted small award-note"
@@ -608,6 +612,63 @@ function tokenChits(count: number): boolean[] {
     >
       Only one diver can win — the spin banks the token automatically.
     </p>
+
+    <PhoneActionBar v-if="compact">
+      <template
+        v-if="spun && landed && !awarded && canControl"
+        #secondary
+      >
+        <button
+          class="bar-alt"
+          type="button"
+          @click="emit('advance')"
+        >
+          Skip
+        </button>
+      </template>
+
+      <template #primary>
+        <button
+          v-if="!spun && canControl"
+          class="bar-cta cta-sweep"
+          type="button"
+          aria-label="Spin the honors stat"
+          @click="emit('spin')"
+        >
+          <span class="disp">Spin the honors</span>
+        </button>
+        <HoldButton
+          v-else-if="spun && landed && !awarded && canControl"
+          class="cut cta-sweep"
+          :label="selectedWinnerIds.length > 0 ? 'Award the honors' : 'Select a diver'"
+          hint="hold to confirm"
+          tone="gold"
+          :duration="HOLD_MS"
+          :disabled="selectedWinnerIds.length === 0"
+          @confirm="selectedWinnerIds.length > 0 && emit('award', [...selectedWinnerIds])"
+        />
+        <button
+          v-else-if="awarded && canControl"
+          class="bar-cta cta-sweep"
+          type="button"
+          @click="emit('advance')"
+        >
+          <span class="disp">{{ nextLabel }}</span>
+        </button>
+        <div
+          v-else
+          class="bar-gate"
+          role="status"
+        >
+          <span
+            class="hazard-soft bar-gate-edge"
+            aria-hidden="true"
+          />
+          <span class="disp bar-gate-word">Squad honors</span>
+          <span class="bar-gate-meta">{{ !spun ? 'Waiting for the host to spin' : !landed ? 'Drawing…' : awarded ? 'Host advances' : 'Waiting for the host to award' }}</span>
+        </div>
+      </template>
+    </PhoneActionBar>
   </section>
 </template>
 

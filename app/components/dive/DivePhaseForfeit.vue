@@ -6,7 +6,13 @@ import { difficultyName } from '~~/shared/engine/progression'
 import { awaitingDiverIds, currentFront, currentStrain, forfeitOptionsFor, owesForfeit } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
-const props = defineProps<{ state: DiveState, selfId: string | null, self: DiverState | null }>()
+const props = defineProps<{
+  state: DiveState
+  selfId: string | null
+  self: DiverState | null
+  // Phone shell: the remove call lives in the pinned action bar.
+  phone?: boolean
+}>()
 
 const emit = defineEmits<{ forfeit: [itemId: string] }>()
 
@@ -163,6 +169,7 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
     </ul>
 
     <section
+      v-if="!phone"
       class="ff-bar ticks ticks-red"
       aria-label="Surrender"
       aria-live="polite"
@@ -226,6 +233,54 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
         <span class="disp ff-confiscated stamp">Confiscated</span>
       </div>
     </section>
+
+    <PhoneActionBar v-else>
+      <template #detail>
+        <div
+          class="bar-status"
+          role="status"
+          aria-live="polite"
+        >
+          <span class="lbl ff-bar-lbl">
+            {{ confirmed ? 'Removed' : owes ? 'Your call' : 'Stand by' }}
+          </span>
+          <span class="disp bar-status-t">
+            <template v-if="owes && !confirmed">
+              {{ selected ? 'Ready to remove' : 'Select one item' }}
+            </template>
+            <template v-else>
+              {{ waitingOn.length > 0 ? `Waiting on ${waitingOn.length}` : 'Restarting' }}
+            </template>
+          </span>
+        </div>
+      </template>
+
+      <template #primary>
+        <HoldButton
+          v-if="owes && !confirmed"
+          class="cut cta-sweep"
+          label="Remove"
+          hint="hold to confirm"
+          tone="red"
+          :duration="HOLD_MS"
+          :disabled="!canSurrender"
+          aria-label="Remove the selected item. Press and hold."
+          @confirm="selected && emit('forfeit', selected)"
+        />
+        <div
+          v-else
+          class="bar-gate"
+          role="status"
+        >
+          <span
+            class="hazard-red bar-gate-edge"
+            aria-hidden="true"
+          />
+          <span class="disp bar-gate-word">{{ confirmed ? 'Confiscated' : 'Stand by' }}</span>
+          <span class="bar-gate-meta">{{ waitingOn.length > 0 ? `Waiting on ${waitingOn.length}` : 'Restarting' }}</span>
+        </div>
+      </template>
+    </PhoneActionBar>
 
     <div class="ff-aftermath">
       <p class="ff-notice rise">
@@ -640,6 +695,8 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
 .ff-bar-hz { width: 10px; height: 40px; flex-shrink: 0; }
 .ff-bar-copy { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .ff-bar-lbl { font-size: 10px; color: var(--red); }
+.bar-status { display: flex; flex-direction: column; gap: 5px; }
+.bar-status-t { font-size: 1.1rem; color: var(--text); }
 .ff-bar-t { font-size: 1.3rem; color: var(--text); white-space: nowrap; }
 .ff-bar-grow { flex-grow: 1; }
 

@@ -8,6 +8,8 @@ const props = defineProps<{
   state: DiveState
   selfId: string | null
   canControl: boolean
+  // Phone shell: the launch summary and button live in the pinned action bar.
+  phone?: boolean
 }>()
 
 const emit = defineEmits<{ start: [settings: CrusadeSettings] }>()
@@ -553,68 +555,86 @@ const checks = computed<CheckView[]>(() => [
       </div>
     </section>
 
-    <div class="launch-row">
-      <div class="launch-sum">
-        <div class="sum">
-          <span class="lbl">Launch as</span>
-          <span class="disp sum-name">{{ selected.name }}</span>
-        </div>
-        <div class="sum-box">
-          <span class="lbl">Start</span>
-          <span class="sum-v">{{ selected.start }} · {{ difficultyName(selected.start).toUpperCase() }}</span>
-        </div>
-        <div
-          v-if="modeActive"
-          class="sum-box"
-        >
-          <span class="lbl">Mode</span>
-          <span class="sum-v">{{ mode === 'penance' ? 'SUPER PENANCE' : 'SEAF SUPPORT' }}</span>
-        </div>
-        <div class="sum-box">
-          <span class="lbl">Operation 1</span>
-          <span class="sum-v sum-pips">
-            <i
-              v-for="i in opMissions"
-              :key="i"
-            />{{ opMissions }} MISSIONS
-          </span>
-        </div>
-        <div class="sum-box">
-          <span class="lbl">Base tier</span>
-          <span
-            class="tb sum-tier"
-            :data-tier="selected.tier"
-          >{{ selected.tier }}</span>
-        </div>
-      </div>
-      <HoldButton
-        v-if="!launched"
-        class="cta-sweep"
-        label="Launch crusade"
-        hint="HOLD TO LAUNCH · HOST"
-        tone="gold"
-        :disabled="!canControl"
-        :aria-label="`Launch crusade as ${selected.name}, start at difficulty ${selected.start}${modeActive ? `, ${mode === 'penance' ? 'Super Penance' : 'SEAF Support Package'}` : ''}. Press and hold.`"
-        @confirm="launchNow"
-      />
-      <div
-        v-else
-        class="launched-row"
-      >
-        <span class="disp launched-stamp stamp">Launched</span>
-        <span class="btn primary cut launched-next">
-          <span class="disp">To the wheel</span>
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.4"
-            aria-hidden="true"
-          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-        </span>
-      </div>
+    <div
+      class="launch-row"
+      :class="{ docked: phone }"
+    >
+      <PhoneActionBar :inline="!phone">
+        <template #detail>
+          <div
+            class="launch-sum"
+            :class="{ docked: phone }"
+          >
+            <div class="sum">
+              <span class="lbl">Preparing to launch</span>
+              <span
+                v-if="!phone"
+                class="disp sum-name"
+              >{{ selected.name }}</span>
+            </div>
+            <div class="sum-box">
+              <span class="lbl">Start</span>
+              <span class="sum-v">{{ selected.start }} · {{ difficultyName(selected.start).toUpperCase() }}</span>
+            </div>
+            <div
+              v-if="modeActive"
+              class="sum-box"
+            >
+              <span class="lbl">Mode</span>
+              <span class="sum-v">{{ mode === 'penance' ? 'SUPER PENANCE' : 'SEAF SUPPORT' }}</span>
+            </div>
+            <div class="sum-box">
+              <span class="lbl">Operation 1</span>
+              <span class="sum-v sum-pips">
+                <i
+                  v-for="i in opMissions"
+                  :key="i"
+                />{{ opMissions }} MISSIONS
+              </span>
+            </div>
+            <div class="sum-box">
+              <span class="lbl">Base tier</span>
+              <span
+                class="tb sum-tier"
+                :data-tier="selected.tier"
+              >{{ selected.tier }}</span>
+            </div>
+          </div>
+        </template>
+
+        <template #primary>
+          <HoldButton
+            v-if="!launched"
+            class="cta-sweep"
+            :class="{ cut: phone }"
+            label="Launch crusade"
+            hint="HOLD TO LAUNCH · HOST"
+            tone="gold"
+            :disabled="!canControl"
+            :aria-label="`Launch crusade as ${selected.name}, start at difficulty ${selected.start}${modeActive ? `, ${mode === 'penance' ? 'Super Penance' : 'SEAF Support Package'}` : ''}. Press and hold.`"
+            @confirm="launchNow"
+          />
+          <div
+            v-else
+            class="launched-row"
+            :class="{ docked: phone }"
+          >
+            <span class="disp launched-stamp stamp">Launched</span>
+            <span class="btn primary cut launched-next">
+              <span class="disp">To the wheel</span>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.4"
+                aria-hidden="true"
+              ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            </span>
+          </div>
+        </template>
+      </PhoneActionBar>
     </div>
 
     <div
@@ -853,6 +873,7 @@ const checks = computed<CheckView[]>(() => [
 .launch-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .launch-row :deep(.hold-btn) { width: 24.5rem; flex-shrink: 0; }
 .launch-row :deep(.hold-label) { font-size: 21px; }
+.launch-row.docked { display: none; }
 .sum-box .lbl { font-size: 9px; }
 .launch-sum { display: flex; align-items: center; gap: 0.5rem; }
 .sum { display: flex; flex-direction: column; gap: 0.25rem; padding-right: 0.6rem; }
@@ -868,7 +889,16 @@ const checks = computed<CheckView[]>(() => [
 .sum-v { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; white-space: nowrap; }
 .sum-pips i { width: 14px; height: 6px; border: 1px solid var(--khaki); margin-right: 3px; }
 .sum-tier { min-width: 1.1rem; }
+/* Pinned in the phone action bar: one compact strip of launch facts. */
+.launch-sum.docked { display: grid; grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr)); gap: 6px; }
+.launch-sum.docked .sum { grid-column: 1 / -1; flex-direction: row; align-items: baseline; gap: 8px; padding: 0; }
+.launch-sum.docked .sum-box { height: auto; gap: 4px; padding: 6px 8px; min-width: 0; }
+.launch-sum.docked .sum-v { font-size: 0.7rem; letter-spacing: 0.06em; white-space: normal; }
+.launch-sum.docked .sum-pips i { display: none; }
 .launched-row { display: flex; align-items: center; gap: 1.4rem; }
+.launched-row.docked { width: 100%; gap: 10px; }
+.launched-row.docked .launched-next { flex: 1 1 auto; width: auto; min-width: 0; height: 56px; padding: 0 16px; }
+.launched-row.docked .launched-stamp { padding: 0.35rem 0.6rem; font-size: 1rem; }
 .launched-stamp {
   display: inline-block;
   padding: 0.5rem 0.9rem;

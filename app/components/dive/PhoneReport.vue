@@ -138,7 +138,7 @@ const honors = computed(() => stars.value >= maxStars.value)
       </section>
     </div>
 
-    <PhoneActionBar aria-label="Requisition and report">
+    <PhoneActionBar>
       <template #detail>
         <section
           class="performance ticks"
@@ -178,32 +178,33 @@ const honors = computed(() => stars.value >= maxStars.value)
         </p>
       </template>
 
-      <template #action>
-        <div class="foot-actions">
-          <button
-            class="btn primary cut file cta-sweep"
-            type="button"
-            @click="emit('submit')"
-          >
-            <span class="disp">File report</span>
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.4"
-              aria-hidden="true"
-            ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-          </button>
-          <button
-            class="ghost cancel"
-            type="button"
-            @click="emit('cancel')"
-          >
-            Cancel
-          </button>
-        </div>
+      <template #secondary>
+        <button
+          class="bar-alt"
+          type="button"
+          @click="emit('cancel')"
+        >
+          Cancel
+        </button>
+      </template>
+
+      <template #primary>
+        <button
+          class="bar-cta cta-sweep"
+          type="button"
+          @click="emit('submit')"
+        >
+          <span class="disp">File report</span>
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            aria-hidden="true"
+          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </button>
       </template>
     </PhoneActionBar>
   </div>
@@ -315,7 +316,6 @@ const honors = computed(() => stars.value >= maxStars.value)
 }
 .perf-cell { display: flex; flex-direction: column; gap: 4px; }
 .perf-cell .lbl { font-size: 9px; }
-.file .disp { font-size: 19px; }
 .perf-v { font-size: 22px; }
 .perf-valor { display: flex; align-items: baseline; }
 .perf-valor .disp { font-size: 22px; color: var(--gold); }
@@ -339,21 +339,6 @@ const honors = computed(() => stars.value >= maxStars.value)
 }
 .teal { color: var(--teal); }
 
-.foot-actions { display: flex; gap: 8px; }
-.file {
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  padding: 0 20px;
-}
-.cancel {
-  width: 96px;
-  height: 56px;
-  flex-shrink: 0;
-  color: var(--khaki);
-}
 .total-note {
   margin: 0;
   text-align: right;

@@ -137,6 +137,8 @@ const pactRisk = computed(() => (props.self ? pactRiskOf(props.self, props.state
 
 // ---- Ban mode ----------------------------------------------------------
 
+// Matches the desktop draft's ban hold (RewardDraft).
+const BAN_HOLD_MS = 900
 const banMode = ref(false)
 const selectedBan = ref<string[]>([])
 
@@ -326,37 +328,72 @@ function tierOf(option: RewardOption): string {
         />
       </div>
 
-      <PhoneActionBar aria-label="Reward tokens">
-        <template #action>
-          <span
+      <PhoneActionBar>
+        <template #detail>
+          <div
+            v-if="resolved && !banMode"
+            class="result"
+          >
+            <span class="lbl">{{ banned ? 'Banned' : 'Banked' }}</span>
+            <span class="result-name">{{ banned ? 'Offer purged for the crusade' : chosen?.displayName ?? '—' }}</span>
+          </div>
+          <div
+            v-else
+            class="foot-tokens"
+          >
+            <span class="lbl">{{ banMode ? 'Ban mode · tap items to purge' : 'Reward tokens' }}</span>
+            <span class="chit-row">
+              <i
+                v-for="n in 3"
+                :key="n"
+                :class="{ on: n <= rewardTokens }"
+              />
+              <b>{{ rewardTokens }}/3</b>
+            </span>
+          </div>
+        </template>
+
+        <template
+          v-if="banMode"
+          #secondary
+        >
+          <button
+            class="bar-alt"
+            type="button"
+            @click="exitBan"
+          >
+            Cancel
+          </button>
+        </template>
+        <template
+          v-else-if="!resolved"
+          #secondary
+        >
+          <button
+            class="bar-alt"
+            type="button"
+            :disabled="!canReroll"
+            @click="emit('reroll')"
+          >
+            Reroll
+          </button>
+        </template>
+
+        <template #primary>
+          <HoldButton
             v-if="banMode"
-            class="ban-bar"
+            class="cut"
+            :label="selectedBan.length ? `Ban ${selectedBan.length}` : 'Select items'"
+            hint="hold to confirm"
+            tone="red"
+            :duration="BAN_HOLD_MS"
+            :disabled="selectedBan.length === 0"
+            @confirm="confirmBan"
           />
-          <template v-if="banMode">
-            <button
-              class="ghost cancel"
-              type="button"
-              @click="exitBan"
-            >
-              Cancel
-            </button>
-            <HoldButton
-              class="ban-confirm"
-              :label="selectedBan.length ? `Ban ${selectedBan.length}` : 'Select items'"
-              hint="hold to confirm"
-              tone="red"
-              :disabled="selectedBan.length === 0"
-              @confirm="confirmBan"
-            />
-          </template>
           <template v-else-if="resolved">
-            <div class="result">
-              <span class="lbl">{{ banned ? 'Banned' : 'Banked' }}</span>
-              <span class="result-name">{{ banned ? 'Offer purged for the crusade' : chosen?.displayName ?? '—' }}</span>
-            </div>
             <button
               v-if="canControl"
-              class="btn primary cut next cta-sweep"
+              class="bar-cta cta-sweep"
               type="button"
               :style="bankedSweep"
               :disabled="!ready"
@@ -364,40 +401,28 @@ function tierOf(option: RewardOption): string {
             >
               <span class="disp">{{ ready ? advanceLabel : 'Waiting on squad' }}</span>
             </button>
-            <span
+            <div
               v-else
-              class="host-advances"
-            >{{ ready ? 'Host advances' : 'Waiting on squad' }}</span>
-          </template>
-          <template v-else>
-            <span class="foot-tokens">
-              <span class="lbl">Tokens</span>
-              <span class="chit-row">
-                <i
-                  v-for="n in 3"
-                  :key="n"
-                  :class="{ on: n <= rewardTokens }"
-                />
-                <b>{{ rewardTokens }}/3</b>
-              </span>
-            </span>
-            <button
-              class="ghost act"
-              type="button"
-              :disabled="!canReroll"
-              @click="emit('reroll')"
+              class="bar-gate"
+              role="status"
             >
-              Reroll
-            </button>
-            <button
-              class="ghost act ban"
-              type="button"
-              :disabled="!canBan"
-              @click="enterBan"
-            >
-              Ban
-            </button>
+              <span
+                class="hazard-soft bar-gate-edge"
+                aria-hidden="true"
+              />
+              <span class="disp bar-gate-word">Next mission</span>
+              <span class="bar-gate-meta">{{ ready ? 'Host advances' : 'Waiting on squad' }}</span>
+            </div>
           </template>
+          <button
+            v-else
+            class="bar-alt red"
+            type="button"
+            :disabled="!canBan"
+            @click="enterBan"
+          >
+            Ban items
+          </button>
         </template>
       </PhoneActionBar>
 
@@ -412,15 +437,6 @@ function tierOf(option: RewardOption): string {
 </template>
 
 <style scoped>
-.host-advances {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--muted);
-  white-space: nowrap;
-}
 .phone-rewards { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .scroll {
   flex: 1 1 auto;
@@ -569,32 +585,11 @@ function tierOf(option: RewardOption): string {
 }
 .gold-stamp { border-color: var(--gold); color: var(--gold); }
 
-.ban-bar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 4px;
-  background-image: repeating-linear-gradient(-45deg, var(--red) 0 8px, var(--ground) 8px 16px);
-}
-.foot-tokens { display: flex; flex-direction: column; gap: 4px; margin-right: auto; }
+.foot-tokens { display: flex; flex-direction: column; gap: 6px; }
 .foot-tokens .lbl { font-size: 9px; }
 .chit-row { display: flex; align-items: center; gap: 3px; }
 .chit-row b { margin-left: 4px; font-size: 12px; color: var(--muted); }
-.act {
-  height: 44px;
-  padding: 0 14px;
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-.act:disabled { opacity: 0.4; }
-.act.ban { color: var(--red); border-color: color-mix(in srgb, var(--red) 50%, transparent); }
-.cancel { width: 88px; height: 48px; flex-shrink: 0; color: var(--khaki); font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
-.ban-confirm { flex: 1 1 auto; }
-.result { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.result { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .result-name {
   font-size: 13px;
   font-weight: 700;
@@ -605,8 +600,6 @@ function tierOf(option: RewardOption): string {
   text-overflow: ellipsis;
   color: var(--gold);
 }
-.next { flex-shrink: 0; height: 52px; padding: 0 16px; }
-.next .disp { font-size: 14px; }
 .honor-note {
   margin: 0;
   padding: 8px 16px;
