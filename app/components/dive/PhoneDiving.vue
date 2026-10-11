@@ -201,7 +201,7 @@ function submit(): void {
               @click="open('failure')"
             >
               <span class="disp">Mission failed</span>
-              <span class="sub">forfeit 1 · retry op</span>
+              <span class="sub">each forfeits 1 · retry op</span>
             </button>
           </div>
         </div>
@@ -218,7 +218,7 @@ function submit(): void {
         class="failure"
       >
         <span class="disp failure-title">Mission failed</span>
-        <span class="failure-sub">No stars · the operation repeats · forfeit one item</span>
+        <span class="failure-sub">No stars · the operation repeats · each diver forfeits one item</span>
         <div class="failure-actions">
           <button
             class="btn danger cut confirm"

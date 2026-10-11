@@ -3,7 +3,7 @@
 // mirrors the desktop dive page's phase switch, but every phase renders a
 // bottom-sheet composition instead of the three-rail terminal.
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
-import type { CrusadeSettings, DiverState, DiveState, ItemRef, MajorOrderSelection, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
+import type { CrusadeSettings, DiverState, DiveState, MajorOrderSelection, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -42,7 +42,7 @@ const emit = defineEmits<{
   spinBonus: []
   awardBonus: [playerIds: string[]]
   advance: []
-  forfeit: [itemRef: ItemRef]
+  forfeit: [itemId: string]
   claimCatchUpOption: [optionId: string]
   claimCache: [cacheOwnerId: string]
   start: [settings: CrusadeSettings]
@@ -227,7 +227,8 @@ function kickDiver(diverId: string): void {
         <DivePhaseForfeit
           v-else-if="phase === 'forfeit'"
           :state="state"
-          :can-control="canControl"
+          :self-id="selfId"
+          :self="self"
           @forfeit="emit('forfeit', $event)"
         />
 

@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS, ITEMS_BY_ID } from '../data/catalog'
 import type { FrontId } from '../data/fronts'
 import { PACTS } from '../data/pacts'
-import { BONUS_STATS, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, PENANCE_VALOR, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor, directiveValorAt, seafSupportValorAt } from './config'
+import { BONUS_STATS, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, PENANCE_VALOR, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor, directiveValorAt, maxStarsFor, seafSupportValorAt } from './config'
 import { SEAF_SUPPORT_KIT, startingItemIds } from './progression'
 import { DIVERS_CHOICE_OPTION_ID, itemPrice, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { activeMisfortune, allDiversPicked, awaitingDiverIds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, modeValorOf, pactOfferFor, pactRiskOf, rewardPoolFor, shopStockFor, squadSize, teamRiskOf } from './selectors'
+import { activeMisfortune, allDiversPicked, awaitingDiverIds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, pactRiskOf, rewardPoolFor, shopStockFor, squadSize, teamRiskOf } from './selectors'
 import { deriveFront, deriveStrain } from './wheel'
 import type { DiveState, DiverState, EngineAction } from './types'
 
@@ -75,6 +75,16 @@ function requireId(value: string | undefined): string {
   return value
 }
 
+// The diver surrenders the first item of their dealt forfeit offer.
+function surrender(state: DiveState, playerId = 'p1'): DiveState {
+  const diver = state.divers.find(candidate => candidate.id === playerId)
+  const item = forfeitOptionsFor(state, diver!)[0]
+  if (!item) {
+    throw new Error('expected a forfeit offer')
+  }
+  return reduce(state, { type: 'FORFEIT_ITEM', playerId, itemId: item.id })
+}
+
 function twoDiverState(): DiveState {
   return {
     ...freshState(),
@@ -101,7 +111,7 @@ const skeletonActions: EngineAction[] = [
   { type: 'SET_WARBONDS', playerId: 'p1', warbondCodes: ['warbond3'] },
   { type: 'REPORT_RESULT', outcome: 'success', stars: 5 },
   { type: 'REPORT_RESULT', outcome: 'failure', stars: 2, timePct: 0.5 },
-  { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'p1', itemId: 'onetrueflag' } },
+  { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: 'onetrueflag' },
   { type: 'PICK_REWARD', playerId: 'p1', optionId: 'x' },
   { type: 'ADVANCE' },
   { type: 'END_DIVE' },
@@ -123,7 +133,7 @@ describe('reduce (purity + no-op safety)', () => {
     expect(reduce(base, { type: 'ACCEPT_MISFORTUNE', accepted: true })).toBe(base)
     expect(reduce(base, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })).toBe(base)
     expect(reduce(base, { type: 'PICK_REWARD', playerId: 'p1', optionId: 'x' })).toBe(base)
-    expect(reduce(base, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'p1', itemId: 'onetrueflag' } })).toBe(base)
+    expect(reduce(base, { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: 'onetrueflag' })).toBe(base)
     expect(reduce(base, { type: 'ADVANCE' })).toBe(base)
     // No pact locks before the wheel decision.
     const spun = spunState(42)
@@ -376,10 +386,7 @@ describe('ACCEPT_STRAIN (optional operation-long team risk)', () => {
     let state = reduce(strainDecided(42, true), { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     const strainId = state.strainId
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1 })
-    state = reduce(state, {
-      type: 'FORFEIT_ITEM',
-      itemRef: { ownerId: 'p1', itemId: requireId(state.personalInventories.p1?.[0]) },
-    })
+    state = surrender(state)
     expect(state.phase).toBe('spin')
     expect(state.strainAccepted).toBe(false)
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 60 })
@@ -803,10 +810,7 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
 
     let state = divingState(1)
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 0 })
-    state = reduce(state, {
-      type: 'FORFEIT_ITEM',
-      itemRef: { ownerId: 'p1', itemId: requireId(state.personalInventories.p1?.[0]) },
-    })
+    state = surrender(state)
     // Medium runs 2-mission operations; the front carries over the retry and
     // every mission — retries included — draws a fresh misfortune, so the
     // squad returns to the spin phase.
@@ -893,50 +897,143 @@ describe('Requisition: sample haul banking and BUY_ITEM', () => {
 })
 
 describe('REPORT_RESULT (failure) → forfeit', () => {
-  it('forfeits one item and restarts the operation at the spin', () => {
-    let state = divingState(42)
-    const frontBefore = state.frontId
-    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 2 })
-    expect(state.phase).toBe('forfeit')
+  function failedState(seed = 42): DiveState {
+    return reduce(divingState(seed), { type: 'REPORT_RESULT', outcome: 'failure', stars: 2 })
+  }
 
-    const personalId = requireId(state.personalInventories.p1?.[0])
-    state = reduce(state, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'p1', itemId: personalId } })
-    expect(state.personalInventories.p1).not.toContain(personalId)
+  it('deals each diver an offer from their own kit and restarts the operation once they choose', () => {
+    let state = failedState()
+    const frontBefore = state.frontId
+    expect(state.phase).toBe('forfeit')
+    const kit = state.personalInventories.p1 ?? []
+    const offer = forfeitOptionsFor(state, requireDiver(state))
+    expect(offer.length).toBeGreaterThan(0)
+    for (const item of offer) {
+      expect(kit).toContain(item.id)
+    }
+
+    const chosen = offer[0]!
+    state = reduce(state, { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: chosen.id })
+    expect(state.personalInventories.p1).not.toContain(chosen.id)
+    expect(state.personalInventories.p1).toHaveLength(kit.length - 1)
     expect(state.phase).toBe('spin')
     expect(state.wheel).toBeNull()
     expect(state.frontId).toBe(frontBefore)
     expect(state.missionInOperation).toBe(1)
     expect(state.rerollTokens).toBe(1)
+    expect(requireDiver(state).forfeitedItemId).toBeNull()
   })
 
-  it('forfeits from a personal inventory', () => {
-    let state = divingState(42)
-    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1 })
-    const personal = requireId(state.personalInventories.p1?.[0])
-    state = reduce(state, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'p1', itemId: personal } })
-    expect(state.personalInventories.p1).not.toContain(personal)
-    expect(state.phase).toBe('spin')
+  it('offers one item per star the difficulty can award, never repeating one', () => {
+    const state = failedState()
+    const offer = forfeitOptionsFor(state, requireDiver(state))
+    expect(offer).toHaveLength(Math.min(maxStarsFor(state.difficulty), (state.personalInventories.p1 ?? []).length))
+    expect(new Set(offer.map(item => item.id)).size).toBe(offer.length)
   })
 
-  it('skips forfeit when there is nothing to lose', () => {
-    let state = divingState(42)
-    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1 })
-    state = reduce(state, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'p1', itemId: requireId(state.personalInventories.p1?.[0]) } })
-    const stripped: DiveState = {
-      ...state,
-      personalInventories: { p1: [] },
+  it('derives the same offer on every client and varies it per diver', () => {
+    const state = failedState()
+    const diver = requireDiver(state)
+    expect(forfeitOptionsFor(state, diver)).toEqual(forfeitOptionsFor({ ...state }, { ...diver }))
+    const other = { ...diver, id: 'p2' }
+    const withOther = { ...state, personalInventories: { ...state.personalInventories, p2: state.personalInventories.p1! } }
+    expect(forfeitOptionsFor(withOther, other).map(item => item.id))
+      .not.toEqual(forfeitOptionsFor(withOther, diver).map(item => item.id))
+  })
+
+  it('caps the offer at the diver\'s rolled Valor ceiling', () => {
+    const state = failedState()
+    const diver = requireDiver(state)
+    const rank: Record<string, number> = { c: 0, b: 1, a: 2, s: 3 }
+    const ceiling = diverRolledCeiling(state, diver)
+    const ceilingRank = rank[ceiling === 'S+' ? 's' : ceiling.toLowerCase()]!
+    // A kit rich in every tier: only what the ceiling reaches may be offered.
+    const rich = ALL_ITEMS.filter(item => item.category !== 'armor').map(item => item.id)
+    const stocked = { ...state, personalInventories: { p1: rich } }
+    for (const item of forfeitOptionsFor(stocked, diver)) {
+      expect(rank[item.tier]).toBeLessThanOrEqual(ceilingRank)
     }
+  })
+
+  it('refuses an item outside the offer, a repeat pick or another diver\'s kit', () => {
+    const state = failedState()
+    const offered = new Set(forfeitOptionsFor(state, requireDiver(state)).map(item => item.id))
+    const outside = (state.personalInventories.p1 ?? []).find(id => !offered.has(id))
+    if (outside) {
+      expect(reduce(state, { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: outside })).toBe(state)
+    }
+    expect(reduce(state, { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: 'ghostgun' })).toBe(state)
+    expect(reduce(state, { type: 'FORFEIT_ITEM', playerId: 'ghost', itemId: 'onetrueflag' })).toBe(state)
+  })
+
+  it('waits for every present diver, then removes each pick together', () => {
+    const base = twoDiverState()
+    let state: DiveState = { ...base, phase: 'diving', wheel: { seed: 9, misfortuneId: 'noBackpacks' }, frontId: 'terminids' }
+    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1 })
+    expect(state.phase).toBe('forfeit')
+    expect(awaitingDiverIds(state).sort()).toEqual(['p1', 'p2'])
+
+    const p1Offer = forfeitOptionsFor(state, state.divers[0]!)
+    state = surrender(state, 'p1')
+    // The first pick holds: p2 is still choosing and nothing left any kit yet.
+    expect(state.phase).toBe('forfeit')
+    expect(awaitingDiverIds(state)).toEqual(['p2'])
+    expect(state.personalInventories.p1).toHaveLength(startingItemIds(SETTINGS.variant).length)
+    // A diver cannot swap their choice once made.
+    expect(reduce(state, { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: p1Offer[1]?.id ?? 'x' })).toBe(state)
+
+    state = surrender(state, 'p2')
+    expect(state.phase).toBe('spin')
+    expect(state.personalInventories.p1).toHaveLength(startingItemIds(SETTINGS.variant).length - 1)
+    expect(state.personalInventories.p2).toHaveLength(startingItemIds(SETTINGS.variant).length - 1)
+  })
+
+  it('stops waiting on a diver who steps away, and they keep their kit', () => {
+    const base = twoDiverState()
+    let state: DiveState = { ...base, phase: 'diving', wheel: { seed: 9, misfortuneId: 'noBackpacks' }, frontId: 'terminids' }
+    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1 })
+    state = surrender(state, 'p1')
+    state = reduce(state, { type: 'SET_AWAY', playerId: 'p2', away: true })
+    expect(state.phase).toBe('spin')
+    expect(state.personalInventories.p1).toHaveLength(startingItemIds(SETTINGS.variant).length - 1)
+    expect(state.personalInventories.p2).toHaveLength(startingItemIds(SETTINGS.variant).length)
+  })
+
+  it('still deals an offer to a forfeit-phase state saved before failures rolled an offer seed', () => {
+    const state = failedState()
+    const legacy: DiveState = { ...state, offerSeed: null }
+    expect(forfeitOptionsFor(legacy, requireDiver(legacy)).map(item => item.id))
+      .toEqual(forfeitOptionsFor(state, requireDiver(state)).map(item => item.id))
+  })
+
+  it('restarts at once when no diver has anything to lose', () => {
+    const state = divingState(42)
+    const stripped: DiveState = { ...state, personalInventories: { p1: [] } }
     const reported = reduce(stripped, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1 })
     expect(reported.phase).toBe('spin')
     expect(reported.wheel).toBeNull()
     expect(reported.frontId).not.toBeNull()
   })
 
-  it('rejects forfeiting an item the squad does not own', () => {
-    let state = divingState(42)
+  it('keeps a mid-mission joiner out of the forfeit', () => {
+    const base = twoDiverState()
+    let state: DiveState = {
+      ...base,
+      phase: 'diving',
+      wheel: { seed: 9, misfortuneId: 'noBackpacks' },
+      frontId: 'terminids',
+      divers: base.divers.map(diver => diver.id === 'p2' ? { ...diver, skipsCurrentDraft: true } : diver),
+    }
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1 })
-    expect(reduce(state, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'p1', itemId: 'ghostgun' } })).toBe(state)
-    expect(reduce(state, { type: 'FORFEIT_ITEM', itemRef: { ownerId: 'ghost', itemId: 'onetrueflag' } })).toBe(state)
+    expect(awaitingDiverIds(state)).toEqual(['p1'])
+    state = surrender(state, 'p1')
+    expect(state.phase).toBe('spin')
+    expect(state.personalInventories.p2).toHaveLength(startingItemIds(SETTINGS.variant).length)
+  })
+
+  it('cannot forfeit outside the forfeit phase', () => {
+    const state = divingState(42)
+    expect(reduce(state, { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: 'onetrueflag' })).toBe(state)
   })
 })
 
@@ -1781,10 +1878,7 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
     state = reduce(state, { type: 'DEAL_PACTS' })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 0 })
-    state = reduce(state, {
-      type: 'FORFEIT_ITEM',
-      itemRef: { ownerId: 'p1', itemId: requireId(state.personalInventories.p1?.[0]) },
-    })
+    state = surrender(state)
     expect(state.phase).toBe('spin')
     expect(state.majorOrder?.fronts).toEqual(['terminids'])
     expect(state.frontId).toBe('terminids')

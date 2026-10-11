@@ -255,14 +255,14 @@ test('a failed mission labels the operation failed and restarts it', async ({ pa
   await expect(page.getByRole('img', { name: /Operation failed/i })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Mission failed' })).toBeVisible()
 
-  // Surrender is a two-step ceremony: pick one item, hold to confirm, then
-  // respin the wheel — the forfeit restarts the operation at mission 1.
+  // Surrender is a two-step ceremony: pick one item from the dealt offer, then
+  // hold to confirm — once every diver has chosen the forfeit restarts the
+  // operation at mission 1.
   await page.locator('.sur-tile:not([disabled])').first().click()
   const surrender = page.getByRole('button', { name: /Surrender the selected item/ })
   await surrender.hover()
   await page.mouse.down()
   await page.waitForTimeout(900)
   await page.mouse.up()
-  await page.getByRole('button', { name: 'Respin the wheel' }).click()
   await expect(page.getByRole('img', { name: /operation mission 1 of 2/i })).toBeVisible()
 })

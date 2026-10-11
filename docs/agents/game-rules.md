@@ -30,7 +30,8 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
    The reward-tier preview updates live with their personal ceiling.
 4. **Dive** — play the mission in Helldivers 2. Success = main objectives complete **and** the squad
    extracts. Objectives complete + squad wipe = failure (extraction rule).
-5. **Report** — squad records outcome: success (stars 1–max, optional time %) or failure (no stars).
+5. **Report** — squad records outcome: success (stars 1–max, optional time %) or failure (no stars,
+   no reward draft — each diver faces a forfeit offer instead).
 6. **Rewards** (success only) — the host files the report (stars + time + the samples the squad
    extracted), which banks a sample haul into every diver's purse. Each diver is then offered N
    options rolled against their personal tier ceiling and picks one; all rewards go to the diver's
@@ -43,7 +44,8 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
 7. **Advance** — next mission, which draws a fresh misfortune (the front and strain persist).
    Completing all missions of an operation bumps the crusade difficulty by +1 and the next
    operation draws a fresh front+strain. Failure restarts the operation (mission 1) at the same
-   difficulty, keeps the front, reopens the strain decision, and the squad forfeits one item.
+   difficulty, keeps the front, reopens the strain decision, and every diver forfeits one item from
+   their own kit — see Mission failure — the forfeit offer.
 
 The crusade is **achieved** ("Griffdive achieved") when the squad completes an operation at
 difficulty 10. The run may then end, or continue in endless mode (post-v1).
@@ -509,6 +511,34 @@ design principle 4 (it names items):
   leaves the shelf. Buying is **soft** — like the honors ceremony it never gates `ADVANCE`; a broke
   diver simply sees every card disabled with its reason.
 
+### Mission failure — the forfeit offer
+
+A failed mission costs every diver one item, and the diver never picks freely from their whole kit
+(that made the loss a formality: surrender the scrap). Instead the engine **deals each diver a
+forfeit offer** and they choose the one item they lose:
+
+- **Who owes:** every present diver who dove the mission and holds something to lose. A mid-mission
+  joiner (`skipsCurrentDraft`) sat it out and owes nothing; a diver who stepped away is not waited
+  on and keeps their kit. If no diver owes, the operation restarts immediately.
+- **Offer size:** one item per star the difficulty could have awarded (`maxStarsFor`: 3 at diff 3–4,
+  4 at 5–6, 5 at 7+), capped by the kit.
+- **The Valor ceiling applies to the loss too.** The offer rolls through the same machinery as a
+  reward draft (`rollRewardOptions`) against the diver's own kit, capped at the **same rolled
+  ceiling** their Valor bought for the mission (`diverRolledCeiling`; S+ stakes as S). It leads with
+  the best item the ceiling reaches, then fills weighted toward the top, from the floor tier C up —
+  so risk raises the tier at stake exactly as it raises the tier on offer. A zero-Valor dive only
+  exposes gear up to the difficulty's base tier. A kit with nothing under the ceiling falls back to
+  the whole kit, so a diver holding anything always owes something. Failed pacts and a failed
+  directive void their risk first, as they do for rewards.
+- **Seeded, never stored:** the offer derives from the mission's offer seed (set at the report, as
+  on a clear) folded with the diver id, stream `FORFEIT_STREAM` (salt 6). Every client computes the
+  same offer, and it is public (the squad sees each diver's choice).
+- **Self-service:** `FORFEIT_ITEM{playerId,itemId}` — each diver surrenders one item from their own
+  offer, once (a repeat or an item outside the offer is refused). Chosen items are only removed
+  once **every present diver who owes has chosen** — held back so the offers (derived from the live
+  kit) never reshuffle mid-choice — then the operation restarts together. A step-away, leave or kick
+  that leaves nobody still choosing resolves the forfeit as well.
+
 ### Reward tokens & squad honors
 
 After a successful mission's reward draft completes, the squad spins one **bonus honors** contest (a
@@ -554,9 +584,9 @@ class, never specific items" — it narrows a pool, it never names a reward.
   rating) is freely wearable as long as its passive is owned; the catalog's armor pieces exist as
   the passive → piece mapping (codex display). Losing a passive in a forfeit removes the ability to
   wear armor carrying it.
-- **Forfeit on failure:** the squad collectively picks exactly one item to lose — any item from any
-  diver's personal inventory (stratagems included). Host executes the pick (simple majority voice
-  vote IRL; the app doesn't police it).
+- **Forfeit on failure:** each diver loses exactly one item from their own personal inventory
+  (stratagems included), chosen by that diver from a seeded, Valor-capped offer — see Mission
+  failure — the forfeit offer. There is no squad-wide pick and no host call.
 
 ### Mid-crusade joining — Field Promotion & legacy caches
 

@@ -399,7 +399,7 @@ function cancelReport(): void {
           </svg>
           <span class="outcome-copy">
             <span class="disp">Mission failed</span>
-            <span class="cap">forfeit 1 item · retry op</span>
+            <span class="cap">each forfeits 1 item · retry op</span>
           </span>
         </button>
       </div>

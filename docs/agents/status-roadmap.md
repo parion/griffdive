@@ -43,7 +43,7 @@ accepted directive stakes its scaled risk × **1 / 1.25 / 1.5 / 1.75** for a squ
 (`TEAM_DIRECTIVE_VALOR_WEIGHTS`), because the more divers must hold one rule the harder it is — and
 a solo diver's directive is effectively personal. **Broken directives fail like pacts:** the host can mark an accepted directive failed in
 the field (`FAIL_MISFORTUNE`, host-only, `diving` phase) — its shared risk is voided for every diver
-and each diver forfeits one reward option. UI copy calls the team scope **Squad Directive** and the
+and each diver forfeits one reward option. **Failure is per-diver:** a failed mission deals each diver a seeded forfeit offer from their own kit, capped at their Valor ceiling (see Mission failure — the forfeit offer). UI copy calls the team scope **Squad Directive** and the
 wheel the **Wheel of Adversity**; engine ids and the action union keep the `misfortune` name. The
 Field manual slide-over was retired — the Griffdiver Briefing covers onboarding. **Samples became
 Requisition currency:** a successful report banks a sample haul (time remaining is a multiplier) into

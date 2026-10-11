@@ -1,13 +1,14 @@
 <script setup lang="ts">
+import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { difficultyImageUrl, factionImageUrl, strainImageUrl } from '~~/shared/data/images'
 import { STRAIN_RISK, maxStarsFor, missionsPerOperation } from '~~/shared/engine/config'
 import { difficultyName } from '~~/shared/engine/progression'
-import { currentFront, currentStrain } from '~~/shared/engine/selectors'
-import type { DiveState, ItemRef } from '~~/shared/engine/types'
+import { awaitingDiverIds, currentFront, currentStrain, diverRolledCeiling, forfeitOptionsFor, owesForfeit } from '~~/shared/engine/selectors'
+import type { DiverState, DiveState } from '~~/shared/engine/types'
 
-const props = defineProps<{ state: DiveState, canControl: boolean }>()
+const props = defineProps<{ state: DiveState, selfId: string | null, self: DiverState | null }>()
 
-const emit = defineEmits<{ forfeit: [itemRef: ItemRef] }>()
+const emit = defineEmits<{ forfeit: [itemId: string] }>()
 
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const maxStars = computed(() => maxStarsFor(props.state.difficulty))
@@ -22,19 +23,57 @@ const strainRisk = computed(() => (strain.value ? STRAIN_RISK[strain.value.id] ?
 const kicker = computed(() =>
   `Report · ${difficultyName(props.state.difficulty)} · Mission ${props.state.missionInOperation} of ${opLength.value}`)
 
-const selected = ref<ItemRef | null>(null)
-const confirmed = ref(false)
-
-const pickLabel = computed(() => {
-  const current = selected.value
-  if (!current) {
-    return 'PICK 1 ITEM'
+// The diver's own dealt offer, and the ceiling their Valor staked it at. The
+// offer is derived state, so every client — and a reload — sees the same one.
+const offer = computed(() => (props.self ? forfeitOptionsFor(props.state, props.self) : []))
+const stakedTier = computed(() => {
+  if (!props.self || offer.value.length === 0) {
+    return null
   }
-  const owner = props.state.divers.find(diver => diver.id === current.ownerId)
-  return `1 OF 1 · ${(owner?.name ?? 'DIVER').toUpperCase()}`
+  const ceiling = diverRolledCeiling(props.state, props.self)
+  return ceiling === 'S+' ? 'S' : ceiling
 })
 
-const canSurrender = computed(() => props.canControl && selected.value !== null)
+const surrendered = computed(() => {
+  const id = props.self?.forfeitedItemId
+  return id ? ITEMS_BY_ID.get(id) ?? null : null
+})
+const owes = computed(() => props.self !== null && offer.value.length > 0)
+
+// The rest of the squad: what each diver still owes, or has already chosen.
+const squad = computed(() => props.state.divers
+  .filter(diver => diver.id !== props.selfId)
+  .map((diver) => {
+    const chosen = diver.forfeitedItemId ? ITEMS_BY_ID.get(diver.forfeitedItemId) : null
+    let status = 'Nothing to lose'
+    if (chosen) {
+      status = `Surrendered ${chosen.displayName}`
+    }
+    else if (owesForfeit(props.state, diver)) {
+      status = diver.away ? 'Away — keeps their kit' : 'Choosing'
+    }
+    return { id: diver.id, name: diver.name, status, done: chosen !== null && chosen !== undefined }
+  }))
+const waitingOn = computed(() => awaitingDiverIds(props.state).filter(id => id !== props.selfId))
+
+const selected = ref<string | null>(null)
+const confirmed = computed(() => surrendered.value !== null)
+// A surrendered item stays marked after a reload, when the local pick is gone.
+const shown = computed({
+  get: () => surrendered.value?.id ?? selected.value,
+  set: (itemId: string | null) => {
+    selected.value = itemId
+  },
+})
+
+const pickLabel = computed(() => {
+  if (surrendered.value) {
+    return '1 OF 1 · SURRENDERED'
+  }
+  return selected.value ? '1 OF 1 · READY' : 'PICK 1 ITEM'
+})
+
+const canSurrender = computed(() => owes.value && !confirmed.value && selected.value !== null)
 
 // ---- Hold to confirm ----------------------------------------------------
 
@@ -43,24 +82,21 @@ const holding = ref(false)
 let holdTimer: ReturnType<typeof setTimeout> | undefined
 
 function down(): void {
-  if (!canSurrender.value || confirmed.value) {
+  if (!canSurrender.value) {
     return
   }
   holding.value = true
   clearTimeout(holdTimer)
   holdTimer = setTimeout(() => {
     holding.value = false
-    confirmed.value = true
+    if (canSurrender.value && selected.value) {
+      emit('forfeit', selected.value)
+    }
   }, HOLD_MS)
 }
 function up(): void {
   holding.value = false
   clearTimeout(holdTimer)
-}
-function surrender(): void {
-  if (canSurrender.value && selected.value) {
-    emit('forfeit', selected.value)
-  }
 }
 onBeforeUnmount(() => clearTimeout(holdTimer))
 </script>
@@ -258,27 +294,56 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
         id="surrender-h"
         class="disp ff-surrender-t"
       >
-        The squad surrenders one item
+        Surrender one item
       </h2>
-      <span class="ff-host-chip">
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          aria-hidden="true"
-        ><path d="M3 18h18v2H3zM4 16l2-9 4 4 2-6 2 6 4-4 2 9z" /></svg>
-        HOST CALLS IT
+      <span
+        v-if="stakedTier"
+        class="ff-host-chip"
+      >
+        STAKED UP TO
+        <span
+          class="tier-badge sm"
+          :data-tier="stakedTier.toLowerCase()"
+        >{{ stakedTier }}</span>
       </span>
       <span class="ff-pick-count">{{ pickLabel }}</span>
     </div>
 
+    <p class="ff-explain">
+      Each diver loses one item from their own kit, chosen from a random handful
+      — as many as the stars the mission could have paid. The more risk a diver
+      took on, the better the gear that can be put on the block.
+    </p>
+
     <ForfeitPicker
-      v-model="selected"
-      :state="state"
-      :can-control="canControl && !confirmed"
+      v-if="owes"
+      v-model="shown"
+      :items="offer"
+      :label="`${self?.name ?? 'Your'} forfeit offer`"
+      :disabled="confirmed"
       :confirmed="confirmed"
     />
+    <p
+      v-else
+      class="ff-explain"
+    >
+      {{ self?.skipsCurrentDraft ? 'You joined mid-mission — nothing of yours is at stake.' : 'Nothing in your kit to surrender.' }}
+    </p>
+
+    <ul
+      v-if="squad.length > 0"
+      class="ff-squad"
+      aria-label="Squad forfeits"
+    >
+      <li
+        v-for="diver in squad"
+        :key="diver.id"
+        :class="{ done: diver.done }"
+      >
+        <span class="ff-squad-name">{{ diver.name }}</span>
+        <span class="ff-squad-status">{{ diver.status }}</span>
+      </li>
+    </ul>
 
     <section
       class="ff-bar ticks ticks-red"
@@ -291,16 +356,24 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
       />
       <div class="ff-bar-copy">
         <span class="lbl ff-bar-lbl">
-          {{ confirmed ? 'Forfeited' : canControl ? 'Awaiting your call' : 'Host is choosing' }}
+          {{ confirmed ? 'Forfeited' : owes ? 'Awaiting your call' : 'Stand by' }}
         </span>
         <span class="disp ff-bar-t">
-          {{ confirmed ? 'One item surrendered' : selected ? 'Ready to surrender' : 'Select one item' }}
+          <template v-if="confirmed">
+            {{ waitingOn.length > 0 ? `Waiting on ${waitingOn.length} more` : 'Restarting the operation' }}
+          </template>
+          <template v-else-if="owes">
+            {{ selected ? 'Ready to surrender' : 'Select one item' }}
+          </template>
+          <template v-else>
+            {{ waitingOn.length > 0 ? `Waiting on ${waitingOn.length} diver${waitingOn.length === 1 ? '' : 's'}` : 'Restarting the operation' }}
+          </template>
         </span>
       </div>
       <div class="ff-bar-grow" />
 
       <button
-        v-if="!confirmed"
+        v-if="owes && !confirmed"
         class="hold cut cta-sweep"
         type="button"
         :disabled="!canSurrender"
@@ -316,7 +389,7 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
         />
         <span class="hold-label">
           <span class="disp">Surrender</span>
-          <span class="hold-sub">HOLD TO CONFIRM · HOST</span>
+          <span class="hold-sub">HOLD TO CONFIRM</span>
         </span>
         <svg
           width="24"
@@ -330,26 +403,10 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
       </button>
 
       <div
-        v-else
+        v-else-if="confirmed"
         class="ff-done"
       >
         <span class="disp ff-confiscated stamp">Confiscated</span>
-        <button
-          class="btn cut ff-respin rise"
-          type="button"
-          @click="surrender"
-        >
-          <span class="disp">Respin the wheel</span>
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.4"
-            aria-hidden="true"
-          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-        </button>
       </div>
     </section>
   </section>
@@ -606,7 +663,6 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
   color: var(--khaki);
   white-space: nowrap;
 }
-.ff-host-chip svg { color: var(--gold); }
 .ff-pick-count {
   margin-left: auto;
   font-size: var(--fs-sm);
@@ -684,23 +740,42 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
   color: var(--red);
   transform: rotate(-7deg);
 }
-.ff-respin {
+.ff-explain {
+  position: relative;
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--khaki);
+}
+
+.ff-squad {
+  position: relative;
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ff-squad li {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  width: 330px;
-  max-width: 100%;
-  min-height: 54px;
-  padding: 0 22px;
-  background: var(--gold);
-  color: var(--on-gold);
+  gap: var(--sp-4);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  font-size: var(--fs-cap);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
-.ff-respin .disp { font-size: 18px; }
+.ff-squad li.done { border-color: color-mix(in srgb, var(--red) 55%, transparent); }
+.ff-squad-name { color: var(--text); }
+.ff-squad-status { color: var(--muted); text-align: right; }
+.ff-squad li.done .ff-squad-status { color: var(--red); }
 
 @media (max-width: 1020px) {
   .ff-title { white-space: normal; }
-  .hold,
-  .ff-respin { width: 100%; }
+  .hold { width: 100%; }
 }
 </style>

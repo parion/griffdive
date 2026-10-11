@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { ALL_WARBOND_CODES } from '../data/catalog'
 import { STRAIN_RISK, conditionRiskAt } from './config'
 import { createDiveState, reduce } from './reducer'
-import { diverOptions, pactOfferFor, rewardPoolFor } from './selectors'
+import { diverOptions, forfeitOptionsFor, pactOfferFor, rewardPoolFor } from './selectors'
 import type { DiveState } from './types'
 
 const UPDATE = process.env.GRIFFDIVE_UPDATE_GOLDENS === '1'
@@ -110,13 +110,10 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
 
     if (failure) {
       if (state.phase === 'forfeit') {
-        const personalId = (state.personalInventories.host ?? [])[0]
-        const itemRef = personalId
-          ? { ownerId: 'host', itemId: personalId }
-          : null
-        if (itemRef) {
-          state = reduce(state, { type: 'FORFEIT_ITEM', itemRef })
-          record.forfeitedItemId = itemRef.itemId
+        const surrendered = forfeitOptionsFor(state, state.divers[0]!)[0]
+        if (surrendered) {
+          state = reduce(state, { type: 'FORFEIT_ITEM', playerId: 'host', itemId: surrendered.id })
+          record.forfeitedItemId = surrendered.id
         }
       }
     }

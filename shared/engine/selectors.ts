@@ -1,4 +1,4 @@
-import { ALL_ITEMS, ALL_WARBOND_CODES } from '../data/catalog'
+import { ALL_ITEMS, ALL_WARBOND_CODES, ITEMS_BY_ID } from '../data/catalog'
 import { FRONTS } from '../data/fronts'
 import type { Front } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
@@ -10,6 +10,7 @@ import type { Item } from '../data/types'
 import {
   MAJOR_ORDER_RISK,
   OPTIONS_LOST_PER_FAILED_DIRECTIVE,
+  FORFEIT_STREAM,
   OPTIONS_LOST_PER_FAILED_PACT,
   SAMPLE_SHOP_STREAM,
   SQUAD_SIZE_MAX,
@@ -225,7 +226,11 @@ export function diverValor(state: DiveState, diver: DiverState): number {
 // with the diver id and with any reward-reroll seed they spent. The draft and
 // the Requisition stock share it, so a reroll moves both.
 function diverOfferSeed(state: DiveState, diver: DiverState): number {
-  const base = deriveSeed(state.offerSeed ?? 0, hashString(diver.id))
+  // A failed mission rolls its offer seed at the report like a clear does; a
+  // forfeit-phase state from before that fell back to the mission's derivation.
+  const offerSeed = state.offerSeed
+    ?? (state.wheel ? deriveSeed(state.wheel.seed, state.missionIndex) : 0)
+  const base = deriveSeed(offerSeed, hashString(diver.id))
   return diver.rewardRerollSeed === null ? base : deriveSeed(base, diver.rewardRerollSeed)
 }
 
@@ -381,6 +386,49 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
     pool,
     exclude,
   )
+}
+
+// The forfeit offer: after a failed mission each diver surrenders one item of
+// their own kit, chosen from a seeded handful — one per star the difficulty can
+// award — so a spare scrap can't be picked on purpose. The offer rolls like a
+// reward draft: capped at the diver's rolled Valor ceiling (risk raises the
+// tier at stake, as it raises the tier on offer) and led by the best item that
+// ceiling reaches. Armor passives and stratagems are all fair game. A pool
+// with nothing under the ceiling falls back to the whole kit, so a diver
+// holding anything always owes something. S+ has no items, so it stakes as S.
+export function forfeitOptionsFor(state: DiveState, diver: DiverState): Item[] {
+  if (state.lastReport?.outcome !== 'failure' || diver.skipsCurrentDraft) {
+    return []
+  }
+  const kit = (state.personalInventories[diver.id] ?? [])
+    .map(id => ITEMS_BY_ID.get(id))
+    .filter((item): item is Item => item !== undefined)
+  if (kit.length === 0) {
+    return []
+  }
+  const ceiling = diverRolledCeiling(state, diver)
+  return rollRewardOptions(
+    deriveSeed(diverOfferSeed(state, diver), FORFEIT_STREAM),
+    ceiling === 'S+' ? 'S' : ceiling,
+    'C',
+    maxStarsFor(state.difficulty),
+    kit,
+    new Set(),
+  ).map(option => option.item)
+}
+
+// Whether a diver still has to surrender an item: they dove the mission, hold
+// something to lose, and haven't chosen yet.
+export function owesForfeit(state: DiveState, diver: DiverState): boolean {
+  return !diver.forfeitedItemId && forfeitOptionsFor(state, diver).length > 0
+}
+
+// The forfeit resolves once every present diver who owes an item has chosen
+// (a diver who stepped away is not waited on and keeps their kit). A room where
+// everyone stepped away never advances on its own.
+export function forfeitSettled(state: DiveState): boolean {
+  const present = activeDivers(state)
+  return present.length > 0 && present.every(diver => !owesForfeit(state, diver))
 }
 
 // One diver's draft as the squad sees it: the frozen offer, the ceiling it
@@ -734,6 +782,9 @@ export function awaitingDiverIds(state: DiveState): string[] {
     return activeDivers(state)
       .filter(diver => diver.pickedOptionId === null && !diver.rewardBanned && !diver.skipsCurrentDraft)
       .map(diver => diver.id)
+  }
+  if (state.phase === 'forfeit') {
+    return activeDivers(state).filter(diver => owesForfeit(state, diver)).map(diver => diver.id)
   }
   return []
 }

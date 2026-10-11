@@ -34,7 +34,7 @@ app/
                    PactScreen — the dedicated pacts screen (team-risk summary bar,
                    hold-to-lock CTA), MissionReport +
                    SampleCanister/SegmentedBar — the dedicated two-column mission
-                   report, ForfeitPicker — the per-diver surrender picker,
+                   report, ForfeitPicker — one diver's dealt forfeit offer,
                    AchievedOverlay — the full-bleed Griffdive achieved takeover,
                    DivePhone + DivePhoneShell/PhoneTopBar/PhoneCrusadeBar/PhoneSquadBar/
                    PhoneWheel/PhonePacts/PhoneValor/PhoneReport/PhoneDiving/
@@ -187,7 +187,7 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 
 REST fallbacks: `POST /api/rooms` → `{ code, selfId }` (an optional `{ save, name }` body seeds the
 room from a personal session save; `selfId` is the seeded owner seat, `null` for a fresh lobby); `GET /api/rooms/:code` → `{ code, state }` (404).
-Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `BUY_ITEM`,
+Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`,
 `SET_NAME`) are
 coerced to the sender — a client can never act as another diver.
 
@@ -204,7 +204,7 @@ Canonical engine actions (the reducer union; keep names stable):
 
 `START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
 `DEAL_PACTS{}` `SET_MAJOR_ORDER{order}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
-`REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
+`REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{playerId,itemId}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `BUY_ITEM{playerId,itemId}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
 `AWARD_BONUS{playerIds}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
@@ -212,8 +212,8 @@ Canonical engine actions (the reducer union; keep names stable):
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
-`ACCEPT_STRAIN`, `DEAL_PACTS`, `SET_MAJOR_ORDER`, `REROLL_WHEEL`, `REPORT_RESULT`, `FORFEIT_ITEM`, `FAIL_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
-`KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `BUY_ITEM`, `SET_NAME`,
+`ACCEPT_STRAIN`, `DEAL_PACTS`, `SET_MAJOR_ORDER`, `REROLL_WHEEL`, `REPORT_RESULT`, `FAIL_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
+`KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE`, `SET_AWAY` are
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated
 diver, `unsave-dive` is host-only; the Steam lobby link is likewise outside the union and
@@ -299,9 +299,10 @@ the pure `forkCrusade(state, ownerId, name)` in `shared/engine/room.ts`. The rul
   lobby; a malformed snapshot (no wheel where a decision needs one, no front past the spin, bad
   settings) is refused; the client-supplied seed is sanitized (divers defaulted, difficulty and array
   bounds clamped) before storage.
-- **No forfeit deadlock**: a forked host stranded at `forfeit` with nothing to lose — their kit
-  empty, the missing kits parked as caches the picker never offers — resolves the failure (one item
-  stripped from a cache when one exists) and restarts the operation.
+- **No forfeit deadlock**: a forked host stranded at `forfeit` with nothing to choose — their kit
+  empty (or a mid-mission seating), the missing kits parked as caches the offer never draws from —
+  resolves the failure (one item stripped from a cache when one exists) and restarts the operation.
+  A host who had already chosen has that item removed instead.
 
 Entry points: the Bridge Service record (**HOST** on any save, **NEW SESSION** on a live card that has
 a mirror) and the dive header's **New session** control for any seated diver (room mode, never in
