@@ -71,8 +71,13 @@ const cue = computed<{ tone: Tone, tag: string, text: string } | null>(() => {
       }
       return lead('Everyone has drafted — advance to the next mission.', `Everyone has drafted — waiting on ${host} to advance.`)
     }
-    case 'forfeit':
-      return lead('Mission failed — pick the one item the squad forfeits.', `Mission failed — ${host} picks the item the squad forfeits.`)
+    case 'forfeit': {
+      const waiting = awaitingDiverIds(state)
+      if (props.selfId && waiting.includes(props.selfId)) {
+        return { tone: 'act', tag: 'Your move', text: 'Mission failed — surrender one item from your offer.' }
+      }
+      return { tone: 'wait', tag: 'Stand by', text: `Mission failed — waiting on ${names(waiting)} to surrender an item.` }
+    }
     default:
       return null
   }

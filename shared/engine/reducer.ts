@@ -7,7 +7,7 @@ import { STARTING_KITS, startingItemIds } from './progression'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed } from './rng'
-import { activeDivers, activeMisfortune, allDiversPicked, bonusEligible, canBuyItem, catchUpOptionsFor, comboKey, diverOptions, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, strainDecision } from './selectors'
+import { activeDivers, activeMisfortune, allDiversPicked, bonusEligible, canBuyItem, catchUpOptionsFor, comboKey, diverOptions, forfeitOptionsFor, forfeitSettled, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, strainDecision } from './selectors'
 import { itemPrice, missionHaul } from './rewards'
 import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 
@@ -61,6 +61,7 @@ function resetDivers(state: DiveState): DiverState[] {
     pactIds: [],
     failedPactIds: [],
     pickedOptionId: null,
+    forfeitedItemId: null,
     skipsCurrentDraft: false,
     rewardRerollSeed: null,
     rewardBanned: false,
@@ -95,6 +96,27 @@ export function resetOperation(state: DiveState): Partial<DiveState> {
   }
 }
 
+// The failure's loss lands once every diver owing an item has chosen: each
+// chosen item leaves its owner's kit together, then the operation restarts.
+// Holding the removal back keeps every offer (derived from the live kit) stable
+// while the squad is still choosing.
+function resolveForfeit(state: DiveState): DiveState {
+  const personalInventories = { ...state.personalInventories }
+  for (const diver of state.divers) {
+    if (diver.forfeitedItemId) {
+      personalInventories[diver.id] = (personalInventories[diver.id] ?? [])
+        .filter(id => id !== diver.forfeitedItemId)
+    }
+  }
+  return { ...state, personalInventories, ...resetOperation(state) }
+}
+
+// A pick, a departure or a step away can each leave the forfeit with nobody
+// left to wait on.
+function settleForfeit(state: DiveState): DiveState {
+  return state.phase === 'forfeit' && forfeitSettled(state) ? resolveForfeit(state) : state
+}
+
 // The strain is an operation-long commitment: it is decided once, on the
 // operation's first mission, before pacts roll. It may be answered before or
 // after the misfortune; the phase only advances once both calls are in.
@@ -126,18 +148,18 @@ function removeDiver(state: DiveState, diverId: string, action: EngineAction): D
     ? 'diving'
     : state.phase
   if (diver.id !== state.hostId) {
-    return commit(state, { divers, personalInventories, legacyCaches, phase }, action)
+    return settleForfeit(commit(state, { divers, personalInventories, legacyCaches, phase }, action))
   }
   // The host anchors the squad — hostship moves to the earliest present joiner,
   // mirroring the server's disconnect migration.
   const nextHost = divers.find(entry => !entry.away) ?? divers[0]!
-  return commit(state, {
+  return settleForfeit(commit(state, {
     divers: divers.map(entry => ({ ...entry, isHost: entry.id === nextHost.id })),
     hostId: nextHost.id,
     personalInventories,
     legacyCaches,
     phase,
-  }, action)
+  }, action))
 }
 
 export function reduce(state: DiveState, action: EngineAction): DiveState {
@@ -525,32 +547,34 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           ],
         }, action)
       }
-      const holdingsEmpty = state.divers.every(
-        diver => (state.personalInventories[diver.id] ?? []).length === 0,
-      )
-      if (holdingsEmpty) {
-        return commit(state, { ...resetOperation(state) }, action)
-      }
-      return commit(state, { phase: 'forfeit', lastReport: report }, action)
+      // A failure deals every diver their forfeit offer, rolled like a draft off
+      // the mission's offer seed. With nothing owed (empty kits, or only
+      // mid-mission joiners present) the operation restarts at once.
+      const failed = commit(state, {
+        phase: 'forfeit',
+        lastReport: report,
+        offerSeed: deriveSeed(state.wheel.seed, state.missionIndex),
+      }, action)
+      return settleForfeit(failed)
     }
 
     case 'FORFEIT_ITEM': {
       if (state.phase !== 'forfeit') {
         return state
       }
-      // Failure costs exactly one item, from the owner diver the squad picks.
-      const { itemRef } = action
-      const inventory = state.personalInventories[itemRef.ownerId]
-      if (!inventory?.includes(itemRef.itemId)) {
+      // Self-service: each diver surrenders one item, and only from the offer
+      // the engine dealt them — never one of their own choosing.
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      if (!diver || diver.forfeitedItemId) {
         return state
       }
-      return commit(state, {
-        personalInventories: {
-          ...state.personalInventories,
-          [itemRef.ownerId]: inventory.filter(id => id !== itemRef.itemId),
-        },
-        ...resetOperation(state),
-      }, action)
+      if (!forfeitOptionsFor(state, diver).some(item => item.id === action.itemId)) {
+        return state
+      }
+      const divers = state.divers.map(candidate =>
+        candidate.id === diver.id ? { ...candidate, forfeitedItemId: action.itemId } : candidate,
+      )
+      return settleForfeit(commit(state, { divers }, action))
     }
 
     case 'PICK_REWARD': {
@@ -923,7 +947,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         }
       }
       const phase = state.phase === 'pacts' && pactsSettled(divers) ? 'diving' : state.phase
-      return { ...state, divers, hostId, phase }
+      return settleForfeit({ ...state, divers, hostId, phase })
     }
 
     case 'TRANSFER_HOST': {

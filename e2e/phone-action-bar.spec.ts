@@ -71,7 +71,7 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
   await context.close()
 })
 
-test('phone: a failed mission lands on the pinned surrender bar', async ({ browser }) => {
+test('phone: a failed mission lands on the pinned remove bar', async ({ browser }) => {
   const context = await browser.newContext({ viewport: VIEWPORT, reducedMotion: 'reduce', ...fromAddress('10.20.0.2') })
   const page = await context.newPage()
 
@@ -82,23 +82,39 @@ test('phone: a failed mission lands on the pinned surrender bar', async ({ brows
   await page.getByRole('button', { name: 'Join the dive' }).click()
   await dismissWarbondIntro(page)
 
+  const primary = page.locator('#phone-bar-primary')
+  async function diveToPacts(): Promise<void> {
+    await primary.getByRole('button', { name: 'Spin the wheel' }).click()
+    // The strain call only opens on an operation's first mission.
+    await page.locator('.phone-wheel .opt-out').first().click()
+    if (await page.locator('.phone-wheel .opt-out').count() > 0) {
+      await page.locator('.phone-wheel .opt-out').first().click()
+    }
+    await primary.getByRole('button', { name: 'Deal the pacts' }).click()
+    await primary.getByRole('button', { name: /Lock in/ }).click()
+  }
+
   await page.getByRole('button', { name: 'Launch crusade' }).click()
-  await page.locator('#phone-bar-primary').getByRole('button', { name: 'Spin the wheel' }).click()
-  await page.locator('.phone-wheel .opt-out').first().click()
-  await page.locator('.phone-wheel .opt-out').first().click()
-  await page.locator('#phone-bar-primary').getByRole('button', { name: 'Deal the pacts' }).click()
-  await page.locator('#phone-bar-primary').getByRole('button', { name: /Lock in/ }).click()
+  await diveToPacts()
+
+  // Failure only takes earned gear, so clear mission 1 and bank a reward first.
+  await primary.getByRole('button', { name: 'Mission complete' }).click()
+  await primary.getByRole('button', { name: 'File report' }).click()
+  await page.locator('.phone-rewards .row').first().click()
+  await primary.getByRole('button').first().click()
+  await primary.getByRole('button', { name: /Next mission/ }).click()
+  await diveToPacts()
 
   await page.locator('#phone-bar-secondary').getByRole('button', { name: 'Mission failed' }).click()
   await expectPinnedBar(page, '11-diving-confirm-failure')
-  await page.locator('#phone-bar-primary').getByRole('button', { name: 'Confirm failure' }).click()
+  await page.locator('#phone-bar-primary').getByRole('button', { name: 'File failure' }).click()
 
   await expect(page.getByRole('heading', { name: 'Mission failed' }).first()).toBeVisible()
   await expectPinnedBar(page, '12-forfeit')
 
-  // Picking an item arms the hold-to-confirm surrender.
+  // Picking an item arms the hold-to-confirm remove.
   await page.locator('.sur-tile').first().click()
-  await expect(page.locator('#phone-bar-primary').getByRole('button', { name: /Surrender/ })).toBeEnabled()
+  await expect(page.locator('#phone-bar-primary').getByRole('button', { name: /Remove/ })).toBeEnabled()
   await expectPinnedBar(page, '13-forfeit-armed')
 
   await context.close()

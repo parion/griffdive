@@ -190,7 +190,7 @@ function submit(): void {
         class="failure"
       >
         <span class="disp failure-title">Mission failed</span>
-        <span class="failure-sub">No stars · the operation repeats · forfeit one item</span>
+        <span class="failure-sub">No stars · the operation repeats · each diver forfeits one item</span>
       </div>
     </div>
 
@@ -236,7 +236,7 @@ function submit(): void {
           type="button"
           @click="submit"
         >
-          <span class="disp">Confirm failure</span>
+          <span class="disp">File failure</span>
         </button>
         <button
           v-else-if="canControl"

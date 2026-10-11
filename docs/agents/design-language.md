@@ -29,7 +29,8 @@ Design principles — every gameplay decision must honor these:
    should change loadout strategy, route, or behavior — not just make numbers bigger.
 6. **Team risk is shared; personal risk is personal** (Slay the Spire 2 co-op model). The whole squad
    carries the misfortune; each diver carries their own pacts and drafts their own rewards.
-7. **Failure is a setback, not a wipe.** Repeat the difficulty, forfeit one item, keep climbing.
+7. **Failure is a setback, not a wipe.** Repeat the difficulty, every diver forfeits one earned item from a
+   dealt offer (tier-capped by the Valor they took on), keep climbing.
 
 ### Destroyer Terminal design language
 

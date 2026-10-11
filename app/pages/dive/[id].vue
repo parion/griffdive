@@ -4,7 +4,7 @@ import { createSaveDoc } from '~~/shared/engine/saves'
 import { diverOptions, majorOrderFronts, pactRiskOf, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
-import type { CrusadeSettings, DiverState, EngineAction, ItemRef, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
+import type { CrusadeSettings, DiverState, EngineAction, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
 import { rememberDiverName, storeSeat } from '~/composables/useGameSocket'
 
 const route = useRoute()
@@ -350,8 +350,11 @@ function advance(): void {
   dispatch({ type: 'ADVANCE' })
 }
 
-function forfeit(itemRef: ItemRef): void {
-  dispatch({ type: 'FORFEIT_ITEM', itemRef })
+// Each diver surrenders their own item from the offer they were dealt.
+function forfeit(itemId: string): void {
+  if (selfId.value) {
+    dispatch({ type: 'FORFEIT_ITEM', playerId: selfId.value, itemId })
+  }
 }
 
 function endDive(): void {
@@ -781,7 +784,8 @@ function launchCrusade(settings: CrusadeSettings): void {
           <DivePhaseForfeit
             v-if="phase === 'forfeit'"
             :state="state"
-            :can-control="canControl"
+            :self-id="selfId"
+            :self="self"
             @forfeit="forfeit"
           />
 

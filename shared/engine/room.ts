@@ -179,6 +179,7 @@ function sanitizeDiver(raw: unknown): DiverState | null {
     pactIds: stringArray(diver.pactIds),
     failedPactIds: stringArray(diver.failedPactIds),
     pickedOptionId: typeof diver.pickedOptionId === 'string' ? diver.pickedOptionId : null,
+    forfeitedItemId: typeof diver.forfeitedItemId === 'string' ? diver.forfeitedItemId : null,
     warbondCodes: stringArray(diver.warbondCodes),
     catchUpGranted: clampInt(diver.catchUpGranted, 0, CATCHUP_CAP, 0),
     catchUpOwed: clampInt(diver.catchUpOwed, 0, CATCHUP_CAP, 0),
@@ -248,28 +249,45 @@ function sanitizeMajorOrder(raw: unknown): MajorOrderSelection | null {
   return selection
 }
 
-// A forked host stranded at the forfeit screen with nothing to lose — their own
-// kit empty and the missing divers' kits parked as caches the picker never
-// offers — would deadlock. Resolve the failure the way the reducer resolves an
-// empty squad: strip one item from a parked cache when one exists (the squad's
-// loss still stands), then restart the operation. Mirrors resetOperation.
+// A forked host is the only diver left at the forfeit screen, so nobody may be
+// left to choose: nothing earned beyond the starting kit, a mid-mission seating
+// that dove nothing,
+// or an item already chosen with every other diver gone. The failure would
+// deadlock. Resolve it the way the reducer settles a forfeit: apply the chosen
+// item, or — when the host owed nothing — strip one item from a parked cache
+// (the squad's loss still stands), then restart the operation. Mirrors
+// resetOperation.
 function resolveStrandedForfeit(state: DiveState): DiveState {
   if (state.phase !== 'forfeit') {
     return state
   }
   const owner = state.divers[0]
-  if (!owner || (state.personalInventories[owner.id] ?? []).length > 0) {
+  if (!owner) {
+    return state
+  }
+  const kit = state.personalInventories[owner.id] ?? []
+  const chosen = owner.forfeitedItemId ?? null
+  const starting = new Set(state.settings
+    ? startingItemIds(state.settings.variant, state.settings.mode)
+    : [])
+  const owes = !owner.skipsCurrentDraft && kit.some(id => !starting.has(id))
+  if (!chosen && owes) {
     return state
   }
   let legacyCaches = state.legacyCaches
-  for (const [id, items] of Object.entries(legacyCaches)) {
-    if (items.length > 0) {
-      legacyCaches = { ...legacyCaches, [id]: items.slice(1) }
-      break
+  if (!chosen) {
+    for (const [id, items] of Object.entries(legacyCaches)) {
+      if (items.length > 0) {
+        legacyCaches = { ...legacyCaches, [id]: items.slice(1) }
+        break
+      }
     }
   }
   return {
     ...state,
+    personalInventories: chosen
+      ? { ...state.personalInventories, [owner.id]: kit.filter(id => id !== chosen) }
+      : state.personalInventories,
     phase: 'spin',
     missionInOperation: 1,
     rerollTokens: REROLL_TOKENS_PER_OPERATION,
@@ -288,6 +306,7 @@ function resolveStrandedForfeit(state: DiveState): DiveState {
       pactIds: [],
       failedPactIds: [],
       pickedOptionId: null,
+      forfeitedItemId: null,
       skipsCurrentDraft: false,
       rewardRerollSeed: null,
       rewardBanned: false,
