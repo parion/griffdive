@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ALL_WARBOND_CODES, ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
+import { POD_STAGGER } from '~/utils/motion'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import {
   allDiversPicked,
@@ -11,8 +12,11 @@ import {
   canBuyItem,
   canRerollRewards,
   diverOptions,
+  draftSummaryFor,
+  pactRiskOf,
   rewardPoolFor,
   shopStockFor,
+  teamRiskOf,
 } from '~~/shared/engine/selectors'
 import type { Item } from '~~/shared/data/types'
 import type { RewardOption } from '~~/shared/engine/rewards'
@@ -94,16 +98,42 @@ const advanceLabel = computed(() =>
     ? `Advance · difficulty ${Math.min(props.state.difficulty + 1, MAX_DIFFICULTY)}`
     : 'Next mission')
 
-const squadPicks = computed(() =>
+const squadDrafts = computed(() =>
   props.state.divers
     .filter(diver => diver.id !== props.selfId)
-    .map(diver => ({
-      id: diver.id,
-      name: diver.name,
-      initial: diver.name.trim().slice(0, 1).toUpperCase() || '?',
-      picked: diver.pickedOptionId !== null,
-      skipped: diver.skipsCurrentDraft,
-    })))
+    .map(diver => ({ id: diver.id, name: diver.name, summary: draftSummaryFor(props.state, diver) })))
+const ceiling = computed(() => (props.self ? draftSummaryFor(props.state, props.self).ceiling : null))
+const teamRisk = computed(() => teamRiskOf(props.state))
+
+// The options wait for the ceiling roll, then fade in worst-to-best so the
+// reveal builds to the top pull (Liberty's Cross last). A resolved draft or
+// reduced motion shows them at once. Presentation only.
+const reduced = import.meta.client
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const revealed = ref(false)
+const liveReveal = ref(false)
+function onClimbed(): void {
+  liveReveal.value = !resolved.value && !reduced
+  revealed.value = true
+}
+watch(() => props.self?.rewardRerollSeed, () => {
+  revealed.value = false
+})
+const TIER_ORDER = ['c', 'b', 'a', 's']
+const revealRanks = computed(() => {
+  const score = (option: RewardOption) => option.choice ? TIER_ORDER.length : TIER_ORDER.indexOf(option.item.tier)
+  const ranks: Record<string, number> = {}
+  options.value
+    .map((option, index) => ({ option, index }))
+    .sort((a, b) => score(a.option) - score(b.option) || a.index - b.index)
+    .forEach((entry, rank) => {
+      ranks[entry.option.optionId] = rank
+    })
+  return ranks
+})
+// No track to wait on (sat out, or no ceiling): nothing gates the rows.
+const showRows = computed(() => revealed.value || !ceiling.value || options.value.length === 0)
+const pactRisk = computed(() => (props.self ? pactRiskOf(props.self, props.state.difficulty) : 0))
 
 // ---- Ban mode ----------------------------------------------------------
 
@@ -179,28 +209,24 @@ function tierOf(option: RewardOption): string {
           </span>
         </div>
 
+        <CeilingTrack
+          v-if="ceiling && options.length"
+          :difficulty="state.difficulty"
+          :ceiling="ceiling"
+          :team-risk="teamRisk"
+          :pact-risk="pactRisk"
+          class="phone-track"
+          :instant="resolved"
+          :replay-key="self?.rewardRerollSeed ?? 0"
+          @climbed="onClimbed"
+        />
+
         <p
           v-if="optionsLost > 0"
           class="lost-note"
         >
           {{ optionsLost }} failed pact{{ optionsLost === 1 ? '' : 's' }} · one fewer option
         </p>
-
-        <div
-          class="squad-picks"
-          aria-label="Squad picks"
-        >
-          <span
-            v-for="d in squadPicks"
-            :key="d.id"
-            class="pick-chip"
-            :class="{ waiting: !d.picked && !d.skipped }"
-          >
-            <span class="pick-init disp">{{ d.initial }}</span>
-            <span class="pick-name">{{ d.name }}</span>
-            <span class="pick-state">{{ d.skipped ? 'skip' : d.picked ? 'ready' : '…' }}</span>
-          </span>
-        </div>
 
         <div
           class="rows"
@@ -212,20 +238,24 @@ function tierOf(option: RewardOption): string {
             :key="option.optionId"
           >
             <LibertyCrossBand
-              v-if="option.choice"
+              v-if="option.choice && showRows"
+              :reveal-rank="revealRanks[option.optionId]"
+              :instant="!liveReveal"
               :pool="rewardPool"
               :owned-ids="ownedIds"
               :can-pick="!!self && !resolved"
               :picked="self?.pickedOptionId === option.optionId"
               :dimmed="resolved && self?.pickedOptionId !== option.optionId"
               :ban-mode="banMode"
-              :delay="150"
               @choose="itemId => emit('pick', option.optionId, itemId)"
             />
             <button
-              v-else
+              v-else-if="!option.choice"
               class="row"
+              :style="{ '--delay': `${(revealRanks[option.optionId] ?? 0) * POD_STAGGER}ms` }"
               :class="{
+                waiting: !showRows,
+                live: showRows && liveReveal,
                 lead: index === 0,
                 picked: self?.pickedOptionId === option.optionId,
                 dimmed: resolved && self?.pickedOptionId !== option.optionId,
@@ -235,7 +265,7 @@ function tierOf(option: RewardOption): string {
               }"
               type="button"
               :data-tier="tierOf(option)"
-              :disabled="!self || (resolved && !banMode) || (banMode && !bannableIds.includes(option.optionId))"
+              :disabled="!showRows || !self || (resolved && !banMode) || (banMode && !bannableIds.includes(option.optionId))"
               :aria-label="`${option.item.displayName}, tier ${tierOf(option)}${index === 0 ? ', ceiling pick' : ''}${banMode ? ', toggle ban' : ', claim'}`"
               @click="banMode ? toggleBan(option.optionId) : emit('pick', option.optionId)"
             >
@@ -288,6 +318,12 @@ function tierOf(option: RewardOption): string {
             </button>
           </template>
         </div>
+
+        <SquadDraftBoard
+          v-if="squadDrafts.length && !banMode && showRows"
+          :drafts="squadDrafts"
+          compact
+        />
       </div>
 
       <PhoneActionBar aria-label="Reward tokens">
@@ -421,37 +457,14 @@ function tierOf(option: RewardOption): string {
   text-transform: uppercase;
 }
 
-.squad-picks { display: flex; gap: 6px; overflow: hidden; }
-.pick-chip {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 6px;
-  border: 1px solid var(--line-2);
-  min-width: 0;
-}
-.pick-chip.waiting { border-color: var(--gold); }
-.pick-init {
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  background: var(--line-2);
-  font-size: 10px;
-}
-.pick-name {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 70px;
-}
-.pick-state { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-.pick-chip.waiting .pick-state { color: var(--gold); }
-
 .rows { display: flex; flex-direction: column; gap: 8px; }
+.phone-track { margin-bottom: 14px; }
+.row.waiting { opacity: 0; pointer-events: none; }
+.row.live { animation: row-in 0.5s var(--ease-out) var(--delay) backwards; }
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
 
 /* Rarity reads at a glance: A and S rows carry a tier-tinted sheen, S faster. */
 .row[data-tier='A']:not(:disabled),

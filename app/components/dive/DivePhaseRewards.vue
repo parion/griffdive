@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ALL_WARBOND_CODES, ITEMS_BY_ID } from '~~/shared/data/catalog'
+import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
-import { allDiversPicked, bonusEligible, canBanAnyReward, canBanReward, canBuyItem, canRerollRewards, diverOptions, pactRiskOf, rewardPoolFor, shopStockFor, teamRiskOf } from '~~/shared/engine/selectors'
+import { allDiversPicked, bonusEligible, canBanAnyReward, canBanReward, canBuyItem, canRerollRewards, diverOptions, draftSummaryFor, pactRiskOf, rewardPoolFor, shopStockFor, teamRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -46,18 +46,14 @@ const rewardPool = computed(() => {
 })
 const ownedIds = computed(() => props.state.personalInventories[props.selfId ?? ''] ?? [])
 
-// The rest of the squad's draft state for the icon-only indicators: what each
-// other diver banked, or that they are still choosing.
-const squadPicks = computed(() =>
+// The rest of the squad's drafts — offer, rolled ceiling and outcome — so the
+// squad can compare pulls, before and after they pick.
+const squadDrafts = computed(() =>
   props.state.divers
     .filter(diver => diver.id !== props.selfId)
-    .map(diver => ({
-      id: diver.id,
-      name: diver.name,
-      item: diver.pickedOptionId ? ITEMS_BY_ID.get(diver.pickedOptionId) ?? null : null,
-      skipped: diver.skipsCurrentDraft,
-    })),
+    .map(diver => ({ id: diver.id, name: diver.name, summary: draftSummaryFor(props.state, diver) })),
 )
+const ceiling = computed(() => (props.self ? draftSummaryFor(props.state, props.self).ceiling : null))
 
 // Bonus-honors token spenders: the engine owns the rules (token cost, an open
 // draft, non-choice targets) — this is the legible half. The allow-list drives
@@ -138,7 +134,7 @@ const kicker = computed(() =>
     :pool="rewardPool"
     :owned-ids="ownedIds"
     :options-lost="self?.failedPactIds.length ?? 0"
-    :squad-picks="squadPicks"
+    :squad-drafts="squadDrafts"
     :token-count="rewardTokens"
     :can-reroll="canReroll"
     :can-ban="canBan"
@@ -146,11 +142,11 @@ const kicker = computed(() =>
     :resolved="draftResolved"
     :banned="draftBanned"
     :banned-ids="self?.bannedItemIds ?? []"
+    :ceiling="ceiling"
     :stars="state.lastReport?.stars ?? 0"
     :difficulty="state.difficulty"
     :team-risk="teamRisk"
     :pact-risk="pactRisk"
-    :rerolled="Boolean(self?.rewardRerollSeed)"
     :ready="ready"
     :bonus-up="bonusUp"
     :can-control="canControl"

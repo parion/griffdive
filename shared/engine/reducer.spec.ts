@@ -8,7 +8,7 @@ import { DIVERS_CHOICE_OPTION_ID, itemPrice, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { activeMisfortune, allDiversPicked, awaitingDiverIds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverValor, diverOptions, modeValorOf, pactOfferFor, pactRiskOf, rewardPoolFor, shopStockFor, squadSize, teamRiskOf } from './selectors'
+import { activeMisfortune, allDiversPicked, awaitingDiverIds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, modeValorOf, pactOfferFor, pactRiskOf, rewardPoolFor, shopStockFor, squadSize, teamRiskOf } from './selectors'
 import { deriveFront, deriveStrain } from './wheel'
 import type { DiveState, DiverState, EngineAction } from './types'
 
@@ -1326,6 +1326,53 @@ describe('reward tokens + bonus honors', () => {
     return reduce(state, { type: 'SPIN_BONUS', seed })
   }
 
+  it('freezes the dealt offer so a pick or a purchase never reshuffles it', () => {
+    const state = rewardsState()
+    const dealt = diverOptions(state, requireDiver(state))
+    expect(requireDiver(state).draftExcludedIds).toEqual(
+      expect.arrayContaining(state.personalInventories.p1 ?? []),
+    )
+    const picked = pickFirst(state)
+    expect(diverOptions(picked, requireDiver(picked))).toEqual(dealt)
+    const flush = { ...picked, divers: picked.divers.map(diver => ({ ...diver, sampleBank: 100_000 })) }
+    const stocked = shopStockFor(flush, requireDiver(flush))[0]
+    expect(stocked).toBeDefined()
+    const bought = reduce(flush, { type: 'BUY_ITEM', playerId: 'p1', itemId: stocked!.item.id })
+    expect(bought).not.toBe(flush)
+    expect(diverOptions(bought, requireDiver(bought))).toEqual(dealt)
+    expect(reduce(bought, { type: 'ADVANCE' }).divers[0]?.draftExcludedIds).toBeNull()
+  })
+
+  it('summarizes a diver\'s draft for the squad: offer, ceiling and outcome', () => {
+    const state = withTokens(rewardsState(), 'p1', 1)
+    const open = draftSummaryFor(state, requireDiver(state))
+    expect(open.status).toBe('choosing')
+    expect(open.ceiling).toBe(diverRolledCeiling(state, requireDiver(state)))
+    expect(open.bankedOptionId).toBeNull()
+
+    const picked = pickFirst(state)
+    const banked = draftSummaryFor(picked, requireDiver(picked))
+    expect(banked.status).toBe('banked')
+    expect(banked.options).toEqual(open.options)
+    expect(banked.bankedOptionId).toBe(open.options[0]!.optionId)
+
+    const target = open.options.find(option => !option.choice)!
+    const purged = reduce(state, { type: 'BAN_REWARDS', playerId: 'p1', optionIds: [target.optionId] })
+    const banned = draftSummaryFor(purged, requireDiver(purged))
+    expect(banned.status).toBe('banned')
+    expect(banned.bannedOptionIds).toEqual([target.optionId])
+  })
+
+  it('refuses to bank a dealt item the diver has since gained', () => {
+    const state = rewardsState()
+    const option = diverOptions(state, requireDiver(state)).find(entry => !entry.choice)!
+    const gained = {
+      ...state,
+      personalInventories: { ...state.personalInventories, p1: [...(state.personalInventories.p1 ?? []), option.item.id] },
+    }
+    expect(reduce(gained, { type: 'PICK_REWARD', playerId: 'p1', optionId: option.optionId })).toBe(gained)
+  })
+
   it('reveals no contest until the host spins it, after the draft completes', () => {
     const state = rewardsState()
     // Nothing is drawn before the spin.
@@ -1490,9 +1537,13 @@ describe('reward tokens + bonus honors', () => {
     const banned = reduce(state, { type: 'BAN_REWARDS', playerId: 'p1', optionIds: targets })
     expect(banned.divers[0]?.rewardTokens).toBe(0)
     expect(banned.divers[0]?.rewardBanned).toBe(true)
+    // The dealt offer stays frozen for the squad to see; the bans only bite
+    // from the next deal on.
+    expect(diverOptions(banned, banned.divers[0]!)).toEqual(options)
+    const redealt = { ...banned.divers[0]!, draftExcludedIds: null }
     for (const option of options) {
       expect(banned.divers[0]?.bannedItemIds).toContain(option.item.id)
-      expect(diverOptions(banned, banned.divers[0]!).some(entry => entry.optionId === option.optionId)).toBe(false)
+      expect(diverOptions(banned, redealt).some(entry => entry.optionId === option.optionId)).toBe(false)
     }
     // The pick is forfeited: the draft resolves with nothing banked.
     expect(banned.divers[0]?.pickedOptionId).toBeNull()

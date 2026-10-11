@@ -66,6 +66,12 @@ export interface DiverState {
   // The diver spent this draft on bans instead of a reward: the draft counts
   // as complete without a pick. Reset with the pacts every mission.
   rewardBanned: boolean
+  // What the current draft was dealt against: the diver's holdings and bans
+  // when the mission reported. The offer derives from this snapshot, not live
+  // holdings, so a pick, a purchase or a ban never reshuffles an offer the
+  // squad has already seen. Absent (older saves) falls back to live holdings.
+  // Reset with the pacts every mission.
+  draftExcludedIds?: string[] | null
   // The diver stepped away (Leave, or their connection stayed down past the
   // server's grace window). Their seat, kit and purse stay put, but the squad
   // never waits on them: pact lock-in, reward picks and squad size count only

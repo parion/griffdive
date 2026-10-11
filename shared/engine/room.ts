@@ -190,6 +190,7 @@ function sanitizeDiver(raw: unknown): DiverState | null {
       ? diver.rewardRerollSeed
       : null,
     rewardBanned: diver.rewardBanned === true,
+    draftExcludedIds: Array.isArray(diver.draftExcludedIds) ? stringArray(diver.draftExcludedIds, 2000) : null,
     away: false,
   }
 }
@@ -290,6 +291,7 @@ function resolveStrandedForfeit(state: DiveState): DiveState {
       skipsCurrentDraft: false,
       rewardRerollSeed: null,
       rewardBanned: false,
+      draftExcludedIds: null,
     })),
     legacyCaches,
   }

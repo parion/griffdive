@@ -64,6 +64,7 @@ function resetDivers(state: DiveState): DiverState[] {
     skipsCurrentDraft: false,
     rewardRerollSeed: null,
     rewardBanned: false,
+    draftExcludedIds: null,
   }))
 }
 
@@ -501,9 +502,17 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (action.outcome === 'success') {
         // The sample haul banks into every diver's Requisition purse. A diver
         // seated mid-mission sat out the dive, so the haul isn't theirs.
+        // The deal freezes each diver's exclusions, so the offer every client
+        // derives stays put for the whole draft window.
         const haul = missionHaul(report)
         const divers = state.divers.map(diver =>
-          diver.skipsCurrentDraft ? diver : { ...diver, sampleBank: diver.sampleBank + haul },
+          diver.skipsCurrentDraft
+            ? diver
+            : {
+                ...diver,
+                sampleBank: diver.sampleBank + haul,
+                draftExcludedIds: [...(state.personalInventories[diver.id] ?? []), ...diver.bannedItemIds],
+              },
         )
         return commit(state, {
           phase: 'rewards',
@@ -567,6 +576,11 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }
       const item = ITEMS_BY_ID.get(itemId)
       if (!item) {
+        return state
+      }
+      // The offer is frozen at the deal, so an item gained since (a catch-up
+      // claim) can still sit in it — never bank a duplicate.
+      if ((state.personalInventories[diver.id] ?? []).includes(item.id)) {
         return state
       }
       if (option.choice) {

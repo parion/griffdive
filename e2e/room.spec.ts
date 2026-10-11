@@ -76,14 +76,19 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   // Presence: both divers show online dots on the host page.
   await expect(pageA.locator('.diver-chip .lamp.teal')).toHaveCount(2)
 
-  // Rewards: the host reports success, then the other diver's banked pick
-  // shows as an icon-only squad indicator in the draft (N14).
+  // Rewards: the host reports success, then the squad board shows the other
+  // diver's whole offer with their banked pick lit — and it stays up after
+  // the host banks their own.
   await pageA.getByRole('button', { name: 'Mission complete' }).click()
   await pageA.getByRole('button', { name: 'File report' }).click()
   await expect(pageB.getByRole('heading', { name: 'Reward Draft' })).toBeVisible()
+  await expect(pageB.locator('.squad-pick .card-status.choosing')).toHaveCount(1)
   await pageB.locator('.pod-card .pod-hit').first().click()
   await expect(pageA.locator('.squad-pick.done')).toHaveCount(1)
-  await expect(pageA.locator('.squad-pick.done img')).toBeVisible()
+  await expect(pageA.locator('.squad-pick.done .tile.banked img')).toBeVisible()
+  await pageA.locator('.pod-card .pod-hit').first().click()
+  await expect(pageA.locator('.squad-pick.done .tile.banked')).toHaveCount(1)
+  await expect(pageB.locator('.squad-pick.done .tile.banked')).toHaveCount(1)
 
   // The joiner's home page lists the live dive under Continue → Online.
   const roomCode = pageA.url().slice(-6)
