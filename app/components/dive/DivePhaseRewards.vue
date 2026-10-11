@@ -18,7 +18,7 @@ const emit = defineEmits<{
   ban: [optionIds: string[]]
   buy: [itemId: string]
   spinBonus: []
-  awardBonus: [playerId: string]
+  awardBonus: [playerIds: string[]]
   advance: []
 }>()
 
@@ -126,7 +126,7 @@ const kicker = computed(() =>
     :buyable="stockBuyable"
     :advance-label="advanceLabel"
     @spin="emit('spinBonus')"
-    @award="playerId => emit('awardBonus', playerId)"
+    @award="playerIds => emit('awardBonus', playerIds)"
     @advance="emit('advance')"
     @buy="itemId => emit('buy', itemId)"
   />

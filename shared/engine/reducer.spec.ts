@@ -1384,23 +1384,41 @@ describe('reward tokens + bonus honors', () => {
     // Solo: the only diver is always the winner, so the spin banks the token
     // and no award action is needed.
     const state = spun(pickFirst(rewardsState()), 7)
-    expect(state.bonusWinnerId).toBe('p1')
+    expect(state.bonusWinnerIds).toEqual(['p1'])
     expect(state.divers[0]?.rewardTokens).toBe(1)
-    expect(reduce(state, { type: 'AWARD_BONUS', playerId: 'p1' })).toBe(state)
+    expect(reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1'] })).toBe(state)
   })
 
   it('leaves selection to the host when more than one diver can win', () => {
     let state = twoDiverRewards()
     state = reduce(state, { type: 'SPIN_BONUS', seed: 7 })
-    expect(state.bonusWinnerId).toBeNull()
+    expect(state.bonusWinnerIds).toEqual([])
     expect(state.divers.every(diver => diver.rewardTokens === 0)).toBe(true)
-    expect(reduce(state, { type: 'AWARD_BONUS', playerId: 'ghost' })).toBe(state)
-    const awarded = reduce(state, { type: 'AWARD_BONUS', playerId: 'p2' })
-    expect(awarded.bonusWinnerId).toBe('p2')
+    expect(reduce(state, { type: 'AWARD_BONUS', playerIds: ['ghost'] })).toBe(state)
+    const awarded = reduce(state, { type: 'AWARD_BONUS', playerIds: ['p2'] })
+    expect(awarded.bonusWinnerIds).toEqual(['p2'])
     expect(awarded.divers.find(diver => diver.id === 'p2')?.rewardTokens).toBe(1)
     expect(awarded.divers.find(diver => diver.id === 'p1')?.rewardTokens).toBe(0)
     // One award per mission.
-    expect(reduce(awarded, { type: 'AWARD_BONUS', playerId: 'p1' })).toBe(awarded)
+    expect(reduce(awarded, { type: 'AWARD_BONUS', playerIds: ['p1'] })).toBe(awarded)
+  })
+
+  it('lets a tie honor every tied diver at once', () => {
+    let state = twoDiverRewards()
+    state = reduce(state, { type: 'SPIN_BONUS', seed: 7 })
+    const awarded = reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1', 'p2'] })
+    expect(awarded.bonusWinnerIds).toEqual(['p1', 'p2'])
+    expect(awarded.divers.every(diver => diver.rewardTokens === 1)).toBe(true)
+    // A duplicate collapses to one token, and the ceremony is still closed to
+    // a second award.
+    expect(reduce(awarded, { type: 'AWARD_BONUS', playerIds: ['p1'] })).toBe(awarded)
+  })
+
+  it('refuses an award naming no one', () => {
+    let state = twoDiverRewards()
+    state = reduce(state, { type: 'SPIN_BONUS', seed: 7 })
+    expect(reduce(state, { type: 'AWARD_BONUS', playerIds: [] })).toBe(state)
+    expect(reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1', 'ghost'] })).toBe(state)
   })
 
   it('refuses to award on a mission that no longer qualifies', () => {
@@ -1410,13 +1428,13 @@ describe('reward tokens + bonus honors', () => {
       ...state,
       lastReport: { outcome: 'success', stars: 1 },
     }
-    expect(reduce(lapsed, { type: 'AWARD_BONUS', playerId: 'p2' })).toBe(lapsed)
+    expect(reduce(lapsed, { type: 'AWARD_BONUS', playerIds: ['p2'] })).toBe(lapsed)
   })
 
   it('caps banked tokens', () => {
     let state = withTokens(rewardsState(), 'p1', REWARD_TOKEN_CAP)
     state = spun(pickFirst(state))
-    state = reduce(state, { type: 'AWARD_BONUS', playerId: 'p1' })
+    state = reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1'] })
     expect(state.divers[0]?.rewardTokens).toBe(REWARD_TOKEN_CAP)
   })
 
@@ -1545,10 +1563,10 @@ describe('reward tokens + bonus honors', () => {
 
   it('resets the bonus ceremony and the ban flag on advance', () => {
     let state = spun(pickFirst(rewardsState()))
-    state = reduce(state, { type: 'AWARD_BONUS', playerId: 'p1' })
+    state = reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1'] })
     const advanced = reduce(state, { type: 'ADVANCE' })
     expect(advanced.bonusSeed).toBeNull()
-    expect(advanced.bonusWinnerId).toBeNull()
+    expect(advanced.bonusWinnerIds).toEqual([])
     expect(advanced.divers[0]?.rewardBanned).toBe(false)
   })
 })

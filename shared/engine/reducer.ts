@@ -72,7 +72,7 @@ function resetForNextMission(state: DiveState): Partial<DiveState> {
     offerSeed: null,
     lastReport: null,
     bonusSeed: null,
-    bonusWinnerId: null,
+    bonusWinnerIds: [],
     misfortuneFailed: false,
     divers: resetDivers(state),
   }
@@ -840,7 +840,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         )
         return commit(
           state,
-          { bonusSeed: action.seed, bonusWinnerId: winner.id, divers },
+          { bonusSeed: action.seed, bonusWinnerIds: [winner.id], divers },
           action,
         )
       }
@@ -848,28 +848,33 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
     }
 
     case 'AWARD_BONUS': {
-      // Host-only: the host reads HD2's end screen and names the winner of the
-      // spun contest. Awarding banks the winner's token immediately — there is
-      // no separate claim step. Eligibility is re-checked so a hostile client
-      // can't award on a mission that never earned honors.
+      // Host-only: the host reads HD2's end screen and names the winner(s) of
+      // the spun contest. Ties are common, so the action carries a list — every
+      // tied diver banks a token. Awarding banks the tokens immediately — there
+      // is no separate claim step. Eligibility is re-checked so a hostile
+      // client can't award on a mission that never earned honors.
       if (
         state.phase !== 'rewards'
         || state.bonusSeed === null
         || !allDiversPicked(state)
-        || state.bonusWinnerId
+        || state.bonusWinnerIds.length > 0
         || !bonusEligible(state)
       ) {
         return state
       }
-      if (!state.divers.some(diver => diver.id === action.playerId)) {
+      // Every named id must be a seated diver; an unknown id voids the award.
+      // Duplicates collapse so a repeated id banks one token.
+      const winnerIds = [...new Set(action.playerIds)]
+      if (winnerIds.length === 0 || !winnerIds.every(id => state.divers.some(diver => diver.id === id))) {
         return state
       }
+      const winners = new Set(winnerIds)
       const divers = state.divers.map(diver =>
-        diver.id === action.playerId
+        winners.has(diver.id)
           ? { ...diver, rewardTokens: Math.min(REWARD_TOKEN_CAP, diver.rewardTokens + 1) }
           : diver,
       )
-      return commit(state, { divers, bonusWinnerId: action.playerId }, action)
+      return commit(state, { divers, bonusWinnerIds: winnerIds }, action)
     }
 
     case 'SET_NAME': {

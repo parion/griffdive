@@ -43,7 +43,7 @@ export function createLobbyState(): DiveState {
     offerSeed: null,
     lastReport: null,
     bonusSeed: null,
-    bonusWinnerId: null,
+    bonusWinnerIds: [],
     actionLog: [],
     seedHistory: [],
   }
@@ -146,6 +146,18 @@ function stringArray(value: unknown, cap = 300): string[] {
     return []
   }
   return value.filter((entry): entry is string => typeof entry === 'string').slice(0, cap)
+}
+
+// Honors can be shared — a tie names every tied diver — so winners live in a
+// list. A room stored before that change carries a single `bonusWinnerId`; read
+// either shape. Rooms are unversioned, so this mirrors the save chain's
+// v14 → v15 step.
+function sanitizeBonusWinnerIds(state: DiveState): string[] {
+  if (Array.isArray(state.bonusWinnerIds)) {
+    return stringArray(state.bonusWinnerIds)
+  }
+  const legacy = state as DiveState & { bonusWinnerId?: unknown }
+  return typeof legacy.bonusWinnerId === 'string' ? [legacy.bonusWinnerId] : []
 }
 
 // A forked save is client-supplied: normalizeSaveDoc only validates the outer
@@ -268,7 +280,7 @@ function resolveStrandedForfeit(state: DiveState): DiveState {
     offerSeed: null,
     lastReport: null,
     bonusSeed: null,
-    bonusWinnerId: null,
+    bonusWinnerIds: [],
     divers: state.divers.map(diver => ({
       ...diver,
       pactsLocked: false,
@@ -384,7 +396,7 @@ export function forkCrusade(
     offerSeed: typeof state.offerSeed === 'number' && Number.isFinite(state.offerSeed) ? state.offerSeed : null,
     lastReport: state.lastReport ?? null,
     bonusSeed: typeof state.bonusSeed === 'number' && Number.isFinite(state.bonusSeed) ? state.bonusSeed : null,
-    bonusWinnerId: typeof state.bonusWinnerId === 'string' ? state.bonusWinnerId : null,
+    bonusWinnerIds: sanitizeBonusWinnerIds(state),
     actionLog: Array.isArray(state.actionLog) ? state.actionLog.slice(-ACTION_LOG_CAP) : [],
     seedHistory: Array.isArray(state.seedHistory) ? state.seedHistory.slice(-ACTION_LOG_CAP) : [],
   }

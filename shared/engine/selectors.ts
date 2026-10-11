@@ -510,6 +510,12 @@ export function bonusFor(state: DiveState): BonusStat | null {
   return state.bonusSeed === null ? null : rollBonus(state.bonusSeed)
 }
 
+// The divers the host honored for the current mission's contest. Honors can be
+// shared: a tie on HD2's stats screen names every tied diver.
+export function bonusWinners(state: DiveState): DiverState[] {
+  return state.divers.filter(diver => state.bonusWinnerIds.includes(diver.id))
+}
+
 // A reward reroll costs one banked token and must actually move: the reducer
 // recomputes the offer under the candidate seed and refuses a same-offer seed.
 export function canRerollRewards(

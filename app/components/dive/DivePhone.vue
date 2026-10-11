@@ -40,7 +40,7 @@ const emit = defineEmits<{
   banRewards: [optionIds: string[]]
   buyReward: [itemId: string]
   spinBonus: []
-  awardBonus: [playerId: string]
+  awardBonus: [playerIds: string[]]
   advance: []
   forfeit: [itemRef: ItemRef]
   claimCatchUpOption: [optionId: string]

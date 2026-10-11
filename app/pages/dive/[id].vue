@@ -330,8 +330,8 @@ function spinBonus(): void {
   dispatch({ type: 'SPIN_BONUS', seed: session.newSeed() })
 }
 
-function awardBonus(playerId: string): void {
-  dispatch({ type: 'AWARD_BONUS', playerId })
+function awardBonus(playerIds: string[]): void {
+  dispatch({ type: 'AWARD_BONUS', playerIds })
 }
 
 function claimCatchUpOption(optionId: string): void {
