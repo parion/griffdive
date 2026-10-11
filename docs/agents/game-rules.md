@@ -616,10 +616,10 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   "a zero-Valor dive always rolls its base tier" rule. No ceiling roll, so S/S+ and Liberty's Cross
   are structurally unreachable. Risk remains the joiner's choice from their first mission; the
   promotion only buys altitude parity.
-- **Derivation:** the offer derives from the last spun seed (`catchUpOptionsFor` in
-  `shared/engine/selectors.ts`) — deterministic, never stored, no reroll surface. The full grant
-  rolls once against the joiner's starting kit and claimed items drop out of the draft, so a
-  promotion never exposes more candidates than it granted.
+- **Derivation:** the offer derives from the last spun seed folded with the picks already claimed
+  (`catchUpOptionsFor` in `shared/engine/selectors.ts`) — deterministic, never stored, no reroll
+  surface. **Every claim re-rolls a fresh offer** of `catchUpGranted` options; items the joiner
+  already holds (and starting-kit/banned items) are excluded, so each offer stays full-size.
 - **Ceremony is soft:** the joiner claims picks whenever it suits them (`CLAIM_CATCHUP_OPTION`,
   self-service, one per pick). It never gates squad progress — unlike the reward draft, where
   `allDiversPicked` blocks `ADVANCE`.

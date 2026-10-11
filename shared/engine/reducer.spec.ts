@@ -1216,14 +1216,14 @@ describe('Field Promotion (mid-crusade catch-up)', () => {
     const state = catchUpState()
     expect(lateDiver(state).catchUpOwed).toBe(4)
     let updated = state
-    // The grant rolls once and claimed options drop out of the draft, so the
-    // whole promotion never exposes more candidates than it granted (N22).
-    const seen = new Set<string>()
+    // Every claim re-rolls a fresh, full-size offer that excludes held items.
+    const offers: string[][] = []
     for (let pick = 0; pick < 4; pick++) {
       const options = catchUpOptionsFor(updated, lateDiver(updated))
-      for (const option of options) {
-        seen.add(option.optionId)
-      }
+      expect(options).toHaveLength(lateDiver(state).catchUpGranted)
+      expect(options.map(candidate => candidate.optionId))
+        .not.toContain(updated.personalInventories.late!.at(-1))
+      offers.push(options.map(candidate => candidate.optionId))
       const option = options[0]
       if (!option) {
         throw new Error('expected a catch-up option')
@@ -1234,7 +1234,7 @@ describe('Field Promotion (mid-crusade catch-up)', () => {
         optionId: option.optionId,
       })
     }
-    expect(seen.size).toBe(lateDiver(state).catchUpGranted)
+    expect(new Set(offers.map(offer => offer.join()))).toHaveProperty('size', 4)
     expect(lateDiver(updated).catchUpOwed).toBe(0)
     expect(catchUpOptionsFor(updated, lateDiver(updated))).toEqual([])
     expect(updated.personalInventories.late!.length).toBeGreaterThan(startingItemIds(SETTINGS.variant).length)

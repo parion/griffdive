@@ -42,7 +42,7 @@ function itemNames(itemIds: string[]): string[] {
       <span class="dash" />
       <span class="cap">{{ diver.catchUpOwed }} / {{ diver.catchUpGranted }} picks</span>
     </header>
-    <p class="sub muted">
+    <p class="offer muted">
       You joined mid-crusade — the squad climbed without you. Claim
       {{ diver.catchUpOwed }}
       {{ diver.catchUpOwed === 1 ? 'pick' : 'picks' }} at the current
@@ -101,7 +101,15 @@ function itemNames(itemIds: string[]): string[] {
 </template>
 
 <style scoped>
-.promotion { border-color: var(--line-4); }
+.promotion {
+  border-color: var(--line-4);
+  flex-shrink: 0;
+}
+.offer {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
 .promo-stamp {
   color: var(--teal);
   border-color: var(--teal);

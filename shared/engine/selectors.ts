@@ -550,23 +550,26 @@ export function canBuyItem(
 // up to the squad's altitude without ever reaching S. Derived from the last
 // spun seed like every offer — deterministic, never stored.
 //
-// The full grant is rolled once (against the joiner's starting kit, the
-// inventory they were seated with) and the claimed items are filtered out, so
-// the draft is stable: claiming a pick never re-rolls a new candidate into
-// view. Rolling against the shrinking owed count instead let three picks
-// expose up to six candidates (N22).
+// Each pick re-rolls the offer: the seed folds in how many picks the diver has
+// already claimed, so every client derives the same fresh draft after every
+// claim, and items already held are excluded so the offer stays full-size.
 export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOption[] {
   if (!state.settings || diver.catchUpOwed <= 0) {
     return []
   }
-  const seed = deriveSeed(state.seedHistory.at(-1) ?? 0, hashString(`${diver.id}:catchup`))
+  const claimed = diver.catchUpGranted - diver.catchUpOwed
+  const stream = claimed > 0 ? `${diver.id}:catchup:${claimed}` : `${diver.id}:catchup`
+  const seed = deriveSeed(state.seedHistory.at(-1) ?? 0, hashString(stream))
   const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
   // Bans are personal and crusade-long, so a promotion never re-offers a
   // banned item either.
-  const exclude = new Set([...startingItemIds(state.settings.variant, state.settings.mode), ...diver.bannedItemIds])
-  const owned = new Set(state.personalInventories[diver.id] ?? [])
+  const exclude = new Set([
+    ...startingItemIds(state.settings.variant, state.settings.mode),
+    ...diver.bannedItemIds,
+    ...(state.personalInventories[diver.id] ?? []),
+  ])
   // Catch-up buys altitude, never rarity: the band is the base tier alone.
-  const rolled = rollRewardOptions(
+  return rollRewardOptions(
     seed,
     baseTierFor(state.difficulty),
     baseTierFor(state.difficulty),
@@ -574,7 +577,6 @@ export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOp
     pool,
     exclude,
   )
-  return rolled.filter(option => !owned.has(option.item.id))
 }
 
 // Honors are a limited prize: the squad only plays for a token on a full-star
