@@ -105,8 +105,10 @@ engine.
   phases adapt to the width they actually get, not the viewport: the wheel stacks its decision
   cards under a smaller wheel below ~620px (scrolling the drawn directive into view once the spin
   lands), the report drops to one column below 720px, the honors reel stacks over its Spin, and
-  the reward token bar wraps. A narrow `CrusadeStrip` keeps names only on the current rung (the
-  others keep number + tier; names stay in their accessible labels). The tutorial drops its
+  the reward token bar wraps. `CrusadeStrip` rungs are single-line: number, name, and (current rung only) mission pips right
+  after the label; the base tier is a coloured bottom edge, not a label. A narrow strip keeps names only
+  on the current rung; on phones every rung is number + bar. An active difficulty 10 gets a slow gold
+  breath/sweep. Names and mission counts stay in the accessible labels. The tutorial drops its
   dossier column at ≤1180px. The Valor tab doubles as a readout: the live total over a bar split by source (directive gold,
   strain orange, Major Order teal, mode khaki, pacts red — the same colours as the meter's cells and
   legend, via `app/utils/valor.ts`). This total, the meter's head and the phone/landing Valor figures
