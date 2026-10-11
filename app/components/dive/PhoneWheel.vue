@@ -57,6 +57,7 @@ function rerollTitle(info: { free: boolean, reason: string | null }, wheel: stri
     : `Reroll ${wheel} — spends a reroll token (${props.state.rerollTokens} left)`)
 }
 
+// Held back while the wheel turns so the pinned gauge doesn't reveal the draw early.
 const teamRisk = computed(() => teamRiskOf(props.state))
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 
@@ -422,7 +423,7 @@ function acceptDisabled(): boolean {
       <template #detail>
         <PhoneValor
           :difficulty="state.difficulty"
-          :team-risk="teamRisk"
+          :team-risk="drawing ? 0 : teamRisk"
           :pact-risk="0"
           :pending-text="decision.decided && (!strainVisible || strainCall.decided) ? 'Dealing pacts' : pendingText"
         />

@@ -508,7 +508,7 @@ function rerollLabel(
                 />
                 <span
                   v-if="directiveValor > 0"
-                  class="risk-plus disp"
+                  class="risk-plus disp reel-hide"
                 >+{{ directiveValor }} Valor</span>
               </div>
               <p
