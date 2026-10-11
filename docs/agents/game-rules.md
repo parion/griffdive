@@ -366,21 +366,26 @@ base tier:     diff 3–5 → C   diff 6–7 → B   diff 8–10 → A
 meter:         the Valor gauge tops out at 11; Valor past it is Luck
 effective:     E = min(Valor, 11),  Luck = max(0, Valor − 11)
 ceiling roll:  start at the base tier; each step to the next tier succeeds:
-                 C→B, B→A   min(0.8, E × (1 + bandPos) / 3^step)
-                 A→S        min(0.95, min(0.8, max(0, E − sFloor + 1)
+                 rung 1     min(0.65, E × (1 + bandPos) / 12)
+                 rung 2     min(0.25, E × (1 + bandPos) / 48)
+                 A→S        reach × min(0.95, min(0.8, max(0, E − sFloor + 1)
                                                × topAlt / 18) + Luck × 0.05)
-                 S→S+       min(0.2, min(sPlusCap, max(0, E − sPlusFloor + 1)
+                 S→S+       reach × min(0.2, min(sPlusCap, max(0, E − sPlusFloor + 1)
                                                × topAlt / 40) + Luck × 0.015)
+               rung 1 / rung 2 = the first / second ordinary rung above the
+                         base tier (C→B then B→A from a C base; B→A from a
+                         B base). The second rung is a long reach: a low
+                         dive can glimpse A but never farm it
                bandPos = position within the difficulty band (0 floor → 1 top);
-                         the ordinary C→B / B→A steps use it
+                         the ordinary rungs use it
                topAlt = the smooth ladder altitude, 1.0 at diff 3 → 2.0 at
                         diff 10; the top rungs use it instead of bandPos so S/S+
                         scale with difficulty without sawtoothing at band edges
                sFloor / sPlusFloor = the S / S+ Valor floors, constant per band:
-                        C / B / A → 1.5 / 2.6 / 4 and 5 / 6.5 / 8. The lower
-                        the base tier the more the floor gives back, because the
-                        climb to S there costs extra rungs (the chain, not the
-                        odds, is what punishes an early squad)
+                        C / B / A → 3 / 3.5 / 4 and 5 / 6.5 / 8
+               reach = the top-rung scale per band, C / B / A → 0.25 / 0.6 / 1:
+                        S and S+ are a high-altitude prize, so below the A band
+                        their odds (Luck included) are cut down
                sPlusCap = the S+ per-step cap, 0.1 below diff 6 then climbing
                         from 0.12 at diff 6 to 0.172 at diff 10 — Liberty's Cross
                         becomes a real chase where super samples appear
@@ -396,9 +401,14 @@ option roll:   the draft leads with one option at the ceiling (or the highest
 
 - Difficulty alone never buys S or S+; only stacked chosen risk does. The top rungs are **Valor
   gated** (`sValorFloorFor` / `sPlusValorFloorFor` in `shared/engine/config.ts`): the S / S+ floors
-  are constant per difficulty band (`C / B / A → 1.5 / 2.6 / 4` and `5 / 6.5 / 8`). The lower the
-  base tier, the more the floor gives back — but the chain to reach S there is two rungs longer, so
-  the discount is what keeps an early squad competitive rather than overpowered. The top rungs also
+  are constant per difficulty band (`C / B / A → 3 / 3.5 / 4` and `5 / 6.5 / 8`). **The early ladder
+  is scavenged, not looted:** each ordinary rung above the base tier has its own cap and divisor
+  (`UPGRADE_STEP_CAPS` 0.65 / 0.25, `UPGRADE_STEP_DIVISORS` 12 / 48), and the top rungs are scaled by
+  the band's **reach** (`topRungReachFor`, C / B / A → 0.25 / 0.6 / 1). Playtests at diffs 3–5 —
+  a full squad on directives, a strain and stacked pacts — banked A and S gear before diff 5 under
+  the old shared 0.8 cap (A ≈ 64%, S ≈ 27% per diver per mission at diff 3, Valor 8). Now that dive
+  rolls A ≈ 11% and S ≈ 1%; even max overstack at diffs 3–5 stays under 20% A and 5% S. More chosen
+  risk still always improves every rung's odds, and diffs 8–10 are unchanged. The top rungs also
   use a smooth ladder altitude (`topRungAltitude`, 1.0 at diff 3 → 2.0 at diff 10) instead of the
   per-band `bandPosition`, so S+ climbs steadily with difficulty instead of dipping at every band
   boundary. **S+ scales with altitude**: its per-step cap rises from 0.12 at the super-sample
@@ -451,8 +461,10 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   so the draft shows the squad's: `draftSummaryFor` (offer, rolled ceiling, status, the banked
   option — a Cross pick maps to the Cross slot — and banned options) feeds the squad board, which
   reveals once the diver's own pods land and stays up after they pick.
-- Previews stay legible: the UI shows base tier → best plausible tier (`maxCeiling`, per-step odds
-  ≥ `UPGRADE_PREVIEW_FLOOR`, 0.05) with the odds of reaching it (`oddsToReach`).
+- Previews stay legible: the UI shows base tier → best plausible tier (`maxCeiling`: the highest tier whose
+  odds of being reached are ≥ `CEILING_PREVIEW_FLOOR`, 1%) with the odds of reaching it
+  (`ceilingOddsPercent`, whole percent). A tier under the floor reads 0% and unlit, so the ladder
+  never fades a tier priced above 0% or lights one priced at 0%.
 - **Option count** comes from stars (mission performance), lookup table `starsToOptions`:
   `[1,1,2,3,4,4]` (index = stars), capped at 4; S+ grants +1 (cap 5). Stars themselves are
   difficulty-capped per the game (wiki.gg/Missions): max 3 at diffs 3–4, 4 at 5–6, 5 at 7+; a

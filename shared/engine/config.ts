@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 24
+export const ENGINE_VERSION = 25
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -189,16 +189,24 @@ export const RESERVE_STRATAGEMS = [
 
 // Reward scale-back: difficulty alone buys a base tier — C on diffs 3–5,
 // B on 6–7, A on 8+. S and S+ are reachable only through chosen risk
-// ("Valor": an accepted team misfortune plus personal pacts, plus a small
-// team-performance bonus), which buys odds on each tier step, never a guarantee.
-export const UPGRADE_CAP = 0.8
-export const UPGRADE_STEP = 3
+// ("Valor": an accepted team misfortune plus personal pacts), which buys odds
+// on each tier step, never a guarantee.
+//
+// Each rung above the base tier is priced on its own: the first rung (C→B in
+// the C band, B→A in the B band) opens readily, the second (B→A from a C base)
+// is a long reach. Playtests at diffs 3–5 with a full squad, a strain and
+// stacked pacts banked A and even S gear before diff 5 under the old shared
+// 0.8 cap — the early ladder must feel scavenged, not looted. Index = step − 1.
+export const UPGRADE_STEP_DIVISORS = [12, 48] as const
+export const UPGRADE_STEP_CAPS = [0.65, 0.25] as const
+
 // S and S+ are earned, never bought by altitude: the top rungs only open once
 // the diver's Valor clears a floor, then ramp toward the cap. Without this a
 // single low-risk misfortune reached S ~80% of the time at difficulties 8–10
 // (base tier A is one rung from S).
 export const S_VALOR_FLOOR = 4
 export const S_UPGRADE_DIVISOR = 18
+export const S_UPGRADE_CAP = 0.8
 export const S_PLUS_VALOR_FLOOR = 8
 export const S_PLUS_UPGRADE_DIVISOR = 40
 // The final S→S+ rung is capped far below the rest of the ladder: altitude
@@ -238,12 +246,21 @@ export function sPlusUpgradeCapFor(difficulty: number): number {
 }
 
 // The top-rung Valor floors are constant within a difficulty band and step up
-// as the base tier rises: the lower the base, the more the floor gives back,
-// because the climb to S there costs extra rungs. Within a band the smooth
-// ladder altitude (below) supplies the easier climb, so the top rungs scale
-// with difficulty instead of sawtoothing at band boundaries.
-const S_FLOOR_BY_BAND: Readonly<Record<string, number>> = { C: 1.5, B: 2.6, A: S_VALOR_FLOOR }
+// gently as the base tier rises. Within a band the smooth ladder altitude
+// (below) supplies the easier climb, so the top rungs scale with difficulty
+// instead of sawtoothing at band boundaries.
+const S_FLOOR_BY_BAND: Readonly<Record<string, number>> = { C: 3, B: 3.5, A: S_VALOR_FLOOR }
 const S_PLUS_FLOOR_BY_BAND: Readonly<Record<string, number>> = { C: 5, B: 6.5, A: S_PLUS_VALOR_FLOOR }
+
+// The top rungs are a high-altitude prize: below the A band their odds are
+// scaled down by how far the base tier sits from A, so a low-difficulty squad
+// can glimpse S (and the Cross) but never farm it. Applied after Luck, so
+// overstacking still pays — just less the lower the dive.
+const TOP_RUNG_REACH_BY_BAND: Readonly<Record<string, number>> = { C: 0.25, B: 0.6, A: 1 }
+
+export function topRungReachFor(difficulty: number): number {
+  return TOP_RUNG_REACH_BY_BAND[baseTierFor(difficulty)] ?? 1
+}
 
 export function sValorFloorFor(difficulty: number): number {
   return S_FLOOR_BY_BAND[baseTierFor(difficulty)] ?? S_VALOR_FLOOR
@@ -261,10 +278,11 @@ export function topRungAltitude(difficulty: number): number {
   const span = MAX_DIFFICULTY - MIN_DIFFICULTY
   return 1 + (difficulty - MIN_DIFFICULTY) / span
 }
-// Tiers with per-step odds below this are too unlikely to preview. Kept at or
-// below the S+ cap so the jackpot can still preview at max Valor, and at or
-// below the S floor's opening odds so a reachable S is never hidden.
-export const UPGRADE_PREVIEW_FLOOR = 0.05
+// A tier previews only when the odds of actually reaching it (the whole climb,
+// not one step) would read as at least 1% — anything rarer shows as 0% and
+// unlit, so the ladder never lights a tier it prices at 0% or fades one it
+// prices above zero.
+export const CEILING_PREVIEW_FLOOR = 0.01
 
 // Samples are the Requisition currency: recovered in the field, banked into a
 // personal purse, and spent in the post-draft rotating stock. They no longer
@@ -354,9 +372,11 @@ export function bandPosition(difficulty: number): number {
   return (difficulty - 3) / 2
 }
 
-// Odds of upgrading one tier on a given step (1 = C→B, 2 = B→A, …).
+// Odds of upgrading one rung above the base tier (step 1 = the first rung,
+// step 2 = the second). Only the ordinary rungs below S use this.
 export function upgradeOdds(valor: number, bandPos: number, step: number): number {
-  return Math.min(UPGRADE_CAP, (valor * (1 + bandPos)) / UPGRADE_STEP ** step)
+  const index = Math.min(step, UPGRADE_STEP_DIVISORS.length) - 1
+  return Math.min(UPGRADE_STEP_CAPS[index]!, (valor * (1 + bandPos)) / UPGRADE_STEP_DIVISORS[index]!)
 }
 
 // One risk curve per condition (team misfortunes and personal pacts alike).

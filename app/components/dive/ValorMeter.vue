@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { VALOR_METER_MAX, baseTierFor } from '~~/shared/engine/config'
 import { ceilingRange } from '~~/shared/engine/selectors'
-import { oddsToReach, valorOf } from '~~/shared/engine/rewards'
+import { ceilingOddsPercent, oddsToReach, valorOf } from '~~/shared/engine/rewards'
 import type { RewardTier } from '~~/shared/engine/types'
 import { valorSegments } from '~/utils/valor'
 
@@ -87,7 +87,7 @@ const rungs = computed(() => LADDER.map((tier, index) => {
     below: index < baseIndex.value,
     isBase: index === baseIndex.value,
     lit: index >= baseIndex.value && index <= maxIndex.value,
-    pct: reachable ? Math.round(odds * 100) : 100,
+    pct: ceilingOddsPercent(props.difficulty, valor.value, tier),
     odds,
   }
 }).reverse())

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS } from '../data/catalog'
 import type { Item, ItemCategory, Tier } from '../data/types'
 import { SAMPLE_POINTS, SAMPLE_PRICE_TIER, SAMPLE_PRICE_TYPE, TIME_HAUL_FLOOR, VALOR_METER_MAX, sPlusValorFloorFor, sValorFloorFor } from './config'
-import { DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, haulValue, itemPrice, maxCeiling, missionHaul, oddsToReach, optionsForDiver, optionsForStars, rollCeiling, rollRewardOptions, rollShopStock, tierWeight, timeHaulMultiplier, valorOf } from './rewards'
+import { ceilingOddsPercent, DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, haulValue, itemPrice, maxCeiling, missionHaul, oddsToReach, optionsForDiver, optionsForStars, rollCeiling, rollRewardOptions, rollShopStock, tierWeight, timeHaulMultiplier, valorOf } from './rewards'
 import { mulberry32 } from './rng'
 import type { RewardTier } from './types'
 
@@ -130,11 +130,26 @@ describe('rollCeiling (probabilistic tier ladder)', () => {
     expect(sawBelowS).toBe(true)
   })
 
-  it('gives the early bands a fair shot at S', () => {
-    // A strong pact plus a risk-1 misfortune (Valor 4) at diff 3 now clears
-    // real, if modest, odds at the top rung instead of a cliff.
-    expect(oddsToReach(3, 4, 'S')).toBeGreaterThan(0.05)
-    expect(maxCeiling(3, 4)).toBe('S')
+  it('keeps A and S rare in the early bands, even for a stacked squad', () => {
+    // Playtest: a full squad on directives, a strain and stacked pacts banked
+    // A and S gear before diff 5. Even max overstack stays scavenged there.
+    for (const difficulty of [3, 4, 5]) {
+      expect(oddsToReach(difficulty, 14, 'A')).toBeLessThan(0.2)
+      expect(oddsToReach(difficulty, 14, 'S')).toBeLessThan(0.05)
+      expect(oddsToReach(difficulty, 8, 'S')).toBeGreaterThan(0)
+    }
+    expect(oddsToReach(3, 8, 'S')).toBeLessThan(0.01)
+  })
+
+  it('always rewards more chosen risk with better odds', () => {
+    for (let difficulty = 3; difficulty <= 10; difficulty++) {
+      for (const tier of ['B', 'A', 'S', 'S+'] as const) {
+        for (let valor = 0; valor < 16; valor++) {
+          expect(oddsToReach(difficulty, valor + 1, tier))
+            .toBeGreaterThanOrEqual(oddsToReach(difficulty, valor, tier))
+        }
+      }
+    }
   })
 
   it('rolls higher within a band toward the band top', () => {
@@ -170,13 +185,29 @@ describe('maxCeiling / oddsToReach (legibility preview)', () => {
   })
 
   it('previews only plausible tiers and prices the climb', () => {
-    // Stacked Valor opens the S+ rung even in the low bands (its per-step cap
-    // clears the preview floor), but the priced climb stays a longshot.
-    expect(maxCeiling(3, 11)).toBe('S+')
+    // Stacked Valor previews S in the low bands, but the reach-scaled S+ rung
+    // stays under the preview floor there and the priced climb is a longshot.
+    expect(maxCeiling(3, 11)).toBe('S')
+    expect(maxCeiling(8, 11)).toBe('S+')
     expect(oddsToReach(3, 11, 'S')).toBeGreaterThan(0)
-    expect(oddsToReach(3, 11, 'S')).toBeLessThan(0.5)
-    expect(oddsToReach(3, 11, 'S+')).toBeLessThan(0.1)
+    expect(oddsToReach(3, 11, 'S')).toBeLessThan(0.05)
+    expect(oddsToReach(3, 11, 'S+')).toBeLessThan(0.005)
     expect(oddsToReach(3, 2, 'B')).toBeLessThan(oddsToReach(5, 2, 'B'))
+  })
+})
+
+describe('ceilingOddsPercent (preview ladder)', () => {
+  it('lights exactly the tiers it prices above 0%', () => {
+    const ladder = ['C', 'B', 'A', 'S', 'S+'] as const
+    for (let difficulty = 3; difficulty <= 10; difficulty++) {
+      for (let valor = 0; valor <= 16; valor += 0.25) {
+        const max = ladder.indexOf(maxCeiling(difficulty, valor))
+        ladder.forEach((tier, index) => {
+          const pct = ceilingOddsPercent(difficulty, valor, tier)
+          expect(pct > 0).toBe(index <= max)
+        })
+      }
+    }
   })
 })
 
