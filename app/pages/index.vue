@@ -633,7 +633,10 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
             </span>
             <div class="valor-num rise">
               <span class="lbl gold">Valor</span>
-              <span class="disp valor-big">{{ previewValorLabel }}</span>
+              <ValorFigure
+                class="disp valor-big"
+                :value="previewValorLabel"
+              />
               <span class="valor-diff">AT DIFFICULTY {{ PREVIEW_DIFFICULTY }}</span>
             </div>
             <div

@@ -59,7 +59,10 @@ const valorBar = computed(() => {
       >
         <span class="tab-row">
           <span class="tab-name">Valor</span>
-          <span class="tab-value disp">{{ format(valorTotal) }}</span>
+          <ValorFigure
+            class="tab-value disp"
+            :value="format(valorTotal)"
+          />
         </span>
         <span
           class="tab-bar"

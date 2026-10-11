@@ -63,7 +63,10 @@ function format(value: number): string {
   <div class="phone-valor">
     <div class="head">
       <span class="lbl vlabel">Valor</span>
-      <span class="disp value">{{ format(valor) }}</span>
+      <ValorFigure
+        class="disp value"
+        :value="format(valor)"
+      />
       <span class="scale">/ {{ scale }}</span>
       <span
         v-if="overflow > 0"

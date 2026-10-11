@@ -1800,10 +1800,11 @@ onBeforeUnmount(() => {
               style="color: #ECEADA"
             >+ Valor · odds</span>
             <div style="height: 32px; display: flex; align-items: baseline; gap: 5px">
-              <span
+              <ValorFigure
                 class="disp"
                 style="font-size: 32px; color: #FFD642"
-              >8.16</span><span style="font-size: 12px; font-weight: 700; color: #85876F">/ 11</span>
+                :value="'8.16'"
+              /><span style="font-size: 12px; font-weight: 700; color: #85876F">/ 11</span>
             </div>
             <div style="display: flex; gap: 12px">
               <div

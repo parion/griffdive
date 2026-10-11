@@ -117,7 +117,10 @@ const legend = computed(() => {
     </div>
 
     <div class="big">
-      <span class="disp value">{{ format(valor) }}</span>
+      <ValorFigure
+        class="disp value"
+        :value="format(valor)"
+      />
       <span class="scale">/ {{ format(scale) }}</span>
       <span
         v-if="overflow > 0"
