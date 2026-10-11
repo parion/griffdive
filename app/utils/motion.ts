@@ -40,3 +40,7 @@ export function slamIn(delay = 0, step = 0.06): MotionPreset {
     transition: { type: 'spring', stiffness: 420, damping: 18, delay: delay * step },
   }
 }
+
+/** Reward cabinet reveal timing (ms): pods fall for POD_DROP, one rank every POD_STAGGER. */
+export const POD_DROP = 620
+export const POD_STAGGER = 180

@@ -61,11 +61,18 @@ engine.
   carries `.cta-sweep` — the pending-directive sheen — only while it is actionable (disabled
   controls never sweep). `--sweep` tints it: on the reward screen the continue buttons take the
   banked item's tier colour, sweeping faster for S and S+. **Reveals ramp with rarity:** reward
-  pods land worst-to-best (`revealRank`), S and Liberty's Cross hold a beat longer before landing,
-  and emphasis scales with tier — A a quiet tier sheen, S a landing flash plus a pulsing glow,
-  Liberty's Cross turning light rays, a fast sweep and a landing burst. Glows ride the unclipped
-  `.pod-slot` as `drop-shadow` (the card's `clip-path` clips box-shadows); Motion owns the card's
-  transform, so tier effects use filters only. Phone reward rows carry the same tier sheen.
+  pods land worst-to-best (`revealRank`), S holds a beat longer before landing, and emphasis
+  scales with tier — A a quiet tier sheen, S a soft landing brighten plus a slow-breathing glow. **Liberty's Cross
+  is not a pod:** `LibertyCrossBand` is a single full-width frame above the rolled pods (one box —
+  no card inside a card) that lands last. It never flashes or bursts: a hairline of light draws
+  across the reserved slot, the band opens from it (a `clip-path` polygon settling into the
+  `cut-sm` silhouette), then `LibertyCrossEmblem` — the winged four-point cross in the Wheel's rim,
+  the brand mark's swept-blade language — assembles feather by feather behind slow masked rays and
+  a one-off soft bloom, and the claim button goes live. The timeline keys off one `--delay`;
+  reduced motion and reloads skip straight to the open band. The phone draft renders the same
+  band (narrow container query: crest beside the copy, claim button full width). Glows ride the
+  unclipped `.pod-slot` as `drop-shadow` (the card's `clip-path` clips box-shadows); Motion owns
+  the card's transform, so tier effects use filters only. Phone reward rows carry the same tier sheen.
 - **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav) on every
   route except the dive, which renders its own `DiveTopBar` (crusade + difficulty emblem + room
   code/copy + Tutorial + the labelled Codex/Warbonds ship nav — labels, never bare icons; the
@@ -150,6 +157,6 @@ engine.
   `Pact · if sworn` rule chips and preview-banned floor pips — while the count drops live, and the
   preview clears the moment the hand is locked (sworn bounds show solid, never ghosted). Preview
   ids already sworn are deduped.
-- **Foundations kit**: a hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`) specimens
+- **Foundations kit**: a hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`; includes a replayable Liberty's Cross specimen) specimens
   the tokens/atoms so contributors can sanity-check the language. It is dev reference, not a
   product surface.

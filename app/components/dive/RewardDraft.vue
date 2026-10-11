@@ -139,6 +139,10 @@ const revealRanks = computed(() => {
   return ranks
 })
 
+// Liberty's Cross opens as its own band above the rolled pods.
+const crossOption = computed(() => lockedOptions.value.find(option => option.choice) ?? null)
+const podOptions = computed(() => lockedOptions.value.filter(option => !option.choice))
+
 // Liberty's Cross banks the picked item's id, which is not among the rolled
 // options — resolve it from the catalog for the banked banner.
 const pickedItem = computed(() =>
@@ -405,27 +409,41 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
     <div
       v-if="lockedOptions.length && !wasResolvedOnMount"
       class="cabinet"
-      :class="{ banning: banMode }"
-      :style="{ '--cols': lockedOptions.length }"
+      :class="{ 'banning': banMode, 'has-cross': crossOption }"
+      :style="{ '--cols': Math.max(podOptions.length, 1) }"
     >
+      <LibertyCrossBand
+        v-if="crossOption"
+        :key="`${draftGeneration}-${crossOption.optionId}`"
+        class="cabinet-cross"
+        :pool="pool"
+        :owned-ids="ownedIds"
+        :reveal-rank="revealRanks[lockedOptions.indexOf(crossOption)]"
+        :instant="instant || podsDone"
+        :can-pick="allSettled && !resolved"
+        :picked="pickedPodId === crossOption.optionId"
+        :dimmed="pickedPodId !== null && pickedPodId !== crossOption.optionId"
+        :ban-mode="banMode"
+        :stamp="pickedPodId === crossOption.optionId && resolved ? 'Banked' : null"
+        @choose="itemId => emit('pick', crossOption!.optionId, itemId)"
+        @settled="onSettled"
+      />
       <RewardPod
-        v-for="(option, index) in lockedOptions"
+        v-for="(option, index) in podOptions"
         :key="`${draftGeneration}-${option.optionId}`"
         :option="option"
-        :choice-pool="pool"
-        :owned-ids="ownedIds"
         :index="index"
-        :reveal-rank="revealRanks[index]"
+        :reveal-rank="revealRanks[lockedOptions.indexOf(option)]"
         :instant="instant || podsDone"
         :can-pick="allSettled && !resolved"
         :picked="pickedPodId === option.optionId"
         :dimmed="pickedPodId !== null && pickedPodId !== option.optionId"
-        :lead="option.optionId === leadOptionId && !option.choice"
+        :lead="option.optionId === leadOptionId"
         :ban-mode="banMode"
         :bannable="bannableIds.includes(option.optionId)"
         :selected="selectedBanIds.includes(option.optionId)"
         :stamp="pickedPodId === option.optionId && resolved ? 'Banked' : (bannedIds.includes(option.optionId) ? 'Banned' : null)"
-        @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
+        @pick="optionId => emit('pick', optionId)"
         @ban="toggleBan"
         @settled="onSettled"
       />
@@ -730,6 +748,9 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
   flex: 1 1 auto;
   min-height: 300px;
 }
+/* Liberty's Cross takes the whole top row; the pods keep their equal columns. */
+.cabinet.has-cross { grid-template-rows: auto; grid-auto-rows: minmax(260px, 1fr); }
+.cabinet-cross { grid-column: 1 / -1; }
 
 .sat-out { margin: 0; }
 

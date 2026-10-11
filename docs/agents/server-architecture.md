@@ -62,9 +62,9 @@ app/
                    end-of-mission honors screen (iconographic seeded reel,
                    hold-to-confirm award) that banks a reward token,
                    FieldPromotionCard — the mid-crusade
-                   catch-up ceremony, DiversChoiceCard — the special
-                   S+ "Liberty's Cross" offer card, DiversChoicePicker — its minified codex
-                   modal, CrusadeSetup, WarbondPicker,
+                   catch-up ceremony, LibertyCrossBand — the full-width S+
+                   "Liberty's Cross" band above the reward pods, LibertyCrossEmblem — its vector crest,
+                   DiversChoicePicker — the minified codex modal, CrusadeSetup, WarbondPicker,
                    JoinNameGate — name gate held while joining),
                    codex/CodexBrowser — the shared catalog browser (filter + tier grid),
                    warbonds/WarbondBrowser — the shared warbond owner list (single column,

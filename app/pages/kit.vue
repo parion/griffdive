@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
+import { ALL_ITEMS, ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { FRONTS } from '~~/shared/data/fronts'
 import { factionImageUrl, itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
@@ -262,6 +262,10 @@ function commit(): void {
     holdDone.value = false
   }, reduced() ? 900 : 1800)
 }
+
+// Liberty's Cross specimen: bumping the key remounts the band so the unfurl replays.
+const crossRun = ref(0)
+const crossClaimed = ref<string | null>(null)
 
 const toggleA = ref(false)
 const toggleB = ref(true)
@@ -2881,6 +2885,35 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </div>
+    </section>
+
+    <section
+      class="sec"
+      aria-label="Liberty's Cross"
+    >
+      <div class="sh">
+        <span class="disp sn">11</span><h2 class="lbl">
+          Liberty’s Cross
+        </h2><span class="dash" /><span class="sub">S+ bonus band · unfurl · crest</span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px">
+        <button
+          class="ghost"
+          type="button"
+          style="height: 40px; padding: 0 16px"
+          @click="crossRun++; crossClaimed = null"
+        >
+          Replay unfurl
+        </button>
+        <span class="sub">{{ crossClaimed ? `Claimed ${ITEMS_BY_ID.get(crossClaimed)?.displayName}` : 'Claim opens the codex; nothing is banked here' }}</span>
+      </div>
+      <LibertyCrossBand
+        :key="crossRun"
+        :pool="[...ALL_ITEMS]"
+        :owned-ids="[]"
+        @choose="itemId => crossClaimed = itemId"
+      />
     </section>
   </main>
 </template>
