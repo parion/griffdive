@@ -229,4 +229,6 @@ watch(() => props.open, (open) => {
 }
 
 .slot.held { opacity: 0.4; }
+/* Buttons shrink to their content; the codex tiles should fill the column. */
+.slot :deep(.item-card) { width: 100%; }
 </style>
