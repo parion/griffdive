@@ -192,6 +192,8 @@ watch(() => props.open, (open) => {
   margin-bottom: 0.75rem;
   padding: 0.6rem;
   display: flex;
+  flex-direction: row;
+  align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
   background: var(--panel);
