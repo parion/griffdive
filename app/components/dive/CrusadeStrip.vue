@@ -53,72 +53,65 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
       :key="r.n"
       class="rung"
       :data-state="r.state"
+      :data-base="r.tier"
+      :data-apex="r.n === 10 && r.state === 'current' && !failed ? '' : undefined"
       role="img"
       :style="{ flexGrow: r.state === 'current' ? 2.4 : 1 }"
       :aria-label="`${r.name}, difficulty ${r.n}, tier ${r.tier}${r.state === 'current' ? `, operation mission ${missionInOperation} of ${opLength}` : ''}`"
     >
-      <div class="rung-top">
-        <span class="n disp">{{ r.n }}</span>
-        <span class="name">{{ r.name }}</span>
-        <svg
-          v-if="r.state === 'cleared'"
-          class="mark"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="3"
-          aria-label="cleared"
-          role="img"
-        >
-          <path d="M5 12l5 5 9-10" />
-        </svg>
-        <svg
-          v-else-if="r.state === 'goal'"
-          class="mark"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          aria-label="goal"
-          role="img"
-        >
-          <path d="M5 21V4M5 4h11l-2 4 2 4H5" />
-        </svg>
-      </div>
-      <div class="rung-bottom">
+      <span class="n disp">{{ r.n }}</span>
+      <span class="name">{{ r.name }}</span>
+      <template v-if="r.state === 'current'">
         <span
-          class="tier tb"
-          :data-tier="r.tier"
-        >{{ r.tier }}</span>
-        <template v-if="r.state === 'current'">
+          v-if="failed"
+          class="failed-mark"
+          role="img"
+          aria-label="Operation failed — repeat difficulty"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.6"
+            aria-hidden="true"
+          ><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </span>
+        <span
+          v-else
+          class="pips-row"
+        >
           <span
-            v-if="failed"
-            class="failed-mark"
-            role="img"
-            aria-label="Operation failed — repeat difficulty"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.6"
-              aria-hidden="true"
-            ><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </span>
-          <span
-            v-else
-            class="pips-row"
-          >
-            <span
-              v-for="k in r.pips"
-              :key="k"
-              class="rung-pip"
-              :class="{ filled: k <= missionInOperation }"
-            />
-          </span>
-          <span class="mission">Mission {{ missionInOperation }}/{{ opLength }}</span>
-        </template>
-      </div>
+            v-for="k in r.pips"
+            :key="k"
+            class="rung-pip"
+            :class="{ filled: k <= missionInOperation }"
+          />
+        </span>
+      </template>
+      <svg
+        v-if="r.state === 'cleared'"
+        class="mark"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="3"
+        aria-label="cleared"
+        role="img"
+      >
+        <path d="M5 12l5 5 9-10" />
+      </svg>
+      <svg
+        v-else-if="r.state === 'goal'"
+        class="mark"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-label="goal"
+        role="img"
+      >
+        <path d="M5 21V4M5 4h11l-2 4 2 4H5" />
+      </svg>
     </div>
   </nav>
 </template>
@@ -138,19 +131,30 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
 .rung {
   position: relative;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: var(--sp-3);
+  align-items: center;
+  gap: 8px;
   padding: var(--sp-3) var(--sp-4);
   border: 1px solid var(--line-2);
   background: var(--ground);
   color: var(--muted);
-  min-width: 6.5rem;
+  min-width: 0;
   overflow: hidden;
   transition: border-color var(--dur-fast), background-color var(--dur-fast);
 }
-.rung-top { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.n { font-size: 22px; color: var(--text); }
+/* Base tier rides the bottom edge: the loot floor of the rung without a label. */
+.rung::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  background: var(--tier-edge);
+}
+.rung[data-base] { --tier-edge: var(--tier-c); }
+.rung[data-base='B'] { --tier-edge: var(--tier-b); }
+.rung[data-base='A'] { --tier-edge: var(--tier-a); }
+.rung[data-base='S'] { --tier-edge: var(--tier-s); }
+.rung[data-base='S+'] { --tier-edge: var(--tier-splus); }
+.n { font-size: 22px; line-height: 1; color: var(--text); }
 .name {
   font-size: 10px;
   font-weight: 700;
@@ -161,27 +165,55 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
   text-overflow: ellipsis;
 }
 .mark { width: 14px; height: 14px; margin-left: auto; flex-shrink: 0; }
-.rung-bottom { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.tier { width: 18px; height: 18px; font-size: 11px; border: 1px solid currentColor; }
 
-.pips-row { display: flex; align-items: center; gap: 5px; }
+.pips-row { display: flex; align-items: center; gap: 5px; margin-left: auto; flex-shrink: 0; }
 .rung-pip { width: 22px; height: 6px; border: 1px solid var(--line-4); background: transparent; }
 .rung-pip.filled { border-color: var(--gold); background: var(--gold); animation: pulse 2s ease-in-out infinite; }
-.failed-mark { display: inline-flex; color: var(--red); }
+.failed-mark { display: inline-flex; color: var(--red); margin-left: auto; }
 .failed-mark svg { width: 14px; height: 14px; }
-.mission {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--text);
-  white-space: nowrap;
+
+/* Difficulty 10 is the summit: a slow gold breath and a light sweep, nothing louder. */
+.rung[data-apex] { animation: apexBreath 3.6s ease-in-out infinite; }
+.rung[data-apex] .n { animation: apexNumber 3.6s ease-in-out infinite; }
+.rung[data-apex]::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 214, 66, 0.14), transparent);
+  transform: translateX(-120%);
+  animation: apexSweep 5.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes apexBreath {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 214, 66, 0); }
+  50% { box-shadow: 0 0 14px 0 rgba(255, 214, 66, 0.28); }
+}
+@keyframes apexNumber {
+  0%, 100% { text-shadow: 0 0 0 rgba(255, 214, 66, 0); }
+  50% { text-shadow: 0 0 10px rgba(255, 214, 66, 0.55); }
+}
+@keyframes apexSweep {
+  0%, 35% { transform: translateX(-120%); }
+  80%, 100% { transform: translateX(320%); }
 }
 
-/* Too narrow for every name: the off-rungs keep number + tier (the name stays
+/* Too narrow for every name: the off-rungs keep the number (the name stays
    in their accessible label) so the current rung reads in full. */
 @container strip (max-width: 1100px) {
   .rung:not([data-state='current']) .name { display: none; }
+}
+
+/* Phone: every rung is number + bar; the current rung drops its name too and
+   the pips carry the mission count. */
+@container strip (max-width: 560px) {
+  .strip { gap: var(--sp-1); }
+  .rung { padding: var(--sp-3) var(--sp-2); gap: 4px; }
+  .rung .name { display: none; }
+  .n { font-size: 18px; }
+  .mark { display: none; }
+  .pips-row { gap: 3px; }
+  .rung-pip { width: 12px; }
 }
 
 [data-state='cleared'] { color: var(--khaki); border-color: var(--line-3); }
@@ -213,8 +245,6 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
 .strip.route [data-state='goal'] .n,
 .strip.route [data-state='locked'] .name,
 .strip.route [data-state='goal'] .name { color: var(--muted); }
-.strip.route [data-state='locked'] .tier,
-.strip.route [data-state='goal'] .tier { opacity: 0.7; }
 [data-state='skipped'] {
   color: var(--line-5);
   border-color: var(--line-1);
@@ -222,5 +252,7 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
 }
 [data-state='skipped'] .n,
 [data-state='skipped'] .name { color: var(--line-5); }
-[data-state='skipped'] .tier { opacity: 0.4; }
+[data-state='skipped']::after,
+[data-state='locked']::after { opacity: 0.45; }
+.strip.route [data-state='locked']::after { opacity: 0.8; }
 </style>

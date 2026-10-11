@@ -3,6 +3,7 @@ import { ALL_ITEMS, ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { FRONTS } from '~~/shared/data/fronts'
 import { factionImageUrl, itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
+import { missionsPerOperation } from '~~/shared/engine/config'
 import type { RewardTier } from '~~/shared/engine/types'
 
 useHead({ meta: [{ name: 'robots', content: 'noindex,nofollow' }] })
@@ -229,6 +230,15 @@ const kitStratagems = ['eaglesmokestrike', 'orbitalemsstrike', 'shieldgeneratorr
   return { id, name: it.displayName, img: itemImageUrl(it) }
 })
 
+const stripDiff = ref(10)
+const stripMission = ref(1)
+const stripFailed = ref(false)
+const stripAchieved = ref(false)
+const stripRoute = ref(false)
+const stripOpLength = computed(() => missionsPerOperation(stripDiff.value))
+watch(stripDiff, () => {
+  stripMission.value = Math.min(stripMission.value, stripOpLength.value)
+})
 const holdDone = ref(false)
 const holdFill = ref(0)
 let holdTimer: ReturnType<typeof setTimeout> | undefined
@@ -2914,6 +2924,75 @@ onBeforeUnmount(() => {
         :owned-ids="[]"
         @choose="itemId => crossClaimed = itemId"
       />
+    </section>
+
+    <section
+      class="sec"
+      aria-label="Crusade strip"
+    >
+      <div class="sh">
+        <span class="disp sn">12</span><h2 class="lbl">
+          Crusade strip
+        </h2><span class="dash" /><span class="sub">ladder · tier edge · difficulty 10 apex</span>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px">
+        <button
+          v-for="d in 8"
+          :key="d"
+          class="ghost"
+          type="button"
+          style="height: 36px; padding: 0 12px"
+          :aria-pressed="stripDiff === d + 2"
+          @click="stripDiff = d + 2"
+        >
+          {{ d + 2 }}
+        </button>
+        <span class="sub">mission</span>
+        <button
+          v-for="m in stripOpLength"
+          :key="`m${m}`"
+          class="ghost"
+          type="button"
+          style="height: 36px; padding: 0 12px"
+          :aria-pressed="stripMission === m"
+          @click="stripMission = m"
+        >
+          {{ m }}
+        </button>
+        <label class="sub"><input
+          v-model="stripFailed"
+          type="checkbox"
+        > failed</label>
+        <label class="sub"><input
+          v-model="stripAchieved"
+          type="checkbox"
+        > achieved</label>
+        <label class="sub"><input
+          v-model="stripRoute"
+          type="checkbox"
+        > route</label>
+      </div>
+      <CrusadeStrip
+        :difficulty="stripDiff"
+        :mission-in-operation="stripMission"
+        :op-length="stripOpLength"
+        :failed="stripFailed"
+        :achieved="stripAchieved"
+        :route="stripRoute"
+      />
+      <div
+        style="width: 390px; max-width: 100%; margin-top: 12px"
+      >
+        <CrusadeStrip
+          :difficulty="stripDiff"
+          :mission-in-operation="stripMission"
+          :op-length="stripOpLength"
+          :failed="stripFailed"
+          :achieved="stripAchieved"
+          :route="stripRoute"
+        />
+      </div>
     </section>
   </main>
 </template>
