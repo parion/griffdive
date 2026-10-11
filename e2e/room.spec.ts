@@ -82,7 +82,7 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await pageA.getByRole('button', { name: 'Mission complete' }).click()
   await pageA.getByRole('button', { name: 'File report' }).click()
   await expect(pageB.getByRole('heading', { name: 'Reward Draft' })).toBeVisible()
-  await expect(pageB.locator('.squad-pick .card-status.choosing')).toHaveCount(1)
+  await expect(pageB.locator('.squad-pick[aria-label*=": Choosing"]')).toHaveCount(1)
   await pageB.locator('.pod-card .pod-hit').first().click()
   await expect(pageA.locator('.squad-pick.done')).toHaveCount(1)
   await expect(pageA.locator('.squad-pick.done .tile.banked img')).toBeVisible()
