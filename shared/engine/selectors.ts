@@ -363,9 +363,10 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   // The pool is the diver's own: warbonds are personal purchases, so each
   // diver rolls offers against the catalog they can actually use.
   const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
-  const owned = new Set(state.personalInventories[diver.id] ?? [])
   // Banned items never come back: a ban removes them from every future offer.
-  const exclude = new Set([...owned, ...diver.bannedItemIds])
+  // The deal's snapshot wins over live holdings so the offer never shifts.
+  const exclude = new Set(diver.draftExcludedIds
+    ?? [...(state.personalInventories[diver.id] ?? []), ...diver.bannedItemIds])
   // Every failed pact and the broken team directive each forfeit one reward
   // option (AGENTS.md: Reward math) — floored at one so the draft can always
   // complete and never deadlock ADVANCE.
@@ -380,6 +381,49 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
     pool,
     exclude,
   )
+}
+
+// One diver's draft as the squad sees it: the frozen offer, the ceiling it
+// rolled, and how it resolved. A pick through Liberty's Cross banks an item
+// that was never among the options, so the Cross is the slot that banked it.
+export interface DraftSummary {
+  options: RewardOption[]
+  ceiling: RewardTier | null
+  status: 'choosing' | 'banked' | 'banned' | 'skipped'
+  bankedOptionId: string | null
+  bankedItemId: string | null
+  bannedOptionIds: string[]
+}
+
+export function draftSummaryFor(state: DiveState, diver: DiverState): DraftSummary {
+  const options = diverOptions(state, diver)
+  const bankedItemId = diver.pickedOptionId
+  const bankedOptionId = bankedItemId === null
+    ? null
+    : options.find(option => option.optionId === bankedItemId)?.optionId
+      ?? options.find(option => option.choice)?.optionId
+      ?? null
+  const banned = new Set(diver.rewardBanned ? diver.bannedItemIds : [])
+  let status: DraftSummary['status'] = 'choosing'
+  if (diver.skipsCurrentDraft) {
+    status = 'skipped'
+  }
+  else if (diver.rewardBanned) {
+    status = 'banned'
+  }
+  else if (bankedItemId !== null) {
+    status = 'banked'
+  }
+  return {
+    options,
+    ceiling: options.length > 0 ? diverRolledCeiling(state, diver) : null,
+    status,
+    bankedOptionId,
+    bankedItemId,
+    bannedOptionIds: options
+      .filter(option => !option.choice && banned.has(option.item.id))
+      .map(option => option.optionId),
+  }
 }
 
 // The per-diver rotating Requisition shelf, shown once their draft resolves:
@@ -508,6 +552,12 @@ export function bonusIneligibilityReason(state: DiveState): string | null {
 // reset).
 export function bonusFor(state: DiveState): BonusStat | null {
   return state.bonusSeed === null ? null : rollBonus(state.bonusSeed)
+}
+
+// The divers the host honored for the current mission's contest. Honors can be
+// shared: a tie on HD2's stats screen names every tied diver.
+export function bonusWinners(state: DiveState): DiverState[] {
+  return state.divers.filter(diver => state.bonusWinnerIds.includes(diver.id))
 }
 
 // A reward reroll costs one banked token and must actually move: the reducer

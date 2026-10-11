@@ -659,7 +659,7 @@ export const primaries: Item[] = [
     ],
     warbondCode: 'warbond6',
     tier: 's',
-    antitank: true,
+    antitank: false,
     index: 41,
     imageURL: 'r36eruptor.webp',
   },

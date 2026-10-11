@@ -46,10 +46,13 @@ app/
                    the faction card's pre-roll slot,
                    MajorOrderCard — the in-game-style MO panel (emblem, countdown,
                    order overview, planet liberation bars),
-                   PactPicker, RewardDraft — the reward draft (a stars→options
-                   badge, the per-step CeilingTrack with a sliding marker, a
-                   pod-drop cabinet of RewardPod reveal cards stamped Banked/Banned,
-                   and the always-on reward-token bar whose post-pick CTA opens the settlement),
+                   PactPicker, RewardDraft — the reward draft (a header carrying
+                   stars · options and, top right, the unlabeled CeilingTrack bar
+                   that climbs tier by tier to the rolled ceiling; a pod-drop
+                   cabinet of RewardPod reveal cards stamped Banked/Banned; the
+                   SquadDraftBoard of squadmates' offers and picks; and the
+                   reward-token bar, which swaps to the banked readout once
+                   resolved and whose CTA opens the settlement),
                    RewardsSettlement — the post-draft screen: the Squad Honors
                    contest above the Requisition shelf when honors is due, or the
                    shelf above a disabled honors panel when it isn't; desktop and
@@ -205,7 +208,7 @@ Canonical engine actions (the reducer union; keep names stable):
 `REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{itemRef}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `BUY_ITEM{playerId,itemId}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
-`AWARD_BONUS{playerId}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
+`AWARD_BONUS{playerIds}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
 `LEAVE_DIVE{playerId}` `SET_AWAY{playerId,away}` `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 

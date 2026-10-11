@@ -438,6 +438,17 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   rides a stable sentinel id (`DIVERS_CHOICE_OPTION_ID` in `shared/engine/rewards.ts`); the UI
   opens a minified codex picker for it, and `PICK_REWARD` carries the named item in
   `choiceItemId`. `pickedOptionId` always records the banked item's id.
+- **The offer is frozen at the deal.** `REPORT_RESULT` snapshots each drafting diver's holdings
+  and bans into `DiverState.draftExcludedIds`, and `diverOptions` rolls against that snapshot, not
+  live holdings — so a pick, a Requisition purchase or a ban never reshuffles an offer the squad has
+  seen, and every client (and a reload) re-derives the same pods. `PICK_REWARD` refuses an item the
+  diver has gained since the deal (a catch-up claim), so the frozen offer can't bank a duplicate.
+  The snapshot resets with the pacts. It is optional: a pre-snapshot save falls back to live
+  holdings, so it needs no schema bump.
+- **Drafts are public.** Offers, ceilings and picks are derived state every client already holds,
+  so the draft shows the squad's: `draftSummaryFor` (offer, rolled ceiling, status, the banked
+  option — a Cross pick maps to the Cross slot — and banned options) feeds the squad board, which
+  reveals once the diver's own pods land and stays up after they pick.
 - Previews stay legible: the UI shows base tier → best plausible tier (`maxCeiling`, per-step odds
   ≥ `UPGRADE_PREVIEW_FLOOR`, 0.05) with the odds of reaching it (`oddsToReach`).
 - **Option count** comes from stars (mission performance), lookup table `starsToOptions`:
@@ -510,8 +521,9 @@ three- or two-diver squad every other mission, and a solo diver every third. Off
 of full stars, the reward phase skips the ceremony entirely. When due, the contest is **spun on
 click** (`SPIN_BONUS{seed}`, host-only) once every diver has picked, and the seed is what syncs:
 `rollBonus` (stream salt 4) derives the same stat on every client. **The app never captures the
-stats**: the host reads HD2's stats screen and names the winner (`AWARD_BONUS`, host-only); ties are
-the host's call. Awarding banks the winner's **one flexible reward token** immediately (capped at
+stats**: the host reads HD2's stats screen and names the winner(s) (`AWARD_BONUS{playerIds}`,
+host-only). Ties are common, so an award names **one or several** divers — every tied diver banks a
+token. Awarding banks each winner's **one flexible reward token** immediately (capped at
 `REWARD_TOKEN_CAP`, 3) — there is no separate claim step. When only one diver can win (solo, or a
 squad where everyone else sat the draft out), selection is redundant: the spin resolves the ceremony
 and banks the token by itself.
@@ -603,7 +615,8 @@ adds the Major Order commitment (`majorOrder: null`); `migrateV10toV11` adds the
 mark (`misfortuneFailed: false`); `migrateV11toV12` adds the Requisition sample purse
 (`sampleBank: 0`); `migrateV12toV13` remaps the five squad-size variants onto the three starting
 difficulties (Quickplay becomes the suicide start with the SEAF mode); `migrateV13toV14` adds
-presence (`away: false` on every diver). The chain's tail also runs the idempotent
+presence (`away: false` on every diver); `migrateV14toV15` widens the single honors winner
+(`bonusWinnerId`) into the shareable list (`bonusWinnerIds`). The chain's tail also runs the idempotent
 `normalizeRoomState` remap unconditionally: session mirrors copy unversioned room state, so a
 legacy variant id or a missing field must be corrected even in a doc stamped with a newer schema.
 Normalization drops

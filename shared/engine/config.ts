@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 23
+export const ENGINE_VERSION = 24
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10

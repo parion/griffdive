@@ -104,6 +104,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 14) {
     migrated = migrateV13toV14(migrated)
   }
+  if (migrated.schemaVersion < 15) {
+    migrated = migrateV14toV15(migrated)
+  }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
   // A session mirror can carry a pre-v13 room's settings under the current
@@ -123,7 +126,7 @@ function migrateV7toV8(doc: SaveDoc): SaveDoc {
       ...doc.state,
       legacyCaches: doc.state.legacyCaches ?? {},
       bonusSeed: doc.state.bonusSeed ?? null,
-      bonusWinnerId: doc.state.bonusWinnerId ?? null,
+      bonusWinnerIds: [],
       divers: (doc.state.divers ?? []).map((diver) => {
         const legacy = diver as LegacyDiver
         return {
@@ -260,6 +263,9 @@ export function normalizeRoomState(state: DiveState): DiveState {
     ...state,
     settings,
     misfortuneFailed: state.misfortuneFailed ?? false,
+    bonusWinnerIds: Array.isArray(state.bonusWinnerIds)
+      ? state.bonusWinnerIds
+      : legacyWinnerIds(state),
     divers: (state.divers ?? []).map((diver) => {
       const legacy = diver as Partial<DiverState>
       return {
@@ -269,6 +275,13 @@ export function normalizeRoomState(state: DiveState): DiveState {
       }
     }),
   }
+}
+
+// A state saved before honors became shareable carries a single
+// `bonusWinnerId` instead of a list.
+function legacyWinnerIds(state: DiveState): string[] {
+  const legacy = state as DiveState & { bonusWinnerId?: unknown }
+  return typeof legacy.bonusWinnerId === 'string' ? [legacy.bonusWinnerId] : []
 }
 
 // v14: presence entered the state — a diver who steps away keeps their seat but
@@ -282,6 +295,19 @@ function migrateV13toV14(doc: SaveDoc): SaveDoc {
         ...diver,
         away: (diver as Partial<DiverState>).away ?? false,
       })),
+    },
+  }
+}
+
+// v15: squad honors can be shared. A tie on HD2's stats screen honors every
+// tied diver, so the single winner id became a list. A legacy award maps to a
+// one-element list; an unawarded contest stays empty.
+function migrateV14toV15(doc: SaveDoc): SaveDoc {
+  return {
+    ...doc,
+    state: {
+      ...doc.state,
+      bonusWinnerIds: legacyWinnerIds(doc.state),
     },
   }
 }

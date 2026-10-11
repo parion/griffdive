@@ -8,7 +8,7 @@ import { DIVERS_CHOICE_OPTION_ID, itemPrice, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { activeMisfortune, allDiversPicked, awaitingDiverIds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverValor, diverOptions, modeValorOf, pactOfferFor, pactRiskOf, rewardPoolFor, shopStockFor, squadSize, teamRiskOf } from './selectors'
+import { activeMisfortune, allDiversPicked, awaitingDiverIds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, modeValorOf, pactOfferFor, pactRiskOf, rewardPoolFor, shopStockFor, squadSize, teamRiskOf } from './selectors'
 import { deriveFront, deriveStrain } from './wheel'
 import type { DiveState, DiverState, EngineAction } from './types'
 
@@ -1326,6 +1326,53 @@ describe('reward tokens + bonus honors', () => {
     return reduce(state, { type: 'SPIN_BONUS', seed })
   }
 
+  it('freezes the dealt offer so a pick or a purchase never reshuffles it', () => {
+    const state = rewardsState()
+    const dealt = diverOptions(state, requireDiver(state))
+    expect(requireDiver(state).draftExcludedIds).toEqual(
+      expect.arrayContaining(state.personalInventories.p1 ?? []),
+    )
+    const picked = pickFirst(state)
+    expect(diverOptions(picked, requireDiver(picked))).toEqual(dealt)
+    const flush = { ...picked, divers: picked.divers.map(diver => ({ ...diver, sampleBank: 100_000 })) }
+    const stocked = shopStockFor(flush, requireDiver(flush))[0]
+    expect(stocked).toBeDefined()
+    const bought = reduce(flush, { type: 'BUY_ITEM', playerId: 'p1', itemId: stocked!.item.id })
+    expect(bought).not.toBe(flush)
+    expect(diverOptions(bought, requireDiver(bought))).toEqual(dealt)
+    expect(reduce(bought, { type: 'ADVANCE' }).divers[0]?.draftExcludedIds).toBeNull()
+  })
+
+  it('summarizes a diver\'s draft for the squad: offer, ceiling and outcome', () => {
+    const state = withTokens(rewardsState(), 'p1', 1)
+    const open = draftSummaryFor(state, requireDiver(state))
+    expect(open.status).toBe('choosing')
+    expect(open.ceiling).toBe(diverRolledCeiling(state, requireDiver(state)))
+    expect(open.bankedOptionId).toBeNull()
+
+    const picked = pickFirst(state)
+    const banked = draftSummaryFor(picked, requireDiver(picked))
+    expect(banked.status).toBe('banked')
+    expect(banked.options).toEqual(open.options)
+    expect(banked.bankedOptionId).toBe(open.options[0]!.optionId)
+
+    const target = open.options.find(option => !option.choice)!
+    const purged = reduce(state, { type: 'BAN_REWARDS', playerId: 'p1', optionIds: [target.optionId] })
+    const banned = draftSummaryFor(purged, requireDiver(purged))
+    expect(banned.status).toBe('banned')
+    expect(banned.bannedOptionIds).toEqual([target.optionId])
+  })
+
+  it('refuses to bank a dealt item the diver has since gained', () => {
+    const state = rewardsState()
+    const option = diverOptions(state, requireDiver(state)).find(entry => !entry.choice)!
+    const gained = {
+      ...state,
+      personalInventories: { ...state.personalInventories, p1: [...(state.personalInventories.p1 ?? []), option.item.id] },
+    }
+    expect(reduce(gained, { type: 'PICK_REWARD', playerId: 'p1', optionId: option.optionId })).toBe(gained)
+  })
+
   it('reveals no contest until the host spins it, after the draft completes', () => {
     const state = rewardsState()
     // Nothing is drawn before the spin.
@@ -1384,23 +1431,41 @@ describe('reward tokens + bonus honors', () => {
     // Solo: the only diver is always the winner, so the spin banks the token
     // and no award action is needed.
     const state = spun(pickFirst(rewardsState()), 7)
-    expect(state.bonusWinnerId).toBe('p1')
+    expect(state.bonusWinnerIds).toEqual(['p1'])
     expect(state.divers[0]?.rewardTokens).toBe(1)
-    expect(reduce(state, { type: 'AWARD_BONUS', playerId: 'p1' })).toBe(state)
+    expect(reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1'] })).toBe(state)
   })
 
   it('leaves selection to the host when more than one diver can win', () => {
     let state = twoDiverRewards()
     state = reduce(state, { type: 'SPIN_BONUS', seed: 7 })
-    expect(state.bonusWinnerId).toBeNull()
+    expect(state.bonusWinnerIds).toEqual([])
     expect(state.divers.every(diver => diver.rewardTokens === 0)).toBe(true)
-    expect(reduce(state, { type: 'AWARD_BONUS', playerId: 'ghost' })).toBe(state)
-    const awarded = reduce(state, { type: 'AWARD_BONUS', playerId: 'p2' })
-    expect(awarded.bonusWinnerId).toBe('p2')
+    expect(reduce(state, { type: 'AWARD_BONUS', playerIds: ['ghost'] })).toBe(state)
+    const awarded = reduce(state, { type: 'AWARD_BONUS', playerIds: ['p2'] })
+    expect(awarded.bonusWinnerIds).toEqual(['p2'])
     expect(awarded.divers.find(diver => diver.id === 'p2')?.rewardTokens).toBe(1)
     expect(awarded.divers.find(diver => diver.id === 'p1')?.rewardTokens).toBe(0)
     // One award per mission.
-    expect(reduce(awarded, { type: 'AWARD_BONUS', playerId: 'p1' })).toBe(awarded)
+    expect(reduce(awarded, { type: 'AWARD_BONUS', playerIds: ['p1'] })).toBe(awarded)
+  })
+
+  it('lets a tie honor every tied diver at once', () => {
+    let state = twoDiverRewards()
+    state = reduce(state, { type: 'SPIN_BONUS', seed: 7 })
+    const awarded = reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1', 'p2'] })
+    expect(awarded.bonusWinnerIds).toEqual(['p1', 'p2'])
+    expect(awarded.divers.every(diver => diver.rewardTokens === 1)).toBe(true)
+    // A duplicate collapses to one token, and the ceremony is still closed to
+    // a second award.
+    expect(reduce(awarded, { type: 'AWARD_BONUS', playerIds: ['p1'] })).toBe(awarded)
+  })
+
+  it('refuses an award naming no one', () => {
+    let state = twoDiverRewards()
+    state = reduce(state, { type: 'SPIN_BONUS', seed: 7 })
+    expect(reduce(state, { type: 'AWARD_BONUS', playerIds: [] })).toBe(state)
+    expect(reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1', 'ghost'] })).toBe(state)
   })
 
   it('refuses to award on a mission that no longer qualifies', () => {
@@ -1410,13 +1475,13 @@ describe('reward tokens + bonus honors', () => {
       ...state,
       lastReport: { outcome: 'success', stars: 1 },
     }
-    expect(reduce(lapsed, { type: 'AWARD_BONUS', playerId: 'p2' })).toBe(lapsed)
+    expect(reduce(lapsed, { type: 'AWARD_BONUS', playerIds: ['p2'] })).toBe(lapsed)
   })
 
   it('caps banked tokens', () => {
     let state = withTokens(rewardsState(), 'p1', REWARD_TOKEN_CAP)
     state = spun(pickFirst(state))
-    state = reduce(state, { type: 'AWARD_BONUS', playerId: 'p1' })
+    state = reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1'] })
     expect(state.divers[0]?.rewardTokens).toBe(REWARD_TOKEN_CAP)
   })
 
@@ -1472,9 +1537,13 @@ describe('reward tokens + bonus honors', () => {
     const banned = reduce(state, { type: 'BAN_REWARDS', playerId: 'p1', optionIds: targets })
     expect(banned.divers[0]?.rewardTokens).toBe(0)
     expect(banned.divers[0]?.rewardBanned).toBe(true)
+    // The dealt offer stays frozen for the squad to see; the bans only bite
+    // from the next deal on.
+    expect(diverOptions(banned, banned.divers[0]!)).toEqual(options)
+    const redealt = { ...banned.divers[0]!, draftExcludedIds: null }
     for (const option of options) {
       expect(banned.divers[0]?.bannedItemIds).toContain(option.item.id)
-      expect(diverOptions(banned, banned.divers[0]!).some(entry => entry.optionId === option.optionId)).toBe(false)
+      expect(diverOptions(banned, redealt).some(entry => entry.optionId === option.optionId)).toBe(false)
     }
     // The pick is forfeited: the draft resolves with nothing banked.
     expect(banned.divers[0]?.pickedOptionId).toBeNull()
@@ -1545,10 +1614,10 @@ describe('reward tokens + bonus honors', () => {
 
   it('resets the bonus ceremony and the ban flag on advance', () => {
     let state = spun(pickFirst(rewardsState()))
-    state = reduce(state, { type: 'AWARD_BONUS', playerId: 'p1' })
+    state = reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1'] })
     const advanced = reduce(state, { type: 'ADVANCE' })
     expect(advanced.bonusSeed).toBeNull()
-    expect(advanced.bonusWinnerId).toBeNull()
+    expect(advanced.bonusWinnerIds).toEqual([])
     expect(advanced.divers[0]?.rewardBanned).toBe(false)
   })
 })

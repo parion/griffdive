@@ -26,7 +26,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   spin: []
-  award: [playerId: string]
+  award: [playerIds: string[]]
   advance: []
   buy: [itemId: string]
 }>()
@@ -48,7 +48,7 @@ const reason = computed(() =>
         :can-control="canControl"
         :compact="compact"
         @spin="emit('spin')"
-        @award="playerId => emit('award', playerId)"
+        @award="playerIds => emit('award', playerIds)"
         @advance="emit('advance')"
       />
       <RequisitionStock

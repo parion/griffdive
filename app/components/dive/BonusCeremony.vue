@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { BONUS_STATS, REWARD_TOKEN_CAP, bonusIntervalFor, maxStarsFor, missionsPerOperation } from '~~/shared/engine/config'
-import { bonusFor } from '~~/shared/engine/selectors'
+import { bonusFor, bonusWinners } from '~~/shared/engine/selectors'
 import type { DiveState, DiverState } from '~~/shared/engine/types'
 
 const props = withDefaults(defineProps<{
@@ -13,7 +13,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   spin: []
-  award: [playerId: string]
+  award: [playerIds: string[]]
   advance: []
 }>()
 
@@ -36,8 +36,12 @@ const STAT_ICONS: Readonly<Record<string, string>> = {
 
 const contest = computed(() => bonusFor(props.state))
 const spun = computed(() => props.state.bonusSeed !== null)
-const winner = computed(() =>
-  props.state.divers.find(diver => diver.id === props.state.bonusWinnerId) ?? null)
+const winners = computed(() => bonusWinners(props.state))
+// Honors can be shared: a tie names every tied diver, so the ceremony resolves
+// once at least one winner is banked.
+const awarded = computed(() => winners.value.length > 0)
+const winnerLabel = computed(() =>
+  winners.value.map(winner => `${winner.name} · ${winner.rewardTokens}/${REWARD_TOKEN_CAP}`).join('  ·  '))
 // A diver seated mid-mission sat the draft out, so they have no stats to win
 // with — only the divers who dove are award candidates.
 const candidates = computed(() =>
@@ -126,7 +130,9 @@ const spinning = computed(() => spun.value && !landed.value)
 const direction = computed(() => contest.value?.direction ?? 'most')
 
 // ---- Winner naming -------------------------------------------------------
-const selectedWinnerId = ref<string | null>(null)
+// Ties are common, so naming is a multi-select: the host taps every diver the
+// stats screen ties, then holds to bank them all at once.
+const selectedWinnerIds = ref<string[]>([])
 const HOLD_MS = 900
 const holding = ref(false)
 let holdTimer: ReturnType<typeof setTimeout> | undefined
@@ -135,19 +141,21 @@ function pickWinner(id: string): void {
   if (!props.canControl) {
     return
   }
-  selectedWinnerId.value = id
+  selectedWinnerIds.value = selectedWinnerIds.value.includes(id)
+    ? selectedWinnerIds.value.filter(entry => entry !== id)
+    : [...selectedWinnerIds.value, id]
 }
 
 function awardDown(): void {
-  if (!props.canControl || !selectedWinnerId.value) {
+  if (!props.canControl || selectedWinnerIds.value.length === 0) {
     return
   }
   holding.value = true
   clearTimeout(holdTimer)
   holdTimer = setTimeout(() => {
     holding.value = false
-    if (selectedWinnerId.value) {
-      emit('award', selectedWinnerId.value)
+    if (selectedWinnerIds.value.length > 0) {
+      emit('award', [...selectedWinnerIds.value])
     }
   }, HOLD_MS)
 }
@@ -400,7 +408,7 @@ function tokenChits(count: number): boolean[] {
       </div>
     </section>
 
-    <template v-if="spun && landed && !winner">
+    <template v-if="spun && landed && !awarded">
       <div class="name-row">
         <span class="lbl name-lbl">Name the winner</span>
         <span class="name-source">
@@ -420,23 +428,23 @@ function tokenChits(count: number): boolean[] {
           /><path d="M8 20h8M12 16v4M7 12V9M11 12V7M15 12v-2" /></svg>
           From the in-game stats screen
         </span>
-        <span class="name-ties">Ties · host's call</span>
+        <span class="name-ties">Ties · name everyone who tied</span>
       </div>
 
       <div
         class="tag-row"
-        role="radiogroup"
-        aria-label="Honors winner"
+        role="group"
+        aria-label="Honors winners"
       >
         <button
           v-for="diver in candidates"
           :key="diver.id"
           class="winner-tag"
-          :class="{ 'tag-flash': state.bonusWinnerId === diver.id }"
+          :class="{ 'tag-flash': state.bonusWinnerIds.includes(diver.id) }"
           type="button"
-          role="radio"
-          :aria-checked="selectedWinnerId === diver.id"
-          :aria-label="`Name ${diver.name} the honors winner`"
+          role="checkbox"
+          :aria-checked="selectedWinnerIds.includes(diver.id)"
+          :aria-label="`Name ${diver.name} an honors winner`"
           :disabled="!canControl"
           @click="pickWinner(diver.id)"
         >
@@ -457,11 +465,11 @@ function tokenChits(count: number): boolean[] {
               <span class="disp tag-name">{{ diver.name }}</span>
               <span
                 class="tag-radio"
-                :class="{ on: selectedWinnerId === diver.id }"
+                :class="{ on: selectedWinnerIds.includes(diver.id) }"
                 aria-hidden="true"
               >
                 <svg
-                  v-if="selectedWinnerId === diver.id"
+                  v-if="selectedWinnerIds.includes(diver.id)"
                   width="12"
                   height="12"
                   viewBox="0 0 24 24"
@@ -506,7 +514,7 @@ function tokenChits(count: number): boolean[] {
             </span>
           </span>
           <span
-            v-if="state.bonusWinnerId === diver.id"
+            v-if="state.bonusWinnerIds.includes(diver.id)"
             class="tag-honored"
             aria-hidden="true"
           >Honored</span>
@@ -521,11 +529,11 @@ function tokenChits(count: number): boolean[] {
         </p>
       </template>
 
-      <template v-else-if="spun && !winner && !compact">
+      <template v-else-if="spun && !awarded && !compact">
         <button
           class="hold-award cut"
           type="button"
-          :disabled="!canControl || !selectedWinnerId"
+          :disabled="!canControl || selectedWinnerIds.length === 0"
           :aria-label="`Award the honors and bank a reward token. Press and hold.`"
           @pointerdown="awardDown"
           @pointerup="awardEnd"
@@ -537,7 +545,7 @@ function tokenChits(count: number): boolean[] {
             aria-hidden="true"
           />
           <span class="hold-copy">
-            <span class="disp hold-word">{{ selectedWinnerId ? 'Award the honors' : 'Select a diver' }}</span>
+            <span class="disp hold-word">{{ selectedWinnerIds.length > 0 ? 'Award the honors' : 'Select a diver' }}</span>
             <span class="hold-sub">Hold to confirm</span>
           </span>
         </button>
@@ -557,7 +565,7 @@ function tokenChits(count: number): boolean[] {
         </p>
       </template>
 
-      <template v-else-if="winner">
+      <template v-else-if="awarded">
         <div class="banked rise">
           <span
             class="hex banked-chit"
@@ -565,7 +573,7 @@ function tokenChits(count: number): boolean[] {
           />
           <span class="banked-copy">
             <span class="lbl banked-lbl">Token banked</span>
-            <span class="banked-name">{{ winner.name }} · {{ winner.rewardTokens }}/{{ REWARD_TOKEN_CAP }}</span>
+            <span class="banked-name">{{ winnerLabel }}</span>
           </span>
         </div>
         <button
@@ -599,7 +607,7 @@ function tokenChits(count: number): boolean[] {
     </div>
 
     <p
-      v-if="solo && spun && landed && !winner"
+      v-if="solo && spun && landed && !awarded"
       class="muted small solo-note"
     >
       Only one diver can win — the spin banks the token automatically.
@@ -607,7 +615,7 @@ function tokenChits(count: number): boolean[] {
 
     <PhoneActionBar v-if="compact">
       <template
-        v-if="spun && landed && !winner && canControl"
+        v-if="spun && landed && !awarded && canControl"
         #secondary
       >
         <button
@@ -630,17 +638,17 @@ function tokenChits(count: number): boolean[] {
           <span class="disp">Spin the honors</span>
         </button>
         <HoldButton
-          v-else-if="spun && landed && !winner && canControl"
+          v-else-if="spun && landed && !awarded && canControl"
           class="cut cta-sweep"
-          :label="selectedWinnerId ? 'Award the honors' : 'Select a diver'"
+          :label="selectedWinnerIds.length > 0 ? 'Award the honors' : 'Select a diver'"
           hint="hold to confirm"
           tone="gold"
           :duration="HOLD_MS"
-          :disabled="!selectedWinnerId"
-          @confirm="selectedWinnerId && emit('award', selectedWinnerId)"
+          :disabled="selectedWinnerIds.length === 0"
+          @confirm="selectedWinnerIds.length > 0 && emit('award', [...selectedWinnerIds])"
         />
         <button
-          v-else-if="winner && canControl"
+          v-else-if="awarded && canControl"
           class="bar-cta cta-sweep"
           type="button"
           @click="emit('advance')"
@@ -657,7 +665,7 @@ function tokenChits(count: number): boolean[] {
             aria-hidden="true"
           />
           <span class="disp bar-gate-word">Squad honors</span>
-          <span class="bar-gate-meta">{{ !spun ? 'Waiting for the host to spin' : !landed ? 'Drawing…' : winner ? 'Host advances' : 'Waiting for the host to award' }}</span>
+          <span class="bar-gate-meta">{{ !spun ? 'Waiting for the host to spin' : !landed ? 'Drawing…' : awarded ? 'Host advances' : 'Waiting for the host to award' }}</span>
         </div>
       </template>
     </PhoneActionBar>
