@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { SwitchRoot, SwitchThumb } from 'reka-ui'
 import { itemImageUrl } from '~~/shared/data/images'
 import { misfortuneById } from '~~/shared/data/misfortunes'
 import { sortKitItems } from '~~/shared/data/ordering'
@@ -7,7 +8,7 @@ import type { Item } from '~~/shared/data/types'
 import { itemBannedInArmory } from '~~/shared/engine/selectors'
 import type { ArmoryBan } from '~~/shared/engine/selectors'
 import type { DiveState, DiverState } from '~~/shared/engine/types'
-import { KIT_SECTIONS, kitSectionOf, ownedKitItems } from '~/utils/kit'
+import { KIT_SECTIONS, earnedKitItems, kitSectionOf, ownedKitItems } from '~/utils/kit'
 
 // The Kit: the diver's own items by category, with the live bans washed
 // over them. The desktop rail and the phone drawer share it.
@@ -24,6 +25,9 @@ interface TileView {
   banPreview: boolean
   reason: string
 }
+
+const earnedOnly = ref(false)
+const uid = useId()
 
 const selectedId = ref(props.selfId ?? props.state.divers[0]?.id ?? '')
 
@@ -48,7 +52,7 @@ const sections = computed(() => {
     return []
   }
   const previewIds = current.id === props.selfId ? props.previewPactIds : []
-  const items = sortKitItems(ownedKitItems(props.state, current.id))
+  const items = sortKitItems((earnedOnly.value ? earnedKitItems : ownedKitItems)(props.state, current.id))
   return KIT_SECTIONS
     .map(def => ({
       ...def,
@@ -63,8 +67,16 @@ const sections = computed(() => {
         }
       }),
     }))
-    .filter(section => section.tiles.length > 0)
 })
+
+function sectionDomId(id: string): string {
+  return `${uid}-${id}`
+}
+
+function jumpTo(id: string) {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  document.getElementById(sectionDomId(id))?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+}
 </script>
 
 <template>
@@ -91,15 +103,36 @@ const sections = computed(() => {
       </button>
     </div>
 
-    <p
-      v-if="!sections.length"
-      class="muted small empty"
-    >
-      No items in this kit yet.
-    </p>
+    <div class="toolbar">
+      <label class="earned-toggle">
+        <SwitchRoot
+          v-model="earnedOnly"
+          class="switch"
+        >
+          <SwitchThumb class="switch-thumb" />
+        </SwitchRoot>
+        <span class="lbl">Earned only</span>
+      </label>
+      <nav
+        class="jump"
+        aria-label="Jump to kit group"
+      >
+        <button
+          v-for="section in sections"
+          :key="section.id"
+          type="button"
+          class="jump-chip"
+          :class="{ empty: !section.tiles.length }"
+          @click="jumpTo(section.id)"
+        >
+          {{ section.nav }}<span class="n">{{ section.tiles.length }}</span>
+        </button>
+      </nav>
+    </div>
 
     <section
       v-for="section in sections"
+      :id="sectionDomId(section.id)"
       :key="section.id"
       class="kit-sec"
       :style="{ '--accent': section.accent }"
@@ -114,7 +147,16 @@ const sections = computed(() => {
         </h3>
         <span class="cap">{{ section.tiles.length }}</span>
       </header>
-      <ul class="tiles">
+      <p
+        v-if="!section.tiles.length"
+        class="none"
+      >
+        {{ earnedOnly ? 'None earned yet' : 'None' }}
+      </p>
+      <ul
+        v-else
+        class="tiles"
+      >
         <li
           v-for="tile in section.tiles"
           :key="tile.item.id"
@@ -176,9 +218,62 @@ const sections = computed(() => {
 .diver:hover { color: var(--text); border-color: var(--line-4); }
 .diver.on { color: var(--gold); border-color: var(--gold); }
 
-.empty { margin: 0; }
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  gap: var(--sp-2);
+  padding-block: var(--sp-2);
+  background: var(--rail);
+  border-bottom: 1px solid var(--line-1);
+}
+.earned-toggle { display: flex; align-items: center; gap: var(--sp-3); cursor: pointer; }
+.earned-toggle .lbl { color: var(--khaki); }
+.switch {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  flex-shrink: 0;
+  padding: 0;
+  background: var(--panel);
+  border: 1px solid var(--line-3);
+  cursor: pointer;
+}
+.switch[data-state='checked'] { background: var(--gold); border-color: var(--gold); }
+.switch-thumb {
+  display: block;
+  width: 12px;
+  height: 12px;
+  margin-left: 2px;
+  background: var(--khaki);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.switch[data-state='checked'] .switch-thumb { background: var(--on-gold); transform: translateX(16px); }
 
-.kit-sec { display: grid; gap: var(--sp-3); }
+.jump { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.jump-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  font: inherit;
+  font-size: var(--fs-cap);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--khaki);
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  cursor: pointer;
+}
+.jump-chip:hover { color: var(--text); border-color: var(--line-4); }
+.jump-chip .n { color: var(--gold); }
+.jump-chip.empty .n { color: var(--dim); }
+
+.none { margin: 0; padding: var(--sp-2) var(--sp-3); font-size: var(--fs-sm); color: var(--dim); border: 1px dashed var(--line-2); }
+
+.kit-sec { display: grid; gap: var(--sp-3); scroll-margin-top: 6rem; }
 .kit-sec-head { display: flex; align-items: center; gap: var(--sp-3); }
 .kit-sec-head h3 { margin: 0; }
 .kit-sec-head .cap { margin-left: auto; color: var(--khaki); }
