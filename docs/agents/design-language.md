@@ -73,12 +73,18 @@ engine.
   band (narrow container query: crest beside the copy, claim button full width). Glows ride the
   unclipped `.pod-slot` as `drop-shadow` (the card's `clip-path` clips box-shadows); Motion owns
   the card's transform, so tier effects use filters only. Phone reward rows carry the same tier sheen.
-  **The ceiling climbs:** `CeilingTrack` is a compact, unlabeled bar in the draft header's top right
-  (the phone puts it under the title). From the base node it fills one tier per `CEILING_STEP`
-  (`app/utils/motion.ts`), popping each node it reaches with the caret riding the head, so the
-  ceiling lands as the pods do; the failed step then stalls red with a shake and the ceiling node
-  fills solid with a slow glow. Per-step odds sit over each link. Reduced motion and resolved drafts
-  land instantly; a reroll replays it. **Drafts are social:** once the diver's own pods land,
+  **The ceiling climbs first:** `CeilingTrack` is a compact, unlabeled bar whose home is the draft
+  header's top right (the phone puts it under the title). On desktop the draft opens on it: the
+  track is lifted centre stage over a dashed intro stage (a measured FLIP transform — it never
+  leaves its header slot in the DOM) with a `Ceiling roll · Valor` kicker. From the base node it
+  fills one tier per `CEILING_STEP`, popping each node it reaches with the caret riding the head;
+  the failed step stalls red with a shake, the ceiling node fills solid, the stage flashes the
+  ceiling's tier colour and an `X Tier` verdict slams in. After `CEILING_HOLD` the transform is
+  released and the track docks into the corner over `CEILING_DOCK` while the stage fades; only then
+  does the cabinet mount and the pods drop (timings in `app/utils/motion.ts`). Tapping the stage
+  skips ahead. Per-step odds sit over each link. Reduced motion and resolved drafts skip the intro
+  and land instantly; a reroll replays the whole sequence. Pods give ground in a short cabinet by
+  shrinking the art stage, never the name or the Claim footer. **Drafts are social:** once the diver's own pods land,
   `SquadDraftBoard` shows each squadmate's offer as small tier-edged tiles with their ceiling and
   status — the banked tile pops and glows, the rest fade, bans are crossed out — and it stays up
   after the diver picks so the squad can compare pulls.

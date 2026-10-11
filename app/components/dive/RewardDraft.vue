@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { CEILING_DOCK, CEILING_HOLD } from '~/utils/motion'
 import { REWARD_TOKEN_CAP, maxStarsFor } from '~~/shared/engine/config'
+import { valorOf } from '~~/shared/engine/rewards'
 import { ITEMS_BY_ID, TIER_RANK } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
@@ -106,6 +108,7 @@ watch(() => props.options, (next) => {
     settledCount.value = 0
     podsDone.value = false
     draftGeneration.value++
+    startIntro()
   }
 })
 
@@ -181,6 +184,102 @@ watch(allSettled, (settled) => {
     podsDone.value = true
   }
 }, { immediate: true })
+
+// The intro: the ceiling roll climbs centre stage, holds its verdict, then
+// docks into the header corner — and only then does the cabinet mount and the
+// pods drop. The track lives in its header slot throughout; while it rolls it
+// is lifted into the stage with a measured transform and docks by releasing
+// it (FLIP). Presentation only — the ceiling is already rolled.
+type IntroPhase = 'rolling' | 'docking' | 'done'
+const intro = ref<IntroPhase>('done')
+const landed = ref(false)
+const skipped = ref(false)
+const trackSlot = ref<HTMLElement | null>(null)
+const introStage = ref<HTMLElement | null>(null)
+const trackLift = ref<string | undefined>(undefined)
+let introTimers: ReturnType<typeof setTimeout>[] = []
+
+function clearIntroTimers(): void {
+  introTimers.forEach(clearTimeout)
+  introTimers = []
+}
+
+function liftTrack(): void {
+  const slot = trackSlot.value
+  const stage = introStage.value
+  if (!slot || !stage) {
+    return
+  }
+  const from = slot.getBoundingClientRect()
+  const to = stage.getBoundingClientRect()
+  const scale = Math.min(1.8, (to.width * 0.86) / Math.max(from.width, 1))
+  const dx = to.left + to.width / 2 - (from.left + from.width / 2)
+  const dy = to.top + to.height * 0.42 - (from.top + from.height / 2)
+  trackLift.value = `translate(${dx}px, ${dy}px) scale(${scale})`
+}
+
+function startIntro(): void {
+  clearIntroTimers()
+  landed.value = false
+  skipped.value = false
+  if (instant.value || lockedOptions.value.length === 0 || !props.ceiling) {
+    intro.value = 'done'
+    trackLift.value = undefined
+    return
+  }
+  intro.value = 'rolling'
+  nextTick(liftTrack)
+}
+
+function dock(): void {
+  clearIntroTimers()
+  intro.value = 'docking'
+  trackLift.value = undefined
+  introTimers.push(setTimeout(() => {
+    intro.value = 'done'
+  }, CEILING_DOCK))
+}
+
+function onClimbed(): void {
+  if (intro.value !== 'rolling') {
+    return
+  }
+  landed.value = true
+  introTimers.push(setTimeout(dock, skipped.value ? 250 : CEILING_HOLD))
+}
+
+// Skipping lands the bar at once (the track goes instant and reports in), or
+// docks straight away when it has already landed.
+function skipIntro(): void {
+  if (intro.value !== 'rolling') {
+    return
+  }
+  if (landed.value) {
+    dock()
+    return
+  }
+  skipped.value = true
+}
+
+function onResize(): void {
+  if (intro.value === 'rolling') {
+    trackLift.value = undefined
+    nextTick(liftTrack)
+  }
+}
+
+onMounted(() => {
+  startIntro()
+  window.addEventListener('resize', onResize)
+})
+onBeforeUnmount(() => {
+  clearIntroTimers()
+  window.removeEventListener('resize', onResize)
+})
+
+const valor = computed(() => valorOf(props.teamRisk, props.pactRisk))
+const ceilingVar = computed(() =>
+  props.ceiling === 'S+' ? 'var(--tier-splus)' : `var(--tier-${(props.ceiling ?? 'C').toLowerCase()})`)
 
 const maxStars = computed(() => maxStarsFor(props.difficulty))
 const optionCount = computed(() => lockedOptions.value.length)
@@ -310,20 +409,49 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
           >−{{ optionsLost }} · failed pact{{ optionsLost === 1 ? '' : 's' }}</span>
         </span>
       </div>
-      <CeilingTrack
+      <div
         v-if="ceiling && lockedOptions.length"
+        ref="trackSlot"
         class="head-track"
-        :difficulty="difficulty"
-        :ceiling="ceiling"
-        :team-risk="teamRisk"
-        :pact-risk="pactRisk"
-        :instant="instant"
-        :replay-key="draftGeneration"
-      />
+      >
+        <CeilingTrack
+          class="track-lift"
+          :class="intro"
+          :style="{ 'transform': trackLift, '--dock-dur': `${CEILING_DOCK}ms` }"
+          :difficulty="difficulty"
+          :ceiling="ceiling"
+          :team-risk="teamRisk"
+          :pact-risk="pactRisk"
+          :instant="instant || skipped"
+          :replay-key="draftGeneration"
+          @climbed="onClimbed"
+        />
+      </div>
     </header>
 
     <div
-      v-if="lockedOptions.length"
+      v-if="lockedOptions.length && intro !== 'done'"
+      ref="introStage"
+      class="intro-stage"
+      :class="[intro, { landed }]"
+      :style="{ '--ceil': ceilingVar }"
+    >
+      <span class="lbl intro-kicker">Ceiling roll · Valor {{ Number.isInteger(valor) ? valor : valor.toFixed(2) }}</span>
+      <span
+        v-if="landed"
+        class="disp intro-verdict"
+        aria-live="polite"
+      >{{ ceiling }} Tier</span>
+      <button
+        class="intro-skip"
+        type="button"
+        @click="skipIntro"
+      >
+        <span class="intro-hint">Tap to skip</span>
+      </button>
+    </div>
+    <div
+      v-else-if="lockedOptions.length"
       class="cabinet"
       :class="{ 'banning': banMode, 'has-cross': crossOption }"
       :style="{ '--cols': Math.max(podOptions.length, 1) }"
@@ -619,16 +747,87 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
 .meta-count { color: var(--khaki); }
 .meta-lost { color: var(--red); }
 .head-track { flex: 0 1 380px; margin-left: auto; }
+/* While rolling, the track is lifted into the stage (no transition, so it
+   never visibly starts in the corner); docking releases the transform. */
+.track-lift {
+  position: relative;
+  z-index: 6;
+  transform-origin: center;
+}
+.track-lift.docking { transition: transform var(--dock-dur, 720ms) cubic-bezier(0.7, 0, 0.2, 1); }
+
+.intro-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 280px;
+  border: 1px dashed var(--line-2);
+  background:
+    radial-gradient(ellipse 48% 38% at 50% 42%, color-mix(in srgb, var(--glow, var(--gold)) 10%, transparent), transparent 70%),
+    var(--ground);
+  overflow: hidden;
+  transition: opacity 0.4s var(--ease-out), border-color 0.4s var(--ease-out);
+}
+.intro-stage.landed { --glow: var(--ceil); border-color: color-mix(in srgb, var(--ceil) 35%, var(--line-2)); }
+.intro-stage.landed::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 40% 30% at 50% 42%, color-mix(in srgb, var(--ceil) 45%, transparent), transparent 70%);
+  animation: fadeOut 0.9s var(--ease-out) both;
+  pointer-events: none;
+}
+.intro-stage.docking { opacity: 0; border-color: transparent; }
+.intro-kicker {
+  position: absolute;
+  left: 50%;
+  top: calc(42% - 96px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  color: var(--khaki);
+  animation: riseIn 0.5s var(--ease-out) both;
+}
+.intro-verdict {
+  position: absolute;
+  left: 50%;
+  top: calc(42% + 78px);
+  translate: -50% 0;
+  padding: 8px 18px;
+  font-size: 1.6rem;
+  white-space: nowrap;
+  color: var(--ceil);
+  border: 3px solid var(--ceil);
+  background: color-mix(in srgb, var(--ceil) 8%, transparent);
+  animation: slam 0.55s var(--ease-out) both;
+}
+.intro-skip {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 0 14px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.intro-hint {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
 
 .cabinet {
   display: grid;
   /* Exactly one equal column per rolled option, so the pods fill the centre
      column (the design's `repeat(4, 1fr)`); `auto-fit` left empty tracks. */
   grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
-  grid-auto-rows: minmax(260px, 1fr);
+  grid-auto-rows: minmax(280px, 1fr);
   gap: 16px;
   flex: 1 1 auto;
-  min-height: 260px;
+  min-height: 280px;
 }
 /* Liberty's Cross takes the whole top row; the pods keep their equal columns. */
 .cabinet.has-cross { grid-template-rows: auto; grid-auto-rows: minmax(260px, 1fr); }

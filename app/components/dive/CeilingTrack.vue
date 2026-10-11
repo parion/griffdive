@@ -15,6 +15,11 @@ const props = withDefaults(defineProps<{
   replayKey?: number
 }>(), { instant: false, replayKey: 0 })
 
+const emit = defineEmits<{
+  // The bar has landed on the ceiling and the failed step has stalled.
+  climbed: []
+}>()
+
 const LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
 const baseIndex = computed(() => LADDER.indexOf(baseTierFor(props.difficulty)))
@@ -54,6 +59,7 @@ function climb(): void {
   if (props.instant || reduced) {
     reached.value = target.value
     done.value = true
+    emit('climbed')
     return
   }
   reached.value = 0
@@ -65,11 +71,18 @@ function climb(): void {
   }
   timers.push(setTimeout(() => {
     done.value = true
+    emit('climbed')
   }, CEILING_LEAD + (target.value + 1) * CEILING_STEP))
 }
 
 onMounted(climb)
 watch(() => [props.replayKey, props.ceiling], climb)
+// Going instant mid-climb (a skipped intro) lands the bar at once.
+watch(() => props.instant, (now) => {
+  if (now && !done.value) {
+    climb()
+  }
+})
 onBeforeUnmount(clearTimers)
 
 function tierVar(tier: RewardTier): string {
@@ -194,7 +207,7 @@ const trackLabel = computed(() => {
   box-shadow: 0 0 8px color-mix(in srgb, var(--tier) 60%, transparent);
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform 0.36s cubic-bezier(0.45, 0, 0.2, 1);
+  transition: transform 0.6s cubic-bezier(0.45, 0, 0.2, 1);
 }
 .link.win .link-fill { transform: scaleX(1); }
 .link.miss .link-fill {

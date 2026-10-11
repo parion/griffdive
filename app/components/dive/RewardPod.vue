@@ -272,10 +272,12 @@ function onHit(): void {
 .pod-lead { color: var(--gold); }
 .pod-id { margin-left: auto; color: var(--dim); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; }
 
+/* The stage is the only part that gives ground in a short cabinet, so the
+   name and the Claim footer never clip. */
 .pod-stage {
   position: relative;
-  flex: 1 1 auto;
-  min-height: 120px;
+  flex: 1 1 0;
+  min-height: 56px;
   margin: 0 12px;
   display: grid;
   place-items: center;
@@ -284,8 +286,13 @@ function onHit(): void {
   overflow: hidden;
 }
 .pod-art {
-  width: 112px;
-  height: 112px;
+  position: absolute;
+  inset: 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+  max-width: 112px;
+  max-height: 112px;
+  margin: auto;
   object-fit: contain;
 }
 
