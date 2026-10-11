@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ALL_ITEMS } from '../data/catalog'
+import { ALL_ITEMS, ITEMS_BY_ID } from '../data/catalog'
 import { PACTS, pactById } from '../data/pacts'
 import { RESERVE_STRATAGEMS, STRATAGEM_SLOTS_REQUIRED, conditionRiskAt, pactOptionsFor } from './config'
 import { startingItemIds } from './progression'
@@ -145,6 +145,15 @@ describe('reserve and loadout legality', () => {
 
   it('keeps No Stratagems behavioral — four slots still equip', () => {
     expect(hasLegalLoadout('noStratagems', [], baseKit)).toBe(true)
+  })
+
+  it('flags a genuine anti-tank weapon but not the Eruptor, an explosive primary', () => {
+    const eat = ITEMS_BY_ID.get('eat17expendableantitank')!
+    const eruptor = ITEMS_BY_ID.get('r36eruptor')!
+    expect(eruptor.antitank).toBe(false)
+    expect(stratagemBanReason(null, ['antiTankAbstinent'], eat))
+      .toEqual({ source: 'pact', id: 'antiTankAbstinent' })
+    expect(stratagemBanReason(null, ['antiTankAbstinent'], eruptor)).toBeNull()
   })
 })
 

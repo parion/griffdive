@@ -89,6 +89,7 @@ function toItem(raw, categoryOverride) {
   if ('speed' in raw) item.speed = raw.speed
   if ('stamina' in raw) item.stamina = raw.stamina
   if ('passive' in raw) item.passive = raw.passive
+  Object.assign(item, ITEM_OVERRIDES[item.id])
   return item
 }
 
@@ -113,6 +114,17 @@ const SPECIAL_WARBONDS = {
 
 // Codes excluded from the catalog — their items are dropped with them.
 const EXCLUDED_WARBOND_CODES = new Set(['warbond2'])
+
+// Local corrections to the vendored upstream snapshot, applied after conversion
+// so a catalog refresh re-applies them instead of reverting the generated data.
+// Upstream's `antitank` flag is a game-truth claim, not an opaque tag: it feeds
+// the Anti-Tank Abstinent pact ban (shared/engine/pacts.ts) and the AT badge
+// (app/components/ui/ItemCard.vue). Keyed by item id.
+const ITEM_OVERRIDES = {
+  // The Eruptor is an explosive primary with limited armour penetration, not an
+  // anti-tank weapon — it must not read as AT.
+  r36eruptor: { antitank: false },
+}
 
 function emitFile(fileName, headerLines, importLine, bodyLines) {
   const content = [HEADER, '', ...headerLines, '', importLine, '', ...bodyLines].join('\n')
