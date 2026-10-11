@@ -167,11 +167,12 @@ export interface DiveState {
   offerSeed: number | null
   lastReport: MissionReport | null
   // Bonus honors for the current mission's reward window: the host-spun
-  // contest seed (like the Wheel, spun on click) and the diver the host
-  // awarded. Awarding banks the token immediately. Both reset every mission;
-  // the ceremony is a soft gate on ADVANCE.
+  // contest seed (like the Wheel, spun on click) and the divers the host
+  // honored. Honors can be shared — a tie names every tied diver — so the
+  // winners are a list. Awarding banks each token immediately. Both reset
+  // every mission; the ceremony is a soft gate on ADVANCE.
   bonusSeed: number | null
-  bonusWinnerId: string | null
+  bonusWinnerIds: string[]
   actionLog: EngineAction[]
   seedHistory: number[]
 }
@@ -197,7 +198,7 @@ export type EngineAction
     | { type: 'REROLL_REWARDS', playerId: string, seed: number }
     | { type: 'BAN_REWARDS', playerId: string, optionIds: string[] }
     | { type: 'SPIN_BONUS', seed: number }
-    | { type: 'AWARD_BONUS', playerId: string }
+    | { type: 'AWARD_BONUS', playerIds: string[] }
     | { type: 'LEAVE_DIVE', playerId: string }
     | { type: 'SET_AWAY', playerId: string, away: boolean }
     | { type: 'ADVANCE' }

@@ -69,7 +69,7 @@ describe('save migration v7 → v8 (alpha baseline freeze)', () => {
     expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
     expect(migrated.state.legacyCaches).toEqual({})
     expect(migrated.state.bonusSeed).toBeNull()
-    expect(migrated.state.bonusWinnerId).toBeNull()
+    expect(migrated.state.bonusWinnerIds).toEqual([])
     expect(migrated.state.divers[0]).toMatchObject({
       catchUpGranted: 0,
       catchUpOwed: 0,
@@ -299,6 +299,22 @@ describe('save migration v12 → v13 (three difficulty variants + mode)', () => 
     doc.schemaVersion = 12
     doc.state.settings = null
     expect(normalizeSaveDoc(doc)!.state.settings).toBeNull()
+  })
+})
+
+describe('save migration v14 → v15 (shared squad honors)', () => {
+  it('maps a legacy single winner id to a one-element list', () => {
+    const doc = v1Doc({ bonusWinnerId: 'host' }) as SaveDoc
+    doc.schemaVersion = 14
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
+    expect(migrated.state.bonusWinnerIds).toEqual(['host'])
+  })
+
+  it('leaves an unawarded contest empty', () => {
+    const doc = v1Doc()
+    doc.schemaVersion = 14
+    expect(normalizeSaveDoc(doc)!.state.bonusWinnerIds).toEqual([])
   })
 })
 

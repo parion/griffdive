@@ -73,6 +73,7 @@ IDs are stable and append-only; do not renumber.
 | N41 | Rate limits trust spoofable `X-Forwarded-For` | Infra/Security | S | Todo | new |
 | N42 | Session-abuse bounds: per-IP caps, fast lobby reaping, save TTL | Infra/Security | M | Todo | new |
 | N43 | Starting variants: three difficulties + SEAF/Penance modes | Rules | L | Done | new |
+| N44 | Squad honors allow ties (multiple winners) | Rules/UX | S | Done | new |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -605,6 +606,17 @@ rides `teamRiskOf` as a run-long team term, so every Valor preview/roll/meter pi
 `ENGINE_VERSION` 20 → 21; `SAVE_SCHEMA_VERSION` 11 → 12 (`migrateV11toV12` remaps the legacy ids —
 Quickplay → suicide + `seaf`). Covered by `progression.spec.ts`, the START_DIVE mode test, and the
 v11→v12 migration tests.
+
+**N44 · Squad honors allow ties. Done.** HD2's stats screen ties often (two divers land the same
+kills, the same accuracy), so the single-winner `AWARD_BONUS{playerId}` became
+`AWARD_BONUS{playerIds}`: the host multi-selects every tied diver and holds once to bank them all.
+`DiveState.bonusWinnerId` widened to `bonusWinnerIds: string[]` (each named diver banks a token,
+capped at `REWARD_TOKEN_CAP`; duplicates collapse and an unknown id voids the award), and the solo
+auto-resolve now writes a one-element list. `BonusCeremony.vue`'s winner tags are a multi-select
+(`role="checkbox"`), and the banked line names every honored diver. `ENGINE_VERSION` 23 → 24;
+`SAVE_SCHEMA_VERSION` 14 → 15 (`migrateV14toV15` maps a legacy single id to a one-element list;
+`normalizeRoomState` reads either shape for unversioned rooms). Goldens unchanged; covered by the
+reducer tie/empty-award tests and the v14→v15 migration tests.
 
 ## Accepted / notes
 

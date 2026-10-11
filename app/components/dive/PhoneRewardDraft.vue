@@ -32,7 +32,7 @@ const emit = defineEmits<{
   ban: [optionIds: string[]]
   buy: [itemId: string]
   spinBonus: []
-  awardBonus: [playerId: string]
+  awardBonus: [playerIds: string[]]
   advance: []
 }>()
 
@@ -158,7 +158,7 @@ function tierOf(option: RewardOption): string {
       :advance-label="advanceLabel"
       compact
       @spin="emit('spinBonus')"
-      @award="playerId => emit('awardBonus', playerId)"
+      @award="playerIds => emit('awardBonus', playerIds)"
       @advance="emit('advance')"
       @buy="itemId => emit('buy', itemId)"
     />
