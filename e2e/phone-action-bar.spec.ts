@@ -3,6 +3,10 @@ import { dismissWarbondIntro } from './helpers'
 
 const VIEWPORT = { width: 390, height: 844 }
 
+// Room creation is rate-limited per address and the suite already spends most
+// of the budget, so this spec dives from its own (forwarded) address.
+const fromAddress = (ip: string) => ({ extraHTTPHeaders: { 'x-forwarded-for': ip } })
+
 // The phone dive's bottom bar is one fixed frame: info above, secondary +
 // primary action below, on every screen — never absent, never reshaped.
 async function expectPinnedBar(page: Page, label: string): Promise<void> {
@@ -21,7 +25,7 @@ async function expectPinnedBar(page: Page, label: string): Promise<void> {
 }
 
 test('phone: the action bar is pinned on every screen of a dive', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: VIEWPORT, reducedMotion: 'reduce' })
+  const context = await browser.newContext({ viewport: VIEWPORT, reducedMotion: 'reduce', ...fromAddress('10.20.0.1') })
   const page = await context.newPage()
 
   await page.goto('/')
@@ -68,7 +72,7 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
 })
 
 test('phone: a failed mission lands on the pinned surrender bar', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: VIEWPORT, reducedMotion: 'reduce' })
+  const context = await browser.newContext({ viewport: VIEWPORT, reducedMotion: 'reduce', ...fromAddress('10.20.0.2') })
   const page = await context.newPage()
 
   await page.goto('/')
