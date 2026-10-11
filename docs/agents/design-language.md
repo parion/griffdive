@@ -150,6 +150,6 @@ engine.
   `Pact · if sworn` rule chips and preview-banned floor pips — while the count drops live, and the
   preview clears the moment the hand is locked (sworn bounds show solid, never ghosted). Preview
   ids already sworn are deduped.
-- **Foundations kit**: a hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`) specimens
+- **Foundations kit**: a hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`; includes a replayable Liberty's Cross specimen) specimens
   the tokens/atoms so contributors can sanity-check the language. It is dev reference, not a
   product surface.
