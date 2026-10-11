@@ -46,7 +46,7 @@ const ACTING_STATUS: Partial<Record<DiveState['phase'], string>> = {
   strain: 'deciding',
   deal: 'dealing',
   pacts: 'choosing pacts',
-  forfeit: 'picking forfeit',
+  forfeit: 'surrendering',
 }
 
 function isActing(diverId: string): boolean {

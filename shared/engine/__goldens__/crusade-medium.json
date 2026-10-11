@@ -61,7 +61,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "onetrueflag"
+      "forfeitedItemId": "p72crisper"
     },
     {
       "mission": 4,
@@ -89,7 +89,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "inflammable",
+      "optionId": "acclimated",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -136,7 +136,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "defoliationtool"
+      "forfeitedItemId": "p33missilepistol"
     },
     {
       "mission": 9,
@@ -164,7 +164,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "las7dagger",
+      "optionId": "p35reeducator",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -179,7 +179,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "surpluseatallocation",
+      "optionId": "samplescanner",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -211,7 +211,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "orbitalemsstrike"
+      "forfeitedItemId": "eat17expendableantitank"
     },
     {
       "mission": 14,
@@ -254,7 +254,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "sh20shieldgeneratorpack",
+      "optionId": "guarddogarc",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -269,7 +269,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 5,
-      "optionId": "machinegunsentry",
+      "optionId": "orbitalwalkingbarrage",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -286,7 +286,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "orbitalsmokestrike"
+      "forfeitedItemId": "sta52assaultrifle"
     },
     {
       "mission": 19,
@@ -299,7 +299,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "acclimated",
+      "optionId": "integratedextinguishers",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -363,7 +363,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "eaglesmokestrike"
+      "forfeitedItemId": "guarddogarc"
     },
     {
       "mission": 24,
@@ -423,7 +423,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 5,
-      "optionId": "truegrit",
+      "optionId": "speargun",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -440,7 +440,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "emsmortarsentry"
+      "forfeitedItemId": "r36eruptor"
     },
     {
       "mission": 29,
@@ -453,7 +453,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "apw1antimaterielrifle",
+      "optionId": "eat17expendableantitank",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -468,7 +468,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "fastreconvehicle",
+      "optionId": "portablehellbomb",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -520,7 +520,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "shieldgeneratorrelay"
+      "forfeitedItemId": "sg8ppunisherplasma"
     },
     {
       "mission": 34,
@@ -563,7 +563,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "gr8recoillessrifle",
+      "optionId": "las99quasarcannon",
       "choiceItemId": null,
       "forfeitedItemId": null
     }
@@ -613,16 +613,17 @@
     "personalInventory": [
       "acclimated",
       "aflam40flamesentry",
-      "apw1antimaterielrifle",
       "cqc19stunlance",
       "cqc2saber",
       "cqc30stunbaton",
       "cqc42machete",
       "cqc73entrenchmenttool",
+      "defoliationtool",
+      "eaglesmokestrike",
       "eat17expendableantitank",
+      "emsmortarsentry",
       "epoch",
       "extrapadding",
-      "fastreconvehicle",
       "g12highexplosivegrenade",
       "g16impactgrenade",
       "g3smokegrenade",
@@ -630,28 +631,27 @@
       "g89smokescreen",
       "gasmortarsentry",
       "gp31grenadepistol",
-      "gr8recoillessrifle",
-      "inflammable",
+      "integratedextinguishers",
       "k2throwingknife",
       "las16sickle",
-      "las7dagger",
+      "las99quasarcannon",
       "lift850jumppack",
       "m90a",
-      "machinegunsentry",
       "medkit",
+      "onetrueflag",
       "orbital380mmhebarrage",
+      "orbitalemsstrike",
+      "orbitalsmokestrike",
+      "orbitalwalkingbarrage",
       "p2peacemaker",
-      "p33missilepistol",
-      "p72crisper",
+      "p35reeducator",
+      "portablehellbomb",
       "r2124constitution",
-      "r36eruptor",
       "rocksolid",
       "sampleextricator",
-      "sg8ppunisherplasma",
-      "sh20shieldgeneratorpack",
-      "sta52assaultrifle",
-      "surpluseatallocation",
-      "truegrit"
+      "samplescanner",
+      "shieldgeneratorrelay",
+      "speargun"
     ],
     "seedHistory": [
       0,

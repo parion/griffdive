@@ -241,4 +241,21 @@ describe('forkCrusade (personal session saves)', () => {
     expect(forked.legacyCaches.ghost).toEqual([])
     expect(forked.legacyCaches.p2).toEqual([item])
   })
+
+  it('applies a forked host\'s chosen forfeit when no other diver is left to wait on', () => {
+    let state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    state = joinDiver(state, 'p2', 'Two')!
+    const [item, other] = startingItemIds('medium')
+    state = {
+      ...state,
+      phase: 'forfeit',
+      frontId: 'terminids',
+      divers: state.divers.map(diver => diver.id === 'p1' ? { ...diver, forfeitedItemId: item! } : diver),
+      personalInventories: { p1: [item!, other!], p2: [item!] },
+    }
+    const forked = forkCrusade(state, 'p1')!
+    expect(forked.phase).toBe('spin')
+    expect(forked.personalInventories.p1).toEqual([other])
+    expect(forked.divers[0]!.forfeitedItemId).toBeNull()
+  })
 })

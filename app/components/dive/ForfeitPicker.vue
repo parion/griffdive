@@ -1,210 +1,94 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
-import { sortKitItems } from '~~/shared/data/ordering'
 import type { Item } from '~~/shared/data/types'
-import type { DiveState, ItemRef } from '~~/shared/engine/types'
 
+// One diver's forfeit offer: the handful of their own items the engine dealt
+// them after a failed mission. They choose the one they lose.
 const props = withDefaults(defineProps<{
-  state: DiveState
-  canControl?: boolean
+  items: Item[]
+  label: string
+  disabled?: boolean
   confirmed?: boolean
-}>(), { canControl: true, confirmed: false })
+}>(), { disabled: false, confirmed: false })
 
-const selected = defineModel<ItemRef | null>({ default: null })
+const selected = defineModel<string | null>({ default: null })
 
-interface Tile {
-  item: Item
-  image?: string
-}
+const tiles = computed(() => props.items.map(item => ({ item, image: itemImageUrl(item) })))
 
-interface Kit {
-  diverId: string
-  name: string
-  initial: string
-  isHost: boolean
-  items: Tile[]
-}
-
-// The squad's kits, one column per diver. The picker renders personal
-// inventories only — the same source `FORFEIT_ITEM` validates against.
-const kits = computed<Kit[]>(() => props.state.divers.map((diver) => {
-  const items = sortKitItems(
-    (props.state.personalInventories[diver.id] ?? [])
-      .map(id => ITEMS_BY_ID.get(id))
-      .filter((item): item is Item => item !== undefined),
-  )
-  return {
-    diverId: diver.id,
-    name: diver.name,
-    initial: diver.name.trim().slice(0, 1).toUpperCase(),
-    isHost: diver.isHost,
-    items: items.map(item => ({ item, image: itemImageUrl(item) })),
-  }
-}))
-
-function isSelected(diverId: string, itemId: string): boolean {
-  return selected.value?.ownerId === diverId && selected.value?.itemId === itemId
-}
-
-function choose(diverId: string, itemId: string): void {
-  if (!props.canControl) {
+function choose(itemId: string): void {
+  if (props.disabled) {
     return
   }
-  selected.value = isSelected(diverId, itemId) ? null : { ownerId: diverId, itemId }
+  selected.value = selected.value === itemId ? null : itemId
 }
 
-// The Confiscated stamp only lands on the surrendered tile once the host has
+// The Confiscated stamp only lands on the surrendered tile once the diver has
 // held to confirm — before that the tile is a plain selection.
-function gone(diverId: string, itemId: string): boolean {
-  return props.confirmed && isSelected(diverId, itemId)
+function gone(itemId: string): boolean {
+  return props.confirmed && selected.value === itemId
 }
 </script>
 
 <template>
   <div
     role="radiogroup"
-    aria-labelledby="surrender-h"
-    class="sur-grid"
+    :aria-label="label"
+    class="sur-tiles"
   >
-    <div
-      v-for="kit in kits"
-      :key="kit.diverId"
-      role="group"
-      :aria-label="kit.name"
-      class="sur-col"
+    <button
+      v-for="tile in tiles"
+      :key="tile.item.id"
+      type="button"
+      role="radio"
+      class="sur-tile"
+      :class="{ on: selected === tile.item.id, stamped: gone(tile.item.id) }"
+      :disabled="disabled"
+      :aria-checked="selected === tile.item.id"
+      :aria-label="`${tile.item.displayName}, tier ${tile.item.tier}`"
+      @click="choose(tile.item.id)"
     >
-      <div class="sur-head">
-        <span
-          class="sur-av cut-sm disp"
-          :class="{ host: kit.isHost }"
-          aria-hidden="true"
-        >{{ kit.initial }}</span>
-        <span class="sur-name">{{ kit.name }}</span>
-        <svg
-          v-if="kit.isHost"
-          class="sur-crown"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          role="img"
-          aria-label="Host"
-        ><path d="M3 18h18v2H3zM4 16l2-9 4 4 2-6 2 6 4-4 2 9z" /></svg>
-        <span class="sur-count">{{ selected?.ownerId === kit.diverId ? '1 / 1' : '0 / 1' }}</span>
-      </div>
-
-      <div class="sur-tiles">
-        <button
-          v-for="tile in kit.items"
-          :key="tile.item.id"
-          type="button"
-          role="radio"
-          class="sur-tile"
-          :class="{ on: isSelected(kit.diverId, tile.item.id), stamped: gone(kit.diverId, tile.item.id) }"
-          :disabled="!canControl"
-          :aria-checked="isSelected(kit.diverId, tile.item.id)"
-          :aria-label="`${tile.item.displayName}, tier ${tile.item.tier}, ${kit.name}`"
-          @click="choose(kit.diverId, tile.item.id)"
+      <span class="sur-media">
+        <img
+          v-if="tile.image"
+          :src="tile.image"
+          alt=""
+          loading="lazy"
+          draggable="false"
         >
-          <span class="sur-media">
-            <img
-              v-if="tile.image"
-              :src="tile.image"
-              alt=""
-              loading="lazy"
-              draggable="false"
-            >
-            <svg
-              v-else
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.6"
-              aria-hidden="true"
-            >
-              <rect
-                x="4"
-                y="4"
-                width="16"
-                height="16"
-                stroke-dasharray="3 3"
-              />
-              <path d="M9 12h6" />
-            </svg>
-          </span>
-          <span class="sur-item-name">{{ tile.item.displayName }}</span>
-          <span
-            class="tier-badge sm"
-            :data-tier="tile.item.tier"
-          >{{ tile.item.tier.toUpperCase() }}</span>
-          <span
-            v-if="gone(kit.diverId, tile.item.id)"
-            class="sur-stamp disp"
-          >Confiscated</span>
-        </button>
-      </div>
-    </div>
+        <svg
+          v-else
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          aria-hidden="true"
+        >
+          <rect
+            x="4"
+            y="4"
+            width="16"
+            height="16"
+            stroke-dasharray="3 3"
+          />
+          <path d="M9 12h6" />
+        </svg>
+      </span>
+      <span class="sur-item-name">{{ tile.item.displayName }}</span>
+      <span
+        class="tier-badge sm"
+        :data-tier="tile.item.tier"
+      >{{ tile.item.tier.toUpperCase() }}</span>
+      <span
+        v-if="gone(tile.item.id)"
+        class="sur-stamp disp"
+      >Confiscated</span>
+    </button>
   </div>
 </template>
 
 <style scoped>
-.sur-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
-  gap: var(--gap-grid);
-}
-
-.sur-col {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-  min-width: 0;
-}
-
-.sur-head {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  min-height: 34px;
-  padding-bottom: var(--sp-2);
-  border-bottom: 1px solid var(--line-2);
-}
-.sur-av {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  flex-shrink: 0;
-  background: var(--line-2);
-  color: var(--text);
-  font-size: 12px;
-}
-.sur-av.host { background: var(--gold); color: var(--on-gold); }
-.sur-name {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.sur-crown {
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
-  color: var(--gold);
-}
-.sur-count {
-  margin-left: auto;
-  font-size: var(--fs-cap);
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
 .sur-tiles {
   display: grid;
   gap: 5px var(--sp-2);

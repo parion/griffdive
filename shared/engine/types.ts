@@ -40,6 +40,11 @@ export interface DiverState {
   // each costs a reward option. Reset with the pacts every mission.
   failedPactIds: string[]
   pickedOptionId: string | null
+  // The item this diver chose to lose from their forfeit offer after a failed
+  // mission. Held until every diver owing one has chosen, then all are removed
+  // together so the offers never reshuffle mid-choice. Absent (older saves)
+  // reads as null. Reset with the pacts every mission.
+  forfeitedItemId?: string | null
   warbondCodes: string[]
   // Field Promotion bookkeeping for mid-crusade joiners: what they were
   // granted at seating and what is still unclaimed (0 when joined at the
@@ -107,11 +112,6 @@ export interface MajorOrderSelection {
   title?: string
   planets?: MajorOrderPlanet[]
   expiresAt?: string
-}
-
-export interface ItemRef {
-  ownerId: string
-  itemId: string
 }
 
 export type MissionOutcome = 'success' | 'failure'
@@ -196,7 +196,7 @@ export type EngineAction
     | { type: 'FAIL_MISFORTUNE' }
     | { type: 'SET_WARBONDS', playerId: string, warbondCodes: string[] }
     | { type: 'REPORT_RESULT', outcome: MissionOutcome, stars: number, timePct?: number, samples?: SampleCounts }
-    | { type: 'FORFEIT_ITEM', itemRef: ItemRef }
+    | { type: 'FORFEIT_ITEM', playerId: string, itemId: string }
     | { type: 'PICK_REWARD', playerId: string, optionId: string, choiceItemId?: string }
     | { type: 'BUY_ITEM', playerId: string, itemId: string }
     | { type: 'CLAIM_CATCHUP_OPTION', playerId: string, optionId: string }

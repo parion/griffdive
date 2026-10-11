@@ -422,8 +422,8 @@ function submit(): void {
       class="report-failure"
     >
       <p class="failure-note">
-        No stars · the operation repeats at this difficulty, and the squad
-        forfeits one item.
+        No stars · the operation repeats at this difficulty, and every diver
+        forfeits one item from their own kit.
       </p>
       <div class="row report-actions">
         <button

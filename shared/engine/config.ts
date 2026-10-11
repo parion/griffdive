@@ -305,6 +305,12 @@ export const SAMPLE_PRICE_TYPE_DEFAULT = 1
 // difficulty can award (3–5). Stream salt 5 off the per-diver offer seed.
 export const SAMPLE_SHOP_STREAM = 5
 
+// A failed mission's forfeit offer: a seeded handful of the diver's own items
+// (one per star the difficulty can award) to choose the one they lose, capped
+// at the same Valor ceiling as a reward draft. Stream salt 6 off the per-diver
+// offer seed.
+export const FORFEIT_STREAM = 6
+
 // wiki.gg/Sample "availability by difficulty": the most of each rarity a map
 // can hold at a difficulty (ranges capped at their upper bound). Drives the
 // report form's slider maxima, and is why sample Valor scales with altitude —

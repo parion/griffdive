@@ -235,7 +235,7 @@ test('a manual faction pick pins the front without a Major Order tag', async ({ 
   await expect(frontCard.getByText(/Major Order/)).toHaveCount(0)
 })
 
-test('a failed mission labels the operation failed and restarts it', async ({ page }) => {
+test('a failed mission labels the operation failed and removes an earned item', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
   await page.getByRole('button', { name: 'Solo drop' }).click()
@@ -248,21 +248,34 @@ test('a failed mission labels the operation failed and restarts it', async ({ pa
   await page.locator('.pact:not([disabled])').first().click()
   await page.getByRole('button', { name: 'Lock in & dive' }).click()
 
+  // Failure only takes earned gear, so clear mission 1 and bank a reward first.
+  await page.getByRole('button', { name: 'Mission complete' }).click()
+  await page.getByRole('button', { name: 'File report' }).click()
+  await page.locator('.pod-card .pod-hit').first().click()
+  await page.getByRole('button', { name: 'Squad Honors' }).click()
+  await page.getByRole('button', { name: 'Spin the honors stat' }).click()
+  await page.getByRole('button', { name: /Next mission/ }).click()
+
+  await page.getByRole('button', { name: 'Spin', exact: true }).click()
+  await page.locator('.misfortune').getByRole('button', { name: 'Opt out' }).click()
+  await page.getByRole('button', { name: 'Deal the pacts' }).click()
+  await page.locator('.pact:not([disabled])').first().click()
+  await page.getByRole('button', { name: 'Lock in & dive' }).click()
   await page.getByRole('button', { name: 'Mission failed' }).click()
   await page.getByRole('button', { name: 'File failure' }).click()
 
   // The header track reads the failed mission, not a stale live index.
   await expect(page.getByRole('img', { name: /Operation failed/i })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Mission failed' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Choose an item to remove' })).toBeVisible()
 
-  // Surrender is a two-step ceremony: pick one item, hold to confirm, then
-  // respin the wheel — the forfeit restarts the operation at mission 1.
+  // Pick one item from the dealt offer, then hold to confirm — once every diver
+  // has chosen the forfeit restarts the operation at mission 1.
   await page.locator('.sur-tile:not([disabled])').first().click()
-  const surrender = page.getByRole('button', { name: /Surrender the selected item/ })
-  await surrender.hover()
+  const remove = page.getByRole('button', { name: /Remove the selected item/ })
+  await remove.hover()
   await page.mouse.down()
   await page.waitForTimeout(900)
   await page.mouse.up()
-  await page.getByRole('button', { name: 'Respin the wheel' }).click()
   await expect(page.getByRole('img', { name: /operation mission 1 of 2/i })).toBeVisible()
 })
