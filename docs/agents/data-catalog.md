@@ -15,6 +15,11 @@
   **Ironclad Democracy** (`warbond27`). A catalog refresh that grows a reward or catch-up pool is
   expected to move the seeded golden replay — regenerate goldens (`GRIFFDIVE_UPDATE_GOLDENS=1 pnpm
   test`) instead of treating it as an engine regression.
+  The importer regenerates raw JSON, so the committed `shared/data/*.ts` are the output of
+  `node scripts/import-catalog.mjs` **followed by `eslint --fix`** (quote/format normalisation).
+  Local corrections to a game-truth field (e.g. a wrong `antitank` flag) go in the importer's
+  `ITEM_OVERRIDES`, keyed by item id, so a refresh re-applies them instead of reverting the
+  generated data — never hand-edit `shared/data/equipment.ts`.
   Stratagem SVGs from [Nvigneux/Helldivers-2-Stratagems-icons-svg](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg);
   equipment images from [helldivers.wiki.gg](https://helldivers.wiki.gg/wiki/Helldivers_2). Asset
   licensing: respect upstream terms; hot-link or bundle only what the licenses allow.
