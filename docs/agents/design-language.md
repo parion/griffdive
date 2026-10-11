@@ -83,7 +83,9 @@ engine.
   released and the track docks into the corner over `CEILING_DOCK` while the stage fades; only then
   does the cabinet mount and the pods drop (timings in `app/utils/motion.ts`). Tapping the stage
   skips ahead. Per-step odds sit over each link. Reduced motion and resolved drafts skip the intro
-  and land instantly; a reroll replays the whole sequence. Pods give ground in a short cabinet by
+  and land instantly; a reroll replays the whole sequence. The phone has no centre stage: its
+  rows stay hidden while the track climbs under the title, then fade in worst-to-best (Liberty's
+  Cross last, `POD_STAGGER` apart) once it lands; the squad board follows them. Pods give ground in a short cabinet by
   shrinking the art stage, never the name or the Claim footer. **Drafts are social:** once the diver's own pods land,
   `SquadDraftBoard` shows each squadmate's offer as small tier-edged tiles with their ceiling and
   status — the banked tile pops and glows, the rest fade, bans are crossed out — and it stays up
