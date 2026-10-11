@@ -566,7 +566,7 @@ const checks = computed<CheckView[]>(() => [
             :class="{ docked: phone }"
           >
             <div class="sum">
-              <span class="lbl">Launch as</span>
+              <span class="lbl">Preparing to launch</span>
               <span class="disp sum-name">{{ selected.name }}</span>
             </div>
             <div class="sum-box">

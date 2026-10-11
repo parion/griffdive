@@ -31,14 +31,13 @@ const SOURCE_COLOR: Readonly<Record<Source, string>> = {
 const cells = computed<{ key: number, source: Source, amount: number }[]>(() => {
   const teamEnd = props.teamRisk
   const pactEnd = props.teamRisk + props.pactRisk
-  const bottomUp = Array.from({ length: scale }, (_, index) => {
+  return Array.from({ length: scale }, (_, index) => {
     const amount = Math.min(1, Math.max(0, valor.value - index))
     const source: Source = amount <= 0
       ? 'empty'
       : index < teamEnd ? 'team' : index < pactEnd ? 'pact' : 'empty'
     return { key: index, source, amount }
   })
-  return bottomUp.reverse()
 })
 
 // The chips carry the earned base rung plus every previewed step to the ceiling.
@@ -111,6 +110,7 @@ function format(value: number): string {
         :key="c.tier"
         class="chip"
         :class="{ base: c.base, top: c.top }"
+        :style="{ '--tier-color': `var(--tier-${c.tier === 'S+' ? 'splus' : c.tier.toLowerCase()})`, '--odds': c.pct }"
         role="listitem"
         :aria-label="`${c.tier}${c.base ? ', base tier' : ''}: ${c.pct} percent`"
       >
@@ -174,7 +174,8 @@ function format(value: number): string {
   height: 24px;
   padding: 0 6px;
   border: 1px solid var(--line-2);
-  background: var(--ground);
+  /* The tier tint's strength is the odds of reaching it, kept subtle. */
+  background: color-mix(in srgb, var(--tier-color) calc(var(--odds) * 0.28%), var(--ground));
 }
 .chip b {
   display: inline-grid;
