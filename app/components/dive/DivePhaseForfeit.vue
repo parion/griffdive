@@ -5,7 +5,12 @@ import { difficultyName } from '~~/shared/engine/progression'
 import { currentFront, currentStrain } from '~~/shared/engine/selectors'
 import type { DiveState, ItemRef } from '~~/shared/engine/types'
 
-const props = defineProps<{ state: DiveState, canControl: boolean }>()
+const props = defineProps<{
+  state: DiveState
+  canControl: boolean
+  // Phone shell: the surrender call lives in the pinned action bar.
+  phone?: boolean
+}>()
 
 const emit = defineEmits<{ forfeit: [itemRef: ItemRef] }>()
 
@@ -281,6 +286,7 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
     />
 
     <section
+      v-if="!phone"
       class="ff-bar ticks ticks-red"
       aria-label="Surrender"
       aria-live="polite"
@@ -352,6 +358,66 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
         </button>
       </div>
     </section>
+
+    <PhoneActionBar v-else>
+      <template #detail>
+        <div
+          class="bar-status"
+          role="status"
+          aria-live="polite"
+        >
+          <span class="lbl ff-bar-lbl">
+            {{ confirmed ? 'Forfeited' : canControl ? 'Awaiting your call' : 'Host is choosing' }}
+          </span>
+          <span class="disp bar-status-t">
+            {{ confirmed ? 'One item surrendered' : selected ? 'Ready to surrender' : 'Select one item' }}
+          </span>
+        </div>
+      </template>
+
+      <template #primary>
+        <button
+          v-if="confirmed"
+          class="bar-cta cta-sweep"
+          type="button"
+          @click="surrender"
+        >
+          <span class="disp">Respin the wheel</span>
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            aria-hidden="true"
+          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </button>
+        <HoldButton
+          v-else-if="canControl"
+          class="cut cta-sweep"
+          label="Surrender"
+          hint="hold to confirm · host"
+          tone="red"
+          :duration="HOLD_MS"
+          :disabled="!canSurrender"
+          aria-label="Surrender the selected item. Press and hold."
+          @confirm="confirmed = true"
+        />
+        <div
+          v-else
+          class="bar-gate"
+          role="status"
+        >
+          <span
+            class="hazard-red bar-gate-edge"
+            aria-hidden="true"
+          />
+          <span class="disp bar-gate-word">Surrender</span>
+          <span class="bar-gate-meta">Waiting for the host</span>
+        </div>
+      </template>
+    </PhoneActionBar>
   </section>
 </template>
 
@@ -629,6 +695,8 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
 .ff-bar-hz { width: 10px; height: 40px; flex-shrink: 0; }
 .ff-bar-copy { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .ff-bar-lbl { font-size: 10px; color: var(--red); }
+.bar-status { display: flex; flex-direction: column; gap: 5px; }
+.bar-status-t { font-size: 1.1rem; color: var(--text); }
 .ff-bar-t { font-size: 1.3rem; color: var(--text); white-space: nowrap; }
 .ff-bar-grow { flex-grow: 1; }
 

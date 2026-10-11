@@ -39,8 +39,9 @@ app/
                    DivePhone + DivePhoneShell/PhoneTopBar/PhoneCrusadeBar/PhoneSquadBar/
                    PhoneWheel/PhonePacts/PhoneValor/PhoneReport/PhoneDiving/
                    PhoneRewardDraft/PhoneActionBar — the fixed phone shell, its per-phase
-                   layouts and the pinned bottom action bar (Valor detail + the phase's
-                   forward action),
+                   layouts and the pinned bottom action bar (the frame lives in
+                   DivePhoneShell; every phase fills its info / secondary / primary zones
+                   through PhoneActionBar's deferred Teleports),
                    WheelPanel, MajorOrderPicker — the pre-spin MO chooser, rendered in
                    the faction card's pre-roll slot,
                    MajorOrderCard — the in-game-style MO panel (emblem, countdown,

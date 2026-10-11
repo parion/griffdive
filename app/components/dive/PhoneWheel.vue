@@ -419,7 +419,7 @@ function acceptDisabled(): boolean {
       </div>
     </div>
 
-    <PhoneActionBar aria-label="Valor and next step">
+    <PhoneActionBar>
       <template #detail>
         <PhoneValor
           :difficulty="state.difficulty"
@@ -428,13 +428,13 @@ function acceptDisabled(): boolean {
           :pending-text="decision.decided && (!strainVisible || strainCall.decided) ? 'Dealing pacts' : pendingText"
         />
       </template>
-      <template #action>
+      <template #primary>
         <!-- Before the draw the pinned CTA is the spin itself: a dead "Deal the
              pacts" here was the biggest control on screen while the only live
              action hid in the wheel hub. -->
         <button
           v-if="!state.wheel && canControl"
-          class="deal-btn cta-sweep"
+          class="bar-cta cta-sweep"
           type="button"
           @click="emit('spin')"
         >
@@ -451,7 +451,7 @@ function acceptDisabled(): boolean {
         </button>
         <button
           v-else-if="dealReady && canControl"
-          class="deal-btn cta-sweep"
+          class="bar-cta cta-sweep"
           type="button"
           @click="emit('deal')"
         >
@@ -468,15 +468,15 @@ function acceptDisabled(): boolean {
         </button>
         <div
           v-else
-          class="gate"
+          class="bar-gate"
           role="status"
         >
           <span
-            class="hazard-soft gate-edge"
+            class="hazard-soft bar-gate-edge"
             aria-hidden="true"
           />
-          <span class="disp gate-word">{{ state.wheel ? 'Deal the pacts' : 'Spin the wheel' }}</span>
-          <span class="gate-meta">{{ dealReady || !state.wheel ? 'Waiting for the host' : gateText }}</span>
+          <span class="disp bar-gate-word">{{ state.wheel ? 'Deal the pacts' : 'Spin the wheel' }}</span>
+          <span class="bar-gate-meta">{{ dealReady || !state.wheel ? 'Waiting for the host' : gateText }}</span>
         </div>
       </template>
     </PhoneActionBar>
@@ -727,50 +727,6 @@ function acceptDisabled(): boolean {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted);
-}
-
-.deal-btn {
-  width: 100%;
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 0;
-  background: var(--gold);
-  color: var(--on-gold);
-  cursor: pointer;
-}
-.deal-btn svg { width: 20px; height: 20px; }
-
-/* The not-ready gate: a dashed, disabled mirror of the deal button. */
-.gate {
-  position: relative;
-  width: 100%;
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 14px 0 18px;
-  border: 1px dashed var(--line-4);
-  background: var(--ground);
-  overflow: hidden;
-}
-.gate-edge {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 8px;
-}
-.gate-word { font-size: 15px; color: var(--dim); }
-.gate-meta {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--muted);
-  white-space: nowrap;
 }
 
 @keyframes sweepY {

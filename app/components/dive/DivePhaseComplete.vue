@@ -3,7 +3,12 @@ import { difficultyName } from '~~/shared/engine/progression'
 import type { DiveState } from '~~/shared/engine/types'
 import { slamIn, riseIn } from '~/utils/motion'
 
-const props = defineProps<{ state: DiveState, mode: 'local' | 'room' }>()
+const props = defineProps<{
+  state: DiveState
+  mode: 'local' | 'room'
+  // Phone shell: the exit actions live in the pinned action bar.
+  phone?: boolean
+}>()
 
 const emit = defineEmits<{ abandonSlot: [] }>()
 
@@ -69,7 +74,10 @@ const records = computed(() => [
       </div>
     </dl>
 
-    <div class="row win-actions">
+    <div
+      v-if="!phone"
+      class="row win-actions"
+    >
       <button
         v-if="mode === 'local'"
         class="btn danger"
@@ -85,6 +93,51 @@ const records = computed(() => [
         Back to base
       </NuxtLink>
     </div>
+
+    <PhoneActionBar v-else>
+      <template #detail>
+        <div
+          class="bar-status"
+          role="status"
+        >
+          <span class="lbl">{{ state.achieved ? 'Crusade complete' : 'Dive ended' }}</span>
+          <span class="disp bar-status-t">
+            Difficulty {{ state.difficulty }} · {{ state.missionIndex }} missions flown
+          </span>
+        </div>
+      </template>
+
+      <template
+        v-if="mode === 'local'"
+        #secondary
+      >
+        <button
+          class="bar-alt red"
+          type="button"
+          @click="emit('abandonSlot')"
+        >
+          Delete save
+        </button>
+      </template>
+
+      <template #primary>
+        <NuxtLink
+          class="bar-cta cta-sweep"
+          to="/"
+        >
+          <span class="disp">Back to base</span>
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            aria-hidden="true"
+          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </NuxtLink>
+      </template>
+    </PhoneActionBar>
   </section>
 </template>
 
@@ -154,4 +207,6 @@ const records = computed(() => [
 .rec-u { color: var(--dim); }
 
 .win-actions { position: relative; justify-content: center; }
+.bar-status { display: flex; flex-direction: column; gap: 5px; text-align: left; }
+.bar-status-t { font-size: 1.1rem; color: var(--gold); }
 </style>

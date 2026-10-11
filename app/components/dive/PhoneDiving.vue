@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MAJOR_ORDER_RISK, STRAIN_RISK, conditionRiskAt, directiveValorAt, maxStarsFor } from '~~/shared/engine/config'
-import { activeMisfortune, activeStrain, currentFront, teamRiskOf } from '~~/shared/engine/selectors'
+import { activeMisfortune, activeStrain, currentFront, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
 import { factionImageUrl } from '~~/shared/data/images'
 import type { DiverState, DiveState, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
 
@@ -23,6 +23,8 @@ const front = computed(() => currentFront(props.state))
 const frontImage = computed(() => (front.value ? factionImageUrl(front.value.id) : undefined))
 const strain = computed(() => activeStrain(props.state))
 const teamRisk = computed(() => teamRiskOf(props.state))
+const pactRisk = computed(() =>
+  props.self ? pactRiskOf(props.self, props.state.difficulty) : 0)
 
 const misfortuneRisk = computed(() =>
   props.state.misfortuneAccepted
@@ -183,65 +185,95 @@ function submit(): void {
         @fail="(playerId, pactId) => emit('fail', playerId, pactId)"
       />
 
-      <template v-if="canControl && mode === 'none'">
-        <div class="outcome ticks">
-          <span class="lbl">Outcome · host calls it</span>
-          <div class="outcome-buttons">
-            <button
-              class="btn primary cut outcome-btn cta-sweep"
-              type="button"
-              @click="open('success')"
-            >
-              <span class="disp">Mission complete</span>
-              <span class="sub">file the report</span>
-            </button>
-            <button
-              class="btn danger cut outcome-btn"
-              type="button"
-              @click="open('failure')"
-            >
-              <span class="disp">Mission failed</span>
-              <span class="sub">forfeit 1 · retry op</span>
-            </button>
-          </div>
-        </div>
-      </template>
-      <p
-        v-else-if="!canControl"
-        class="waiting"
-      >
-        Waiting for the host to report the mission result.
-      </p>
-
       <div
         v-if="mode === 'failure'"
         class="failure"
       >
         <span class="disp failure-title">Mission failed</span>
         <span class="failure-sub">No stars · the operation repeats · forfeit one item</span>
-        <div class="failure-actions">
-          <button
-            class="btn danger cut confirm"
-            type="button"
-            @click="submit"
-          >
-            <span class="disp">Confirm failure</span>
-          </button>
-          <button
-            class="ghost cancel"
-            type="button"
-            @click="mode = 'none'"
-          >
-            Cancel
-          </button>
-        </div>
       </div>
     </div>
+
+    <PhoneActionBar>
+      <template #detail>
+        <PhoneValor
+          :difficulty="state.difficulty"
+          :team-risk="teamRisk"
+          :pact-risk="pactRisk"
+          locked
+        />
+      </template>
+
+      <template
+        v-if="canControl && mode === 'failure'"
+        #secondary
+      >
+        <button
+          class="bar-alt"
+          type="button"
+          @click="mode = 'none'"
+        >
+          Cancel
+        </button>
+      </template>
+      <template
+        v-else-if="canControl"
+        #secondary
+      >
+        <button
+          class="bar-alt red"
+          type="button"
+          @click="open('failure')"
+        >
+          Mission failed
+        </button>
+      </template>
+
+      <template #primary>
+        <button
+          v-if="canControl && mode === 'failure'"
+          class="bar-cta red"
+          type="button"
+          @click="submit"
+        >
+          <span class="disp">Confirm failure</span>
+        </button>
+        <button
+          v-else-if="canControl"
+          class="bar-cta cta-sweep"
+          type="button"
+          @click="open('success')"
+        >
+          <span class="disp">Mission complete</span>
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            aria-hidden="true"
+          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </button>
+        <div
+          v-else
+          class="bar-gate"
+          role="status"
+        >
+          <span
+            class="hazard-soft bar-gate-edge"
+            aria-hidden="true"
+          />
+          <span class="disp bar-gate-word">Mission report</span>
+          <span class="bar-gate-meta">Waiting for the host</span>
+        </div>
+      </template>
+    </PhoneActionBar>
   </div>
 </template>
 
 <style scoped>
-.phone-diving { display: flex; flex-direction: column; min-height: 100%; }
+.phone-diving { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .scroll {
   flex: 1 1 auto;
   min-height: 0;
@@ -332,38 +364,6 @@ function submit(): void {
 }
 .directive-fail .lbl { color: var(--muted); }
 
-.outcome {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  padding: 12px;
-  border: 1px solid var(--line-3);
-  background-color: var(--panel);
-}
-.outcome-buttons { display: flex; flex-direction: column; gap: 8px; }
-.outcome-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  min-height: 58px;
-  padding: 8px 16px;
-  text-align: left;
-}
-.outcome-btn .disp { font-size: 17px; }
-.outcome-btn .sub { font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.8; }
-
-.waiting {
-  margin: 0;
-  padding: 16px 12px;
-  text-align: center;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
 .failure {
   display: flex;
   flex-direction: column;
@@ -374,7 +374,4 @@ function submit(): void {
 }
 .failure-title { font-size: 22px; color: var(--red); }
 .failure-sub { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--khaki); }
-.failure-actions { display: flex; gap: 8px; margin-top: 4px; }
-.confirm { flex: 1 1 auto; height: 54px; }
-.cancel { width: 96px; height: 54px; flex-shrink: 0; color: var(--khaki); }
 </style>

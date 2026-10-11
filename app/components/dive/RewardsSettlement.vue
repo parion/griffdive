@@ -87,6 +87,7 @@ const reason = computed(() =>
           {{ reason }}
         </p>
         <button
+          v-if="!compact"
           class="btn primary cut off-advance cta-sweep"
           type="button"
           :disabled="!canControl"
@@ -105,6 +106,44 @@ const reason = computed(() =>
         </button>
       </section>
     </template>
+
+    <PhoneActionBar v-if="compact">
+      <template #detail>
+        <div
+          class="purse"
+          role="status"
+        >
+          <span class="lbl teal">Sample bank</span>
+          <span class="disp purse-n">{{ sampleBank }}</span>
+        </div>
+      </template>
+
+      <template
+        v-if="!bonusUp"
+        #primary
+      >
+        <button
+          v-if="canControl"
+          class="bar-cta cta-sweep"
+          type="button"
+          @click="emit('advance')"
+        >
+          <span class="disp">{{ advanceLabel }}</span>
+        </button>
+        <div
+          v-else
+          class="bar-gate"
+          role="status"
+        >
+          <span
+            class="hazard-soft bar-gate-edge"
+            aria-hidden="true"
+          />
+          <span class="disp bar-gate-word">{{ advanceLabel }}</span>
+          <span class="bar-gate-meta">Waiting for the host</span>
+        </div>
+      </template>
+    </PhoneActionBar>
   </div>
 </template>
 
@@ -156,4 +195,8 @@ const reason = computed(() =>
   padding: 0 18px;
 }
 .off-advance:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.purse { display: flex; align-items: baseline; gap: 10px; }
+.purse .lbl { color: var(--teal); }
+.purse-n { font-size: 22px; color: var(--teal); line-height: 1; }
 </style>

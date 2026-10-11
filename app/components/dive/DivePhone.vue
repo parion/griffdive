@@ -137,10 +137,18 @@ function kickDiver(diverId: string): void {
         class="phone-banner kicked"
       >
         You were removed from this dive by the host.
-        <NuxtLink to="/">
-          Back to base
-        </NuxtLink>
       </p>
+
+      <PhoneActionBar v-if="kicked">
+        <template #primary>
+          <NuxtLink
+            class="bar-cta"
+            to="/"
+          >
+            <span class="disp">Back to base</span>
+          </NuxtLink>
+        </template>
+      </PhoneActionBar>
 
       <p
         v-if="lastError"
@@ -170,6 +178,7 @@ function kickDiver(diverId: string): void {
           :state="state"
           :self-id="selfId"
           :can-control="canControl"
+          phone
           @start="emit('start', $event)"
         />
 
@@ -228,6 +237,7 @@ function kickDiver(diverId: string): void {
           v-else-if="phase === 'forfeit'"
           :state="state"
           :can-control="canControl"
+          phone
           @forfeit="emit('forfeit', $event)"
         />
 
@@ -235,6 +245,7 @@ function kickDiver(diverId: string): void {
           v-else-if="phase === 'complete'"
           :state="state"
           :mode="mode"
+          phone
           @abandon-slot="emit('abandonSlot')"
         />
       </template>
@@ -312,7 +323,10 @@ function kickDiver(diverId: string): void {
 .phone-banner.error { border-color: var(--red); color: var(--red); }
 
 .mod-sheet {
-  position: relative;
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   flex-direction: column;
   gap: 12px;
