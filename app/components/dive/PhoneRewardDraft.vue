@@ -112,12 +112,16 @@ const reduced = import.meta.client
   && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 const revealed = ref(false)
 const liveReveal = ref(false)
+// The track's own rest state: the odds only surface once it has stopped moving.
+const trackSettled = ref(false)
 function onClimbed(): void {
   liveReveal.value = !resolved.value && !reduced
   revealed.value = true
+  trackSettled.value = true
 }
 watch(() => props.self?.rewardRerollSeed, () => {
   revealed.value = false
+  trackSettled.value = false
 })
 const TIER_ORDER = ['c', 'b', 'a', 's']
 const revealRanks = computed(() => {
@@ -220,6 +224,7 @@ function tierOf(option: RewardOption): string {
           class="phone-track"
           :instant="resolved"
           :replay-key="self?.rewardRerollSeed ?? 0"
+          :settled="trackSettled"
           @climbed="onClimbed"
         />
 
