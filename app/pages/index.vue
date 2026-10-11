@@ -1243,13 +1243,13 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
         <div class="mo-planet-body">
           <div class="mo-planet-head">
             <span>{{ moPlanet.name }}</span>
-            <span class="mo-pct">{{ moPlanet.liberation }}%</span>
+            <span class="mo-pct">{{ moPlanet.liberation.toFixed(1) }}%</span>
           </div>
           <div
             class="mo-track"
             role="progressbar"
             :aria-label="`${moPlanet.name} liberation`"
-            :aria-valuenow="moPlanet.liberation"
+            :aria-valuenow="Math.round(moPlanet.liberation)"
             aria-valuemin="0"
             aria-valuemax="100"
           >
