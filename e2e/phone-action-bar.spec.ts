@@ -46,7 +46,7 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
 
   // Opting out of both calls keeps the flow deterministic (no stranded rules).
   await page.locator('.phone-wheel .opt-out').first().click()
-  await page.locator('.phone-wheel .opt-out').first().click()
+  await page.locator('.phone-wheel .strain-card .opt-out').click()
   await expectPinnedBar(page, '4-wheel-deal')
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'Deal the pacts' }).click()
 
@@ -83,19 +83,19 @@ test('phone: a failed mission lands on the pinned remove bar', async ({ browser 
   await dismissWarbondIntro(page)
 
   const primary = page.locator('#phone-bar-primary')
-  async function diveToPacts(): Promise<void> {
+  async function diveToPacts(firstMission: boolean): Promise<void> {
     await primary.getByRole('button', { name: 'Spin the wheel' }).click()
     // The strain call only opens on an operation's first mission.
     await page.locator('.phone-wheel .opt-out').first().click()
-    if (await page.locator('.phone-wheel .opt-out').count() > 0) {
-      await page.locator('.phone-wheel .opt-out').first().click()
+    if (firstMission) {
+      await page.locator('.phone-wheel .strain-card .opt-out').click()
     }
     await primary.getByRole('button', { name: 'Deal the pacts' }).click()
     await primary.getByRole('button', { name: /Lock in/ }).click()
   }
 
   await page.getByRole('button', { name: 'Launch crusade' }).click()
-  await diveToPacts()
+  await diveToPacts(true)
 
   // Failure only takes earned gear, so clear mission 1 and bank a reward first.
   await primary.getByRole('button', { name: 'Mission complete' }).click()
@@ -103,7 +103,7 @@ test('phone: a failed mission lands on the pinned remove bar', async ({ browser 
   await page.locator('.phone-rewards .row').first().click()
   await primary.getByRole('button').first().click()
   await primary.getByRole('button', { name: /Next mission/ }).click()
-  await diveToPacts()
+  await diveToPacts(false)
 
   await page.locator('#phone-bar-secondary').getByRole('button', { name: 'Mission failed' }).click()
   await expectPinnedBar(page, '11-diving-confirm-failure')
