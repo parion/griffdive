@@ -424,6 +424,7 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
           :pact-risk="pactRisk"
           :instant="instant || skipped"
           :replay-key="draftGeneration"
+          :settled="intro === 'done'"
           @climbed="onClimbed"
         />
       </div>

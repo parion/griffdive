@@ -83,7 +83,10 @@ engine.
   ceiling's tier colour and an `X Tier` verdict slams in. After `CEILING_HOLD` the transform is
   released and the track docks into the corner over `CEILING_DOCK` while the stage fades; only then
   does the cabinet mount and the pods drop (timings in `app/utils/motion.ts`). Tapping the stage
-  skips ahead. Per-step odds sit over each link. Reduced motion and resolved drafts skip the intro
+  skips ahead. Per-step odds stay hidden over each link; they fade in only once the bar has come to
+  rest and the diver points at it (hover on desktop, a tap on a phone), and a step the odds never
+  reach (0%) drops its connector with the node beyond it reading dotted. Reduced motion and
+  resolved drafts skip the intro
   and land instantly; a reroll replays the whole sequence. The phone has no centre stage: its
   rows stay hidden while the track climbs under the title, then fade in worst-to-best (Liberty's
   Cross last, `POD_STAGGER` apart) once it lands; the squad board follows them. Pods give ground in a short cabinet by

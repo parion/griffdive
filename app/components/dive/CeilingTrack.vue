@@ -13,7 +13,10 @@ const props = withDefaults(defineProps<{
   instant?: boolean
   // Bumped on every redraw so a reroll replays the climb.
   replayKey?: number
-}>(), { instant: false, replayKey: 0 })
+  // The bar has finished animating and come to rest (docked in the draft
+  // header, or landed under the phone title). Until then the odds stay hidden.
+  settled?: boolean
+}>(), { instant: false, replayKey: 0, settled: false })
 
 const emit = defineEmits<{
   // The bar has landed on the ceiling and the failed step has stalled.
@@ -46,6 +49,11 @@ const stepPcts = computed(() =>
 // engine already rolled, then the failed step stalls red.
 const reached = ref(0)
 const done = ref(false)
+// Phones have no hover: a tap toggles the odds in and out. Gated to coarse
+// pointers so a desktop click never pins them open.
+const canHover = import.meta.client
+  && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+const tapped = ref(false)
 let timers: ReturnType<typeof setTimeout>[] = []
 
 function clearTimers(): void {
@@ -53,8 +61,16 @@ function clearTimers(): void {
   timers = []
 }
 
+function toggleReveal(): void {
+  if (!props.settled || canHover) {
+    return
+  }
+  tapped.value = !tapped.value
+}
+
 function climb(): void {
   clearTimers()
+  tapped.value = false
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   if (props.instant || reduced) {
     reached.value = target.value
@@ -102,9 +118,10 @@ const trackLabel = computed(() => {
 <template>
   <div
     class="ceiling-track"
-    :class="{ done }"
+    :class="{ done, settled, tapped }"
     role="img"
     :aria-label="trackLabel"
+    @click="toggleReveal"
   >
     <template
       v-for="(tier, i) in nodes"
@@ -117,6 +134,7 @@ const trackLabel = computed(() => {
           win: i <= reached,
           miss: done && i === target + 1,
           idle: done && i > target + 1,
+          zero: stepPcts[i - 1] === 0,
         }"
         :style="{ '--tier': tierVar(tier) }"
         aria-hidden="true"
@@ -132,6 +150,7 @@ const trackLabel = computed(() => {
           head: i === reached,
           ceiling: done && i === target,
           miss: done && i === target + 1,
+          zero: i > 0 && stepPcts[i - 1] === 0,
         }"
         :style="{ '--tier': tierVar(tier) }"
         aria-hidden="true"
@@ -192,6 +211,9 @@ const trackLabel = computed(() => {
   border-color: var(--red);
   animation: shake 0.42s ease both;
 }
+/* The node beyond a 0% step: dotted, so an unreachable tier reads as a plan
+   rather than a promise. */
+.node.zero { border-style: dotted; }
 
 .link {
   position: relative;
@@ -216,6 +238,9 @@ const trackLabel = computed(() => {
   transform: scaleX(0.42);
 }
 .link.idle { opacity: 0.5; }
+/* A step the odds never reach (0%): no connector, so the ladder simply stops. */
+.link.zero { background: transparent; }
+.link.zero .link-fill { display: none; }
 
 .link-pct {
   position: absolute;
@@ -228,7 +253,15 @@ const trackLabel = computed(() => {
   line-height: 1;
   color: var(--muted);
   white-space: nowrap;
-  transition: color var(--dur-fast);
+  opacity: 0;
+  transition: color var(--dur-fast), opacity var(--dur-med) var(--ease-out);
+}
+/* Odds stay out of the way until the track has come to rest and the diver
+   points at it — the climb reads as a bar, not a spreadsheet. Hover on a fine
+   pointer; a tap toggles them on a phone. */
+.ceiling-track.settled.tapped .link-pct { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .ceiling-track.settled:hover .link-pct { opacity: 1; }
 }
 .link.win .link-pct { color: var(--tier); }
 .link.miss .link-pct { color: var(--red); }
