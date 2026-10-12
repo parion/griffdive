@@ -87,7 +87,9 @@ Update this table the moment a command lands.
   use the Reka primitive directly (`RadioGroup` in `StarRating`/`CrusadeSetup`, `Checkbox` in
   `PactPicker`) so the semantics live with the component. The global foundation lives in
   `main.css` (`:focus-visible` ring, `.sr-only`, `.skip-link`) and `app.vue` (skip link →
-  `#main-content`, carried by every page `<main>` with `tabindex="-1"`). Dialogs are `aria-modal`,
+  `#main-content`, carried by every page `<main>` with `tabindex="-1"`). `.sr-only` pins itself with
+  explicit offsets — an absolutely positioned label with auto offsets takes the viewport as its
+  containing block, so a rail could no longer clip it and the page grew a scrollbar. Dialogs are `aria-modal`,
   trap focus, and restore focus to their trigger on close; `e2e/a11y.spec.ts` guards the
   foundation.
 - **Styles:** single global theme (HD2 palette: Super Earth gold/khaki, alert red, stratagem teal)

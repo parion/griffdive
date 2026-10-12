@@ -4,13 +4,26 @@ import { dismissWarbondIntro } from './helpers'
 // Tablet guards from the responsive audit. Just above the 1020px breakpoint the
 // three-rail terminal once squeezed the centre phase until the wheel's decision
 // cards, the report and the reward pods spilled under the Kit rail; just below
-// it the phone shell floated as a 430px strip in empty gutters.
+// it the phone shell floated as a 430px strip in empty gutters. The terminal
+// also stays exactly one viewport tall: a hidden `.sr-only` label deep in a
+// rail's tall content once gave the whole page a scrollbar and dead space under
+// the phase bar.
 const LANDSCAPE_TABLET = { width: 1024, height: 768 }
 const PORTRAIT_TABLET = { width: 768, height: 1024 }
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   const overflow = await page.evaluate(() =>
     document.documentElement.scrollWidth - document.documentElement.clientWidth)
+  expect(overflow).toBeLessThanOrEqual(0)
+}
+
+// The terminal is exactly one viewport and clips its own overflow, so the page
+// itself must never scroll: any page-level scrollbar leaves dead space under the
+// phase bar. (The rails scroll internally; that is fine.) The classic way this
+// breaks is a hidden `.sr-only` label deep in a rail's tall content.
+async function expectNoVerticalOverflow(page: Page): Promise<void> {
+  const overflow = await page.evaluate(() =>
+    document.documentElement.scrollHeight - document.documentElement.clientHeight)
   expect(overflow).toBeLessThanOrEqual(0)
 }
 
@@ -35,6 +48,7 @@ test('landscape tablet: the terminal keeps every phase inside the centre column'
   // The cards stack under the wheel here; the drawn directive scrolls into view.
   await expect(page.locator('.misfortune').getByRole('button', { name: 'Lock it in' })).toBeInViewport()
   await expectCentreFits(page)
+  await expectNoVerticalOverflow(page)
 
   for (let attempt = 0; attempt < 2; attempt++) {
     const optOut = page.getByRole('button', { name: /^Opt out/ }).first()
@@ -45,14 +59,17 @@ test('landscape tablet: the terminal keeps every phase inside the centre column'
   await page.getByRole('button', { name: 'Deal the pacts' }).click()
   await page.getByRole('button', { name: /^Lock in & dive/ }).click()
   await expectCentreFits(page)
+  await expectNoVerticalOverflow(page)
 
   await page.getByRole('button', { name: 'Mission complete' }).click()
   await expect(page.getByRole('heading', { name: 'Mission complete' })).toBeVisible()
   await expectCentreFits(page)
+  await expectNoVerticalOverflow(page)
 
   await page.getByRole('button', { name: 'File report' }).click()
   await expect(page.getByRole('heading', { name: 'Reward Draft' })).toBeVisible()
   await expectCentreFits(page)
+  await expectNoVerticalOverflow(page)
 
   await context.close()
 })
