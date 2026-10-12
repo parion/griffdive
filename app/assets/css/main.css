@@ -161,8 +161,17 @@ a:hover {
 ::-webkit-scrollbar-thumb { background: var(--line-3); }
 ::-webkit-scrollbar-thumb:hover { background: var(--line-4); }
 
+/* Visually hidden, still announced. The offsets are not decoration: without
+   explicit top/left an absolutely positioned `.sr-only` inside a scroll
+   container whose ancestors aren't positioned takes the viewport as its
+   containing block, so a scroller can no longer clip it — its static position
+   inside tall rail content then stretches the document and gives the whole page
+   a phantom scrollbar. Pinning it to the containing block's origin keeps it a
+   1px box wherever it is used. */
 .sr-only {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   padding: 0;
