@@ -4,7 +4,7 @@ import type { Item } from '~~/shared/data/types'
 import { catchUpOpsBehind } from '~~/shared/engine/progression'
 import { itemPrice } from '~~/shared/engine/rewards'
 import type { BargainSlot } from '~~/shared/engine/rewards'
-import { bargainPurchaseOf, bargainShelfFor, bargainsClosedReason, canBuyItem } from '~~/shared/engine/selectors'
+import { bargainShelfFor, bargainsClosedReason, canBuyItem } from '~~/shared/engine/selectors'
 import type { BargainSlotKind, DiverState, DiveState, RewardTier } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -18,9 +18,7 @@ const credits = computed(() => props.self?.credits ?? 0)
 const opNumber = computed(() =>
   catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
 const closed = computed(() => bargainsClosedReason(props.state))
-const purchase = computed(() => (props.self ? bargainPurchaseOf(props.self) : null))
 const shelf = computed(() => (props.self ? bargainShelfFor(props.state, props.self) : []))
-const heldBack = computed(() => [...new Set(props.self?.bargain?.boughtKinds ?? [])].map(slotLabel))
 
 function slotLabel(kind: BargainSlotKind): string {
   return kind === 'stratagem' ? 'Stratagem' : categoryLabel(kind)
@@ -67,56 +65,12 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
       {{ closed }}
     </p>
 
-    <p
-      v-if="heldBack.length > 0"
-      class="bb-held"
-    >
-      <span class="lbl">Back next operation</span>
-      <span
-        v-for="label in heldBack"
-        :key="label"
-        class="chip"
-      >{{ label }}</span>
-    </p>
-
-    <div
-      v-if="purchase"
-      class="bb-bought cut-sm"
-      :data-edge="purchase.tier"
-    >
-      <div class="bb-stage grid-bg">
-        <img
-          v-if="itemImageUrl(purchase)"
-          class="bb-art"
-          :src="itemImageUrl(purchase)"
-          alt=""
-          draggable="false"
-        >
-      </div>
-      <div class="bb-info">
-        <span class="lbl bb-stamp">Requisitioned</span>
-        <span class="bb-item">{{ purchase.displayName }}</span>
-        <span class="muted small">Brasch restocks next mission.</span>
-      </div>
-      <TierBadge :tier="tierOf(purchase)" />
-    </div>
-
-    <p
-      v-else-if="self?.bargain && shelf.length === 0"
-      class="muted bb-empty"
-    >
-      You've bought from every category this operation.
-    </p>
-
-    <ul
-      v-else
-      class="bb-grid"
-    >
+    <ul class="bb-grid">
       <li
         v-for="slot in shelf"
         :key="slot.slotId"
         class="bb-card cut-sm"
-        :class="{ empty: !slot.item }"
+        :class="[slot.status, { empty: !slot.item }]"
         :data-edge="slot.item?.tier"
       >
         <header class="bb-card-head">
@@ -140,7 +94,12 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
             >
           </div>
           <span class="bb-item">{{ slot.item.displayName }}</span>
+          <span
+            v-if="slot.status === 'bought'"
+            class="bb-stamp disp"
+          >Requisitioned</span>
           <button
+            v-else
             class="btn primary cut bb-buy"
             type="button"
             :disabled="!verdict(slot).allowed"
@@ -155,12 +114,26 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
             />
           </button>
         </template>
-        <p
+        <div
           v-else
-          class="muted small bb-sold"
+          class="bb-stage grid-bg"
         >
-          Nothing left in your warbonds.
-        </p>
+          <p
+            v-if="slot.status !== 'heldBack'"
+            class="muted small bb-sold"
+          >
+            Nothing left in your warbonds.
+          </p>
+        </div>
+
+        <div
+          v-if="slot.status === 'locked' || slot.status === 'heldBack'"
+          class="bb-veil"
+          role="note"
+        >
+          <IconLock class="bb-lock" />
+          <span>{{ slot.status === 'locked' ? 'Brasch will be back next mission' : 'Restocked by Brasch next operation' }}</span>
+        </div>
       </li>
     </ul>
   </section>
@@ -206,8 +179,6 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
   text-transform: uppercase;
 }
 .bb-lock { width: 16px; height: 16px; }
-.bb-held { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
-.bb-empty { margin: 0; padding: 16px 12px; border: 1px dashed var(--line-3); }
 
 .bb-grid {
   display: grid;
@@ -221,6 +192,7 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
   .bb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 .bb-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -230,14 +202,10 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
   border-top: 2px solid var(--tier-edge, var(--line-3));
   background: var(--rail);
 }
-.bb-card[data-edge='c'],
-.bb-bought[data-edge='c'] { --tier-edge: var(--tier-c); }
-.bb-card[data-edge='b'],
-.bb-bought[data-edge='b'] { --tier-edge: var(--tier-b); }
-.bb-card[data-edge='a'],
-.bb-bought[data-edge='a'] { --tier-edge: var(--tier-a); }
-.bb-card[data-edge='s'],
-.bb-bought[data-edge='s'] { --tier-edge: var(--tier-s); }
+.bb-card[data-edge='c'] { --tier-edge: var(--tier-c); }
+.bb-card[data-edge='b'] { --tier-edge: var(--tier-b); }
+.bb-card[data-edge='a'] { --tier-edge: var(--tier-a); }
+.bb-card[data-edge='s'] { --tier-edge: var(--tier-s); }
 .bb-card.empty { border-style: dashed; background: transparent; }
 .bb-card-head {
   display: flex;
@@ -278,17 +246,44 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
 .bb-cost { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; }
 .bb-sold { margin: 0; }
 
-.bb-bought {
-  display: grid;
-  grid-template-columns: 88px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid var(--line-3);
-  border-left: 3px solid var(--tier-edge);
-  background: var(--rail);
+.bb-card.empty .bb-stage { flex: 1; }
+
+/* The bought slot keeps its place on the shelf, lit in gold. */
+.bb-card.bought {
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 8%, var(--rail));
 }
-.bb-bought .bb-stage { min-height: 88px; }
-.bb-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.bb-stamp { color: var(--gold); }
+.bb-stamp {
+  display: grid;
+  place-items: center;
+  min-height: 40px;
+  margin-top: auto;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.bb-veil {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--ground) 90%, transparent);
+  color: var(--khaki);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.35;
+  text-align: center;
+  text-transform: uppercase;
+}
+.bb-veil .bb-lock { width: 20px; height: 20px; }
 </style>

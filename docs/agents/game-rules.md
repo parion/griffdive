@@ -534,10 +534,11 @@ items):
   C/B/A/S cost 15/45/180/450, so low tiers sit within a mission or two's haul and A/S stay a saving
   goal. Primaries ×1.25, armor passives ×0.75, everything else ×1.
 - **One buy per mission:** `BUY_ITEM` (self-service) deducts the price, banks the item in
-  `personalInventories` and records it as `bargain.boughtItemId`. After that the shelf offers nothing
-  else until the next mission.
+  `personalInventories` and records it as `bargain.boughtItemId`. The shelf keeps its layout: the
+  bought slot reads `bought` and every other slot `locked` until the next mission (`bargainShelfFor`
+  returns each slot with a `status`).
 - **A bought kind waits for the next operation:** the purchase's kind joins `bargain.boughtKinds` and
-  that slot isn't rolled again until a new operation begins (a failure restart keeps it). Stratagems
+  that slot stays on the shelf empty, as `heldBack`, until a new operation begins (a failure restart keeps it). Stratagems
   are one kind, so buying one holds back both stratagem slots.
 - **Soft:** buying never gates any phase. A diver who can't buy sees each card disabled with the
   engine's reason (`canBuyItem`).

@@ -900,7 +900,11 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
     expect(requireDiver(state).credits).toBe(500 - itemPrice(affordable))
     expect(state.personalInventories.p1).toContain(affordable.id)
     expect(requireDiver(state).bargain).toMatchObject({ boughtItemId: affordable.id, boughtKinds: [bargainKindOf(affordable)] })
-    expect(bargainShelfFor(state, requireDiver(state))).toEqual([])
+    // The shelf keeps its layout: the buy is marked, everything else locks.
+    const after = bargainShelfFor(state, requireDiver(state))
+    expect(after.map(slot => slot.item?.id)).toEqual(shelf.map(slot => slot.item?.id))
+    expect(after.find(slot => slot.item?.id === affordable.id)?.status).toBe('bought')
+    expect(after.filter(slot => slot.status === 'locked')).toHaveLength(shelf.length - 1)
     const other = shelf.find(slot => slot.item && slot.item.id !== affordable.id)!.item!
     expect(reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: other.id })).toBe(state)
   })
@@ -939,7 +943,13 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
     expect(state.bargainSeed).not.toBe(seed)
     // A fresh shelf, minus the kind bought this operation.
     const second = bargainShelfFor(state, requireDiver(state))
-    expect(second.map(slot => slot.kind)).toEqual(['secondary', 'throwable', 'armorPassive'])
+    expect(second.map(slot => [slot.kind, slot.status])).toEqual([
+      ['primary', 'heldBack'],
+      ['secondary', 'open'],
+      ['throwable', 'open'],
+      ['armorPassive', 'open'],
+    ])
+    expect(second[0]!.item).toBeNull()
     expect(requireDiver(state).bargain).toMatchObject({ boughtItemId: null, boughtKinds: ['primary'] })
 
     // A new operation brings every kind back.

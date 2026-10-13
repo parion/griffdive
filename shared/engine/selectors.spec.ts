@@ -265,7 +265,7 @@ describe('bargainShelfFor / canBuyItem (Brasch\'s Bargains)', () => {
     expect(canBuyItem(state, { ...diver, credits: price - 1 }, item.id)).toEqual({ allowed: false, reason: 'Not enough credits' })
     expect(canBuyItem(state, { ...diver, credits: price }, 'definitely-not-stocked').allowed).toBe(false)
     const bought = { ...diver, credits: 100_000, bargain: { ...diver.bargain!, boughtItemId: item.id } }
-    expect(bargainShelfFor(state, bought)).toEqual([])
+    expect(bargainShelfFor(state, bought).map(slot => slot.status)).toEqual(['bought', 'locked', 'locked', 'locked'])
     expect(canBuyItem(state, bought, item.id).allowed).toBe(false)
   })
 })

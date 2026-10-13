@@ -38,7 +38,7 @@ import {
 } from './pacts'
 import type { StratagemBanSource } from './pacts'
 import { catchUpOpsBehind, startingItemIds } from './progression'
-import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, rollBargainShelf, rollBonus, rollCeiling, rollRewardOptions, valorOf } from './rewards'
+import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, bargainKindOf, rollBargainShelf, rollBonus, rollCeiling, rollRewardOptions, valorOf } from './rewards'
 import type { BargainSlot, RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
 import type { BargainDeal, BargainSlotKind, CrusadeMode, DiveState, DivePhase, DiverState, RewardTier } from './types'
@@ -505,30 +505,54 @@ export function bargainSlotKinds(difficulty: number): BargainSlotKind[] {
   ]
 }
 
+// A shelf slot as the diver sees it: still for sale, the one they bought this
+// mission, shut for the rest of the mission by that buy, or held back until
+// the next operation because its kind was bought earlier in this one.
+export type BargainSlotStatus = 'open' | 'bought' | 'locked' | 'heldBack'
+
+export interface BargainShelfSlot extends BargainSlot {
+  status: BargainSlotStatus
+}
+
 // The diver's Brasch's Bargains shelf for the mission: one random item per
 // slot from the difficulty's base tier up to one tier above, drawn from their
 // own pool (declared warbonds) minus what they held or banned at the deal.
-// A kind bought this operation isn't rolled until the next one. Derived from
-// the mission's bargain seed folded with the diver id — deterministic, never
-// stored. Empty once they have bought from it: one item per mission.
-export function bargainShelfFor(state: DiveState, diver: DiverState): BargainSlot[] {
-  if (state.bargainSeed === null || !diver.bargain || diver.bargain.boughtItemId !== null) {
+// Derived from the mission's bargain seed folded with the diver id —
+// deterministic, never stored. The shelf keeps its layout all mission: a buy
+// marks its slot bought and locks the rest, and a kind bought earlier this
+// operation stays on the shelf as an empty held-back slot.
+export function bargainShelfFor(state: DiveState, diver: DiverState): BargainShelfSlot[] {
+  const deal = diver.bargain
+  if (state.bargainSeed === null || !deal) {
     return []
   }
-  const bought = new Set(diver.bargain.boughtKinds)
-  return rollBargainShelf(
+  const boughtItemId = deal.boughtItemId
+  const boughtNow = boughtItemId ? ITEMS_BY_ID.get(boughtItemId) : undefined
+  const nowKind = boughtNow ? bargainKindOf(boughtNow) : null
+  const heldBack = new Set(deal.boughtKinds.filter(kind => kind !== nowKind))
+  const kinds = bargainSlotKinds(state.difficulty)
+  const rolled = rollBargainShelf(
     deriveSeed(deriveSeed(state.bargainSeed, BARGAIN_STREAM), hashString(diver.id)),
     state.difficulty,
-    bargainSlotKinds(state.difficulty).filter(kind => !bought.has(kind)),
+    kinds.filter(kind => !heldBack.has(kind)),
     rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES),
-    new Set(diver.bargain.excludedIds),
+    new Set(deal.excludedIds),
   )
-}
-
-// The item a diver bought from this mission's shelf, if any.
-export function bargainPurchaseOf(diver: DiverState): Item | null {
-  const id = diver.bargain?.boughtItemId
-  return id ? ITEMS_BY_ID.get(id) ?? null : null
+  const counts = new Map<BargainSlotKind, number>()
+  let next = 0
+  return kinds.map((kind) => {
+    const nth = (counts.get(kind) ?? 0) + 1
+    counts.set(kind, nth)
+    if (heldBack.has(kind)) {
+      return { slotId: nth === 1 ? kind : `${kind}-${nth}`, kind, item: null, status: 'heldBack' as const }
+    }
+    const slot = rolled[next++]!
+    let status: BargainSlotStatus = 'open'
+    if (boughtItemId) {
+      status = slot.item?.id === boughtItemId ? 'bought' : 'locked'
+    }
+    return { ...slot, status }
+  })
 }
 
 // Brasch's Bargains is open between missions. It closes while the squad is in
@@ -561,7 +585,7 @@ export function canBuyItem(
   if (diver.bargain?.boughtItemId) {
     return { allowed: false, reason: 'Already bought this mission' }
   }
-  const slot = bargainShelfFor(state, diver).find(entry => entry.item?.id === itemId)
+  const slot = bargainShelfFor(state, diver).find(entry => entry.status === 'open' && entry.item?.id === itemId)
   if (!slot?.item) {
     return { allowed: false, reason: 'Not on your shelf' }
   }

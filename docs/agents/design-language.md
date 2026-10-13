@@ -156,7 +156,10 @@ engine.
   the `BonusCeremony` honors contest; when honors aren't due that turn the ceremony is replaced by a
   disabled panel. **Brasch's Bargains is never a phase screen:** it lives in its own slide-over
   (`BargainsDrawer` → `BraschBargains`; the drawer header is its only title), reachable from the
-  header and the phone bar in every phase except the mission. Credits always render through
+  header and the phone bar in every phase except the mission. The shelf never changes shape: a
+  buy lights its card gold (`Requisitioned`) and veils the rest with a lock and "Brasch will be back
+  next mission"; a kind bought earlier in the operation shows as a dashed, veiled card reading
+  "Restocked by Brasch next operation". Credits always render through
   `CreditAmount` (the custom `IconCredit` glyph + figure), never "pts". The left rail gains `MissionReportSummary` on the rewards phase.
   The Kit (`KitPanel.vue`) is deliberately lean: an optional row of diver names (no warbonds, no
   token chits), a sticky toolbar (an **Earned only** switch that hides the starting kit, and jump
