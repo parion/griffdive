@@ -137,7 +137,7 @@ function removeDiver(state: DiveState, diverId: string, action: EngineAction): D
     ? earnedKit(state.personalInventories[diver.id] ?? [], state.settings.variant, state.settings.mode)
     : []
   const legacyCaches = earned.length > 0
-    ? { ...state.legacyCaches, [diver.id]: earned }
+    ? { ...state.legacyCaches, [diver.id]: { name: diver.name, itemIds: earned } }
     : state.legacyCaches
   const personalInventories = Object.fromEntries(
     Object.entries(state.personalInventories).filter(([id]) => id !== diver.id),

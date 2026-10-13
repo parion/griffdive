@@ -66,7 +66,9 @@ app/
                    end-of-mission honors screen (iconographic seeded reel,
                    hold-to-confirm award) that banks a reward token,
                    FieldPromotionGate — the mid-crusade
-                   catch-up gate (non-dismissible dialog, settled before diving), LibertyCrossBand — the full-width S+
+                   catch-up gate (non-dismissible dialog, settled before diving: a two-column
+                   choice — fallen divers' kits vs. the promotion call-in — then the
+                   promotion draft, `RewardDraft variant="promotion"`), LibertyCrossBand — the full-width S+
                    "Liberty's Cross" band above the reward pods, LibertyCrossEmblem — its vector crest,
                    DiversChoicePicker — the minified codex modal, CrusadeSetup, WarbondPicker,
                    JoinNameGate — name gate held while joining),

@@ -60,8 +60,8 @@ test('joiners settle their Field Promotion before they dive; a forked-out diver 
   await joinAs(pageC, code, 'Claimer')
   const gate = pageC.getByRole('dialog', { name: 'Field Promotion' })
   await expect(gate).toBeVisible()
-  await expect(gate.getByRole('button', { name: /Claim a fallen diver's kit/ })).toHaveCount(1)
-  await gate.getByRole('button', { name: /Claim a fallen diver's kit.*UAV Recon/ }).click()
+  await expect(gate.getByRole('button', { name: /^Claim .+'s kit/ })).toHaveCount(1)
+  await gate.getByRole('button', { name: /^Claim Other's kit: UAV Recon/ }).click()
   await expect(gate).toBeHidden()
   await expect(pageC.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
 
@@ -69,8 +69,10 @@ test('joiners settle their Field Promotion before they dive; a forked-out diver 
   await joinAs(pageP, code, 'Picker')
   const gateP = pageP.getByRole('dialog', { name: 'Field Promotion' })
   await expect(gateP).toBeVisible()
-  await expect(gateP.getByRole('button', { name: /Claim a fallen diver's kit/ })).toHaveCount(0)
-  await gateP.locator('.item-card').first().click()
+  await expect(gateP.getByRole('button', { name: /^Claim .+'s kit/ })).toHaveCount(0)
+  await expect(gateP.getByText('No kits on the field')).toBeVisible()
+  await gateP.getByRole('button', { name: /^Promotion picks/ }).click()
+  await gateP.getByRole('button', { name: /^Claim .+ tier/ }).first().click()
   await expect(gateP).toBeHidden()
   await expect(pageR.locator('.diver-chip')).toHaveCount(4)
 

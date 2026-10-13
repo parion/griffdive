@@ -634,7 +634,8 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
 - **Legacy caches hold earned gear only:** every departure (kicked via `KICK_DIVER` or voluntary via
   `LEAVE_DIVE`, both self-service) parks the diver's **earned kit** — their inventory minus the
   starting kit, each item once (`earnedKit` in `shared/engine/progression.ts`) — as
-  `legacyCaches[playerId]`. A diver who earned nothing parks nothing. Caches are uncapped: claiming a
+  `legacyCaches[playerId] = { name, itemIds }`, named after the diver who carried it so joiners
+  see whose kit they inherit. A diver who earned nothing parks nothing. Caches are uncapped: claiming a
   fallen diver's kit is the encouraged way back to altitude.
 - **Caches open after the first operation:** `availableCaches` offers nothing until the squad has
   completed at least one operation (`catchUpOpsBehind ≥ 1`) — the same point a joiner starts owing a
@@ -677,7 +678,8 @@ mark (`misfortuneFailed: false`); `migrateV11toV12` adds the Requisition sample 
 (`sampleBank: 0`); `migrateV12toV13` remaps the five squad-size variants onto the three starting
 difficulties (Quickplay becomes the suicide start with the SEAF mode); `migrateV13toV14` adds
 presence (`away: false` on every diver); `migrateV14toV15` widens the single honors winner
-(`bonusWinnerId`) into the shareable list (`bonusWinnerIds`). The chain's tail also runs the idempotent
+(`bonusWinnerId`) into the shareable list (`bonusWinnerIds`); `migrateV15toV16` reshapes each legacy
+cache from a bare item list into `{ name, itemIds }` (pre-v16 kits read as "Fallen diver"). The chain's tail also runs the idempotent
 `normalizeRoomState` remap unconditionally: session mirrors copy unversioned room state, so a
 legacy variant id or a missing field must be corrected even in a doc stamped with a newer schema.
 Normalization drops

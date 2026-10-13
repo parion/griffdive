@@ -69,7 +69,7 @@ describe('joinDiver', () => {
     state = reduce(state, { type: 'START_DIVE', settings: { variant: 'medium' } })
     state = { ...state, personalInventories: { ...state.personalInventories, p1: [...state.personalInventories.p1!, 'uavrecon'] } }
     state = reduce(state, { type: 'LEAVE_DIVE', playerId: 'p1' })
-    expect(state.legacyCaches.p1).toEqual(['uavrecon'])
+    expect(state.legacyCaches.p1).toEqual({ name: 'Griffin', itemIds: ['uavrecon'] })
     expect(state.hostId).toBe('p2')
     const rejoined = joinDiver(state, 'p1', 'Griffin')!
     expect(rejoined.legacyCaches.p1).toBeUndefined()
@@ -151,7 +151,7 @@ describe('forkCrusade (personal session saves)', () => {
     expect(forked.personalInventories.p1).toEqual(startingItemIds('medium'))
     expect(forked.personalInventories.p2).toBeUndefined()
     // Only earned gear parks; a diver who earned nothing leaves no cache.
-    expect(forked.legacyCaches).toEqual({ p2: ['uavrecon'] })
+    expect(forked.legacyCaches).toEqual({ p2: { name: 'Two', itemIds: ['uavrecon'] } })
     expect(forked.difficulty).toBe(state.difficulty)
     expect(forked.wheel).toEqual(state.wheel)
     expect(forked.frontId).toBe(state.frontId)
@@ -237,7 +237,7 @@ describe('forkCrusade (personal session saves)', () => {
       phase: 'forfeit',
       frontId: 'terminids',
       personalInventories: { p1: [], p2: ['uavrecon', 'eagleairstrike'] },
-      legacyCaches: { ghost: ['orbitallaser'] },
+      legacyCaches: { ghost: { name: 'Ghost', itemIds: ['orbitallaser'] } },
     }
     const forked = forkCrusade(state, 'p1')!
     expect(forked.phase).toBe('spin')
@@ -246,7 +246,7 @@ describe('forkCrusade (personal session saves)', () => {
     // An earlier session's cache never carries into the new one, and the
     // failure's one-item loss still lands on the parked gear.
     expect(forked.legacyCaches.ghost).toBeUndefined()
-    expect(forked.legacyCaches.p2).toEqual(['eagleairstrike'])
+    expect(forked.legacyCaches.p2?.itemIds).toEqual(['eagleairstrike'])
   })
 
   it('applies a forked host\'s chosen forfeit when no other diver is left to wait on', () => {
@@ -277,7 +277,7 @@ describe('Field Promotion across sessions (lifecycle invariants)', () => {
     for (const [id, kit] of Object.entries(state.personalInventories)) {
       expect(new Set(kit).size, `${id} holds a repeated item`).toBe(kit.length)
     }
-    for (const [id, cache] of Object.entries(state.legacyCaches)) {
+    for (const [id, { itemIds: cache }] of Object.entries(state.legacyCaches)) {
       expect(cache.length, `${id} parked an empty cache`).toBeGreaterThan(0)
       expect(new Set(cache).size, `${id} cache repeats an item`).toBe(cache.length)
       expect(cache.filter(item => starting.has(item)), `${id} cache carries starting kit`).toEqual([])
@@ -316,8 +316,8 @@ describe('Field Promotion across sessions (lifecycle invariants)', () => {
     const third = forkCrusade(next, 'p1', 'Griffin')!
     expectInvariants(third)
     expect(Object.keys(third.legacyCaches).sort()).toEqual(['n1', 'n2'])
-    expect(third.legacyCaches.n1).toEqual(['uavrecon'])
-    expect(third.legacyCaches.n2).toEqual([pick.item.id])
+    expect(third.legacyCaches.n1).toEqual({ name: 'New', itemIds: ['uavrecon'] })
+    expect(third.legacyCaches.n2).toEqual({ name: 'New Two', itemIds: [pick.item.id] })
     expect(third.personalInventories.p1).toEqual([...startingItemIds('medium'), 'orbitallaser'])
   })
 })

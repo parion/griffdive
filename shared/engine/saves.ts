@@ -5,7 +5,7 @@ import type { SaveDoc } from '../types/save'
 import { ENGINE_VERSION } from './config'
 import { earnedKit } from './progression'
 import { resetOperation } from './reducer'
-import type { CrusadeVariant, DiveState, DiverState } from './types'
+import type { CrusadeVariant, DiveState, DiverState, LegacyCache } from './types'
 
 // Pre-v8 (pre-alpha) divers may be missing any field whose shape landed after
 // their save was written — Field Promotion bookkeeping, failed-pact marks,
@@ -107,6 +107,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   }
   if (migrated.schemaVersion < 15) {
     migrated = migrateV14toV15(migrated)
+  }
+  if (migrated.schemaVersion < 16) {
+    migrated = migrateV15toV16(migrated)
   }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
@@ -289,14 +292,45 @@ function repairKits(
   const personalInventories = Object.fromEntries(
     Object.entries(state.personalInventories ?? {}).map(([id, items]) => [id, [...new Set(items)]]),
   )
-  const legacyCaches: Record<string, string[]> = {}
-  for (const [id, items] of Object.entries(state.legacyCaches ?? {})) {
-    const kept = settings ? earnedKit(items, settings.variant, settings.mode) : [...new Set(items)]
-    if (kept.length > 0) {
-      legacyCaches[id] = kept
+  const legacyCaches: Record<string, LegacyCache> = {}
+  for (const [id, raw] of Object.entries(state.legacyCaches ?? {})) {
+    const cache = cacheOf(raw)
+    const itemIds = settings ? earnedKit(cache.itemIds, settings.variant, settings.mode) : [...new Set(cache.itemIds)]
+    if (itemIds.length > 0) {
+      legacyCaches[id] = { name: cache.name, itemIds }
     }
   }
   return { personalInventories, legacyCaches }
+}
+
+// Before v16 a cache was a bare item list; the departed diver's name was never
+// kept, so those kits read as an anonymous fallen diver.
+const UNNAMED_CACHE = 'Fallen diver'
+
+function cacheOf(raw: unknown): LegacyCache {
+  if (Array.isArray(raw)) {
+    return { name: UNNAMED_CACHE, itemIds: raw.filter((id): id is string => typeof id === 'string') }
+  }
+  const cache = (raw ?? {}) as Partial<LegacyCache>
+  return {
+    name: typeof cache.name === 'string' && cache.name.trim() ? cache.name : UNNAMED_CACHE,
+    itemIds: Array.isArray(cache.itemIds) ? cache.itemIds.filter((id): id is string => typeof id === 'string') : [],
+  }
+}
+
+// v16: a cache names the diver who carried it ({ name, itemIds } instead of
+// a bare item list). Rooms are unversioned, so normalizeRoomState performs the
+// same reshape; this step pins it to the version.
+function migrateV15toV16(doc: SaveDoc): SaveDoc {
+  return {
+    ...doc,
+    state: {
+      ...doc.state,
+      legacyCaches: Object.fromEntries(
+        Object.entries(doc.state.legacyCaches ?? {}).map(([id, raw]) => [id, cacheOf(raw)]),
+      ),
+    },
+  }
 }
 
 // A state saved before honors became shareable carries a single

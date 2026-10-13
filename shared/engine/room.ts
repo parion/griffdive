@@ -14,7 +14,7 @@ import {
   missionsPerOperation,
 } from './config'
 import { VARIANTS, catchUpOpsBehind, earnedKit, mergeKit, startingItemIds } from './progression'
-import type { DivePhase, DiveState, DiverState, MajorOrderSelection, WheelResult } from './types'
+import type { DivePhase, DiveState, DiverState, LegacyCache, MajorOrderSelection, WheelResult } from './types'
 
 // A freshly created room: no settings, no divers. The first joiner becomes
 // host; START_DIVE applies the variant kit to everyone present.
@@ -85,7 +85,7 @@ export function joinDiver(state: DiveState, playerId: string, name: string): Div
   const startingKit = state.settings ? startingItemIds(state.settings.variant, state.settings.mode) : []
   // A cache holds only earned gear: the returning diver is reissued the
   // starting kit and gets their winnings back on top, with no promotion owed.
-  const inventory = restoredCache ? mergeKit(startingKit, restoredCache) : startingKit
+  const inventory = restoredCache ? mergeKit(startingKit, restoredCache.itemIds) : startingKit
   const catchUpGranted = !restoredCache && state.settings
     ? Math.min(CATCHUP_CAP, catchUpOpsBehind(state.difficulty, state.settings.variant))
     : 0
@@ -269,9 +269,9 @@ function resolveStrandedForfeit(state: DiveState): DiveState {
   }
   let legacyCaches = state.legacyCaches
   if (!chosen) {
-    for (const [id, items] of Object.entries(legacyCaches)) {
-      if (items.length > 0) {
-        legacyCaches = { ...legacyCaches, [id]: items.slice(1) }
+    for (const [id, cache] of Object.entries(legacyCaches)) {
+      if (cache.itemIds.length > 0) {
+        legacyCaches = { ...legacyCaches, [id]: { ...cache, itemIds: cache.itemIds.slice(1) } }
         break
       }
     }
@@ -362,11 +362,11 @@ export function forkCrusade(
   // session were that session's to claim, and each fork re-parking them piled
   // up stale kits. A diver who earned nothing beyond the starting kit leaves
   // nothing worth claiming.
-  const legacyCaches: Record<string, string[]> = {}
+  const legacyCaches: Record<string, LegacyCache> = {}
   for (const diver of divers) {
     const earned = earnedKit(stringArray(state.personalInventories?.[diver.id], 1000), variant, mode)
     if (diver.id !== owner.id && earned.length > 0) {
-      legacyCaches[diver.id] = earned
+      legacyCaches[diver.id] = { name: diver.name, itemIds: earned }
     }
   }
 

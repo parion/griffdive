@@ -823,13 +823,13 @@ export function actingDiverIds(state: DiveState): string[] {
 // Fallen divers' kits a joiner may claim instead of their Field Promotion.
 // Caches only open once the squad has completed an operation — before that a
 // joiner is at the start altitude and owes no promotion to trade.
-export function availableCaches(state: DiveState): { ownerId: string, itemIds: string[] }[] {
+export function availableCaches(state: DiveState): { ownerId: string, name: string, itemIds: string[] }[] {
   if (!state.settings || catchUpOpsBehind(state.difficulty, state.settings.variant) < 1) {
     return []
   }
   return Object.entries(state.legacyCaches)
-    .filter(([, itemIds]) => itemIds.length > 0)
-    .map(([ownerId, itemIds]) => ({ ownerId, itemIds }))
+    .filter(([, cache]) => cache.itemIds.length > 0)
+    .map(([ownerId, cache]) => ({ ownerId, name: cache.name, itemIds: cache.itemIds }))
 }
 
 // Whether the diver still has a Field Promotion to settle: picks owed and

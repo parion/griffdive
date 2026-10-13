@@ -1110,7 +1110,7 @@ describe('KICK_DIVER', () => {
     const state = reduce(withEarned(twoDiverState(), 'p2', ['uavrecon']), { type: 'KICK_DIVER', playerId: 'p2' })
     expect(state.divers.map(diver => diver.id)).toEqual(['p1'])
     expect(state.personalInventories.p2).toBeUndefined()
-    expect(state.legacyCaches.p2).toEqual(['uavrecon'])
+    expect(state.legacyCaches.p2).toEqual({ name: 'B', itemIds: ['uavrecon'] })
     expect(state.personalInventories.p1?.length).toBeGreaterThan(0)
   })
 
@@ -1172,7 +1172,7 @@ describe('LEAVE_DIVE', () => {
   it('parks the leaver\u2019s earned gear as a legacy cache and frees the squad', () => {
     const state = reduce(withEarned(twoDiverState(), 'p2', ['uavrecon', 'uavrecon']), { type: 'LEAVE_DIVE', playerId: 'p2' })
     expect(state.divers.map(diver => diver.id)).toEqual(['p1'])
-    expect(state.legacyCaches.p2).toEqual(['uavrecon'])
+    expect(state.legacyCaches.p2).toEqual({ name: 'B', itemIds: ['uavrecon'] })
     expect(state.personalInventories.p2).toBeUndefined()
   })
 
@@ -1186,7 +1186,7 @@ describe('LEAVE_DIVE', () => {
     expect(state.divers.map(diver => diver.id)).toEqual(['p2'])
     expect(state.hostId).toBe('p2')
     expect(state.divers[0]?.isHost).toBe(true)
-    expect(state.legacyCaches.p1).toEqual(['uavrecon'])
+    expect(state.legacyCaches.p1).toEqual({ name: 'A', itemIds: ['uavrecon'] })
   })
 
   it('never empties the room: the last diver cannot leave', () => {
@@ -1282,7 +1282,7 @@ describe('Field Promotion (mid-crusade catch-up)', () => {
 
   it('claims a legacy cache wholesale instead of the promotion', () => {
     let state = catchUpState()
-    state = { ...state, legacyCaches: { ...state.legacyCaches, departed: ['uavrecon'] } }
+    state = { ...state, legacyCaches: { ...state.legacyCaches, departed: { name: 'Departed', itemIds: ['uavrecon'] } } }
     const claimed = reduce(state, { type: 'CLAIM_CACHE', playerId: 'late', cacheOwnerId: 'departed' })
     expect(claimed.legacyCaches).toEqual({})
     expect(lateDiver(claimed).catchUpOwed).toBe(0)
@@ -1292,7 +1292,7 @@ describe('Field Promotion (mid-crusade catch-up)', () => {
   it('never stacks a cache\u2019s items onto ones the joiner already holds', () => {
     let state = catchUpState()
     const starter = startingItemIds(SETTINGS.variant)[0]!
-    state = { ...state, legacyCaches: { departed: ['uavrecon', starter, 'uavrecon'] } }
+    state = { ...state, legacyCaches: { departed: { name: 'Departed', itemIds: ['uavrecon', starter, 'uavrecon'] } } }
     const claimed = reduce(state, { type: 'CLAIM_CACHE', playerId: 'late', cacheOwnerId: 'departed' })
     const kit = claimed.personalInventories.late!
     expect(new Set(kit).size).toBe(kit.length)
@@ -1302,15 +1302,15 @@ describe('Field Promotion (mid-crusade catch-up)', () => {
   it('keeps caches closed until the squad has completed an operation', () => {
     let state = createDiveState(SETTINGS, 'p1', 'Griffin')
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
-    state = { ...state, phase: 'spin', wheel: null, legacyCaches: { departed: ['uavrecon'] } }
+    state = { ...state, phase: 'spin', wheel: null, legacyCaches: { departed: { name: 'Departed', itemIds: ['uavrecon'] } } }
     state = joinDiver(state, 'late', 'Latecomer')!
     expect(availableCaches(state)).toEqual([])
     expect(promotionPending(state, lateDiver(state))).toBe(false)
     expect(reduce(state, { type: 'CLAIM_CACHE', playerId: 'late', cacheOwnerId: 'departed' })).toBe(state)
 
     const climbed = catchUpState(4)
-    const withCache = { ...climbed, legacyCaches: { departed: ['uavrecon'] } }
-    expect(availableCaches(withCache)).toEqual([{ ownerId: 'departed', itemIds: ['uavrecon'] }])
+    const withCache = { ...climbed, legacyCaches: { departed: { name: 'Departed', itemIds: ['uavrecon'] } } }
+    expect(availableCaches(withCache)).toEqual([{ ownerId: 'departed', name: 'Departed', itemIds: ['uavrecon'] }])
   })
 
   it('freezes the offer: wheel spins and rerolls never reshuffle it', () => {
@@ -1338,14 +1338,14 @@ describe('Field Promotion (mid-crusade catch-up)', () => {
 
   it('refuses a cache after promotion options were already rolled', () => {
     let state = catchUpState()
-    state = { ...state, legacyCaches: { ...state.legacyCaches, departed: ['uavrecon'] } }
+    state = { ...state, legacyCaches: { ...state.legacyCaches, departed: { name: 'Departed', itemIds: ['uavrecon'] } } }
     const option = catchUpOptionsFor(state, lateDiver(state))[0]
     if (!option) {
       throw new Error('expected a catch-up option')
     }
     state = reduce(state, { type: 'CLAIM_CATCHUP_OPTION', playerId: 'late', optionId: option.optionId })
     expect(reduce(state, { type: 'CLAIM_CACHE', playerId: 'late', cacheOwnerId: 'departed' })).toBe(state)
-    expect(state.legacyCaches.departed).toEqual(['uavrecon'])
+    expect(state.legacyCaches.departed?.itemIds).toEqual(['uavrecon'])
   })
 
   it('a joiner seated mid-mission skips the current draft instead of blocking it', () => {
