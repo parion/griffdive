@@ -738,7 +738,7 @@ function close(): void {
                       >
                     </span>
                     <span class="draft-name">{{ item.displayName }}</span>
-                    <span class="draft-cat">{{ item.category.toUpperCase() }}</span>
+                    <span class="draft-cat">{{ categoryLabel(item.category).toUpperCase() }}</span>
                     <span
                       v-if="picked === item.id"
                       class="disp draft-banked stamp"

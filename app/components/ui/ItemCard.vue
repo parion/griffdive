@@ -69,7 +69,7 @@ const ownerInitials = computed(() =>
       >{{ item.tier.toUpperCase() }}</span>
       <span class="item-name">{{ item.displayName }}</span>
     </span>
-    <span class="item-cat odl">{{ item.category }}</span>
+    <span class="item-cat odl">{{ categoryLabel(item.category) }}</span>
     <span
       v-if="lead || reserve || item.antitank"
       class="item-meta"

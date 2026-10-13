@@ -70,7 +70,7 @@ function warbondName(code: string): string {
             :key="entry"
             :value="entry"
           >
-            {{ entry === 'all' ? 'All categories' : entry }}
+            {{ entry === 'all' ? 'All categories' : categoryLabel(entry) }}
           </option>
         </select>
       </label>

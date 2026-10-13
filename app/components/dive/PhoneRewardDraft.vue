@@ -297,7 +297,7 @@ function tierOf(option: RewardOption): string {
                     v-if="index === 0"
                     class="lead-tag"
                   >Ceiling</span>
-                  <span class="row-cat">{{ option.item.category }}</span>
+                  <span class="row-cat">{{ categoryLabel(option.item.category) }}</span>
                 </span>
                 <span class="row-name">{{ option.item.displayName }}</span>
               </span>
