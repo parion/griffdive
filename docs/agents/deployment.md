@@ -42,15 +42,18 @@ solo play started from the Bridge runs entirely in the browser (`useDiveEngine` 
 is invisible, and `REPORT_RESULT` is honor-system — treat outcomes as directional.
 
 CI/CD: `.github/workflows/ci.yml` runs lint/typecheck/unit tests + the Playwright E2E suite on
-every PR and push to `main`. **Releases are batched:** the `deploy` job (push to `main` +
-`workflow_dispatch`, needs both green) targets the `production` GitHub environment, which is
-configured with a required reviewer — merges to `main` queue up as "Waiting" runs until the
-accumulated batch is approved and ships as one deploy. The `environment:` reference is what
-creates the GitHub deployment record (this — not Fly's GitHub app integration — feeds the
-"production deployments" UI and the in-app changelog); the job runs `flyctl deploy
---remote-only --wait-timeout 300` against the `Dockerfile` + `fly.toml` in repo using the
-`FLY_API_TOKEN` repo secret (an app-scoped deploy token), then smoke-checks `/api/rooms` before
-the deployment is marked success. `.github/workflows/preview.yml` deploys a per-PR review app
+every PR and push to `main`; pushes never deploy. **Releases are batched and started by hand:**
+when the accumulated merges are ready, run *CI/CD → Run workflow* from `main`
+(`workflow_dispatch`), which re-verifies the batch and then hands to the `deploy` job. That job
+targets the `production` GitHub environment, which is configured with a required reviewer, so the
+release sits as "Waiting" until approved and ships as one deploy. The `environment:` reference is
+what creates the GitHub deployment record (this — not Fly's GitHub app integration — feeds the
+"production deployments" UI and the in-app changelog); dispatching replaced the old per-merge
+deploy job, whose waiting runs were cancelled by the next merge and left a failed deployment
+record behind every time. The job runs `flyctl deploy --remote-only --wait-timeout 300` against
+the `Dockerfile` + `fly.toml` in repo using the `FLY_API_TOKEN` repo secret (an app-scoped deploy
+token), then smoke-checks `/api/rooms` before the deployment is marked
+success. `.github/workflows/preview.yml` deploys a per-PR review app
 (`pr-<n>-parion-griffdive.fly.dev`, via `superfly/fly-pr-review-apps` with `fly.review.toml` and
 the org-scoped `FLY_REVIEW_TOKEN` secret) whose URL shows in the PR UI; the app is destroyed
 when the PR closes. The image

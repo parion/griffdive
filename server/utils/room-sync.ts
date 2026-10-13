@@ -411,6 +411,7 @@ export async function processHello(
     const reclaimId = known
       ? null
       : [storedId, ...knownIdsOf(payload.knownIds)].find(id => !!id && !!room.state.legacyCaches[id]) ?? null
+    const reclaiming = reclaimId !== null
     let playerId: string
     let changed = false
 
