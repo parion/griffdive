@@ -134,11 +134,19 @@ describe('rollCeiling (probabilistic tier ladder)', () => {
     // Playtest: a full squad on directives, a strain and stacked pacts banked
     // A and S gear before diff 5. Even max overstack stays scavenged there.
     for (const difficulty of [3, 4, 5]) {
-      expect(oddsToReach(difficulty, 14, 'A')).toBeLessThan(0.2)
-      expect(oddsToReach(difficulty, 14, 'S')).toBeLessThan(0.05)
+      expect(oddsToReach(difficulty, 14, 'A')).toBeLessThan(0.3)
+      expect(oddsToReach(difficulty, 14, 'S')).toBeLessThan(0.1)
       expect(oddsToReach(difficulty, 8, 'S')).toBeGreaterThan(0)
     }
-    expect(oddsToReach(3, 8, 'S')).toBeLessThan(0.01)
+    expect(oddsToReach(3, 8, 'S')).toBeLessThan(0.02)
+  })
+
+  it('pays a stacked early pact on every rung, not just S', () => {
+    // Playtest: at diff 5 a +3 pact (Valor 6.5 → 9.5) moved only S, by a
+    // point — B and A had already hit flat caps.
+    for (const tier of ['B', 'A', 'S'] as const) {
+      expect(oddsToReach(5, 9.5, tier) - oddsToReach(5, 6.5, tier)).toBeGreaterThan(0.025)
+    }
   })
 
   it('always rewards more chosen risk with better odds', () => {

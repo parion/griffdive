@@ -89,7 +89,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "acclimated",
+      "optionId": "advancedfiltration",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -104,7 +104,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "electricalconduit",
+      "optionId": "tx41sterilizer",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -136,7 +136,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "acclimated"
+      "forfeitedItemId": "surpluseatallocation"
     },
     {
       "mission": 9,
@@ -331,7 +331,7 @@
       ],
       "outcome": "success",
       "stars": 4,
-      "optionId": "ballisticpadding",
+      "optionId": "lift850jumppack",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -500,7 +500,7 @@
       ],
       "outcome": "success",
       "stars": 5,
-      "optionId": "hellpodspaceoptimization",
+      "optionId": "experimentalinfusion",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -611,9 +611,9 @@
       "zeroDeaths:terminids:ruptureStrain"
     ],
     "personalInventory": [
+      "advancedfiltration",
       "antitankmines",
       "axlas5guarddogrover",
-      "ballisticpadding",
       "cqc19stunlance",
       "cqc2saber",
       "cqc30stunbaton",
@@ -623,8 +623,8 @@
       "doublefreedom",
       "eaglesmokestrike",
       "eat17expendableantitank",
-      "electricalconduit",
       "emsmortarsentry",
+      "experimentalinfusion",
       "expertextractionpilot",
       "extrapadding",
       "fastreconvehicle",
@@ -634,10 +634,10 @@
       "g89smokescreen",
       "gasmortarsentry",
       "gp31grenadepistol",
-      "hellpodspaceoptimization",
       "integratedextinguishers",
       "k2throwingknife",
       "leveller",
+      "lift850jumppack",
       "mg43machinegun",
       "onetrueflag",
       "orbitalemsstrike",
@@ -652,7 +652,7 @@
       "sg8ppunisherplasma",
       "shieldgeneratorrelay",
       "smg203gallant",
-      "surpluseatallocation"
+      "tx41sterilizer"
     ],
     "seedHistory": [
       0,
