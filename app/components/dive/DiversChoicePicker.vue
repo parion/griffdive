@@ -106,7 +106,7 @@ watch(() => props.open, (open) => {
           :key="entry"
           :value="entry"
         >
-          {{ entry === 'all' ? 'All categories' : entry }}
+          {{ entry === 'all' ? 'All categories' : categoryLabel(entry) }}
         </option>
       </select>
       <input

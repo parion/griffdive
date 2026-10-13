@@ -42,7 +42,6 @@ export function kitSectionOf(item: Item): KitSectionId {
       return 'secondary'
     case 'throwable':
       return 'throwables'
-    case 'armor':
     case 'armorPassive':
       return 'armor'
     case 'booster':

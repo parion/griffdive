@@ -609,8 +609,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }
       if (option.choice) {
         // The free pick still honors the personal-catalog rules: only items
-        // from the diver's own warbonds, never armor pieces, nothing owned or
-        // banned.
+        // from the diver's own warbonds, nothing owned or banned.
         const owned = new Set(state.personalInventories[diver.id] ?? [])
         const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
         if (

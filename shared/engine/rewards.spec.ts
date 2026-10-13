@@ -79,7 +79,7 @@ describe('rollShopStock', () => {
 
   it('honors the exclusion set', () => {
     const poolIds = new Set(pool.map(item => item.id))
-    const excluded = pool.find(item => item.tier === 's' && item.category !== 'armor')
+    const excluded = pool.find(item => item.tier === 's')
     if (!excluded) {
       throw new Error('expected a tier-s item')
     }

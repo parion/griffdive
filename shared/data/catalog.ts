@@ -1,9 +1,9 @@
-import { armor, armorPassives, boosters, primaries, secondaries, throwables } from './equipment'
+import { armorPassives, boosters, primaries, secondaries, throwables } from './equipment'
 import { stratagems } from './stratagems'
 import type { Item, Tier, Warbond } from './types'
 import { warbonds } from './warbonds'
 
-export const CATALOG_VERSION = 3
+export const CATALOG_VERSION = 4
 
 export const TIER_RANK: Readonly<Record<Tier, number>> = { c: 0, b: 1, a: 2, s: 3 }
 
@@ -12,7 +12,6 @@ export const ALL_ITEMS: readonly Item[] = [
   ...secondaries,
   ...throwables,
   ...boosters,
-  ...armor,
   ...armorPassives,
   ...stratagems,
 ]

@@ -180,9 +180,8 @@ describe('maxValorFor (meter scale)', () => {
 })
 
 describe('rewardPoolFor', () => {
-  it('never offers armor pieces: rewards are the passives', () => {
+  it('offers armor passives', () => {
     const pool = rewardPoolFor(WARBONDS.map(warbond => warbond.code))
-    expect(pool.some(item => item.category === 'armor')).toBe(false)
     expect(pool.some(item => item.category === 'armorPassive')).toBe(true)
   })
 
@@ -204,9 +203,6 @@ describe('diverOptions', () => {
     const diver = state.divers.find((candidate): candidate is DiverState => candidate.id === 'host')!
     const options = diverOptions(state, diver)
     expect(options.length).toBeGreaterThan(0)
-    for (const option of options) {
-      expect(option.item.category).not.toBe('armor')
-    }
   })
 
   it('rolls each diver against their own warbonds, not the squad\'s', () => {
@@ -245,7 +241,6 @@ describe('shopStockFor / canBuyItem (Requisition)', () => {
     expect(state.difficulty).toBe(3)
     const stock = shopStockFor(state, host(state))
     expect(stock).toHaveLength(maxStarsFor(3))
-    expect(stock.every(option => option.item.category !== 'armor')).toBe(true)
     // Deterministic derivation — same seed, same shelf on every client.
     expect(shopStockFor(state, host(state)).map(option => option.optionId))
       .toEqual(stock.map(option => option.optionId))

@@ -77,7 +77,7 @@ function verdict(option: RewardOption): { allowed: boolean, reason: string | nul
 
         <div class="req-info">
           <span class="req-name">{{ option.item.displayName }}</span>
-          <span class="muted small">{{ option.item.category }}</span>
+          <span class="muted small">{{ categoryLabel(option.item.category) }}</span>
         </div>
 
         <button

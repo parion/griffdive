@@ -20,7 +20,6 @@ const SOURCES = [
   { file: 'secondaries.js', constName: 'SECONDARIES', exportName: 'secondaries', category: null },
   { file: 'throwables.js', constName: 'THROWABLES', exportName: 'throwables', category: null },
   { file: 'boosters.js', constName: 'BOOSTERS', exportName: 'boosters', category: null },
-  { file: 'armorsets.js', constName: 'ARMOR_SETS', exportName: 'armor', category: null },
   { file: 'armorpassives.js', constName: 'ARMOR_PASSIVES', exportName: 'armorPassives', category: 'armorPassive' },
   { file: 'stratagems.js', constName: 'STRATAGEMS', exportName: 'stratagems', category: null },
 ]
@@ -85,9 +84,6 @@ function toItem(raw, categoryOverride) {
   if ('antitank' in raw) item.antitank = raw.antitank
   if ('index' in raw) item.index = raw.index
   if ('imageURL' in raw) item.imageURL = raw.imageURL
-  if ('armorRating' in raw) item.armorRating = raw.armorRating
-  if ('speed' in raw) item.speed = raw.speed
-  if ('stamina' in raw) item.stamina = raw.stamina
   if ('passive' in raw) item.passive = raw.passive
   Object.assign(item, ITEM_OVERRIDES[item.id])
   return item
@@ -198,7 +194,7 @@ function emitItemExports(entries) {
 
 emitFile(
   'equipment.ts',
-  ['// Equipment: primaries, secondaries, throwables, boosters, armor, armor passives.'],
+  ['// Equipment: primaries, secondaries, throwables, boosters, armor passives.'],
   'import type { Item } from \'./types\'',
   emitItemExports(equipmentEntries),
 )

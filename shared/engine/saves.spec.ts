@@ -7,13 +7,16 @@ import { normalizeRoomState, normalizeSaveDoc } from './saves'
 import type { DiveState } from './types'
 import type { SaveDoc } from '../types/save'
 
-function firstIdOf(category: 'armor' | 'armorPassive'): string {
+// A v1 armor piece id; pieces have since left the catalog.
+const LEGACY_PIECE_ID = 'af50noxiousranger'
+
+function firstArmorPassiveId(): string {
   for (const item of ITEMS_BY_ID.values()) {
-    if (item.category === category) {
+    if (item.category === 'armorPassive') {
       return item.id
     }
   }
-  throw new Error(`catalog has no ${category} items`)
+  throw new Error('catalog has no armorPassive items')
 }
 
 // v1 docs predate v7 fields — overrides type loosely because legacy state is
@@ -180,8 +183,8 @@ function legacyWheel(seed: number, misfortuneId: string, front: string): SaveDoc
 
 describe('save migration v1 → v2 (armor passives)', () => {
   it('strips armor pieces from personal inventories, keeps passives', () => {
-    const pieceId = firstIdOf('armor')
-    const passiveId = firstIdOf('armorPassive')
+    const pieceId = LEGACY_PIECE_ID
+    const passiveId = firstArmorPassiveId()
     const doc = v1Doc({
       personalInventories: { host: [passiveId, pieceId, 'r2124constitution'] },
     })
@@ -209,7 +212,7 @@ describe('save migration v1 → v2 (armor passives)', () => {
   })
 
   it('re-floors a forfeit-phase crusade left with nothing to lose', () => {
-    const pieceId = firstIdOf('armor')
+    const pieceId = LEGACY_PIECE_ID
     const doc = v1Doc({
       phase: 'forfeit',
       missionInOperation: 3,
@@ -230,7 +233,7 @@ describe('save migration v1 → v2 (armor passives)', () => {
   it('leaves a forfeit-phase crusade with real holdings untouched', () => {
     const doc = v1Doc({
       phase: 'forfeit',
-      personalInventories: { host: [firstIdOf('armorPassive')] },
+      personalInventories: { host: [firstArmorPassiveId()] },
     })
     const migrated = normalizeSaveDoc(doc)!
     expect(migrated.state.phase).toBe('forfeit')

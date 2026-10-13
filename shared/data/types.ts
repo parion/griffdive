@@ -9,7 +9,6 @@ export type EquipmentCategory
     | 'secondary'
     | 'throwable'
     | 'booster'
-    | 'armor'
     | 'armorPassive'
 
 export type StratagemCategory = 'Supply' | 'Eagle' | 'Orbital' | 'Defense'
@@ -29,9 +28,6 @@ export interface Item {
   antitank?: boolean
   index?: number
   imageURL?: string
-  armorRating?: number
-  speed?: number
-  stamina?: number
   passive?: string
 }
 

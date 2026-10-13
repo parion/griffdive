@@ -69,7 +69,7 @@ const ownerInitials = computed(() =>
       >{{ item.tier.toUpperCase() }}</span>
       <span class="item-name">{{ item.displayName }}</span>
     </span>
-    <span class="item-cat odl">{{ item.category }}</span>
+    <span class="item-cat odl">{{ categoryLabel(item.category) }}</span>
     <span
       v-if="lead || reserve || item.antitank"
       class="item-meta"
@@ -88,11 +88,10 @@ const ownerInitials = computed(() =>
       >AT</span>
     </span>
     <span
-      v-if="!compact && (item.passive || item.armorRating)"
+      v-if="!compact && item.passive"
       class="item-stats muted small"
     >
-      <span v-if="item.armorRating">{{ item.armorRating }} armor · {{ item.speed }} spd · {{ item.stamina }} stam</span>
-      <span v-if="item.passive">{{ item.passive }}</span>
+      {{ item.passive }}
     </span>
     <span
       v-if="note"
@@ -142,7 +141,6 @@ const ownerInitials = computed(() =>
 .item-card[data-category='eagle'] { --cat: var(--cat-eagle); }
 .item-card[data-category='orbital'] { --cat: var(--cat-orbital); }
 .item-card[data-category='defense'] { --cat: var(--cat-defense); }
-.item-card[data-category='armor'],
 .item-card[data-category='armorpassive'] { --cat: var(--cat-armor); }
 .item-card[data-category='booster'] { --cat: var(--cat-booster); }
 .item-card[data-category='primary'] { --cat: var(--cat-primary); }

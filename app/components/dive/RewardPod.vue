@@ -166,7 +166,7 @@ function onHit(): void {
 
       <div class="pod-info">
         <span class="pod-name">{{ winner.displayName }}</span>
-        <span class="pod-cat">{{ winner.category }}</span>
+        <span class="pod-cat">{{ categoryLabel(winner.category) }}</span>
       </div>
 
       <span
