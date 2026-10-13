@@ -293,7 +293,7 @@ function submit(): void {
           </h2>
           <p class="jb-lede">
             <template v-if="host">
-              <b>{{ host.name }}</b> is leading
+              <b class="jb-callsign">{{ host.name }}</b> is leading
             </template>
             <template v-else>
               A host is leading
@@ -435,7 +435,7 @@ function submit(): void {
                     :class="{ host: d.id === state?.hostId, away: d.away }"
                   >
                     <span class="disp jb-seat-l">{{ (d.name[0] ?? '?').toUpperCase() }}</span>
-                    <span class="jb-seat-n">{{ d.name }}</span>
+                    <span class="jb-seat-n jb-callsign">{{ d.name }}</span>
                     <span
                       v-if="d.id === state?.hostId"
                       class="jb-seat-tag"
@@ -448,7 +448,10 @@ function submit(): void {
                     :class="{ you: i === 1 && !review }"
                   >
                     <span class="disp jb-seat-l">{{ i === 1 && !review ? (callsign[0] ?? '?').toUpperCase() : '+' }}</span>
-                    <span class="jb-seat-n">{{ i === 1 && !review ? (callsign || 'You') : 'Open' }}</span>
+                    <span
+                      class="jb-seat-n"
+                      :class="{ 'jb-callsign': i === 1 && !review && callsign }"
+                    >{{ i === 1 && !review ? (callsign || 'You') : 'Open' }}</span>
                   </li>
                 </ul>
                 <div class="jb-alt">
@@ -477,7 +480,7 @@ function submit(): void {
 
       <!-- 01 · IDENTIFY -->
       <section
-        class="jb-sec rise"
+        class="jb-sec jb-sec-id rise"
         style="--d: 1"
         aria-labelledby="jb-01"
       >
@@ -493,8 +496,8 @@ function submit(): void {
         <div class="jb-id">
           <div class="jb-id-copy">
             <p class="jb-big">
-              Helldivers are Class <span class="gold">A</span>.<br>
-              You are Class <span class="red">E</span>.
+              <span class="jb-big-a">Helldivers are Class <span class="gold">A</span>.</span>
+              <span class="jb-big-e">You are Class <span class="red">E</span>.</span>
             </p>
             <p>
               A <b>Griffdiver</b>: shipped to the front with surplus kit and no arsenal. You earn your
@@ -969,12 +972,9 @@ function submit(): void {
   grid-template-columns: minmax(0, 1fr);
 }
 @container jb (min-width: 760px) {
-  .jb-hero { grid-template-columns: minmax(0, 1.25fr) minmax(300px, 1fr); align-items: start; }
+  .jb-hero { grid-template-columns: minmax(0, 1.25fr) minmax(300px, 1fr); align-items: center; }
 }
 .jb-hero-copy { display: flex; flex-direction: column; gap: 14px; }
-@container jb (min-width: 760px) {
-  .jb-hero-copy { padding-top: 28px; }
-}
 .jb-hero-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 
 /* The squad card waits under the registry until the callsign is filed, then
@@ -999,6 +999,15 @@ function submit(): void {
 .jb-lede { margin: 0; max-width: 46ch; color: var(--khaki); font-size: clamp(15px, 1.4vw, 18px); line-height: 1.5; }
 .jb-lede b { color: var(--text); }
 
+/* Callsigns read in the registry's own type wherever another diver is named. */
+.jb-callsign {
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .jb-squad {
   display: flex;
   flex-direction: column;
@@ -1014,6 +1023,7 @@ function submit(): void {
 .jb-seat { display: flex; align-items: center; gap: 8px; min-width: 0; height: 36px; padding: 0 8px 0 0; background: var(--raised); border: 1px solid var(--line-2); }
 .jb-seat-l { display: grid; place-items: center; width: 34px; height: 100%; flex-shrink: 0; background: var(--line-2); color: var(--text); font-size: 14px; }
 .jb-seat-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+.jb-seat-n.jb-callsign { font-size: 12px; font-weight: 800; }
 .jb-seat-tag { margin-left: auto; font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--teal); }
 .jb-seat.host .jb-seat-l { background: var(--teal); color: var(--on-gold); }
 .jb-seat.away { opacity: 0.55; }
@@ -1041,12 +1051,15 @@ function submit(): void {
 /* 01 · Identify */
 .jb-id { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
 @container jb (min-width: 700px) {
-  .jb-id { grid-template-columns: minmax(0, 1.1fr) minmax(280px, 1fr); align-items: start; }
+  .jb-id { grid-template-columns: minmax(0, 1.1fr) minmax(280px, 1fr); align-items: center; }
 }
 .jb-id-copy { display: flex; flex-direction: column; gap: 14px; }
 .jb-id-copy p { margin: 0; max-width: 52ch; color: var(--khaki); line-height: 1.55; }
 .jb-id-copy b { color: var(--text); }
-.jb-big { font-family: var(--font-display); font-stretch: 125%; font-weight: 800; text-transform: uppercase; font-size: clamp(22px, 3vw, 32px); line-height: 1.05 !important; color: var(--text) !important; }
+.jb-sec-id { margin-top: clamp(12px, 3vw, 40px); }
+.jb-big { display: flex; flex-direction: column; gap: 8px; font-family: var(--font-display); font-stretch: 125%; font-weight: 800; text-transform: uppercase; line-height: 1 !important; }
+.jb-big-a { font-size: clamp(16px, 1.5vw, 19px); color: var(--khaki); letter-spacing: 0.04em; }
+.jb-big-e { font-size: clamp(30px, 4.2vw, 50px); color: var(--text); }
 .jb-kit {
   display: flex;
   flex-direction: column;

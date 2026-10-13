@@ -177,15 +177,17 @@ engine.
   **Squadmates get `JoinBriefing.vue`** instead — playtesters joining by link drowned in a tutorial
   for controls the host drives. It is one scrolling page, not steps or a coach-mark overlay (too
   SaaS for a game): a hazard-edged top bar with the room code, then the hero — "You've been
-  drafted." beside the **citizen registry**, whose callsign *is* the page's input (a bare field
+  drafted." beside the vertically centred **citizen registry** (it stays centred while the squad
+  card unfolds under it), whose callsign *is* the page's input (a bare field
   whose only border is a dotted gold rule that breathes while empty, a pencil-marked `Callsign`
   label, the cursor locked in on load). Filing the callsign (Enter, leaving the field, or a saved
   name filing itself) rolls the class strip — A–D struck one per `REGISTRY_BEAT`, E slams in red,
   the *Griffdiver* stamp lands — and only then does the live squad card (seats, host, difficulty,
   phase, a Field Promotion note) unfold beneath it (a grid-row reveal, `inert` while folded); a
-  seating-blocked note never waits on it. Four numbered sections follow — **01 Identify** (the
-  Class E copy beside the **issued surplus kit** from `startingItemIds`, grouped as icon tiles,
-  weapons wide), **02 The host drives. You dive.** (the mission loop as six beat cards tagged Host
+  seating-blocked note never waits on it. Four numbered sections follow — **01 Identify** (padded off the hero;
+  a small khaki "Helldivers are Class A." over a display-size "You are Class E.", centred against the **issued surplus kit** from `startingItemIds`, grouped as icon tiles,
+  weapons wide; every other diver's callsign — squad seats and the hero's host — renders
+  uppercase in the registry's display type), **02 The host drives. You dive.** (the mission loop as six beat cards tagged Host
   teal / You gold / Squad khaki, the `Your move` / `Stand by` cue legend, the forfeit footnote),
   **03 Risk buys loot** (Risk → Valor → Ceiling → Loot chain and a dial with **Valor and
   difficulty sliders** reading `ceilingOddsPercent`; the first time it scrolls into view it sweeps
