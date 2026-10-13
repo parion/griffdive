@@ -144,6 +144,7 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
             class="btn primary cut bb-buy"
             type="button"
             :disabled="!verdict(slot).allowed"
+            :title="verdict(slot).reason ?? undefined"
             :aria-label="`Buy ${slot.item.displayName} for ${itemPrice(slot.item)} credits`"
             @click="emit('buy', slot.item.id)"
           >
@@ -153,10 +154,6 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
               :value="itemPrice(slot.item)"
             />
           </button>
-          <span
-            v-if="!closed && verdict(slot).reason"
-            class="muted small bb-reason"
-          >{{ verdict(slot).reason }}</span>
         </template>
         <p
           v-else
@@ -226,9 +223,9 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
 .bb-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  padding: 10px;
+  padding: 8px;
   border: 1px solid var(--line-3);
   border-top: 2px solid var(--tier-edge, var(--line-3));
   background: var(--rail);
@@ -251,10 +248,10 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
 .bb-stage {
   display: grid;
   place-items: center;
-  min-height: 76px;
+  min-height: 64px;
   border: 1px solid var(--line-2);
 }
-.bb-art { width: 60px; height: 60px; object-fit: contain; }
+.bb-art { width: 52px; height: 52px; object-fit: contain; }
 .bb-item {
   font-size: 13px;
   font-weight: 700;
@@ -268,11 +265,16 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 44px;
+  min-height: 40px;
   margin-top: auto;
   padding: 0 12px;
 }
-.bb-buy:disabled { opacity: 0.45; cursor: not-allowed; }
+.bb-buy:disabled {
+  background: transparent;
+  border: 1px solid var(--line-3);
+  color: var(--muted);
+  cursor: not-allowed;
+}
 .bb-cost { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; }
 .bb-sold { margin: 0; }
 

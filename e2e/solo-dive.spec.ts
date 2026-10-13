@@ -80,7 +80,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.getByRole('button', { name: /Brasch's Bargains, 9 credits/ }).click()
   const bargains = page.getByRole('dialog', { name: 'Brasch\'s Bargains' })
   await expect(bargains.locator('.bb-card')).toHaveCount(4)
-  await expect(bargains.getByText('Not enough credits').first()).toBeVisible()
+  await expect(bargains.getByRole('button', { name: /^Buy/ }).first()).toBeDisabled()
   await bargains.getByRole('button', { name: /^Close/ }).click()
   await expect(bargains).toBeHidden()
 
