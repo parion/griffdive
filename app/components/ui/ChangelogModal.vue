@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import type { ChangelogEntry } from '~/composables/useChangelog'
+import type { ChangelogEntry, ChangelogState } from '~/utils/changelog'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 
 const { status, entries, error, load } = useChangelog()
 
-const ENTRY_LABELS: Record<ChangelogEntry['state'], string> = {
+const ENTRY_LABELS: Record<ChangelogState, string> = {
   pending: 'On main — not yet live',
+  waiting: 'Awaiting approval',
   in_progress: 'Deploying…',
   success: 'Live',
   failure: 'Deploy failed',
-  error: 'Deploy failed',
   unknown: 'Deployed',
 }
 
@@ -72,13 +72,13 @@ watch(() => props.open, (open) => {
         :key="entry.id"
         class="entry"
       >
-        <header class="row spread entry-head">
-          <span class="row">
+        <header class="entry-head">
+          <h3 class="row phase">
             <span
               class="state-dot"
               :data-state="entry.state"
             />
-            <span>{{ ENTRY_LABELS[entry.state] }}</span>
+            <span class="phase-name">{{ ENTRY_LABELS[entry.state] }}</span>
             <a
               v-if="entry.state === 'pending'"
               class="sha"
@@ -93,33 +93,35 @@ watch(() => props.open, (open) => {
               target="_blank"
               rel="noopener"
             >{{ entry.shortSha }}</a>
-          </span>
+          </h3>
           <time
             v-if="entry.createdAt"
             class="muted small"
             :datetime="entry.createdAt"
           >{{ dateLabel(entry) }}</time>
         </header>
-        <ul
-          v-if="entry.commits.length > 0"
-          class="commits"
+        <section
+          v-for="group in entry.groups"
+          :key="group.type"
+          class="group"
+          :data-type="group.type"
         >
-          <li
-            v-for="commit in entry.commits"
-            :key="commit.sha"
-          >
-            <span
-              v-if="commit.type"
-              class="ctype"
-              :data-type="commit.type"
-            >{{ commit.type }}</span>
-            <a
-              :href="commit.url"
-              target="_blank"
-              rel="noopener"
-            >{{ commit.subject }}</a>
-          </li>
-        </ul>
+          <h4 class="lbl group-label">
+            {{ group.label }}
+          </h4>
+          <ul class="commits">
+            <li
+              v-for="commit in group.commits"
+              :key="commit.sha"
+            >
+              <a
+                :href="commit.url"
+                target="_blank"
+                rel="noopener"
+              >{{ commit.subject }}</a>
+            </li>
+          </ul>
+        </section>
       </li>
     </ol>
   </AppDialog>
@@ -131,21 +133,33 @@ watch(() => props.open, (open) => {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 1rem;
+  gap: 1.6rem;
 }
 
 .entry {
-  border-top: 1px solid var(--border);
-  padding-top: 0.75rem;
+  border-top: 1px solid var(--line-2);
+  padding-top: 1rem;
 }
 
 .entry:first-child { border-top: none; padding-top: 0; }
 
 .entry-head {
-  gap: 0.5rem;
-  font-weight: 600;
-  font-size: 0.85rem;
-  letter-spacing: 0.04em;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+}
+
+.phase {
+  margin: 0;
+  gap: 0.55rem;
+}
+
+.phase-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -164,6 +178,7 @@ watch(() => props.open, (open) => {
 
 .state-dot[data-state='failure'] { background: var(--red); }
 .state-dot[data-state='in_progress'] { background: var(--gold); }
+.state-dot[data-state='waiting'] { background: transparent; border-color: var(--gold); }
 .state-dot[data-state='unknown'] { background: var(--khaki); }
 .state-dot[data-state='pending'] { background: transparent; border-color: var(--khaki); }
 
@@ -175,47 +190,50 @@ watch(() => props.open, (open) => {
   font-weight: 400;
 }
 
+.group {
+  margin-top: 0.85rem;
+}
+
+.group-label {
+  margin: 0 0 0.4rem;
+}
+
+.group[data-type='feat'] .group-label { color: var(--gold); }
+.group[data-type='fix'] .group-label { color: var(--teal); }
+.group[data-type='perf'] .group-label { color: var(--orange); }
+.group[data-type='refactor'] .group-label { color: var(--khaki); }
+
 .commits {
   list-style: none;
-  margin: 0.5rem 0 0;
+  margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.3rem;
+  gap: 0.4rem;
 }
 
 .commits li {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
+  position: relative;
+  padding-left: 0.85rem;
   font-size: 0.85rem;
+  line-height: 1.4;
 }
+
+.commits li::before {
+  content: '';
+  position: absolute;
+  left: 0.1rem;
+  top: 0.58em;
+  width: 4px;
+  height: 4px;
+  background: var(--dim);
+}
+
+.group[data-type='feat'] .commits li::before { background: color-mix(in srgb, var(--gold) 55%, transparent); }
+.group[data-type='fix'] .commits li::before { background: color-mix(in srgb, var(--teal) 55%, transparent); }
+.group[data-type='perf'] .commits li::before { background: color-mix(in srgb, var(--orange) 55%, transparent); }
+.group[data-type='refactor'] .commits li::before { background: color-mix(in srgb, var(--khaki) 55%, transparent); }
 
 .commits a { color: var(--text); }
-
-.ctype {
-  flex: none;
-  min-width: 3.4em;
-  text-align: center;
-  font-size: 0.65rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.05rem 0.3rem;
-}
-
-.ctype[data-type='feat'] {
-  color: var(--gold);
-  border-color: color-mix(in srgb, var(--gold) 45%, transparent);
-}
-
-.ctype[data-type='fix'] {
-  color: var(--teal);
-  border-color: color-mix(in srgb, var(--teal) 45%, transparent);
-}
-
-.ctype[data-type='refactor'], .ctype[data-type='perf'] { color: var(--khaki); }
 
 .failed { display: grid; gap: 0.4rem; justify-items: start; }
 .error-text { color: var(--red); margin: 0; }

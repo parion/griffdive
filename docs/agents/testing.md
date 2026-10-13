@@ -19,6 +19,9 @@
   join/spin/pick flows, host authority + coercion, host migration, reattachment, room-full,
   TTL pruning, metrics gauges/counters (`metrics.spec.ts`). (`@nuxt/test-utils` +
   Playwright browser flows land in Phase 3+.)
+- **Client util tests** (Vitest, `app/utils/*.spec.ts`): the brand mark ↔ `icon.svg` invariant
+  (`brandMark.spec.ts`) and the changelog's release boundaries, deployment phases (waiting vs
+  deploying vs live) and conventional-commit grouping (`changelog.spec.ts`).
 - **E2E (Playwright, `e2e/*.spec.ts` via `@playwright/test`):** `playwright.config.ts` boots the
   production build (`pnpm build` + Nitro server, port 3173, WebSocket included). Specs: solo dive
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host

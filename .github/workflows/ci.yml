@@ -42,17 +42,23 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
 
-  # Batched releases: the production GitHub environment (Settings → Environments)
-  # requires manual approval, so merges to main queue up as "Waiting" runs until
-  # the accumulated batch is approved. The environment reference is also what
+  # Batched releases, started by hand: pushes to main never deploy. When the
+  # accumulated merges are ready, run this workflow from main (Actions → CI/CD
+  # → Run workflow); it re-verifies the batch, then the production environment
+  # (Settings → Environments) holds the run until its required reviewer
+  # approves, and one release deploys. The environment reference is also what
   # creates the GitHub deployment record — the feed for the "production
-  # deployments" UI and the in-app changelog (useChangelog).
+  # deployments" UI and the in-app changelog (useChangelog). A per-merge deploy
+  # job would queue a waiting run for every merge and the next merge's
+  # cancellation stamped each one as a failed deployment.
   deploy:
     name: Deploy production
     needs: [ci, e2e]
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:
+      # A second dispatch replaces a pending release request; don't dispatch
+      # while a release is already deploying.
       group: production
       cancel-in-progress: true
     environment:
