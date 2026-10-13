@@ -20,7 +20,8 @@ export default defineConfig({
     url: 'http://localhost:3173',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
-    env: { PORT: '3173' },
+    // The suite creates and joins more rooms a minute from one address than any squad.
+    env: { PORT: '3173', ROOM_CREATE_LIMIT: '200', ROOM_JOIN_LIMIT: '400' },
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

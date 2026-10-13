@@ -199,9 +199,9 @@ coerced to the sender — a client can never act as another diver.
 `reduce`, so an unknown or malformed action is rejected (`bad-action`) instead of persisting
 `undefined` state; the reducer defaults unknown actions to a no-op and the WS handler catches
 anything else, so one bad message never stops the process-wide server. Joins are rate-limited per
-client address (20/min → `rate-limited`; keyed on `Fly-Client-IP`, then `X-Forwarded-For`, then the
+client address (20/min → `rate-limited`, `ROOM_JOIN_LIMIT` overrides it for the e2e server; keyed on `Fly-Client-IP`, then `X-Forwarded-For`, then the
 socket — behind Fly's proxy the socket address is the proxy's), actions per diver (120/10s, silently dropped), and room creation
-per address (10/min → 429) with a `MAX_ROOMS` cap (503). `server/plugins/room-sweeper.ts` reaps idle
+per address (10/min → 429; `ROOM_CREATE_LIMIT` overrides it, which only the e2e server does) with a `MAX_ROOMS` cap (503). `server/plugins/room-sweeper.ts` reaps idle
 rooms every 15 min so the `MAX_ROOMS` backstop rarely matters.
 
 Canonical engine actions (the reducer union; keep names stable):

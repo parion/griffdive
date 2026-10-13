@@ -4,8 +4,9 @@ import { roomKV } from '../../utils/room-storage'
 import { createRateLimiter } from '../../utils/rate-limit'
 
 // Ten new dives a minute per address is far more than a squad ever needs and
-// keeps a script from filling the single machine with rooms.
-const createLimiter = createRateLimiter(10, 60_000)
+// keeps a script from filling the single machine with rooms. The e2e server
+// raises it (ROOM_CREATE_LIMIT): the whole parallel suite shares one address.
+const createLimiter = createRateLimiter(Number.parseInt(process.env.ROOM_CREATE_LIMIT ?? '', 10) || 10, 60_000)
 
 // A session save is a few dozen KB of JSON; anything past this is abuse.
 const MAX_SAVE_BODY_BYTES = 256 * 1024
