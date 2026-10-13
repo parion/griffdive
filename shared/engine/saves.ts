@@ -312,8 +312,8 @@ function migrateV14toV15(doc: SaveDoc): SaveDoc {
   }
 }
 
-// v2: armor rewards became passives — armor pieces are free shells, so any
-// piece ids still held from v1 inventories are dead weight and get stripped.
+// v2: armor rewards became passives — armor pieces left the catalog, so any
+// piece ids still held from v1 inventories no longer resolve and get stripped.
 // A crusade paused mid-forfeit whose holdings were all armor has nothing left
 // to lose: restart the operation exactly as the reducer's empty-holdings path.
 // The front persists across the restart; the retry draws a fresh misfortune,
@@ -323,7 +323,7 @@ function migrateV1toV2(doc: SaveDoc): SaveDoc {
   for (const [diverId, ids] of Object.entries(doc.state.personalInventories ?? {})) {
     personalInventories[diverId] = ids.filter((id) => {
       const item = ITEMS_BY_ID.get(id)
-      return item !== undefined && item.category !== 'armor'
+      return item !== undefined
     })
   }
   const state: DiveState = { ...doc.state, personalInventories }

@@ -2,14 +2,12 @@ import type { FrontId } from './fronts'
 import type { Item, ItemCategory, Warbond } from './types'
 
 // Filenames in the catalog's `imageURL` are bare basenames; this map resolves
-// them to their directory under `public/images/`. Armor-set art shares
-// basenames with helmet art, so resolution must go by category, not lookup.
+// them to their directory under `public/images/`, going by category.
 const IMAGE_DIR: Record<ItemCategory, string> = {
   primary: 'equipment',
   secondary: 'equipment',
   throwable: 'equipment',
   booster: 'equipment',
-  armor: 'armor',
   armorPassive: 'armorpassives',
   Supply: 'svgs',
   Eagle: 'svgs',

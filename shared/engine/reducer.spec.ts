@@ -1384,7 +1384,7 @@ describe('PICK_REWARD — Diver\'s Choice (S+)', () => {
 
   it('refuses items outside the diver\'s own warbonds', () => {
     const state = reduce(choiceState(), { type: 'SET_WARBONDS', playerId: 'p1', warbondCodes: [] })
-    const foreign = ALL_ITEMS.find(item => item.warbondCode !== 'none' && item.category !== 'armor')
+    const foreign = ALL_ITEMS.find(item => item.warbondCode !== 'none')
     if (!foreign) {
       throw new Error('expected a warbond-gated item')
     }
@@ -1393,20 +1393,6 @@ describe('PICK_REWARD — Diver\'s Choice (S+)', () => {
       playerId: 'p1',
       optionId: DIVERS_CHOICE_OPTION_ID,
       choiceItemId: foreign.id,
-    })).toBe(state)
-  })
-
-  it('refuses armor pieces — rewards are the passives', () => {
-    const state = choiceState()
-    const piece = ALL_ITEMS.find(item => item.category === 'armor')
-    if (!piece) {
-      throw new Error('expected an armor piece')
-    }
-    expect(reduce(state, {
-      type: 'PICK_REWARD',
-      playerId: 'p1',
-      optionId: DIVERS_CHOICE_OPTION_ID,
-      choiceItemId: piece.id,
     })).toBe(state)
   })
 

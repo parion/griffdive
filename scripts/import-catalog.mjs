@@ -20,7 +20,6 @@ const SOURCES = [
   { file: 'secondaries.js', constName: 'SECONDARIES', exportName: 'secondaries', category: null },
   { file: 'throwables.js', constName: 'THROWABLES', exportName: 'throwables', category: null },
   { file: 'boosters.js', constName: 'BOOSTERS', exportName: 'boosters', category: null },
-  { file: 'armorsets.js', constName: 'ARMOR_SETS', exportName: 'armor', category: null },
   { file: 'armorpassives.js', constName: 'ARMOR_PASSIVES', exportName: 'armorPassives', category: 'armorPassive' },
   { file: 'stratagems.js', constName: 'STRATAGEMS', exportName: 'stratagems', category: null },
 ]
@@ -195,7 +194,7 @@ function emitItemExports(entries) {
 
 emitFile(
   'equipment.ts',
-  ['// Equipment: primaries, secondaries, throwables, boosters, armor, armor passives.'],
+  ['// Equipment: primaries, secondaries, throwables, boosters, armor passives.'],
   'import type { Item } from \'./types\'',
   emitItemExports(equipmentEntries),
 )

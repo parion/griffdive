@@ -346,10 +346,7 @@ export function rewardPoolFor(codes: readonly string[]): Item[] {
   const owned = new Set(codes)
   return ALL_ITEMS.filter(
     item =>
-      (item.warbondCode === 'none' || owned.has(item.warbondCode))
-      // Armor rewards are passives: any armor piece whose passive is owned is
-      // freely wearable, so pieces never appear as reward options.
-      && item.category !== 'armor',
+      item.warbondCode === 'none' || owned.has(item.warbondCode),
   )
 }
 

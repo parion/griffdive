@@ -9,7 +9,6 @@ export type EquipmentCategory
     | 'secondary'
     | 'throwable'
     | 'booster'
-    | 'armor'
     | 'armorPassive'
 
 export type StratagemCategory = 'Supply' | 'Eagle' | 'Orbital' | 'Defense'

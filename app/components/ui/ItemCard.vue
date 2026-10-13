@@ -141,7 +141,6 @@ const ownerInitials = computed(() =>
 .item-card[data-category='eagle'] { --cat: var(--cat-eagle); }
 .item-card[data-category='orbital'] { --cat: var(--cat-orbital); }
 .item-card[data-category='defense'] { --cat: var(--cat-defense); }
-.item-card[data-category='armor'],
 .item-card[data-category='armorpassive'] { --cat: var(--cat-armor); }
 .item-card[data-category='booster'] { --cat: var(--cat-booster); }
 .item-card[data-category='primary'] { --cat: var(--cat-primary); }

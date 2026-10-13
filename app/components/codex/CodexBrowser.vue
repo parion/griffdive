@@ -8,7 +8,6 @@ const CATEGORIES: (ItemCategory | 'all')[] = [
   'secondary',
   'throwable',
   'booster',
-  'armor',
   'armorPassive',
   'Supply',
   'Eagle',

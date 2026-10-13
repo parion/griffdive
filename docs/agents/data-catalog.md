@@ -5,8 +5,8 @@
 - **Schema:** items are `{ id, displayName, type: 'equipment'|'stratagem', category, tags[],
   warbondCode, antitank?, tier }` with `tier ∈ 'c'|'b'|'a'|'s'` (community default tier list;
   tier-maker customization is post-v1). Optional fields: `index?` (upstream ordering), `imageURL?`
-  (bare filename; resolved to `public/images/<dir>/` by `shared/data/images.ts`), and armor-set
-  extra `passive?` (armor ratings, speed and stamina are dropped — only passives matter). Categories: `primary secondary throwable booster armor armorPassive` (equipment) and
+  (bare filename; resolved to `public/images/<dir>/` by `shared/data/images.ts`), and armor-passive
+  extra `passive?`. The catalog has no armor pieces or armor stats — only passives matter. Categories: `primary secondary throwable booster armorPassive` (equipment) and
   stratagem categories (`Supply Eagle Orbital Defense` etc.).
 - **Seed source:** constants from [Selenestica/hd2-random-strat](https://github.com/Selenestica/hd2-random-strat)
   (MIT) — vendored at `scripts/upstream/` (snapshot commit recorded there), converted to our

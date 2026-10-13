@@ -35,7 +35,7 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
 6. **Rewards** (success only) — the host files the report (stars + time + the samples the squad
    extracted), which banks a sample haul into every diver's purse. Each diver is then offered N
    options rolled against their personal tier ceiling and picks one; all rewards go to the diver's
-   personal inventory — stratagems included. Armor rewards are **passives**, never armor pieces (see
+   personal inventory — stratagems included. Armor rewards are **passives**; the catalog has no armor pieces (see
    inventory model). Once a diver's draft resolves, their **Requisition stock** opens: a seeded shelf
    of named items they may buy with the sample purse (see Requisition — samples as currency). On a
    full-star clear, once every diver has picked, the squad spins **bonus honors** — a random
@@ -77,8 +77,8 @@ Warbonds are premium, per-player purchases, so ownership is declared **per diver
 host: each diver self-declares their owned warbonds (`SET_WARBONDS`, self-service, any phase;
 default every progression warbond). The acquisition specials — the Super Citizen bundle
 (`warbond0`) and the Superstore (`warbond1`) — sort last and are declared unowned; the Pre-Order
-Bonus is dropped entirely (unobtainable, no reward-pool bearing — its pieces were armor, which
-rewards never offer). Reward offers roll against the diver's own catalog — a diver is never
+Bonus is dropped entirely (unobtainable, no reward-pool bearing — its contents were armor, which
+the catalog no longer carries). Reward offers roll against the diver's own catalog — a diver is never
 offered items from warbonds they don't own. Starting kits are not warbond-filtered.
 
 ### Team layer — misfortunes / squad directives (Wheel of Adversity)
@@ -433,7 +433,7 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   `ProgressRoot`/`ProgressIndicator` (accessible `role="progressbar"` with
   `aria-valuenow/max/valuetext`).
 - The reward pool is personal: each diver rolls against the catalog of warbonds *they* declared
-  (plus `warbondCode === 'none'` items, minus armor pieces) — never the squad's or the host's.
+  (plus `warbondCode === 'none'` items) — never the squad's or the host's.
 - Higher difficulties inside a band climb easier: diff 5 rolls into B more readily than diff 3,
   diff 10 into S more readily than diff 8 (`bandPosition`).
 - Ceiling = the best tier that *can* appear in that diver's options; the roll is seeded from the
@@ -446,7 +446,7 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   an **S+** ceiling adds the Liberty's Cross slot on top.
 - **S+ = Liberty's Cross.** No catalog item carries the S+ tier, so the S+ bonus slot is a free
   pick: the diver claims **any item from their own catalog** — same personal-pool rules as every
-  reward (warbond-owned items only, armor pieces excluded, nothing already owned). The option
+  reward (warbond-owned items only, nothing already owned). The option
   rides a stable sentinel id (`DIVERS_CHOICE_OPTION_ID` in `shared/engine/rewards.ts`); the UI
   opens a minified codex picker for it, and `PICK_REWARD` carries the named item in
   `choiceItemId`. `pickedOptionId` always records the banked item's id.
@@ -594,11 +594,10 @@ class, never specific items" — it narrows a pool, it never names a reward.
   **stratagems** — each diver owns and rewards their own. Every diver starts with the full
   starting kit (stratagems included); stratagem rewards go to the diver who rolled them. There is
   no shared pool — a deliberate deviation from Penitent Crusade's sharing rule.
-- **Armor = passives, not pieces.** Armor rewards are passive unlocks: the reward pool never offers
-  armor pieces (`category === 'armor'` excluded in `rewardPoolFor`). Any armor piece (any weight or
-  rating) is freely wearable as long as its passive is owned; the catalog's armor pieces exist as
-  the passive → piece mapping (codex display). Losing a passive in a forfeit removes the ability to
-  wear armor carrying it.
+- **Armor = passives, not pieces.** The catalog carries only armor passives (no pieces, no
+  rating/speed/stamina). Any armor piece (any weight or rating) is freely wearable as long as its
+  passive is owned. Losing a passive in a forfeit removes the ability to wear armor carrying it.
+  Armor-piece ids in pre-v2 saves no longer resolve and are stripped on migration.
 - **Forfeit on failure:** each diver loses exactly one earned item (stratagems included; never the
   starting kit) from their own personal inventory, chosen by that diver from a seeded, Valor-capped
   offer — see Mission
