@@ -31,8 +31,9 @@
   1024×768 every phase fits the centre column without the page scrolling vertically, and the drawn
    directive's Lock it in is in view; at
   768×1024 the phone shell widens to the tablet), the join briefing (`join-briefing.spec.ts`: a
-  named host skips every gate and gets the tutorial, a squadmate reads the one-page briefing — live
-  roster, Codex drawer, Valor dial — lands with no tutorial or Warbonds panel, and replays it as the
+  named host skips every gate and gets the tutorial, a squadmate reads the one-page briefing — callsign
+  focused on load, Enter files it and opens the squad card, issued kit, Codex drawer, the dial's
+  scroll-in sweep — lands with no tutorial or Warbonds panel, and replays it as the
   Field manual; the spec uses one room because creation is rate-limited per IP), personal session saves
   (`session-saves.spec.ts`: a seated diver forks the live room into a new session, a solo save hosts
   an online session from the home record), PWA affordances

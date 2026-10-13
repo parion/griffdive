@@ -160,18 +160,28 @@ engine.
   panel (its Warbonds step covers ownership), and is replayable from the host's Tutorial control.
   **Squadmates get `JoinBriefing.vue`** instead — playtesters joining by link drowned in a tutorial
   for controls the host drives. It is one scrolling page, not steps or a coach-mark overlay (too
-  SaaS for a game): a hazard-edged top bar with the room code, a "You've been drafted." hero beside
-  the live squad card (seats, host, difficulty, phase, a Field Promotion or seating-blocked note),
-  then four numbered sections — **01 Identify** (callsign input + a citizen-registry card that
-  strikes classes A–D and stamps *Griffdiver* on E), **02 The host drives. You dive.** (the mission
-  loop as six beat cards tagged Host teal / You gold / Squad khaki, the `Your move` / `Stand by`
-  cue legend, and the forfeit footnote), **03 Risk buys loot** (Risk → Valor → Ceiling → Loot chain
-  and a Valor slider reading the room's real `ceilingOddsPercent`), and **04 Where your gear
+  SaaS for a game): a hazard-edged top bar with the room code, then the hero — "You've been
+  drafted." beside the **citizen registry**, whose callsign *is* the page's input (a bare field
+  whose only border is a dotted gold rule that breathes while empty, a pencil-marked `Callsign`
+  label, the cursor locked in on load). Filing the callsign (Enter, leaving the field, or a saved
+  name filing itself) rolls the class strip — A–D struck one per `REGISTRY_BEAT`, E slams in red,
+  the *Griffdiver* stamp lands — and only then does the live squad card (seats, host, difficulty,
+  phase, a Field Promotion note) unfold beneath it (a grid-row reveal, `inert` while folded); a
+  seating-blocked note never waits on it. Four numbered sections follow — **01 Identify** (the
+  Class E copy beside the **issued surplus kit** from `startingItemIds`, grouped as icon tiles,
+  weapons wide), **02 The host drives. You dive.** (the mission loop as six beat cards tagged Host
+  teal / You gold / Squad khaki, the `Your move` / `Stand by` cue legend, the forfeit footnote),
+  **03 Risk buys loot** (Risk → Valor → Ceiling → Loot chain and a dial with **Valor and
+  difficulty sliders** reading `ceilingOddsPercent`; the first time it scrolls into view it sweeps
+  Valor 2→6 and difficulty 3→5 together, one point per `DIAL_STEP`, until touched; its footer names
+  the dialled difficulty's base tier and the squad's real altitude), and **04 Where your gear
   lives** — a teal blueprint *deck plan* of the screen they'll land on (desktop three-rail or phone
   shell, picked by `usePhoneShell`) with numbered hex markers and stratagem-beacon pings, beside a
   legend whose rows light their marker on hover/focus and whose Codex/Warbonds buttons open the
   real drawers over the page. A sticky go-bar carries the callsign (an empty one is a button that
-  jumps to the input) and the `Join the dive` CTA, which sweeps only once it is live. Inside the
+  jumps to the field) and the `Join the dive` CTA, which sweeps only once it is live; joining never
+  waits on the registry animation. Timings live in `app/utils/motion.ts` (`REGISTRY_*`,
+  `DIAL_STEP`); reduced motion files and sweeps instantly. Inside the
   dive the same component renders in `review` mode as the squadmate's **Field manual** dialog
   (no input, `Back to the dive`). One structural breakpoint (1020px) flows the
   shell and stacks the rails. Below it `usePhoneShell` swaps the whole three-rail tree for

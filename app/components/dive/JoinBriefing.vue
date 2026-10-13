@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { WARBONDS } from '~~/shared/data/catalog'
-import { difficultyImageUrl } from '~~/shared/data/images'
+import { useIntersectionObserver } from '@vueuse/core'
+import { ITEMS_BY_ID, WARBONDS } from '~~/shared/data/catalog'
+import { difficultyImageUrl, itemImageUrl } from '~~/shared/data/images'
+import type { Item, ItemCategory } from '~~/shared/data/types'
 import { MAX_DIFFICULTY, MAX_NAME_LENGTH, MIN_DIFFICULTY, SQUAD_SIZE_MAX, VALOR_METER_MAX } from '~~/shared/engine/config'
-import { STARTING_KITS, difficultyName } from '~~/shared/engine/progression'
+import { STARTING_KITS, difficultyName, startingItemIds } from '~~/shared/engine/progression'
 import { ceilingOddsPercent } from '~~/shared/engine/rewards'
 import { seatingBlocked } from '~~/shared/engine/room'
 import type { DivePhase, DiveState, RewardTier } from '~~/shared/engine/types'
 import { storedDiverName } from '~/composables/useGameSocket'
+import { DIAL_STEP, REGISTRY_AUTOFILE, REGISTRY_BEAT, REGISTRY_HOLD, REGISTRY_STAMP } from '~/utils/motion'
 
 // The joiner's whole onboarding on one page: a callsign, what being Class E
 // means, the little a non-host actually does, and where their gear lives.
@@ -27,20 +30,87 @@ const { ownedWarbonds } = useOwnedWarbonds()
 const { openCodex, openWarbonds } = useDrawers()
 const { isPhone } = usePhoneShell()
 
+const reduced = import.meta.client && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const timers: ReturnType<typeof setTimeout>[] = []
+function later(ms: number, run: () => void): void {
+  timers.push(setTimeout(run, ms))
+}
+onBeforeUnmount(() => timers.forEach(clearTimeout))
+
 const saved = storedDiverName()
 const name = ref(props.review ? props.selfName : saved === 'Diver' ? '' : saved)
 const callsign = computed(() => name.value.trim())
 
-// The callsign comes first, but a phone keyboard would bury the briefing, so
-// only roomier screens land the cursor in it.
+// ---- Registry: the callsign is the page's first and only required input ----
+// Filing it (Enter, leaving the field, or a saved name) rolls the class strike
+// A→E, stamps the file, and only then opens the squad card beneath.
+type Filing = 'open' | 'rolling' | 'filed'
+const CLASSES = [
+  { letter: 'A', word: 'Citizens' },
+  { letter: 'B', word: 'Residents' },
+  { letter: 'C', word: 'Conscripts' },
+  { letter: 'D', word: 'Debtors' },
+  { letter: 'E', word: 'Griffdivers' },
+] as const
+const filing = ref<Filing>(props.review ? 'filed' : 'open')
+// 0 = nothing struck; 1–4 = A–D struck; 5 = E landed.
+const classStep = ref(props.review ? CLASSES.length : 0)
+const stamped = ref(props.review)
+const squadOpen = ref(props.review)
+const classWord = computed(() =>
+  filing.value === 'open' ? 'Pending' : CLASSES[Math.min(classStep.value, CLASSES.length - 1)]!.word)
+
+function fileCallsign(): void {
+  if (!callsign.value || filing.value !== 'open') {
+    return
+  }
+  if (reduced) {
+    classStep.value = CLASSES.length
+    stamped.value = true
+    squadOpen.value = true
+    filing.value = 'filed'
+    return
+  }
+  filing.value = 'rolling'
+  for (let step = 1; step <= CLASSES.length; step++) {
+    later(step * REGISTRY_BEAT, () => {
+      classStep.value = step
+    })
+  }
+  const landed = CLASSES.length * REGISTRY_BEAT + REGISTRY_STAMP
+  later(landed, () => {
+    stamped.value = true
+  })
+  later(landed + REGISTRY_HOLD, () => {
+    squadOpen.value = true
+    filing.value = 'filed'
+  })
+}
+
+// Enter files the callsign first; once filed, Enter joins like the CTA.
+function onNameEnter(): void {
+  if (filing.value === 'open') {
+    fileCallsign()
+  }
+  else {
+    submit()
+  }
+}
+
+// The cursor locks into the callsign the moment the page lands: it is the one
+// thing a joiner must do before anything else here matters.
 const nameInput = ref<HTMLInputElement | null>(null)
 function focusName(): void {
   nameInput.value?.scrollIntoView({ block: 'center' })
   nameInput.value?.focus({ preventScroll: true })
 }
 onMounted(() => {
-  if (!isPhone.value) {
-    nameInput.value?.focus()
+  if (props.review) {
+    return
+  }
+  nameInput.value?.focus()
+  if (callsign.value) {
+    later(reduced ? 0 : REGISTRY_AUTOFILE, fileCallsign)
   }
 })
 
@@ -71,6 +141,23 @@ const PHASE_STATUS: Record<DivePhase, string> = {
 }
 const status = computed(() => (props.state ? PHASE_STATUS[props.state.phase] : 'Raising the squad…'))
 
+// ---- 01 · the kit a Class E diver is issued --------------------------------
+// The lobby has no settings yet, so it shows the bare surplus every start shares.
+const KIT_GROUPS: readonly { label: string, categories: readonly ItemCategory[] }[] = [
+  { label: 'Stratagems', categories: ['Supply', 'Eagle', 'Orbital', 'Defense'] },
+  { label: 'Weapons', categories: ['primary', 'secondary', 'throwable'] },
+  { label: 'Armor', categories: ['armorPassive'] },
+  { label: 'Boosters', categories: ['booster'] },
+]
+const kitMode = computed(() => props.state?.settings?.mode)
+const kitItems = computed<Item[]>(() =>
+  startingItemIds(props.state?.settings?.variant ?? 'medium', kitMode.value)
+    .map(id => ITEMS_BY_ID.get(id))
+    .filter((item): item is Item => !!item))
+const kitGroups = computed(() => KIT_GROUPS
+  .map(group => ({ label: group.label, items: kitItems.value.filter(item => group.categories.includes(item.category)) }))
+  .filter(group => group.items.length > 0))
+
 // ---- 02 · the mission loop, split by who acts ------------------------------
 type Who = 'host' | 'you' | 'all'
 const LOOP: readonly { who: Who, beat: string, text: string }[] = [
@@ -83,14 +170,49 @@ const LOOP: readonly { who: Who, beat: string, text: string }[] = [
 ]
 const WHO_TAG: Record<Who, string> = { host: 'Host', you: 'You', all: 'Squad' }
 
-// ---- 03 · what Valor buys, at this squad's altitude ------------------------
+// ---- 03 · what Valor buys, at any altitude ---------------------------------
+// The dial sweeps Valor 2→6 and difficulty 3→5 the first time it scrolls into
+// view, both landing together; touching either slider ends the sweep.
+const DIAL_VALOR = [2, 6] as const
+const DIAL_DIFFICULTY = [MIN_DIFFICULTY, MIN_DIFFICULTY + 2] as const
 const TIERS: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
-const valor = ref(4)
+const valor = ref<number>(DIAL_VALOR[0])
+const dialDifficulty = ref<number>(DIAL_DIFFICULTY[0])
 const odds = computed(() => TIERS.map(tier => ({
   tier,
-  pct: ceilingOddsPercent(difficulty.value, valor.value, tier),
+  pct: ceilingOddsPercent(dialDifficulty.value, valor.value, tier),
 })))
 const baseTier = computed(() => [...odds.value].reverse().find(row => row.pct === 100)?.tier ?? 'C')
+
+const dialEl = ref<HTMLElement | null>(null)
+let dialTimers: ReturnType<typeof setTimeout>[] = []
+function sweepDial(): void {
+  const [valorFrom, valorTo] = DIAL_VALOR
+  const [diffFrom, diffTo] = DIAL_DIFFICULTY
+  if (reduced) {
+    valor.value = valorTo
+    dialDifficulty.value = diffTo
+    return
+  }
+  const steps = valorTo - valorFrom
+  for (let step = 1; step <= steps; step++) {
+    dialTimers.push(setTimeout(() => {
+      valor.value = valorFrom + step
+      dialDifficulty.value = diffFrom + Math.round((step / steps) * (diffTo - diffFrom))
+    }, step * DIAL_STEP))
+  }
+}
+function holdDial(): void {
+  dialTimers.forEach(clearTimeout)
+  dialTimers = []
+}
+onBeforeUnmount(holdDial)
+const { stop: stopWatchingDial } = useIntersectionObserver(dialEl, ([entry]) => {
+  if (entry?.isIntersecting) {
+    stopWatchingDial()
+    sweepDial()
+  }
+}, { threshold: 0.6 })
 
 // ---- 04 · where everything lives -------------------------------------------
 type Spot = 'kit' | 'codex' | 'warbonds' | 'tutorial'
@@ -181,53 +303,103 @@ function submit(): void {
           </p>
         </div>
 
-        <aside
-          class="jb-squad cut"
-          aria-label="The squad"
-        >
-          <div class="jb-squad-head">
-            <span class="lbl">Squad</span>
-            <span class="jb-status"><span
-              class="lamp pulse"
-              :class="blocked ? 'orange' : 'teal'"
-              aria-hidden="true"
-            />{{ status }}</span>
-          </div>
-          <ul class="jb-seats">
-            <li
-              v-for="d in divers"
-              :key="d.id"
-              class="jb-seat"
-              :class="{ host: d.id === state?.hostId, away: d.away }"
+        <div class="jb-hero-side">
+          <div
+            class="jb-reg cut"
+          >
+            <div class="jb-reg-h">
+              <span class="lbl">Citizen registry</span>
+              <span class="cap">Form 5-E</span>
+            </div>
+
+            <div
+              v-if="!review"
+              class="jb-reg-field"
+              :class="{ empty: !callsign }"
             >
-              <span class="disp jb-seat-l">{{ (d.name[0] ?? '?').toUpperCase() }}</span>
-              <span class="jb-seat-n">{{ d.name }}</span>
+              <label
+                for="jb-callsign"
+                class="jb-reg-label"
+              >
+                <span class="lbl gold">Callsign</span>
+                <span class="sr-only">(your name)</span>
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.4"
+                  aria-hidden="true"
+                ><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" /></svg>
+              </label>
+              <input
+                id="jb-callsign"
+                ref="nameInput"
+                v-model="name"
+                class="disp jb-reg-input"
+                type="text"
+                :maxlength="MAX_NAME_LENGTH"
+                placeholder="Type your callsign"
+                autocomplete="nickname"
+                spellcheck="false"
+                enterkeyhint="done"
+                aria-describedby="jb-callsign-hint"
+                aria-required="true"
+                @keydown.enter.prevent="onNameEnter"
+                @blur="fileCallsign"
+              >
               <span
-                v-if="d.id === state?.hostId"
-                class="jb-seat-tag"
-              >Host</span>
-            </li>
-            <li
-              v-for="i in Math.max(0, SQUAD_SIZE_MAX - divers.length)"
-              :key="`open-${i}`"
-              class="jb-seat open"
-              :class="{ you: i === 1 && !review }"
+                id="jb-callsign-hint"
+                class="jb-reg-hint"
+              >
+                <span class="cap">{{ filing === 'open' ? 'The name your squad sees' : 'Filed — edit any time' }}</span>
+                <span class="cap"><kbd v-if="filing === 'open'">Enter</kbd> {{ name.length }} / {{ MAX_NAME_LENGTH }}</span>
+              </span>
+            </div>
+            <span
+              v-else
+              class="disp jb-reg-name"
+            >{{ callsign }}</span>
+
+            <div
+              class="jb-class"
+              aria-hidden="true"
             >
-              <span class="disp jb-seat-l">{{ i === 1 && !review ? (callsign[0] ?? '?').toUpperCase() : '+' }}</span>
-              <span class="jb-seat-n">{{ i === 1 && !review ? (callsign || 'You') : 'Open' }}</span>
-            </li>
-          </ul>
-          <div class="jb-alt">
-            <img
-              :src="difficultyImageUrl(difficulty)"
-              alt=""
-              draggable="false"
+              <span class="jb-class-h">
+                <span class="lbl">Class</span>
+                <span
+                  class="cap jb-class-word"
+                  :class="{ pending: filing === 'open', e: classStep >= CLASSES.length }"
+                >{{ classWord }}</span>
+              </span>
+              <ol class="jb-classes">
+                <li
+                  v-for="(c, i) in CLASSES"
+                  :key="c.letter"
+                  :class="{
+                    e: i === CLASSES.length - 1,
+                    struck: i < CLASSES.length - 1 && i < classStep,
+                    probe: filing === 'rolling' && i === classStep,
+                    lit: i === CLASSES.length - 1 && classStep >= CLASSES.length,
+                  }"
+                >
+                  <span class="disp">{{ c.letter }}</span>
+                </li>
+              </ol>
+              <span
+                v-if="stamped && callsign"
+                class="disp jb-reg-stamp stamp"
+              >Griffdiver</span>
+            </div>
+            <p
+              class="sr-only"
+              aria-live="polite"
             >
-            <span>
-              <span class="lbl">Difficulty</span>
-              <span class="disp jb-alt-n">{{ difficulty }} · {{ difficultyName(difficulty) }}</span>
-            </span>
+              {{ filing === 'filed' && !review ? `Filed: ${callsign}, Class E — Griffdiver.` : '' }}
+            </p>
           </div>
+
           <p
             v-if="blocked"
             class="jb-note warn"
@@ -235,14 +407,72 @@ function submit(): void {
           >
             {{ blocked }}. Keep this page open and try again in a moment.
           </p>
-          <p
-            v-else-if="promoted && !review"
-            class="jb-note"
+
+          <div
+            class="jb-squad-wrap"
+            :class="{ open: squadOpen }"
+            :inert="!squadOpen"
+            :aria-hidden="!squadOpen"
           >
-            <b>Field Promotion waiting.</b> The squad has already climbed, so you'll be offered catch-up
-            gear the moment you land.
-          </p>
-        </aside>
+            <div class="jb-squad-clip">
+              <aside
+                class="jb-squad cut"
+                aria-label="The squad"
+              >
+                <div class="jb-squad-head">
+                  <span class="lbl">Squad</span>
+                  <span class="jb-status"><span
+                    class="lamp pulse"
+                    :class="blocked ? 'orange' : 'teal'"
+                    aria-hidden="true"
+                  />{{ status }}</span>
+                </div>
+                <ul class="jb-seats">
+                  <li
+                    v-for="d in divers"
+                    :key="d.id"
+                    class="jb-seat"
+                    :class="{ host: d.id === state?.hostId, away: d.away }"
+                  >
+                    <span class="disp jb-seat-l">{{ (d.name[0] ?? '?').toUpperCase() }}</span>
+                    <span class="jb-seat-n">{{ d.name }}</span>
+                    <span
+                      v-if="d.id === state?.hostId"
+                      class="jb-seat-tag"
+                    >Host</span>
+                  </li>
+                  <li
+                    v-for="i in Math.max(0, SQUAD_SIZE_MAX - divers.length)"
+                    :key="`open-${i}`"
+                    class="jb-seat open"
+                    :class="{ you: i === 1 && !review }"
+                  >
+                    <span class="disp jb-seat-l">{{ i === 1 && !review ? (callsign[0] ?? '?').toUpperCase() : '+' }}</span>
+                    <span class="jb-seat-n">{{ i === 1 && !review ? (callsign || 'You') : 'Open' }}</span>
+                  </li>
+                </ul>
+                <div class="jb-alt">
+                  <img
+                    :src="difficultyImageUrl(difficulty)"
+                    alt=""
+                    draggable="false"
+                  >
+                  <span>
+                    <span class="lbl">Difficulty</span>
+                    <span class="disp jb-alt-n">{{ difficulty }} · {{ difficultyName(difficulty) }}</span>
+                  </span>
+                </div>
+                <p
+                  v-if="promoted && !review"
+                  class="jb-note"
+                >
+                  <b>Field Promotion waiting.</b> The squad has already climbed, so you'll be offered
+                  catch-up gear the moment you land.
+                </p>
+              </aside>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- 01 · IDENTIFY -->
@@ -270,56 +500,50 @@ function submit(): void {
               A <b>Griffdiver</b>: shipped to the front with surplus kit and no arsenal. You earn your
               gear back one dive at a time — every reward you bank stays yours for the whole crusade.
             </p>
-            <label
-              v-if="!review"
-              class="jb-name"
-            >
-              <span class="jb-name-h">
-                <span class="lbl gold">Callsign</span>
-                <span class="cap">{{ name.length }} / {{ MAX_NAME_LENGTH }}</span>
-              </span>
-              <input
-                ref="nameInput"
-                v-model="name"
-                class="nb"
-                type="text"
-                :maxlength="MAX_NAME_LENGTH"
-                placeholder="Birdie"
-                aria-label="Your name"
-                autocomplete="nickname"
-                spellcheck="false"
-              >
-              <span class="cap">The name your squad sees</span>
-            </label>
           </div>
 
           <div
-            class="jb-reg cut"
-            aria-hidden="true"
+            class="jb-kit cut"
+            aria-labelledby="jb-kit-h"
+            role="group"
           >
-            <div class="jb-reg-h">
-              <span class="lbl">Citizen registry</span>
-              <span class="cap">Form 5-E</span>
+            <div class="jb-kit-h">
+              <span
+                id="jb-kit-h"
+                class="lbl gold"
+              >Issued kit · surplus</span>
+              <span class="cap"><b>{{ kitItems.length }}</b> items</span>
             </div>
-            <span class="disp jb-reg-name">{{ callsign || 'Unnamed' }}<span
-              v-if="!callsign"
-              class="blinkc jb-caret"
-            /></span>
-            <ol class="jb-classes">
-              <li
-                v-for="c in ['A', 'B', 'C', 'D']"
-                :key="c"
-              >
-                <span class="disp">{{ c }}</span>
-              </li>
-              <li class="e">
-                <span class="disp">E</span>
-              </li>
-            </ol>
-            <span
-              v-if="callsign"
-              class="disp jb-reg-stamp stamp"
-            >Griffdiver</span>
+            <div
+              v-for="group in kitGroups"
+              :key="group.label"
+              class="jb-kit-g"
+            >
+              <span class="cap">{{ group.label }}</span>
+              <ul class="jb-kit-items">
+                <li
+                  v-for="item in group.items"
+                  :key="item.id"
+                  :class="{ wide: item.category === 'primary' || item.category === 'secondary' }"
+                  :title="item.displayName"
+                >
+                  <img
+                    :src="itemImageUrl(item)"
+                    :alt="item.displayName"
+                    loading="lazy"
+                    draggable="false"
+                  >
+                </li>
+              </ul>
+            </div>
+            <span class="jb-kit-note">
+              {{ kitMode === 'seaf'
+                ? 'Includes the SEAF Support Package the host launched with.'
+                : state?.settings
+                  ? 'The bare surplus — this crusade runs without the SEAF Support Package.'
+                  : 'The host\'s launch can add the SEAF Support Package on top.' }}
+              It's all yours from the first drop; every reward adds to it.
+            </span>
           </div>
         </div>
       </section>
@@ -392,7 +616,7 @@ function submit(): void {
           </li>
           <li>
             <span class="disp">Ceiling</span>
-            <span>Valor rolls how high your reward tier climbs — from {{ baseTier }} up to S+.</span>
+            <span>Valor rolls how high your reward tier climbs above the difficulty's base, up to S+.</span>
           </li>
           <li>
             <span class="disp">Loot</span>
@@ -400,23 +624,53 @@ function submit(): void {
           </li>
         </ol>
 
-        <div class="jb-dial cut">
-          <label class="jb-dial-h">
-            <span class="lbl gold">Try it · Valor</span>
-            <span class="disp jb-dial-n">{{ valor }}</span>
-            <input
-              v-model.number="valor"
-              class="jb-range"
-              type="range"
-              min="0"
-              :max="VALOR_METER_MAX"
-              step="1"
-              aria-label="Valor"
-            >
-          </label>
+        <div
+          ref="dialEl"
+          class="jb-dial cut"
+        >
+          <div class="jb-dial-ctl">
+            <label class="jb-dial-h">
+              <span class="lbl gold">Try it · Valor</span>
+              <span class="disp jb-dial-n">{{ valor }}</span>
+              <input
+                v-model.number="valor"
+                class="jb-range"
+                type="range"
+                min="0"
+                :max="VALOR_METER_MAX"
+                step="1"
+                aria-label="Valor"
+                @pointerdown="holdDial"
+                @keydown="holdDial"
+              >
+            </label>
+            <label class="jb-dial-h diff">
+              <span class="lbl">Difficulty</span>
+              <span class="jb-dial-d">
+                <img
+                  :src="difficultyImageUrl(dialDifficulty)"
+                  alt=""
+                  draggable="false"
+                >
+                <span class="disp">{{ dialDifficulty }}</span>
+              </span>
+              <input
+                v-model.number="dialDifficulty"
+                class="jb-range diff"
+                type="range"
+                :min="MIN_DIFFICULTY"
+                :max="MAX_DIFFICULTY"
+                step="1"
+                aria-label="Difficulty"
+                :aria-valuetext="`${dialDifficulty} · ${difficultyName(dialDifficulty)}`"
+                @pointerdown="holdDial"
+                @keydown="holdDial"
+              >
+            </label>
+          </div>
           <ul
             class="jb-odds"
-            :aria-label="`Ceiling odds at difficulty ${difficulty}`"
+            :aria-label="`Ceiling odds at difficulty ${dialDifficulty}`"
           >
             <li
               v-for="row in odds"
@@ -434,7 +688,15 @@ function submit(): void {
               <span class="jb-odds-p">{{ row.tier === baseTier ? 'Base' : `${row.pct}%` }}</span>
             </li>
           </ul>
-          <span class="cap">Odds at difficulty {{ difficulty }} — the climb runs {{ MIN_DIFFICULTY }} → {{ MAX_DIFFICULTY }}, and the base tier rises with it</span>
+          <p class="jb-dial-foot">
+            <span>
+              <b>{{ difficultyName(dialDifficulty) }}</b> floors every reward at <b
+                class="tb"
+                :data-tier="baseTier"
+              >{{ baseTier }}</b> — Valor buys the climb above it.
+            </span>
+            <span>Your squad dives at <b>{{ difficulty }}</b> today and climbs to {{ MAX_DIFFICULTY }}.</span>
+          </p>
         </div>
       </section>
 
@@ -707,9 +969,26 @@ function submit(): void {
   grid-template-columns: minmax(0, 1fr);
 }
 @container jb (min-width: 760px) {
-  .jb-hero { grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr); align-items: end; }
+  .jb-hero { grid-template-columns: minmax(0, 1.25fr) minmax(300px, 1fr); align-items: start; }
 }
 .jb-hero-copy { display: flex; flex-direction: column; gap: 14px; }
+@container jb (min-width: 760px) {
+  .jb-hero-copy { padding-top: 28px; }
+}
+.jb-hero-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+/* The squad card waits under the registry until the callsign is filed, then
+   unfolds — a grid-row reveal so nothing below jumps by a fixed height. */
+.jb-squad-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: grid-template-rows var(--dur-slow) var(--ease-out), opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out), visibility 0s linear var(--dur-slow);
+}
+.jb-squad-clip { min-height: 0; overflow: hidden; }
+.jb-squad-wrap.open { grid-template-rows: 1fr; visibility: visible; opacity: 1; transform: none; transition-delay: 0s; }
 .jb-title { margin: 0; font-size: clamp(38px, 7vw, 76px); color: var(--text); }
 .jb-title.sm { font-size: clamp(26px, 4vw, 40px); }
 .jb-drafted {
@@ -762,30 +1041,108 @@ function submit(): void {
 /* 01 · Identify */
 .jb-id { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
 @container jb (min-width: 700px) {
-  .jb-id { grid-template-columns: minmax(0, 1.3fr) minmax(240px, 1fr); align-items: start; }
+  .jb-id { grid-template-columns: minmax(0, 1.1fr) minmax(280px, 1fr); align-items: start; }
 }
 .jb-id-copy { display: flex; flex-direction: column; gap: 14px; }
 .jb-id-copy p { margin: 0; max-width: 52ch; color: var(--khaki); line-height: 1.55; }
 .jb-id-copy b { color: var(--text); }
 .jb-big { font-family: var(--font-display); font-stretch: 125%; font-weight: 800; text-transform: uppercase; font-size: clamp(22px, 3vw, 32px); line-height: 1.05 !important; color: var(--text) !important; }
-.jb-name { display: flex; flex-direction: column; gap: 6px; max-width: 420px; }
-.jb-name-h { display: flex; justify-content: space-between; align-items: baseline; }
+.jb-kit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line-3);
+}
+.jb-kit-h { display: flex; justify-content: space-between; align-items: baseline; }
+.jb-kit-g { display: flex; flex-direction: column; gap: 6px; }
+.jb-kit-items { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.jb-kit-items li {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  background: var(--raised);
+  border: 1px solid var(--line-2);
+}
+.jb-kit-items li.wide { width: 76px; }
+.jb-kit-items img { width: 34px; height: 34px; object-fit: contain; }
+.jb-kit-items li.wide img { width: 68px; height: 40px; }
+.jb-kit-note { font-size: 12px; line-height: 1.45; color: var(--muted); }
 
+/* Registry — the callsign field lives on the form itself. A dotted rule is its
+   only border; it breathes while empty so it reads as "write here". */
 .jb-reg {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
+  gap: 16px;
+  padding: 18px;
   background: var(--panel);
   border: 1px solid var(--line-3);
+  border-top: 3px solid var(--gold);
   overflow: hidden;
 }
 .jb-reg-h { display: flex; justify-content: space-between; align-items: baseline; }
-.jb-reg-name { display: flex; align-items: center; gap: 6px; min-height: 28px; font-size: 22px; color: var(--text); overflow-wrap: anywhere; }
-.jb-caret { width: 10px; height: 20px; background: var(--gold); }
+.jb-reg-field { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.jb-reg-label { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; color: var(--gold); cursor: text; }
+.jb-reg-input {
+  appearance: none;
+  width: 100%;
+  margin: 0;
+  padding: 6px 2px 8px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px dotted var(--gold);
+  border-radius: 0;
+  color: var(--text);
+  caret-color: var(--gold);
+  font-size: clamp(22px, 2.6vw, 30px);
+  outline: none;
+  transition: background-color var(--dur-fast), border-bottom-color var(--dur-fast);
+}
+.jb-reg-input::placeholder { color: var(--ghost-ink); opacity: 1; }
+.jb-reg-field.empty .jb-reg-input { animation: regBreathe 1.8s ease-in-out infinite; }
+.jb-reg-input:hover { background: rgba(255, 214, 66, 0.03); }
+/* Focus is the gold rule going solid-bright with a lit wash beneath — the
+   field's only border, so the focus cue rides it rather than a ring. */
+.jb-reg-input:focus-visible,
+.jb-reg-input:focus {
+  outline: none;
+  border-bottom-color: var(--gold-bright);
+  background: linear-gradient(to top, rgba(255, 214, 66, 0.1), transparent 70%);
+}
+@keyframes regBreathe {
+  0%, 100% { border-bottom-color: var(--gold); }
+  50% { border-bottom-color: rgba(255, 214, 66, 0.35); }
+}
+.jb-reg-hint { display: flex; justify-content: space-between; gap: 8px; }
+.jb-reg-hint kbd {
+  padding: 1px 5px;
+  margin-right: 6px;
+  font: inherit;
+  color: var(--gold);
+  border: 1px solid var(--line-4);
+}
+.jb-reg-name { font-size: clamp(22px, 2.6vw, 30px); color: var(--text); overflow-wrap: anywhere; }
+
+.jb-class { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.jb-class-h { display: flex; justify-content: space-between; align-items: baseline; }
+.jb-class-word { color: var(--khaki); }
+.jb-class-word.pending { color: var(--dim); }
+.jb-class-word.e { color: var(--red); }
 .jb-classes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
-.jb-classes li { position: relative; display: grid; place-items: center; height: 46px; border: 1px solid var(--line-2); color: var(--dim); font-size: 20px; }
+.jb-classes li {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 46px;
+  border: 1px solid var(--line-2);
+  color: var(--muted);
+  font-size: 20px;
+  transition: color var(--dur-med), border-color var(--dur-med), background-color var(--dur-med);
+}
 .jb-classes li:not(.e)::after {
   content: '';
   position: absolute;
@@ -793,21 +1150,32 @@ function submit(): void {
   right: 18%;
   top: 50%;
   height: 2px;
-  background: var(--line-4);
-  transform: rotate(-24deg);
+  background: var(--line-5);
+  transform: rotate(-24deg) scaleX(0);
+  transition: transform var(--dur-med) var(--ease-snap);
 }
-.jb-classes li.e { border: 2px solid var(--red); color: var(--red); background: color-mix(in srgb, var(--red) 10%, transparent); font-size: 26px; }
+.jb-classes li.probe { border-color: var(--gold); color: var(--gold); background: rgba(255, 214, 66, 0.08); }
+.jb-classes li.struck { color: var(--dim); }
+.jb-classes li.struck::after { transform: rotate(-24deg) scaleX(1); }
+.jb-classes li.e { border-style: dashed; border-color: var(--line-4); }
+.jb-classes li.lit {
+  border: 2px solid var(--red);
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+  font-size: 26px;
+  animation: slam 0.5s var(--ease-impact) both;
+}
 .jb-reg-stamp {
   position: absolute;
-  right: 12px;
-  bottom: 70px;
+  right: 24%;
+  top: 22px;
   padding: 4px 10px;
   border: 3px solid var(--red);
   color: var(--red);
   font-size: 18px;
   letter-spacing: 0.08em;
   transform: rotate(-8deg);
-  background: rgba(19, 21, 15, 0.85);
+  background: rgba(19, 21, 15, 0.88);
 }
 
 /* 02 · Loop */
@@ -887,12 +1255,17 @@ function submit(): void {
   grid-template-columns: minmax(0, 1fr);
 }
 @container jb (min-width: 700px) {
-  .jb-dial { grid-template-columns: minmax(200px, 0.8fr) minmax(0, 1.4fr); }
-  .jb-dial > .cap { grid-column: 1 / -1; }
+  .jb-dial { grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.4fr); }
+  .jb-dial-foot { grid-column: 1 / -1; }
 }
-.jb-dial-h { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10px; }
+.jb-dial-ctl { display: flex; flex-direction: column; gap: 14px; }
+.jb-dial-h { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 6px 10px; }
+.jb-dial-d { display: inline-flex; align-items: center; gap: 6px; }
+.jb-dial-d img { width: 26px; height: 26px; }
+.jb-dial-d .disp { font-size: 26px; color: var(--text); line-height: 0.85; }
 .jb-dial-n { font-size: 48px; color: var(--gold); line-height: 0.85; }
 .jb-range { grid-column: 1 / -1; width: 100%; accent-color: var(--gold); height: 28px; cursor: pointer; }
+.jb-range.diff { accent-color: var(--khaki); }
 .jb-odds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
 .jb-odds li { display: grid; grid-template-columns: 34px minmax(0, 1fr) 48px; align-items: center; gap: 10px; }
 .jb-odds li.none { opacity: 0.4; }
@@ -900,7 +1273,20 @@ function submit(): void {
 .jb-odds-bar { height: 10px; background: var(--line-1); overflow: hidden; }
 .jb-odds-bar i { display: block; height: 100%; background: currentColor; transition: width var(--dur-slow) var(--ease-out); }
 .jb-odds-p { font-size: 12px; font-weight: 700; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
-.jb-dial > .cap { white-space: normal; line-height: 1.4; }
+.jb-dial-foot {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line-2);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.jb-dial-foot b { color: var(--text); }
+.jb-dial-foot .tb { display: inline; font-size: 12px; }
 
 /* 04 · Deck plan */
 .jb-deck { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
