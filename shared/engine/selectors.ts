@@ -37,7 +37,7 @@ import {
   stratagemBanReason,
 } from './pacts'
 import type { StratagemBanSource } from './pacts'
-import { startingItemIds } from './progression'
+import { catchUpOpsBehind, startingItemIds } from './progression'
 import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, rollBargainShelf, rollBonus, rollCeiling, rollRewardOptions, valorOf } from './rewards'
 import type { BargainSlot, RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
@@ -580,19 +580,20 @@ export function canBuyItem(
 // The Field Promotion: a mid-crusade joiner's catch-up offer. Altitude
 // parity, never rarity — the ceiling is the difficulty's base tier at zero
 // Valor (a zero-Valor dive always rolls its base tier), so a late joiner buys
-// up to the squad's altitude without ever reaching S. Derived from the last
-// spun seed like every offer — deterministic, never stored.
+// up to the squad's altitude without ever reaching S. Deterministic, never
+// stored.
 //
-// Each pick re-rolls the offer: the seed folds in how many picks the diver has
-// already claimed, so every client derives the same fresh draft after every
-// claim, and items already held are excluded so the offer stays full-size.
+// The seed is the diver's own id — server-minted, random and fixed for the
+// seat — so the offer is frozen to the diver: the squad spinning or rerolling
+// the wheel never reshuffles it under them. Each pick re-rolls the offer: the
+// seed folds in how many picks are already claimed, and items already held are
+// excluded so the offer stays full-size.
 export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOption[] {
   if (!state.settings || diver.catchUpOwed <= 0) {
     return []
   }
   const claimed = diver.catchUpGranted - diver.catchUpOwed
-  const stream = claimed > 0 ? `${diver.id}:catchup:${claimed}` : `${diver.id}:catchup`
-  const seed = deriveSeed(state.seedHistory.at(-1) ?? 0, hashString(stream))
+  const seed = deriveSeed(hashString(`${diver.id}:catchup`), claimed)
   const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
   // Bans are personal and crusade-long, so a promotion never re-offers a
   // banned item either.
@@ -852,11 +853,26 @@ export function actingDiverIds(state: DiveState): string[] {
 }
 
 // Legacy caches a mid-crusade joiner can claim instead of their promotion.
-export function availableCaches(state: DiveState): { ownerId: string, itemIds: string[] }[] {
-  return Object.entries(state.legacyCaches).map(([ownerId, itemIds]) => ({
-    ownerId,
-    itemIds,
-  }))
+// Fallen divers' kits a joiner may claim instead of their Field Promotion.
+// Caches only open once the squad has completed an operation — before that a
+// joiner is at the start altitude and owes no promotion to trade.
+export function availableCaches(state: DiveState): { ownerId: string, name: string, itemIds: string[] }[] {
+  if (!state.settings || catchUpOpsBehind(state.difficulty, state.settings.variant) < 1) {
+    return []
+  }
+  return Object.entries(state.legacyCaches)
+    .filter(([, cache]) => cache.itemIds.length > 0)
+    .map(([ownerId, cache]) => ({ ownerId, name: cache.name, itemIds: cache.itemIds }))
+}
+
+// Whether the diver still has a Field Promotion to settle: picks owed and
+// something to spend them on (an exhausted pool must never hold a joiner).
+export function promotionPending(state: DiveState, diver: DiverState): boolean {
+  if (state.phase === 'complete' || diver.catchUpOwed <= 0) {
+    return false
+  }
+  const cacheOpen = diver.catchUpOwed === diver.catchUpGranted && availableCaches(state).length > 0
+  return cacheOpen || catchUpOptionsFor(state, diver).length > 0
 }
 
 // The pacts the accepted misfortune filtered out of the offer this mission —

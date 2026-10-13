@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useLocalStorage } from '@vueuse/core'
 import { createSaveDoc } from '~~/shared/engine/saves'
-import { bargainsClosedReason, diverOptions, majorOrderFronts, pactRiskOf, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
+import { bargainsClosedReason, diverOptions, majorOrderFronts, pactRiskOf, promotionPending, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
 import type { CrusadeSettings, DiverState, EngineAction, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
@@ -13,7 +13,7 @@ const session = useDiveSession(slotId.value)
 const saves = useSaves()
 const { push: pushToast } = useToasts()
 const { ownedWarbonds, setOwned } = useOwnedWarbonds()
-const { openWarbonds } = useDrawers()
+const { openWarbonds, warbondsOpen } = useDrawers()
 const { hasSeenWarbondIntro, markWarbondIntroSeen } = useWarbondIntro()
 const { hasSeenDiveIntro, markDiveIntroSeen } = useDiveIntro()
 const { isPhone } = usePhoneShell()
@@ -344,6 +344,18 @@ function awardBonus(playerIds: string[]): void {
   dispatch({ type: 'AWARD_BONUS', playerIds })
 }
 
+// A mid-crusade joiner settles their Field Promotion before they dive — held
+// back until the name gate, the briefing and the Warbonds drawer are done, as
+// the offer draws from the warbonds the diver declares there.
+const promotionGateOpen = computed(() =>
+  !!state.value
+  && !!self.value
+  && !kicked.value
+  && !briefingOpen.value
+  && !warbondsOpen.value
+  && !session.awaitingName.value
+  && promotionPending(state.value, self.value))
+
 function claimCatchUpOption(optionId: string): void {
   if (selfId.value) {
     dispatch({ type: 'CLAIM_CATCHUP_OPTION', playerId: selfId.value, optionId })
@@ -581,8 +593,6 @@ function launchCrusade(settings: CrusadeSettings): void {
       @award-bonus="awardBonus"
       @advance="advance"
       @forfeit="forfeit"
-      @claim-catch-up-option="claimCatchUpOption"
-      @claim-cache="claimCache"
       @start="launchCrusade"
       @kick="kick"
       @transfer-host="transferHost"
@@ -714,16 +724,6 @@ function launchCrusade(settings: CrusadeSettings): void {
         </button>
       </p>
 
-      <!-- The Field Promotion persists across phases: a mid-crusade joiner
-           catches up whenever it suits them, never gating the squad. -->
-      <FieldPromotionCard
-        v-if="self && self.catchUpOwed > 0 && state.phase !== 'complete'"
-        :state="state"
-        :diver="self"
-        @claim-option="claimCatchUpOption"
-        @claim-cache="claimCache"
-      />
-
       <Transition
         v-if="!kicked"
         name="phase"
@@ -843,6 +843,16 @@ function launchCrusade(settings: CrusadeSettings): void {
       :mode="session.mode"
       :online="session.online.value"
       @close="closeBriefing"
+    />
+
+    <FieldPromotionGate
+      v-if="state && self"
+      :open="promotionGateOpen"
+      :state="state"
+      :diver="self"
+      @claim-option="claimCatchUpOption"
+      @claim-cache="claimCache"
+      @open-warbonds="openWarbonds"
     />
 
     <AppDialog

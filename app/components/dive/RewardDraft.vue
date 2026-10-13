@@ -49,6 +49,14 @@ const props = withDefaults(defineProps<{
   bonusUp?: boolean
   canControl?: boolean
   kicker?: string
+  // The Field Promotion reuses the draft cabinet: no ceiling roll, stars,
+  // tokens, squad board or footer — a picks readout in the header instead,
+  // and a fresh offer drops after every claim.
+  variant?: 'reward' | 'promotion'
+  title?: string
+  picksLeft?: number
+  picksTotal?: number
+  baseTier?: RewardTier | null
 }>(), {
   squadDrafts: () => [],
   tokenCount: 0,
@@ -67,7 +75,14 @@ const props = withDefaults(defineProps<{
   bonusUp: false,
   canControl: false,
   kicker: 'Reward draft',
+  variant: 'reward',
+  title: 'Reward Draft',
+  picksLeft: 0,
+  picksTotal: 0,
+  baseTier: null,
 })
+
+const promotion = computed(() => props.variant === 'promotion')
 
 const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
@@ -104,6 +119,7 @@ watch(() => props.options, (next) => {
     return
   }
   if (!sameOffer(lockedOptions.value, next)) {
+    claiming.value = false
     lockedOptions.value = [...next]
     settledCount.value = 0
     podsDone.value = false
@@ -111,6 +127,17 @@ watch(() => props.options, (next) => {
     startIntro()
   }
 })
+
+// A promotion claim re-rolls the offer; until the new one arrives the old pods
+// stay locked so a second tap can't spend a pick against a stale offer.
+const claiming = ref(false)
+
+function onPick(optionId: string, choiceItemId?: string): void {
+  if (promotion.value) {
+    claiming.value = true
+  }
+  emit('pick', optionId, choiceItemId)
+}
 
 // The pod that banked the reward: a rolled option matches by id, while
 // Liberty's Cross banks a named item that was never among the options.
@@ -285,6 +312,9 @@ const maxStars = computed(() => maxStarsFor(props.difficulty))
 const optionCount = computed(() => lockedOptions.value.length)
 
 const leadOptionId = computed<string | null>(() => {
+  if (promotion.value) {
+    return null
+  }
   const rolled = lockedOptions.value.filter(option => !option.choice)
   if (rolled.length === 0) {
     return null
@@ -376,16 +406,27 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
 <template>
   <section
     class="draft"
-    :class="{ banning: banMode }"
+    :class="{ banning: banMode, promotion }"
   >
     <header class="draft-head">
       <div class="head-l">
-        <span class="lbl">{{ kicker }}</span>
+        <span
+          v-if="kicker"
+          class="lbl"
+        >{{ kicker }}</span>
         <h1 class="disp draft-title">
-          Reward Draft
+          {{ title }}
         </h1>
         <span class="head-meta">
           <span
+            v-if="promotion && baseTier"
+            class="meta-base"
+          >Base tier <span
+            class="tb meta-tier"
+            :data-tier="baseTier"
+          >{{ baseTier }}</span></span>
+          <span
+            v-if="!promotion"
             class="meta-stars"
             role="img"
             :aria-label="`${stars} of ${maxStars} stars`"
@@ -408,6 +449,25 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
             class="meta-lost"
           >−{{ optionsLost }} · failed pact{{ optionsLost === 1 ? '' : 's' }}</span>
         </span>
+      </div>
+      <div
+        v-if="promotion"
+        class="head-picks"
+      >
+        <span
+          class="chits"
+          role="img"
+          :aria-label="`${picksLeft} of ${picksTotal} promotion picks left`"
+        >
+          <span
+            v-for="i in picksTotal"
+            :key="i"
+            class="hex tok"
+            :class="{ on: i <= picksLeft }"
+          />
+        </span>
+        <span class="tok-count picks-count">{{ picksLeft }}<span class="dim">/{{ picksTotal }} left</span></span>
+        <slot name="head-actions" />
       </div>
       <div
         v-if="ceiling && lockedOptions.length"
@@ -465,12 +525,12 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
         :owned-ids="ownedIds"
         :reveal-rank="revealRanks[lockedOptions.indexOf(crossOption)]"
         :instant="instant || podsDone"
-        :can-pick="allSettled && !resolved"
+        :can-pick="allSettled && !resolved && !claiming"
         :picked="pickedPodId === crossOption.optionId"
         :dimmed="pickedPodId !== null && pickedPodId !== crossOption.optionId"
         :ban-mode="banMode"
         :stamp="pickedPodId === crossOption.optionId && resolved ? 'Banked' : null"
-        @choose="itemId => emit('pick', crossOption!.optionId, itemId)"
+        @choose="itemId => onPick(crossOption!.optionId, itemId)"
         @settled="onSettled"
       />
       <RewardPod
@@ -480,7 +540,7 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
         :index="index"
         :reveal-rank="revealRanks[lockedOptions.indexOf(option)]"
         :instant="instant || podsDone"
-        :can-pick="allSettled && !resolved"
+        :can-pick="allSettled && !resolved && !claiming"
         :picked="pickedPodId === option.optionId"
         :dimmed="pickedPodId !== null && pickedPodId !== option.optionId"
         :lead="option.optionId === leadOptionId"
@@ -488,7 +548,7 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
         :bannable="bannableIds.includes(option.optionId)"
         :selected="selectedBanIds.includes(option.optionId)"
         :stamp="pickedPodId === option.optionId && resolved ? 'Banked' : (bannedIds.includes(option.optionId) ? 'Banned' : null)"
-        @pick="optionId => emit('pick', optionId)"
+        @pick="optionId => onPick(optionId)"
         @ban="toggleBan"
         @settled="onSettled"
       />
@@ -506,6 +566,7 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
     />
 
     <footer
+      v-if="!promotion"
       class="token-bar"
       :class="{ banning: banMode }"
     >
@@ -746,6 +807,8 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
 .meta-star { width: 12px; height: 12px; fill: var(--line-3); }
 .meta-star.on { fill: var(--gold); }
 .meta-count { color: var(--khaki); }
+.meta-base { display: inline-flex; align-items: center; gap: 6px; color: var(--khaki); }
+.meta-tier { min-width: 20px; height: 18px; padding: 0 3px; font-size: 10px; border: 1px solid currentColor; }
 .meta-lost { color: var(--red); }
 .head-track { flex: 0 1 380px; margin-left: auto; }
 /* While rolling, the track is lifted into the stage (no transition, so it
@@ -835,6 +898,29 @@ const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
 .cabinet-cross { grid-column: 1 / -1; }
 
 .sat-out { margin: 0; }
+
+/* In the promotion dialog the cabinet centres capped pods (one pick never
+   stretches across the dialog) and folds to two columns when narrow. */
+.draft.promotion { container-type: inline-size; }
+.promotion .cabinet {
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 13.5rem));
+  grid-auto-rows: 290px;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.promotion .draft-head { flex-wrap: nowrap; }
+.head-picks { display: flex; align-items: center; gap: 4px 12px; margin-left: auto; }
+.head-picks .chits { gap: 4px; }
+.head-picks .tok { width: 16px; height: 18px; }
+@container (max-width: 36rem) {
+  .promotion .cabinet {
+    grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+    grid-auto-rows: 236px;
+    gap: 10px;
+  }
+  /* Phones keep just the chits. */
+  .picks-count { display: none; }
+}
 
 /* Compact "choosing" indicators (the pods own their own glow). */
 

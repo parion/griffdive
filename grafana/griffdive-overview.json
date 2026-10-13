@@ -14,95 +14,1289 @@
   "tags": ["griffdive"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "editable": true,
-  "refresh": "1m",
+  "refresh": "30s",
+  "graphTooltip": 1,
   "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "difficulty",
+        "label": "Difficulty",
+        "type": "custom",
+        "description": "Filters the panels whose metrics carry a difficulty label.",
+        "query": "3,4,5,6,7,8,9,10",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "options": [],
+        "hide": 0
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "name": "Deploys & restarts",
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "enable": true,
+        "iconColor": "orange",
+        "expr": "changes(process_start_time_seconds[5m]) > 0",
+        "target": { "expr": "changes(process_start_time_seconds[5m]) > 0", "refId": "Anno" }
+      }
+    ]
+  },
   "panels": [
     {
       "id": 1,
-      "title": "Presence",
-      "type": "timeseries",
+      "type": "stat",
+      "title": "Divers online now",
+      "description": "Distinct seated connections right now (scraped every 15s).",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
-      "interval": "15s",
+      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 0 },
+      "targets": [
+        { "refId": "A", "expr": "griffdive_online_players", "instant": true, "range": false, "legendFormat": "players" }
+      ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "min": 0,
-          "custom": { "fillOpacity": 8, "lineWidth": 2, "showPoints": "never" }
+          "color": { "mode": "fixed", "fixedColor": "#4fd1c5" }
         },
         "overrides": []
       },
-      "options": {
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "targets": [
-        { "refId": "A", "expr": "griffdive_online_players", "legendFormat": "Online players" },
-        { "refId": "B", "expr": "griffdive_active_rooms", "legendFormat": "Active rooms" },
-        { "refId": "C", "expr": "griffdive_open_rooms", "legendFormat": "Open rooms" }
-      ]
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "area", "textMode": "auto" }
     },
     {
       "id": 2,
-      "title": "Dives started",
-      "type": "timeseries",
+      "type": "stat",
+      "title": "Rooms live",
+      "description": "Rooms with at least one seated diver connected — a lobby counts, a crusade mid-mission counts, a resumed session counts.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
-      "interval": "15s",
+      "gridPos": { "h": 5, "w": 4, "x": 4, "y": 0 },
+      "targets": [
+        { "refId": "A", "expr": "griffdive_active_rooms", "instant": true, "range": false, "legendFormat": "rooms" }
+      ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "min": 0,
-          "custom": {
-            "drawStyle": "bars",
-            "fillOpacity": 60,
-            "lineWidth": 1,
-            "showPoints": "never",
-            "barAlignment": 0
-          }
+          "color": { "mode": "fixed", "fixedColor": "#e8c265" }
         },
         "overrides": []
       },
-      "options": {
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "single", "sort": "none" }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(increase(griffdive_dives_started_total[$__rate_interval]))",
-          "legendFormat": "Dives started"
-        }
-      ]
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "area", "textMode": "auto" }
     },
     {
       "id": 3,
-      "title": "Dive rate",
-      "type": "timeseries",
+      "type": "stat",
+      "title": "Crusades launched · range",
+      "description": "START_DIVE actions: a crusade launched from a room lobby. Not counted: rooms created, sessions resumed from a save, or solo play run locally in the browser.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 9 },
-      "interval": "15s",
+      "gridPos": { "h": 5, "w": 4, "x": 8, "y": 0 },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(griffdive_dives_started_total[$__range]))", "instant": true, "range": false, "legendFormat": "crusades" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Missions started · range",
+      "description": "Every mission that began: the crusade's first dive plus each ADVANCE. This is the gameplay-volume number the old \"Dives started\" panel was missing.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 5, "w": 4, "x": 12, "y": 0 },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(griffdive_missions_started_total[$__range]))", "instant": true, "range": false, "legendFormat": "missions" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Mission success · range",
+      "description": "Success share of honor-system mission reports. Directional, not ground truth.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 5, "w": 4, "x": 16, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum(increase(griffdive_reports_total{outcome=\"success\"}[$__range])) / clamp_min(sum(increase(griffdive_reports_total[$__range])), 1)",
+          "instant": true,
+          "range": false,
+          "legendFormat": "success"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Saved dives · cap 500",
+      "description": "Rooms pinned so they outlive the idle TTL. Nearing 500 means the save cap starts evicting the oldest pinned crusades.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 5, "w": 4, "x": 20, "y": 0 },
+      "targets": [
+        { "refId": "A", "expr": "griffdive_saved_dives", "instant": true, "range": false, "legendFormat": "saved" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "max": 500,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 300 }, { "color": "red", "value": 450 }] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
+    },
+
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Arrival — how people show up",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "panels": []
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Cold HTTP hits by route",
+      "description": "Server-reached requests only: client-side navigation and the PWA service worker are invisible, so read it as arrivals, not page views.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 6 },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (route) (rate(griffdive_http_requests_total[$__rate_interval])) * 60",
+          "legendFormat": "{{route}}"
+        }
+      ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
           "min": 0,
-          "custom": { "fillOpacity": 8, "lineWidth": 2, "showPoints": "never" }
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 40, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Rooms created — fresh vs resumed",
+      "description": "A fresh room is a new lobby. A resumed room seeds a live crusade from a personal session save — the return path that never fires START_DIVE.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 6 },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (source) (increase(griffdive_rooms_created_total[$__rate_interval]))",
+          "legendFormat": "{{source}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 50, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Join attempts by result",
+      "description": "Every WebSocket hello. room_not_found is a dead or expired invite link; locked means the share link was opened while the squad was in rewards/forfeit; bad_code and rate_limited are protocol noise or probes.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 6 },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (increase(griffdive_ws_hello_total[$__rate_interval]))",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 50, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Room lookups — invite-link health",
+      "description": "GET /api/rooms/:code, driven by the Bridge's resume list and pre-join checks. A rising missing share is dead links.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 13 },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (result) (increase(griffdive_room_lookups_total[$__rate_interval]))",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 45, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "missing" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#f2495c" } }]
+          }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Refused room creations",
+      "description": "cap = the 2000-room ceiling (the single machine is full); rate_limited = an address making more than 10 rooms a minute; invalid_save = a malformed session file.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 13 },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (reason) (increase(griffdive_room_create_rejected_total[$__rate_interval]))",
+          "legendFormat": "{{reason}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 45, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "HTTP errors by route",
+      "description": "4xx/5xx cold hits. Repeated api_room misses are dead links; 5xx is worth a look at fly logs.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 13 },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (route, status) (increase(griffdive_http_requests_total{status=~\"4xx|5xx\"}[$__rate_interval]))",
+          "legendFormat": "{{route}} {{status}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 45, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+
+    {
+      "id": 101,
+      "type": "row",
+      "title": "Play — real time",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 },
+      "panels": []
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Presence",
+      "description": "Seated divers and rooms with a live connection. Presence says who is connected, never whether a mission is running — pair it with the funnel.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "interval": "15s",
+      "targets": [
+        { "refId": "A", "expr": "griffdive_online_players", "legendFormat": "Online players" },
+        { "refId": "B", "expr": "griffdive_active_rooms", "legendFormat": "Active rooms" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never", "gradientMode": "opacity" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Online players" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#4fd1c5" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Active rooms" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#e8c265" } }]
+          }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Rooms by phase",
+      "description": "Every stored room's phase, refreshed by the 2-minute census. A fat lobby band is unlaunched rooms; a standing forfeit band is a stuck squad.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "interval": "2m",
+      "targets": [
+        { "refId": "A", "expr": "griffdive_rooms_by_phase", "legendFormat": "{{phase}}" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 30, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "calcs": ["max"] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Rooms by difficulty",
+      "description": "Where the ladder currently sits: the census gauge keyed by each room's difficulty.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 28 },
+      "interval": "2m",
+      "targets": [
+        { "refId": "A", "expr": "griffdive_room_difficulty", "legendFormat": "d{{difficulty}}" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 30, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Missions started, reported per hour",
+      "description": "The honest volume line: missions opened per hour, split into reported successes and failures.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 16, "x": 8, "y": 28 },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(griffdive_missions_started_total{difficulty=~\"$difficulty\"}[$__rate_interval])) * 3600",
+          "legendFormat": "missions started / h"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(griffdive_reports_total{outcome=\"success\",difficulty=~\"$difficulty\"}[$__rate_interval])) * 3600",
+          "legendFormat": "successes / h"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(griffdive_reports_total{outcome=\"failure\",difficulty=~\"$difficulty\"}[$__rate_interval])) * 3600",
+          "legendFormat": "failures / h"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 45, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "successes / h" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#73bf69" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "failures / h" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#f2495c" } }]
+          }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+
+    {
+      "id": 102,
+      "type": "row",
+      "title": "Funnel — selected range",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 },
+      "panels": []
+    },
+    {
+      "id": 17,
+      "type": "bargauge",
+      "title": "Volume funnel",
+      "description": "Volumes, not conversion: rooms created → arrivals seated → missions started → missions reported → operations completed → crusades achieved. Each bar counts a different population (arrivals can exceed rooms when people rejoin), so read it as how deep play gets.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(griffdive_rooms_created_total[$__range]))", "instant": true, "range": false, "legendFormat": "Rooms created" },
+        { "refId": "B", "expr": "sum(increase(griffdive_ws_hello_total{result=~\"new|rejoin|reclaim\"}[$__range]))", "instant": true, "range": false, "legendFormat": "Arrivals seated" },
+        { "refId": "C", "expr": "sum(increase(griffdive_missions_started_total[$__range]))", "instant": true, "range": false, "legendFormat": "Missions started" },
+        { "refId": "D", "expr": "sum(increase(griffdive_reports_total[$__range]))", "instant": true, "range": false, "legendFormat": "Missions reported" },
+        { "refId": "E", "expr": "sum(increase(griffdive_operations_completed_total[$__range]))", "instant": true, "range": false, "legendFormat": "Operations completed" },
+        { "refId": "F", "expr": "sum(increase(griffdive_crusades_achieved_total[$__range]))", "instant": true, "range": false, "legendFormat": "Crusades achieved" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "light-blue", "value": null }] }
         },
         "overrides": []
       },
       "options": {
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "single", "sort": "none" }
-      },
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Time in phase — p95",
+      "description": "How long rooms spend in a phase before moving on. Lobby p95 is onboarding friction; pacts/decision p95 is how long the host's buttons wait.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "interval": "1m",
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(griffdive_dives_started_total[$__rate_interval])) * 60",
-          "legendFormat": "dives / min"
+          "expr": "histogram_quantile(0.95, sum by (le, phase) (rate(griffdive_phase_dwell_seconds_bucket[$__rate_interval])))",
+          "legendFormat": "{{phase}} p95"
         }
-      ]
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 0, "lineWidth": 1, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+
+    {
+      "id": 103,
+      "type": "row",
+      "title": "Risk & balance — is chosen risk real?",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 44 },
+      "panels": []
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "Valor at report",
+      "description": "The risk each diver actually staked when the mission reported, read from the engine's own selector. If this sits near zero, missions run at the base tier and the reward ladder is decoration.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 45 },
+      "interval": "1m",
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(griffdive_valor_at_report_sum[$__rate_interval])) / clamp_min(sum(rate(griffdive_valor_at_report_count[$__rate_interval])), 0.0001)", "legendFormat": "average" },
+        { "refId": "B", "expr": "histogram_quantile(0.5, sum by (le) (rate(griffdive_valor_at_report_bucket[$__rate_interval])))", "legendFormat": "median" },
+        { "refId": "C", "expr": "histogram_quantile(0.9, sum by (le) (rate(griffdive_valor_at_report_bucket[$__rate_interval])))", "legendFormat": "p90" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 8, "lineWidth": 2, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 20,
+      "type": "stat",
+      "title": "Zero-Valor reports",
+      "description": "Share of reports taken with nothing at stake — declined directive, no pacts, no strain. The design wants this to be a choice, not the default.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 4, "x": 8, "y": 45 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum(rate(griffdive_valor_at_report_bucket{le=\"0\"}[$__rate_interval])) / clamp_min(sum(rate(griffdive_valor_at_report_count[$__rate_interval])), 0.0001)",
+          "instant": true,
+          "range": false,
+          "legendFormat": "zero valor"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 60 }] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
+    },
+    {
+      "id": 21,
+      "type": "bargauge",
+      "title": "Rolled ceilings · range",
+      "description": "The tier each report actually rolled. The risk economy realized — and the only place S/S+ shows up in the wild.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 6, "x": 12, "y": 45 },
+      "targets": [
+        { "refId": "A", "expr": "sum by (tier) (increase(griffdive_ceiling_total[$__range]))", "instant": true, "range": false, "legendFormat": "{{tier}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 22,
+      "type": "bargauge",
+      "title": "Pacts sworn per diver · range",
+      "description": "How many pacts each present diver locked per mission, in exact counts derived from the histogram buckets.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 6, "x": 18, "y": 45 },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(griffdive_pact_picks_bucket{le=\"0\"}[$__range]))", "instant": true, "range": false, "legendFormat": "0 pacts" },
+        { "refId": "B", "expr": "sum(increase(griffdive_pact_picks_bucket{le=\"1\"}[$__range])) - sum(increase(griffdive_pact_picks_bucket{le=\"0\"}[$__range]))", "instant": true, "range": false, "legendFormat": "1 pact" },
+        { "refId": "C", "expr": "sum(increase(griffdive_pact_picks_bucket{le=\"2\"}[$__range])) - sum(increase(griffdive_pact_picks_bucket{le=\"1\"}[$__range]))", "instant": true, "range": false, "legendFormat": "2 pacts" },
+        { "refId": "D", "expr": "sum(increase(griffdive_pact_picks_count[$__range])) - sum(increase(griffdive_pact_picks_bucket{le=\"2\"}[$__range]))", "instant": true, "range": false, "legendFormat": "3 pacts" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Squad directive calls",
+      "description": "Accepted vs declined. Flips in the pact window count again — the label says which way a call was made, not the squad's final word.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 52 },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (decision) (increase(griffdive_directive_decisions_total[$__rate_interval]))",
+          "legendFormat": "{{decision}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 45, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "accepted" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#73bf69" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "declined" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#ff9830" } }]
+          }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 24,
+      "type": "bargauge",
+      "title": "Directive accept rate by difficulty",
+      "description": "Are squads braver as the ladder climbs? A flat low rate everywhere means the carrot is not landing.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 52 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum by (difficulty) (increase(griffdive_directive_decisions_total{decision=\"accepted\"}[$__range])) / clamp_min(sum by (difficulty) (increase(griffdive_directive_decisions_total[$__range])), 1)",
+          "instant": true,
+          "range": false,
+          "legendFormat": "d{{difficulty}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "min": 0,
+          "max": 100,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 25 }, { "color": "green", "value": 50 }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 25,
+      "type": "bargauge",
+      "title": "Directive accept rate by rule — top 12",
+      "description": "Rules squads say yes to. A rule at ~0% is dead weight; a rule at ~100% is free Valor.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 60 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(12, 100 * sum by (condition) (increase(griffdive_directive_decisions_total{decision=\"accepted\"}[$__range])) / clamp_min(sum by (condition) (increase(griffdive_directive_decisions_total[$__range])), 1))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{condition}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "min": 0,
+          "max": 100,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "orange", "value": 25 }, { "color": "green", "value": 50 }] }
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 26,
+      "type": "bargauge",
+      "title": "Pacts sworn by rule — top 12",
+      "description": "Which pacts divers actually take. Never-taken pacts are content not paying rent; auto-taken ones may be too cheap.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 60 },
+      "targets": [
+        { "refId": "A", "expr": "topk(12, sum by (condition) (increase(griffdive_pacts_picked_total[$__range])))", "instant": true, "range": false, "legendFormat": "{{condition}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 27,
+      "type": "bargauge",
+      "title": "Rule trouble — failed pacts, failed directives, refused accepts",
+      "description": "The three ways a rule misfires: broken in the field (too hard or unclear), or refused at the wheel because it would strand a diver below four stratagems (unfieldable). Top 8 each.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 68 },
+      "targets": [
+        { "refId": "A", "expr": "topk(8, sum by (condition) (increase(griffdive_pacts_failed_total[$__range])))", "instant": true, "range": false, "legendFormat": "pact broken · {{condition}}" },
+        { "refId": "B", "expr": "topk(8, sum by (condition) (increase(griffdive_directives_failed_total[$__range])))", "instant": true, "range": false, "legendFormat": "directive broken · {{condition}}" },
+        { "refId": "C", "expr": "topk(8, sum by (condition) (increase(griffdive_directive_refusals_total[$__range])))", "instant": true, "range": false, "legendFormat": "accept refused · {{condition}}" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 28,
+      "type": "timeseries",
+      "title": "Strain calls",
+      "description": "The operation-long subfaction commitment: accepted or declined, per strain.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 6, "x": 12, "y": 68 },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (decision) (increase(griffdive_strain_decisions_total[$__rate_interval]))",
+          "legendFormat": "{{decision}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 45, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 29,
+      "type": "bargauge",
+      "title": "Major Order mix · range",
+      "description": "live = playing toward the actual war order (pays the token carrot); manual = a front picked by hand; cleared = order removed before the draw.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 6, "x": 18, "y": 68 },
+      "targets": [
+        { "refId": "A", "expr": "sum by (kind) (increase(griffdive_major_order_total[$__range]))", "instant": true, "range": false, "legendFormat": "{{kind}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+
+    {
+      "id": 104,
+      "type": "row",
+      "title": "Economy & outcomes",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 75 },
+      "panels": []
+    },
+    {
+      "id": 30,
+      "type": "timeseries",
+      "title": "Win rate by difficulty",
+      "description": "Success share per difficulty. Where the curve collapses, the ladder stops being fun — watch restarts next to this.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 76 },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum by (difficulty) (rate(griffdive_reports_total{outcome=\"success\",difficulty=~\"$difficulty\"}[$__rate_interval])) / clamp_min(sum by (difficulty) (rate(griffdive_reports_total{difficulty=~\"$difficulty\"}[$__rate_interval])), 0.0001)",
+          "legendFormat": "d{{difficulty}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 8, "lineWidth": 2, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "Average stars by difficulty",
+      "description": "Stars drive reward options (and the honors cadence), so this is the performance curve behind the loot economy. Failures are excluded — they award none.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 76 },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (difficulty) (rate(griffdive_mission_stars_sum{difficulty=~\"$difficulty\"}[$__rate_interval])) / clamp_min(sum by (difficulty) (rate(griffdive_mission_stars_count{difficulty=~\"$difficulty\"}[$__rate_interval])), 0.0001)",
+          "legendFormat": "d{{difficulty}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 8, "lineWidth": 2, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 32,
+      "type": "timeseries",
+      "title": "Reported time remaining",
+      "description": "The extraction clock people type in. Rushing (low) versus full-clearing (high) — and the input to the sample-haul multiplier.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 76 },
+      "interval": "1m",
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(griffdive_report_time_pct_sum[$__rate_interval])) / clamp_min(sum(rate(griffdive_report_time_pct_count[$__rate_interval])), 0.0001)", "legendFormat": "average %" },
+        { "refId": "B", "expr": "histogram_quantile(0.5, sum by (le) (rate(griffdive_report_time_pct_bucket[$__rate_interval])))", "legendFormat": "median %" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 8, "lineWidth": 2, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 33,
+      "type": "timeseries",
+      "title": "Sample hauls by rarity",
+      "description": "Average samples reported per successful mission, next to what the maps hold (SAMPLE_AVAILABILITY). Big gaps mean squads report less than they extract.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 83 },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (rarity) (rate(griffdive_samples_haul_sum[$__rate_interval])) / clamp_min(sum by (rarity) (rate(griffdive_samples_haul_count[$__rate_interval])), 0.0001)",
+          "legendFormat": "{{rarity}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 8, "lineWidth": 2, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 34,
+      "type": "bargauge",
+      "title": "Rewards picked by tier · range",
+      "description": "What the draft actually banks. Watch for C-tier picks at difficulty 6+ — that is the early-game loot curve leaking upward.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 83 },
+      "targets": [
+        { "refId": "A", "expr": "sum by (tier) (increase(griffdive_rewards_picked_total[$__range]))", "instant": true, "range": false, "legendFormat": "{{tier}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 35,
+      "type": "bargauge",
+      "title": "Requisition purchases by tier · range",
+      "description": "Whether Brasch's Bargains is affordable: a shelf nobody buys is a shelf priced wrong.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 83 },
+      "targets": [
+        { "refId": "A", "expr": "sum by (tier) (increase(griffdive_purchases_total[$__range]))", "instant": true, "range": false, "legendFormat": "{{tier}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 36,
+      "type": "bargauge",
+      "title": "Forfeits by tier · range",
+      "description": "What failure actually costs: the tier of the items divers gave up after a failed mission.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 90 },
+      "targets": [
+        { "refId": "A", "expr": "sum by (tier) (increase(griffdive_forfeits_total[$__range]))", "instant": true, "range": false, "legendFormat": "{{tier}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 37,
+      "type": "stat",
+      "title": "Honors spun / awarded · range",
+      "description": "The end-of-mission ceremony. Awards lag spins when the host skips naming a winner — the ceremony is a soft gate by design.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 6, "x": 6, "y": 90 },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(griffdive_honors_spun_total[$__range]))", "instant": true, "range": false, "legendFormat": "spun" },
+        { "refId": "B", "expr": "sum(increase(griffdive_honors_awarded_total[$__range]))", "instant": true, "range": false, "legendFormat": "awarded" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
+    },
+    {
+      "id": 38,
+      "type": "stat",
+      "title": "Reward tokens spent · range",
+      "description": "Rerolls vs bans. Tokens are the honors carrot — if they never get spent, the carrot is invisible.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 6, "x": 12, "y": 90 },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(griffdive_reward_rerolls_total[$__range]))", "instant": true, "range": false, "legendFormat": "reroll" },
+        { "refId": "B", "expr": "sum(increase(griffdive_reward_bans_total[$__range]))", "instant": true, "range": false, "legendFormat": "ban" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
+    },
+    {
+      "id": 39,
+      "type": "bargauge",
+      "title": "Wheel rerolls by wheel · range",
+      "description": "Where the reroll economy goes: misfortune, front or strain. Front rerolls are the operation's one narrow window.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 6, "x": 18, "y": 90 },
+      "targets": [
+        { "refId": "A", "expr": "sum by (kind) (increase(griffdive_wheel_rerolls_total[$__range]))", "instant": true, "range": false, "legendFormat": "{{kind}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+
+    {
+      "id": 105,
+      "type": "row",
+      "title": "Retention & squads",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 97 },
+      "panels": []
+    },
+    {
+      "id": 40,
+      "type": "bargauge",
+      "title": "Returning divers by silence gap · range",
+      "description": "A known seat (or a reclaimed cache) coming back after the room went quiet. Without accounts this is the best retention signal there is: <1h is the same evening, >1d is the next session.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 98 },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(griffdive_rejoins_total{gap=\"<1h\"}[$__range]))", "instant": true, "range": false, "legendFormat": "back within an hour" },
+        { "refId": "B", "expr": "sum(increase(griffdive_rejoins_total{gap=\"1-6h\"}[$__range]))", "instant": true, "range": false, "legendFormat": "1–6h" },
+        { "refId": "C", "expr": "sum(increase(griffdive_rejoins_total{gap=\"6-24h\"}[$__range]))", "instant": true, "range": false, "legendFormat": "6–24h" },
+        { "refId": "D", "expr": "sum(increase(griffdive_rejoins_total{gap=\">1d\"}[$__range]))", "instant": true, "range": false, "legendFormat": "next day or later" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 41,
+      "type": "timeseries",
+      "title": "Seats taken, by kind",
+      "description": "New divers, mid-crusade joiners (Field Promotion) and reclaimed caches — how squads actually fill up.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 98 },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (kind) (increase(griffdive_divers_joined_total[$__rate_interval]))",
+          "legendFormat": "{{kind}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 45, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 42,
+      "type": "timeseries",
+      "title": "Seats left & host transfers",
+      "description": "Departures by kind plus host migrations. Frequent disconnects-era transfers mean the host role, not the squad, is the fragile part.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 98 },
+      "interval": "1m",
+      "targets": [
+        { "refId": "A", "expr": "sum by (kind) (increase(griffdive_divers_departed_total[$__rate_interval]))", "legendFormat": "departed · {{kind}}" },
+        { "refId": "B", "expr": "sum by (reason) (increase(griffdive_host_transfers_total[$__rate_interval]))", "legendFormat": "host moved · {{reason}}" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 45, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 43,
+      "type": "bargauge",
+      "title": "Squad size at mission start · range",
+      "description": "Present divers when a mission opened, in exact counts. The design's squad-size rules should be tuned to whatever this bar chart says.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 105 },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(griffdive_squad_size_bucket{le=\"1\"}[$__range]))", "instant": true, "range": false, "legendFormat": "solo" },
+        { "refId": "B", "expr": "sum(increase(griffdive_squad_size_bucket{le=\"2\"}[$__range])) - sum(increase(griffdive_squad_size_bucket{le=\"1\"}[$__range]))", "instant": true, "range": false, "legendFormat": "duo" },
+        { "refId": "C", "expr": "sum(increase(griffdive_squad_size_bucket{le=\"3\"}[$__range])) - sum(increase(griffdive_squad_size_bucket{le=\"2\"}[$__range]))", "instant": true, "range": false, "legendFormat": "trio" },
+        { "refId": "D", "expr": "sum(increase(griffdive_squad_size_count[$__range])) - sum(increase(griffdive_squad_size_bucket{le=\"3\"}[$__range]))", "instant": true, "range": false, "legendFormat": "full squad of four" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      }
+    },
+    {
+      "id": 44,
+      "type": "timeseries",
+      "title": "Stepping away vs coming back",
+      "description": "The 30-second grace window in action: divers who dropped mid-crusade and divers whose seats woke back up.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 105 },
+      "interval": "1m",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (direction) (increase(griffdive_presence_changes_total[$__rate_interval]))",
+          "legendFormat": "{{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "fillOpacity": 45, "lineWidth": 1, "stacking": { "mode": "normal" }, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 45,
+      "type": "stat",
+      "title": "Rooms swept by TTL · range",
+      "description": "Idle rooms the sweeper reaped because nobody saved them. A high number with recent activity means the TTLs are too short for real play rhythms.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 4, "x": 16, "y": 105 },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(griffdive_rooms_swept_total[$__range]))", "instant": true, "range": false, "legendFormat": "swept" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
+    },
+    {
+      "id": 46,
+      "type": "stat",
+      "title": "Warbond edits · range",
+      "description": "Explicit warbond declarations. The default is everyone-owns-everything, so only edits carry signal about real purchases.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 4, "x": 20, "y": 105 },
+      "targets": [
+        { "refId": "A", "expr": "sum(increase(griffdive_warbond_edits_total[$__range]))", "instant": true, "range": false, "legendFormat": "edits" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
+    },
+
+    {
+      "id": 106,
+      "type": "row",
+      "title": "Health",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 112 },
+      "panels": []
+    },
+    {
+      "id": 47,
+      "type": "timeseries",
+      "title": "Process CPU",
+      "description": "The single shared-cpu-1x machine. Presence spikes cost very little — watch this only when other numbers move with it.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 113 },
+      "interval": "1m",
+      "targets": [
+        { "refId": "A", "expr": "rate(process_cpu_seconds_total[$__rate_interval]) * 100", "legendFormat": "CPU %" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "color": { "mode": "fixed", "fixedColor": "#4fd1c5" },
+          "custom": { "drawStyle": "line", "fillOpacity": 8, "lineWidth": 2, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false, "calcs": [] }, "tooltip": { "mode": "single", "sort": "none" } }
+    },
+    {
+      "id": 48,
+      "type": "timeseries",
+      "title": "Memory RSS",
+      "description": "256 MB is the machine's ceiling. Rooms are fully in memory while live, so this one is worth an eye at growth.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 6, "x": 6, "y": 113 },
+      "interval": "1m",
+      "targets": [
+        { "refId": "A", "expr": "process_resident_memory_bytes", "legendFormat": "RSS" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 8, "lineWidth": 2, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false, "calcs": [] }, "tooltip": { "mode": "single", "sort": "none" } }
+    },
+    {
+      "id": 49,
+      "type": "timeseries",
+      "title": "Event loop lag p99",
+      "description": "The room server's responsiveness ceiling — a sync core that blocks shows up here before players feel it.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 6, "x": 12, "y": 113 },
+      "interval": "1m",
+      "targets": [
+        { "refId": "A", "expr": "nodejs_eventloop_lag_p99_seconds", "legendFormat": "p99" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 8, "lineWidth": 2, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false, "calcs": [] }, "tooltip": { "mode": "single", "sort": "none" } }
+    },
+    {
+      "id": 50,
+      "type": "table",
+      "title": "Running build",
+      "description": "The image and engine version serving right now. The restart annotation on every panel comes from the same signal.",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 7, "w": 6, "x": 18, "y": 113 },
+      "targets": [
+        { "refId": "A", "expr": "griffdive_build_info", "instant": true, "range": false, "format": "table" }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Time" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          }
+        ]
+      },
+      "options": { "showHeader": true, "cellHeight": "sm" }
     }
   ]
 }

@@ -3,9 +3,10 @@ import type { FrontId } from '../data/fronts'
 import { SAVE_SCHEMA_VERSION } from '../types/save'
 import type { SaveDoc } from '../types/save'
 import { ENGINE_VERSION } from './config'
+import { earnedKit } from './progression'
 import { resetOperation } from './reducer'
 import { hashString } from './rng'
-import type { CrusadeVariant, DiveState, DiverState } from './types'
+import type { CrusadeVariant, DiveState, DiverState, LegacyCache } from './types'
 
 // Pre-v8 (pre-alpha) divers may be missing any field whose shape landed after
 // their save was written — Field Promotion bookkeeping, failed-pact marks,
@@ -111,6 +112,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 16) {
     migrated = migrateV15toV16(migrated)
   }
+  if (migrated.schemaVersion < 17) {
+    migrated = migrateV16toV17(migrated)
+  }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
   // A session mirror can carry a pre-v13 room's settings under the current
@@ -198,7 +202,7 @@ function migrateV10toV11(doc: SaveDoc): SaveDoc {
   }
 }
 
-// A pre-v16 diver's purse, before sample points were renamed to credits.
+// A pre-v17 diver's purse, before sample points were renamed to credits.
 type LegacyPurse = Partial<DiverState> & { sampleBank?: number }
 
 // v12: samples became Requisition currency — a personal purse banked from each
@@ -269,6 +273,7 @@ export function normalizeRoomState(state: DiveState): DiveState {
   return {
     ...state,
     settings,
+    ...repairKits(state, settings),
     misfortuneFailed: state.misfortuneFailed ?? false,
     bonusWinnerIds: Array.isArray(state.bonusWinnerIds)
       ? state.bonusWinnerIds
@@ -294,6 +299,57 @@ function legacyBargain(state: DiveState, diver: DiverState): DiverState['bargain
     excludedIds: [...(state.personalInventories?.[diver.id] ?? []), ...(diver.bannedItemIds ?? [])],
     boughtItemId: null,
     boughtKinds: [],
+  }
+}
+
+// Caches once parked whole inventories and claims stacked them onto the
+// starting kit, so earlier rooms carry repeated ids and starting-kit-only
+// caches. Inventories become sets and caches keep only earned gear.
+function repairKits(
+  state: DiveState,
+  settings: DiveState['settings'],
+): Pick<DiveState, 'personalInventories' | 'legacyCaches'> {
+  const personalInventories = Object.fromEntries(
+    Object.entries(state.personalInventories ?? {}).map(([id, items]) => [id, [...new Set(items)]]),
+  )
+  const legacyCaches: Record<string, LegacyCache> = {}
+  for (const [id, raw] of Object.entries(state.legacyCaches ?? {})) {
+    const cache = cacheOf(raw)
+    const itemIds = settings ? earnedKit(cache.itemIds, settings.variant, settings.mode) : [...new Set(cache.itemIds)]
+    if (itemIds.length > 0) {
+      legacyCaches[id] = { name: cache.name, itemIds }
+    }
+  }
+  return { personalInventories, legacyCaches }
+}
+
+// Before v16 a cache was a bare item list; the departed diver's name was never
+// kept, so those kits read as an anonymous fallen diver.
+const UNNAMED_CACHE = 'Fallen diver'
+
+function cacheOf(raw: unknown): LegacyCache {
+  if (Array.isArray(raw)) {
+    return { name: UNNAMED_CACHE, itemIds: raw.filter((id): id is string => typeof id === 'string') }
+  }
+  const cache = (raw ?? {}) as Partial<LegacyCache>
+  return {
+    name: typeof cache.name === 'string' && cache.name.trim() ? cache.name : UNNAMED_CACHE,
+    itemIds: Array.isArray(cache.itemIds) ? cache.itemIds.filter((id): id is string => typeof id === 'string') : [],
+  }
+}
+
+// v16: a cache names the diver who carried it ({ name, itemIds } instead of
+// a bare item list). Rooms are unversioned, so normalizeRoomState performs the
+// same reshape; this step pins it to the version.
+function migrateV15toV16(doc: SaveDoc): SaveDoc {
+  return {
+    ...doc,
+    state: {
+      ...doc.state,
+      legacyCaches: Object.fromEntries(
+        Object.entries(doc.state.legacyCaches ?? {}).map(([id, raw]) => [id, cacheOf(raw)]),
+      ),
+    },
   }
 }
 
@@ -332,10 +388,10 @@ function migrateV14toV15(doc: SaveDoc): SaveDoc {
   }
 }
 
-// v16: Brasch's Bargains became an always-open shop paid in credits. The
+// v17: Brasch's Bargains became an always-open shop paid in credits. The
 // sample purse carries over as credits; the deal itself is filled in by
 // normalizeRoomState, which rooms share.
-function migrateV15toV16(doc: SaveDoc): SaveDoc {
+function migrateV16toV17(doc: SaveDoc): SaveDoc {
   return {
     ...doc,
     state: {

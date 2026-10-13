@@ -1316,7 +1316,11 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
     </section>
 
     <footer class="bridge-foot">
-      <span>FAN PROJECT · NOT AFFILIATED WITH ARROWHEAD GAME STUDIOS OR SONY</span>
+      <span>FAN PROJECT · NOT AFFILIATED WITH ARROWHEAD GAME STUDIOS OR SONY ·
+        <NuxtLink
+          class="foot-link"
+          to="/privacy"
+        >PRIVACY</NuxtLink></span>
       <span
         class="foot-marks"
         aria-hidden="true"
@@ -2105,6 +2109,8 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
 .foot-marks i { width: 18px; height: 2px; background: var(--line-3); }
 .foot-marks i:nth-child(2) { width: 6px; }
 .foot-marks i:nth-child(3) { width: 2px; background: var(--line-5); }
+.foot-link { color: var(--gold); text-decoration: none; }
+.foot-link:hover { text-decoration: underline; }
 
 @media (max-width: 1020px) {
   .mo-band { flex-wrap: wrap; }

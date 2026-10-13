@@ -92,6 +92,11 @@ Each phase lands shippable. Update the relevant `docs/agents/` files (commands, 
   front commitment + reroll bonus, manual picker plus the live war API; see Operation layer) and
   the **Destroyer Terminal redesign** (single terminal language, three-rail dive shell, Bridge
   home, phone layout, hidden `/kit`; see Destroyer Terminal design language).
+  **Observability expanded:** the Prometheus registry now covers the whole loop — arrivals and
+  invite-link health, the room census (phase and difficulty), the play funnel, chosen-risk
+  decisions, the reward economy and the no-accounts retention proxies — with the Grafana overview
+  versioned in-repo (`grafana/griffdive-overview.json`; `pnpm dashboard:preview` renders a
+  mock-series layout preview). See [Deployment](./deployment.md) → Monitoring.
   Remaining: the final polish pass. *Done
   when: production URL serves a full multiplayer dive.*
 - **Phase 5 — Post-v1 backlog.** Specialists (PC parity), tier-maker custom rarity tables, heat

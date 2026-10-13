@@ -19,7 +19,7 @@ export interface SteamLobbyInfo {
 }
 
 export type ClientMessage
-  = | { type: 'hello', name?: string, playerId?: string }
+  = | { type: 'hello', name?: string, playerId?: string, knownIds?: string[] }
     | { type: 'action', action: EngineAction }
     | { type: 'save-dive', name?: string }
     | { type: 'unsave-dive' }
