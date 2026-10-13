@@ -1,13 +1,14 @@
 import type { Item, Tier } from '../data/types'
 import {
+  BARGAIN_TIER_REACH,
   BONUS_STATS,
   MAX_OPTIONS,
   OVERFLOW_S_LUCK,
   OVERFLOW_S_PLUS_LUCK,
-  SAMPLE_POINTS,
-  SAMPLE_PRICE_TIER,
-  SAMPLE_PRICE_TYPE,
-  SAMPLE_PRICE_TYPE_DEFAULT,
+  CREDIT_PRICE_TIER,
+  CREDIT_PRICE_TYPE,
+  CREDIT_PRICE_TYPE_DEFAULT,
+  SAMPLE_CREDITS,
   S_PLUS_BONUS_OPTIONS,
   S_PLUS_OVERFLOW_CAP,
   S_PLUS_UPGRADE_DIVISOR,
@@ -31,7 +32,7 @@ import {
 import type { BonusStat } from './config'
 import { deriveSeed, mulberry32, pickIndex, pickWeighted } from './rng'
 import type { Rng } from './rng'
-import type { MissionReport, RewardTier, SampleCounts } from './types'
+import type { BargainSlotKind, MissionReport, RewardTier, SampleCounts } from './types'
 
 const TIER_INDEX: Readonly<Record<Tier, number>> = { c: 0, b: 1, a: 2, s: 3 }
 const CEILING_LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
@@ -83,22 +84,22 @@ export const DIVERS_CHOICE_ITEM: Item = {
 }
 
 // Chosen risk (accepted team misfortune + personal pacts) is the diver's Valor
-// — it buys odds, not tiers. Samples are a separate currency and never feed it.
+// — it buys odds, not tiers. Samples become credits and never feed it.
 export function valorOf(teamRisk: number, pactRisk: number): number {
   return teamRisk + pactRisk
 }
 
-// The sample haul's raw worth, before the extraction-speed multiplier. No cap:
-// this is currency, not Valor — difficulty already scales it through the
-// game's own sample mix (commons dominate early, supers appear at 6).
+// The sample haul's raw credit worth, before the extraction-speed multiplier.
+// No cap: this is currency, not Valor — difficulty already scales it through
+// the game's own sample mix (commons dominate early, supers appear at 6).
 export function haulValue(samples: SampleCounts | undefined): number {
   if (!samples) {
     return 0
   }
   return (
-    Math.max(0, samples.common) * SAMPLE_POINTS.common
-    + Math.max(0, samples.rare) * SAMPLE_POINTS.rare
-    + Math.max(0, samples.super) * SAMPLE_POINTS.super
+    Math.max(0, samples.common) * SAMPLE_CREDITS.common
+    + Math.max(0, samples.rare) * SAMPLE_CREDITS.rare
+    + Math.max(0, samples.super) * SAMPLE_CREDITS.super
   )
 }
 
@@ -109,8 +110,8 @@ export function timeHaulMultiplier(timePct: number | undefined): number {
   return TIME_HAUL_FLOOR + (1 - TIME_HAUL_FLOOR) * fraction
 }
 
-// Sample points a successful mission banks into every diver's purse. Rounded
-// down — a partial point is not currency.
+// Credits a successful mission banks into every diver's purse. Rounded down —
+// a partial credit is not currency.
 export function missionHaul(report: MissionReport | null): number {
   if (!report) {
     return 0
@@ -118,11 +119,11 @@ export function missionHaul(report: MissionReport | null): number {
   return Math.floor(haulValue(report.samples) * timeHaulMultiplier(report.timePct))
 }
 
-// Requisition price: tier first, then type (a booster out-prices an armor
-// passive). Unknown categories cost the default multiplier.
+// Brasch's Bargains price: tier first, then type (a primary out-prices an
+// armor passive). Unknown categories cost the default multiplier.
 export function itemPrice(item: Item): number {
-  const base = SAMPLE_PRICE_TIER[item.tier]
-  const multiplier = SAMPLE_PRICE_TYPE[item.category] ?? SAMPLE_PRICE_TYPE_DEFAULT
+  const base = CREDIT_PRICE_TIER[item.tier]
+  const multiplier = CREDIT_PRICE_TYPE[item.category] ?? CREDIT_PRICE_TYPE_DEFAULT
   return Math.round(base * multiplier)
 }
 
@@ -295,20 +296,63 @@ export function rollRewardOptions(
   return picked
 }
 
-// The rotating Requisition stock: one item per star the difficulty can award,
-// drawn from the band the diver's Valor bought for the draft (base tier up to
-// the rolled ceiling) and weighted toward the top, like the draft. No item
-// carries S+, and the stock is not Liberty's Cross, so an S+ ceiling maps to S
-// (its bonus slot stays in the draft). Armor pieces never appear
-// (rewardPoolFor already excludes them).
-export function rollShopStock(
+export interface BargainSlot {
+  slotId: string
+  kind: BargainSlotKind
+  // Null when the diver's pool has nothing left of the slot's kind.
+  item: Item | null
+}
+
+export function bargainKindOf(item: Item): BargainSlotKind | null {
+  if (item.type === 'stratagem') {
+    return 'stratagem'
+  }
+  return item.category === 'booster' ? null : item.category as BargainSlotKind
+}
+
+// Brasch's Bargains: one slot per kind, each a uniformly random item of that
+// kind from the difficulty's base tier up to BARGAIN_TIER_REACH tiers above —
+// no Valor, no weighting. A kind with nothing in that band steps to the
+// nearest stocked tier, below the band before above it. Two stratagem slots
+// never offer the same stratagem.
+export function rollBargainShelf(
   seed: number,
-  ceiling: RewardTier,
-  floor: RewardTier,
-  count: number,
+  difficulty: number,
+  kinds: readonly BargainSlotKind[],
   pool: readonly Item[],
   excludeIds: ReadonlySet<string>,
-): RewardOption[] {
-  const mappedCeiling: RewardTier = ceiling === 'S+' ? 'S' : ceiling
-  return rollRewardOptions(seed, mappedCeiling, floor, count, pool, excludeIds)
+): BargainSlot[] {
+  const floorIndex = tierIndex(baseTierFor(difficulty))
+  const topIndex = Math.min(floorIndex + BARGAIN_TIER_REACH, TIER_INDEX.s)
+  const taken = new Set(excludeIds)
+  const counts = new Map<BargainSlotKind, number>()
+  return kinds.map((kind, index) => {
+    const nth = (counts.get(kind) ?? 0) + 1
+    counts.set(kind, nth)
+    const slotId = nth === 1 ? kind : `${kind}-${nth}`
+    const candidates = pool.filter(item => bargainKindOf(item) === kind && !taken.has(item.id))
+    const item = pickBargain(mulberry32(deriveSeed(seed, index + 1)), candidates, floorIndex, topIndex)
+    if (item) {
+      taken.add(item.id)
+    }
+    return { slotId, kind, item }
+  })
+}
+
+function pickBargain(rng: Rng, candidates: readonly Item[], floorIndex: number, topIndex: number): Item | null {
+  if (candidates.length === 0) {
+    return null
+  }
+  // Distance from the band (zero inside it); a half step breaks ties toward
+  // the cheaper tier.
+  const distance = (item: Item): number => {
+    const index = TIER_INDEX[item.tier]
+    if (index < floorIndex) {
+      return floorIndex - index
+    }
+    return index > topIndex ? index - topIndex + 0.5 : 0
+  }
+  const nearest = Math.min(...candidates.map(distance))
+  const stocked = candidates.filter(item => distance(item) === nearest)
+  return stocked[pickIndex(rng, stocked.length)]!
 }

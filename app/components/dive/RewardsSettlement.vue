@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { bonusIneligibilityReason } from '~~/shared/engine/selectors'
-import type { RewardOption } from '~~/shared/engine/rewards'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 const props = withDefaults(defineProps<{
@@ -9,17 +8,14 @@ const props = withDefaults(defineProps<{
   self: DiverState | null
   canControl: boolean
   // Whether the honors contest is due this mission (full-star clear on the
-  // squad-size cadence). When false the screen still opens — the honors panel
-  // shows disabled and the Requisition shelf stays available.
+  // squad-size cadence). When false the screen still opens with the honors
+  // panel disabled.
   bonusUp: boolean
-  stock: RewardOption[]
-  sampleBank?: number
-  buyable?: Record<string, { allowed: boolean, reason: string | null }>
+  credits?: number
   compact?: boolean
   advanceLabel?: string
 }>(), {
-  sampleBank: 0,
-  buyable: () => ({}),
+  credits: 0,
   compact: false,
   advanceLabel: 'Next mission',
 })
@@ -28,7 +24,6 @@ const emit = defineEmits<{
   spin: []
   award: [playerIds: string[]]
   advance: []
-  buy: [itemId: string]
 }>()
 
 const reason = computed(() =>
@@ -40,72 +35,54 @@ const reason = computed(() =>
     class="settlement"
     :class="{ compact }"
   >
-    <template v-if="bonusUp">
-      <BonusCeremony
-        :state="state"
-        :self-id="selfId"
-        :self="self"
-        :can-control="canControl"
-        :compact="compact"
-        @spin="emit('spin')"
-        @award="playerIds => emit('award', playerIds)"
-        @advance="emit('advance')"
-      />
-      <RequisitionStock
-        v-if="stock.length > 0"
-        :stock="stock"
-        :sample-bank="sampleBank"
-        :buyable="buyable"
-        @buy="itemId => emit('buy', itemId)"
-      />
-    </template>
+    <BonusCeremony
+      v-if="bonusUp"
+      :state="state"
+      :self-id="selfId"
+      :self="self"
+      :can-control="canControl"
+      :compact="compact"
+      @spin="emit('spin')"
+      @award="playerIds => emit('award', playerIds)"
+      @advance="emit('advance')"
+    />
 
-    <!-- Honors not due this turn: the bargains come first, the disabled honors
-         panel sits below. -->
-    <template v-else>
-      <RequisitionStock
-        v-if="stock.length > 0"
-        :stock="stock"
-        :sample-bank="sampleBank"
-        :buyable="buyable"
-        @buy="itemId => emit('buy', itemId)"
-      />
-      <section
-        class="honors-off"
-        aria-label="Squad honors unavailable"
+    <section
+      v-else
+      class="honors-off"
+      aria-label="Squad honors unavailable"
+    >
+      <header class="off-head">
+        <div class="off-l">
+          <span class="lbl">Squad honors</span>
+          <h1 class="disp off-title">
+            Not this mission
+          </h1>
+        </div>
+        <span class="off-badge">Unavailable</span>
+      </header>
+      <p class="muted off-note">
+        {{ reason }}
+      </p>
+      <button
+        v-if="!compact"
+        class="btn primary cut off-advance cta-sweep"
+        type="button"
+        :disabled="!canControl"
+        @click="emit('advance')"
       >
-        <header class="off-head">
-          <div class="off-l">
-            <span class="lbl">Squad honors</span>
-            <h1 class="disp off-title">
-              Not this mission
-            </h1>
-          </div>
-          <span class="off-badge">Unavailable</span>
-        </header>
-        <p class="muted off-note">
-          {{ reason }}
-        </p>
-        <button
-          v-if="!compact"
-          class="btn primary cut off-advance cta-sweep"
-          type="button"
-          :disabled="!canControl"
-          @click="emit('advance')"
-        >
-          <span class="disp">{{ advanceLabel }}</span>
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.4"
-            aria-hidden="true"
-          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-        </button>
-      </section>
-    </template>
+        <span class="disp">{{ advanceLabel }}</span>
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          aria-hidden="true"
+        ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+      </button>
+    </section>
 
     <PhoneActionBar v-if="compact">
       <template #detail>
@@ -113,8 +90,11 @@ const reason = computed(() =>
           class="purse"
           role="status"
         >
-          <span class="lbl teal">Sample bank</span>
-          <span class="disp purse-n">{{ sampleBank }}</span>
+          <span class="lbl">Credits</span>
+          <CreditAmount
+            class="disp purse-n"
+            :value="credits"
+          />
         </div>
       </template>
 
@@ -197,6 +177,6 @@ const reason = computed(() =>
 .off-advance:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .purse { display: flex; align-items: baseline; gap: 10px; }
-.purse .lbl { color: var(--teal); }
-.purse-n { font-size: 22px; color: var(--teal); line-height: 1; }
+.purse .lbl { color: var(--gold); }
+.purse-n { font-size: 22px; color: var(--gold); line-height: 1; }
 </style>

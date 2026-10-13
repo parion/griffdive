@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS } from '../data/catalog'
 import type { Item, ItemCategory, Tier } from '../data/types'
-import { SAMPLE_POINTS, SAMPLE_PRICE_TIER, SAMPLE_PRICE_TYPE, TIME_HAUL_FLOOR, VALOR_METER_MAX, sPlusValorFloorFor, sValorFloorFor } from './config'
-import { ceilingOddsPercent, DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, haulValue, itemPrice, maxCeiling, missionHaul, oddsToReach, optionsForDiver, optionsForStars, rollCeiling, rollRewardOptions, rollShopStock, tierWeight, timeHaulMultiplier, valorOf } from './rewards'
+import { BARGAIN_SLOTS, CREDIT_PRICE_TIER, CREDIT_PRICE_TYPE, SAMPLE_CREDITS, TIME_HAUL_FLOOR, VALOR_METER_MAX, sPlusValorFloorFor, sValorFloorFor } from './config'
+import { ceilingOddsPercent, DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, haulValue, itemPrice, maxCeiling, missionHaul, oddsToReach, optionsForDiver, optionsForStars, rollCeiling, rollBargainShelf, rollRewardOptions, tierWeight, timeHaulMultiplier, valorOf } from './rewards'
 import { mulberry32 } from './rng'
 import type { RewardTier } from './types'
 
@@ -20,10 +20,10 @@ describe('valorOf', () => {
 describe('haulValue / timeHaulMultiplier / missionHaul', () => {
   it('prices samples by rarity', () => {
     expect(haulValue(undefined)).toBe(0)
-    expect(haulValue({ common: 2, rare: 0, super: 0 })).toBe(2 * SAMPLE_POINTS.common)
-    expect(haulValue({ common: 0, rare: 2, super: 0 })).toBe(2 * SAMPLE_POINTS.rare)
-    expect(haulValue({ common: 0, rare: 0, super: 2 })).toBe(2 * SAMPLE_POINTS.super)
-    expect(haulValue({ common: 1, rare: 1, super: 1 })).toBe(SAMPLE_POINTS.common + SAMPLE_POINTS.rare + SAMPLE_POINTS.super)
+    expect(haulValue({ common: 2, rare: 0, super: 0 })).toBe(2 * SAMPLE_CREDITS.common)
+    expect(haulValue({ common: 0, rare: 2, super: 0 })).toBe(2 * SAMPLE_CREDITS.rare)
+    expect(haulValue({ common: 0, rare: 0, super: 2 })).toBe(2 * SAMPLE_CREDITS.super)
+    expect(haulValue({ common: 1, rare: 1, super: 1 })).toBe(SAMPLE_CREDITS.common + SAMPLE_CREDITS.rare + SAMPLE_CREDITS.super)
   })
 
   it('floors negative counts to zero', () => {
@@ -49,44 +49,68 @@ describe('haulValue / timeHaulMultiplier / missionHaul', () => {
 
 describe('itemPrice', () => {
   it('is tier first, then type', () => {
-    expect(SAMPLE_PRICE_TIER.c).toBe(25)
-    expect(SAMPLE_PRICE_TIER.s).toBe(450)
-    expect(itemPrice(makeItem('c', 'armorPassive'))).toBe(Math.round(25 * (SAMPLE_PRICE_TYPE.armorPassive ?? 1)))
-    expect(itemPrice(makeItem('c', 'booster'))).toBe(Math.round(25 * 1.5))
-    // A booster always out-prices an armor passive at the same tier.
-    expect(itemPrice(makeItem('s', 'booster'))).toBeGreaterThan(itemPrice(makeItem('s', 'armorPassive')))
+    expect(CREDIT_PRICE_TIER.c).toBe(15)
+    expect(CREDIT_PRICE_TIER.s).toBe(450)
+    expect(itemPrice(makeItem('c', 'armorPassive'))).toBe(Math.round(15 * (CREDIT_PRICE_TYPE.armorPassive ?? 1)))
+    expect(itemPrice(makeItem('c', 'primary'))).toBe(Math.round(15 * 1.25))
+    // A primary always out-prices an armor passive at the same tier.
+    expect(itemPrice(makeItem('s', 'primary'))).toBeGreaterThan(itemPrice(makeItem('s', 'armorPassive')))
     // Unknown categories fall back to the default multiplier.
-    expect(itemPrice(makeItem('b', 'Orbital'))).toBe(SAMPLE_PRICE_TIER.b)
+    expect(itemPrice(makeItem('b', 'Orbital'))).toBe(CREDIT_PRICE_TIER.b)
   })
 })
 
-describe('rollShopStock', () => {
+describe('rollBargainShelf', () => {
   const pool = ALL_ITEMS
   const none = new Set<string>()
-
-  it('is deterministic and returns distinct items', () => {
-    const a = rollShopStock(1234, 'C', 'C', 3, pool, none)
-    const b = rollShopStock(1234, 'C', 'C', 3, pool, none)
-    expect(a.map(o => o.optionId)).toEqual(b.map(o => o.optionId))
-    expect(new Set(a.map(o => o.optionId)).size).toBe(a.length)
-  })
-
-  it('never injects the Liberty’s Cross choice slot, even at an S+ ceiling', () => {
-    const stock = rollShopStock(99, 'S+', 'C', 5, pool, none)
-    expect(stock.every(option => !option.choice)).toBe(true)
-    expect(stock.every(option => option.optionId !== DIVERS_CHOICE_OPTION_ID)).toBe(true)
-  })
-
-  it('honors the exclusion set', () => {
-    const poolIds = new Set(pool.map(item => item.id))
-    const excluded = pool.find(item => item.tier === 's')
-    if (!excluded) {
-      throw new Error('expected a tier-s item')
+  const kinds = [...BARGAIN_SLOTS, 'stratagem', 'stratagem'] as const
+  const tierSet = (difficulty: number, excluded = none): Set<string> => {
+    const tiers = new Set<string>()
+    for (let seed = 0; seed < 200; seed++) {
+      for (const slot of rollBargainShelf(seed, difficulty, kinds, pool, excluded)) {
+        tiers.add(slot.item!.tier)
+      }
     }
-    const exclude = new Set([excluded.id])
-    const stock = rollShopStock(7, 'S', 'S', 4, pool, exclude)
-    expect(stock.every(option => option.optionId !== excluded.id)).toBe(true)
-    expect(poolIds.has(excluded.id)).toBe(true)
+    return tiers
+  }
+
+  it('is deterministic, one item of each slot kind', () => {
+    const a = rollBargainShelf(1234, 7, kinds, pool, none)
+    expect(rollBargainShelf(1234, 7, kinds, pool, none)).toEqual(a)
+    expect(a.map(slot => slot.slotId)).toEqual(['primary', 'secondary', 'throwable', 'armorPassive', 'stratagem', 'stratagem-2'])
+    for (const slot of a.slice(0, 4)) {
+      expect(slot.item?.category).toBe(slot.kind)
+    }
+    expect(a.slice(4).every(slot => slot.item?.type === 'stratagem')).toBe(true)
+    expect(a[4]!.item!.id).not.toBe(a[5]!.item!.id)
+  })
+
+  it('stocks the base tier up to one tier above it', () => {
+    expect(tierSet(3)).toEqual(new Set(['c', 'b']))
+    expect(tierSet(6)).toEqual(new Set(['b', 'a']))
+    expect(tierSet(10)).toEqual(new Set(['a', 's']))
+  })
+
+  it('always finds a primary at the start, whose only C item is in the kit', () => {
+    const lone = new Set(pool.filter(item => item.category === 'primary' && item.tier === 'c').map(item => item.id))
+    expect(lone.size).toBe(1)
+    for (let seed = 0; seed < 30; seed++) {
+      const [primary] = rollBargainShelf(seed, 3, ['primary'], pool, lone)
+      expect(primary?.item?.tier).toBe('b')
+    }
+  })
+
+  it('steps an exhausted band to the nearest stocked tier, cheaper first', () => {
+    const band = new Set(pool.filter(item => item.category === 'secondary' && (item.tier === 'a' || item.tier === 's')).map(item => item.id))
+    const [secondary] = rollBargainShelf(1, 8, ['secondary'], pool, band)
+    expect(secondary?.item?.tier).toBe('b')
+  })
+
+  it('empties a slot whose kind is exhausted', () => {
+    const throwables = new Set(pool.filter(item => item.category === 'throwable').map(item => item.id))
+    const shelf = rollBargainShelf(7, 5, kinds, pool, throwables)
+    expect(shelf.find(slot => slot.kind === 'throwable')?.item).toBeNull()
+    expect(shelf.filter(slot => slot.kind !== 'throwable').every(slot => slot.item !== null)).toBe(true)
   })
 })
 

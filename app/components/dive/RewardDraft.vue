@@ -391,7 +391,7 @@ const showSquad = computed(() =>
   props.squadDrafts.length > 0 && !banMode.value && (allSettled.value || lockedOptions.value.length === 0))
 const statusKind = computed<'honors' | 'wait' | 'pick'>(() => {
   // Once every diver has picked, the draft hands off to the settlement screen
-  // (Squad Honors + the Requisition shelf) — that screen advances, whatever the
+  // (Squad Honors) — that screen advances, whatever the
   // honors verdict.
   if (props.ready) {
     return 'honors'

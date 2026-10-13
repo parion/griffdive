@@ -99,8 +99,12 @@ const haul = computed(() => missionHaul(report.value))
     </div>
 
     <div class="rc-perf">
-      <span class="lbl">Requisition</span>
-      <span class="disp rc-perf-val">+{{ haul }} samples</span>
+      <span class="lbl">Credits</span>
+      <CreditAmount
+        class="disp rc-perf-val"
+        :value="haul"
+        signed
+      />
     </div>
   </section>
 </template>

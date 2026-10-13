@@ -33,11 +33,11 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
 5. **Report** — squad records outcome: success (stars 1–max, optional time %) or failure (no stars,
    no reward draft — each diver faces a forfeit offer instead).
 6. **Rewards** (success only) — the host files the report (stars + time + the samples the squad
-   extracted), which banks a sample haul into every diver's purse. Each diver is then offered N
+   extracted), which banks a credit haul into every diver's purse. Each diver is then offered N
    options rolled against their personal tier ceiling and picks one; all rewards go to the diver's
    personal inventory — stratagems included. Armor rewards are **passives**; the catalog has no armor pieces (see
-   inventory model). Once a diver's draft resolves, their **Requisition stock** opens: a seeded shelf
-   of named items they may buy with the sample purse (see Requisition — samples as currency). On a
+   inventory model). Credits bank into each diver's purse for **Brasch's Bargains**, the
+   shop that restocks every mission (see Brasch's Bargains — credits). On a
    full-star clear, once every diver has picked, the squad spins **bonus honors** — a random
    end-screen stat the host resolves to a winner, who banks a reward token (see Reward tokens & squad
    honors).
@@ -355,8 +355,8 @@ teamRisk      = accepted misfortune × directiveWeightFor(squad size)
 pactRisk      = sum of the diver's picked pacts (max 12 at diff 7+: the
                 rolled 2–3-pact offer bounds what a diver can stack)
 
-(samples are NOT Valor. They bank as Requisition currency — see
- Requisition — samples as currency — and never move the ceiling.)
+(samples are NOT Valor. They bank as credits — see
+ Brasch's Bargains — credits — and never move the ceiling.)
 
 (misfortune and pact risk are read through `conditionRiskAt(id, difficulty)`,
  so the same condition is worth different Valor at different altitudes;
@@ -426,7 +426,7 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   overstack (Valor 24.25 — a four-diver squad, strain included) leaves S+ a longshot (≤20% at altitude;
   `S_PLUS_OVERFLOW_CAP`). A zero-Valor dive always rolls its base tier. Samples are a separate
   currency and never nudge Valor: chosen risk alone moves the ceiling, so skill and loot never carry a
-  run (they fund the Requisition shelf instead).
+  run (they fund Brasch's Bargains instead).
 - **Valor is surfaced as the Valor meter** (`app/components/dive/ValorMeter.vue`, the desktop
   rail's Valor tab): a live gauge stacking each source (directive, strain, Major Order, run mode,
   pacts) with a tier ladder from the difficulty's base tier to the previewed ceiling and the odds
@@ -459,7 +459,7 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   `choiceItemId`. `pickedOptionId` always records the banked item's id.
 - **The offer is frozen at the deal.** `REPORT_RESULT` snapshots each drafting diver's holdings
   and bans into `DiverState.draftExcludedIds`, and `diverOptions` rolls against that snapshot, not
-  live holdings — so a pick, a Requisition purchase or a ban never reshuffles an offer the squad has
+  live holdings — so a pick, a Bargains purchase or a ban never reshuffles an offer the squad has
   seen, and every client (and a reload) re-derives the same pods. `PICK_REWARD` refuses an item the
   diver has gained since the deal (a catch-up claim), so the frozen offer can't bank a duplicate.
   The snapshot resets with the pacts. It is optional: a pre-snapshot save falls back to live
@@ -489,53 +489,66 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   a trio (S ~50%) and 8.75 for four divers (S ~64%, S+ ~6%). Risk pays at every altitude; nothing is
   guaranteed, but everything gets likelier.
 
-### Requisition — samples as currency
+### Brasch's Bargains — credits
 
-Samples recovered on a mission are no longer a Valor term — they are **Requisition currency**. A
-successful report banks each diver (who dove the mission — a mid-mission joiner who
-`skipsCurrentDraft` earns nothing) a haul of sample points into their personal **sample purse**
-(`DiverState.sampleBank`):
+Samples recovered on a mission are not a Valor term. They are exchanged for **credits**, the
+currency of **Brasch's Bargains** (marked in the UI by a custom credit glyph, `ui/IconCredit.vue`).
+A successful report banks each diver who dove the mission a credit haul in their personal purse
+(`DiverState.credits`). A mid-mission joiner who `skipsCurrentDraft` earns nothing:
 
 ```text
-haulValue   = common × 1 + rare × 5 + super × 25   (SAMPLE_POINTS)
+haulValue   = common × 1 + rare × 5 + super × 25   (SAMPLE_CREDITS)
 haul        = floor(haulValue × (0.5 + 0.5 × clamp(timePct,0,100)/100))
 ```
 
 Extraction speed is a multiplier (`TIME_HAUL_FLOOR` 0.5 at no time left → 1.0 at a full clock), so a
-fast clear funds more gear. The purse persists across missions and operations (schema v12) and
-belongs to the session, like reward tokens: stepping away keeps it (the seat never leaves the room),
-but a diver benched by `KICK_DIVER` who later rejoins and a new session forked from a save both
-start empty. There is no cap — the game's own sample mix
-(commons dominate early, supers appear at diff 6) does the difficulty scaling.
+fast clear banks more credits. The purse persists across missions and operations and belongs to the
+session, like reward tokens: stepping away keeps it (the seat never leaves the room). A diver benched
+by `KICK_DIVER` who later rejoins starts empty, and so does a new session forked from a save. There is
+no cap. The game's own sample mix (commons dominate early, supers appear at diff 6) does the
+difficulty scaling.
 
-Once a diver's draft resolves (they picked **or** spent it on bans), a per-diver **rotating stock**
-opens in the same reward window — the Requisition shelf (`shopStockFor`, and `BUY_ITEM` self-service,
-`rewards` phase only; UI copy titles it **Brasch's Bargains**). It is the one deliberate exception to
-design principle 4 (it names items):
+**Brasch's Bargains is an always-open shop**, open between missions in every phase from `spin` to
+`rewards`. It closes in the `lobby`, while `diving`, while a failure's `forfeit` settles (a buy would
+reshuffle the forfeit offers, which derive from the live kit) and once the crusade is `complete`
+(`bargainsClosedReason`). It is the one deliberate exception to design principle 4 (it names
+items):
 
-- **Size:** one item per star the difficulty can award (`maxStarsFor`): 3 at diff 3–4, 4 at 5–6, 5 at
-  7+.
-- **Tiers follow the diver's rolled ceiling** — the same class their Valor bought for the draft (base
-  tier → rolled ceiling), weighted like the draft. Risk buys rarity access; samples buy the item.
-- **Pool:** the diver's personal pool (declared warbonds, armor passives only) minus owned, banned,
-  and the items the draft already showed. Derived from the per-diver offer seed (stream salt 5) —
-  deterministic, never stored. An S+ ceiling maps to S (the Cross slot stays in the draft).
-- **Prices:** tier first, then type — `itemPrice = SAMPLE_PRICE_TIER[tier] × SAMPLE_PRICE_TYPE[category]`
-  (C/B/A/S = 25/70/180/450; booster ×1.5, primary ×1.25, armor passive ×0.75, everything else ×1), so a
-  booster always out-prices an armor passive at the same tier. The shelf only shows what the ceiling
-  reached, so early squads see C gear at a few missions' wages and
-  S/A stock only once risk has bought it.
-- A diver may buy **any number** of stocked items while they can afford it; each purchase banks
-  immediately (`BUY_ITEM` deducts the price and appends to `personalInventories`) and the bought item
-  leaves the shelf. Buying is **soft** — like the honors ceremony it never gates `ADVANCE`; a broke
-  diver simply sees every card disabled with its reason.
+- **Slots:** one item each for **primary**, **secondary**, **throwable** and **armor passive**
+  (`BARGAIN_SLOTS`). Difficulties where a mission can award a 4th star (diff 5+) add one random
+  **stratagem** slot, and a 5th star (diff 7+) adds a second one (`bargainStratagemSlotsFor`). Two
+  stratagem slots never offer the same stratagem.
+- **Tiers:** each slot is a uniformly random item of its kind from the operation's **base tier up to
+  one tier above it** (`BARGAIN_TIER_REACH`): C–B at diffs 3–5, B–A at 6–7, A–S at 8–10. Valor plays
+  no part. A kind with nothing in that band steps to the nearest stocked tier, cheaper first.
+- **Restocks every mission:** the shelf derives from the mission's `DiveState.bargainSeed` (stream
+  salt 5, folded with the diver id) and the diver's `DiverState.bargain` deal: the holdings and bans
+  it skips (`excludedIds`), frozen for the mission so a draft pick or a ban never reshuffles it. It is
+  deterministic and never stored.
+  - **Crusade start (`START_DIVE`):** the seed is injected (`START_DIVE.seed`). A seedless caller
+    falls back to a hash of the host id.
+  - **Every mission start (`ADVANCE`, and a failure restart):** the seed re-derives from the mission
+    just played and every diver is dealt afresh.
+  - **Seating mid-crusade:** the joiner is dealt the current mission's shelf.
+- **Prices:** tier first, then type: `itemPrice = CREDIT_PRICE_TIER[tier] × CREDIT_PRICE_TYPE[category]`.
+  C/B/A/S cost 15/45/180/450, so low tiers sit within a mission or two's haul and A/S stay a saving
+  goal. Primaries ×1.25, armor passives ×0.75, everything else ×1.
+- **One buy per mission:** `BUY_ITEM` (self-service) deducts the price, banks the item in
+  `personalInventories` and records it as `bargain.boughtItemId`. The shelf keeps its layout: the
+  bought slot reads `bought` and every other slot `locked` until the next mission (`bargainShelfFor`
+  returns each slot with a `status`).
+- **A bought kind waits for the next operation:** the purchase's kind joins `bargain.boughtKinds` and
+  that slot stays on the shelf empty, as `heldBack`, until a new operation begins (a failure restart keeps it). Stratagems
+  are one kind, so buying one holds back both stratagem slots.
+- **Soft:** buying never gates any phase. A diver who can't buy sees each card disabled with the
+  engine's reason (`canBuyItem`).
 
 ### Mission failure — the forfeit offer
 
 A failed mission costs every diver one item, and the diver never picks freely (that made the loss a
 formality: surrender the scrap). Instead the engine **deals each diver a forfeit offer** and they
 choose the one item they lose. Only **earned gear** is ever at stake: the pool is the diver's kit
-beyond the variant's starting kit (`earnedItemsOf` — drafted rewards, Requisition buys, a Field
+beyond the variant's starting kit (`earnedItemsOf` — drafted rewards, Bargains buys, a Field
 Promotion or a claimed cache). The surplus starting kit was never won, so it is never taken.
 
 - **Who owes:** every present diver who dove the mission and has earned something. A diver with
@@ -680,12 +693,15 @@ is reverted. `migrateV7toV8` is the alpha baseline — it defaults the fields wh
 during pre-alpha (Field Promotion bookkeeping, failed-pact marks, reward tokens, bans, bonus
 honors); `migrateV8toV9` adds the strain fields and widens legacy combo keys; `migrateV9toV10`
 adds the Major Order commitment (`majorOrder: null`); `migrateV10toV11` adds the failed-directive
-mark (`misfortuneFailed: false`); `migrateV11toV12` adds the Requisition sample purse
+mark (`misfortuneFailed: false`); `migrateV11toV12` adds the sample purse
 (`sampleBank: 0`); `migrateV12toV13` remaps the five squad-size variants onto the three starting
 difficulties (Quickplay becomes the suicide start with the SEAF mode); `migrateV13toV14` adds
 presence (`away: false` on every diver); `migrateV14toV15` widens the single honors winner
 (`bonusWinnerId`) into the shareable list (`bonusWinnerIds`); `migrateV15toV16` reshapes each legacy
-cache from a bare item list into `{ name, itemIds }` (pre-v16 kits read as "Fallen diver"). The chain's tail also runs the idempotent
+cache from a bare item list into `{ name, itemIds }` (pre-v16 kits read as "Fallen diver");
+`migrateV16toV17` renames the purse to credits (`sampleBank` → `credits`), and the tail's
+normalization deals the mission underway a Brasch's Bargains shelf (`bargainSeed`, a fresh `bargain`
+per diver). The chain's tail also runs the idempotent
 `normalizeRoomState` remap unconditionally: session mirrors copy unversioned room state, so a
 legacy variant id or a missing field must be corrected even in a doc stamped with a newer schema.
 Normalization drops
@@ -693,4 +709,5 @@ only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
 `achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, inventories, per-diver warbond declarations,
 `completedCombos` (misfortune × front × strain), reroll tokens, action log (capped), RNG seed
-history, legacy caches (earned gear) parked by departed divers, per-diver catch-up bookkeeping and sample purses.
+history, legacy caches (earned gear) parked by departed divers, per-diver catch-up bookkeeping, credit
+purses and the mission's Brasch's Bargains seed and per-diver deals.

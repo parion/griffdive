@@ -4,6 +4,7 @@ import type { FrontId } from '../data/fronts'
 import { STRAINS } from '../data/strains'
 import {
   ACTION_LOG_CAP,
+  BARGAIN_SLOTS,
   CATCHUP_CAP,
   MAX_DIFFICULTY,
   MAX_NAME_LENGTH,
@@ -14,7 +15,7 @@ import {
   missionsPerOperation,
 } from './config'
 import { VARIANTS, catchUpOpsBehind, earnedKit, mergeKit, startingItemIds } from './progression'
-import type { DivePhase, DiveState, DiverState, LegacyCache, MajorOrderSelection, WheelResult } from './types'
+import type { BargainDeal, BargainSlotKind, DivePhase, DiveState, DiverState, LegacyCache, MajorOrderSelection, WheelResult } from './types'
 
 // A freshly created room: no settings, no divers. The first joiner becomes
 // host; START_DIVE applies the variant kit to everyone present.
@@ -44,6 +45,7 @@ export function createLobbyState(): DiveState {
     lastReport: null,
     bonusSeed: null,
     bonusWinnerIds: [],
+    bargainSeed: null,
     actionLog: [],
     seedHistory: [],
   }
@@ -104,9 +106,11 @@ export function joinDiver(state: DiveState, playerId: string, name: string): Div
     catchUpOwed: catchUpGranted,
     skipsCurrentDraft: state.phase === 'diving',
     rewardTokens: 0,
-    // Requisition currency is personal and does not survive leaving a dive:
-    // a rejoining Helldiver starts their purse empty again.
-    sampleBank: 0,
+    // Credits are personal and do not survive leaving a dive: a rejoining
+    // Helldiver starts their purse empty again.
+    credits: 0,
+    // Seated mid-crusade: Brasch deals the joiner this mission's shelf.
+    bargain: state.settings ? { excludedIds: [...inventory], boughtItemId: null, boughtKinds: [] } : null,
     bannedItemIds: [],
     rewardRerollSeed: null,
     rewardBanned: false,
@@ -178,7 +182,8 @@ function sanitizeDiver(raw: unknown): DiverState | null {
     catchUpOwed: clampInt(diver.catchUpOwed, 0, CATCHUP_CAP, 0),
     skipsCurrentDraft: diver.skipsCurrentDraft === true,
     rewardTokens: clampInt(diver.rewardTokens, 0, REWARD_TOKEN_CAP, 0),
-    sampleBank: clampInt(diver.sampleBank, 0, 1_000_000, 0),
+    credits: clampInt(diver.credits, 0, 1_000_000, 0),
+    bargain: sanitizeBargain(diver.bargain),
     bannedItemIds: stringArray(diver.bannedItemIds),
     rewardRerollSeed: typeof diver.rewardRerollSeed === 'number' && Number.isFinite(diver.rewardRerollSeed)
       ? diver.rewardRerollSeed
@@ -186,6 +191,20 @@ function sanitizeDiver(raw: unknown): DiverState | null {
     rewardBanned: diver.rewardBanned === true,
     draftExcludedIds: Array.isArray(diver.draftExcludedIds) ? stringArray(diver.draftExcludedIds, 2000) : null,
     away: false,
+  }
+}
+
+function sanitizeBargain(raw: unknown): BargainDeal | null {
+  if (!raw || typeof raw !== 'object') {
+    return null
+  }
+  const deal = raw as Partial<BargainDeal>
+  const kinds = new Set<string>([...BARGAIN_SLOTS, 'stratagem'])
+  return {
+    excludedIds: stringArray(deal.excludedIds, 2000),
+    boughtItemId: typeof deal.boughtItemId === 'string' ? deal.boughtItemId : null,
+    boughtKinds: stringArray(deal.boughtKinds, 10)
+      .filter((kind): kind is BargainSlotKind => kinds.has(kind)),
   }
 }
 
@@ -370,13 +389,13 @@ export function forkCrusade(
     }
   }
 
-  // Requisition and reward tokens belong to the session they were earned in:
-  // a new session continues the crusade and the kit, never the purse.
+  // Credits and reward tokens belong to the session they were earned in: a new
+  // session continues the crusade and the kit, never the purse.
   const ownerDiver: DiverState = {
     ...owner,
     name: typeof name === 'string' && name.trim() ? name.trim().slice(0, MAX_NAME_LENGTH) : owner.name,
     isHost: true,
-    sampleBank: 0,
+    credits: 0,
     rewardTokens: 0,
   }
 
@@ -409,6 +428,7 @@ export function forkCrusade(
     lastReport: state.lastReport ?? null,
     bonusSeed: typeof state.bonusSeed === 'number' && Number.isFinite(state.bonusSeed) ? state.bonusSeed : null,
     bonusWinnerIds: sanitizeBonusWinnerIds(state),
+    bargainSeed: typeof state.bargainSeed === 'number' && Number.isFinite(state.bargainSeed) ? state.bargainSeed : null,
     actionLog: Array.isArray(state.actionLog) ? state.actionLog.slice(-ACTION_LOG_CAP) : [],
     seedHistory: Array.isArray(state.seedHistory) ? state.seedHistory.slice(-ACTION_LOG_CAP) : [],
   }

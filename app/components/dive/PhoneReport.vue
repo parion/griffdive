@@ -7,8 +7,8 @@ import type { DiveState, SampleCounts } from '~~/shared/engine/types'
 
 const props = withDefaults(defineProps<{
   state: DiveState
-  sampleBank?: number
-}>(), { sampleBank: 0 })
+  credits?: number
+}>(), { credits: 0 })
 
 const emit = defineEmits<{
   submit: []
@@ -31,7 +31,7 @@ const haul = computed(() => missionHaul({
   samples: { ...samples.value },
 }))
 const multiplier = computed(() => timeHaulMultiplier(time.value))
-const bankAfter = computed(() => props.sampleBank + haul.value)
+const bankAfter = computed(() => props.credits + haul.value)
 const options = computed(() => Math.min(
   STARS_TO_OPTIONS[stars.value] ?? 1,
   STARS_TO_OPTIONS.length - 1,
@@ -142,21 +142,26 @@ const honors = computed(() => stars.value >= maxStars.value)
       <template #detail>
         <section
           class="performance ticks"
-          aria-label="Requisition haul"
+          aria-label="Credit haul"
         >
           <div class="perf-cell">
-            <span class="lbl teal">Requisition</span>
-            <span
+            <span class="lbl teal">Credits</span>
+            <CreditAmount
               class="disp perf-v teal"
               aria-live="polite"
-            >+{{ haul }}</span>
+              :value="haul"
+              signed
+            />
           </div>
           <span class="perf-div" />
           <div class="perf-cell">
-            <span class="lbl">Sample bank</span>
+            <span class="lbl">Credit bank</span>
             <span class="perf-valor">
-              <span class="disp">{{ sampleBank }}</span>
-              <span class="disp teal">→ {{ bankAfter }}</span>
+              <CreditAmount
+                class="disp"
+                :value="credits"
+              />
+              <span class="disp teal">→ <CreditAmount :value="bankAfter" /></span>
             </span>
           </div>
           <div

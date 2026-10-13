@@ -6,9 +6,9 @@ import { ACTION_LOG_CAP, MAJOR_ORDER_REROLL_BONUS, MAX_DIFFICULTY, MAX_NAME_LENG
 import { STARTING_KITS, earnedKit, mergeKit, startingItemIds } from './progression'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
-import { deriveSeed } from './rng'
-import { activeDivers, activeMisfortune, allDiversPicked, availableCaches, bonusEligible, canBuyItem, catchUpOptionsFor, comboKey, diverOptions, forfeitOptionsFor, forfeitSettled, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, strainDecision } from './selectors'
-import { itemPrice, missionHaul } from './rewards'
+import { deriveSeed, hashString } from './rng'
+import { activeDivers, activeMisfortune, allDiversPicked, availableCaches, bonusEligible, canBuyItem, catchUpOptionsFor, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, strainDecision } from './selectors'
+import { bargainKindOf, itemPrice, missionHaul } from './rewards'
 import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 
 export function createDiveState(
@@ -16,6 +16,7 @@ export function createDiveState(
   hostId: string,
   hostName: string,
   warbondCodes?: string[],
+  seed?: number,
 ): DiveState {
   const lobby = joinDiver(createLobbyState(), hostId, hostName) ?? createLobbyState()
   // The host's own warbond selection, applied like any self-service action so
@@ -23,7 +24,7 @@ export function createDiveState(
   const seated = warbondCodes
     ? reduce(lobby, { type: 'SET_WARBONDS', playerId: hostId, warbondCodes })
     : lobby
-  return reduce(seated, { type: 'START_DIVE', settings })
+  return reduce(seated, { type: 'START_DIVE', settings, seed })
 }
 
 function commit(state: DiveState, patch: Partial<DiveState>, action: EngineAction): DiveState {
@@ -34,13 +35,19 @@ function commit(state: DiveState, patch: Partial<DiveState>, action: EngineActio
   }
 }
 
-function applyStart(state: DiveState, settings: CrusadeSettings): Partial<DiveState> {
+function applyStart(state: DiveState, settings: CrusadeSettings, seed: number | undefined): Partial<DiveState> {
   const kit = STARTING_KITS[settings.variant]
   const personalInventories: Record<string, string[]> = {}
   for (const diver of state.divers) {
     personalInventories[diver.id] = startingItemIds(settings.variant, settings.mode)
   }
+  // The first mission's Brasch's Bargains deal. A caller that injects no seed
+  // still gets a deterministic shelf, keyed to the host.
+  const stocked = { ...state, personalInventories }
+  const divers = state.divers.map(diver => ({ ...diver, bargain: dealBargain(stocked, diver, []) }))
   return {
+    divers,
+    bargainSeed: typeof seed === 'number' && Number.isFinite(seed) ? seed : hashString(state.hostId ?? ''),
     settings,
     difficulty: kit.startDifficulty,
     phase: 'spin',
@@ -96,6 +103,24 @@ export function resetOperation(state: DiveState): Partial<DiveState> {
   }
 }
 
+// Brasch restocks at every mission start, a failure restart included: a fresh
+// seed off the mission just played and a fresh deal per diver against their
+// current holdings. Kinds bought this operation stay off the shelf until a new
+// operation begins.
+function redealBargains(
+  state: DiveState,
+  divers: DiverState[],
+  newOperation: boolean,
+): Pick<DiveState, 'divers' | 'bargainSeed'> {
+  return {
+    bargainSeed: deriveSeed(state.wheel?.seed ?? state.bargainSeed ?? 0, state.missionIndex + 1),
+    divers: divers.map(diver => ({
+      ...diver,
+      bargain: dealBargain(state, diver, newOperation ? [] : diver.bargain?.boughtKinds ?? []),
+    })),
+  }
+}
+
 // The failure's loss lands once every diver owing an item has chosen: each
 // chosen item leaves its owner's kit together, then the operation restarts.
 // Holding the removal back keeps every offer (derived from the live kit) stable
@@ -108,7 +133,9 @@ function resolveForfeit(state: DiveState): DiveState {
         .filter(id => id !== diver.forfeitedItemId)
     }
   }
-  return { ...state, personalInventories, ...resetOperation(state) }
+  const stripped = { ...state, personalInventories }
+  const restarted = resetOperation(stripped)
+  return { ...stripped, ...restarted, ...redealBargains(stripped, restarted.divers!, false) }
 }
 
 // A pick, a departure or a step away can each leave the forfeit with nobody
@@ -170,7 +197,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (state.settings) {
         return state
       }
-      return commit(state, applyStart(state, action.settings), action)
+      return commit(state, applyStart(state, action.settings, action.seed), action)
     }
 
     case 'SPIN_WHEEL': {
@@ -512,7 +539,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         ? Math.min(Math.max(Math.round(action.stars), 1), maxStarsFor(state.difficulty))
         : 0
       // Samples are honor-system like the rest of the report, but malformed
-      // counts must not leak absurd Valor: clamp to non-negative integers.
+      // counts must not mint absurd credits: clamp to non-negative integers.
       const sampleCount = (value: number): number =>
         Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))
       const samples = action.samples
@@ -524,7 +551,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         : undefined
       const report = { outcome: action.outcome, stars, timePct: action.timePct, samples }
       if (action.outcome === 'success') {
-        // The sample haul banks into every diver's Requisition purse. A diver
+        // The sample haul banks as credits into every diver's purse. A diver
         // seated mid-mission sat out the dive, so the haul isn't theirs.
         // The deal freezes each diver's exclusions, so the offer every client
         // derives stays put for the whole draft window.
@@ -534,7 +561,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
             ? diver
             : {
                 ...diver,
-                sampleBank: diver.sampleBank + haul,
+                credits: diver.credits + haul,
                 draftExcludedIds: [...(state.personalInventories[diver.id] ?? []), ...diver.bannedItemIds],
               },
         )
@@ -634,15 +661,13 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
     }
 
     case 'BUY_ITEM': {
-      if (state.phase !== 'rewards') {
-        return state
-      }
       const diver = state.divers.find(candidate => candidate.id === action.playerId)
-      if (!diver) {
+      if (!diver?.bargain) {
         return state
       }
-      // The shelf, the price and the purse are all engine rules: re-derive
-      // the stock server-side and reject anything the diver cannot buy.
+      // The shelf, the price, the purse and the one-buy limit are all engine
+      // rules: re-derive the shelf server-side and reject anything the diver
+      // cannot buy.
       if (!canBuyItem(state, diver, action.itemId).allowed) {
         return state
       }
@@ -652,7 +677,15 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }
       const divers = state.divers.map(candidate =>
         candidate.id === diver.id
-          ? { ...candidate, sampleBank: candidate.sampleBank - itemPrice(item) }
+          ? {
+              ...candidate,
+              credits: candidate.credits - itemPrice(item),
+              bargain: {
+                ...diver.bargain!,
+                boughtItemId: item.id,
+                boughtKinds: [...diver.bargain!.boughtKinds, bargainKindOf(item)!],
+              },
+            }
           : candidate,
       )
       const personalInventories = {
@@ -689,13 +722,15 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         // first spin. A chosen Major Order is a run-long commitment, so it stays
         // pinned (the host replaces or clears it in the next spin phase) and
         // every operation played toward a live one banks its extra reroll token.
+        const next = resetForNextMission(state)
         return commit(state, {
           missionIndex,
           difficulty: nextDifficulty,
           missionInOperation: 1,
           rerollTokens: REROLL_TOKENS_PER_OPERATION
             + (state.majorOrder?.live ? MAJOR_ORDER_REROLL_BONUS : 0),
-          ...resetForNextMission(state),
+          ...next,
+          ...redealBargains(state, next.divers!, true),
           wheel: null,
           frontId: null,
           strainId: null,
@@ -707,10 +742,12 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }
       // Same operation: the front and its strain persist, but every mission
       // draws a fresh misfortune — the next mission begins at the spin.
+      const next = resetForNextMission(state)
       return commit(state, {
         missionIndex,
         missionInOperation,
-        ...resetForNextMission(state),
+        ...next,
+        ...redealBargains(state, next.divers!, false),
         wheel: null,
         misfortuneAccepted: false,
         phase: 'spin',

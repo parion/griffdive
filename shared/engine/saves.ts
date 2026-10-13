@@ -5,6 +5,7 @@ import type { SaveDoc } from '../types/save'
 import { ENGINE_VERSION } from './config'
 import { earnedKit } from './progression'
 import { resetOperation } from './reducer'
+import { hashString } from './rng'
 import type { CrusadeVariant, DiveState, DiverState, LegacyCache } from './types'
 
 // Pre-v8 (pre-alpha) divers may be missing any field whose shape landed after
@@ -111,6 +112,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 16) {
     migrated = migrateV15toV16(migrated)
   }
+  if (migrated.schemaVersion < 17) {
+    migrated = migrateV16toV17(migrated)
+  }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
   // A session mirror can carry a pre-v13 room's settings under the current
@@ -198,6 +202,9 @@ function migrateV10toV11(doc: SaveDoc): SaveDoc {
   }
 }
 
+// A pre-v17 diver's purse, before sample points were renamed to credits.
+type LegacyPurse = Partial<DiverState> & { sampleBank?: number }
+
 // v12: samples became Requisition currency — a personal purse banked from each
 // mission's haul and spent in the post-draft rotating stock. Pre-v12 saves have
 // no purse; an empty bank is the truthful default.
@@ -208,7 +215,7 @@ function migrateV11toV12(doc: SaveDoc): SaveDoc {
       ...doc.state,
       divers: (doc.state.divers ?? []).map(diver => ({
         ...diver,
-        sampleBank: (diver as Partial<DiverState>).sampleBank ?? 0,
+        sampleBank: (diver as LegacyPurse).sampleBank ?? 0,
       })),
     },
   }
@@ -271,14 +278,27 @@ export function normalizeRoomState(state: DiveState): DiveState {
     bonusWinnerIds: Array.isArray(state.bonusWinnerIds)
       ? state.bonusWinnerIds
       : legacyWinnerIds(state),
+    bargainSeed: state.bargainSeed ?? (state.settings ? hashString(state.hostId ?? '') : null),
     divers: (state.divers ?? []).map((diver) => {
-      const legacy = diver as Partial<DiverState>
+      const { sampleBank, ...rest } = diver as LegacyPurse & DiverState
       return {
-        ...diver,
-        sampleBank: legacy.sampleBank ?? 0,
-        away: legacy.away ?? false,
+        ...rest,
+        credits: rest.credits ?? sampleBank ?? 0,
+        bargain: rest.bargain ?? (state.settings ? legacyBargain(state, rest) : null),
+        away: rest.away ?? false,
       }
     }),
+  }
+}
+
+// A crusade saved before Brasch's Bargains became an always-open shop has no
+// deal for the mission underway: deal one against what the diver holds now, as
+// for a diver seated mid-crusade.
+function legacyBargain(state: DiveState, diver: DiverState): DiverState['bargain'] {
+  return {
+    excludedIds: [...(state.personalInventories?.[diver.id] ?? []), ...(diver.bannedItemIds ?? [])],
+    boughtItemId: null,
+    boughtKinds: [],
   }
 }
 
@@ -364,6 +384,22 @@ function migrateV14toV15(doc: SaveDoc): SaveDoc {
     state: {
       ...doc.state,
       bonusWinnerIds: legacyWinnerIds(doc.state),
+    },
+  }
+}
+
+// v17: Brasch's Bargains became an always-open shop paid in credits. The
+// sample purse carries over as credits; the deal itself is filled in by
+// normalizeRoomState, which rooms share.
+function migrateV16toV17(doc: SaveDoc): SaveDoc {
+  return {
+    ...doc,
+    state: {
+      ...doc.state,
+      divers: (doc.state.divers ?? []).map((diver) => {
+        const { sampleBank, ...rest } = diver as LegacyPurse & DiverState
+        return { ...rest, credits: sampleBank ?? 0 }
+      }),
     },
   }
 }

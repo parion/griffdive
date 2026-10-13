@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   MAX_OPTIONS,
-  SAMPLE_POINTS,
+  SAMPLE_CREDITS,
   STARS_TO_OPTIONS,
   TIME_HAUL_FLOOR,
   bonusIntervalFor,
@@ -55,11 +55,11 @@ const timeMultiplier = computed(() => timeHaulMultiplier(timePct.value))
 const timeNote = computed(() =>
   `×${timeMultiplier.value.toFixed(2)} · FLOOR ${TIME_HAUL_FLOOR.toFixed(2)}`)
 
-// Sample points by rarity — the tri-color bar, in Requisition units.
+// Credits by sample rarity — the tri-color bar.
 const samplePoints = computed(() => ({
-  common: Math.max(0, samples.value.common) * SAMPLE_POINTS.common,
-  rare: Math.max(0, samples.value.rare) * SAMPLE_POINTS.rare,
-  super: Math.max(0, samples.value.super) * SAMPLE_POINTS.super,
+  common: Math.max(0, samples.value.common) * SAMPLE_CREDITS.common,
+  rare: Math.max(0, samples.value.rare) * SAMPLE_CREDITS.rare,
+  super: Math.max(0, samples.value.super) * SAMPLE_CREDITS.super,
 }))
 const sampleFractions = computed(() => {
   const raw = [samplePoints.value.common, samplePoints.value.rare, samplePoints.value.super]
@@ -72,7 +72,7 @@ const sampleFractions = computed(() => {
   }
 })
 // The raw haul against the extraction multiplier, before the floor.
-const sampleNote = computed(() => `${sampleFractions.value.total} pts`)
+const sampleNote = computed(() => `${sampleFractions.value.total} credits`)
 
 const opNumber = computed(() =>
   catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
@@ -81,8 +81,8 @@ const ceiling = computed(() => (props.self ? diverCeiling(props.state, props.sel
 const optionCount = computed(() =>
   optionsForDiver(stars.value, ceiling.value, props.self?.failedPactIds.length ?? 0))
 
-// The Requisition purse this report will top up (sample points).
-const purseBefore = computed(() => props.self?.sampleBank ?? 0)
+// The credit purse this report will top up.
+const purseBefore = computed(() => props.self?.credits ?? 0)
 const purseAfter = computed(() => purseBefore.value + haul.value)
 
 const frontLabel = computed(() => front.value?.displayName ?? 'Unknown front')
@@ -97,7 +97,7 @@ const sampleRows = computed(() => [
   { key: 'super' as const, label: 'Super', tone: 'super' as const, icon: '/images/svgs/Super_Sample_Icon.svg', max: sampleMax.value.super },
 ].filter(row => row.max > 0).map(row => ({
   ...row,
-  value: `${samples.value[row.key] * SAMPLE_POINTS[row.key]} pts`,
+  value: `${samples.value[row.key] * SAMPLE_CREDITS[row.key]} cr`,
 })))
 
 // The design's reward table is a stars→options distribution, not the tier
@@ -330,17 +330,20 @@ function submit(): void {
 
         <section
           class="rcard perf-card"
-          aria-label="Requisition haul"
+          aria-label="Credit haul"
         >
           <div class="rcard-head">
-            <span class="lbl teal-note">Requisition</span>
+            <span class="lbl teal-note">Credits</span>
             <span class="rcard-note">SQUAD HAUL × TIME</span>
           </div>
           <div
             class="disp perf-value"
             aria-live="polite"
           >
-            +{{ haul }}
+            <CreditAmount
+              :value="haul"
+              signed
+            />
           </div>
           <div class="perf-bar">
             <div class="perf-bar-head">
@@ -357,7 +360,7 @@ function submit(): void {
           <div class="perf-bar">
             <div class="perf-bar-head">
               <span>SAMPLES</span>
-              <span>{{ sampleFractions.total }} pts</span>
+              <span>{{ sampleFractions.total }} cr</span>
             </div>
             <div class="perf-track tri">
               <span
@@ -375,11 +378,17 @@ function submit(): void {
             </div>
           </div>
           <div class="perf-valor">
-            <span class="lbl">Sample bank</span>
+            <span class="lbl">Credit bank</span>
             <span class="perf-valor-nums">
-              <span class="disp v-base">{{ purseBefore }}</span>
+              <CreditAmount
+                class="disp v-base"
+                :value="purseBefore"
+              />
               <span class="disp v-arrow">→</span>
-              <span class="disp v-final">{{ purseAfter }}</span>
+              <CreditAmount
+                class="disp v-final"
+                :value="purseAfter"
+              />
             </span>
           </div>
         </section>

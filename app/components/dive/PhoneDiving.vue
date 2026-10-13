@@ -84,7 +84,7 @@ function submit(): void {
     v-model:time="time"
     v-model:samples="samples"
     :state="state"
-    :sample-bank="self?.sampleBank ?? 0"
+    :credits="self?.credits ?? 0"
     @submit="submit"
     @cancel="mode = 'none'"
   />

@@ -9,13 +9,11 @@ import {
   bonusIneligibilityReason,
   canBanAnyReward,
   canBanReward,
-  canBuyItem,
   canRerollRewards,
   diverOptions,
   draftSummaryFor,
   pactRiskOf,
   rewardPoolFor,
-  shopStockFor,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
 import type { Item } from '~~/shared/data/types'
@@ -34,7 +32,6 @@ const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
   reroll: []
   ban: [optionIds: string[]]
-  buy: [itemId: string]
   spinBonus: []
   awardBonus: [playerIds: string[]]
   advance: []
@@ -80,18 +77,6 @@ const bankedSweep = computed(() => {
   return tier ? { '--sweep': `color-mix(in srgb, var(--tier-${tier}) 70%, white)` } : undefined
 })
 const optionsLost = computed(() => props.self?.failedPactIds.length ?? 0)
-
-// The rotating Requisition shelf (engine-derived) and its buy verdicts.
-const stock = computed(() => (props.self ? shopStockFor(props.state, props.self) : []))
-const stockBuyable = computed(() => {
-  const self = props.self
-  if (!self) {
-    return {}
-  }
-  return Object.fromEntries(
-    stock.value.map(option => [option.item.id, canBuyItem(props.state, self, option.item.id)]),
-  )
-})
 
 const advanceLabel = computed(() =>
   props.state.missionInOperation >= props.opLength
@@ -188,15 +173,12 @@ function tierOf(option: RewardOption): string {
       :self="self"
       :can-control="canControl"
       :bonus-up="bonusUp"
-      :stock="stock"
-      :sample-bank="self?.sampleBank ?? 0"
-      :buyable="stockBuyable"
+      :credits="self?.credits ?? 0"
       :advance-label="advanceLabel"
       compact
       @spin="emit('spinBonus')"
       @award="playerIds => emit('awardBonus', playerIds)"
       @advance="emit('advance')"
-      @buy="itemId => emit('buy', itemId)"
     />
 
     <template v-else>

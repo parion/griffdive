@@ -14,10 +14,15 @@ const props = withDefaults(defineProps<{
   isHost?: boolean
   loneHost?: boolean
   canFork?: boolean
-}>(), { saved: false, canControl: false, isHost: false, loneHost: false, canFork: false })
+  credits?: number
+  // Why Brasch's Bargains is shut right now (mid-mission), or null when open.
+  bargainsClosed?: string | null
+  bargainLamp?: 'off' | 'ready' | 'restocked'
+}>(), { saved: false, canControl: false, isHost: false, loneHost: false, canFork: false, credits: 0, bargainsClosed: null, bargainLamp: 'off' })
 
 const emit = defineEmits<{
   copyInvite: []
+  openBargains: []
   openTutorial: []
   leave: []
   end: []
@@ -152,6 +157,27 @@ const roomCode = computed(() => (props.slotName || '').toUpperCase())
       aria-label="Ship"
     >
       <button
+        class="icon-btn navb bargains"
+        type="button"
+        aria-haspopup="dialog"
+        :disabled="Boolean(bargainsClosed)"
+        :title="bargainsClosed ?? undefined"
+        :aria-label="`Brasch's Bargains, ${credits} credits${bargainsClosed ? ` — ${bargainsClosed}` : ''}${bargainLamp === 'restocked' ? ', restocked' : bargainLamp === 'ready' ? ', something affordable in stock' : ''}`"
+        @click="emit('openBargains')"
+      >
+        <span
+          v-if="bargainLamp !== 'off' && !bargainsClosed"
+          class="lamp gold nav-lamp"
+          :class="{ pulse: bargainLamp === 'restocked' }"
+          aria-hidden="true"
+        />
+        <span class="nav-credits">
+          <IconCredit class="nav-icon" />
+          <span class="nav-balance">{{ credits }}</span>
+        </span>
+        <span>Bargains</span>
+      </button>
+      <button
         class="icon-btn navb"
         type="button"
         aria-haspopup="dialog"
@@ -247,6 +273,12 @@ const roomCode = computed(() => (props.slotName || '').toUpperCase())
   text-transform: uppercase;
 }
 .nav-icon { width: 20px; height: 20px; }
+.nav-credits { display: flex; align-items: center; gap: 5px; }
+.nav-balance { font-size: 13px; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+.bargains:not(:disabled) .nav-credits { color: var(--gold); }
+.bargains { position: relative; }
+.nav-lamp { position: absolute; top: 4px; right: 4px; }
+.bargains:disabled { opacity: 0.4; cursor: not-allowed; }
 
 @media (max-width: 760px) {
   .top { height: auto; min-height: 52px; padding: var(--sp-3) var(--sp-4); gap: var(--sp-3); flex-wrap: wrap; }

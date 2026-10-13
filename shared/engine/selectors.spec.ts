@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { ITEMS_BY_ID, WARBONDS } from '../data/catalog'
-import { MAX_DIFFICULTY, MIN_DIFFICULTY, STRAIN_RISK, conditionRiskAt, directiveValorAt, directiveWeightFor, maxStarsFor } from './config'
+import { MAX_DIFFICULTY, MIN_DIFFICULTY, STRAIN_RISK, conditionRiskAt, directiveValorAt, directiveWeightFor } from './config'
 import { itemPrice, oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { actingDiverIds, activeMisfortune, activeStrain, armoryRules, awaitingDiverIds, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, shopStockFor, strainDecision, teamRiskOf } from './selectors'
+import { actingDiverIds, activeMisfortune, activeStrain, armoryRules, awaitingDiverIds, bargainLamp, bargainShelfFor, bargainSlotKinds, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
 import { isPactSelectable, rollPactOffer } from './pacts'
 import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -223,59 +223,69 @@ describe('diverOptions', () => {
   })
 })
 
-describe('shopStockFor / canBuyItem (Requisition)', () => {
-  function rewardsState(seed = 1234): DiveState {
-    let state = createDiveState({ variant: 'medium' }, 'host', 'Griffin')
-    state = reduce(state, { type: 'SPIN_WHEEL', seed })
-    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
-    state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
-    state = reduce(state, { type: 'DEAL_PACTS' })
-    state = reduce(state, { type: 'SET_PACTS', playerId: 'host', pactIds: [] })
-    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
-    return state
-  }
+describe('bargainShelfFor / canBuyItem (Brasch\'s Bargains)', () => {
   const host = (state: DiveState): DiverState => state.divers.find(diver => diver.id === 'host')!
+  const started = (seed = 1234): DiveState => createDiveState({ variant: 'medium' }, 'host', 'Griffin', undefined, seed)
 
-  it('stocks one item per star the difficulty can award, and no armor pieces', () => {
-    const state = rewardsState()
-    expect(state.difficulty).toBe(3)
-    const stock = shopStockFor(state, host(state))
-    expect(stock).toHaveLength(maxStarsFor(3))
-    // Deterministic derivation — same seed, same shelf on every client.
-    expect(shopStockFor(state, host(state)).map(option => option.optionId))
-      .toEqual(stock.map(option => option.optionId))
+  it('adds a stratagem slot per star past the third', () => {
+    expect(bargainSlotKinds(3)).toEqual(['primary', 'secondary', 'throwable', 'armorPassive'])
+    expect(bargainSlotKinds(5)).toEqual(['primary', 'secondary', 'throwable', 'armorPassive', 'stratagem'])
+    expect(bargainSlotKinds(7)).toEqual(['primary', 'secondary', 'throwable', 'armorPassive', 'stratagem', 'stratagem'])
   })
 
-  it('excludes the draft options and owned items', () => {
-    const state = rewardsState()
-    const diver = host(state)
-    const draftIds = new Set(diverOptions(state, diver).map(option => option.optionId))
-    const stock = shopStockFor(state, diver)
-    expect(stock.length).toBeGreaterThan(0)
-    for (const option of stock) {
-      expect(draftIds.has(option.optionId)).toBe(false)
-      expect(state.personalInventories.host ?? []).not.toContain(option.item.id)
+  it('deals a deterministic shelf at the crusade start, skipping the starting kit', () => {
+    const state = started()
+    const shelf = bargainShelfFor(state, host(state))
+    expect(shelf.map(slot => slot.kind)).toEqual(bargainSlotKinds(3))
+    expect(bargainShelfFor(started(), host(started()))).toEqual(shelf)
+    expect(bargainShelfFor(started(99), host(started(99)))).not.toEqual(shelf)
+    for (const slot of shelf) {
+      expect(state.personalInventories.host).not.toContain(slot.item?.id)
     }
   })
 
-  it('refuses a buy until the draft is resolved', () => {
-    const state = rewardsState()
-    const diver = host(state)
-    const option = shopStockFor(state, diver)[0]!
-    expect(canBuyItem(state, diver, option.item.id).allowed).toBe(false)
+  it('opens between missions and closes in the field', () => {
+    const state = started()
+    const diver = { ...host(state), credits: 100_000 }
+    const itemId = bargainShelfFor(state, diver)[0]!.item!.id
+    expect(canBuyItem(state, diver, itemId)).toEqual({ allowed: true, reason: null })
+    expect(canBuyItem({ ...state, phase: 'pacts' }, diver, itemId).allowed).toBe(true)
+    expect(canBuyItem({ ...state, phase: 'rewards' }, diver, itemId).allowed).toBe(true)
+    for (const phase of ['diving', 'forfeit', 'complete'] as const) {
+      expect(canBuyItem({ ...state, phase }, diver, itemId).allowed).toBe(false)
+    }
   })
 
-  it('allows an affordable buy once resolved, and refuses when broke', () => {
-    const state = rewardsState()
+  it('refuses when broke, off the shelf, or after this mission\'s buy', () => {
+    const state = started()
     const diver = host(state)
-    const option = shopStockFor(state, diver)[0]!
-    const price = itemPrice(option.item)
-    const resolved: DiverState = { ...diver, pickedOptionId: 'x', sampleBank: price }
-    expect(canBuyItem(state, resolved, option.item.id)).toEqual({ allowed: true, reason: null })
-    expect(canBuyItem(state, { ...resolved, sampleBank: price - 1 }, option.item.id).allowed).toBe(false)
-    expect(canBuyItem(state, { ...resolved, pickedOptionId: null }, option.item.id).allowed).toBe(false)
-    expect(canBuyItem(state, { ...resolved, pickedOptionId: null, rewardBanned: true }, option.item.id).allowed).toBe(true)
-    expect(canBuyItem(state, resolved, 'definitely-not-stocked').allowed).toBe(false)
+    const item = bargainShelfFor(state, diver)[0]!.item!
+    const price = itemPrice(item)
+    expect(canBuyItem(state, { ...diver, credits: price }, item.id).allowed).toBe(true)
+    expect(canBuyItem(state, { ...diver, credits: price - 1 }, item.id)).toEqual({ allowed: false, reason: 'Not enough credits' })
+    expect(canBuyItem(state, { ...diver, credits: price }, 'definitely-not-stocked').allowed).toBe(false)
+    const bought = { ...diver, credits: 100_000, bargain: { ...diver.bargain!, boughtItemId: item.id } }
+    expect(bargainShelfFor(state, bought).map(slot => slot.status)).toEqual(['bought', 'locked', 'locked', 'locked'])
+    expect(canBuyItem(state, bought, item.id).allowed).toBe(false)
+  })
+})
+
+describe('bargainLamp', () => {
+  const state = createDiveState({ variant: 'medium' }, 'host', 'Griffin', undefined, 1234)
+  const diver = state.divers[0]!
+
+  it('stays dark while nothing is buyable and in the field', () => {
+    expect(bargainLamp(state, diver)).toBe('off')
+    expect(bargainLamp({ ...state, phase: 'diving' }, { ...diver, credits: 100_000 })).toBe('off')
+  })
+
+  it('lights solid between missions and pulses only for a new operation\'s restock', () => {
+    const rich = { ...diver, credits: 100_000 }
+    expect(bargainLamp(state, rich)).toBe('ready')
+    expect(bargainLamp({ ...state, missionInOperation: 2, difficulty: 4 }, rich)).toBe('ready')
+    expect(bargainLamp({ ...state, difficulty: 4 }, rich)).toBe('restocked')
+    const shopped = { ...rich, bargain: { ...rich.bargain!, boughtKinds: ['primary' as const] } }
+    expect(bargainLamp({ ...state, difficulty: 4 }, shopped)).toBe('ready')
   })
 })
 
@@ -304,7 +314,8 @@ describe('misfortuneStrandedDivers', () => {
       catchUpOwed: 0,
       skipsCurrentDraft: false,
       rewardTokens: 0,
-      sampleBank: 0,
+      credits: 0,
+      bargain: null,
       bannedItemIds: [],
       rewardRerollSeed: null,
       rewardBanned: false,

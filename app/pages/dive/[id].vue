@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useIntervalFn, useLocalStorage } from '@vueuse/core'
 import { createSaveDoc } from '~~/shared/engine/saves'
-import { diverOptions, majorOrderFronts, pactRiskOf, promotionPending, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
+import { bargainLamp, bargainsClosedReason, diverOptions, majorOrderFronts, pactRiskOf, promotionPending, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
@@ -37,6 +37,16 @@ const {
 const dispatch = (action: EngineAction) => session.dispatch(action)
 
 const armoryOpen = ref(false)
+
+// Brasch's Bargains opens from the desktop header and the phone action bar, and
+// shuts itself when the squad drops into the field.
+const bargainsOpen = ref(false)
+const bargainsClosed = computed(() => (state.value ? bargainsClosedReason(state.value) : null))
+watch(bargainsClosed, (closed) => {
+  if (closed) {
+    bargainsOpen.value = false
+  }
+})
 
 // The desktop right rail tabs between the Kit and Valor. It is shell state, so
 // the diver's choice survives phase changes.
@@ -373,7 +383,7 @@ function banRewards(optionIds: string[]): void {
   }
 }
 
-// Requisition: buy a stocked item with the diver's sample bank (self-service).
+// Brasch's Bargains: one shelf item per operation, paid in credits (self-service).
 function buyItem(itemId: string): void {
   if (selfId.value) {
     dispatch({ type: 'BUY_ITEM', playerId: selfId.value, itemId })
@@ -563,7 +573,7 @@ function confirmJoinBriefing(name: string): void {
 
 function launchCrusade(settings: CrusadeSettings): void {
   commitName()
-  dispatch({ type: 'START_DIVE', settings })
+  dispatch({ type: 'START_DIVE', settings, seed: session.newSeed() })
 }
 </script>
 
@@ -657,7 +667,6 @@ function launchCrusade(settings: CrusadeSettings): void {
       @pick="pick"
       @reroll-rewards="rerollRewards"
       @ban-rewards="banRewards"
-      @buy-reward="buyItem"
       @spin-bonus="spinBonus"
       @award-bonus="awardBonus"
       @advance="advance"
@@ -667,6 +676,7 @@ function launchCrusade(settings: CrusadeSettings): void {
       @transfer-host="transferHost"
       @copy-invite="copyInvite"
       @open-armory="armoryOpen = true"
+      @open-bargains="bargainsOpen = true"
       @open-tutorial="openBriefing"
       @leave="leaveDive"
       @end="endDive"
@@ -695,7 +705,11 @@ function launchCrusade(settings: CrusadeSettings): void {
           :is-host="session.selfIsHost.value"
           :lone-host="state.divers.length === 1"
           :can-fork="canFork"
+          :credits="self?.credits ?? 0"
+          :bargains-closed="bargainsClosed"
+          :bargain-lamp="self ? bargainLamp(state, self) : 'off'"
           @copy-invite="copyInvite"
+          @open-bargains="bargainsOpen = true"
           @open-tutorial="openBriefing"
           @leave="leaveDive"
           @end="endDive"
@@ -853,7 +867,6 @@ function launchCrusade(settings: CrusadeSettings): void {
             @pick="pick"
             @reroll="rerollRewards"
             @ban="banRewards"
-            @buy="buyItem"
             @spin-bonus="spinBonus"
             @award-bonus="awardBonus"
             @advance="advance"
@@ -891,6 +904,14 @@ function launchCrusade(settings: CrusadeSettings): void {
       :state="state"
       :self-id="selfId"
       :preview-pact-ids="pactPreviewIds"
+    />
+
+    <BargainsDrawer
+      v-if="state"
+      v-model:open="bargainsOpen"
+      :state="state"
+      :self="self"
+      @buy="buyItem"
     />
 
     <BriefingOverlay
