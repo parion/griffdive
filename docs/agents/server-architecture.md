@@ -69,7 +69,8 @@ app/
                    catch-up ceremony, LibertyCrossBand — the full-width S+
                    "Liberty's Cross" band above the reward pods, LibertyCrossEmblem — its vector crest,
                    DiversChoicePicker — the minified codex modal, CrusadeSetup, WarbondPicker,
-                   JoinNameGate — name gate held while joining),
+                   JoinNameGate — the host's name gate, JoinBriefing — the joiner's
+                   one-page briefing, also replayed in-dive as the squadmate's Field manual),
                    codex/CodexBrowser — the shared catalog browser (filter + tier grid),
                    warbonds/WarbondBrowser — the shared warbond owner list (single column,
                    acquisition specials last; each banner starts blurred and dimmed, then
@@ -230,6 +231,25 @@ Reconnect = re-`hello` with stored playerId → server replays snapshot.
 squad: their pending pact lock or reward pick stops gating progress, their personal inventory
 leaves with them, and the host can never be kicked. It is a soft kick — the removed client
 shows a removal notice, but their invite link still seats them again as a fresh diver.
+
+### First visit — host gate vs. join briefing
+
+A browser with no stored seat in a room is held before its first `hello` (`awaitingJoin` in
+`useGameSocket`) when it has no saved name **or** has never read the join briefing
+(`griffdive:join-briefing:v1`, `useJoinBriefing`). While held, the dive page reads the room once
+through `GET /api/rooms/:code` to tell the two first visits apart — the same test `joinDiver` uses
+to crown a host:
+
+- **Empty room** → the host's own fresh dive. A named host connects straight away; an unnamed one
+  gets `JoinNameGate`. Either way the founding diver's first seat opens the host tutorial
+  (`BriefingOverlay`).
+- **Room with a squad** → a join by link. `JoinBriefing` renders as a full page from the pre-join
+  snapshot (re-read every 10s so its roster stays live; `seatingBlocked` disables the join and says
+  why). Confirming stores the name, marks the briefing and the one-shot Warbonds prompt seen, and
+  opens the socket. Squadmates never get the host tutorial unasked — not even when hostship later
+  migrates to them — and their Tutorial control opens the briefing as the **Field manual** dialog.
+
+A browser that read the briefing and has a name joins the next invite with no gate at all.
 
 ### Matchmaking — none (deliberate)
 

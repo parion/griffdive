@@ -1,6 +1,7 @@
 import { useWebSocket } from '@vueuse/core'
 import { VARIANTS } from '~~/shared/engine/progression'
 import type { DiveState, EngineAction } from '~~/shared/engine/types'
+import { hasSeenJoinBriefing } from './useJoinBriefing'
 import { useRecentRooms } from './useRecentRooms'
 import { useSessionSaves } from './useSessionSaves'
 import { useSessionStore } from '~/stores/session'
@@ -54,12 +55,13 @@ export function useGameSocket(roomCode: string) {
   const store = useSessionStore()
   const { rememberRoom } = useRecentRooms()
 
-  // Joining by link requires a name: first-timers to this room (no stored
-  // seat) who never introduced themselves (no saved name) are held until the
-  // name gate confirms them. Stored seats reconnect straight away.
+  // A first visit to this room (no stored seat) is held before the hello seats
+  // anyone: a diver with no name yet, or one who never read the joiner's
+  // briefing, confirms through the page's gate first. Stored seats reconnect
+  // straight away.
   const hasSeat = import.meta.client
     && !!localStorage.getItem(playerKey(roomCode))
-  const awaitingName = ref(!hasSeat && !hasDiverName())
+  const awaitingJoin = ref(!hasSeat && (!hasDiverName() || !hasSeenJoinBriefing()))
   // Set once autoReconnect gives up. Transient CLOSED->CONNECTING churn during
   // retries must not look like a dead end, so only the exhausted case flips this.
   const connectionFailed = ref(false)
@@ -185,7 +187,7 @@ export function useGameSocket(roomCode: string) {
   }
 
   function connect(): void {
-    awaitingName.value = false
+    awaitingJoin.value = false
     connectionFailed.value = false
     store.openSession(roomCode)
     open()
@@ -199,7 +201,7 @@ export function useGameSocket(roomCode: string) {
   })
 
   onMounted(() => {
-    if (!awaitingName.value) {
+    if (!awaitingJoin.value) {
       connect()
     }
   })
@@ -210,5 +212,5 @@ export function useGameSocket(roomCode: string) {
     close()
   })
 
-  return { store, dispatch, saveDive, unsaveDive, setSteam, connect, close, awaitingName, connectionFailed }
+  return { store, dispatch, saveDive, unsaveDive, setSteam, connect, close, awaitingJoin, connectionFailed }
 }

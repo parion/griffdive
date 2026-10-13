@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { dismissWarbondIntro } from './helpers'
+import { dismissWarbondIntro, expectJoinerLanded } from './helpers'
 
 test('phone host moderation: tap a squadmate, hand over or kick', async ({ browser }) => {
   const contextA = await browser.newContext({ viewport: { width: 390, height: 844 } })
@@ -17,7 +17,7 @@ test('phone host moderation: tap a squadmate, hand over or kick', async ({ brows
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
-  await dismissWarbondIntro(pageB)
+  await expectJoinerLanded(pageB)
 
   // The host's phone squad bar offers moderation on the joiner (not self).
   const duo = pageA.getByRole('button', { name: /Duo: / })

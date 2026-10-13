@@ -48,3 +48,11 @@ export async function lockMisfortune(page: Page): Promise<void> {
   }
   await accept.click()
 }
+
+// A squadmate joining by link reads the join briefing instead of the host's
+// tutorial: once they join, the dive opens with no tutorial or Warbonds panel.
+export async function expectJoinerLanded(page: Page): Promise<void> {
+  await expect(page.getByRole('button', { name: 'Join the dive' })).toBeHidden()
+  await expect(page.getByRole('dialog', { name: 'Griffdive tutorial' })).toBeHidden()
+  await expect(page.getByRole('dialog', { name: 'Warbonds' })).toBeHidden()
+}
