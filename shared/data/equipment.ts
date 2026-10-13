@@ -1813,9 +1813,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 0,
     imageURL: 'af50noxiousranger.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Advanced Filtration',
   },
   {
@@ -1830,9 +1827,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 1,
     imageURL: 'ac2obedient.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Acclimated',
   },
   {
@@ -1847,9 +1841,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 2,
     imageURL: 'sr24streetscout.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Siege Ready',
   },
   {
@@ -1864,9 +1855,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 3,
     imageURL: 'sr18roadblock.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Siege Ready',
   },
   {
@@ -1881,9 +1869,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 4,
     imageURL: 'b08lightgunner.webp',
-    armorRating: 100,
-    speed: 125,
-    stamina: 550,
     passive: 'Extra Padding',
   },
   {
@@ -1898,9 +1883,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 5,
     imageURL: 'ce07demolitionspecialist.webp',
-    armorRating: 64,
-    speed: 536,
-    stamina: 118,
     passive: 'Engineering Kit',
   },
   {
@@ -1915,9 +1897,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 6,
     imageURL: 'ce67titan.webp',
-    armorRating: 79,
-    speed: 521,
-    stamina: 111,
     passive: 'Engineering Kit',
   },
   {
@@ -1932,9 +1911,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 7,
     imageURL: 'ce74breaker.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Engineering Kit',
   },
   {
@@ -1949,9 +1925,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 8,
     imageURL: 'cm21trenchparamedic.webp',
-    armorRating: 64,
-    speed: 536,
-    stamina: 118,
     passive: 'Med-Kit',
   },
   {
@@ -1966,9 +1939,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 9,
     imageURL: 'cw4arcticranger.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Scout',
   },
   {
@@ -1983,9 +1953,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 10,
     imageURL: 'ex00prototypex.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Electrical Conduit',
   },
   {
@@ -2000,9 +1967,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 11,
     imageURL: 'fs37ravager.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Engineering Kit',
   },
   {
@@ -2017,9 +1981,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 12,
     imageURL: 'fs38eradicator.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Fortified',
   },
   {
@@ -2034,9 +1995,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 13,
     imageURL: 'i09heatseeker.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Inflammable',
   },
   {
@@ -2051,9 +2009,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 14,
     imageURL: 'ph9predator.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Peak Physique',
   },
   {
@@ -2068,9 +2023,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 15,
     imageURL: 'sc30trailblazerscout.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Scout',
   },
   {
@@ -2085,9 +2037,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 16,
     imageURL: 'sc34infiltrator.webp',
-    armorRating: 70,
-    speed: 530,
-    stamina: 115,
     passive: 'Scout',
   },
   {
@@ -2102,9 +2051,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 17,
     imageURL: 'sc37legionnaire.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Servo-Assisted',
   },
   {
@@ -2119,9 +2065,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 18,
     imageURL: 'uf16inspector.webp',
-    armorRating: 75,
-    speed: 550,
-    stamina: 125,
     passive: 'Unflinching',
   },
   {
@@ -2136,9 +2079,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 19,
     imageURL: 'af02hazmaster.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Advanced Filtration',
   },
   {
@@ -2153,9 +2093,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 20,
     imageURL: 'af91fieldchemist.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Advanced Filtration',
   },
   {
@@ -2170,9 +2107,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 21,
     imageURL: 'b01tactical.webp',
-    armorRating: 150,
-    speed: 500,
-    stamina: 100,
     passive: 'Extra Padding',
   },
   {
@@ -2187,9 +2121,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 22,
     imageURL: 'b24enforcer.webp',
-    armorRating: 129,
-    speed: 471,
-    stamina: 71,
     passive: 'Fortified',
   },
   {
@@ -2204,9 +2135,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 23,
     imageURL: 'ce27groundbreaker.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Engineering Kit',
   },
   {
@@ -2221,9 +2149,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 24,
     imageURL: 'ce35trenchengineer.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Engineering Kit',
   },
   {
@@ -2238,9 +2163,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 25,
     imageURL: 'ce81juggernaut.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Engineering Kit',
   },
   {
@@ -2255,9 +2177,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 26,
     imageURL: 'cm09bonesnapper.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Med-Kit',
   },
   {
@@ -2272,9 +2191,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 27,
     imageURL: 'cm10clinician.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Med-Kit',
   },
   {
@@ -2289,9 +2205,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 28,
     imageURL: 'cm14physician.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Med-Kit',
   },
   {
@@ -2306,9 +2219,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 29,
     imageURL: 'cw9whitewolf.webp',
-    armorRating: 150,
-    speed: 500,
-    stamina: 100,
     passive: 'Extra Padding',
   },
   {
@@ -2323,9 +2233,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 30,
     imageURL: 'dp00tactical.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Democracy Protects',
   },
   {
@@ -2340,9 +2247,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 31,
     imageURL: 'dp11championofthepeople.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Democracy Protects',
   },
   {
@@ -2357,9 +2261,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 32,
     imageURL: 'ac1dutiful.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Acclimated',
   },
   {
@@ -2374,9 +2275,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 33,
     imageURL: 'dp40heroofthefederation.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Democracy Protects',
   },
   {
@@ -2391,9 +2289,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 34,
     imageURL: 'dp53saviorofthefree.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Democracy Protects',
   },
   {
@@ -2408,9 +2303,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 35,
     imageURL: 'ex03prototype3.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Electrical Conduit',
   },
   {
@@ -2425,9 +2317,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 36,
     imageURL: 'ex16prototype16.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Electrical Conduit',
   },
   {
@@ -2442,9 +2331,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 37,
     imageURL: 'fs34exterminator.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Fortified',
   },
   {
@@ -2459,9 +2345,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 38,
     imageURL: 'i92firefighter.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Inflammable',
   },
   {
@@ -2476,9 +2359,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 39,
     imageURL: 'i102draconaught.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Inflammable',
   },
   {
@@ -2493,9 +2373,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 40,
     imageURL: 'ph56jaguar.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Peak Physique',
   },
   {
@@ -2510,9 +2387,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 41,
     imageURL: 'sa04combattechnician.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Scout',
   },
   {
@@ -2527,9 +2401,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 42,
     imageURL: 'sa12servoassisted.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Servo-Assisted',
   },
   {
@@ -2544,9 +2415,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 43,
     imageURL: 'sa25steeltrooper.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Servo-Assisted',
   },
   {
@@ -2561,9 +2429,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 44,
     imageURL: 'sc15dronemaster.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Servo-Assisted',
   },
   {
@@ -2578,9 +2443,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 47,
     imageURL: 'tr40goldeagle.webp',
-    armorRating: 150,
-    speed: 500,
-    stamina: 100,
     passive: 'Extra Padding',
   },
   {
@@ -2595,9 +2457,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 48,
     imageURL: 'tr117alphacommander.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Med-Kit',
   },
   {
@@ -2612,9 +2471,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 49,
     imageURL: 'uf50bloodhound.webp',
-    armorRating: 125,
-    speed: 500,
-    stamina: 100,
     passive: 'Unflinching',
   },
   {
@@ -2629,9 +2485,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 50,
     imageURL: 'uf84doubtkiller.webp',
-    armorRating: 125,
-    speed: 500,
-    stamina: 100,
     passive: 'Unflinching',
   },
   {
@@ -2646,9 +2499,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 51,
     imageURL: 'af52lockdown.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Advanced Filtration',
   },
   {
@@ -2663,9 +2513,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 52,
     imageURL: 'b27fortifiedcommando.webp',
-    armorRating: 200,
-    speed: 450,
-    stamina: 50,
     passive: 'Extra Padding',
   },
   {
@@ -2680,9 +2527,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 53,
     imageURL: 'ce64grenadier.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Engineering Kit',
   },
   {
@@ -2697,9 +2541,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 54,
     imageURL: 'ce101guerillagorilla.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Engineering Kit',
   },
   {
@@ -2714,9 +2555,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 55,
     imageURL: 'cm17butcher.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Med-Kit',
   },
   {
@@ -2731,9 +2569,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 56,
     imageURL: 'cw22kodiak.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Fortified',
   },
   {
@@ -2748,9 +2583,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 57,
     imageURL: 'cw36winterwarrior.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Servo-Assisted',
   },
   {
@@ -2765,9 +2597,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 58,
     imageURL: 'fs05marksman.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Fortified',
   },
   {
@@ -2782,9 +2611,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 59,
     imageURL: 'fs11executioner.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Fortified',
   },
   {
@@ -2799,9 +2625,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 60,
     imageURL: 'fs23battlemaster.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Fortified',
   },
   {
@@ -2816,9 +2639,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 61,
     imageURL: 'fs55devastator.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Fortified',
   },
   {
@@ -2833,9 +2653,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 62,
     imageURL: 'fs61dreadnought.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Servo-Assisted',
   },
   {
@@ -2850,9 +2667,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 63,
     imageURL: 'i44salamander.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Inflammable',
   },
   {
@@ -2867,9 +2681,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 64,
     imageURL: 'ph202twigsnapper.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Peak Physique',
   },
   {
@@ -2884,9 +2695,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 65,
     imageURL: 'sa32dynamo.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Servo-Assisted',
   },
   {
@@ -2901,9 +2709,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 67,
     imageURL: 'sr64cinderblock.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Siege Ready',
   },
   {
@@ -2918,9 +2723,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 68,
     imageURL: 'b22modelcitizen.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Democracy Protects',
   },
   {
@@ -2935,9 +2737,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 69,
     imageURL: 'ie3martyr.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Integrated Explosives',
   },
   {
@@ -2952,9 +2751,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 70,
     imageURL: 'ie12righteous.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Integrated Explosives',
   },
   {
@@ -2969,9 +2765,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 71,
     imageURL: 'ie57hellbent.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Integrated Explosives',
   },
   {
@@ -2986,9 +2779,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 72,
     imageURL: 'gs17frontiermarshal.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Gunslinger',
   },
   {
@@ -3003,9 +2793,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 73,
     imageURL: 'gs66lawmaker.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Gunslinger',
   },
   {
@@ -3020,9 +2807,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 74,
     imageURL: 'gs11democracysdeputy.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Gunslinger',
   },
   {
@@ -3037,9 +2821,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 75,
     imageURL: 're824bearerofthestandard.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Reinforced Epaulettes',
   },
   {
@@ -3054,9 +2835,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 76,
     imageURL: 're1861paradecommander.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Reinforced Epaulettes',
   },
   {
@@ -3071,9 +2849,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 77,
     imageURL: 're2310honoraryguard.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Reinforced Epaulettes',
   },
   {
@@ -3088,9 +2863,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 78,
     imageURL: 'bp20correctofficer.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Ballistic Padding',
   },
   {
@@ -3105,9 +2877,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 79,
     imageURL: 'bp32jackboot.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Ballistic Padding',
   },
   {
@@ -3122,9 +2891,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 80,
     imageURL: 'bp77grandjuror.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Ballistic Padding',
   },
   {
@@ -3139,9 +2905,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 81,
     imageURL: 'ad11livewire.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Adreno-Defibrillator',
   },
   {
@@ -3156,9 +2919,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 82,
     imageURL: 'ad26bleedingedge.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Adreno-Defibrillator',
   },
   {
@@ -3173,9 +2933,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 83,
     imageURL: 'ad49apollonian.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Adreno-Defibrillator',
   },
   {
@@ -3190,9 +2947,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 84,
     imageURL: 'a9helljumper.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Feet First',
   },
   {
@@ -3207,9 +2961,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 85,
     imageURL: 'a35recon.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Feet First',
   },
   {
@@ -3224,9 +2975,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 86,
     imageURL: 'ds42federationsblade.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Desert Stormer',
   },
   {
@@ -3241,9 +2989,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 87,
     imageURL: 'ds191scorpion.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Desert Stormer',
   },
   {
@@ -3258,9 +3003,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 88,
     imageURL: 'ds10biggamehunter.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Desert Stormer',
   },
   {
@@ -3275,9 +3017,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 89,
     imageURL: 'rs40beastofprey.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Rock Solid',
   },
   {
@@ -3292,9 +3031,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 90,
     imageURL: 'rs20constrictor.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Rock Solid',
   },
   {
@@ -3309,9 +3045,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 91,
     imageURL: 'rs6fienddestroyer.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Rock Solid',
   },
   {
@@ -3326,9 +3059,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 92,
     imageURL: 'rs89shadowparagon.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Reduced Signature',
   },
   {
@@ -3343,9 +3073,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 93,
     imageURL: 'rs100sanctioner.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Reduced Signature',
   },
   {
@@ -3360,9 +3087,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 94,
     imageURL: 'rs67nullcipher.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Reduced Signature',
   },
   {
@@ -3377,9 +3101,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 95,
     imageURL: 'sa7headfirst.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Supplementary Adrenaline',
   },
   {
@@ -3394,9 +3115,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 96,
     imageURL: 'sa8ram.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Supplementary Adrenaline',
   },
   {
@@ -3411,9 +3129,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 97,
     imageURL: 'dp8mountainscaled.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Siege Ready',
   },
   {
@@ -3428,9 +3143,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 98,
     imageURL: 'cpg48sapper.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Concussive Padding',
   },
   {
@@ -3445,9 +3157,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 99,
     imageURL: 'cph26commandant.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Concussive Padding',
   },
   {
@@ -3462,9 +3171,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 100,
     imageURL: 'cpr80bulwark.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Concussive Padding',
   },
   {
@@ -3479,9 +3185,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 101,
     imageURL: 'o3freespirit.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Oxygenator',
   },
   {
@@ -3496,9 +3199,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 102,
     imageURL: 'o2heavyoperator.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Oxygenator',
   },
   {
@@ -3513,9 +3213,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 103,
     imageURL: 'o44bondedpilot.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'Oxygenator',
   },
   {
@@ -3530,9 +3227,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 104,
     imageURL: 'kdm500outrider.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: '???',
   },
   {
@@ -3547,9 +3241,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 105,
     imageURL: 'tg8sharpshooter.webp',
-    armorRating: 100,
-    speed: 500,
-    stamina: 100,
     passive: 'True Grit',
   },
   {
@@ -3564,9 +3255,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 106,
     imageURL: 'tg122demotrooper.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'True Grit',
   },
   {
@@ -3581,9 +3269,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 107,
     imageURL: 'bfm16tanker.webp',
-    armorRating: 50,
-    speed: 550,
-    stamina: 125,
     passive: 'Blunt Force Mitigation',
   },
   {
@@ -3598,9 +3283,6 @@ export const armor: Item[] = [
     tier: 'b',
     index: 108,
     imageURL: 'bfm220ironclad.webp',
-    armorRating: 150,
-    speed: 450,
-    stamina: 50,
     passive: 'Blunt Force Mitigation',
   },
 ]

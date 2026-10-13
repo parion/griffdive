@@ -85,9 +85,6 @@ function toItem(raw, categoryOverride) {
   if ('antitank' in raw) item.antitank = raw.antitank
   if ('index' in raw) item.index = raw.index
   if ('imageURL' in raw) item.imageURL = raw.imageURL
-  if ('armorRating' in raw) item.armorRating = raw.armorRating
-  if ('speed' in raw) item.speed = raw.speed
-  if ('stamina' in raw) item.stamina = raw.stamina
   if ('passive' in raw) item.passive = raw.passive
   Object.assign(item, ITEM_OVERRIDES[item.id])
   return item

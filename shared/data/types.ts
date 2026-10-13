@@ -29,9 +29,6 @@ export interface Item {
   antitank?: boolean
   index?: number
   imageURL?: string
-  armorRating?: number
-  speed?: number
-  stamina?: number
   passive?: string
 }
 

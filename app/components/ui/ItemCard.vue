@@ -88,11 +88,10 @@ const ownerInitials = computed(() =>
       >AT</span>
     </span>
     <span
-      v-if="!compact && (item.passive || item.armorRating)"
+      v-if="!compact && item.passive"
       class="item-stats muted small"
     >
-      <span v-if="item.armorRating">{{ item.armorRating }} armor · {{ item.speed }} spd · {{ item.stamina }} stam</span>
-      <span v-if="item.passive">{{ item.passive }}</span>
+      {{ item.passive }}
     </span>
     <span
       v-if="note"
