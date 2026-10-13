@@ -166,6 +166,7 @@ function createCrusade(alignToOrder: boolean): void {
     crypto.randomUUID(),
     name,
     [...myWarbonds.value],
+    crypto.getRandomValues(new Uint32Array(1))[0],
   )
   // The band's campaign CTA hands the live order straight to the wheel, so the
   // front is pinned before the first spin — the host never has to re-pick.

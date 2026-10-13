@@ -762,10 +762,10 @@ describe('createRoomFromSave (personal session saves)', () => {
   it('starts the new session with an empty purse and no reward tokens', async () => {
     const kv = fakeKV()
     const state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
-    const rich = { ...state, divers: state.divers.map(diver => ({ ...diver, sampleBank: 9, rewardTokens: 2 })) }
+    const rich = { ...state, divers: state.divers.map(diver => ({ ...diver, credits: 9, rewardTokens: 2 })) }
     const { code } = await createRoomFromSave(kv, createSaveDoc(rich, 'Session', new Date().toISOString()), 'Griffin')
     const room = await loadRoom(kv, code)
-    expect(room?.state.divers[0]).toMatchObject({ sampleBank: 0, rewardTokens: 0 })
+    expect(room?.state.divers[0]).toMatchObject({ credits: 0, rewardTokens: 0 })
     expect(room?.state.personalInventories.p1).toEqual(state.personalInventories.p1)
   })
 

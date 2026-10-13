@@ -8,13 +8,15 @@ import type { Pact } from '../data/pacts'
 import type { Strain } from '../data/strains'
 import type { Item } from '../data/types'
 import {
+  BARGAIN_SLOTS,
+  BARGAIN_STREAM,
   MAJOR_ORDER_RISK,
   OPTIONS_LOST_PER_FAILED_DIRECTIVE,
   FORFEIT_STREAM,
   OPTIONS_LOST_PER_FAILED_PACT,
-  SAMPLE_SHOP_STREAM,
   SQUAD_SIZE_MAX,
   STRAIN_RISK,
+  bargainStratagemSlotsFor,
   baseTierFor,
   bonusIntervalFor,
   conditionRiskAt,
@@ -36,10 +38,10 @@ import {
 } from './pacts'
 import type { StratagemBanSource } from './pacts'
 import { startingItemIds } from './progression'
-import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, rollBonus, rollCeiling, rollRewardOptions, rollShopStock, valorOf } from './rewards'
-import type { RewardOption } from './rewards'
+import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, rollBargainShelf, rollBonus, rollCeiling, rollRewardOptions, valorOf } from './rewards'
+import type { BargainSlot, BargainSlotKind, RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
-import type { CrusadeMode, DiveState, DiverState, RewardTier } from './types'
+import type { BargainDeal, CrusadeMode, DiveState, DivePhase, DiverState, RewardTier } from './types'
 import { eligibleMisfortunes, eligibleStrains, frontById, strainById } from './wheel'
 
 // A completed run is tracked by its full draw — misfortune, front and strain —
@@ -223,8 +225,7 @@ export function diverValor(state: DiveState, diver: DiverState): number {
 }
 
 // The per-diver seed the offer derives from: the mission's offer seed folded
-// with the diver id and with any reward-reroll seed they spent. The draft and
-// the Requisition stock share it, so a reroll moves both.
+// with the diver id and with any reward-reroll seed they spent.
 function diverOfferSeed(state: DiveState, diver: DiverState): number {
   // A failed mission rolls its offer seed at the report like a clear does; a
   // forfeit-phase state from before that fell back to the mission's derivation.
@@ -235,8 +236,8 @@ function diverOfferSeed(state: DiveState, diver: DiverState): number {
 }
 
 // The ceiling the diver's Valor actually rolls for this mission's draft (salt 1
-// stream). The stock shares it, so a shelf never reaches a class the diver's
-// risk didn't buy.
+// stream). The forfeit offer shares it, so risk raises the stakes as it raises
+// the reward.
 export function diverRolledCeiling(state: DiveState, diver: DiverState): RewardTier {
   return rollCeiling(
     mulberry32(deriveSeed(diverOfferSeed(state, diver), 1)),
@@ -386,7 +387,7 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
 }
 
 // What a diver has earned this crusade: their kit beyond the variant's
-// starting gear (drafted rewards, Requisition buys, a Field Promotion or a
+// starting gear (drafted rewards, Brasch's Bargains buys, a Field Promotion or a
 // claimed cache). Failure only ever takes from this — the surplus kit every
 // diver starts with was never won, so it is never at stake.
 export function earnedItemsOf(state: DiveState, diver: DiverState): Item[] {
@@ -484,59 +485,94 @@ export function draftSummaryFor(state: DiveState, diver: DiverState): DraftSumma
   }
 }
 
-// The per-diver rotating Requisition shelf, shown once their draft resolves:
-// one item per star the difficulty can award, tiers from the difficulty's base
-// tier up to the ceiling their Valor rolled (the class the draft bought), the
-// same personal pool as the draft (own warbonds, armor passives only) minus
-// owned, banned and the items the draft already showed.
-export function shopStockFor(state: DiveState, diver: DiverState): RewardOption[] {
-  if (state.offerSeed === null || !state.lastReport || state.lastReport.outcome !== 'success') {
+// A diver's Brasch's Bargains deal for the operation now underway: the Valor
+// they carried out of their last clear (zero at the crusade start or when
+// seated) and the holdings and bans the shelf skips.
+export function dealBargain(state: DiveState, diver: DiverState, valor: number): BargainDeal {
+  return {
+    valor,
+    excludedIds: [...(state.personalInventories[diver.id] ?? []), ...diver.bannedItemIds],
+    boughtItemId: null,
+  }
+}
+
+// The slot kinds on this operation's shelf: the four fixed equipment slots,
+// plus one stratagem per star the difficulty awards past the third.
+export function bargainSlotKinds(difficulty: number): BargainSlotKind[] {
+  return [
+    ...BARGAIN_SLOTS,
+    ...Array.from({ length: bargainStratagemSlotsFor(difficulty) }, () => 'stratagem' as const),
+  ]
+}
+
+// The diver's Brasch's Bargains shelf for the operation: one item per slot,
+// each slot's tier rolled from the Valor in their deal, drawn from their own
+// pool (declared warbonds) minus what they held or banned at the deal. Derived
+// from the operation's bargain seed folded with the diver id — deterministic,
+// never stored — so it only moves when a new operation re-deals it. Empty once
+// they have bought from it: one item per operation.
+export function bargainShelfFor(state: DiveState, diver: DiverState): BargainSlot[] {
+  if (state.bargainSeed === null || !diver.bargain || diver.bargain.boughtItemId !== null) {
     return []
   }
-  if (diver.skipsCurrentDraft) {
-    return []
-  }
-  const seed = diverOfferSeed(state, diver)
-  const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
-  const owned = new Set(state.personalInventories[diver.id] ?? [])
-  const exclude = new Set([...owned, ...diver.bannedItemIds])
-  for (const option of diverOptions(state, diver)) {
-    exclude.add(option.item.id)
-  }
-  return rollShopStock(
-    deriveSeed(seed, SAMPLE_SHOP_STREAM),
-    diverRolledCeiling(state, diver),
-    baseTierFor(state.difficulty),
-    maxStarsFor(state.difficulty),
-    pool,
-    exclude,
+  return rollBargainShelf(
+    deriveSeed(deriveSeed(state.bargainSeed, BARGAIN_STREAM), hashString(diver.id)),
+    state.difficulty,
+    diver.bargain.valor,
+    bargainSlotKinds(state.difficulty),
+    rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES),
+    new Set(diver.bargain.excludedIds),
   )
 }
 
-// Whether a diver can buy an item from their Requisition shelf: the reward
-// window is open, their own draft is resolved (picked or banned), the item is
-// on their shelf, and they can afford it. Owned and banned items never reach
-// the shelf, so those cases need no separate reason.
+// The item a diver bought from this operation's shelf, if any.
+export function bargainPurchaseOf(diver: DiverState): Item | null {
+  const id = diver.bargain?.boughtItemId
+  return id ? ITEMS_BY_ID.get(id) ?? null : null
+}
+
+// Brasch's Bargains is open between missions. It closes while the squad is in
+// the field, while a failure's forfeit is being settled (a buy would reshuffle
+// the forfeit offers, which derive from the live kit) and once the crusade is
+// over.
+const BARGAIN_CLOSED_REASON: Partial<Record<DivePhase, string>> = {
+  lobby: 'Opens when the crusade launches',
+  diving: 'Closed during the mission',
+  forfeit: 'Closed while the squad settles its losses',
+  complete: 'The crusade is over',
+}
+
+export function bargainsClosedReason(state: DiveState): string | null {
+  return BARGAIN_CLOSED_REASON[state.phase] ?? null
+}
+
+// Whether a diver can buy an item from their Brasch's Bargains shelf: the shop
+// is open, they haven't bought this operation, the item is on their shelf and
+// not gained since the deal, and they can afford it.
 export function canBuyItem(
   state: DiveState,
   diver: DiverState,
   itemId: string,
 ): { allowed: boolean, reason: string | null } {
-  if (state.phase !== 'rewards') {
-    return { allowed: false, reason: 'Not in the reward window' }
+  const closed = bargainsClosedReason(state)
+  if (closed) {
+    return { allowed: false, reason: closed }
   }
-  if (diver.pickedOptionId === null && !diver.rewardBanned) {
-    return { allowed: false, reason: 'Bank your reward first' }
+  if (diver.bargain?.boughtItemId) {
+    return { allowed: false, reason: 'Already bought this operation' }
   }
-  const option = shopStockFor(state, diver).find(entry => entry.optionId === itemId)
-  if (!option) {
-    return { allowed: false, reason: 'Not in your requisition stock' }
+  const slot = bargainShelfFor(state, diver).find(entry => entry.item?.id === itemId)
+  if (!slot?.item) {
+    return { allowed: false, reason: 'Not on your shelf' }
+  }
+  if ((state.personalInventories[diver.id] ?? []).includes(itemId)) {
+    return { allowed: false, reason: 'Already in your kit' }
   }
   if (diver.bannedItemIds.includes(itemId)) {
     return { allowed: false, reason: 'Banned for this crusade' }
   }
-  if (itemPrice(option.item) > diver.sampleBank) {
-    return { allowed: false, reason: 'Not enough samples' }
+  if (itemPrice(slot.item) > diver.credits) {
+    return { allowed: false, reason: 'Not enough credits' }
   }
   return { allowed: true, reason: null }
 }

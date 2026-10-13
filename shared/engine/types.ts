@@ -57,11 +57,15 @@ export interface DiverState {
   // Bonus-honors reward tokens: banked across the crusade, spent to reroll
   // this diver's offer or to ban offered items from their personal pools.
   rewardTokens: number
-  // Requisition currency: sample points recovered in the field, banked into a
-  // personal purse and spent in the post-draft rotating stock. Belongs to the
-  // session, like reward tokens: stepping away keeps it, a benched diver's
-  // rejoin and a forked session start empty.
-  sampleBank: number
+  // Credits exchanged for the samples recovered in the field, banked into a
+  // personal purse and spent in Brasch's Bargains. Belongs to the session, like
+  // reward tokens: stepping away keeps it, a benched diver's rejoin and a forked
+  // session start empty.
+  credits: number
+  // This operation's Brasch's Bargains deal: the inputs the shelf derives from
+  // (with the operation's bargain seed) and the one item bought from it. Dealt
+  // at every operation start and on seating; null before the crusade starts.
+  bargain: BargainDeal | null
   // Offered items this diver has banned from their personal reward and
   // catch-up pools for the rest of the crusade — never re-offered.
   bannedItemIds: string[]
@@ -82,6 +86,16 @@ export interface DiverState {
   // never waits on them: pact lock-in, reward picks and squad size count only
   // divers who are present. Cleared the moment they reconnect.
   away: boolean
+}
+
+// What a diver's Brasch's Bargains shelf was dealt against: the Valor every
+// slot's tier rolls with and the holdings and bans to skip. Frozen for the
+// operation so a draft pick or a ban never reshuffles the shelf.
+export interface BargainDeal {
+  valor: number
+  excludedIds: string[]
+  // The one item bought this operation. Once set, nothing else is offered.
+  boughtItemId: string | null
 }
 
 export interface WheelResult {
@@ -116,8 +130,8 @@ export interface MajorOrderSelection {
 
 export type MissionOutcome = 'success' | 'failure'
 
-// Samples recovered on a mission, by rarity. Squad-level team performance feeds
-// a small Valor bonus on top of chosen risk.
+// Samples recovered on a mission, by rarity. The squad's haul is exchanged for
+// credits banked into every diver's purse.
 export interface SampleCounts {
   common: number
   rare: number
@@ -179,12 +193,16 @@ export interface DiveState {
   // every mission; the ceremony is a soft gate on ADVANCE.
   bonusSeed: number | null
   bonusWinnerIds: string[]
+  // Seeds every diver's Brasch's Bargains shelf for the current operation.
+  // Set at the crusade start and re-derived at each operation start; a
+  // failure restart keeps it.
+  bargainSeed: number | null
   actionLog: EngineAction[]
   seedHistory: number[]
 }
 
 export type EngineAction
-  = | { type: 'START_DIVE', settings: CrusadeSettings }
+  = | { type: 'START_DIVE', settings: CrusadeSettings, seed?: number }
     | { type: 'SPIN_WHEEL', seed: number }
     | { type: 'ACCEPT_MISFORTUNE', accepted: boolean }
     | { type: 'ACCEPT_STRAIN', accepted: boolean }

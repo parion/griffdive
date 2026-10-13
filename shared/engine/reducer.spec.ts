@@ -8,7 +8,7 @@ import { DIVERS_CHOICE_OPTION_ID, itemPrice, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { activeMisfortune, allDiversPicked, awaitingDiverIds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, pactRiskOf, rewardPoolFor, shopStockFor, squadSize, teamRiskOf } from './selectors'
+import { activeMisfortune, allDiversPicked, awaitingDiverIds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, pactRiskOf, bargainShelfFor, rewardPoolFor, squadSize, teamRiskOf } from './selectors'
 import { deriveFront, deriveStrain } from './wheel'
 import type { DiveState, DiverState, EngineAction } from './types'
 
@@ -104,8 +104,8 @@ function twoDiverState(): DiveState {
   return {
     ...freshState(),
     divers: [
-      { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, sampleBank: 0, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
-      { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, sampleBank: 0, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
+      { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
+      { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
     ],
     personalInventories: {
       p1: startingItemIds(SETTINGS.variant),
@@ -848,8 +848,11 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
   })
 })
 
-describe('Requisition: sample haul banking and BUY_ITEM', () => {
-  it('banks the sample haul into every diver on a successful report', () => {
+describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
+  const rich = (state: DiveState, credits = 100_000): DiveState =>
+    ({ ...state, divers: state.divers.map(diver => ({ ...diver, credits })) })
+
+  it('banks the sample haul as credits into every diver on a successful report', () => {
     let state = twoDiverState()
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
@@ -859,53 +862,85 @@ describe('Requisition: sample haul banking and BUY_ITEM', () => {
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p2', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3, timePct: 100, samples: { common: 18, rare: 0, super: 0 } })
     expect(state.phase).toBe('rewards')
-    expect(state.divers.map(diver => diver.sampleBank)).toEqual([18, 18])
+    expect(state.divers.map(diver => diver.credits)).toEqual([18, 18])
   })
 
   it('banks nothing on a failed report, and nothing for a diver who sat out', () => {
     const base = divingState(42)
     const failed = reduce(base, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1, samples: { common: 40, rare: 0, super: 0 } })
-    expect(requireDiver(failed).sampleBank).toBe(0)
+    expect(requireDiver(failed).credits).toBe(0)
     const satOut: DiveState = { ...base, divers: base.divers.map(diver => ({ ...diver, skipsCurrentDraft: true })) }
     const reported = reduce(satOut, { type: 'REPORT_RESULT', outcome: 'success', stars: 3, timePct: 100, samples: { common: 10, rare: 0, super: 0 } })
-    expect(requireDiver(reported).sampleBank).toBe(0)
+    expect(requireDiver(reported).credits).toBe(0)
   })
 
-  it('spends the purse on an affordable shelf item once the draft is resolved', () => {
-    let state = divingState(42)
-    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5, timePct: 100, samples: { common: 500, rare: 0, super: 0 } })
-    expect(requireDiver(state).sampleBank).toBe(500)
-    // Bank the draft first — the shelf opens only after the pick.
+  it('deals every diver a shelf at the crusade start', () => {
+    const state = freshState()
+    expect(state.bargainSeed).not.toBeNull()
+    expect(requireDiver(state).bargain).toEqual({ valor: 0, excludedIds: state.personalInventories.p1, boughtItemId: null })
+    expect(bargainShelfFor(state, requireDiver(state))).toHaveLength(4)
+  })
+
+  it('buys one item per operation, then offers nothing else', () => {
+    let state = rich(freshState(), 500)
+    const shelf = bargainShelfFor(state, requireDiver(state))
+    const affordable = shelf.find(slot => slot.item && itemPrice(slot.item) <= 500)!.item!
+    state = reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: affordable.id })
+    expect(requireDiver(state).credits).toBe(500 - itemPrice(affordable))
+    expect(state.personalInventories.p1).toContain(affordable.id)
+    expect(requireDiver(state).bargain?.boughtItemId).toBe(affordable.id)
+    expect(bargainShelfFor(state, requireDiver(state))).toEqual([])
+    const other = shelf.find(slot => slot.item && slot.item.id !== affordable.id)!.item!
+    expect(reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: other.id })).toBe(state)
+  })
+
+  it('refuses a buy in the field, without funds, or off the shelf', () => {
+    const state = freshState()
+    const item = bargainShelfFor(state, requireDiver(state))[0]!.item!
+    expect(reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: item.id })).toBe(state)
+    const diving = rich(divingState(42))
+    expect(reduce(diving, { type: 'BUY_ITEM', playerId: 'p1', itemId: item.id })).toBe(diving)
+    const flush = rich(state)
+    expect(reduce(flush, { type: 'BUY_ITEM', playerId: 'p1', itemId: 'definitely-not-stocked' })).toBe(flush)
+    expect(reduce(flush, { type: 'BUY_ITEM', playerId: 'p1', itemId: item.id })).not.toBe(flush)
+  })
+
+  it('keeps the shelf through the operation and re-deals it with the closing Valor', () => {
+    let state = rich(freshState())
+    const dealt = bargainShelfFor(state, requireDiver(state))
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
+    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    if (state.phase === 'strain') {
+      state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
+    }
+    state = reduce(state, { type: 'DEAL_PACTS' })
+    state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
     const draft = diverOptions(state, requireDiver(state))[0]!
     state = reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: draft.optionId })
-    const affordable = shopStockFor(state, requireDiver(state))
-      .find(option => itemPrice(option.item) <= requireDiver(state).sampleBank)!
-    expect(affordable).toBeTruthy()
-    const before = requireDiver(state).sampleBank
-    state = reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: affordable.item.id })
-    expect(requireDiver(state).sampleBank).toBe(before - itemPrice(affordable.item))
-    expect(state.personalInventories.p1).toContain(affordable.item.id)
-    // The bought item leaves the shelf.
-    expect(shopStockFor(state, requireDiver(state)).some(option => option.item.id === affordable.item.id)).toBe(false)
-  })
+    // A draft pick mid-operation never reshuffles the shelf.
+    expect(bargainShelfFor(state, requireDiver(state))).toEqual(dealt)
+    const seed = state.bargainSeed
+    state = reduce(state, { type: 'ADVANCE' })
+    expect(state.missionInOperation).toBe(2)
+    expect(state.bargainSeed).toBe(seed)
+    expect(bargainShelfFor(state, requireDiver(state))).toEqual(dealt)
 
-  it('refuses a buy before the draft resolves or without funds', () => {
-    let state = divingState(42)
-    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5, timePct: 100, samples: { common: 500, rare: 0, super: 0 } })
-    const option = shopStockFor(state, requireDiver(state))[0]!
-    // Unresolved draft → no-op.
-    expect(reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: option.item.id })).toBe(state)
-    const draft = diverOptions(state, requireDiver(state))[0]!
-    const resolved = reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: draft.optionId })
-    const broke: DiveState = {
-      ...resolved,
-      divers: resolved.divers.map(diver => ({ ...diver, sampleBank: 0 })),
-    }
-    expect(reduce(broke, { type: 'BUY_ITEM', playerId: 'p1', itemId: option.item.id })).toBe(broke)
-    // Not on the shelf → no-op.
-    expect(reduce(resolved, { type: 'BUY_ITEM', playerId: 'p1', itemId: 'definitely-not-stocked' })).toBe(resolved)
-    // Wrong phase → no-op.
-    expect(reduce(divingState(42), { type: 'BUY_ITEM', playerId: 'p1', itemId: option.item.id })).toEqual(divingState(42))
+    // Close out the operation: the next one re-deals.
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 43 })
+    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    state = reduce(state, { type: 'DEAL_PACTS' })
+    state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+    const closer = diverOptions(state, requireDiver(state))[0]!
+    state = reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: closer.optionId })
+    const lastValor = diverValor(state, requireDiver(state))
+    state = reduce(state, { type: 'ADVANCE' })
+    expect(state.difficulty).toBe(4)
+    expect(state.bargainSeed).not.toBe(seed)
+    expect(lastValor).toBeGreaterThan(0)
+    expect(requireDiver(state).bargain).toMatchObject({ valor: lastValor, boughtItemId: null })
+    expect(requireDiver(state).bargain?.excludedIds).toEqual(expect.arrayContaining([draft.item.id, closer.item.id]))
   })
 })
 
@@ -1078,8 +1113,8 @@ describe('identity actions', () => {
     const withTwo: DiveState = {
       ...freshState(),
       divers: [
-        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, sampleBank: 0, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
-        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, sampleBank: 0, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
+        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
+        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
       ],
     }
     const moved = reduce(withTwo, { type: 'TRANSFER_HOST', playerId: 'p2' })
@@ -1446,10 +1481,10 @@ describe('reward tokens + bonus honors', () => {
     )
     const picked = pickFirst(state)
     expect(diverOptions(picked, requireDiver(picked))).toEqual(dealt)
-    const flush = { ...picked, divers: picked.divers.map(diver => ({ ...diver, sampleBank: 100_000 })) }
-    const stocked = shopStockFor(flush, requireDiver(flush))[0]
+    const flush = { ...picked, divers: picked.divers.map(diver => ({ ...diver, credits: 100_000 })) }
+    const stocked = bargainShelfFor(flush, requireDiver(flush))[0]?.item
     expect(stocked).toBeDefined()
-    const bought = reduce(flush, { type: 'BUY_ITEM', playerId: 'p1', itemId: stocked!.item.id })
+    const bought = reduce(flush, { type: 'BUY_ITEM', playerId: 'p1', itemId: stocked!.id })
     expect(bought).not.toBe(flush)
     expect(diverOptions(bought, requireDiver(bought))).toEqual(dealt)
     expect(reduce(bought, { type: 'ADVANCE' }).divers[0]?.draftExcludedIds).toBeNull()
@@ -1906,10 +1941,10 @@ describe('SET_AWAY', () => {
 
   it('keeps the seat, kit and purse of a diver who steps away', () => {
     const base = twoDiverState()
-    const withPurse = { ...base, divers: base.divers.map(diver => diver.id === 'p2' ? { ...diver, sampleBank: 7, rewardTokens: 2 } : diver) }
+    const withPurse = { ...base, divers: base.divers.map(diver => diver.id === 'p2' ? { ...diver, credits: 7, rewardTokens: 2 } : diver) }
     const away = reduce(withPurse, { type: 'SET_AWAY', playerId: 'p2', away: true })
     const diver = away.divers.find(entry => entry.id === 'p2')!
-    expect(diver).toMatchObject({ away: true, sampleBank: 7, rewardTokens: 2 })
+    expect(diver).toMatchObject({ away: true, credits: 7, rewardTokens: 2 })
     expect(away.personalInventories.p2).toEqual(base.personalInventories.p2)
     expect(away.legacyCaches).toEqual({})
     expect(reduce(away, { type: 'SET_AWAY', playerId: 'p2', away: false }).divers[1]!.away).toBe(false)

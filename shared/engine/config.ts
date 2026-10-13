@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 25
+export const ENGINE_VERSION = 26
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -286,44 +286,52 @@ export function topRungAltitude(difficulty: number): number {
 // prices above zero.
 export const CEILING_PREVIEW_FLOOR = 0.01
 
-// Samples are the Requisition currency: recovered in the field, banked into a
-// personal purse, and spent in the post-draft rotating stock. They no longer
-// touch Valor — the team-performance term is gone. Values are calibrated
-// against wiki.gg/Sample "availability by difficulty" so the game's own rarity
-// mix does the difficulty scaling (commons dominate early, supers appear at 6).
-export const SAMPLE_POINTS: Readonly<Record<'common' | 'rare' | 'super', number>> = {
+// Samples are exchanged for credits, the currency of Brasch's Bargains:
+// recovered in the field, banked into a personal purse, and spent on the
+// per-operation shelf. They never touch Valor. Values are calibrated against
+// wiki.gg/Sample "availability by difficulty" so the game's own rarity mix does
+// the difficulty scaling (commons dominate early, supers appear at 6).
+export const SAMPLE_CREDITS: Readonly<Record<'common' | 'rare' | 'super', number>> = {
   common: 1,
   rare: 5,
   super: 25,
 }
 
-// Team performance is now a multiplier on the sample haul, not a Valor bonus:
-// extraction speed scales the purse, so a fast clear banks more gear money.
+// Team performance is a multiplier on the credit haul, not a Valor bonus:
+// extraction speed scales the purse, so a fast clear banks more credits.
 // 0.5 at no time remaining, 1.0 at a full clock.
 export const TIME_HAUL_FLOOR = 0.5
 
-// Requisition prices: tier first, then type. Tier dominates (a C booster is far
-// cheaper than an S passive); the type multiplier is how a booster out-prices
-// an armor passive. The stock only offers tiers the diver's rolled ceiling
-// reached, so risk still gates rarity — samples gate the volume.
-export const SAMPLE_PRICE_TIER: Readonly<Record<'c' | 'b' | 'a' | 's', number>> = {
+// Brasch's Bargains prices: tier first, then type. Tier dominates (a C primary
+// is far cheaper than an S passive); the type multiplier is how a primary
+// out-prices an armor passive. Each slot's tier is rolled by the diver's Valor,
+// so risk still gates rarity — credits gate the buy.
+export const CREDIT_PRICE_TIER: Readonly<Record<'c' | 'b' | 'a' | 's', number>> = {
   c: 25,
   b: 70,
   a: 180,
   s: 450,
 }
 
-export const SAMPLE_PRICE_TYPE: Readonly<Record<string, number>> = {
-  booster: 1.5,
+export const CREDIT_PRICE_TYPE: Readonly<Record<string, number>> = {
   primary: 1.25,
   armorPassive: 0.75,
 }
 
-export const SAMPLE_PRICE_TYPE_DEFAULT = 1
+export const CREDIT_PRICE_TYPE_DEFAULT = 1
 
-// The rotating stock is a per-diver, seeded shelf: one item per star the
-// difficulty can award (3–5). Stream salt 5 off the per-diver offer seed.
-export const SAMPLE_SHOP_STREAM = 5
+// Brasch's Bargains: one fixed slot per category, re-dealt every operation.
+// Difficulties whose missions can award more than BARGAIN_BASE_STARS stars add
+// one random stratagem slot per extra star (4 stars → one, 5 → two).
+export const BARGAIN_SLOTS = ['primary', 'secondary', 'throwable', 'armorPassive'] as const
+export const BARGAIN_BASE_STARS = 3
+
+export function bargainStratagemSlotsFor(difficulty: number): number {
+  return Math.max(0, maxStarsFor(difficulty) - BARGAIN_BASE_STARS)
+}
+
+// Stream salt 5 off the operation's bargain seed.
+export const BARGAIN_STREAM = 5
 
 // A failed mission's forfeit offer: a seeded handful of the diver's own items
 // (one per star the difficulty can award) to choose the one they lose, capped

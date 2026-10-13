@@ -159,10 +159,10 @@ describe('save migration v11 → v12 (Requisition samples)', () => {
     }
     const migrated = normalizeSaveDoc(doc)!
     expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
-    expect(migrated.state.divers[0]?.sampleBank).toBe(0)
+    expect(migrated.state.divers[0]?.credits).toBe(0)
   })
 
-  it('preserves a banked purse', () => {
+  it('carries a banked sample purse over as credits', () => {
     const doc: SaveDoc = {
       ...v1Doc({
         divers: [
@@ -172,7 +172,29 @@ describe('save migration v11 → v12 (Requisition samples)', () => {
       schemaVersion: 11,
     }
     const migrated = normalizeSaveDoc(doc)!
-    expect(migrated.state.divers[0]?.sampleBank).toBe(42)
+    expect(migrated.state.divers[0]?.credits).toBe(42)
+  })
+})
+
+describe('save migration v15 → v16 (Brasch\'s Bargains)', () => {
+  it('renames the purse to credits and deals the operation underway a shelf', () => {
+    const state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    const { credits: _credits, bargain: _bargain, ...diver } = state.divers[0]!
+    const doc: SaveDoc = {
+      ...v1Doc(),
+      schemaVersion: 15,
+      state: { ...state, bargainSeed: undefined, divers: [{ ...diver, sampleBank: 42 }] } as unknown as DiveState,
+    }
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
+    expect(migrated.state.divers[0]).not.toHaveProperty('sampleBank')
+    expect(migrated.state.divers[0]?.credits).toBe(42)
+    expect(migrated.state.bargainSeed).toEqual(expect.any(Number))
+    expect(migrated.state.divers[0]?.bargain).toEqual({
+      valor: 0,
+      excludedIds: state.personalInventories.p1,
+      boughtItemId: null,
+    })
   })
 })
 
@@ -335,12 +357,12 @@ describe('room state normalization (unversioned storage)', () => {
       ...state,
       settings: { variant: 'quickplay' },
       misfortuneFailed: undefined,
-      divers: [{ ...state.divers[0]!, sampleBank: undefined, away: undefined }],
+      divers: [{ ...state.divers[0]!, credits: undefined, away: undefined }],
     } as unknown as DiveState
     const normalized = normalizeRoomState(legacy)
     expect(normalized.settings).toEqual({ variant: 'suicide', mode: 'seaf' })
     expect(normalized.misfortuneFailed).toBe(false)
-    expect(normalized.divers[0]?.sampleBank).toBe(0)
+    expect(normalized.divers[0]?.credits).toBe(0)
     expect(normalized.divers[0]?.away).toBe(false)
   })
 
@@ -349,11 +371,11 @@ describe('room state normalization (unversioned storage)', () => {
     const live = {
       ...state,
       misfortuneFailed: true,
-      divers: state.divers.map(diver => ({ ...diver, sampleBank: 42, away: true })),
+      divers: state.divers.map(diver => ({ ...diver, credits: 42, away: true })),
     }
     const normalized = normalizeRoomState(live)
     expect(normalized.settings).toEqual({ variant: 'hard', mode: 'penance' })
     expect(normalized.misfortuneFailed).toBe(true)
-    expect(normalized.divers[0]).toMatchObject({ sampleBank: 42, away: true })
+    expect(normalized.divers[0]).toMatchObject({ credits: 42, away: true })
   })
 })

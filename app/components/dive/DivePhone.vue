@@ -3,6 +3,7 @@
 // mirrors the desktop dive page's phase switch, but every phase renders a
 // bottom-sheet composition instead of the three-rail terminal.
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
+import { bargainShelfFor, bargainsClosedReason, canBuyItem } from '~~/shared/engine/selectors'
 import type { CrusadeSettings, DiverState, DiveState, MajorOrderSelection, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -38,7 +39,6 @@ const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
   rerollRewards: []
   banRewards: [optionIds: string[]]
-  buyReward: [itemId: string]
   spinBonus: []
   awardBonus: [playerIds: string[]]
   advance: []
@@ -50,6 +50,7 @@ const emit = defineEmits<{
   transferHost: [diverId: string]
   copyInvite: []
   openArmory: []
+  openBargains: []
   openTutorial: []
   leave: []
   end: []
@@ -61,6 +62,16 @@ const emit = defineEmits<{
 }>()
 
 const phase = computed(() => props.state.phase)
+
+// The Bargains tile only rides the bar while the shop is open, so mid-mission
+// the actions keep the whole row. Its lamp says something on the shelf is
+// buyable right now.
+const bargainsOpen = computed(() => !props.kicked && props.self !== null && !bargainsClosedReason(props.state))
+const bargainReady = computed(() => {
+  const self = props.self
+  return self !== null && bargainShelfFor(props.state, self)
+    .some(slot => slot.item && canBuyItem(props.state, self, slot.item.id).allowed)
+})
 
 // Host moderation rides the shell's bottom sheet: tapping a squadmate in the
 // bar opens their hand-over / kick actions.
@@ -227,7 +238,6 @@ function kickDiver(diverId: string): void {
           @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
           @reroll="emit('rerollRewards')"
           @ban="emit('banRewards', $event)"
-          @buy="emit('buyReward', $event)"
           @spin-bonus="emit('spinBonus')"
           @award-bonus="emit('awardBonus', $event)"
           @advance="emit('advance')"
@@ -251,6 +261,25 @@ function kickDiver(diverId: string): void {
         />
       </template>
     </div>
+
+    <template #lead>
+      <button
+        v-if="bargainsOpen"
+        class="bar-bargains"
+        type="button"
+        aria-haspopup="dialog"
+        :aria-label="`Brasch's Bargains, ${self?.credits ?? 0} credits${bargainReady ? ', something affordable in stock' : ''}`"
+        @click="emit('openBargains')"
+      >
+        <span
+          v-if="bargainReady"
+          class="lamp gold pulse bb-lamp"
+          aria-hidden="true"
+        />
+        <IconCredit class="bb-mark" />
+        <span class="bb-bal">{{ self?.credits ?? 0 }}</span>
+      </button>
+    </template>
 
     <template #sheet>
       <Transition name="sheet">
@@ -310,6 +339,35 @@ function kickDiver(diverId: string): void {
   overflow-y: auto;
   padding: 10px 12px 0;
 }
+.bar-bargains {
+  position: relative;
+  flex: 0 0 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 56px;
+  padding: 0;
+  border: 1px solid var(--line-3);
+  background: var(--panel);
+  color: var(--gold);
+  font-family: inherit;
+  cursor: pointer;
+}
+.bar-bargains:active { background: var(--raised); }
+.bb-mark { width: 20px; height: 20px; }
+.bb-bal {
+  max-width: 48px;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+.bb-lamp { position: absolute; top: 5px; right: 5px; }
 .phone-banner {
   margin: 0;
   display: flex;

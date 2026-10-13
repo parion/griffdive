@@ -20,11 +20,11 @@ Design principles — every gameplay decision must honor these:
    hidden math.
 3. **Reward scales with stakes.** Flat drops regardless of difficulty is the documented failure of
    both Penitent Crusade and Dead Cells' late-game cursed chests. Risk must move the odds — and the
-   shelf: chosen risk rolls the draft ceiling, and the same ceiling caps the Requisition stock.
+   shelf: chosen risk rolls the draft ceiling, and the same ladder rolls every Brasch's Bargains slot.
 4. **Guarantee rarity class, never specific items** (Balatro skip tags). Players buy a *chance* at
-   better gear, not a shopping list — with one deliberate exception: the **Requisition stock** sells
-   named items for sample currency, priced by the tier risk bought (see Requisition — samples as
-   currency). The wheel and the draft still guarantee classes.
+   better gear, not a shopping list — with one deliberate exception: **Brasch's Bargains** sells
+   one named item per operation for credits, its slots' tiers rolled from Valor (see Brasch's
+   Bargains — credits). The wheel and the draft still guarantee classes.
 5. **Misfortunes reshape decisions, not stats** (Deep Rock Galactic's mutator design). A misfortune
    should change loadout strategy, route, or behavior — not just make numbers bigger.
 6. **Team risk is shared; personal risk is personal** (Slay the Spire 2 co-op model). The whole squad
@@ -96,7 +96,8 @@ engine.
   after the diver picks so the squad can compare pulls.
 - **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav) on every
   route except the dive, which renders its own `DiveTopBar` (crusade + difficulty emblem + room
-  code/copy + Tutorial + the labelled Codex/Warbonds ship nav — labels, never bare icons; the
+  code/copy + Tutorial + the labelled Bargains/Codex/Warbonds ship nav — labels, never bare icons;
+  Bargains carries the credit glyph and balance and disables with its reason mid-mission; the
   Kit needs no header entry on desktop because it lives in the right rail). `components/dive/DiveFrame.vue` is the
   no-scroll dive shell — grid rows `60px 84px minmax(0,1fr) 52px` and fluid columns
   `clamp(184px,15vw,216px) 1fr clamp(248px,21vw,284px)` (the rails give ground on landscape
@@ -136,9 +137,11 @@ engine.
   `WheelOfMisfortune.vue` is a real SVG wheel whose rotation is derived from the wheel seed.
   On the `rewards` phase the centre swaps between the `RewardDraft` pod cabinet and the
   `RewardsSettlement` screen — the draft's post-pick CTA hands off to the settlement, which carries
-  the `BonusCeremony` honors contest **and** the `RequisitionStock` shelf (the shop lives here, never
-  in the draft); when honors aren't due that turn the ceremony is replaced by a disabled panel and the
-  shelf stays available. The left rail gains `MissionReportSummary` on the rewards phase.
+  the `BonusCeremony` honors contest; when honors aren't due that turn the ceremony is replaced by a
+  disabled panel. **Brasch's Bargains is never a phase screen:** it lives in its own slide-over
+  (`BargainsDrawer` → `BraschBargains`; the drawer header is its only title), reachable from the
+  header and the phone bar in every phase except the mission. Credits always render through
+  `CreditAmount` (the custom `IconCredit` glyph + figure), never "pts". The left rail gains `MissionReportSummary` on the rewards phase.
   The Kit (`KitPanel.vue`) is deliberately lean: an optional row of diver names (no warbonds, no
   token chits), a sticky toolbar (an **Earned only** switch that hides the starting kit, and jump
   chips that scroll to each group), then the diver's own items by category with live ban washes.
@@ -161,8 +164,8 @@ engine.
   bottom-sheet/fixed-footer layout.
   **Phone action bar:** one frame — `footer.phone-bar` in `DivePhoneShell` — pins to the bottom of
   every phone screen, lobby to forfeit to complete, and never changes shape. Page-relevant info sits
-  on top (`#phone-bar-detail`: the `PhoneValor` readout on the wheel, pacts and dive; requisition on
-  the report; reward tokens / the banked item on the draft; the sample purse on the settlement; launch
+  on top (`#phone-bar-detail`: the `PhoneValor` readout on the wheel, pacts and dive; the credit haul on
+  the report; reward tokens / the banked item on the draft; the credit purse on the settlement; launch
   facts in the lobby; status copy on forfeit and complete), and a 56px action row sits below it: an
   optional **secondary** on the left (`.bar-alt` — Cancel, Mission failed, Reroll, Skip, Delete save)
   and the **primary** filling the rest (`.bar-cta`, a `HoldButton`, or the dashed `.bar-gate` while the

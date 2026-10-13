@@ -3,7 +3,8 @@
 // (header · crusade · squad) frame a scrolling body, and the action bar pins to
 // the bottom on every screen — info on top, secondary + primary action below.
 // Phases fill the bar through `PhoneActionBar`; the sheet slot (host
-// moderation) overlays it.
+// moderation) overlays it. The `lead` slot is shell-owned, not a phase's: a
+// compact tile ahead of the actions (Brasch's Bargains).
 </script>
 
 <template>
@@ -33,6 +34,7 @@
         class="bar-detail"
       />
       <div class="bar-actions">
+        <slot name="lead" />
         <div
           id="phone-bar-secondary"
           class="bar-secondary"

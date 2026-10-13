@@ -46,6 +46,8 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // The briefing carries the same locked Valor through (QA-U1).
   await expect(page.getByRole('heading', { name: 'Briefing' })).toBeVisible()
   await expect(valor).toBeVisible()
+  // Brasch's Bargains shuts while the squad is in the field.
+  await expect(page.getByRole('button', { name: /Brasch's Bargains.*Closed during the mission/ })).toBeDisabled()
 
   await page.getByRole('button', { name: 'Mission complete' }).click()
   // The victory banner + big stars, then the sample tube sliders and the
@@ -67,25 +69,19 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('img', { name: 'choosing reward' })).toBeVisible()
   await page.locator('.pod-card .pod-hit').first().click()
 
-  // The draft hands off to the settlement screen: Squad Honors plus the
-  // Requisition shelf (the rotating stock, the sample purse and buy controls).
+  // The draft hands off to the settlement screen: Squad Honors.
   await page.getByRole('button', { name: 'Squad Honors' }).click()
   await expect(page.getByRole('region', { name: 'Squad honors' })).toBeVisible()
 
-  const requisition = page.locator('.req')
-  await expect(requisition.getByRole('heading', { name: 'Brasch\'s Bargains' })).toBeVisible()
-  await expect(requisition.getByRole('img', { name: /sample points banked/ })).toBeVisible()
-  const stockCards = requisition.locator('.req-card')
-  await expect(stockCards.first()).toBeVisible()
-  const beforeCards = await stockCards.count()
-  const buyable = requisition.locator('.req-buy:not([disabled])')
-  if (await buyable.count() > 0) {
-    await buyable.first().click()
-    await expect(stockCards).toHaveCount(beforeCards - 1)
-  }
-  else {
-    await expect(requisition.locator('.req-reason').first()).toBeVisible()
-  }
+  // Brasch's Bargains opens from the header between missions: one slot each
+  // for primary, secondary, throwable and armor passive at Medium. One
+  // mission's haul (12 commons at 60% time → 9 credits) can't cover a C slot.
+  await page.getByRole('button', { name: /Brasch's Bargains, 9 credits/ }).click()
+  const bargains = page.getByRole('dialog', { name: 'Brasch\'s Bargains' })
+  await expect(bargains.locator('.bb-card')).toHaveCount(4)
+  await expect(bargains.getByText('Not enough credits').first()).toBeVisible()
+  await bargains.getByRole('button', { name: /^Close/ }).click()
+  await expect(bargains).toBeHidden()
 
   // The host spins the stat contest (on click, like the wheel) and banks the
   // winner's token.
@@ -130,11 +126,9 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByText('Rewards banned')).toBeVisible()
 
   // Honors aren't due on mission 2 (the solo cadence is every third mission), so
-  // the settlement opens with the honors panel disabled — the Requisition shelf
-  // still shows and the host can advance.
+  // the settlement opens with the honors panel disabled and the host can advance.
   await page.getByRole('button', { name: 'Continue' }).click()
   await expect(page.getByRole('region', { name: 'Squad honors unavailable' })).toBeVisible()
-  await expect(page.locator('.req')).toBeVisible()
   await page.getByRole('button', { name: /Complete operation/ }).click()
 })
 

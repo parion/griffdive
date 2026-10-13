@@ -54,12 +54,13 @@ app/
                    reward-token bar, which swaps to the banked readout once
                    resolved and whose CTA opens the settlement),
                    RewardsSettlement — the post-draft screen: the Squad Honors
-                   contest above the Requisition shelf when honors is due, or the
-                   shelf above a disabled honors panel when it isn't; desktop and
-                   phone share it,
-                   RequisitionStock — the post-draft rotating shelf (per-diver
-                   seeded items with tier×type prices, the sample purse and
-                   buy controls; titled **Brasch's Bargains**),
+                   contest when honors is due, or a disabled honors panel when
+                   it isn't; desktop and phone share it,
+                   BraschBargains + BargainsDrawer — the per-operation shop
+                   (one Valor-rolled slot per primary/secondary/throwable/
+                   armor passive plus 0–2 stratagems, credit prices, the purse,
+                   the one buy) in a slide-over opened from DiveTopBar's
+                   Bargains nav and the phone action bar's credit tile,
                    MissionReportSummary — the left-rail report card,
                    ValorMeter — the live Valor gauge
                    and tier-ceiling ladder, BonusCeremony — the dedicated
@@ -203,9 +204,9 @@ rooms every 15 min so the `MAX_ROOMS` backstop rarely matters.
 
 Canonical engine actions (the reducer union; keep names stable):
 
-`START_DIVE{settings}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
+`START_DIVE{settings,seed?}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
 `DEAL_PACTS{}` `SET_MAJOR_ORDER{order}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
-`REPORT_RESULT{outcome,stars,timePct?}` `FORFEIT_ITEM{playerId,itemId}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
+`REPORT_RESULT{outcome,stars,timePct?,samples?}` `FORFEIT_ITEM{playerId,itemId}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `BUY_ITEM{playerId,itemId}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
 `AWARD_BONUS{playerIds}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
