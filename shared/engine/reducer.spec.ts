@@ -4,7 +4,7 @@ import type { FrontId } from '../data/fronts'
 import { PACTS } from '../data/pacts'
 import { BONUS_STATS, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, PENANCE_VALOR, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor, directiveValorAt, maxStarsFor, seafSupportValorAt } from './config'
 import { SEAF_SUPPORT_KIT, startingItemIds } from './progression'
-import { DIVERS_CHOICE_OPTION_ID, itemPrice, maxCeiling } from './rewards'
+import { DIVERS_CHOICE_OPTION_ID, bargainKindOf, itemPrice, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
@@ -877,18 +877,18 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
   it('deals every diver a shelf at the crusade start', () => {
     const state = freshState()
     expect(state.bargainSeed).not.toBeNull()
-    expect(requireDiver(state).bargain).toEqual({ valor: 0, excludedIds: state.personalInventories.p1, boughtItemId: null })
+    expect(requireDiver(state).bargain).toEqual({ excludedIds: state.personalInventories.p1, boughtItemId: null, boughtKinds: [] })
     expect(bargainShelfFor(state, requireDiver(state))).toHaveLength(4)
   })
 
-  it('buys one item per operation, then offers nothing else', () => {
+  it('buys one item per mission, then offers nothing else', () => {
     let state = rich(freshState(), 500)
     const shelf = bargainShelfFor(state, requireDiver(state))
     const affordable = shelf.find(slot => slot.item && itemPrice(slot.item) <= 500)!.item!
     state = reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: affordable.id })
     expect(requireDiver(state).credits).toBe(500 - itemPrice(affordable))
     expect(state.personalInventories.p1).toContain(affordable.id)
-    expect(requireDiver(state).bargain?.boughtItemId).toBe(affordable.id)
+    expect(requireDiver(state).bargain).toMatchObject({ boughtItemId: affordable.id, boughtKinds: [bargainKindOf(affordable)] })
     expect(bargainShelfFor(state, requireDiver(state))).toEqual([])
     const other = shelf.find(slot => slot.item && slot.item.id !== affordable.id)!.item!
     expect(reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: other.id })).toBe(state)
@@ -905,42 +905,60 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
     expect(reduce(flush, { type: 'BUY_ITEM', playerId: 'p1', itemId: item.id })).not.toBe(flush)
   })
 
-  it('keeps the shelf through the operation and re-deals it with the closing Valor', () => {
+  it('restocks every mission, holding a bought kind back until the next operation', () => {
+    const playMission = (from: DiveState, seed: number): DiveState => {
+      let state = reduce(from, { type: 'SPIN_WHEEL', seed })
+      state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })
+      if (state.phase === 'strain') {
+        state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
+      }
+      state = reduce(state, { type: 'DEAL_PACTS' })
+      state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+      state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+      return reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: diverOptions(state, requireDiver(state))[0]!.optionId })
+    }
     let state = rich(freshState())
-    const dealt = bargainShelfFor(state, requireDiver(state))
+    const primary = bargainShelfFor(state, requireDiver(state)).find(slot => slot.kind === 'primary')!.item!
+    state = reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: primary.id })
+
+    state = playMission(state, 42)
+    const seed = state.bargainSeed
+    state = reduce(state, { type: 'ADVANCE' })
+    expect(state.missionInOperation).toBe(2)
+    expect(state.bargainSeed).not.toBe(seed)
+    // A fresh shelf, minus the kind bought this operation.
+    const second = bargainShelfFor(state, requireDiver(state))
+    expect(second.map(slot => slot.kind)).toEqual(['secondary', 'throwable', 'armorPassive'])
+    expect(requireDiver(state).bargain).toMatchObject({ boughtItemId: null, boughtKinds: ['primary'] })
+
+    // A new operation brings every kind back.
+    state = playMission(state, 43)
+    state = reduce(state, { type: 'ADVANCE' })
+    expect(state.difficulty).toBe(4)
+    expect(requireDiver(state).bargain?.boughtKinds).toEqual([])
+    expect(bargainShelfFor(state, requireDiver(state)).map(slot => slot.kind)).toEqual(['primary', 'secondary', 'throwable', 'armorPassive'])
+    expect(requireDiver(state).bargain?.excludedIds).toContain(primary.id)
+  })
+
+  it('restocks on a failure restart but keeps the operation\'s bought kinds', () => {
+    let state = rich(freshState())
+    const primary = bargainShelfFor(state, requireDiver(state)).find(slot => slot.kind === 'primary')!.item!
+    state = reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: primary.id })
+    const seed = state.bargainSeed
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
-    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })
     if (state.phase === 'strain') {
       state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
     }
     state = reduce(state, { type: 'DEAL_PACTS' })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
-    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
-    const draft = diverOptions(state, requireDiver(state))[0]!
-    state = reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: draft.optionId })
-    // A draft pick mid-operation never reshuffles the shelf.
-    expect(bargainShelfFor(state, requireDiver(state))).toEqual(dealt)
-    const seed = state.bargainSeed
-    state = reduce(state, { type: 'ADVANCE' })
-    expect(state.missionInOperation).toBe(2)
-    expect(state.bargainSeed).toBe(seed)
-    expect(bargainShelfFor(state, requireDiver(state))).toEqual(dealt)
-
-    // Close out the operation: the next one re-deals.
-    state = reduce(state, { type: 'SPIN_WHEEL', seed: 43 })
-    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
-    state = reduce(state, { type: 'DEAL_PACTS' })
-    state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
-    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
-    const closer = diverOptions(state, requireDiver(state))[0]!
-    state = reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: closer.optionId })
-    const lastValor = diverValor(state, requireDiver(state))
-    state = reduce(state, { type: 'ADVANCE' })
-    expect(state.difficulty).toBe(4)
+    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 0 })
+    if (state.phase === 'forfeit') {
+      state = surrender(state)
+    }
+    expect(state.phase).toBe('spin')
     expect(state.bargainSeed).not.toBe(seed)
-    expect(lastValor).toBeGreaterThan(0)
-    expect(requireDiver(state).bargain).toMatchObject({ valor: lastValor, boughtItemId: null })
-    expect(requireDiver(state).bargain?.excludedIds).toEqual(expect.arrayContaining([draft.item.id, closer.item.id]))
+    expect(requireDiver(state).bargain).toMatchObject({ boughtItemId: null, boughtKinds: ['primary'] })
   })
 })
 

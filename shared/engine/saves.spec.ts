@@ -177,7 +177,7 @@ describe('save migration v11 → v12 (Requisition samples)', () => {
 })
 
 describe('save migration v15 → v16 (Brasch\'s Bargains)', () => {
-  it('renames the purse to credits and deals the operation underway a shelf', () => {
+  it('renames the purse to credits and deals the mission underway a shelf', () => {
     const state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
     const { credits: _credits, bargain: _bargain, ...diver } = state.divers[0]!
     const doc: SaveDoc = {
@@ -191,9 +191,9 @@ describe('save migration v15 → v16 (Brasch\'s Bargains)', () => {
     expect(migrated.state.divers[0]?.credits).toBe(42)
     expect(migrated.state.bargainSeed).toEqual(expect.any(Number))
     expect(migrated.state.divers[0]?.bargain).toEqual({
-      valor: 0,
       excludedIds: state.personalInventories.p1,
       boughtItemId: null,
+      boughtKinds: [],
     })
   })
 })

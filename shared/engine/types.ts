@@ -1,5 +1,7 @@
 import type { FrontId } from '../data/fronts'
 
+export type BargainSlotKind = 'primary' | 'secondary' | 'throwable' | 'armorPassive' | 'stratagem'
+
 export type RewardTier = 'C' | 'B' | 'A' | 'S' | 'S+'
 
 export type CrusadeVariant = 'medium' | 'hard' | 'suicide'
@@ -62,9 +64,9 @@ export interface DiverState {
   // reward tokens: stepping away keeps it, a benched diver's rejoin and a forked
   // session start empty.
   credits: number
-  // This operation's Brasch's Bargains deal: the inputs the shelf derives from
-  // (with the operation's bargain seed) and the one item bought from it. Dealt
-  // at every operation start and on seating; null before the crusade starts.
+  // This mission's Brasch's Bargains deal: what the shelf skips, the one item
+  // bought from it and the kinds bought this operation. Dealt at every mission
+  // start and on seating; null before the crusade starts.
   bargain: BargainDeal | null
   // Offered items this diver has banned from their personal reward and
   // catch-up pools for the rest of the crusade — never re-offered.
@@ -88,14 +90,15 @@ export interface DiverState {
   away: boolean
 }
 
-// What a diver's Brasch's Bargains shelf was dealt against: the Valor every
-// slot's tier rolls with and the holdings and bans to skip. Frozen for the
-// operation so a draft pick or a ban never reshuffles the shelf.
+// What a diver's Brasch's Bargains shelf was dealt against. Frozen for the
+// mission so a draft pick or a ban never reshuffles the shelf.
 export interface BargainDeal {
-  valor: number
+  // Holdings and bans at the deal: never stocked.
   excludedIds: string[]
-  // The one item bought this operation. Once set, nothing else is offered.
+  // The one item bought this mission. Once set, nothing else is offered.
   boughtItemId: string | null
+  // Slot kinds bought this operation: not rolled again until the next one.
+  boughtKinds: BargainSlotKind[]
 }
 
 export interface WheelResult {
@@ -193,9 +196,9 @@ export interface DiveState {
   // every mission; the ceremony is a soft gate on ADVANCE.
   bonusSeed: number | null
   bonusWinnerIds: string[]
-  // Seeds every diver's Brasch's Bargains shelf for the current operation.
-  // Set at the crusade start and re-derived at each operation start; a
-  // failure restart keeps it.
+  // Seeds every diver's Brasch's Bargains shelf for the current mission. Set
+  // at the crusade start and re-derived at every mission start, a failure
+  // restart included.
   bargainSeed: number | null
   actionLog: EngineAction[]
   seedHistory: number[]

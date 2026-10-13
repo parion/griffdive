@@ -288,7 +288,7 @@ export const CEILING_PREVIEW_FLOOR = 0.01
 
 // Samples are exchanged for credits, the currency of Brasch's Bargains:
 // recovered in the field, banked into a personal purse, and spent on the
-// per-operation shelf. They never touch Valor. Values are calibrated against
+// per-mission shelf. They never touch Valor. Values are calibrated against
 // wiki.gg/Sample "availability by difficulty" so the game's own rarity mix does
 // the difficulty scaling (commons dominate early, supers appear at 6).
 export const SAMPLE_CREDITS: Readonly<Record<'common' | 'rare' | 'super', number>> = {
@@ -304,11 +304,11 @@ export const TIME_HAUL_FLOOR = 0.5
 
 // Brasch's Bargains prices: tier first, then type. Tier dominates (a C primary
 // is far cheaper than an S passive); the type multiplier is how a primary
-// out-prices an armor passive. Each slot's tier is rolled by the diver's Valor,
-// so risk still gates rarity — credits gate the buy.
+// out-prices an armor passive. Low tiers sit within a mission or two's haul;
+// A and S stay a real saving goal.
 export const CREDIT_PRICE_TIER: Readonly<Record<'c' | 'b' | 'a' | 's', number>> = {
-  c: 25,
-  b: 70,
+  c: 15,
+  b: 45,
   a: 180,
   s: 450,
 }
@@ -320,17 +320,19 @@ export const CREDIT_PRICE_TYPE: Readonly<Record<string, number>> = {
 
 export const CREDIT_PRICE_TYPE_DEFAULT = 1
 
-// Brasch's Bargains: one fixed slot per category, re-dealt every operation.
+// Brasch's Bargains: one fixed slot per category, re-dealt every mission.
 // Difficulties whose missions can award more than BARGAIN_BASE_STARS stars add
-// one random stratagem slot per extra star (4 stars → one, 5 → two).
+// one random stratagem slot per extra star (4 stars → one, 5 → two). Stock
+// spans the difficulty's base tier up to BARGAIN_TIER_REACH tiers above it.
 export const BARGAIN_SLOTS = ['primary', 'secondary', 'throwable', 'armorPassive'] as const
 export const BARGAIN_BASE_STARS = 3
+export const BARGAIN_TIER_REACH = 1
 
 export function bargainStratagemSlotsFor(difficulty: number): number {
   return Math.max(0, maxStarsFor(difficulty) - BARGAIN_BASE_STARS)
 }
 
-// Stream salt 5 off the operation's bargain seed.
+// Stream salt 5 off the mission's bargain seed.
 export const BARGAIN_STREAM = 5
 
 // A failed mission's forfeit offer: a seeded handful of the diver's own items

@@ -3,9 +3,9 @@ import { itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
 import { catchUpOpsBehind } from '~~/shared/engine/progression'
 import { itemPrice } from '~~/shared/engine/rewards'
-import type { BargainSlot, BargainSlotKind } from '~~/shared/engine/rewards'
+import type { BargainSlot } from '~~/shared/engine/rewards'
 import { bargainPurchaseOf, bargainShelfFor, bargainsClosedReason, canBuyItem } from '~~/shared/engine/selectors'
-import type { DiverState, DiveState, RewardTier } from '~~/shared/engine/types'
+import type { BargainSlotKind, DiverState, DiveState, RewardTier } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -20,6 +20,7 @@ const opNumber = computed(() =>
 const closed = computed(() => bargainsClosedReason(props.state))
 const purchase = computed(() => (props.self ? bargainPurchaseOf(props.self) : null))
 const shelf = computed(() => (props.self ? bargainShelfFor(props.state, props.self) : []))
+const heldBack = computed(() => [...new Set(props.self?.bargain?.boughtKinds ?? [])].map(slotLabel))
 
 function slotLabel(kind: BargainSlotKind): string {
   return kind === 'stratagem' ? 'Stratagem' : categoryLabel(kind)
@@ -45,8 +46,8 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
   >
     <header class="bb-head">
       <div class="bb-title">
-        <span class="lbl">Operation {{ opNumber }} stock</span>
-        <span class="muted small">Brasch restocks every operation.</span>
+        <span class="lbl">Operation {{ opNumber }} · Mission {{ state.missionInOperation }} stock</span>
+        <span class="muted small">Brasch restocks every mission.</span>
       </div>
       <div class="bb-purse">
         <span class="lbl">Credits</span>
@@ -66,6 +67,18 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
       {{ closed }}
     </p>
 
+    <p
+      v-if="heldBack.length > 0"
+      class="bb-held"
+    >
+      <span class="lbl">Back next operation</span>
+      <span
+        v-for="label in heldBack"
+        :key="label"
+        class="chip"
+      >{{ label }}</span>
+    </p>
+
     <div
       v-if="purchase"
       class="bb-bought cut-sm"
@@ -83,10 +96,17 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
       <div class="bb-info">
         <span class="lbl bb-stamp">Requisitioned</span>
         <span class="bb-item">{{ purchase.displayName }}</span>
-        <span class="muted small">Brasch restocks every operation.</span>
+        <span class="muted small">Brasch restocks next mission.</span>
       </div>
       <TierBadge :tier="tierOf(purchase)" />
     </div>
+
+    <p
+      v-else-if="self?.bargain && shelf.length === 0"
+      class="muted bb-empty"
+    >
+      You've bought from every category this operation.
+    </p>
 
     <ul
       v-else
@@ -189,6 +209,8 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
   text-transform: uppercase;
 }
 .bb-lock { width: 16px; height: 16px; }
+.bb-held { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
+.bb-empty { margin: 0; padding: 16px 12px; border: 1px dashed var(--line-3); }
 
 .bb-grid {
   display: grid;

@@ -256,7 +256,7 @@ describe('bargainShelfFor / canBuyItem (Brasch\'s Bargains)', () => {
     }
   })
 
-  it('refuses when broke, off the shelf, or after this operation\'s buy', () => {
+  it('refuses when broke, off the shelf, or after this mission\'s buy', () => {
     const state = started()
     const diver = host(state)
     const item = bargainShelfFor(state, diver)[0]!.item!

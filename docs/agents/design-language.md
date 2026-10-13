@@ -20,11 +20,11 @@ Design principles — every gameplay decision must honor these:
    hidden math.
 3. **Reward scales with stakes.** Flat drops regardless of difficulty is the documented failure of
    both Penitent Crusade and Dead Cells' late-game cursed chests. Risk must move the odds — and the
-   shelf: chosen risk rolls the draft ceiling, and the same ladder rolls every Brasch's Bargains slot.
+   shelf: chosen risk rolls the draft ceiling, and altitude raises the tiers Brasch's Bargains stocks.
 4. **Guarantee rarity class, never specific items** (Balatro skip tags). Players buy a *chance* at
    better gear, not a shopping list — with one deliberate exception: **Brasch's Bargains** sells
-   one named item per operation for credits, its slots' tiers rolled from Valor (see Brasch's
-   Bargains — credits). The wheel and the draft still guarantee classes.
+   one named item per mission for credits, from the operation's base tier up to one tier above (see
+   Brasch's Bargains — credits). The wheel and the draft still guarantee classes.
 5. **Misfortunes reshape decisions, not stats** (Deep Rock Galactic's mutator design). A misfortune
    should change loadout strategy, route, or behavior — not just make numbers bigger.
 6. **Team risk is shared; personal risk is personal** (Slay the Spire 2 co-op model). The whole squad

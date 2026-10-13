@@ -75,7 +75,8 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
 
   // Brasch's Bargains opens from the header between missions: one slot each
   // for primary, secondary, throwable and armor passive at Medium. One
-  // mission's haul (12 commons at 60% time → 9 credits) can't cover a C slot.
+  // mission's haul (12 commons at 60% time → 9 credits) can't cover a C slot
+  // (the cheapest, a C armor passive, is 11).
   await page.getByRole('button', { name: /Brasch's Bargains, 9 credits/ }).click()
   const bargains = page.getByRole('dialog', { name: 'Brasch\'s Bargains' })
   await expect(bargains.locator('.bb-card')).toHaveCount(4)

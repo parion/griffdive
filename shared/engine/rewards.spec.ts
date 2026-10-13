@@ -49,10 +49,10 @@ describe('haulValue / timeHaulMultiplier / missionHaul', () => {
 
 describe('itemPrice', () => {
   it('is tier first, then type', () => {
-    expect(CREDIT_PRICE_TIER.c).toBe(25)
+    expect(CREDIT_PRICE_TIER.c).toBe(15)
     expect(CREDIT_PRICE_TIER.s).toBe(450)
-    expect(itemPrice(makeItem('c', 'armorPassive'))).toBe(Math.round(25 * (CREDIT_PRICE_TYPE.armorPassive ?? 1)))
-    expect(itemPrice(makeItem('c', 'primary'))).toBe(Math.round(25 * 1.25))
+    expect(itemPrice(makeItem('c', 'armorPassive'))).toBe(Math.round(15 * (CREDIT_PRICE_TYPE.armorPassive ?? 1)))
+    expect(itemPrice(makeItem('c', 'primary'))).toBe(Math.round(15 * 1.25))
     // A primary always out-prices an armor passive at the same tier.
     expect(itemPrice(makeItem('s', 'primary'))).toBeGreaterThan(itemPrice(makeItem('s', 'armorPassive')))
     // Unknown categories fall back to the default multiplier.
@@ -64,11 +64,19 @@ describe('rollBargainShelf', () => {
   const pool = ALL_ITEMS
   const none = new Set<string>()
   const kinds = [...BARGAIN_SLOTS, 'stratagem', 'stratagem'] as const
+  const tierSet = (difficulty: number, excluded = none): Set<string> => {
+    const tiers = new Set<string>()
+    for (let seed = 0; seed < 200; seed++) {
+      for (const slot of rollBargainShelf(seed, difficulty, kinds, pool, excluded)) {
+        tiers.add(slot.item!.tier)
+      }
+    }
+    return tiers
+  }
 
   it('is deterministic, one item of each slot kind', () => {
-    const a = rollBargainShelf(1234, 7, 5, kinds, pool, none)
-    const b = rollBargainShelf(1234, 7, 5, kinds, pool, none)
-    expect(a).toEqual(b)
+    const a = rollBargainShelf(1234, 7, kinds, pool, none)
+    expect(rollBargainShelf(1234, 7, kinds, pool, none)).toEqual(a)
     expect(a.map(slot => slot.slotId)).toEqual(['primary', 'secondary', 'throwable', 'armorPassive', 'stratagem', 'stratagem-2'])
     for (const slot of a.slice(0, 4)) {
       expect(slot.item?.category).toBe(slot.kind)
@@ -77,45 +85,30 @@ describe('rollBargainShelf', () => {
     expect(a[4]!.item!.id).not.toBe(a[5]!.item!.id)
   })
 
-  it('rolls each slot at the base tier with zero Valor, and never past S', () => {
+  it('stocks the base tier up to one tier above it', () => {
+    expect(tierSet(3)).toEqual(new Set(['c', 'b']))
+    expect(tierSet(6)).toEqual(new Set(['b', 'a']))
+    expect(tierSet(10)).toEqual(new Set(['a', 's']))
+  })
+
+  it('always finds a primary at the start, whose only C item is in the kit', () => {
+    const lone = new Set(pool.filter(item => item.category === 'primary' && item.tier === 'c').map(item => item.id))
+    expect(lone.size).toBe(1)
     for (let seed = 0; seed < 30; seed++) {
-      const shelf = rollBargainShelf(seed, 3, 0, kinds, pool, none)
-      expect(shelf.every(slot => slot.ceiling === 'C' && slot.item?.tier === 'c')).toBe(true)
-      const stacked = rollBargainShelf(seed, 10, 30, kinds, pool, none)
-      expect(stacked.every(slot => slot.ceiling !== 'S+')).toBe(true)
+      const [primary] = rollBargainShelf(seed, 3, ['primary'], pool, lone)
+      expect(primary?.item?.tier).toBe('b')
     }
   })
 
-  it('steps a thin slot to the nearest stocked tier, never a random one', () => {
-    // Primaries carry a single C item; with it owned, a C-ceiling primary slot
-    // falls to the next tier up (B), never A or S.
-    const lone = pool.filter(item => item.category === 'primary' && item.tier === 'c').map(item => item.id)
-    expect(lone).toHaveLength(1)
-    for (let seed = 0; seed < 30; seed++) {
-      const [primary] = rollBargainShelf(seed, 3, 0, ['primary'], pool, new Set(lone))
-      expect(primary?.item?.tier).toBe('b')
-    }
-    // Above the band only when nothing sits below it: at diff 8 (A floor) the
-    // cheaper tier wins over the dearer one.
-    const noA = new Set(pool.filter(item => item.category === 'secondary' && item.tier === 'a').map(item => item.id))
-    const [secondary] = rollBargainShelf(1, 8, 0, ['secondary'], pool, noA)
+  it('steps an exhausted band to the nearest stocked tier, cheaper first', () => {
+    const band = new Set(pool.filter(item => item.category === 'secondary' && (item.tier === 'a' || item.tier === 's')).map(item => item.id))
+    const [secondary] = rollBargainShelf(1, 8, ['secondary'], pool, band)
     expect(secondary?.item?.tier).toBe('b')
   })
 
-  it('reaches higher tiers as Valor climbs', () => {
-    const tiers = (valor: number): number => {
-      let above = 0
-      for (let seed = 0; seed < 200; seed++) {
-        above += rollBargainShelf(seed, 5, valor, kinds, pool, none).filter(slot => slot.ceiling !== 'C').length
-      }
-      return above
-    }
-    expect(tiers(9)).toBeGreaterThan(tiers(2))
-  })
-
-  it('honors the exclusion set and empties a slot whose kind is exhausted', () => {
-    const throwables = pool.filter(item => item.category === 'throwable').map(item => item.id)
-    const shelf = rollBargainShelf(7, 5, 3, kinds, pool, new Set(throwables))
+  it('empties a slot whose kind is exhausted', () => {
+    const throwables = new Set(pool.filter(item => item.category === 'throwable').map(item => item.id))
+    const shelf = rollBargainShelf(7, 5, kinds, pool, throwables)
     expect(shelf.find(slot => slot.kind === 'throwable')?.item).toBeNull()
     expect(shelf.filter(slot => slot.kind !== 'throwable').every(slot => slot.item !== null)).toBe(true)
   })

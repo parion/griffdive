@@ -56,10 +56,10 @@ app/
                    RewardsSettlement — the post-draft screen: the Squad Honors
                    contest when honors is due, or a disabled honors panel when
                    it isn't; desktop and phone share it,
-                   BraschBargains + BargainsDrawer — the per-operation shop
-                   (one Valor-rolled slot per primary/secondary/throwable/
-                   armor passive plus 0–2 stratagems, credit prices, the purse,
-                   the one buy) in a slide-over opened from DiveTopBar's
+                   BraschBargains + BargainsDrawer — the per-mission shop
+                   (one random slot per primary/secondary/throwable/armor
+                   passive plus 0–2 stratagems, credit prices, the purse, the
+                   one buy, kinds held back) in a slide-over opened from DiveTopBar's
                    Bargains nav and the phone action bar's credit tile,
                    MissionReportSummary — the left-rail report card,
                    ValorMeter — the live Valor gauge

@@ -4,6 +4,7 @@ import type { FrontId } from '../data/fronts'
 import { STRAINS } from '../data/strains'
 import {
   ACTION_LOG_CAP,
+  BARGAIN_SLOTS,
   CATCHUP_CAP,
   MAX_DIFFICULTY,
   MAX_NAME_LENGTH,
@@ -14,7 +15,7 @@ import {
   missionsPerOperation,
 } from './config'
 import { VARIANTS, catchUpOpsBehind, startingItemIds } from './progression'
-import type { BargainDeal, DivePhase, DiveState, DiverState, MajorOrderSelection, WheelResult } from './types'
+import type { BargainDeal, BargainSlotKind, DivePhase, DiveState, DiverState, MajorOrderSelection, WheelResult } from './types'
 
 // A freshly created room: no settings, no divers. The first joiner becomes
 // host; START_DIVE applies the variant kit to everyone present.
@@ -115,9 +116,8 @@ export function joinDiver(state: DiveState, playerId: string, name: string): Div
     // Credits are personal and do not survive leaving a dive: a rejoining
     // Helldiver starts their purse empty again.
     credits: 0,
-    // Seated mid-crusade: this operation's shelf is dealt at zero Valor —
-    // the joiner has not dived yet.
-    bargain: state.settings ? { valor: 0, excludedIds: [...inventory], boughtItemId: null } : null,
+    // Seated mid-crusade: Brasch deals the joiner this mission's shelf.
+    bargain: state.settings ? { excludedIds: [...inventory], boughtItemId: null, boughtKinds: [] } : null,
     bannedItemIds: [],
     rewardRerollSeed: null,
     rewardBanned: false,
@@ -206,10 +206,12 @@ function sanitizeBargain(raw: unknown): BargainDeal | null {
     return null
   }
   const deal = raw as Partial<BargainDeal>
+  const kinds = new Set<string>([...BARGAIN_SLOTS, 'stratagem'])
   return {
-    valor: typeof deal.valor === 'number' && Number.isFinite(deal.valor) ? Math.min(Math.max(deal.valor, 0), 100) : 0,
     excludedIds: stringArray(deal.excludedIds, 2000),
     boughtItemId: typeof deal.boughtItemId === 'string' ? deal.boughtItemId : null,
+    boughtKinds: stringArray(deal.boughtKinds, 10)
+      .filter((kind): kind is BargainSlotKind => kinds.has(kind)),
   }
 }
 

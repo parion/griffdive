@@ -39,9 +39,9 @@ import {
 import type { StratagemBanSource } from './pacts'
 import { startingItemIds } from './progression'
 import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, rollBargainShelf, rollBonus, rollCeiling, rollRewardOptions, valorOf } from './rewards'
-import type { BargainSlot, BargainSlotKind, RewardOption } from './rewards'
+import type { BargainSlot, RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
-import type { BargainDeal, CrusadeMode, DiveState, DivePhase, DiverState, RewardTier } from './types'
+import type { BargainDeal, BargainSlotKind, CrusadeMode, DiveState, DivePhase, DiverState, RewardTier } from './types'
 import { eligibleMisfortunes, eligibleStrains, frontById, strainById } from './wheel'
 
 // A completed run is tracked by its full draw — misfortune, front and strain —
@@ -485,19 +485,19 @@ export function draftSummaryFor(state: DiveState, diver: DiverState): DraftSumma
   }
 }
 
-// A diver's Brasch's Bargains deal for the operation now underway: the Valor
-// they carried out of their last clear (zero at the crusade start or when
-// seated) and the holdings and bans the shelf skips.
-export function dealBargain(state: DiveState, diver: DiverState, valor: number): BargainDeal {
+// A diver's Brasch's Bargains deal for the mission about to start: the
+// holdings and bans the shelf skips, and the kinds already bought this
+// operation (empty when a new operation begins).
+export function dealBargain(state: DiveState, diver: DiverState, boughtKinds: readonly BargainSlotKind[]): BargainDeal {
   return {
-    valor,
     excludedIds: [...(state.personalInventories[diver.id] ?? []), ...diver.bannedItemIds],
     boughtItemId: null,
+    boughtKinds: [...boughtKinds],
   }
 }
 
-// The slot kinds on this operation's shelf: the four fixed equipment slots,
-// plus one stratagem per star the difficulty awards past the third.
+// The slot kinds Brasch can stock at a difficulty: the four fixed equipment
+// slots, plus one stratagem per star the difficulty awards past the third.
 export function bargainSlotKinds(difficulty: number): BargainSlotKind[] {
   return [
     ...BARGAIN_SLOTS,
@@ -505,27 +505,27 @@ export function bargainSlotKinds(difficulty: number): BargainSlotKind[] {
   ]
 }
 
-// The diver's Brasch's Bargains shelf for the operation: one item per slot,
-// each slot's tier rolled from the Valor in their deal, drawn from their own
-// pool (declared warbonds) minus what they held or banned at the deal. Derived
-// from the operation's bargain seed folded with the diver id — deterministic,
-// never stored — so it only moves when a new operation re-deals it. Empty once
-// they have bought from it: one item per operation.
+// The diver's Brasch's Bargains shelf for the mission: one random item per
+// slot from the difficulty's base tier up to one tier above, drawn from their
+// own pool (declared warbonds) minus what they held or banned at the deal.
+// A kind bought this operation isn't rolled until the next one. Derived from
+// the mission's bargain seed folded with the diver id — deterministic, never
+// stored. Empty once they have bought from it: one item per mission.
 export function bargainShelfFor(state: DiveState, diver: DiverState): BargainSlot[] {
   if (state.bargainSeed === null || !diver.bargain || diver.bargain.boughtItemId !== null) {
     return []
   }
+  const bought = new Set(diver.bargain.boughtKinds)
   return rollBargainShelf(
     deriveSeed(deriveSeed(state.bargainSeed, BARGAIN_STREAM), hashString(diver.id)),
     state.difficulty,
-    diver.bargain.valor,
-    bargainSlotKinds(state.difficulty),
+    bargainSlotKinds(state.difficulty).filter(kind => !bought.has(kind)),
     rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES),
     new Set(diver.bargain.excludedIds),
   )
 }
 
-// The item a diver bought from this operation's shelf, if any.
+// The item a diver bought from this mission's shelf, if any.
 export function bargainPurchaseOf(diver: DiverState): Item | null {
   const id = diver.bargain?.boughtItemId
   return id ? ITEMS_BY_ID.get(id) ?? null : null
@@ -547,7 +547,7 @@ export function bargainsClosedReason(state: DiveState): string | null {
 }
 
 // Whether a diver can buy an item from their Brasch's Bargains shelf: the shop
-// is open, they haven't bought this operation, the item is on their shelf and
+// is open, they haven't bought this mission, the item is on their shelf and
 // not gained since the deal, and they can afford it.
 export function canBuyItem(
   state: DiveState,
@@ -559,7 +559,7 @@ export function canBuyItem(
     return { allowed: false, reason: closed }
   }
   if (diver.bargain?.boughtItemId) {
-    return { allowed: false, reason: 'Already bought this operation' }
+    return { allowed: false, reason: 'Already bought this mission' }
   }
   const slot = bargainShelfFor(state, diver).find(entry => entry.item?.id === itemId)
   if (!slot?.item) {

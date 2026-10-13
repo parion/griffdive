@@ -7,8 +7,8 @@ import { STARTING_KITS, startingItemIds } from './progression'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed, hashString } from './rng'
-import { activeDivers, activeMisfortune, allDiversPicked, bonusEligible, canBuyItem, catchUpOptionsFor, comboKey, dealBargain, diverOptions, diverValor, forfeitOptionsFor, forfeitSettled, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, strainDecision } from './selectors'
-import { itemPrice, missionHaul } from './rewards'
+import { activeDivers, activeMisfortune, allDiversPicked, bonusEligible, canBuyItem, catchUpOptionsFor, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, strainDecision } from './selectors'
+import { bargainKindOf, itemPrice, missionHaul } from './rewards'
 import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 
 export function createDiveState(
@@ -41,11 +41,10 @@ function applyStart(state: DiveState, settings: CrusadeSettings, seed: number | 
   for (const diver of state.divers) {
     personalInventories[diver.id] = startingItemIds(settings.variant, settings.mode)
   }
-  // The first operation's Brasch's Bargains deal: nobody has dived yet, so
-  // every shelf rolls at zero Valor. A caller that injects no seed still gets
-  // a deterministic shelf, keyed to the host.
+  // The first mission's Brasch's Bargains deal. A caller that injects no seed
+  // still gets a deterministic shelf, keyed to the host.
   const stocked = { ...state, personalInventories }
-  const divers = state.divers.map(diver => ({ ...diver, bargain: dealBargain(stocked, diver, 0) }))
+  const divers = state.divers.map(diver => ({ ...diver, bargain: dealBargain(stocked, diver, []) }))
   return {
     divers,
     bargainSeed: typeof seed === 'number' && Number.isFinite(seed) ? seed : hashString(state.hostId ?? ''),
@@ -104,6 +103,24 @@ export function resetOperation(state: DiveState): Partial<DiveState> {
   }
 }
 
+// Brasch restocks at every mission start, a failure restart included: a fresh
+// seed off the mission just played and a fresh deal per diver against their
+// current holdings. Kinds bought this operation stay off the shelf until a new
+// operation begins.
+function redealBargains(
+  state: DiveState,
+  divers: DiverState[],
+  newOperation: boolean,
+): Pick<DiveState, 'divers' | 'bargainSeed'> {
+  return {
+    bargainSeed: deriveSeed(state.wheel?.seed ?? state.bargainSeed ?? 0, state.missionIndex + 1),
+    divers: divers.map(diver => ({
+      ...diver,
+      bargain: dealBargain(state, diver, newOperation ? [] : diver.bargain?.boughtKinds ?? []),
+    })),
+  }
+}
+
 // The failure's loss lands once every diver owing an item has chosen: each
 // chosen item leaves its owner's kit together, then the operation restarts.
 // Holding the removal back keeps every offer (derived from the live kit) stable
@@ -116,7 +133,9 @@ function resolveForfeit(state: DiveState): DiveState {
         .filter(id => id !== diver.forfeitedItemId)
     }
   }
-  return { ...state, personalInventories, ...resetOperation(state) }
+  const stripped = { ...state, personalInventories }
+  const restarted = resetOperation(stripped)
+  return { ...stripped, ...restarted, ...redealBargains(stripped, restarted.divers!, false) }
 }
 
 // A pick, a departure or a step away can each leave the forfeit with nobody
@@ -659,7 +678,11 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           ? {
               ...candidate,
               credits: candidate.credits - itemPrice(item),
-              bargain: { ...diver.bargain!, boughtItemId: item.id },
+              bargain: {
+                ...diver.bargain!,
+                boughtItemId: item.id,
+                boughtKinds: [...diver.bargain!.boughtKinds, bargainKindOf(item)!],
+              },
             }
           : candidate,
       )
@@ -697,8 +720,6 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         // first spin. A chosen Major Order is a run-long commitment, so it stays
         // pinned (the host replaces or clears it in the next spin phase) and
         // every operation played toward a live one banks its extra reroll token.
-        // Brasch's Bargains re-deals: each shelf rolls with the Valor its diver
-        // carried out of the clear that closed the operation.
         const next = resetForNextMission(state)
         return commit(state, {
           missionIndex,
@@ -707,11 +728,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           rerollTokens: REROLL_TOKENS_PER_OPERATION
             + (state.majorOrder?.live ? MAJOR_ORDER_REROLL_BONUS : 0),
           ...next,
-          divers: next.divers!.map((diver, index) => ({
-            ...diver,
-            bargain: dealBargain(state, diver, diverValor(state, state.divers[index]!)),
-          })),
-          bargainSeed: deriveSeed(state.wheel?.seed ?? state.bargainSeed ?? 0, missionIndex),
+          ...redealBargains(state, next.divers!, true),
           wheel: null,
           frontId: null,
           strainId: null,
@@ -723,10 +740,12 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }
       // Same operation: the front and its strain persist, but every mission
       // draws a fresh misfortune — the next mission begins at the spin.
+      const next = resetForNextMission(state)
       return commit(state, {
         missionIndex,
         missionInOperation,
-        ...resetForNextMission(state),
+        ...next,
+        ...redealBargains(state, next.divers!, false),
         wheel: null,
         misfortuneAccepted: false,
         phase: 'spin',

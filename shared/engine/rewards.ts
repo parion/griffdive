@@ -1,5 +1,6 @@
 import type { Item, Tier } from '../data/types'
 import {
+  BARGAIN_TIER_REACH,
   BONUS_STATS,
   MAX_OPTIONS,
   OVERFLOW_S_LUCK,
@@ -31,7 +32,7 @@ import {
 import type { BonusStat } from './config'
 import { deriveSeed, mulberry32, pickIndex, pickWeighted } from './rng'
 import type { Rng } from './rng'
-import type { MissionReport, RewardTier, SampleCounts } from './types'
+import type { BargainSlotKind, MissionReport, RewardTier, SampleCounts } from './types'
 
 const TIER_INDEX: Readonly<Record<Tier, number>> = { c: 0, b: 1, a: 2, s: 3 }
 const CEILING_LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
@@ -295,70 +296,63 @@ export function rollRewardOptions(
   return picked
 }
 
-export type BargainSlotKind = 'primary' | 'secondary' | 'throwable' | 'armorPassive' | 'stratagem'
-
 export interface BargainSlot {
   slotId: string
   kind: BargainSlotKind
-  // The tier this slot's Valor roll reached. No item carries S+, so it caps at S.
-  ceiling: RewardTier
   // Null when the diver's pool has nothing left of the slot's kind.
   item: Item | null
 }
 
-function inBargainSlot(item: Item, kind: BargainSlotKind): boolean {
-  return kind === 'stratagem' ? item.type === 'stratagem' : item.category === kind
+export function bargainKindOf(item: Item): BargainSlotKind | null {
+  if (item.type === 'stratagem') {
+    return 'stratagem'
+  }
+  return item.category === 'booster' ? null : item.category as BargainSlotKind
 }
 
-// Brasch's Bargains: one slot per kind, each rolling its own ceiling from the
-// diver's Valor on the same ladder as the draft, then drawing one item of that
-// kind led by the best tier the ceiling reaches (the draft's lead-pick rule).
-// A kind with nothing in that band (primaries carry a single C item, and it is
-// in the starting kit) steps to the nearest stocked tier — below the band
-// before above it, so a thin kind never hands out rarity the Valor didn't buy.
-// Two stratagem slots never offer the same stratagem.
+// Brasch's Bargains: one slot per kind, each a uniformly random item of that
+// kind from the difficulty's base tier up to BARGAIN_TIER_REACH tiers above —
+// no Valor, no weighting. A kind with nothing in that band steps to the
+// nearest stocked tier, below the band before above it. Two stratagem slots
+// never offer the same stratagem.
 export function rollBargainShelf(
   seed: number,
   difficulty: number,
-  valor: number,
   kinds: readonly BargainSlotKind[],
   pool: readonly Item[],
   excludeIds: ReadonlySet<string>,
 ): BargainSlot[] {
-  const floor = baseTierFor(difficulty)
+  const floorIndex = tierIndex(baseTierFor(difficulty))
+  const topIndex = Math.min(floorIndex + BARGAIN_TIER_REACH, TIER_INDEX.s)
   const taken = new Set(excludeIds)
   const counts = new Map<BargainSlotKind, number>()
   return kinds.map((kind, index) => {
     const nth = (counts.get(kind) ?? 0) + 1
     counts.set(kind, nth)
     const slotId = nth === 1 ? kind : `${kind}-${nth}`
-    const slotSeed = deriveSeed(seed, index + 1)
-    const rolled = rollCeiling(mulberry32(deriveSeed(slotSeed, 1)), difficulty, valor)
-    const ceiling: RewardTier = rolled === 'S+' ? 'S' : rolled
-    const candidates = pool.filter(item => inBargainSlot(item, kind) && !taken.has(item.id))
-    const item = pickBargain(deriveSeed(slotSeed, 2), candidates, floor, ceiling)
+    const candidates = pool.filter(item => bargainKindOf(item) === kind && !taken.has(item.id))
+    const item = pickBargain(mulberry32(deriveSeed(seed, index + 1)), candidates, floorIndex, topIndex)
     if (item) {
       taken.add(item.id)
     }
-    return { slotId, kind, ceiling, item }
+    return { slotId, kind, item }
   })
 }
 
-function pickBargain(seed: number, candidates: readonly Item[], floor: RewardTier, ceiling: RewardTier): Item | null {
+function pickBargain(rng: Rng, candidates: readonly Item[], floorIndex: number, topIndex: number): Item | null {
   if (candidates.length === 0) {
     return null
   }
-  const floorIndex = tierIndex(floor)
-  const ceilingIndex = tierIndex(ceiling)
-  if (candidates.some(item => TIER_INDEX[item.tier] >= floorIndex && TIER_INDEX[item.tier] <= ceilingIndex)) {
-    return rollRewardOptions(seed, ceiling, floor, 1, candidates, new Set())[0]!.item
-  }
-  // Distance from the band; a half step breaks ties toward the cheaper tier.
+  // Distance from the band (zero inside it); a half step breaks ties toward
+  // the cheaper tier.
   const distance = (item: Item): number => {
     const index = TIER_INDEX[item.tier]
-    return index < floorIndex ? floorIndex - index : index - ceilingIndex + 0.5
+    if (index < floorIndex) {
+      return floorIndex - index
+    }
+    return index > topIndex ? index - topIndex + 0.5 : 0
   }
   const nearest = Math.min(...candidates.map(distance))
-  const tier = candidates.filter(item => distance(item) === nearest)
-  return tier[pickIndex(mulberry32(seed), tier.length)]!
+  const stocked = candidates.filter(item => distance(item) === nearest)
+  return stocked[pickIndex(rng, stocked.length)]!
 }

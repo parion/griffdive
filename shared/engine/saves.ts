@@ -286,14 +286,14 @@ export function normalizeRoomState(state: DiveState): DiveState {
   }
 }
 
-// A crusade saved before Brasch's Bargains became a per-operation shop has no
-// deal for the operation underway: deal one at zero Valor against what the
-// diver holds now, as for a diver seated mid-crusade.
+// A crusade saved before Brasch's Bargains became an always-open shop has no
+// deal for the mission underway: deal one against what the diver holds now, as
+// for a diver seated mid-crusade.
 function legacyBargain(state: DiveState, diver: DiverState): DiverState['bargain'] {
   return {
-    valor: 0,
     excludedIds: [...(state.personalInventories?.[diver.id] ?? []), ...(diver.bannedItemIds ?? [])],
     boughtItemId: null,
+    boughtKinds: [],
   }
 }
 
@@ -332,7 +332,7 @@ function migrateV14toV15(doc: SaveDoc): SaveDoc {
   }
 }
 
-// v16: Brasch's Bargains became a per-operation shop paid in credits. The
+// v16: Brasch's Bargains became an always-open shop paid in credits. The
 // sample purse carries over as credits; the deal itself is filled in by
 // normalizeRoomState, which rooms share.
 function migrateV15toV16(doc: SaveDoc): SaveDoc {

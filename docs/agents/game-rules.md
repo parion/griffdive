@@ -37,7 +37,7 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
    options rolled against their personal tier ceiling and picks one; all rewards go to the diver's
    personal inventory — stratagems included. Armor rewards are **passives**; the catalog has no armor pieces (see
    inventory model). Credits bank into each diver's purse for **Brasch's Bargains**, the
-   per-operation shop open between missions (see Brasch's Bargains — credits). On a
+   shop that restocks every mission (see Brasch's Bargains — credits). On a
    full-star clear, once every diver has picked, the squad spins **bonus honors** — a random
    end-screen stat the host resolves to a winner, who banks a reward token (see Reward tokens & squad
    honors).
@@ -508,7 +508,7 @@ by `KICK_DIVER` who later rejoins starts empty, and so does a new session forked
 no cap. The game's own sample mix (commons dominate early, supers appear at diff 6) does the
 difficulty scaling.
 
-**Brasch's Bargains is a per-operation shop**, open between missions in every phase from `spin` to
+**Brasch's Bargains is an always-open shop**, open between missions in every phase from `spin` to
 `rewards`. It closes in the `lobby`, while `diving`, while a failure's `forfeit` settles (a buy would
 reshuffle the forfeit offers, which derive from the live kit) and once the crusade is `complete`
 (`bargainsClosedReason`). It is the one deliberate exception to design principle 4 (it names
@@ -518,29 +518,29 @@ items):
   (`BARGAIN_SLOTS`). Difficulties where a mission can award a 4th star (diff 5+) add one random
   **stratagem** slot, and a 5th star (diff 7+) adds a second one (`bargainStratagemSlotsFor`). Two
   stratagem slots never offer the same stratagem.
-- **Tiers come from Valor:** each slot rolls its own ceiling with `rollCeiling` on the draft's ladder,
-  using the diver's Valor, then draws one item of its kind led by the best tier that ceiling reaches.
-  An S+ roll caps at S. A kind with nothing in the base-tier → ceiling band steps to the nearest stocked
-  tier, below the band before above it. For example, primaries carry a single C item, which is in the
-  starting kit, so a C roll offers a B primary. The fallback never draws at random, so a thin kind
-  can't hand out rarity the Valor didn't buy.
-- **The deal:** the shelf is derived from the operation's `DiveState.bargainSeed` (stream salt 5,
-  folded with the diver id) and the diver's `DiverState.bargain` deal: the Valor it rolls with plus the
-  holdings and bans it skips (`excludedIds`). It is deterministic and never stored. The deal is frozen
-  for the operation, so a draft pick or a ban never reshuffles the shelf.
+- **Tiers:** each slot is a uniformly random item of its kind from the operation's **base tier up to
+  one tier above it** (`BARGAIN_TIER_REACH`): C–B at diffs 3–5, B–A at 6–7, A–S at 8–10. Valor plays
+  no part. A kind with nothing in that band steps to the nearest stocked tier, cheaper first.
+- **Restocks every mission:** the shelf derives from the mission's `DiveState.bargainSeed` (stream
+  salt 5, folded with the diver id) and the diver's `DiverState.bargain` deal: the holdings and bans
+  it skips (`excludedIds`), frozen for the mission so a draft pick or a ban never reshuffles it. It is
+  deterministic and never stored.
   - **Crusade start (`START_DIVE`):** the seed is injected (`START_DIVE.seed`). A seedless caller
-    falls back to a hash of the host id. Every shelf rolls at Valor 0.
-  - **Operation start (`ADVANCE` past an operation's last mission):** the seed re-derives from the
-    closing mission's wheel seed. Each diver's shelf rolls with the Valor they carried out of that
-    clear.
-  - **Seating mid-crusade:** the joiner is dealt at Valor 0.
-  - **Failure restart:** keeps the deal, since the operation is the same one.
+    falls back to a hash of the host id.
+  - **Every mission start (`ADVANCE`, and a failure restart):** the seed re-derives from the mission
+    just played and every diver is dealt afresh.
+  - **Seating mid-crusade:** the joiner is dealt the current mission's shelf.
 - **Prices:** tier first, then type: `itemPrice = CREDIT_PRICE_TIER[tier] × CREDIT_PRICE_TYPE[category]`.
-  C/B/A/S cost 25/70/180/450; primaries ×1.25, armor passives ×0.75, everything else ×1.
-- **One buy per operation:** `BUY_ITEM` (self-service) deducts the price, banks the item in
+  C/B/A/S cost 15/45/180/450, so low tiers sit within a mission or two's haul and A/S stay a saving
+  goal. Primaries ×1.25, armor passives ×0.75, everything else ×1.
+- **One buy per mission:** `BUY_ITEM` (self-service) deducts the price, banks the item in
   `personalInventories` and records it as `bargain.boughtItemId`. After that the shelf offers nothing
-  else until the next operation re-deals it. Buying is **soft**: it never gates any phase. A diver who
-  can't buy sees each card disabled with the engine's reason (`canBuyItem`).
+  else until the next mission.
+- **A bought kind waits for the next operation:** the purchase's kind joins `bargain.boughtKinds` and
+  that slot isn't rolled again until a new operation begins (a failure restart keeps it). Stratagems
+  are one kind, so buying one holds back both stratagem slots.
+- **Soft:** buying never gates any phase. A diver who can't buy sees each card disabled with the
+  engine's reason (`canBuyItem`).
 
 ### Mission failure — the forfeit offer
 
@@ -682,7 +682,7 @@ difficulties (Quickplay becomes the suicide start with the SEAF mode); `migrateV
 presence (`away: false` on every diver); `migrateV14toV15` widens the single honors winner
 (`bonusWinnerId`) into the shareable list (`bonusWinnerIds`); `migrateV15toV16` renames the purse
 to credits (`sampleBank` → `credits`), and the tail's normalization deals the operation underway a
-Brasch's Bargains shelf (`bargainSeed`, a Valor-0 `bargain` per diver). The chain's tail also runs the idempotent
+Brasch's Bargains shelf (`bargainSeed`, a fresh `bargain` per diver). The chain's tail also runs the idempotent
 `normalizeRoomState` remap unconditionally: session mirrors copy unversioned room state, so a
 legacy variant id or a missing field must be corrected even in a doc stamped with a newer schema.
 Normalization drops
