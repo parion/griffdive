@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_DIFFICULTY, MIN_DIFFICULTY, bandPosition, baseTierFor, bonusIntervalFor, maxStarsFor, missionsPerOperation, upgradeOdds } from './config'
+import { MAX_DIFFICULTY, MIN_DIFFICULTY, bandPosition, baseTierFor, bonusIntervalFor, maxStarsFor, missionsPerOperation, upgradeOdds, VALOR_METER_MAX } from './config'
 
 describe('baseTierFor (reward scale-back bands)', () => {
   it.each([
@@ -21,12 +21,22 @@ describe('baseTierFor (reward scale-back bands)', () => {
 
   it('upgrade odds scale with Valor and band position, capped per rung', () => {
     expect(upgradeOdds(0, 0, 1)).toBe(0)
-    expect(upgradeOdds(6, 0, 1)).toBeCloseTo(0.5, 5)
-    expect(upgradeOdds(3, 1, 1)).toBeCloseTo(0.5, 5)
-    expect(upgradeOdds(8, 1, 1)).toBe(0.65)
+    expect(upgradeOdds(11, 0, 1)).toBeCloseTo(0.7125, 5)
+    expect(upgradeOdds(5.5, 1, 1)).toBeCloseTo(0.7125, 5)
     expect(upgradeOdds(4, 0, 1)).toBeGreaterThan(upgradeOdds(4, 0, 2))
-    expect(upgradeOdds(100, 1, 1)).toBe(0.65)
-    expect(upgradeOdds(100, 1, 2)).toBe(0.25)
+    expect(upgradeOdds(VALOR_METER_MAX, 1, 1)).toBe(0.95)
+    expect(upgradeOdds(100, 1, 1)).toBe(0.95)
+    expect(upgradeOdds(100, 1, 2)).toBe(0.3)
+  })
+
+  it('keeps every ordinary rung climbing all the way to the meter top', () => {
+    for (const bandPos of [0, 0.5, 1]) {
+      for (const step of [1, 2]) {
+        for (let valor = 0; valor < VALOR_METER_MAX; valor++) {
+          expect(upgradeOdds(valor + 1, bandPos, step)).toBeGreaterThan(upgradeOdds(valor, bandPos, step))
+        }
+      }
+    }
   })
 })
 

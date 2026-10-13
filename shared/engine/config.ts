@@ -196,9 +196,11 @@ export const RESERVE_STRATAGEMS = [
 // the C band, B→A in the B band) opens readily, the second (B→A from a C base)
 // is a long reach. Playtests at diffs 3–5 with a full squad, a strain and
 // stacked pacts banked A and even S gear before diff 5 under the old shared
-// 0.8 cap — the early ladder must feel scavenged, not looted. Index = step − 1.
-export const UPGRADE_STEP_DIVISORS = [12, 48] as const
-export const UPGRADE_STEP_CAPS = [0.65, 0.25] as const
+// 0.8 cap — the early ladder must feel scavenged, not looted. Each rung eases
+// out toward its cap and only lands on it at the meter top at a band's top, so
+// a hard flat cap never swallows a stacked pact: the old linear rungs capped
+// out by Valor ~6 and a +3 pact moved nothing but S. Index = step − 1.
+export const UPGRADE_STEP_CAPS = [0.95, 0.3] as const
 
 // S and S+ are earned, never bought by altitude: the top rungs only open once
 // the diver's Valor clears a floor, then ramp toward the cap. Without this a
@@ -256,7 +258,7 @@ const S_PLUS_FLOOR_BY_BAND: Readonly<Record<string, number>> = { C: 5, B: 6.5, A
 // scaled down by how far the base tier sits from A, so a low-difficulty squad
 // can glimpse S (and the Cross) but never farm it. Applied after Luck, so
 // overstacking still pays — just less the lower the dive.
-const TOP_RUNG_REACH_BY_BAND: Readonly<Record<string, number>> = { C: 0.25, B: 0.6, A: 1 }
+const TOP_RUNG_REACH_BY_BAND: Readonly<Record<string, number>> = { C: 0.35, B: 0.6, A: 1 }
 
 export function topRungReachFor(difficulty: number): number {
   return TOP_RUNG_REACH_BY_BAND[baseTierFor(difficulty)] ?? 1
@@ -374,9 +376,12 @@ export function bandPosition(difficulty: number): number {
 
 // Odds of upgrading one rung above the base tier (step 1 = the first rung,
 // step 2 = the second). Only the ordinary rungs below S use this.
+// Quadratic ease-out rather than Math.exp: plain arithmetic is bit-identical on
+// every JS engine, so server and clients roll the same ceiling.
 export function upgradeOdds(valor: number, bandPos: number, step: number): number {
-  const index = Math.min(step, UPGRADE_STEP_DIVISORS.length) - 1
-  return Math.min(UPGRADE_STEP_CAPS[index]!, (valor * (1 + bandPos)) / UPGRADE_STEP_DIVISORS[index]!)
+  const index = Math.min(step, UPGRADE_STEP_CAPS.length) - 1
+  const reach = Math.min(1, Math.max(0, (valor * (1 + bandPos)) / (2 * VALOR_METER_MAX)))
+  return UPGRADE_STEP_CAPS[index]! * (1 - (1 - reach) ** 2)
 }
 
 // One risk curve per condition (team misfortunes and personal pacts alike).

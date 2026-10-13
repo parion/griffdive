@@ -366,8 +366,8 @@ base tier:     diff 3–5 → C   diff 6–7 → B   diff 8–10 → A
 meter:         the Valor gauge tops out at 11; Valor past it is Luck
 effective:     E = min(Valor, 11),  Luck = max(0, Valor − 11)
 ceiling roll:  start at the base tier; each step to the next tier succeeds:
-                 rung 1     min(0.65, E × (1 + bandPos) / 12)
-                 rung 2     min(0.25, E × (1 + bandPos) / 48)
+                 rung 1     0.95 × (1 − (1 − t)²)
+                 rung 2     0.30 × (1 − (1 − t)²)
                  A→S        reach × min(0.95, min(0.8, max(0, E − sFloor + 1)
                                                × topAlt / 18) + Luck × 0.05)
                  S→S+       reach × min(0.2, min(sPlusCap, max(0, E − sPlusFloor + 1)
@@ -376,6 +376,9 @@ ceiling roll:  start at the base tier; each step to the next tier succeeds:
                          base tier (C→B then B→A from a C base; B→A from a
                          B base). The second rung is a long reach: a low
                          dive can glimpse A but never farm it
+               t = min(1, E × (1 + bandPos) / 22): the ordinary rungs ease
+                         out and only touch their cap at the meter top at a
+                         band's top, so every point of Valor up to 11 pays
                bandPos = position within the difficulty band (0 floor → 1 top);
                          the ordinary rungs use it
                topAlt = the smooth ladder altitude, 1.0 at diff 3 → 2.0 at
@@ -383,7 +386,7 @@ ceiling roll:  start at the base tier; each step to the next tier succeeds:
                         scale with difficulty without sawtoothing at band edges
                sFloor / sPlusFloor = the S / S+ Valor floors, constant per band:
                         C / B / A → 3 / 3.5 / 4 and 5 / 6.5 / 8
-               reach = the top-rung scale per band, C / B / A → 0.25 / 0.6 / 1:
+               reach = the top-rung scale per band, C / B / A → 0.35 / 0.6 / 1:
                         S and S+ are a high-altitude prize, so below the A band
                         their odds (Luck included) are cut down
                sPlusCap = the S+ per-step cap, 0.1 below diff 6 then climbing
@@ -402,13 +405,17 @@ option roll:   the draft leads with one option at the ceiling (or the highest
 - Difficulty alone never buys S or S+; only stacked chosen risk does. The top rungs are **Valor
   gated** (`sValorFloorFor` / `sPlusValorFloorFor` in `shared/engine/config.ts`): the S / S+ floors
   are constant per difficulty band (`C / B / A → 3 / 3.5 / 4` and `5 / 6.5 / 8`). **The early ladder
-  is scavenged, not looted:** each ordinary rung above the base tier has its own cap and divisor
-  (`UPGRADE_STEP_CAPS` 0.65 / 0.25, `UPGRADE_STEP_DIVISORS` 12 / 48), and the top rungs are scaled by
-  the band's **reach** (`topRungReachFor`, C / B / A → 0.25 / 0.6 / 1). Playtests at diffs 3–5 —
-  a full squad on directives, a strain and stacked pacts — banked A and S gear before diff 5 under
-  the old shared 0.8 cap (A ≈ 64%, S ≈ 27% per diver per mission at diff 3, Valor 8). Now that dive
-  rolls A ≈ 11% and S ≈ 1%; even max overstack at diffs 3–5 stays under 20% A and 5% S. More chosen
-  risk still always improves every rung's odds, and diffs 8–10 are unchanged. The top rungs also
+  is scavenged, not looted:** each ordinary rung above the base tier has its own cap
+  (`UPGRADE_STEP_CAPS` 0.95 / 0.3) and eases out toward it (quadratic, `upgradeOdds`), reaching it
+  only at the meter top at a band's top, and the top rungs are scaled by the band's **reach**
+  (`topRungReachFor`, C / B / A → 0.35 / 0.6 / 1). Playtests at diffs 3–5 — a full squad on
+  directives, a strain and stacked pacts — banked A and S gear before diff 5 under the old shared
+  0.8 cap (A ≈ 64%, S ≈ 27% per diver per mission at diff 3, Valor 8). A later playtest found the
+  fix over-corrected: linear rungs hit flat 0.65 / 0.25 caps by Valor ~6, so at diff 5 a +3 pact
+  (Valor 6.5 → 9.5) left B/A pinned at 65% / 16% and moved S by one point. Now that same pact moves
+  B 79 → 93%, A 20 → 27% and S 2 → 5%; diff 3 at Valor 8 rolls A ≈ 10%, S ≈ 1%; even max overstack
+  at diffs 3–5 stays under 30% A and 10% S. More chosen risk always improves every rung's odds up
+  to the meter top, and diffs 8–10 are unchanged. The top rungs also
   use a smooth ladder altitude (`topRungAltitude`, 1.0 at diff 3 → 2.0 at diff 10) instead of the
   per-band `bandPosition`, so S+ climbs steadily with difficulty instead of dipping at every band
   boundary. **S+ scales with altitude**: its per-step cap rises from 0.12 at the super-sample
