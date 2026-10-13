@@ -8,7 +8,7 @@ import { DIVERS_CHOICE_OPTION_ID, itemPrice, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { activeMisfortune, allDiversPicked, awaitingDiverIds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, pactRiskOf, rewardPoolFor, shopStockFor, squadSize, teamRiskOf } from './selectors'
+import { activeMisfortune, allDiversPicked, availableCaches, awaitingDiverIds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, pactRiskOf, promotionPending, rewardPoolFor, shopStockFor, squadSize, teamRiskOf } from './selectors'
 import { deriveFront, deriveStrain } from './wheel'
 import type { DiveState, DiverState, EngineAction } from './types'
 
@@ -98,6 +98,17 @@ function withEarnedGear(state: DiveState, diverIds: string[] = ['p1'], count = 6
     personalInventories[id] = [...startingItemIds(SETTINGS.variant), ...earned]
   }
   return { ...state, personalInventories }
+}
+
+// A diver who won gear beyond the starting kit — only that gear ever parks.
+function withEarned(state: DiveState, playerId: string, itemIds: string[]): DiveState {
+  return {
+    ...state,
+    personalInventories: {
+      ...state.personalInventories,
+      [playerId]: [...(state.personalInventories[playerId] ?? []), ...itemIds],
+    },
+  }
 }
 
 function twoDiverState(): DiveState {
@@ -1095,11 +1106,11 @@ describe('identity actions', () => {
 })
 
 describe('KICK_DIVER', () => {
-  it('removes the diver, parks their inventory as a legacy cache', () => {
-    const state = reduce(twoDiverState(), { type: 'KICK_DIVER', playerId: 'p2' })
+  it('removes the diver, parks their earned gear as a legacy cache', () => {
+    const state = reduce(withEarned(twoDiverState(), 'p2', ['uavrecon']), { type: 'KICK_DIVER', playerId: 'p2' })
     expect(state.divers.map(diver => diver.id)).toEqual(['p1'])
     expect(state.personalInventories.p2).toBeUndefined()
-    expect(state.legacyCaches.p2).toEqual(startingItemIds(SETTINGS.variant))
+    expect(state.legacyCaches.p2).toEqual({ name: 'B', itemIds: ['uavrecon'] })
     expect(state.personalInventories.p1?.length).toBeGreaterThan(0)
   })
 
@@ -1158,19 +1169,24 @@ describe('KICK_DIVER', () => {
 })
 
 describe('LEAVE_DIVE', () => {
-  it('parks the leaver\u2019s inventory as a legacy cache and frees the squad', () => {
-    const state = reduce(twoDiverState(), { type: 'LEAVE_DIVE', playerId: 'p2' })
+  it('parks the leaver\u2019s earned gear as a legacy cache and frees the squad', () => {
+    const state = reduce(withEarned(twoDiverState(), 'p2', ['uavrecon', 'uavrecon']), { type: 'LEAVE_DIVE', playerId: 'p2' })
     expect(state.divers.map(diver => diver.id)).toEqual(['p1'])
-    expect(state.legacyCaches.p2).toEqual(startingItemIds(SETTINGS.variant))
+    expect(state.legacyCaches.p2).toEqual({ name: 'B', itemIds: ['uavrecon'] })
     expect(state.personalInventories.p2).toBeUndefined()
   })
 
+  it('parks nothing for a leaver who only held the starting kit', () => {
+    const state = reduce(twoDiverState(), { type: 'LEAVE_DIVE', playerId: 'p2' })
+    expect(state.legacyCaches).toEqual({})
+  })
+
   it('transfers host to the earliest joiner when the host leaves', () => {
-    const state = reduce(twoDiverState(), { type: 'LEAVE_DIVE', playerId: 'p1' })
+    const state = reduce(withEarned(twoDiverState(), 'p1', ['uavrecon']), { type: 'LEAVE_DIVE', playerId: 'p1' })
     expect(state.divers.map(diver => diver.id)).toEqual(['p2'])
     expect(state.hostId).toBe('p2')
     expect(state.divers[0]?.isHost).toBe(true)
-    expect(state.legacyCaches.p1).toEqual(startingItemIds(SETTINGS.variant))
+    expect(state.legacyCaches.p1).toEqual({ name: 'A', itemIds: ['uavrecon'] })
   })
 
   it('never empties the room: the last diver cannot leave', () => {
@@ -1266,23 +1282,70 @@ describe('Field Promotion (mid-crusade catch-up)', () => {
 
   it('claims a legacy cache wholesale instead of the promotion', () => {
     let state = catchUpState()
-    state = { ...state, legacyCaches: { ...state.legacyCaches, departed: ['uavrecon'] } }
+    state = { ...state, legacyCaches: { ...state.legacyCaches, departed: { name: 'Departed', itemIds: ['uavrecon'] } } }
     const claimed = reduce(state, { type: 'CLAIM_CACHE', playerId: 'late', cacheOwnerId: 'departed' })
     expect(claimed.legacyCaches).toEqual({})
     expect(lateDiver(claimed).catchUpOwed).toBe(0)
-    expect(claimed.personalInventories.late).toContain('uavrecon')
+    expect(claimed.personalInventories.late).toEqual([...startingItemIds(SETTINGS.variant), 'uavrecon'])
+  })
+
+  it('never stacks a cache\u2019s items onto ones the joiner already holds', () => {
+    let state = catchUpState()
+    const starter = startingItemIds(SETTINGS.variant)[0]!
+    state = { ...state, legacyCaches: { departed: { name: 'Departed', itemIds: ['uavrecon', starter, 'uavrecon'] } } }
+    const claimed = reduce(state, { type: 'CLAIM_CACHE', playerId: 'late', cacheOwnerId: 'departed' })
+    const kit = claimed.personalInventories.late!
+    expect(new Set(kit).size).toBe(kit.length)
+    expect(kit).toContain('uavrecon')
+  })
+
+  it('keeps caches closed until the squad has completed an operation', () => {
+    let state = createDiveState(SETTINGS, 'p1', 'Griffin')
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
+    state = { ...state, phase: 'spin', wheel: null, legacyCaches: { departed: { name: 'Departed', itemIds: ['uavrecon'] } } }
+    state = joinDiver(state, 'late', 'Latecomer')!
+    expect(availableCaches(state)).toEqual([])
+    expect(promotionPending(state, lateDiver(state))).toBe(false)
+    expect(reduce(state, { type: 'CLAIM_CACHE', playerId: 'late', cacheOwnerId: 'departed' })).toBe(state)
+
+    const climbed = catchUpState(4)
+    const withCache = { ...climbed, legacyCaches: { departed: { name: 'Departed', itemIds: ['uavrecon'] } } }
+    expect(availableCaches(withCache)).toEqual([{ ownerId: 'departed', name: 'Departed', itemIds: ['uavrecon'] }])
+  })
+
+  it('freezes the offer: wheel spins and rerolls never reshuffle it', () => {
+    const state = catchUpState()
+    const before = catchUpOptionsFor(state, lateDiver(state)).map(option => option.optionId)
+    let spun = reduce(state, { type: 'SPIN_WHEEL', seed: 999 })
+    spun = reduce(spun, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 4242 })
+    expect(spun.seedHistory.length).toBeGreaterThan(state.seedHistory.length)
+    expect(catchUpOptionsFor(spun, lateDiver(spun)).map(option => option.optionId)).toEqual(before)
+    // A click made against the offer the joiner saw still lands.
+    const claimed = reduce(spun, { type: 'CLAIM_CATCHUP_OPTION', playerId: 'late', optionId: before[0]! })
+    expect(claimed.personalInventories.late).toContain(before[0])
+  })
+
+  it('stops holding the joiner once the promotion is settled', () => {
+    let state = catchUpState()
+    expect(promotionPending(state, lateDiver(state))).toBe(true)
+    while (lateDiver(state).catchUpOwed > 0) {
+      const option = catchUpOptionsFor(state, lateDiver(state))[0]!
+      state = reduce(state, { type: 'CLAIM_CATCHUP_OPTION', playerId: 'late', optionId: option.optionId })
+    }
+    expect(promotionPending(state, lateDiver(state))).toBe(false)
+    expect(promotionPending({ ...catchUpState(), phase: 'complete' }, lateDiver(catchUpState()))).toBe(false)
   })
 
   it('refuses a cache after promotion options were already rolled', () => {
     let state = catchUpState()
-    state = { ...state, legacyCaches: { ...state.legacyCaches, departed: ['uavrecon'] } }
+    state = { ...state, legacyCaches: { ...state.legacyCaches, departed: { name: 'Departed', itemIds: ['uavrecon'] } } }
     const option = catchUpOptionsFor(state, lateDiver(state))[0]
     if (!option) {
       throw new Error('expected a catch-up option')
     }
     state = reduce(state, { type: 'CLAIM_CATCHUP_OPTION', playerId: 'late', optionId: option.optionId })
     expect(reduce(state, { type: 'CLAIM_CACHE', playerId: 'late', cacheOwnerId: 'departed' })).toBe(state)
-    expect(state.legacyCaches.departed).toEqual(['uavrecon'])
+    expect(state.legacyCaches.departed?.itemIds).toEqual(['uavrecon'])
   })
 
   it('a joiner seated mid-mission skips the current draft instead of blocking it', () => {

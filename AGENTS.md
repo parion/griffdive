@@ -81,8 +81,8 @@ Update this table the moment a command lands.
   no progression logic in `app/components/**` — call engine selectors instead.
 - **Accessibility layer.** Reka UI is the primitive layer: import components explicitly from
   `reka-ui` (never rely on auto-imports). Repeated chrome gets a themed `App*` wrapper in `ui/` —
-  `AppDialog` (modals: `v-model:open`, required `title`, optional `description`/`size`/
-  `dismissible`/`showClose`, `#title`/`#description`/`#footer` slots), `AppTabs` (segmented tab
+  `AppDialog` (modals: `v-model:open`, required `title`, optional `description`/`size`
+  (`sm`–`xl`)/`dismissible`/`showClose`/`hideTitle` (title kept for assistive tech, header row dropped), `#title`/`#description`/`#actions` (header, right)/`#footer` slots), `AppTabs` (segmented tab
   strips: `v-model`, `tabs`, `label`), and `AppTooltip` (`content`, `disabled`; carries its own
   provider). Do not hand-roll dialogs, focus traps, scroll locks or tab strips. One-off controls
   use the Reka primitive directly (`RadioGroup` in `StarRating`/`CrusadeSetup`, `Checkbox` in

@@ -137,6 +137,13 @@ export interface MissionReport {
   samples?: SampleCounts
 }
 
+// A fallen diver's kit: who carried it (so the squad knows whose gear it is)
+// and the earned items it holds — never the starting kit.
+export interface LegacyCache {
+  name: string
+  itemIds: string[]
+}
+
 export interface DiveState {
   phase: DivePhase
   difficulty: number
@@ -173,9 +180,10 @@ export interface DiveState {
   rerollTokens: number
   completedCombos: string[]
   personalInventories: Record<string, string[]>
-  // Inventories parked by departed divers (kicked or left mid-crusade): a
-  // late joiner may claim one instead of rolling their Field Promotion.
-  legacyCaches: Record<string, string[]>
+  // Earned gear parked by departed divers (kicked, left, or left behind by a
+  // new session), keyed by their playerId: a late joiner may claim one instead
+  // of rolling their Field Promotion.
+  legacyCaches: Record<string, LegacyCache>
   offerSeed: number | null
   lastReport: MissionReport | null
   // Bonus honors for the current mission's reward window: the host-spun

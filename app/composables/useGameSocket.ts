@@ -25,6 +25,24 @@ export function storeSeat(roomCode: string, playerId: string): void {
   }
 }
 
+// Every seat this browser has held. A new session keys its fallen divers'
+// caches by the ids they held in the source room, so offering these on a first
+// hello lets a returning diver reclaim their own kit.
+function rememberedSeats(): string[] {
+  if (!import.meta.client) {
+    return []
+  }
+  const ids = new Set<string>()
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
+    const id = key?.startsWith(playerKey('')) ? localStorage.getItem(key) : null
+    if (id) {
+      ids.add(id)
+    }
+  }
+  return [...ids].slice(0, 20)
+}
+
 export function storedDiverName(): string {
   if (!import.meta.client) {
     return 'Diver'
@@ -156,10 +174,12 @@ export function useGameSocket(roomCode: string) {
 
   function hello(): void {
     const stored = import.meta.client ? localStorage.getItem(playerKey(roomCode)) : null
+    const knownIds = stored ? [] : rememberedSeats()
     const message: ClientMessage = {
       type: 'hello',
       name: storedDiverName(),
       ...(stored ? { playerId: stored } : {}),
+      ...(knownIds.length > 0 ? { knownIds } : {}),
     }
     send(JSON.stringify(message))
   }

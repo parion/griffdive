@@ -86,6 +86,13 @@ async function lastSnapshot(peer: FakePeer) {
   return message.snapshot
 }
 
+// Hand a seated diver gear beyond the starting kit — only earned gear parks.
+async function grantEarned(kv: RoomKV, code: string, playerId: string, itemIds: string[]): Promise<void> {
+  const room = await kv.getItem(code) as StoredRoom
+  room.state.personalInventories[playerId] = [...(room.state.personalInventories[playerId] ?? []), ...itemIds]
+  await kv.setItem(code, room)
+}
+
 describe('room-sync', () => {
   it('seats the first hello as host and broadcasts joins', async () => {
     const kv = fakeKV()
@@ -308,6 +315,7 @@ describe('room-sync', () => {
     await processAction(kv, peers, host, {
       action: { type: 'START_DIVE', settings: { variant: 'medium' } },
     })
+    await grantEarned(kv, code, joinerId, ['uavrecon'])
     sent(host).length = 0
 
     // A spoofed playerId still leaves the sender, never the named diver.
@@ -316,7 +324,7 @@ describe('room-sync', () => {
     })
     const snapshot = await lastSnapshot(host)
     expect(snapshot.divers.map(diver => diver.id)).not.toContain(joinerId)
-    expect(snapshot.legacyCaches[joinerId]?.length).toBeGreaterThan(0)
+    expect(snapshot.legacyCaches[joinerId]).toEqual({ name: 'B', itemIds: ['uavrecon'] })
     expect(snapshot.personalInventories[joinerId]).toBeUndefined()
 
     // The departed diver's live connection is unseated: no more actions.
@@ -345,11 +353,11 @@ describe('room-sync', () => {
     await processAction(kv, peers, host, {
       action: { type: 'START_DIVE', settings: { variant: 'medium' } },
     })
-    const banked = (await lastSnapshot(host)).personalInventories[joinerId]?.length ?? 0
-    expect(banked).toBeGreaterThan(0)
+    await grantEarned(kv, code, joinerId, ['uavrecon'])
+    const banked = (await kv.getItem(code) as StoredRoom).state.personalInventories[joinerId]!
 
     await processAction(kv, peers, joiner, { action: { type: 'LEAVE_DIVE', playerId: joinerId } })
-    expect((await lastSnapshot(host)).legacyCaches[joinerId]?.length).toBe(banked)
+    expect((await lastSnapshot(host)).legacyCaches[joinerId]?.itemIds).toEqual(['uavrecon'])
 
     // The same stored id comes back (same browser): reclaim, don't replace.
     const rejoin = fakePeer('ws-c')
@@ -359,7 +367,7 @@ describe('room-sync', () => {
     const welcome = welcomeOf(rejoin)
     expect(welcome.selfId).toBe(joinerId)
     expect(welcome.snapshot.legacyCaches[joinerId]).toBeUndefined()
-    expect(welcome.snapshot.personalInventories[joinerId]?.length).toBe(banked)
+    expect(welcome.snapshot.personalInventories[joinerId]).toEqual(banked)
     expect(welcome.snapshot.divers.map(diver => diver.id)).toContain(joinerId)
   })
 
@@ -743,6 +751,7 @@ describe('createRoomFromSave (personal session saves)', () => {
     let state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
     state = joinDiver(state, 'p2', 'Two')!
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
+    state = { ...state, personalInventories: { ...state.personalInventories, p1: [...state.personalInventories.p1!, 'uavrecon'] } }
     const save = {
       ...createSaveDoc(state, 'Session', new Date().toISOString()),
       roomCode: 'ABC123',
@@ -756,8 +765,38 @@ describe('createRoomFromSave (personal session saves)', () => {
     expect(room?.state.divers).toHaveLength(1)
     expect(room?.state.divers[0]!.name).toBe('Two Again')
     expect(room?.state.personalInventories.p1).toBeUndefined()
-    expect(room?.state.legacyCaches.p1).toBeDefined()
+    expect(room?.state.legacyCaches.p1).toEqual({ name: 'Griffin', itemIds: ['uavrecon'] })
     expect(room?.state.wheel?.seed).toBe(42)
+  })
+
+  it('recognizes a forked-out diver by a seat their browser remembers', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    let state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    state = joinDiver(state, 'p2', 'Two')!
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
+    state = { ...state, personalInventories: { ...state.personalInventories, p2: [...state.personalInventories.p2!, 'uavrecon'] } }
+    const { code } = await createRoomFromSave(kv, { ...createSaveDoc(state, 'Session', new Date().toISOString()), ownerId: 'p1' }, 'Griffin')
+
+    const owner = fakePeer('ws-a')
+    owner.context.roomCode = code
+    await processHello(kv, peers, owner, { playerId: 'p1', name: 'Griffin' })
+
+    // No seat stored for the new room, but the source room's id is remembered.
+    const returning = fakePeer('ws-b')
+    returning.context.roomCode = code
+    await processHello(kv, peers, returning, { name: 'Two', knownIds: ['someone-else', 'p2'] })
+    const welcome = welcomeOf(returning)
+    expect(welcome.selfId).toBe('p2')
+    expect(welcome.snapshot.legacyCaches.p2).toBeUndefined()
+    expect(welcome.snapshot.personalInventories.p2).toContain('uavrecon')
+    expect(welcome.snapshot.divers.find(diver => diver.id === 'p2')?.catchUpOwed).toBe(0)
+
+    // A stranger's remembered seats match nothing: a fresh joiner, new id.
+    const stranger = fakePeer('ws-c')
+    stranger.context.roomCode = code
+    await processHello(kv, peers, stranger, { name: 'New', knownIds: ['p2', 42, 'x'.repeat(200)] })
+    expect(welcomeOf(stranger).selfId).not.toBe('p2')
   })
 
   it('starts the new session with an empty purse and no reward tokens', async () => {

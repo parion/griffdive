@@ -43,8 +43,6 @@ const emit = defineEmits<{
   awardBonus: [playerIds: string[]]
   advance: []
   forfeit: [itemId: string]
-  claimCatchUpOption: [optionId: string]
-  claimCache: [cacheOwnerId: string]
   start: [settings: CrusadeSettings]
   kick: [diverId: string]
   transferHost: [diverId: string]
@@ -163,14 +161,6 @@ function kickDiver(diverId: string): void {
           Dismiss
         </button>
       </p>
-
-      <FieldPromotionCard
-        v-if="self && self.catchUpOwed > 0 && phase !== 'complete'"
-        :state="state"
-        :diver="self"
-        @claim-option="emit('claimCatchUpOption', $event)"
-        @claim-cache="emit('claimCache', $event)"
-      />
 
       <template v-if="!kicked">
         <DivePhaseLobby

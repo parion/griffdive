@@ -354,11 +354,22 @@ export async function enforceSaveCap(kv: RoomKV, keepCode: string, cap: number =
   }
 }
 
+const MAX_KNOWN_IDS = 20
+
+function knownIdsOf(raw: unknown): string[] {
+  if (!Array.isArray(raw)) {
+    return []
+  }
+  return raw
+    .filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 64)
+    .slice(0, MAX_KNOWN_IDS)
+}
+
 export async function processHello(
   kv: RoomKV,
   peers: PeerDirectory,
   peer: PeerLike,
-  payload: { name?: unknown, playerId?: unknown },
+  payload: { name?: unknown, playerId?: unknown, knownIds?: unknown },
   limits?: RoomLimits,
 ): Promise<void> {
   const requested = peer.context.roomCode ?? ''
@@ -393,9 +404,13 @@ export async function processHello(
     const storedId = typeof payload.playerId === 'string' ? payload.playerId : null
     const known = storedId ? room.state.divers.find(diver => diver.id === storedId) : undefined
     const hostOnline = isOnline(peers, requested, room.state.hostId)
-    // A stored id whose seat is gone but whose inventory sits in legacyCaches is
-    // the same diver rejoining: reuse the id so joinDiver reclaims the cache.
-    const reclaiming = !!storedId && !known && !!room.state.legacyCaches[storedId]
+    // A stored id whose seat is gone but whose gear sits in legacyCaches is the
+    // same diver rejoining: reuse the id so joinDiver reclaims the cache. A
+    // forked session keys its caches by the source room's ids, so the browser
+    // also offers every seat it remembers from other rooms.
+    const reclaimId = known
+      ? null
+      : [storedId, ...knownIdsOf(payload.knownIds)].find(id => !!id && !!room.state.legacyCaches[id]) ?? null
     let playerId: string
     let changed = false
 
@@ -413,7 +428,7 @@ export async function processHello(
         sendError(peer, room.state.divers.length >= SQUAD_SIZE_MAX ? 'room-full' : 'dive-locked', blocked)
         return
       }
-      playerId = reclaiming ? storedId! : newPlayerId()
+      playerId = reclaimId ?? newPlayerId()
       const joined = joinDiver(room.state, playerId, sanitizeName(payload.name))
       if (!joined) {
         roomMetrics.recordHello('full')

@@ -5,7 +5,11 @@
 - **Engine unit tests** (Vitest, colocated `*.spec.ts`): reducer transitions, reward math at every
   score boundary (0, 2, 4, 6, 9), pact validity vs each misfortune, failed pacts and directives,
   reroll rules, forfeit paths,
-  mid-crusade catch-up (promotion sizing/rolls, cache claims, departure parking, seating window).
+  mid-crusade catch-up (promotion sizing/rolls, the frozen offer, cache claims and gating,
+  departure parking, seating window). Catch-up spans sessions, so `room.spec.ts` also runs the
+  whole join → claim → fork → join → claim lifecycle and checks **invariants after every step**
+  (kits are sets; caches are non-empty earned gear) — single-step tests with toy caches once
+  hid caches that stacked the starting kit.
 - **Golden tests:** seeded runs (`mulberry32`) recorded as JSON snapshots — spin results, reward
   option sets, full crusade replays. Goldens live in `shared/engine/__goldens__/`; regenerate with
   `GRIFFDIVE_UPDATE_GOLDENS=1 pnpm test`. From alpha on, a reducer change that breaks goldens must
@@ -32,6 +36,10 @@
    directive's Lock it in is in view; at
   768×1024 the phone shell widens to the tablet), personal session saves
   (`session-saves.spec.ts`: a seated diver forks the live room into a new session, a solo save hosts
-  an online session from the home record), PWA affordances
+  an online session from the home record), the Field Promotion gate (`field-promotion.spec.ts`: a
+  forked session seeded through `POST /api/rooms` — a forked-out diver reclaims their own kit, a
+  new joiner claims a fallen diver's kit, the next takes promotion picks). Room creation is
+  rate-limited per address (10/min) and the whole suite shares one address — prefer reusing a
+  room inside a spec over creating another, PWA affordances
   (manifest content type + icons served, SW reachable, shell head links). Chromium only;
   `pnpm exec playwright install chromium` after a fresh clone.
