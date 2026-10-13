@@ -439,14 +439,14 @@ export async function processHello(
       const seated = joined.divers.find(diver => diver.id === playerId)
       room.state = joined
       changed = true
-      roomMetrics.recordJoin(reclaimId !== null ? 'reclaim' : seated && seated.catchUpGranted > 0 ? 'mid_crusade' : 'new')
+      roomMetrics.recordJoin(reclaiming ? 'reclaim' : seated && seated.catchUpGranted > 0 ? 'mid_crusade' : 'new')
     }
 
     // Arrival bookkeeping: the hello's kind, and how long the room had been
     // quiet. The gap reads updatedAt before any write below moves it.
     if (!known) {
       const gapMs = Math.max(0, Date.now() - room.updatedAt)
-      if (reclaimId !== null) {
+      if (reclaiming) {
         roomMetrics.recordHello('reclaim')
         roomMetrics.recordRejoin(gapMs)
       }
