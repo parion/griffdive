@@ -3,8 +3,9 @@ import { createDiveState, reduce } from '~~/shared/engine/reducer'
 import { joinDiver } from '~~/shared/engine/room'
 import { createSaveDoc } from '~~/shared/engine/saves'
 import { pactOfferFor } from '~~/shared/engine/selectors'
-import { CRUSADE_TTL_MS, InvalidSaveError, ROOM_TTL_MS, RoomLimitError, createPeerDirectory, createRoom, createRoomFromSave, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, sweepRooms } from './room-sync'
+import { CRUSADE_TTL_MS, InvalidSaveError, ROOM_TTL_MS, RoomLimitError, censusRooms, createPeerDirectory, createRoom, createRoomFromSave, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, sweepRooms } from './room-sync'
 import type { PeerLike, RoomKV, StoredRoom } from './room-sync'
+import { roomMetrics } from './metrics'
 import { createRateLimiter } from './rate-limit'
 import type { ServerMessage } from '~~/shared/types/messages'
 
@@ -863,5 +864,85 @@ describe('rooms written by earlier builds (unversioned storage)', () => {
     const welcome = welcomeOf(host)
     expect(welcome.snapshot.settings).toMatchObject({ variant: 'medium' })
     expect(welcome.snapshot.personalInventories[welcome.selfId!]).toBeDefined()
+  })
+})
+
+// The observability wiring: the sync core must feed the metrics module at each
+// boundary. Values are read as deltas so the shared registry's earlier counts
+// (other tests, other rooms) never make an assertion brittle.
+function seriesValue(text: string, series: string): number {
+  const escaped = series.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = text.match(new RegExp(`^${escaped} ([\\d.e+-]+)$`, 'm'))
+  return match ? Number(match[1]) : 0
+}
+
+describe('room-sync observability', () => {
+  it('records the arrival funnel for each hello outcome', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    let before = await roomMetrics.registry.metrics()
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Griffin' })
+    const hostId = welcomeOf(host).selfId
+
+    let after = await roomMetrics.registry.metrics()
+    expect(seriesValue(after, 'griffdive_ws_hello_total{result="new"}') - seriesValue(before, 'griffdive_ws_hello_total{result="new"}')).toBe(1)
+    expect(seriesValue(after, 'griffdive_divers_joined_total{kind="new"}') - seriesValue(before, 'griffdive_divers_joined_total{kind="new"}')).toBe(1)
+
+    // A known seat reconnecting (refresh, second tab) is a rejoin with a gap,
+    // never a second diver.
+    before = after
+    const again = fakePeer('ws-b')
+    again.context.roomCode = code
+    await processHello(kv, peers, again, { name: 'Griffin', playerId: hostId })
+    after = await roomMetrics.registry.metrics()
+    expect(seriesValue(after, 'griffdive_ws_hello_total{result="rejoin"}') - seriesValue(before, 'griffdive_ws_hello_total{result="rejoin"}')).toBe(1)
+    expect(seriesValue(after, 'griffdive_rejoins_total{gap="<1h"}') - seriesValue(before, 'griffdive_rejoins_total{gap="<1h"}')).toBe(1)
+
+    // Dead invite links and malformed codes land in their own buckets.
+    before = after
+    const lost = fakePeer('ws-c')
+    lost.context.roomCode = 'ZZZZZZ'
+    await processHello(kv, peers, lost, { name: 'Lost' })
+    const malformed = fakePeer('ws-d')
+    malformed.context.roomCode = 'nope'
+    await processHello(kv, peers, malformed, { name: 'Bad' })
+    after = await roomMetrics.registry.metrics()
+    expect(seriesValue(after, 'griffdive_ws_hello_total{result="room_not_found"}') - seriesValue(before, 'griffdive_ws_hello_total{result="room_not_found"}')).toBe(1)
+    expect(seriesValue(after, 'griffdive_ws_hello_total{result="bad_code"}') - seriesValue(before, 'griffdive_ws_hello_total{result="bad_code"}')).toBe(1)
+  })
+
+  it('records the action seam and the phase dwell through processAction', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Griffin' })
+
+    const before = await roomMetrics.registry.metrics()
+    await processAction(kv, peers, host, { action: { type: 'START_DIVE', settings: { variant: 'medium' } } })
+    const after = await roomMetrics.registry.metrics()
+
+    expect(seriesValue(after, 'griffdive_dives_started_total') - seriesValue(before, 'griffdive_dives_started_total')).toBe(1)
+    expect(seriesValue(after, 'griffdive_missions_started_total{difficulty="3"}') - seriesValue(before, 'griffdive_missions_started_total{difficulty="3"}')).toBe(1)
+    expect(seriesValue(after, 'griffdive_squad_size_count') - seriesValue(before, 'griffdive_squad_size_count')).toBe(1)
+    // The one write path observed the lobby → spin transition.
+    expect(seriesValue(after, 'griffdive_phase_dwell_seconds_count{phase="lobby"}') - seriesValue(before, 'griffdive_phase_dwell_seconds_count{phase="lobby"}')).toBe(1)
+  })
+
+  it('censuses stored rooms without their state payloads', async () => {
+    const kv = fakeKV()
+    const code = await createRoom(kv)
+    const raw = await kv.getItem(code) as StoredRoom
+    raw.saved = { name: 'Pinned', savedAt: Date.now(), savedBy: 'p1' }
+    await kv.setItem(code, raw)
+
+    const entries = await censusRooms(kv)
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({ code, phase: 'lobby', difficulty: 3, saved: true })
   })
 })

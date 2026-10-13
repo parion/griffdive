@@ -1,4 +1,5 @@
 import { InvalidSaveError, RoomLimitError, createRoom, createRoomFromSave } from '../../utils/room-sync'
+import { roomMetrics } from '../../utils/metrics'
 import { roomKV } from '../../utils/room-storage'
 import { createRateLimiter } from '../../utils/rate-limit'
 
@@ -12,6 +13,7 @@ const MAX_SAVE_BODY_BYTES = 256 * 1024
 export default defineEventHandler(async (event) => {
   const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'
   if (!createLimiter.take(ip)) {
+    roomMetrics.recordRoomCreateRejected('rate_limited')
     throw createError({ statusCode: 429, statusMessage: 'Too many dives started — try again shortly.' })
   }
 
@@ -34,15 +36,21 @@ export default defineEventHandler(async (event) => {
 
   try {
     if (body?.save) {
-      return await createRoomFromSave(roomKV(), body.save, name)
+      const created = await createRoomFromSave(roomKV(), body.save, name)
+      roomMetrics.recordRoomCreated('resumed')
+      return created
     }
-    return { code: await createRoom(roomKV()), selfId: null }
+    const code = await createRoom(roomKV())
+    roomMetrics.recordRoomCreated('fresh')
+    return { code, selfId: null }
   }
   catch (error) {
     if (error instanceof RoomLimitError) {
+      roomMetrics.recordRoomCreateRejected('cap')
       throw createError({ statusCode: 503, statusMessage: 'The servers are full — try again later.' })
     }
     if (error instanceof InvalidSaveError) {
+      roomMetrics.recordRoomCreateRejected('invalid_save')
       throw createError({ statusCode: 400, statusMessage: error.message })
     }
     throw error
