@@ -52,6 +52,35 @@ const view = computed<'choice' | 'picks'>(() => rolling.value || !untouched.valu
 
 const picksLabel = computed(() => props.diver.catchUpOwed === 1 ? 'pick' : 'picks')
 
+// The call-in shows the picks as a honeycomb — one gold hex per pick owed,
+// stamped with the tier it rolls — echoing the picks chits on the draft.
+const HEX_R = 14
+const HEX_W = HEX_R * Math.sqrt(3)
+const HEX_DX = HEX_W + 3
+const HEX_DY = HEX_R * 1.5 + 2.6
+const HONEYCOMB: Record<number, [number, number][]> = {
+  1: [[0, 0]],
+  2: [[-HEX_DX / 2, 0], [HEX_DX / 2, 0]],
+  3: [[-HEX_DX / 2, -HEX_DY / 2], [HEX_DX / 2, -HEX_DY / 2], [0, HEX_DY / 2]],
+  4: [[0, -HEX_DY], [-HEX_DX / 2, 0], [HEX_DX / 2, 0], [0, HEX_DY]],
+}
+
+const pickHexes = computed(() => {
+  const count = Math.min(Math.max(props.diver.catchUpOwed, 1), 4)
+  return HONEYCOMB[count]!.map(([x, y]) => ({
+    x,
+    y,
+    points: [
+      [x, y - HEX_R],
+      [x + HEX_W / 2, y - HEX_R / 2],
+      [x + HEX_W / 2, y + HEX_R / 2],
+      [x, y + HEX_R],
+      [x - HEX_W / 2, y + HEX_R / 2],
+      [x - HEX_W / 2, y - HEX_R / 2],
+    ].map(point => point.map(n => n.toFixed(2)).join(',')).join(' '),
+  }))
+})
+
 function tileLabel(item: Item): string {
   return `${item.displayName}, ${item.tier.toUpperCase()} tier ${item.category.toLowerCase()}`
 }
@@ -132,9 +161,7 @@ function tileLabel(item: Item): string {
               :style="{ '--i': index }"
             >
               <div class="kit-portrait">
-                <div class="kit-frame grid-bg">
-                  <IconSalute class="kit-salute" />
-                </div>
+                <IconSalute class="kit-salute" />
                 <span class="kit-ribbon">
                   <span class="kit-name">{{ cache.name }}</span>
                 </span>
@@ -205,37 +232,30 @@ function tileLabel(item: Item): string {
         </div>
 
         <button
-          class="col roll cut cta-sweep"
+          class="col roll cut"
           type="button"
           :aria-label="`Promotion picks: draft ${diver.catchUpOwed} ${picksLabel} at ${baseTier} tier`"
           @click="rolling = true"
         >
           <svg
             class="roll-icon"
-            viewBox="0 0 64 96"
-            fill="none"
+            viewBox="-40 -40 80 80"
             aria-hidden="true"
           >
-            <path
-              class="roll-trail"
-              d="M32 0v18"
-            />
-            <path
-              class="roll-shell"
-              d="M32 20l14 12v38l-6 10H24l-6-10V32z"
-            />
-            <path
-              class="roll-seam"
-              d="M32 22v58"
-            />
-            <path
-              class="roll-fin"
-              d="M18 60l-10 14h10M46 60l10 14H46"
-            />
-            <path
-              class="roll-ground"
-              d="M4 92h56"
-            />
+            <g
+              v-for="(hex, index) in pickHexes"
+              :key="index"
+            >
+              <polygon
+                class="roll-hex"
+                :points="hex.points"
+              />
+              <text
+                class="disp roll-hex-tier"
+                :x="hex.x"
+                :y="hex.y"
+              >{{ baseTier }}</text>
+            </g>
           </svg>
           <span class="roll-copy">
             <span class="disp roll-word">Promotion picks</span>
@@ -347,13 +367,15 @@ function tileLabel(item: Item): string {
 }
 
 .kit {
+  --salute-cut: var(--panel);
   position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas: 'portrait tiles claim';
   align-items: center;
   gap: 0.9rem;
-  padding: 0.6rem 0.75rem 0.6rem 0.6rem;
+  padding: 0 0.75rem 0 0.4rem;
+  overflow: hidden;
   background: var(--panel);
   border: 1px solid var(--line-2);
   border-left: 3px solid currentColor;
@@ -363,25 +385,29 @@ function tileLabel(item: Item): string {
 .kit:hover,
 .kit:focus-within { border-color: color-mix(in srgb, currentColor 55%, var(--line-2)); border-left-color: currentColor; }
 
-/* The salute bleeds off the frame's bottom edge; the name rides a gold
-   memorial ribbon across it, overhanging the frame. */
-.kit-portrait { grid-area: portrait; position: relative; width: 6rem; }
-.kit-frame {
-  --salute-cut: var(--ground);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  height: 5.5rem;
-  overflow: hidden;
-  background-color: var(--ground);
-  border: 1px solid var(--line-2);
+/* The salute stands on the row itself, running off its bottom edge; the
+   name rides a gold memorial ribbon across it. */
+.kit-portrait {
+  grid-area: portrait;
+  position: relative;
+  align-self: stretch;
+  width: 6rem;
+  height: 4.75rem;
 }
-.kit-salute { flex-shrink: 0; width: 5.5rem; height: 5.5rem; margin-bottom: -0.45rem; color: var(--text); }
+.kit-salute {
+  position: absolute;
+  left: 50%;
+  bottom: -1rem;
+  width: 5.5rem;
+  height: 5.5rem;
+  translate: -50% 0;
+  color: var(--text);
+}
 .kit-ribbon {
   position: absolute;
-  left: -0.4rem;
-  right: -0.4rem;
-  bottom: -0.35rem;
+  left: -0.15rem;
+  right: -0.15rem;
+  bottom: 0.2rem;
   display: flex;
   justify-content: center;
   padding: 3px 10px;
@@ -389,7 +415,13 @@ function tileLabel(item: Item): string {
   color: var(--on-gold);
   clip-path: polygon(0 0, 100% 0, calc(100% - 6px) 50%, 100% 100%, 0 100%, 6px 50%);
   rotate: -3deg;
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+/* Pointer devices reveal the name on hover or focus; touch screens (and the
+   stacked phone layout) always show it. */
+@media (hover: hover) {
+  .kit-ribbon { opacity: 0; transition: opacity var(--dur-med) var(--ease-out); }
+  .kit:hover .kit-ribbon,
+  .kit:focus-within .kit-ribbon { opacity: 1; }
 }
 .kit-name {
   min-width: 0;
@@ -472,14 +504,14 @@ function tileLabel(item: Item): string {
 .roll:hover,
 .roll:focus-visible { border-color: var(--gold); background-color: color-mix(in srgb, var(--gold) 5%, var(--ground)); }
 
-.roll-icon { width: 4.5rem; height: 6.75rem; overflow: visible; }
-.roll-shell { fill: color-mix(in srgb, var(--gold) 16%, var(--raised)); stroke: var(--gold); stroke-width: 2; stroke-linejoin: round; }
-.roll-seam { stroke: var(--gold); stroke-width: 1.5; opacity: 0.55; }
-.roll-fin { stroke: var(--gold); stroke-width: 2; stroke-linejoin: round; }
-.roll-trail { stroke: var(--gold); stroke-width: 3; stroke-linecap: round; opacity: 0.6; }
-.roll-ground { stroke: var(--line-4); stroke-width: 2; stroke-dasharray: 4 4; }
-.roll:hover .roll-icon,
-.roll:focus-visible .roll-icon { animation: roll-hover 0.9s var(--ease-out) infinite alternate; }
+.roll-icon { width: 7rem; height: 7rem; overflow: visible; filter: drop-shadow(0 0 14px color-mix(in srgb, var(--gold) 28%, transparent)); }
+.roll-hex { fill: var(--gold); stroke: color-mix(in srgb, var(--gold) 60%, white); stroke-width: 1; stroke-linejoin: round; }
+.roll-hex-tier {
+  fill: var(--on-gold);
+  font-size: 13px;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
 
 .roll-copy { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
 .roll-word { font-size: 1.4rem; color: var(--gold); text-align: center; }
@@ -495,34 +527,29 @@ function tileLabel(item: Item): string {
 }
 .roll-tier { min-width: 20px; height: 18px; padding: 0 3px; font-size: 10px; border: 1px solid currentColor; }
 
-@keyframes roll-hover {
-  from { transform: translateY(0); }
-  to { transform: translateY(-5px); }
-}
-
 /* Phones (and any narrow dialog) stack the options: kits first, the call-in
    beneath, the divider turning horizontal. */
 @container (max-width: 40rem) {
+  /* The stacked row leaves room above the salute: the name rides there. */
+  .kit-ribbon { opacity: 1; top: 0.5rem; bottom: auto; }
   .choice { grid-template-columns: minmax(0, 1fr); }
   .or { padding: 0.2rem 0; }
   .or::before { top: 50%; bottom: auto; left: 0; right: 0; border-left: 0; border-top: 1px dashed var(--line-3); }
   .or span { padding: 0 0.6rem; }
   .roll { min-height: 0; flex-direction: row; gap: 1rem; padding: 1rem; }
-  .roll-icon { width: 2.6rem; height: 3.9rem; }
+  .roll-icon { width: 3.6rem; height: 3.6rem; flex-shrink: 0; }
   .roll-copy { align-items: flex-start; }
   .roll-word { text-align: left; font-size: 1.15rem; }
   .kit {
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas:
       'portrait tiles'
-      'claim claim';
+      'portrait claim';
+    row-gap: 0.5rem;
+    padding-top: 0.6rem;
   }
-  .kit-claim { justify-content: center; height: 40px; }
+  .kit-portrait { height: auto; min-height: 4.75rem; margin-top: -0.6rem; }
+  .kit-claim { justify-content: center; height: 38px; margin-bottom: 0.6rem; }
   .kit-list { max-height: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .roll:hover .roll-icon,
-  .roll:focus-visible .roll-icon { animation: none; }
 }
 </style>

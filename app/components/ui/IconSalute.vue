@@ -24,15 +24,15 @@
     />
     <path
       class="tube-edge"
-      d="M27 47 13.5 53.5 12 27"
+      d="M27 47 13.5 55.5 12 30"
     />
     <path
       class="tube-core"
-      d="M27 47 13.5 53.5 12 27"
+      d="M27 47 13.5 55.5 12 30"
     />
     <path
       class="line"
-      d="M8.4 33.5h7.4M8.6 37.2h7"
+      d="M8.4 36.5h7.4M8.6 40.2h7"
     />
     <path
       class="part"
@@ -41,14 +41,14 @@
     <rect
       class="part"
       x="5.5"
-      y="9.5"
+      y="12.5"
       width="13.5"
       height="16.5"
       rx="3.8"
     />
     <path
       class="line"
-      d="M8.5 14.6h7.6M8.5 18.6h7.6"
+      d="M8.5 17.6h7.6M8.5 21.6h7.6"
     />
     <path
       class="part"
