@@ -15,20 +15,26 @@ export interface CrusadeSettings {
   mode?: CrusadeMode
 }
 
-export type DivePhase
-  = | 'lobby'
-    | 'spin'
-    | 'decision'
-    | 'strain'
-    // The wheel decision is in but the host has not dealt the pact hand yet:
-    // the wheel screen holds with a "Deal the pacts" CTA (host-only). Keeps the
-    // hand from being dealt (or the offer shown) before the squad is ready.
-    | 'deal'
-    | 'pacts'
-    | 'diving'
-    | 'rewards'
-    | 'forfeit'
-    | 'complete'
+// Every phase a dive can sit in, in mission order. The array is the runtime
+// truth (the observability layer enumerates it); the type derives from it, so
+// the two can never drift.
+export const DIVE_PHASES = [
+  'lobby',
+  'spin',
+  'decision',
+  'strain',
+  // The wheel decision is in but the host has not dealt the pact hand yet:
+  // the wheel screen holds with a "Deal the pacts" CTA (host-only). Keeps the
+  // hand from being dealt (or the offer shown) before the squad is ready.
+  'deal',
+  'pacts',
+  'diving',
+  'rewards',
+  'forfeit',
+  'complete',
+] as const
+
+export type DivePhase = (typeof DIVE_PHASES)[number]
 
 export interface DiverState {
   id: string
@@ -131,6 +137,13 @@ export interface MissionReport {
   samples?: SampleCounts
 }
 
+// A fallen diver's kit: who carried it (so the squad knows whose gear it is)
+// and the earned items it holds — never the starting kit.
+export interface LegacyCache {
+  name: string
+  itemIds: string[]
+}
+
 export interface DiveState {
   phase: DivePhase
   difficulty: number
@@ -167,9 +180,10 @@ export interface DiveState {
   rerollTokens: number
   completedCombos: string[]
   personalInventories: Record<string, string[]>
-  // Inventories parked by departed divers (kicked or left mid-crusade): a
-  // late joiner may claim one instead of rolling their Field Promotion.
-  legacyCaches: Record<string, string[]>
+  // Earned gear parked by departed divers (kicked, left, or left behind by a
+  // new session), keyed by their playerId: a late joiner may claim one instead
+  // of rolling their Field Promotion.
+  legacyCaches: Record<string, LegacyCache>
   offerSeed: number | null
   lastReport: MissionReport | null
   // Bonus honors for the current mission's reward window: the host-spun

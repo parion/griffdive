@@ -95,6 +95,22 @@ engine.
   `SquadDraftBoard` shows each squadmate's offer as small tier-edged tiles with their ceiling and
   status — the banked tile pops and glows, the rest fade, bans are crossed out — and it stays up
   after the diver picks so the squad can compare pulls.
+  **The Field Promotion is a choice, then a draft:** `FieldPromotionGate` carries a stylized
+  header (teal rank chevrons — one per pick granted — over a display-font title, Warbonds in the
+  header actions) and opens on two columns (stacked under 40rem). The left lists fallen divers'
+  kits under a one-line italic subline, each kit a single tight tier-edged row led by
+  `IconSalute` — a line sketch of a saluting Helldiver, outlines in currentColor, parts filled with
+  `--salute-cut` so nearer parts occlude — standing on the row itself (no frame), taller than the
+  row and running off its bottom edge, under a tilted gold memorial ribbon carrying the diver's
+  name (pointer devices fade it in on hover/focus; touch always shows it, and the stacked phone layout moves it into the space above the salute); then the item tiles in the
+  squad-board tile language (hover/focus labels via `AppTooltip`, best gear first); then Claim
+  kit. The right column *is* the call-in button, static (no sweep or hover motion): a honeycomb
+  of gold hexes — one per pick owed, each stamped with the base tier — echoing the picks chits on
+  the draft. Calling in is final (no way back) and
+  hands off to the reward draft's cabinet (`RewardDraft variant="promotion"`, titled Promotion
+  Picks) with the dialog's own header hidden (`hideTitle`): no ceiling roll, stars, tokens, squad
+  board or footer — capped, centred pods, the picks-left chits and Warbonds on the header's right
+  (chits only on phones), and a fresh drop after every claim.
 - **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav) on every
   route except the dive, which renders its own `DiveTopBar` (crusade + difficulty emblem + room
   code/copy + Tutorial + the labelled Codex/Warbonds ship nav — labels, never bare icons; the

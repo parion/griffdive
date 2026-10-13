@@ -13,8 +13,8 @@ import {
   SQUAD_SIZE_MAX,
   missionsPerOperation,
 } from './config'
-import { VARIANTS, catchUpOpsBehind, startingItemIds } from './progression'
-import type { DivePhase, DiveState, DiverState, MajorOrderSelection, WheelResult } from './types'
+import { VARIANTS, catchUpOpsBehind, earnedKit, mergeKit, startingItemIds } from './progression'
+import type { DivePhase, DiveState, DiverState, LegacyCache, MajorOrderSelection, WheelResult } from './types'
 
 // A freshly created room: no settings, no divers. The first joiner becomes
 // host; START_DIVE applies the variant kit to everyone present.
@@ -82,20 +82,13 @@ export function joinDiver(state: DiveState, playerId: string, name: string): Div
   const legacyCaches = Object.fromEntries(
     Object.entries(state.legacyCaches).filter(([id]) => id !== playerId),
   )
-  let inventory: string[]
-  let catchUpGranted = 0
-  if (restoredCache) {
-    inventory = restoredCache
-  }
-  else {
-    inventory = state.settings ? startingItemIds(state.settings.variant, state.settings.mode) : []
-    if (state.settings) {
-      catchUpGranted = Math.min(
-        CATCHUP_CAP,
-        catchUpOpsBehind(state.difficulty, state.settings.variant),
-      )
-    }
-  }
+  const startingKit = state.settings ? startingItemIds(state.settings.variant, state.settings.mode) : []
+  // A cache holds only earned gear: the returning diver is reissued the
+  // starting kit and gets their winnings back on top, with no promotion owed.
+  const inventory = restoredCache ? mergeKit(startingKit, restoredCache.itemIds) : startingKit
+  const catchUpGranted = !restoredCache && state.settings
+    ? Math.min(CATCHUP_CAP, catchUpOpsBehind(state.difficulty, state.settings.variant))
+    : 0
   const diver: DiverState = {
     id: playerId,
     name,
@@ -276,9 +269,9 @@ function resolveStrandedForfeit(state: DiveState): DiveState {
   }
   let legacyCaches = state.legacyCaches
   if (!chosen) {
-    for (const [id, items] of Object.entries(legacyCaches)) {
-      if (items.length > 0) {
-        legacyCaches = { ...legacyCaches, [id]: items.slice(1) }
+    for (const [id, cache] of Object.entries(legacyCaches)) {
+      if (cache.itemIds.length > 0) {
+        legacyCaches = { ...legacyCaches, [id]: { ...cache, itemIds: cache.itemIds.slice(1) } }
         break
       }
     }
@@ -318,8 +311,9 @@ function resolveStrandedForfeit(state: DiveState): DiveState {
 
 // Seed a brand-new room from a personal session save: the forker takes their
 // seat as host exactly where the crusade stopped, and every other diver leaves
-// — their kits park as legacy caches any new joiner can claim instead of a
-// Field Promotion. No past-player matching: caches are communal gear. Returns
+// — their earned gear parks as legacy caches any new joiner can claim instead
+// of a Field Promotion, keyed by the departed diver's id so a returning browser
+// that still remembers that id reclaims its own kit. Returns
 // null when the save cannot be continued (complete crusade or malformed wheel
 // state); an unstarted lobby continues as a fresh lobby.
 export function forkCrusade(
@@ -362,20 +356,17 @@ export function forkCrusade(
     ?? divers.find(diver => diver.id === state.hostId)
     ?? divers[0]!
 
-  const inventories: Record<string, string[]> = {}
+  const { variant, mode } = state.settings
+  const ownerKit = [...new Set(stringArray(state.personalInventories?.[owner.id], 1000))]
+  // Only the latest session's squad parks: caches inherited from an earlier
+  // session were that session's to claim, and each fork re-parking them piled
+  // up stale kits. A diver who earned nothing beyond the starting kit leaves
+  // nothing worth claiming.
+  const legacyCaches: Record<string, LegacyCache> = {}
   for (const diver of divers) {
-    inventories[diver.id] = stringArray(state.personalInventories?.[diver.id], 1000)
-  }
-  const legacyCaches: Record<string, string[]> = {}
-  for (const [id, items] of Object.entries(state.legacyCaches ?? {})) {
-    const kept = stringArray(items, 1000)
-    if (id !== owner.id && kept.length > 0) {
-      legacyCaches[id] = kept
-    }
-  }
-  for (const diver of divers) {
-    if (diver.id !== owner.id && inventories[diver.id]!.length > 0) {
-      legacyCaches[diver.id] = inventories[diver.id]!
+    const earned = earnedKit(stringArray(state.personalInventories?.[diver.id], 1000), variant, mode)
+    if (diver.id !== owner.id && earned.length > 0) {
+      legacyCaches[diver.id] = { name: diver.name, itemIds: earned }
     }
   }
 
@@ -393,8 +384,8 @@ export function forkCrusade(
     ...state,
     phase: state.phase === 'pacts' && ownerDiver.pactsLocked ? 'diving' : state.phase,
     settings: {
-      variant: state.settings.variant,
-      ...(state.settings.mode === 'seaf' || state.settings.mode === 'penance' ? { mode: state.settings.mode } : {}),
+      variant,
+      ...(mode === 'seaf' || mode === 'penance' ? { mode } : {}),
     },
     difficulty,
     missionIndex: clampInt(state.missionIndex, 0, 100_000, 0),
@@ -412,7 +403,7 @@ export function forkCrusade(
     majorOrder: sanitizeMajorOrder(state.majorOrder),
     rerollTokens: clampInt(state.rerollTokens, 0, 10, REROLL_TOKENS_PER_OPERATION),
     completedCombos: stringArray(state.completedCombos, 2000),
-    personalInventories: { [owner.id]: inventories[owner.id]! },
+    personalInventories: { [owner.id]: ownerKit },
     legacyCaches,
     offerSeed: typeof state.offerSeed === 'number' && Number.isFinite(state.offerSeed) ? state.offerSeed : null,
     lastReport: state.lastReport ?? null,

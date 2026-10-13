@@ -622,19 +622,35 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   "a zero-Valor dive always rolls its base tier" rule. No ceiling roll, so S/S+ and Liberty's Cross
   are structurally unreachable. Risk remains the joiner's choice from their first mission; the
   promotion only buys altitude parity.
-- **Derivation:** the offer derives from the last spun seed folded with the picks already claimed
+- **Derivation:** the offer is **frozen to the diver**: it derives from the diver's own id (a
+  server-minted random id, fixed for the seat) folded with the picks already claimed
   (`catchUpOptionsFor` in `shared/engine/selectors.ts`) — deterministic, never stored, no reroll
-  surface. **Every claim re-rolls a fresh offer** of `catchUpGranted` options; items the joiner
-  already holds (and starting-kit/banned items) are excluded, so each offer stays full-size.
-- **Ceremony is soft:** the joiner claims picks whenever it suits them (`CLAIM_CATCHUP_OPTION`,
-  self-service, one per pick). It never gates squad progress — unlike the reward draft, where
-  `allDiversPicked` blocks `ADVANCE`.
-- **Legacy caches:** every departure (kicked via `KICK_DIVER` or voluntary via `LEAVE_DIVE`, both
-  self-service) parks the diver's inventory as `legacyCaches[playerId]` instead of deleting it.
-  A mid-crusade joiner with an untouched promotion may claim one cache wholesale
-  (`CLAIM_CACHE`) *instead of* rolling the promotion — claiming after rolling options is refused,
-  so the two never stack. The same diver rejoining under their stored playerId reclaims their
-  unclaimed cache automatically (soft-kick parity: their link still seats them).
+  surface. The squad's wheel spins and rerolls never reshuffle it. **Every claim re-rolls a fresh
+  offer** of `catchUpGranted` options; items the joiner already holds (and starting-kit/banned
+  items) are excluded, so each offer stays full-size.
+- **Settled before diving:** a joiner with a promotion pending (`promotionPending`: picks owed and
+  an offer or cache to spend them on) is held at the **Field Promotion gate** — a non-dismissible
+  dialog that opens once the name gate, briefing and Warbonds drawer are done (the offer draws from
+  the declared warbonds) — and claims picks (`CLAIM_CATCHUP_OPTION`, self-service, one per pick) or
+  a cache until it is spent. The gate holds only the joiner's own screen; it never gates squad
+  progress through the engine — unlike the reward draft, where `allDiversPicked` blocks `ADVANCE`.
+- **Inventories are sets.** No path ever stores an item id twice in a diver's kit: claims and
+  restores merge (`mergeKit`), and `normalizeRoomState` repairs older rooms and saves (dedupes
+  kits, strips caches back to earned gear, drops empty caches).
+- **Legacy caches hold earned gear only:** every departure (kicked via `KICK_DIVER` or voluntary via
+  `LEAVE_DIVE`, both self-service) parks the diver's **earned kit** — their inventory minus the
+  starting kit, each item once (`earnedKit` in `shared/engine/progression.ts`) — as
+  `legacyCaches[playerId] = { name, itemIds }`, named after the diver who carried it so joiners
+  see whose kit they inherit. A diver who earned nothing parks nothing. Caches are uncapped: claiming a
+  fallen diver's kit is the encouraged way back to altitude.
+- **Caches open after the first operation:** `availableCaches` offers nothing until the squad has
+  completed at least one operation (`catchUpOpsBehind ≥ 1`) — the same point a joiner starts owing a
+  promotion. A joiner with an untouched promotion may claim one cache wholesale (`CLAIM_CACHE`),
+  merged onto their starting kit, *instead of* the promotion picks — claiming after rolling options
+  is refused, so the two never stack. The same diver rejoining under a playerId that matches a
+  cache reclaims it automatically — reissued the starting kit plus their earned gear, no promotion
+  owed (soft-kick parity: their link still seats them). See Personal session saves for recognition
+  across a new session.
 - **Seating window:** fresh joins only seat in `lobby/spin/decision/strain/deal/pacts/diving` — never during
   `rewards`/`forfeit` (that would grant a draft for a mission the joiner never dove) or
   `complete`. The server rejects with `dive-locked`. A joiner seated mid-mission
@@ -651,7 +667,7 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   diver when the host steps away, and whoever comes back to a room whose host is offline takes it.
 - **A room is never abandoned:** the last seated diver cannot `LEAVE_DIVE` or be kicked, so a
   crusade is never reset — it waits for whoever comes back to it. Benching a diver for good is the
-  host's `KICK_DIVER` (their kit parks as a legacy cache).
+  host's `KICK_DIVER` (their earned gear parks as a legacy cache).
 
 ### Save model
 
@@ -668,7 +684,8 @@ mark (`misfortuneFailed: false`); `migrateV11toV12` adds the Requisition sample 
 (`sampleBank: 0`); `migrateV12toV13` remaps the five squad-size variants onto the three starting
 difficulties (Quickplay becomes the suicide start with the SEAF mode); `migrateV13toV14` adds
 presence (`away: false` on every diver); `migrateV14toV15` widens the single honors winner
-(`bonusWinnerId`) into the shareable list (`bonusWinnerIds`). The chain's tail also runs the idempotent
+(`bonusWinnerId`) into the shareable list (`bonusWinnerIds`); `migrateV15toV16` reshapes each legacy
+cache from a bare item list into `{ name, itemIds }` (pre-v16 kits read as "Fallen diver"). The chain's tail also runs the idempotent
 `normalizeRoomState` remap unconditionally: session mirrors copy unversioned room state, so a
 legacy variant id or a missing field must be corrected even in a doc stamped with a newer schema.
 Normalization drops
@@ -676,4 +693,4 @@ only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
 `achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, inventories, per-diver warbond declarations,
 `completedCombos` (misfortune × front × strain), reroll tokens, action log (capped), RNG seed
-history, legacy caches parked by departed divers, per-diver catch-up bookkeeping and sample purses.
+history, legacy caches (earned gear) parked by departed divers, per-diver catch-up bookkeeping and sample purses.

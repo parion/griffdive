@@ -3,7 +3,7 @@ import { SQUAD_SIZE_MAX, MAX_NAME_LENGTH } from '~~/shared/engine/config'
 import { createLobbyState, forkCrusade, joinDiver, seatingBlocked } from '~~/shared/engine/room'
 import { reduce } from '~~/shared/engine/reducer'
 import { normalizeRoomState, normalizeSaveDoc } from '~~/shared/engine/saves'
-import type { DiveState, EngineAction } from '~~/shared/engine/types'
+import type { DiveState, DivePhase, EngineAction } from '~~/shared/engine/types'
 import { isEngineActionType, isHostOnlyAction } from '~~/shared/types/messages'
 import type { DiveSaveInfo, ServerMessage, SteamLobbyInfo } from '~~/shared/types/messages'
 import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, isRoomCode } from '~~/shared/utils/room-code'
@@ -68,6 +68,14 @@ export interface StoredRoom {
   // The host-pasted Steam lobby deep link, relayed to every seated diver.
   // Cosmetic room metadata — never touches DiveState or the idle TTL.
   steam?: SteamLobbyInfo | null
+}
+
+// One room's scrape-time shape for the metrics census: no state, no payloads.
+export interface RoomCensusEntry {
+  code: string
+  phase: DivePhase
+  difficulty: number
+  saved: boolean
 }
 
 // Storage abstraction so the sync core stays unit-testable without Nitro.
@@ -169,7 +177,11 @@ export async function createRoom(
   while (await kv.getItem(code) != null) {
     code = newRoomCode()
   }
-  await kv.setItem(code, { code, state: seed ?? createLobbyState(), updatedAt: Date.now() } satisfies StoredRoom)
+  const state = seed ?? createLobbyState()
+  await kv.setItem(code, { code, state, updatedAt: Date.now() } satisfies StoredRoom)
+  // Seed the dwell clock at creation so lobby time is measured from here, not
+  // from the first state change.
+  roomMetrics.trackRoom(code, state.phase)
   return code
 }
 
@@ -207,7 +219,26 @@ export async function sweepRooms(kv: RoomKV, now: number = Date.now()): Promise<
       removed += 1
     }
   }
+  roomMetrics.recordRoomsSwept(removed)
   return removed
+}
+
+// The scrape-time census: what every stored room looks like right now, without
+// the state payloads. Read-only, no TTL pruning — the sweeper owns that.
+export async function censusRooms(kv: RoomKV): Promise<RoomCensusEntry[]> {
+  const entries: RoomCensusEntry[] = []
+  for (const code of await kv.getKeys()) {
+    const raw = await kv.getItem(code)
+    if (isStoredRoom(raw)) {
+      entries.push({
+        code,
+        phase: raw.state.phase,
+        difficulty: raw.state.difficulty,
+        saved: !!raw.saved,
+      })
+    }
+  }
+  return entries
 }
 
 export async function loadRoom(kv: RoomKV, code: string): Promise<StoredRoom | null> {
@@ -229,6 +260,9 @@ export async function loadRoom(kv: RoomKV, code: string): Promise<StoredRoom | n
 async function saveRoom(kv: RoomKV, room: StoredRoom): Promise<void> {
   room.updatedAt = Date.now()
   await kv.setItem(room.code, room)
+  // Every state write passes through here, so this is the one place that sees
+  // each phase transition exactly once (pins and Steam links keep the phase).
+  roomMetrics.observePhaseTransition(room.code, room.state.phase)
 }
 
 function sendError(peer: PeerLike, code: string, message: string): void {
@@ -320,20 +354,33 @@ export async function enforceSaveCap(kv: RoomKV, keepCode: string, cap: number =
   }
 }
 
+const MAX_KNOWN_IDS = 20
+
+function knownIdsOf(raw: unknown): string[] {
+  if (!Array.isArray(raw)) {
+    return []
+  }
+  return raw
+    .filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 64)
+    .slice(0, MAX_KNOWN_IDS)
+}
+
 export async function processHello(
   kv: RoomKV,
   peers: PeerDirectory,
   peer: PeerLike,
-  payload: { name?: unknown, playerId?: unknown },
+  payload: { name?: unknown, playerId?: unknown, knownIds?: unknown },
   limits?: RoomLimits,
 ): Promise<void> {
   const requested = peer.context.roomCode ?? ''
   if (!requested) {
+    roomMetrics.recordHello('bad_code')
     sendError(peer, 'bad-room', 'Missing room code')
     return
   }
 
   if (!isRoomCode(requested)) {
+    roomMetrics.recordHello('bad_code')
     sendError(peer, 'bad-room', 'Invalid room code')
     return
   }
@@ -341,6 +388,7 @@ export async function processHello(
   // Throttle joins before any storage work: this is the room-code brute-force
   // guard as much as a connection-flood guard.
   if (limits?.hello && !limits.hello.take(peer.context.clientIp ?? peer.remoteAddress ?? 'unknown')) {
+    roomMetrics.recordHello('rate_limited')
     sendError(peer, 'rate-limited', 'Too many join attempts — try again shortly')
     return
   }
@@ -348,6 +396,7 @@ export async function processHello(
   await withRoomLock(requested, async () => {
     const room = await loadRoom(kv, requested)
     if (!room) {
+      roomMetrics.recordHello('room_not_found')
       sendError(peer, 'room-not-found', `No dive found for code ${requested}`)
       return
     }
@@ -355,9 +404,13 @@ export async function processHello(
     const storedId = typeof payload.playerId === 'string' ? payload.playerId : null
     const known = storedId ? room.state.divers.find(diver => diver.id === storedId) : undefined
     const hostOnline = isOnline(peers, requested, room.state.hostId)
-    // A stored id whose seat is gone but whose inventory sits in legacyCaches is
-    // the same diver rejoining: reuse the id so joinDiver reclaims the cache.
-    const reclaiming = !!storedId && !known && !!room.state.legacyCaches[storedId]
+    // A stored id whose seat is gone but whose gear sits in legacyCaches is the
+    // same diver rejoining: reuse the id so joinDiver reclaims the cache. A
+    // forked session keys its caches by the source room's ids, so the browser
+    // also offers every seat it remembers from other rooms.
+    const reclaimId = known
+      ? null
+      : [storedId, ...knownIdsOf(payload.knownIds)].find(id => !!id && !!room.state.legacyCaches[id]) ?? null
     let playerId: string
     let changed = false
 
@@ -371,23 +424,48 @@ export async function processHello(
     else {
       const blocked = seatingBlocked(room.state)
       if (blocked) {
+        roomMetrics.recordHello(room.state.divers.length >= SQUAD_SIZE_MAX ? 'full' : 'locked')
         sendError(peer, room.state.divers.length >= SQUAD_SIZE_MAX ? 'room-full' : 'dive-locked', blocked)
         return
       }
-      playerId = reclaiming ? storedId! : newPlayerId()
+      playerId = reclaimId ?? newPlayerId()
       const joined = joinDiver(room.state, playerId, sanitizeName(payload.name))
       if (!joined) {
+        roomMetrics.recordHello('full')
         sendError(peer, 'room-full', 'Dive squad is full')
         return
       }
+      const seated = joined.divers.find(diver => diver.id === playerId)
       room.state = joined
       changed = true
+      roomMetrics.recordJoin(reclaiming ? 'reclaim' : seated && seated.catchUpGranted > 0 ? 'mid_crusade' : 'new')
+    }
+
+    // Arrival bookkeeping: the hello's kind, and how long the room had been
+    // quiet. The gap reads updatedAt before any write below moves it.
+    if (!known) {
+      const gapMs = Math.max(0, Date.now() - room.updatedAt)
+      if (reclaiming) {
+        roomMetrics.recordHello('reclaim')
+        roomMetrics.recordRejoin(gapMs)
+      }
+      else {
+        roomMetrics.recordHello('new')
+      }
+    }
+    else {
+      roomMetrics.recordHello('rejoin')
+      roomMetrics.recordRejoin(Math.max(0, Date.now() - room.updatedAt))
+      if (known.away) {
+        roomMetrics.recordPresence('returned')
+      }
     }
 
     // Whoever comes back to a room whose host is gone takes the helm — a
     // crusade never waits on one particular diver.
     if (room.state.hostId !== playerId && !hostOnline) {
       room.state = reduce(room.state, { type: 'TRANSFER_HOST', playerId })
+      roomMetrics.recordHostTransfer('offline_host')
       changed = true
     }
 
@@ -503,11 +581,28 @@ export async function processAction(
       return
     }
     if (next === room.state) {
+      // The one refusal with a player-facing cause: a directive the squad is
+      // not allowed to accept because it would strand someone below HD2's four
+      // stratagems. The reducer refuses silently, so the count lives here.
+      const deciding = room.state.phase === 'decision'
+      const switching = (room.state.phase === 'strain' || room.state.phase === 'deal' || room.state.phase === 'pacts')
+        && !room.state.divers.some(diver => diver.pactsLocked)
+      if (
+        enforced.type === 'ACCEPT_MISFORTUNE'
+        && enforced.accepted
+        && (deciding || switching)
+        && !room.state.misfortuneAccepted
+        && room.state.wheel
+      ) {
+        roomMetrics.recordDirectiveRefused(room.state.wheel.misfortuneId, room.state.difficulty)
+      }
       return
     }
 
+    const before = room.state
     room.state = next
     await saveRoom(kv, room)
+    roomMetrics.recordAction(before, next, enforced)
     if (enforced.type === 'START_DIVE') {
       roomMetrics.recordDiveStarted()
     }
@@ -674,6 +769,7 @@ export async function processClose(kv: RoomKV, peers: PeerDirectory, peer: PeerL
       if (earliest) {
         const action: EngineAction = { type: 'TRANSFER_HOST', playerId: earliest.id }
         room.state = reduce(room.state, action)
+        roomMetrics.recordHostTransfer('disconnect')
         await saveRoom(kv, room)
         broadcastState(peers, roomCode, room.state, action, room.saved ?? null, room.steam ?? null)
         return
@@ -702,6 +798,7 @@ export async function markAwayIfOffline(kv: RoomKV, peers: PeerDirectory, roomCo
     }
     const action: EngineAction = { type: 'SET_AWAY', playerId, away: true }
     room.state = reduce(room.state, action)
+    roomMetrics.recordPresence('away')
     await saveRoom(kv, room)
     broadcastState(peers, roomCode, room.state, action, room.saved ?? null, room.steam ?? null)
   })

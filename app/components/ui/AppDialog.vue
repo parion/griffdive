@@ -8,15 +8,19 @@ const open = defineModel<boolean>('open', { required: true })
 const props = withDefaults(defineProps<{
   title: string
   description?: string
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   dismissible?: boolean
   showClose?: boolean
+  // Keeps the title for assistive tech but drops the header row, for content
+  // that brings its own heading.
+  hideTitle?: boolean
   contentClass?: string
 }>(), {
   description: undefined,
   size: 'md',
   dismissible: true,
   showClose: true,
+  hideTitle: false,
   contentClass: undefined,
 })
 
@@ -60,7 +64,10 @@ function blockDismiss(event: Event): void {
             :exit="{ opacity: 0, y: 12, scale: 0.98 }"
             :transition="SPRING_SNAP"
           >
-            <header class="app-dialog-head">
+            <header
+              class="app-dialog-head"
+              :class="{ 'sr-only': hideTitle }"
+            >
               <div class="app-dialog-heading">
                 <DialogTitle
                   as="h2"
@@ -79,6 +86,12 @@ function blockDismiss(event: Event): void {
                     {{ description }}
                   </slot>
                 </DialogDescription>
+              </div>
+              <div
+                v-if="$slots.actions"
+                class="app-dialog-actions"
+              >
+                <slot name="actions" />
               </div>
               <DialogClose
                 v-if="showClose"
@@ -130,6 +143,7 @@ function blockDismiss(event: Event): void {
 .app-dialog--sm { width: min(26rem, calc(100vw - 2rem)); }
 .app-dialog--md { width: min(42rem, calc(100vw - 2rem)); }
 .app-dialog--lg { width: min(52rem, calc(100vw - 2rem)); }
+.app-dialog--xl { width: min(64rem, calc(100vw - 2rem)); }
 
 .app-dialog-head {
   display: flex;
@@ -143,6 +157,7 @@ function blockDismiss(event: Event): void {
 }
 
 .app-dialog-heading { min-width: 0; }
+.app-dialog-actions { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
 .app-dialog-title { margin: 0; }
 .app-dialog-desc { margin: 0.15rem 0 0; }
 

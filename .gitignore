@@ -11,6 +11,10 @@ test-results
 playwright-report
 blob-report
 
+# Generated dashboard preview (pnpm dashboard:preview)
+grafana/dashboard-preview.html
+grafana/dashboard-preview.png
+
 # Node dependencies
 node_modules
 .pnpm-store/
