@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { dismissWarbondIntro } from './helpers'
+import { dismissWarbondIntro, expectJoinerLanded } from './helpers'
 
 test('any seated diver forks the crusade into a new session', async ({ browser }) => {
   const contextA = await browser.newContext()
@@ -20,7 +20,7 @@ test('any seated diver forks the crusade into a new session', async ({ browser }
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
-  await dismissWarbondIntro(pageB)
+  await expectJoinerLanded(pageB)
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
 
   // The host continues the crusade as a brand-new session: a fresh code, the
@@ -40,7 +40,7 @@ test('any seated diver forks the crusade into a new session', async ({ browser }
   await pageC.goto(pageA.url())
   await pageC.getByLabel('Your name').fill('Late')
   await pageC.getByRole('button', { name: 'Join the dive' }).click()
-  await dismissWarbondIntro(pageC)
+  await expectJoinerLanded(pageC)
   await expect(pageA.locator('.diver-chip')).toHaveCount(2)
   await expect(pageC.getByText('(you)')).toBeVisible()
 
@@ -76,7 +76,7 @@ test('a solo save hosts an online session from the home record', async ({ browse
   await pageB.goto(page.url())
   await pageB.getByLabel('Your name').fill('Late')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
-  await dismissWarbondIntro(pageB)
+  await expectJoinerLanded(pageB)
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
 
   await context.close()

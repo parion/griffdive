@@ -37,12 +37,18 @@
   screen from lobby to honors, plus confirm-failure and the surrender bar), tablet layout (`tablet-layout.spec.ts`: at
   1024×768 every phase fits the centre column without the page scrolling vertically, and the drawn
    directive's Lock it in is in view; at
-  768×1024 the phone shell widens to the tablet), personal session saves
+  768×1024 the phone shell widens to the tablet), the join briefing (`join-briefing.spec.ts`: a
+  named host skips every gate and gets the tutorial, a squadmate reads the one-page briefing — callsign
+  focused on load, Enter files it and opens the squad card, issued kit, Codex drawer, the dial's
+  scroll-in sweep — lands with no tutorial or Warbonds panel, and replays it as the
+  Field manual; the spec uses one room because creation is rate-limited per IP), personal session saves
   (`session-saves.spec.ts`: a seated diver forks the live room into a new session, a solo save hosts
   an online session from the home record), the Field Promotion gate (`field-promotion.spec.ts`: a
   forked session seeded through `POST /api/rooms` — a forked-out diver reclaims their own kit, a
   new joiner claims a fallen diver's kit, the next takes promotion picks). Room creation is
-  rate-limited per address (10/min) and the whole suite shares one address — prefer reusing a
+  rate-limited per address (10/min in production) and the whole suite shares one address, as are WebSocket joins (20/min), so the e2e server runs with `ROOM_CREATE_LIMIT=200` and
+  `ROOM_JOIN_LIMIT=400` (`playwright.config.ts`) — a capped join looks like a page stuck on
+  "Loading dive…", since the client doesn't surface `rate-limited` — still prefer reusing a
   room inside a spec over creating another, PWA affordances
   (manifest content type + icons served, SW reachable, shell head links). Chromium only;
   `pnpm exec playwright install chromium` after a fresh clone.

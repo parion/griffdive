@@ -54,3 +54,17 @@ export const CEILING_LEAD = 450
 export const CEILING_STEP = 680
 export const CEILING_HOLD = 950
 export const CEILING_DOCK = 720
+
+/**
+ * Join briefing registry (ms): once a callsign is filed, classes A–D are struck
+ * one every REGISTRY_BEAT and E lands; the Griffdiver stamp follows after
+ * REGISTRY_STAMP, and the squad card opens REGISTRY_HOLD after that. A saved
+ * callsign files itself after REGISTRY_AUTOFILE.
+ */
+export const REGISTRY_BEAT = 300
+export const REGISTRY_STAMP = 280
+export const REGISTRY_HOLD = 700
+export const REGISTRY_AUTOFILE = 800
+
+/** Join briefing Valor dial (ms): the scroll-in sweep moves Valor one point per DIAL_STEP. */
+export const DIAL_STEP = 450

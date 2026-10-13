@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { useLocalStorage } from '@vueuse/core'
+import { useIntervalFn, useLocalStorage } from '@vueuse/core'
 import { createSaveDoc } from '~~/shared/engine/saves'
 import { diverOptions, majorOrderFronts, pactRiskOf, promotionPending, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
-import type { CrusadeSettings, DiverState, EngineAction, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
-import { rememberDiverName, storeSeat } from '~/composables/useGameSocket'
+import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
+import { hasDiverName, rememberDiverName, storeSeat } from '~/composables/useGameSocket'
 
 const route = useRoute()
 const slotId = computed(() => String(route.params.id))
@@ -16,6 +16,7 @@ const { ownedWarbonds, setOwned } = useOwnedWarbonds()
 const { openWarbonds, warbondsOpen } = useDrawers()
 const { hasSeenWarbondIntro, markWarbondIntroSeen } = useWarbondIntro()
 const { hasSeenDiveIntro, markDiveIntroSeen } = useDiveIntro()
+const { markJoinBriefingSeen } = useJoinBriefing()
 const { isPhone } = usePhoneShell()
 
 const {
@@ -134,16 +135,24 @@ watch(ownedWarbonds, (codes) => {
   }
 })
 
-// A fresh browser gets the tutorial the moment the diver is seated (right after
-// the name gate). Its Warbonds step already declares ownership, so closing it
-// lands straight on the dive — chaining a second panel buried the game itself.
+// The tutorial teaches the host's controls, so it is a host's alone: a fresh
+// browser gets it the moment it is first seated as host (right after the name
+// gate). Its Warbonds step already declares ownership, so closing it lands
+// straight on the dive. Squadmates read the join briefing instead, before they
+// are seated, and the Tutorial control replays that for them.
 const briefingOpen = ref(false)
+const joinReviewOpen = ref(false)
 
-watch([self, state], ([diver, current]) => {
-  if (!diver || !current || briefingOpen.value || hasSeenDiveIntro.value) {
+// Only the dive's founding diver gets it unasked: a squadmate the crown later
+// migrates to (the host stepped away) is mid-dive, and reaches it from the
+// Tutorial control.
+watch(self, (diver, previous) => {
+  if (!diver || previous || briefingOpen.value || hasSeenDiveIntro.value || !session.selfIsHost.value) {
     return
   }
-  briefingOpen.value = true
+  if (state.value?.divers[0]?.id === diver.id) {
+    briefingOpen.value = true
+  }
 }, { immediate: true })
 
 function openWarbondsIntro(): void {
@@ -173,8 +182,53 @@ function closeBriefing(name: string): void {
 }
 
 function openBriefing(): void {
-  briefingOpen.value = true
+  if (session.selfIsHost.value) {
+    briefingOpen.value = true
+  }
+  else {
+    joinReviewOpen.value = true
+  }
 }
+
+// Before seating, the room is read once to tell the two first visits apart: an
+// empty room is the host's own fresh dive (the name gate, then the tutorial),
+// one that already holds a squad is a join by link (the join briefing). The
+// briefing keeps the read fresh so its roster tracks the squad while it reads.
+const joinPreview = ref<DiveState | null>(null)
+const joinRole = ref<'probing' | 'host' | 'joiner'>('probing')
+
+async function probeRoom(): Promise<void> {
+  try {
+    const res = await $fetch<{ state: DiveState }>(`/api/rooms/${slotId.value}`)
+    joinPreview.value = res.state
+    if (joinRole.value === 'probing') {
+      joinRole.value = res.state.divers.length > 0 ? 'joiner' : 'host'
+    }
+  }
+  catch {
+    if (joinRole.value === 'probing') {
+      joinRole.value = 'host'
+    }
+  }
+}
+
+const { pause: stopProbing, resume: startProbing } = useIntervalFn(probeRoom, 10_000, { immediate: false })
+
+watch(() => session.awaitingJoin.value, (held) => {
+  if (!held) {
+    stopProbing()
+    return
+  }
+  probeRoom()
+  startProbing()
+}, { immediate: true })
+
+// A host who already introduced themselves on an earlier dive needs no gate.
+watch(joinRole, (role) => {
+  if (role === 'host' && session.awaitingJoin.value && hasDiverName()) {
+    session.connect()
+  }
+})
 
 // Hostship moves under the squad's feet (disconnect migration) with no other
 // signal — announce the crown's arrival and departure.
@@ -335,15 +389,17 @@ function awardBonus(playerIds: string[]): void {
 }
 
 // A mid-crusade joiner settles their Field Promotion before they dive — held
-// back until the name gate, the briefing and the Warbonds drawer are done, as
-// the offer draws from the warbonds the diver declares there.
+// back until the join gate, the briefing (tutorial or Field manual) and the
+// Warbonds drawer are done, as the offer draws from the warbonds the diver
+// declares there.
 const promotionGateOpen = computed(() =>
   !!state.value
   && !!self.value
   && !kicked.value
   && !briefingOpen.value
+  && !joinReviewOpen.value
   && !warbondsOpen.value
-  && !session.awaitingName.value
+  && !session.awaitingJoin.value
   && promotionPending(state.value, self.value))
 
 function claimCatchUpOption(optionId: string): void {
@@ -490,11 +546,19 @@ function transferHost(diverId: string): void {
   dispatch({ type: 'TRANSFER_HOST', playerId: diverId })
 }
 
-// The name gate runs before joining: confirm stores the name so the first
-// hello seats this diver named, then the connection opens.
+// The gate runs before joining: confirm stores the name so the first hello
+// seats this diver named, then the connection opens.
 function confirmJoinName(name: string): void {
   rememberDiverName(name)
   session.connect()
+}
+
+// The join briefing covers warbond ownership and the tutorial's ground, so a
+// squadmate who read it lands on the dive with nothing else popping up.
+function confirmJoinBriefing(name: string): void {
+  markJoinBriefingSeen()
+  markWarbondIntroSeen()
+  confirmJoinName(name)
 }
 
 function launchCrusade(settings: CrusadeSettings): void {
@@ -505,18 +569,32 @@ function launchCrusade(settings: CrusadeSettings): void {
 
 <template>
   <div class="dive-page">
-    <JoinNameGate
-      v-if="session.awaitingName.value"
-      @confirm="confirmJoinName"
-    />
+    <template v-if="session.awaitingJoin.value">
+      <JoinBriefing
+        v-if="joinRole === 'joiner'"
+        :state="joinPreview"
+        :room-code="session.slotName.value"
+        @confirm="confirmJoinBriefing"
+      />
+      <JoinNameGate
+        v-else-if="joinRole === 'host' && !hasDiverName()"
+        @confirm="confirmJoinName"
+      />
+      <p
+        v-else
+        class="panel page muted"
+      >
+        Loading dive…
+      </p>
+    </template>
     <p
-      v-if="session.loadError.value"
+      v-else-if="session.loadError.value"
       class="panel page"
     >
       Dive not found. <NuxtLink to="/">Back to base</NuxtLink>
     </p>
     <section
-      v-else-if="session.mode === 'room' && !session.awaitingName.value && session.connectionFailed.value"
+      v-else-if="session.mode === 'room' && session.connectionFailed.value"
       class="panel page"
     >
       <h2>Can't reach the dive server</h2>
@@ -834,6 +912,22 @@ function launchCrusade(settings: CrusadeSettings): void {
       @claim-cache="claimCache"
       @open-warbonds="openWarbonds"
     />
+
+    <AppDialog
+      v-if="state && !session.selfIsHost.value"
+      v-model:open="joinReviewOpen"
+      title="Field manual"
+      description="What a squadmate does, and where your gear lives."
+      size="lg"
+    >
+      <JoinBriefing
+        :state="state"
+        :room-code="session.slotName.value"
+        :self-name="self?.name ?? ''"
+        review
+        @close="joinReviewOpen = false"
+      />
+    </AppDialog>
 
     <AppDialog
       v-model:open="newSessionOpen"

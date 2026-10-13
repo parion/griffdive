@@ -6,9 +6,10 @@ import { createRateLimiter } from '../utils/rate-limit'
 
 // Process-wide throttles: joins are the room-code brute-force surface, actions
 // the storage-write flood surface. Generous enough that real play never sees
-// them (a diver cannot click 120 times in 10 seconds).
+// them (a diver cannot click 120 times in 10 seconds). The e2e server raises
+// the join cap (ROOM_JOIN_LIMIT): the whole parallel suite shares one address.
 const limits: RoomLimits = {
-  hello: createRateLimiter(20, 60_000),
+  hello: createRateLimiter(Number.parseInt(process.env.ROOM_JOIN_LIMIT ?? '', 10) || 20, 60_000),
   action: createRateLimiter(120, 10_000),
 }
 

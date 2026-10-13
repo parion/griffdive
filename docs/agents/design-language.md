@@ -58,7 +58,8 @@ engine.
   `prefers-reduced-motion` (global CSS guard + explicit `matchMedia` in JS-driven reels and the
   wheel reveal).
   **Forward actions sweep:** every control that moves the squad on (Launch, the Spin hub, Deal,
-  Lock in, Mission complete / File report, Squad Honors / Advance, Forfeit, the tutorial's Next)
+  Lock in, Mission complete / File report, Squad Honors / Advance, Forfeit, the tutorial's Next,
+  the join briefing's Join the dive)
   carries `.cta-sweep` — the pending-directive sheen — only while it is actionable (disabled
   controls never sweep). `--sweep` tints it: on the reward screen the continue buttons take the
   banked item's tier colour, sweeping faster for S and S+. **Reveals ramp with rarity:** reward
@@ -169,9 +170,38 @@ engine.
   names). The
   Griffdiver Briefing (`BriefingOverlay.vue`) is presented as the **Griffdive tutorial**: a framed
   dialog (hazard edge, `TRAINING` badge, "Step n of 6") over the dimmed dive, never a full-bleed
-  takeover — players mistook the old briefing for the game. It opens once at first seat, commits
-  the name typed on its Identify step, never chains into the Warbonds panel (its Warbonds step
-  covers ownership), and is replayable from the dive header's Tutorial control. One structural breakpoint (1020px) flows the
+  takeover — players mistook the old briefing for the game. It is **the host's alone** (it teaches
+  the host's controls; a redesign for current mechanics is pending): it opens once at the founding
+  diver's first seat, commits the name typed on its Identify step, never chains into the Warbonds
+  panel (its Warbonds step covers ownership), and is replayable from the host's Tutorial control.
+  **Squadmates get `JoinBriefing.vue`** instead — playtesters joining by link drowned in a tutorial
+  for controls the host drives. It is one scrolling page, not steps or a coach-mark overlay (too
+  SaaS for a game): a hazard-edged top bar with the room code, then the hero — "You've been
+  drafted." beside the vertically centred **citizen registry** (it stays centred while the squad
+  card unfolds under it), whose callsign *is* the page's input (a bare field
+  whose only border is a dotted gold rule that breathes while empty, a pencil-marked `Callsign`
+  label, the cursor locked in on load). Filing the callsign (Enter, leaving the field, or a saved
+  name filing itself) rolls the class strip — A–D struck one per `REGISTRY_BEAT`, E slams in red,
+  the *Griffdiver* stamp lands — and only then does the live squad card (seats, host, difficulty,
+  phase, a Field Promotion note) unfold beneath it (a grid-row reveal, `inert` while folded); a
+  seating-blocked note never waits on it. Four numbered sections follow — **01 Identify** (padded off the hero;
+  a small khaki "Helldivers are Class A." over a display-size "You are Class E.", centred against the **issued surplus kit** from `startingItemIds`, grouped as icon tiles,
+  weapons wide; every other diver's callsign — squad seats and the hero's host — renders
+  uppercase in the registry's display type), **02 The host drives. You dive.** (the mission loop as six beat cards tagged Host
+  teal / You gold / Squad khaki, the `Your move` / `Stand by` cue legend, the forfeit footnote),
+  **03 Risk buys loot** (Risk → Valor → Ceiling → Loot chain and a dial with **Valor and
+  difficulty sliders** reading `ceilingOddsPercent`; the first time it scrolls into view it sweeps
+  Valor 2→6 and difficulty 3→5 together, one point per `DIAL_STEP`, until touched; its footer names
+  the dialled difficulty's base tier and the squad's real altitude), and **04 Where your gear
+  lives** — a teal blueprint *deck plan* of the screen they'll land on (desktop three-rail or phone
+  shell, picked by `usePhoneShell`) with numbered hex markers and stratagem-beacon pings, beside a
+  legend whose rows light their marker on hover/focus and whose Codex/Warbonds buttons open the
+  real drawers over the page. A sticky go-bar carries the callsign (an empty one is a button that
+  jumps to the field) and the `Join the dive` CTA, which sweeps only once it is live; joining never
+  waits on the registry animation. Timings live in `app/utils/motion.ts` (`REGISTRY_*`,
+  `DIAL_STEP`); reduced motion files and sweeps instantly. Inside the
+  dive the same component renders in `review` mode as the squadmate's **Field manual** dialog
+  (no input, `Back to the dive`). One structural breakpoint (1020px) flows the
   shell and stacks the rails. Below it `usePhoneShell` swaps the whole three-rail tree for
   `DivePhone` (`DivePhoneShell` + `Phone*`), a fixed-band shell whose phase content is a
   bottom-sheet/fixed-footer layout.

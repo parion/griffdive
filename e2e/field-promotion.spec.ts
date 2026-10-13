@@ -3,7 +3,7 @@ import { createDiveState, reduce } from '../shared/engine/reducer'
 import { joinDiver } from '../shared/engine/room'
 import { createSaveDoc } from '../shared/engine/saves'
 import type { DiveState } from '../shared/engine/types'
-import { dismissWarbondIntro } from './helpers'
+import { expectJoinerLanded } from './helpers'
 
 // A crusade one operation up (difficulty 4 on the medium start) whose two
 // other divers each earned gear — forked into a new session by its host, so
@@ -32,7 +32,7 @@ async function joinAs(page: Page, code: string, name: string): Promise<void> {
   await page.goto(`/dive/${code}`)
   await page.getByLabel('Your name').fill(name)
   await page.getByRole('button', { name: 'Join the dive' }).click()
-  await dismissWarbondIntro(page)
+  await expectJoinerLanded(page)
 }
 
 test('joiners settle their Field Promotion before they dive; a forked-out diver reclaims their kit', async ({ browser }) => {

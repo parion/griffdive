@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { dismissWarbondIntro, lockMisfortune } from './helpers'
+import { dismissWarbondIntro, expectJoinerLanded, lockMisfortune } from './helpers'
 
 // Picking a reward is self-service. The phone draft once gated it on host
 // control, so every non-host diver on a phone was locked out of their own pick.
@@ -21,7 +21,7 @@ test('phone draft: a non-host diver can bank their reward', async ({ browser }) 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
-  await dismissWarbondIntro(pageB)
+  await expectJoinerLanded(pageB)
 
   await pageA.getByRole('button', { name: 'Spin', exact: true }).click()
   await lockMisfortune(pageA)

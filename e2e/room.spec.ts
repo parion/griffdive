@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Browser } from '@playwright/test'
-import { dismissWarbondIntro, lockMisfortune } from './helpers'
+import { dismissWarbondIntro, expectJoinerLanded, lockMisfortune } from './helpers'
 
 test('two divers sync one dive; late joiner gets the snapshot', async ({ browser }) => {
   const contextA = await browser.newContext()
@@ -28,7 +28,7 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await expect(pageB.locator('.diver-chip')).toHaveCount(0)
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
-  await dismissWarbondIntro(pageB)
+  await expectJoinerLanded(pageB)
 
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
   await expect(pageB.getByText('(you)')).toBeVisible()
@@ -120,7 +120,7 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Sidekick')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
-  await dismissWarbondIntro(pageB)
+  await expectJoinerLanded(pageB)
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
 
   // Host spins, locks the misfortune in and declines the operation's strain;
@@ -164,7 +164,7 @@ test('the Codex slide-over keeps the host seated', async ({ browser }) => {
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
-  await dismissWarbondIntro(pageB)
+  await expectJoinerLanded(pageB)
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
 
   // Opening the Codex overlays the session — the socket stays mounted, so the
@@ -207,7 +207,7 @@ async function squadAtTheWheel(browser: Browser) {
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
-  await dismissWarbondIntro(pageB)
+  await expectJoinerLanded(pageB)
   await expect(pageB.locator('.diver-chip')).toHaveCount(2)
   return { contextA, contextB, pageA, pageB, code: pageA.url().split('/').pop()! }
 }
