@@ -389,15 +389,17 @@ function awardBonus(playerIds: string[]): void {
 }
 
 // A mid-crusade joiner settles their Field Promotion before they dive — held
-// back until the name gate, the briefing and the Warbonds drawer are done, as
-// the offer draws from the warbonds the diver declares there.
+// back until the join gate, the briefing (tutorial or Field manual) and the
+// Warbonds drawer are done, as the offer draws from the warbonds the diver
+// declares there.
 const promotionGateOpen = computed(() =>
   !!state.value
   && !!self.value
   && !kicked.value
   && !briefingOpen.value
+  && !joinReviewOpen.value
   && !warbondsOpen.value
-  && !session.awaitingName.value
+  && !session.awaitingJoin.value
   && promotionPending(state.value, self.value))
 
 function claimCatchUpOption(optionId: string): void {
