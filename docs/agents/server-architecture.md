@@ -83,7 +83,9 @@ app/
                    click-to-set time bar (both scrub: press and drag sets the value; the
                    tube's liquid level is the indicator and its editable number the keyboard
                    path), HoldButton — the press-and-hold confirm,
-                   ChangelogModal — GitHub deploy log shown from the alpha header chip, AppDrawer —
+                   ChangelogModal — GitHub release log shown from the alpha header chip: one phase
+                   card per deployment (on main / awaiting approval / deploying / live) with its
+                   commits grouped by conventional type (utils/changelog.ts shapes it), AppDrawer —
                    the themed right-hand Reka
                     Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer —
                     its two slide-overs, IconBook/IconWarbond — the nav leading icons,
@@ -103,14 +105,16 @@ app/
                    seated dive),
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
                    useMajorOrder (live war proxy → the picker's suggestion; null offline),
-                   useChangelog (GitHub deployments + commits → changelog entries, 10-min cache),
+                   useChangelog (GitHub release deployments + commits → phase-carded changelog
+                   entries via utils/changelog.ts, 10-min cache),
                    usePhoneShell (the 1020px breakpoint as JS, so the dive can swap the whole
                    three-rail tree for the phone shell)
   stores/          session.ts (Pinia: selfId, snapshot, online)
   utils/           seed.ts (client seed generation), kit.ts (Kit categories + owned-item list),
                    valor.ts (Valor source split + colours shared by the rail tab and meter),
                    brandMark.ts (the logo's only geometry — BrandMark.vue and icon.svg both
-                   derive from it)
+                   derive from it), changelog.ts (pure GitHub deployment/commit → release-card
+                   shaping behind useChangelog, unit-tested)
   assets/css/      main.css — global HD2 theme (two-font system, see Conventions)
 server/
   routes/ws.ts     defineWebSocketHandler — single endpoint, ?room={code}
