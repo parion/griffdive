@@ -3,7 +3,7 @@
 // mirrors the desktop dive page's phase switch, but every phase renders a
 // bottom-sheet composition instead of the three-rail terminal.
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
-import { bargainShelfFor, bargainsClosedReason, canBuyItem } from '~~/shared/engine/selectors'
+import { bargainLamp, bargainsClosedReason } from '~~/shared/engine/selectors'
 import type { CrusadeSettings, DiverState, DiveState, MajorOrderSelection, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -63,13 +63,9 @@ const phase = computed(() => props.state.phase)
 
 // The Bargains tile only rides the bar while the shop is open, so mid-mission
 // the actions keep the whole row. Its lamp says something on the shelf is
-// buyable right now.
+// buyable right now, and pulses for a fresh operation's restock.
 const bargainsOpen = computed(() => !props.kicked && props.self !== null && !bargainsClosedReason(props.state))
-const bargainReady = computed(() => {
-  const self = props.self
-  return self !== null && bargainShelfFor(props.state, self)
-    .some(slot => slot.item && canBuyItem(props.state, self, slot.item.id).allowed)
-})
+const lamp = computed(() => (props.self ? bargainLamp(props.state, props.self) : 'off'))
 
 // Host moderation rides the shell's bottom sheet: tapping a squadmate in the
 // bar opens their hand-over / kick actions.
@@ -258,12 +254,13 @@ function kickDiver(diverId: string): void {
         class="bar-bargains"
         type="button"
         aria-haspopup="dialog"
-        :aria-label="`Brasch's Bargains, ${self?.credits ?? 0} credits${bargainReady ? ', something affordable in stock' : ''}`"
+        :aria-label="`Brasch's Bargains, ${self?.credits ?? 0} credits${lamp === 'off' ? '' : lamp === 'restocked' ? ', restocked' : ', something affordable in stock'}`"
         @click="emit('openBargains')"
       >
         <span
-          v-if="bargainReady"
-          class="lamp gold pulse bb-lamp"
+          v-if="lamp !== 'off'"
+          class="lamp gold bb-lamp"
+          :class="{ pulse: lamp === 'restocked' }"
           aria-hidden="true"
         />
         <IconCredit class="bb-mark" />

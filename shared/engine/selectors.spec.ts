@@ -3,7 +3,7 @@ import { ITEMS_BY_ID, WARBONDS } from '../data/catalog'
 import { MAX_DIFFICULTY, MIN_DIFFICULTY, STRAIN_RISK, conditionRiskAt, directiveValorAt, directiveWeightFor } from './config'
 import { itemPrice, oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { actingDiverIds, activeMisfortune, activeStrain, armoryRules, awaitingDiverIds, bargainShelfFor, bargainSlotKinds, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
+import { actingDiverIds, activeMisfortune, activeStrain, armoryRules, awaitingDiverIds, bargainLamp, bargainShelfFor, bargainSlotKinds, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
 import { isPactSelectable, rollPactOffer } from './pacts'
 import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -267,6 +267,25 @@ describe('bargainShelfFor / canBuyItem (Brasch\'s Bargains)', () => {
     const bought = { ...diver, credits: 100_000, bargain: { ...diver.bargain!, boughtItemId: item.id } }
     expect(bargainShelfFor(state, bought).map(slot => slot.status)).toEqual(['bought', 'locked', 'locked', 'locked'])
     expect(canBuyItem(state, bought, item.id).allowed).toBe(false)
+  })
+})
+
+describe('bargainLamp', () => {
+  const state = createDiveState({ variant: 'medium' }, 'host', 'Griffin', undefined, 1234)
+  const diver = state.divers[0]!
+
+  it('stays dark while nothing is buyable and in the field', () => {
+    expect(bargainLamp(state, diver)).toBe('off')
+    expect(bargainLamp({ ...state, phase: 'diving' }, { ...diver, credits: 100_000 })).toBe('off')
+  })
+
+  it('lights solid between missions and pulses only for a new operation\'s restock', () => {
+    const rich = { ...diver, credits: 100_000 }
+    expect(bargainLamp(state, rich)).toBe('ready')
+    expect(bargainLamp({ ...state, missionInOperation: 2, difficulty: 4 }, rich)).toBe('ready')
+    expect(bargainLamp({ ...state, difficulty: 4 }, rich)).toBe('restocked')
+    const shopped = { ...rich, bargain: { ...rich.bargain!, boughtKinds: ['primary' as const] } }
+    expect(bargainLamp({ ...state, difficulty: 4 }, shopped)).toBe('ready')
   })
 })
 

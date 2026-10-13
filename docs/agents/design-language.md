@@ -113,7 +113,9 @@ engine.
 - **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav) on every
   route except the dive, which renders its own `DiveTopBar` (crusade + difficulty emblem + room
   code/copy + Tutorial + the labelled Bargains/Codex/Warbonds ship nav — labels, never bare icons;
-  Bargains carries the credit glyph and balance and disables with its reason mid-mission; the
+  Bargains carries the credit glyph and balance and disables with its reason mid-mission; its lamp
+  (shared with the phone tile, `bargainLamp`) is solid gold when something is buyable and pulses
+  only for a new operation's restock, until the diver buys from it; the
   Kit needs no header entry on desktop because it lives in the right rail). `components/dive/DiveFrame.vue` is the
   no-scroll dive shell — grid rows `60px 84px minmax(0,1fr) 52px` and fluid columns
   `clamp(184px,15vw,216px) 1fr clamp(248px,21vw,284px)` (the rails give ground on landscape
@@ -188,7 +190,11 @@ engine.
   facts in the lobby; status copy on forfeit and complete), and a 56px action row sits below it: an
   optional **secondary** on the left (`.bar-alt` — Cancel, Mission failed, Reroll, Skip, Delete save)
   and the **primary** filling the rest (`.bar-cta`, a `HoldButton`, or the dashed `.bar-gate` while the
-  squad waits on the host). Phases never render their own footer: they fill the zones through
+  squad waits on the host). Ahead of both, the shell's own `lead` slot holds one compact 52px tile:
+  the Brasch's Bargains credit glyph over the balance, with the same `bargainLamp` as the desktop
+  nav (solid when something is affordable, pulsing for a new operation's restock). It only appears
+  while the shop is open, so mid-mission the actions keep the whole row, and it never grows a label
+  (that's the bloat guard). Phases never render their own footer: they fill the zones through
   `PhoneActionBar`, whose deferred Teleports target the shell. Panels shared with the desktop dive
   (`DivePhaseLobby`, `DivePhaseForfeit`, `DivePhaseComplete`, `BonusCeremony`/`RewardsSettlement`) take
   a `phone` / `compact` prop that docks their actions there instead of inline; `PhoneActionBar inline`

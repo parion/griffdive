@@ -17,7 +17,8 @@ const props = withDefaults(defineProps<{
   credits?: number
   // Why Brasch's Bargains is shut right now (mid-mission), or null when open.
   bargainsClosed?: string | null
-}>(), { saved: false, canControl: false, isHost: false, loneHost: false, canFork: false, credits: 0, bargainsClosed: null })
+  bargainLamp?: 'off' | 'ready' | 'restocked'
+}>(), { saved: false, canControl: false, isHost: false, loneHost: false, canFork: false, credits: 0, bargainsClosed: null, bargainLamp: 'off' })
 
 const emit = defineEmits<{
   copyInvite: []
@@ -161,9 +162,15 @@ const roomCode = computed(() => (props.slotName || '').toUpperCase())
         aria-haspopup="dialog"
         :disabled="Boolean(bargainsClosed)"
         :title="bargainsClosed ?? undefined"
-        :aria-label="`Brasch's Bargains, ${credits} credits${bargainsClosed ? ` — ${bargainsClosed}` : ''}`"
+        :aria-label="`Brasch's Bargains, ${credits} credits${bargainsClosed ? ` — ${bargainsClosed}` : ''}${bargainLamp === 'restocked' ? ', restocked' : bargainLamp === 'ready' ? ', something affordable in stock' : ''}`"
         @click="emit('openBargains')"
       >
+        <span
+          v-if="bargainLamp !== 'off' && !bargainsClosed"
+          class="lamp gold nav-lamp"
+          :class="{ pulse: bargainLamp === 'restocked' }"
+          aria-hidden="true"
+        />
         <span class="nav-credits">
           <IconCredit class="nav-icon" />
           <span class="nav-balance">{{ credits }}</span>
@@ -269,6 +276,8 @@ const roomCode = computed(() => (props.slotName || '').toUpperCase())
 .nav-credits { display: flex; align-items: center; gap: 5px; }
 .nav-balance { font-size: 13px; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
 .bargains:not(:disabled) .nav-credits { color: var(--gold); }
+.bargains { position: relative; }
+.nav-lamp { position: absolute; top: 4px; right: 4px; }
 .bargains:disabled { opacity: 0.4; cursor: not-allowed; }
 
 @media (max-width: 760px) {

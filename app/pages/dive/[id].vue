@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useLocalStorage } from '@vueuse/core'
 import { createSaveDoc } from '~~/shared/engine/saves'
-import { bargainsClosedReason, diverOptions, majorOrderFronts, pactRiskOf, promotionPending, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
+import { bargainLamp, bargainsClosedReason, diverOptions, majorOrderFronts, pactRiskOf, promotionPending, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
 import type { CrusadeSettings, DiverState, EngineAction, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
@@ -629,6 +629,7 @@ function launchCrusade(settings: CrusadeSettings): void {
           :can-fork="canFork"
           :credits="self?.credits ?? 0"
           :bargains-closed="bargainsClosed"
+          :bargain-lamp="self ? bargainLamp(state, self) : 'off'"
           @copy-invite="copyInvite"
           @open-bargains="bargainsOpen = true"
           @open-tutorial="openBriefing"

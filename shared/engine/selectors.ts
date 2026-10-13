@@ -601,6 +601,24 @@ export function canBuyItem(
   return { allowed: true, reason: null }
 }
 
+// The Bargains entry's lamp: dark while nothing on the shelf is buyable, lit
+// once something is, and pulsing only for a fresh operation's restock — the
+// first mission after an operation was completed, before the diver buys from
+// it.
+export type BargainLamp = 'off' | 'ready' | 'restocked'
+
+export function bargainLamp(state: DiveState, diver: DiverState): BargainLamp {
+  const buyable = bargainShelfFor(state, diver)
+    .some(slot => slot.item && canBuyItem(state, diver, slot.item.id).allowed)
+  if (!buyable || !state.settings) {
+    return 'off'
+  }
+  const restocked = state.missionInOperation === 1
+    && catchUpOpsBehind(state.difficulty, state.settings.variant) > 0
+    && (diver.bargain?.boughtKinds.length ?? 0) === 0
+  return restocked ? 'restocked' : 'ready'
+}
+
 // The Field Promotion: a mid-crusade joiner's catch-up offer. Altitude
 // parity, never rarity — the ceiling is the difficulty's base tier at zero
 // Valor (a zero-Valor dive always rolls its base tier), so a late joiner buys
