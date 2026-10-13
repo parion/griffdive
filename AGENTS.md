@@ -40,6 +40,7 @@ pnpm only (`pnpm-lock.yaml` is canonical).
 | `pnpm preview` | exists | Preview production build |
 | `pnpm generate` | exists | Static build (pure client-side SPA — solo/offline only — no WebSocket server) |
 | `pnpm pwa:assets` | exists | Write `public/icon.svg` from `app/utils/brandMark.ts`, then regenerate PWA icons, favicon + head links from it (`@vite-pwa/assets-generator`) |
+| `pnpm dashboard:preview` | exists | Render `grafana/dashboard-preview.html` + `.png` from `grafana/griffdive-overview.json` (mock-series layout preview; needs Playwright's chromium for the PNG) |
 | `pnpm lint` | exists | ESLint via `@nuxt/eslint` module |
 | `pnpm lint:fix` | exists | Auto-fix lint/style issues |
 | `pnpm test` | exists | Vitest (engine unit + golden tests) |
@@ -115,6 +116,12 @@ Update this table the moment a command lands.
 - **Commits:** conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`).
   Never commit secrets. The repo is git-initialized; the first commit is this file + Phase 0
   tooling.
+- **Privacy:** Griffdive is account-free and its telemetry is aggregate-only — no name, id, IP or
+  room code ever becomes a metric label or a log line. The full data inventory (client
+  `localStorage`, server room/save state, transient IPs for rate limiting, retention windows,
+  hosting) lives in [`PRIVACY.md`](./PRIVACY.md) and is mirrored in-app at
+  `app/pages/privacy.vue`. Any change that stores, exports or logs a new field must update both in
+  the same commit.
 - **Dependencies:** get approval before adding runtime deps. Currently approved adds:
   `@nuxt/eslint`, `vitest`, `vue-tsc`, `@nuxt/fonts` (Phase 0; fonts is build-time dev dep);
   `@vueuse/core`, `@pinia/nuxt`, `nanoid` (Phase 2);

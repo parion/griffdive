@@ -8,6 +8,9 @@ the loot.
 Fan project. Not affiliated with or endorsed by Sony Interactive Entertainment or Arrowhead Game
 Studios. Non-commercial, no ads, no monetization. See [CREDITS.md](./CREDITS.md).
 
+Privacy: account-free, no cookies, no analytics, no third parties. What is stored, where, and for
+how long is documented in [PRIVACY.md](./PRIVACY.md) and in-app at `/privacy`.
+
 ## Getting started
 
 ```bash
@@ -27,6 +30,7 @@ pnpm dev        # http://localhost:3000
 | `pnpm test:e2e` | Playwright (production build on `:3173`) |
 | `pnpm typecheck` | `nuxt typecheck` (vue-tsc) |
 | `pnpm pwa:assets` | Regenerate PWA icons from `public/icon.svg` |
+| `pnpm dashboard:preview` | Render the Grafana overview to a mock-series HTML/PNG preview |
 
 ## Documentation
 
