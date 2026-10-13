@@ -127,6 +127,19 @@ export function catchUpOpsBehind(difficulty: number, variant: CrusadeVariant): n
   return Math.max(0, difficulty - STARTING_KITS[variant].startDifficulty)
 }
 
+// The gear a diver actually won: their kit beyond the starting surplus, each
+// item once. This is all a legacy cache ever holds — every joiner is already
+// issued the starting kit, so parking it would only stack duplicates.
+export function earnedKit(itemIds: readonly string[], variant: CrusadeVariant, mode?: CrusadeMode): string[] {
+  const starting = new Set(startingItemIds(variant, mode))
+  return [...new Set(itemIds)].filter(id => !starting.has(id))
+}
+
+// Inventories are sets: a claim or restore merges kits without repeating an id.
+export function mergeKit(base: readonly string[], extra: readonly string[]): string[] {
+  return [...new Set([...base, ...extra])]
+}
+
 export function assertKitsValid(): void {
   for (const variant of Object.keys(STARTING_KITS) as CrusadeVariant[]) {
     for (const mode of [undefined, 'seaf'] as (CrusadeMode | undefined)[]) {

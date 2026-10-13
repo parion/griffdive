@@ -3,6 +3,8 @@ import { ALL_WARBOND_CODES } from '../data/catalog'
 import { startingItemIds } from './progression'
 import { createLobbyState, forkCrusade, joinDiver, seatingBlocked } from './room'
 import { createDiveState, reduce } from './reducer'
+import { catchUpOptionsFor } from './selectors'
+import type { DiveState } from './types'
 
 describe('createLobbyState', () => {
   it('is an empty, unconfigured lobby', () => {
@@ -65,12 +67,14 @@ describe('joinDiver', () => {
   it('restores a departed diver\u2019s parked cache when they rejoin', () => {
     let state = joinDiver(joinDiver(createLobbyState(), 'p1', 'Griffin')!, 'p2', 'Two')!
     state = reduce(state, { type: 'START_DIVE', settings: { variant: 'medium' } })
+    state = { ...state, personalInventories: { ...state.personalInventories, p1: [...state.personalInventories.p1!, 'uavrecon'] } }
     state = reduce(state, { type: 'LEAVE_DIVE', playerId: 'p1' })
-    expect(state.legacyCaches.p1).toEqual(startingItemIds('medium'))
+    expect(state.legacyCaches.p1).toEqual(['uavrecon'])
     expect(state.hostId).toBe('p2')
     const rejoined = joinDiver(state, 'p1', 'Griffin')!
     expect(rejoined.legacyCaches.p1).toBeUndefined()
-    expect(rejoined.personalInventories.p1).toEqual(startingItemIds('medium'))
+    // Reissued the starting kit, with their winnings back on top — once each.
+    expect(rejoined.personalInventories.p1).toEqual([...startingItemIds('medium'), 'uavrecon'])
     // The cache is their old inventory — no promotion owed on top.
     expect(rejoined.divers.find(diver => diver.id === 'p1')?.catchUpOwed).toBe(0)
   })
@@ -137,15 +141,17 @@ describe('forkCrusade (personal session saves)', () => {
   it('forks around the owner: their seat and kit stay, the missing divers park as caches', () => {
     let state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
     state = joinDiver(state, 'p2', 'Two')!
+    state = joinDiver(state, 'p3', 'Three')!
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
-    const p2Kit = state.personalInventories.p2
+    state = { ...state, personalInventories: { ...state.personalInventories, p2: [...state.personalInventories.p2!, 'uavrecon'] } }
     const forked = forkCrusade(state, 'p1', 'Griffin')!
     expect(forked.hostId).toBe('p1')
     expect(forked.divers).toHaveLength(1)
     expect(forked.divers[0]).toMatchObject({ id: 'p1', name: 'Griffin', isHost: true })
     expect(forked.personalInventories.p1).toEqual(startingItemIds('medium'))
     expect(forked.personalInventories.p2).toBeUndefined()
-    expect(forked.legacyCaches.p2).toEqual(p2Kit)
+    // Only earned gear parks; a diver who earned nothing leaves no cache.
+    expect(forked.legacyCaches).toEqual({ p2: ['uavrecon'] })
     expect(forked.difficulty).toBe(state.difficulty)
     expect(forked.wheel).toEqual(state.wheel)
     expect(forked.frontId).toBe(state.frontId)
@@ -155,6 +161,7 @@ describe('forkCrusade (personal session saves)', () => {
     let state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
     state = joinDiver(state, 'p2', 'Two')!
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 7 })
+    state = { ...state, personalInventories: { ...state.personalInventories, p1: [...state.personalInventories.p1!, 'uavrecon'] } }
 
     const byP2 = forkCrusade(state, 'p2')!
     expect(byP2.hostId).toBe('p2')
@@ -225,21 +232,21 @@ describe('forkCrusade (personal session saves)', () => {
   it('resolves a stranded forfeit instead of deadlocking', () => {
     let state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
     state = joinDiver(state, 'p2', 'Two')!
-    const item = startingItemIds('medium')[0]!
     state = {
       ...state,
       phase: 'forfeit',
       frontId: 'terminids',
-      personalInventories: { p1: [], p2: [item] },
-      legacyCaches: { ghost: [item] },
+      personalInventories: { p1: [], p2: ['uavrecon', 'eagleairstrike'] },
+      legacyCaches: { ghost: ['orbitallaser'] },
     }
     const forked = forkCrusade(state, 'p1')!
     expect(forked.phase).toBe('spin')
     expect(forked.missionInOperation).toBe(1)
     expect(forked.wheel).toBeNull()
-    // The failure's one-item loss still lands on the parked gear.
-    expect(forked.legacyCaches.ghost).toEqual([])
-    expect(forked.legacyCaches.p2).toEqual([item])
+    // An earlier session's cache never carries into the new one, and the
+    // failure's one-item loss still lands on the parked gear.
+    expect(forked.legacyCaches.ghost).toBeUndefined()
+    expect(forked.legacyCaches.p2).toEqual(['eagleairstrike'])
   })
 
   it('applies a forked host\'s chosen forfeit when no other diver is left to wait on', () => {
@@ -257,5 +264,60 @@ describe('forkCrusade (personal session saves)', () => {
     expect(forked.phase).toBe('spin')
     expect(forked.personalInventories.p1).toEqual([other])
     expect(forked.divers[0]!.forfeitedItemId).toBeNull()
+  })
+})
+
+// The whole drop-in lifecycle across sessions. Single-step tests let caches
+// that stacked the starting kit, and forks that re-parked every stale cache,
+// pass unnoticed; these invariants are checked after every step instead.
+describe('Field Promotion across sessions (lifecycle invariants)', () => {
+  const starting = new Set(startingItemIds('medium'))
+
+  function expectInvariants(state: DiveState): void {
+    for (const [id, kit] of Object.entries(state.personalInventories)) {
+      expect(new Set(kit).size, `${id} holds a repeated item`).toBe(kit.length)
+    }
+    for (const [id, cache] of Object.entries(state.legacyCaches)) {
+      expect(cache.length, `${id} parked an empty cache`).toBeGreaterThan(0)
+      expect(new Set(cache).size, `${id} cache repeats an item`).toBe(cache.length)
+      expect(cache.filter(item => starting.has(item)), `${id} cache carries starting kit`).toEqual([])
+    }
+  }
+
+  function earn(state: DiveState, playerId: string, itemId: string): DiveState {
+    return { ...state, personalInventories: { ...state.personalInventories, [playerId]: [...state.personalInventories[playerId]!, itemId] } }
+  }
+
+  it('keeps kits as sets and caches as earned gear through join → claim → fork → join → claim', () => {
+    let state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    state = joinDiver(state, 'p2', 'Two')!
+    state = joinDiver(state, 'p3', 'Three')!
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 7 })
+    state = { ...state, difficulty: 5, phase: 'spin', wheel: null }
+    state = earn(earn(state, 'p1', 'orbitallaser'), 'p2', 'uavrecon')
+    expectInvariants(state)
+
+    // Session two: p3 earned nothing, so only p2's winnings park.
+    let next = forkCrusade(state, 'p1', 'Griffin')!
+    expectInvariants(next)
+    expect(Object.keys(next.legacyCaches)).toEqual(['p2'])
+
+    next = joinDiver(next, 'n1', 'New')!
+    next = reduce(next, { type: 'CLAIM_CACHE', playerId: 'n1', cacheOwnerId: 'p2' })
+    expectInvariants(next)
+    expect(next.personalInventories.n1).toEqual([...startingItemIds('medium'), 'uavrecon'])
+
+    next = joinDiver(next, 'n2', 'New Two')!
+    const pick = catchUpOptionsFor(next, next.divers.find(diver => diver.id === 'n2')!)[0]!
+    next = reduce(next, { type: 'CLAIM_CATCHUP_OPTION', playerId: 'n2', optionId: pick.optionId })
+    expectInvariants(next)
+
+    // Session three: only session two's squad parks, each kit once.
+    const third = forkCrusade(next, 'p1', 'Griffin')!
+    expectInvariants(third)
+    expect(Object.keys(third.legacyCaches).sort()).toEqual(['n1', 'n2'])
+    expect(third.legacyCaches.n1).toEqual(['uavrecon'])
+    expect(third.legacyCaches.n2).toEqual([pick.item.id])
+    expect(third.personalInventories.p1).toEqual([...startingItemIds('medium'), 'orbitallaser'])
   })
 })

@@ -34,7 +34,7 @@ export default defineWebSocketHandler({
       peer.send('pong')
       return
     }
-    let payload: { type?: string, name?: unknown, playerId?: unknown, action?: unknown, link?: unknown }
+    let payload: { type?: string, name?: unknown, playerId?: unknown, knownIds?: unknown, action?: unknown, link?: unknown }
     try {
       payload = JSON.parse(message.text())
     }

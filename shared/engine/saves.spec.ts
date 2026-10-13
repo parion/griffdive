@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ITEMS_BY_ID } from '../data/catalog'
 import { SAVE_SCHEMA_VERSION } from '../types/save'
 import { ENGINE_VERSION } from './config'
+import { startingItemIds } from './progression'
 import { createDiveState } from './reducer'
 import { normalizeRoomState, normalizeSaveDoc } from './saves'
 import type { DiveState } from './types'
@@ -319,6 +320,20 @@ describe('save migration v14 → v15 (shared squad honors)', () => {
 })
 
 describe('room state normalization (unversioned storage)', () => {
+  it('repairs kits stacked by the old cache claims', () => {
+    const state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    const starting = startingItemIds('medium')
+    const damaged: DiveState = {
+      ...state,
+      personalInventories: { p1: [...starting, ...starting, 'uavrecon', 'uavrecon'] },
+      legacyCaches: { doubled: [...starting, ...starting, 'orbitallaser'], surplus: [...starting] },
+    }
+    const repaired = normalizeRoomState(damaged)
+    expect(repaired.personalInventories.p1).toEqual([...starting, 'uavrecon'])
+    expect(repaired.legacyCaches).toEqual({ doubled: ['orbitallaser'] })
+    expect(normalizeRoomState(repaired)).toEqual(repaired)
+  })
+
   it('remaps a legacy variant even under the current schema version', () => {
     const doc = v1Doc()
     doc.schemaVersion = SAVE_SCHEMA_VERSION

@@ -3,11 +3,11 @@ import { FRONTS } from '../data/fronts'
 import type { FrontId } from '../data/fronts'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection } from './types'
 import { ACTION_LOG_CAP, MAJOR_ORDER_REROLL_BONUS, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, REWARD_TOKEN_CAP, maxStarsFor, missionsPerOperation } from './config'
-import { STARTING_KITS, startingItemIds } from './progression'
+import { STARTING_KITS, earnedKit, mergeKit, startingItemIds } from './progression'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed } from './rng'
-import { activeDivers, activeMisfortune, allDiversPicked, bonusEligible, canBuyItem, catchUpOptionsFor, comboKey, diverOptions, forfeitOptionsFor, forfeitSettled, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, strainDecision } from './selectors'
+import { activeDivers, activeMisfortune, allDiversPicked, availableCaches, bonusEligible, canBuyItem, catchUpOptionsFor, comboKey, diverOptions, forfeitOptionsFor, forfeitSettled, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, strainDecision } from './selectors'
 import { itemPrice, missionHaul } from './rewards'
 import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 
@@ -124,7 +124,7 @@ function needsStrainDecision(state: DiveState): boolean {
   return state.missionInOperation === 1 && state.strainId !== null && !state.strainDecided
 }
 
-// A departed diver (kicked or left) parks their inventory as a legacy cache:
+// A departed diver (kicked or left) parks their earned gear as a legacy cache:
 // a late joiner may claim it instead of their Field Promotion, and the same
 // diver rejoining reclaims it. The last diver can never leave: a room is never
 // abandoned or reset — the crusade waits for whoever comes back to it.
@@ -133,9 +133,11 @@ function removeDiver(state: DiveState, diverId: string, action: EngineAction): D
   if (!diver) {
     return state
   }
-  const inventory = state.personalInventories[diver.id] ?? []
-  const legacyCaches = inventory.length > 0
-    ? { ...state.legacyCaches, [diver.id]: inventory }
+  const earned = state.settings
+    ? earnedKit(state.personalInventories[diver.id] ?? [], state.settings.variant, state.settings.mode)
+    : []
+  const legacyCaches = earned.length > 0
+    ? { ...state.legacyCaches, [diver.id]: earned }
     : state.legacyCaches
   const personalInventories = Object.fromEntries(
     Object.entries(state.personalInventories).filter(([id]) => id !== diver.id),
@@ -763,14 +765,14 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
 
     case 'CLAIM_CACHE': {
       const diver = state.divers.find(candidate => candidate.id === action.playerId)
-      const cache = state.legacyCaches[action.cacheOwnerId]
+      const cache = availableCaches(state).find(entry => entry.ownerId === action.cacheOwnerId)?.itemIds
       // The cache replaces the promotion wholesale: claiming after rolling
       // options would stack both, so only an untouched promotion allows it.
       if (
         !diver
         || diver.catchUpOwed <= 0
         || diver.catchUpOwed !== diver.catchUpGranted
-        || !cache?.length
+        || !cache
       ) {
         return state
       }
@@ -782,7 +784,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       )
       const personalInventories = {
         ...state.personalInventories,
-        [diver.id]: [...(state.personalInventories[diver.id] ?? []), ...cache],
+        [diver.id]: mergeKit(state.personalInventories[diver.id] ?? [], cache),
       }
       return commit(state, { divers, legacyCaches, personalInventories }, action)
     }

@@ -65,8 +65,8 @@ app/
                    and tier-ceiling ladder, BonusCeremony — the dedicated
                    end-of-mission honors screen (iconographic seeded reel,
                    hold-to-confirm award) that banks a reward token,
-                   FieldPromotionCard — the mid-crusade
-                   catch-up ceremony, LibertyCrossBand — the full-width S+
+                   FieldPromotionGate — the mid-crusade
+                   catch-up gate (non-dismissible dialog, settled before diving), LibertyCrossBand — the full-width S+
                    "Liberty's Cross" band above the reward pods, LibertyCrossEmblem — its vector crest,
                    DiversChoicePicker — the minified codex modal, CrusadeSetup, WarbondPicker,
                    JoinNameGate — name gate held while joining),
@@ -176,7 +176,7 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 
 | Direction | Message | Payload |
 | --- | --- | --- |
-| C→S | `hello` | `{ name?, playerId? }` — stored playerId reattaches (reconnect) |
+| C→S | `hello` | `{ name?, playerId?, knownIds? }` — stored playerId reattaches (reconnect); `knownIds` (seats held in other rooms) let a forked-out diver reclaim their cache (see Personal session saves) |
 | C→S | `action` | `{ action: EngineAction }` (validated server-side) |
 | C→S | `save-dive` | `{ name? }` — any seated diver pins the room past the idle TTL (see Saved dives) |
 | C→S | `unsave-dive` | host-only: returns the room to the ordinary idle TTL |
@@ -257,7 +257,7 @@ reducer.
 - **Resume is the existing rejoin path.** Reopen `/dive/:code` (the code/link is the anchor, so a
   cleared `localStorage` loses only the convenience list, not the dive). Known `playerId`s
   reattach; a fresh or identity-less joiner seats as a mid-crusade joiner and chooses between a
-  parked **legacy cache** and their **Field Promotion** (see Mid-crusade joining) — "pick up
+  parked **legacy cache** and their **Field Promotion** at the Field Promotion gate (see Mid-crusade joining) — "pick up
   previous equipment or roll".
 - **Durability is the storage driver's.** Saved dives live in the same `useStorage('rooms')`
   namespace, which Nitro's `fs-lite` driver writes to `./.data/rooms` (`nuxt.config.ts`) — the
@@ -290,10 +290,16 @@ the pure `forkCrusade(state, ownerId, name)` in `shared/engine/room.ts`. The rul
   zero. The client
   pre-stores the returned `selfId` as the new room's seat before navigating, so the first `hello`
   reattaches that seat.
-- **Every other diver leaves the squad and their kit parks as an ordinary legacy cache** — a new
-  joiner claims a fallen diver's kit instead of their Field Promotion (or joins at the start
-  difficulty with the variant's kit). There is deliberately no past-player recognition: caches are
-  communal gear, not identity.
+- **Every other diver leaves the squad and their earned gear parks as an ordinary legacy cache**
+  (a diver who earned nothing parks nothing) — a new joiner claims a fallen diver's kit instead of
+  their Field Promotion (or joins at the start difficulty with the variant's kit). **Only the latest
+  session's departures park:** caches the save inherited from an earlier session are dropped, so
+  forks never pile up stale kits.
+- **Returning divers are recognized by the seats their browser remembers.** Caches keep the
+  departed diver's id from the source room. A browser with no seat stored for the new room sends
+  every `griffdive:player:*` id it holds as `hello.knownIds` (≤20); the server reuses the first one
+  that matches a cache key, so `joinDiver` reclaims that diver's own kit. A cleared browser, or one
+  whose kit was already claimed, simply joins fresh. No accounts or lineage tracking are involved.
 - **A fork is a copy, never a move**: the original room, its pin and its invite link are untouched.
   New joiners seat through the existing mid-crusade path (see Mid-crusade joining).
 - **Refusals and sanitizing**: a complete crusade is refused; an unstarted lobby continues as a fresh

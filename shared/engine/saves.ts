@@ -3,6 +3,7 @@ import type { FrontId } from '../data/fronts'
 import { SAVE_SCHEMA_VERSION } from '../types/save'
 import type { SaveDoc } from '../types/save'
 import { ENGINE_VERSION } from './config'
+import { earnedKit } from './progression'
 import { resetOperation } from './reducer'
 import type { CrusadeVariant, DiveState, DiverState } from './types'
 
@@ -262,6 +263,7 @@ export function normalizeRoomState(state: DiveState): DiveState {
   return {
     ...state,
     settings,
+    ...repairKits(state, settings),
     misfortuneFailed: state.misfortuneFailed ?? false,
     bonusWinnerIds: Array.isArray(state.bonusWinnerIds)
       ? state.bonusWinnerIds
@@ -275,6 +277,26 @@ export function normalizeRoomState(state: DiveState): DiveState {
       }
     }),
   }
+}
+
+// Caches once parked whole inventories and claims stacked them onto the
+// starting kit, so earlier rooms carry repeated ids and starting-kit-only
+// caches. Inventories become sets and caches keep only earned gear.
+function repairKits(
+  state: DiveState,
+  settings: DiveState['settings'],
+): Pick<DiveState, 'personalInventories' | 'legacyCaches'> {
+  const personalInventories = Object.fromEntries(
+    Object.entries(state.personalInventories ?? {}).map(([id, items]) => [id, [...new Set(items)]]),
+  )
+  const legacyCaches: Record<string, string[]> = {}
+  for (const [id, items] of Object.entries(state.legacyCaches ?? {})) {
+    const kept = settings ? earnedKit(items, settings.variant, settings.mode) : [...new Set(items)]
+    if (kept.length > 0) {
+      legacyCaches[id] = kept
+    }
+  }
+  return { personalInventories, legacyCaches }
 }
 
 // A state saved before honors became shareable carries a single
