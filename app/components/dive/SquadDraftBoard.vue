@@ -97,7 +97,7 @@ function statusLabel(card: typeof cards.value[number]): string {
             v-if="card.summary.ceiling"
             class="tb card-ceiling"
             :data-tier="card.summary.ceiling"
-            :aria-label="`Ceiling ${card.summary.ceiling}`"
+            :aria-label="`Top rolled tier ${card.summary.ceiling}`"
           >{{ card.summary.ceiling }}</span>
         </header>
 

@@ -16,7 +16,7 @@ test('phone draft: a non-host diver can bank their reward', async ({ browser }) 
   await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
-  await expect(pageA.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
+  await expect(pageA.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
@@ -25,28 +25,30 @@ test('phone draft: a non-host diver can bank their reward', async ({ browser }) 
 
   await pageA.getByRole('button', { name: 'Spin', exact: true }).click()
   await lockMisfortune(pageA)
-  await pageA.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
+  await pageA.locator('.strain-card').getByRole('button', { name: 'Skip' }).click()
   await pageA.getByRole('button', { name: 'Deal the pacts' }).click()
 
   // The phone joiner locks an empty hand; the host locks on desktop.
-  await pageB.getByRole('button', { name: 'Lock in', exact: true }).click()
-  await pageA.getByRole('button', { name: 'Lock in & dive' }).click()
+  await pageB.locator('#phone-bar-primary').getByRole('button', { name: 'Dive with no pacts' }).click()
+  await pageA.getByRole('button', { name: 'Dive with no pacts' }).click()
 
-  await pageA.getByRole('button', { name: 'Mission complete' }).click()
+  await pageA.getByRole('button', { name: 'Extracted' }).click()
   await pageA.getByRole('button', { name: 'File report' }).click()
 
-  const option = pageB.locator('.phone-rewards .row').first()
+  const option = pageB.locator('.phone-loot .loot-card').first()
   await expect(option).toBeEnabled()
   await option.click()
-  await expect(pageB.locator('.phone-bar .result')).toContainText('Banked')
+  await expect(pageB.locator('#phone-bar-primary')).toContainText('Bank')
+  await pageB.locator('#phone-bar-primary').getByRole('button', { name: /^Bank / }).click()
+  await expect(pageB.locator('#phone-bar-primary')).toContainText('Banked')
   await expect(pageA.locator('.squad-pick.done')).toHaveCount(1)
 
-  // The joiner never sees a dead advance control: they wait on the squad, then
-  // the full-star clear hands them to the host-run honors ceremony.
-  await expect(pageB.getByText('Waiting on squad')).toBeVisible()
-  await pageA.locator('.pod-card .pod-hit').first().click()
-  await expect(pageB.getByRole('region', { name: 'Squad honors' })).toBeVisible()
-  await expect(pageB.getByText('Waiting for the host to spin')).toBeVisible()
+  // The joiner never sees a dead advance control: their bar confirms the bank
+  // while the host finishes their own pick.
+  await expect(pageB.locator('#phone-bar-primary')).toContainText('Banked')
+  await pageA.locator('.loot-card').first().click()
+  await pageA.getByRole('button', { name: /^Bank / }).click()
+  await expect(pageA.getByRole('button', { name: /Next mission/ })).toBeVisible()
 
   await contextA.close()
   await contextB.close()

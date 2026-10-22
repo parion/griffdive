@@ -14,77 +14,49 @@ all routes; static hosts need a `/*` → shell fallback instead.
 app/
   pages/           index (Bridge home — new crusade / host / join / continue), dive/[id] (solo +
                    room flow — thin orchestrator: session driver + action handlers; the
-                   three-rail shell and per-phase UI live in components/dive/), codex,
+                   lit-stage shell and per-phase UI live in components/dive/), codex,
                    kit (hidden, unlinked foundations route — see Destroyer Terminal design language)
-  components/      dive/ (DiveFrame — the no-scroll terminal shell (header · climb strip ·
-                   Squad/wheel-pool rail · phase · Valor rail · Mission-phases bar), DiveTopBar —
-                   the dive header (crusade · difficulty emblem · room code/copy · nav),
-                   CrusadeStrip — the horizontal 3→10 climb, PhaseRail — the bottom six mission
-                   beats (a readout, not a control), PhaseCue — the "whose move" lead
-                   (squad rail on desktop, a band on phones), WheelOfMisfortune — the seeded spinning SVG wheel,
-                   BriefingOverlay — the first-run Griffdiver dossier, ArmoryDrawer — the Kit
-                   drawer (phone shell only), KitPanel — the lean Kit (diver
-                   names, owned items by category, ban washes), KitValorRail — the desktop
-                   right rail's Kit/Valor tabs with their status bars, CrusadeLadder —
-                   the vertical 3→10 ladder (achieved screen), SquadStrip — diver rail, presence,
-                   name, host moderation,
+  components/      dive/ (DiveFrame — the lit-pass shell: header · one scrolling stage ·
+                   squad dock, no rails or climb strip, DiveTopBar — identity, PhaseTabs,
+                   credits/Kit/Codex/Warbonds/session menu, PhaseTabs — Call/Pacts/Dive/Loot,
+                   SquadDock — seats, presence, honors tokens, Steam/invite, DiveMenu —
+                   Bridge, tutorial, pin/unpin, new session, leave/end,
                    DivePhaseLobby/DivePhaseWheel/DivePhaseDiving/DivePhaseRewards/
                    DivePhaseForfeit/DivePhaseComplete — one panel per engine phase, each
                    owning its local form state and emitting intents,
-                   PactScreen — the dedicated pacts screen (team-risk summary bar,
-                   hold-to-lock CTA), MissionReport +
-                   SampleCanister/SegmentedBar — the dedicated two-column mission
-                   report, ForfeitPicker — one diver's dealt forfeit offer,
+                   WheelOfMisfortune — the seeded spinning SVG wheel,
+                   ConditionCard/ConditionSigil — directive and pact cards,
+                   ValorRoll — the shared d100 odds line (zones, deltas, roll pins),
+                   PactScreen — the self-service pacts hand,
+                   KitSnapshot — the compact kit strip for non-hosts in the field,
+                   MissionReport + SampleCanister — stars, haul, time cells, honors,
+                   RewardDraft + SquadDraftBoard + DiversChoicePicker + LibertyCrossBand/
+                   LibertyCrossEmblem — one rolled card per option, the squad's picks,
+                   the Cross picker and its crest,
+                   OperationCleared — the climb screen after the last mission,
+                   CrusadeLadder — the vertical 3→10 ladder (achieved screen),
+                   FieldPromotionGate — the mid-crusade catch-up gate,
+                   ForfeitPicker — one diver's dealt forfeit offer,
+                   MajorOrderPicker/MajorOrderCard — the pre-spin MO chooser and panel,
+                   ArmoryDrawer + KitPanel — the Kit drawer and the lean Kit itself,
+                   BraschBargains + BargainsDrawer — the per-mission shop in a slide-over,
                    AchievedOverlay — the full-bleed Griffdive achieved takeover,
-                   DivePhone + DivePhoneShell/PhoneTopBar/PhoneCrusadeBar/PhoneSquadBar/
-                   PhoneWheel/PhonePacts/PhoneValor/PhoneReport/PhoneDiving/
-                   PhoneRewardDraft/PhoneActionBar — the fixed phone shell, its per-phase
-                   layouts and the pinned bottom action bar (the frame lives in
+                   BriefingOverlay — the host's replayable Griffdive tutorial,
+                   JoinBriefing — the joiner's one-page briefing, also replayed as the
+                   squadmate's Field manual, JoinNameGate — the host's name gate,
+                   DivePhone + DivePhoneShell/PhoneTopBar/PhoneWheel/PhonePacts/
+                   PhoneDiving/PhoneRewardDraft/PhoneActionBar — the fixed phone shell,
+                   its per-phase layouts and the pinned bottom action bar (the frame lives in
                    DivePhoneShell; every phase fills its info / secondary / primary zones
-                   through PhoneActionBar's deferred Teleports),
-                   WheelPanel, MajorOrderPicker — the pre-spin MO chooser, rendered in
-                   the faction card's pre-roll slot,
-                   MajorOrderCard — the in-game-style MO panel (emblem, countdown,
-                   order overview, planet liberation bars),
-                   PactPicker, RewardDraft — the reward draft (a header carrying
-                   stars · options and, top right, the unlabeled CeilingTrack bar
-                   that climbs tier by tier to the rolled ceiling; a pod-drop
-                   cabinet of RewardPod reveal cards stamped Banked/Banned; the
-                   SquadDraftBoard of squadmates' offers and picks; and the
-                   reward-token bar, which swaps to the banked readout once
-                   resolved and whose CTA opens the settlement),
-                   RewardsSettlement — the post-draft screen: the Squad Honors
-                   contest when honors is due, or a disabled honors panel when
-                   it isn't; desktop and phone share it,
-                   BraschBargains + BargainsDrawer — the per-mission shop
-                   (one random slot per primary/secondary/throwable/armor
-                   passive plus 0–2 stratagems, credit prices, the purse, the
-                   one buy, kinds held back) in a slide-over opened from DiveTopBar's
-                   Bargains nav and the phone action bar's credit tile,
-                   MissionReportSummary — the left-rail report card,
-                   ValorMeter — the live Valor gauge
-                   and tier-ceiling ladder, BonusCeremony — the dedicated
-                   end-of-mission honors screen (iconographic seeded reel,
-                   hold-to-confirm award) that banks a reward token,
-                   FieldPromotionGate — the mid-crusade
-                   catch-up gate (non-dismissible dialog, settled before diving: a two-column
-                   choice — fallen divers' kits vs. the promotion call-in — then the
-                   promotion draft, `RewardDraft variant="promotion"`), LibertyCrossBand — the full-width S+
-                   "Liberty's Cross" band above the reward pods, LibertyCrossEmblem — its vector crest,
-                   DiversChoicePicker — the minified codex modal, CrusadeSetup, WarbondPicker,
-                   JoinNameGate — the host's name gate, JoinBriefing — the joiner's
-                   one-page briefing, also replayed in-dive as the squadmate's Field manual),
-                   codex/CodexBrowser — the shared catalog browser (filter + tier grid),
-                   warbonds/WarbondBrowser — the shared warbond owner list (single column,
-                   acquisition specials last; each banner starts blurred and dimmed, then
-                   resolves on hover/focus/tap, click toggles),
+                   through PhoneActionBar's deferred Teleports; the Squad sheet lives in
+                   DivePhone), CrusadeSetup, WarbondPicker),
                    ui/ (BrandMark — the Griffdive mark, a griffin diving through the Wheel's
                    rim, rendered from utils/brandMark.ts; ItemCard, TierBadge, RiskPips — risk
                    dots, with a rolling back-and-forth state while a wheel draw reels,
-                   SampleCanister/SegmentedBar — the report's tinted sample tubes and
-                   click-to-set time bar (both scrub: press and drag sets the value; the
-                   tube's liquid level is the indicator and its editable number the keyboard
-                   path), HoldButton — the press-and-hold confirm,
+                   SampleCanister — the report's tinted sample tubes (press and drag sets
+                   the value; the tube's liquid level is the indicator and its editable
+                   number the keyboard path), the report's time cells — tap targets that
+                   set the extraction percentage, HoldButton — the press-and-hold confirm,
                    ChangelogModal — GitHub release log shown from the alpha header chip: one phase
                    card per deployment (on main / awaiting approval / deploying / live) with its
                    commits grouped by conventional type (utils/changelog.ts shapes it), AppDrawer —
@@ -110,7 +82,7 @@ app/
                    useChangelog (GitHub release deployments + commits → phase-carded changelog
                    entries via utils/changelog.ts, 10-min cache),
                    usePhoneShell (the 1020px breakpoint as JS, so the dive can swap the whole
-                   three-rail tree for the phone shell)
+                   desktop tree for the phone shell)
   stores/          session.ts (Pinia: selfId, snapshot, online)
   utils/           seed.ts (client seed generation), kit.ts (Kit categories + owned-item list),
                    valor.ts (Valor source split + colours shared by the rail tab and meter),

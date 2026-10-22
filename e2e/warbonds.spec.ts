@@ -49,7 +49,9 @@ test('the tutorial opens at dive start once, without chaining the Warbonds panel
   await expect(drawer).toBeHidden()
   await expect(tutorial).toBeHidden()
 
-  // It stays reachable from the dive header.
-  await page.getByRole('button', { name: 'Tutorial', exact: true }).click()
+  // It stays reachable from the session menu.
+  await page.getByRole('button', { name: 'Session menu' }).click()
+  await page.getByRole('dialog', { name: 'Session' })
+    .getByRole('button', { name: /Tutorial \/ field manual/ }).click()
   await expect(tutorial).toBeVisible()
 })

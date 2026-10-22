@@ -5,7 +5,7 @@ import { difficultyImageUrl, itemImageUrl } from '~~/shared/data/images'
 import type { Item, ItemCategory } from '~~/shared/data/types'
 import { MAX_DIFFICULTY, MAX_NAME_LENGTH, MIN_DIFFICULTY, SQUAD_SIZE_MAX, VALOR_METER_MAX } from '~~/shared/engine/config'
 import { STARTING_KITS, difficultyName, startingItemIds } from '~~/shared/engine/progression'
-import { ceilingOddsPercent } from '~~/shared/engine/rewards'
+import { tierZones } from '~~/shared/engine/rewards'
 import { seatingBlocked } from '~~/shared/engine/room'
 import type { DivePhase, DiveState, RewardTier } from '~~/shared/engine/types'
 import { storedDiverName } from '~/composables/useGameSocket'
@@ -162,11 +162,11 @@ const kitGroups = computed(() => KIT_GROUPS
 type Who = 'host' | 'you' | 'all'
 const LOOP: readonly { who: Who, beat: string, text: string }[] = [
   { who: 'host', beat: 'Spin', text: 'Spins the Wheel of Adversity — one Squad Directive the whole squad plays under.' },
-  { who: 'host', beat: 'Squad call', text: 'Locks the directive in or opts out. Weigh in on voice — it\'s your risk too.' },
-  { who: 'you', beat: 'Swear pacts', text: 'You\'re dealt a hand of personal pacts. Swear any, all or none, then hold to lock in.' },
+  { who: 'host', beat: 'Squad call', text: 'Takes or skips the directive. Weigh in on voice — it\'s your risk too.' },
+  { who: 'you', beat: 'Swear pacts', text: 'You\'re dealt a hand of personal pacts. Swear any, all or none, then lock in.' },
   { who: 'all', beat: 'Dive', text: 'Play the mission in Helldivers 2. Finish the objectives and extract to win it.' },
-  { who: 'host', beat: 'Report', text: 'Files the stars, the time left and the samples you brought home.' },
-  { who: 'you', beat: 'Draft', text: 'Claim one reward from your own pods, then spend samples at Requisition.' },
+  { who: 'host', beat: 'Report', text: 'Files the stars, time and samples; spins Squad Honors on a full-star clear.' },
+  { who: 'you', beat: 'Draft', text: 'Every option rolls its own tier. Bank one, then spend credits at Brasch\'s Bargains.' },
 ]
 const WHO_TAG: Record<Who, string> = { host: 'Host', you: 'You', all: 'Squad' }
 
@@ -178,11 +178,19 @@ const DIAL_DIFFICULTY = [MIN_DIFFICULTY, MIN_DIFFICULTY + 2] as const
 const TIERS: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 const valor = ref<number>(DIAL_VALOR[0])
 const dialDifficulty = ref<number>(DIAL_DIFFICULTY[0])
-const odds = computed(() => TIERS.map(tier => ({
-  tier,
-  pct: ceilingOddsPercent(dialDifficulty.value, valor.value, tier),
-})))
-const baseTier = computed(() => [...odds.value].reverse().find(row => row.pct === 100)?.tier ?? 'C')
+// Zone chances, not cumulative reach: the bars read as the slice of the d100
+// line each tier owns, which is exactly what the draft rolls.
+const odds = computed(() => {
+  const zones = tierZones(dialDifficulty.value, valor.value)
+  return TIERS.map(tier => ({
+    tier,
+    pct: Math.round((zones.find(zone => zone.tier === tier)?.chance ?? 0) * 100),
+  }))
+})
+const baseTier = computed(() => {
+  const zones = tierZones(dialDifficulty.value, valor.value)
+  return zones.find(zone => zone.chance > 0)?.tier ?? 'C'
+})
 
 const dialEl = ref<HTMLElement | null>(null)
 let dialTimers: ReturnType<typeof setTimeout>[] = []
@@ -614,16 +622,16 @@ function submit(): void {
             <span>Every rule you play under: the squad's directive plus your own pacts.</span>
           </li>
           <li>
-            <span class="disp">Valor</span>
-            <span>Your risk, added up. The meter tops out at {{ VALOR_METER_MAX }}.</span>
+            <span class="disp">Odds</span>
+            <span>Your risk plots one d100 line. Every point widens the better zones.</span>
           </li>
           <li>
-            <span class="disp">Ceiling</span>
-            <span>Valor rolls how high your reward tier climbs above the difficulty's base, up to S+.</span>
+            <span class="disp">Roll</span>
+            <span>Each reward option rolls its own face. The zone it lands in sets its tier.</span>
           </li>
           <li>
             <span class="disp">Loot</span>
-            <span>Clear the mission and draft one item at that ceiling.</span>
+            <span>Clear the mission and bank one option — its card shows the face it rolled.</span>
           </li>
         </ol>
 
@@ -633,8 +641,7 @@ function submit(): void {
         >
           <div class="jb-dial-ctl">
             <label class="jb-dial-h">
-              <span class="lbl gold">Try it · Valor</span>
-              <span class="disp jb-dial-n">{{ valor }}</span>
+              <span class="lbl gold">Try it · Chosen risk</span>
               <input
                 v-model.number="valor"
                 class="jb-range"
@@ -642,7 +649,7 @@ function submit(): void {
                 min="0"
                 :max="VALOR_METER_MAX"
                 step="1"
-                aria-label="Valor"
+                aria-label="Chosen risk"
                 @pointerdown="holdDial"
                 @keydown="holdDial"
               >
@@ -673,7 +680,7 @@ function submit(): void {
           </div>
           <ul
             class="jb-odds"
-            :aria-label="`Ceiling odds at difficulty ${dialDifficulty}`"
+            :aria-label="`Tier odds at difficulty ${dialDifficulty}`"
           >
             <li
               v-for="row in odds"
@@ -688,7 +695,7 @@ function submit(): void {
                 :data-tier="row.tier"
                 :style="{ width: `${row.pct}%` }"
               /></span>
-              <span class="jb-odds-p">{{ row.tier === baseTier ? 'Base' : `${row.pct}%` }}</span>
+              <span class="jb-odds-p">{{ row.tier === baseTier ? `Base · ${row.pct}%` : `${row.pct}%` }}</span>
             </li>
           </ul>
           <p class="jb-dial-foot">
@@ -696,7 +703,7 @@ function submit(): void {
               <b>{{ difficultyName(dialDifficulty) }}</b> floors every reward at <b
                 class="tb"
                 :data-tier="baseTier"
-              >{{ baseTier }}</b> — Valor buys the climb above it.
+              >{{ baseTier }}</b> — risk widens the zones above it.
             </span>
             <span>Your squad dives at <b>{{ difficulty }}</b> today and climbs to {{ MAX_DIFFICULTY }}.</span>
           </p>
@@ -730,10 +737,11 @@ function submit(): void {
               <div class="pl-top">
                 <span class="pl-brand" />
                 <span class="grow" />
+                <span class="pl-btn">Credits</span>
                 <span
                   class="pl-btn"
-                  :class="{ lit: lit === 'tutorial' }"
-                >Tutorial<i class="pl-mk">{{ spotNo('tutorial') }}</i></span>
+                  :class="{ lit: lit === 'kit' }"
+                >Kit<i class="pl-mk">{{ spotNo('kit') }}</i></span>
                 <span
                   class="pl-btn"
                   :class="{ lit: lit === 'codex' }"
@@ -742,59 +750,49 @@ function submit(): void {
                   class="pl-btn"
                   :class="{ lit: lit === 'warbonds' }"
                 >Warbonds<i class="pl-mk">{{ spotNo('warbonds') }}</i></span>
+                <span
+                  class="pl-btn dots"
+                  :class="{ lit: lit === 'tutorial' }"
+                >⋮<i class="pl-mk">{{ spotNo('tutorial') }}</i></span>
               </div>
-              <div class="pl-strip" />
+              <div class="pl-tabs pl-beats">
+                <span>CALL</span><span>PACTS</span><span>DIVE</span><span>LOOT</span>
+              </div>
               <div class="pl-body">
-                <div class="pl-rail">
-                  <span class="pl-lbl">Squad</span>
-                  <span
-                    v-for="i in 3"
-                    :key="i"
-                    class="pl-chip"
-                  />
-                </div>
                 <div class="pl-centre">
-                  <span class="pl-lbl">Mission</span>
+                  <span class="pl-lbl">One lit stage</span>
                   <span class="pl-wheel" />
                 </div>
-                <div
-                  class="pl-rail right"
-                  :class="{ lit: lit === 'kit' }"
-                >
-                  <span class="pl-tabs"><b>Kit</b><span>Valor</span><i class="pl-mk">{{ spotNo('kit') }}</i></span>
-                  <span
-                    v-for="i in 6"
-                    :key="i"
-                    class="pl-item"
-                  />
-                </div>
               </div>
-              <div class="pl-phases" />
-            </template>
-            <template v-else>
-              <div class="pl-top">
-                <span class="pl-brand" />
-                <span class="grow" />
-                <span
-                  class="pl-btn"
-                  :class="{ lit: lit === 'kit' }"
-                >Kit<i class="pl-mk">{{ spotNo('kit') }}</i></span>
-                <span class="pl-btn dots">⋮</span>
-              </div>
-              <div class="pl-menu">
-                <span :class="{ lit: lit === 'codex' }">Codex<i class="pl-mk">{{ spotNo('codex') }}</i></span>
-                <span :class="{ lit: lit === 'warbonds' }">Warbonds<i class="pl-mk">{{ spotNo('warbonds') }}</i></span>
-                <span :class="{ lit: lit === 'tutorial' }">Tutorial<i class="pl-mk">{{ spotNo('tutorial') }}</i></span>
-              </div>
-              <div class="pl-squadbar">
+              <div class="pl-dock">
                 <span
                   v-for="i in 3"
                   :key="i"
                   class="pl-chip"
                 />
               </div>
-              <div class="pl-centre">
-                <span class="pl-wheel" />
+            </template>
+            <template v-else>
+              <div class="pl-top">
+                <span class="pl-brand" />
+                <span class="grow" />
+                <span class="pl-btn">Squad</span>
+                <span
+                  class="pl-btn"
+                  :class="{ lit: lit === 'kit' }"
+                >Kit<i class="pl-mk">{{ spotNo('kit') }}</i></span>
+                <span
+                  class="pl-btn dots"
+                  :class="{ lit: lit === 'tutorial' }"
+                >⋮<i class="pl-mk">{{ spotNo('tutorial') }}</i></span>
+              </div>
+              <div class="pl-tabs pl-beats">
+                <span>CALL</span><span>PACTS</span><span>DIVE</span><span>LOOT</span>
+              </div>
+              <div class="pl-body">
+                <div class="pl-centre">
+                  <span class="pl-wheel" />
+                </div>
               </div>
               <div class="pl-bar" />
             </template>
@@ -809,7 +807,7 @@ function submit(): void {
             >
               <span class="jb-mk">{{ spotNo('kit') }}</span>
               <span class="jb-leg">
-                <span class="jb-leg-h"><IconKit class="jb-leg-i" /><b>Kit</b><span class="cap">{{ isPhone ? 'Header · Kit' : 'Right rail · Kit tab' }}</span></span>
+                <span class="jb-leg-h"><IconKit class="jb-leg-i" /><b>Kit</b><span class="cap">Header · Kit</span></span>
                 <span>Everything you own: the surplus starters plus every reward you bank. Pacts and
                   directives grey out what they ban, live.</span>
               </span>
@@ -822,7 +820,7 @@ function submit(): void {
             >
               <span class="jb-mk">{{ spotNo('codex') }}</span>
               <span class="jb-leg">
-                <span class="jb-leg-h"><IconBook class="jb-leg-i" /><b>Codex</b><span class="cap">{{ isPhone ? '⋮ menu' : 'Header' }}</span></span>
+                <span class="jb-leg-h"><IconBook class="jb-leg-i" /><b>Codex</b><span class="cap">Header · menu</span></span>
                 <span>Every stratagem, weapon and booster in the pool, with its tier.</span>
                 <button
                   class="btn tiny ghost jb-try"
@@ -842,7 +840,7 @@ function submit(): void {
             >
               <span class="jb-mk">{{ spotNo('warbonds') }}</span>
               <span class="jb-leg">
-                <span class="jb-leg-h"><IconWarbond class="jb-leg-i" /><b>Warbonds</b><span class="cap">{{ isPhone ? '⋮ menu' : 'Header' }}</span></span>
+                <span class="jb-leg-h"><IconWarbond class="jb-leg-i" /><b>Warbonds</b><span class="cap">Header · menu</span></span>
                 <span>Rewards only roll from warbonds you own. Most come ticked — untick any you
                   haven't bought.</span>
                 <span class="jb-wb">
@@ -871,7 +869,7 @@ function submit(): void {
             >
               <span class="jb-mk">{{ spotNo('tutorial') }}</span>
               <span class="jb-leg">
-                <span class="jb-leg-h"><b>Tutorial</b><span class="cap">{{ isPhone ? '⋮ menu' : 'Header' }}</span></span>
+                <span class="jb-leg-h"><b>Tutorial</b><span class="cap">Header · menu</span></span>
                 <span>Brings this page back, any time.</span>
               </span>
             </li>
@@ -1323,8 +1321,8 @@ function submit(): void {
   text-transform: uppercase;
   color: var(--muted);
 }
-.jb-plan.desk { grid-template-rows: 30px 18px minmax(170px, 1fr) 14px; }
-.jb-plan.phone { width: min(100%, 300px); margin-inline: auto; grid-template-rows: 30px auto 22px minmax(200px, 1fr) 34px; border-radius: 18px; padding: 14px 10px; }
+.jb-plan.desk { grid-template-rows: 30px 20px minmax(170px, 1fr) 18px; }
+.jb-plan.phone { width: min(100%, 300px); margin-inline: auto; grid-template-rows: 30px 20px minmax(200px, 1fr) 34px; border-radius: 18px; padding: 14px 10px; }
 .jb-plan > div,
 .pl-rail,
 .pl-centre { border: 1px dashed var(--plan); }
@@ -1339,7 +1337,7 @@ function submit(): void {
 }
 .pl-btn.dots { padding: 1px 6px; }
 .pl-strip { background: color-mix(in srgb, var(--gold) 6%, transparent); }
-.pl-body { display: grid; grid-template-columns: 1fr 2.6fr 1.2fr; gap: 5px; border: 0 !important; }
+.pl-body { display: grid; grid-template-columns: 1fr; gap: 5px; border: 0 !important; }
 .pl-rail, .pl-centre { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 5px; }
 .pl-lbl { color: var(--dim); }
 .pl-chip { height: 12px; background: var(--line-2); }
@@ -1350,6 +1348,10 @@ function submit(): void {
 .pl-tabs b { color: var(--khaki); }
 .pl-item { height: 14px; background: var(--line-1); }
 .pl-phases { background: transparent; }
+.pl-beats { justify-content: space-between; }
+.pl-beats span { padding: 2px 7px; }
+.pl-dock { display: flex; gap: 3px; border: 0 !important; }
+.pl-dock .pl-chip { flex: 1; height: 12px; }
 .pl-menu {
   display: flex;
   flex-direction: column;

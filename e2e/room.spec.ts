@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test'
-import type { Browser } from '@playwright/test'
+import type { Browser, Page } from '@playwright/test'
 import { dismissWarbondIntro, expectJoinerLanded, lockMisfortune } from './helpers'
+
+async function leaveDive(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Session menu' }).click()
+  await page.getByRole('dialog', { name: 'Session' })
+    .getByRole('button', { name: /Leave dive/ }).click()
+  await expect(page).toHaveURL(/\/$/)
+}
 
 test('two divers sync one dive; late joiner gets the snapshot', async ({ browser }) => {
   const contextA = await browser.newContext()
@@ -17,76 +24,68 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
-  await expect(pageA.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
-  // A lone host is nudged to share the invite — the copy control glows.
-  await expect(pageA.getByLabel('Copy invite link')).toHaveClass(/glow/)
+  await expect(pageA.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
+  // The invite lives in the squad dock on every beat.
+  await expect(pageA.getByLabel(/Copy invite link/)).toBeVisible()
 
   // A second browser joins through the same invite link — the name gate
   // blocks seating until they provide a name.
   await pageB.goto(pageA.url())
   await expect(pageB.getByLabel('Your name')).toBeVisible()
-  await expect(pageB.locator('.diver-chip')).toHaveCount(0)
+  await expect(pageB.locator('.dock .chip')).toHaveCount(0)
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
 
-  await expect(pageB.locator('.diver-chip')).toHaveCount(2)
-  await expect(pageB.getByText('(you)')).toBeVisible()
+  await expect(pageB.locator('.dock .chip')).toHaveCount(2)
+  await expect(pageB.locator('.dock .chip.self')).toContainText('Duo')
+  // Only the host gets the wheel control.
   await expect(pageB.getByRole('button', { name: 'Spin', exact: true })).toBeDisabled()
-  // Invite copy lives beside the room code in the header, and stops glowing
-  // once the host has company.
-  await expect(pageB.getByLabel('Copy invite link')).toBeVisible()
-  await expect(pageA.getByLabel('Copy invite link')).not.toHaveClass(/glow/)
-
-  // The joiner's gate-provided name synced to the host; renaming via the
-  // inline chip editor still updates the squad in real time.
-  await expect(pageA.locator('.diver-chip').filter({ hasText: 'Duo' })).toBeVisible()
-  const nameBox = pageB.getByLabel('Your name')
-  await nameBox.fill('Duo Prime')
-  await nameBox.blur()
-  await expect(pageB.getByLabel('Your name')).toHaveValue('Duo Prime')
-  await expect(pageA.locator('.diver-chip').filter({ hasText: 'Duo Prime' })).toBeVisible()
+  await expect(pageB.getByLabel(/Copy invite link/)).toBeVisible()
+  await expect(pageA.locator('.dock .chip').filter({ hasText: 'Duo' })).toBeVisible()
 
   // Host spins; the seeded result syncs to the joiner. The joiner's card shows
-  // the pending decision — only the host can lock the misfortune in.
+  // the pending decision — only the host can take or skip it.
   await pageA.getByRole('button', { name: 'Spin', exact: true }).click()
-  await expect(pageB.getByRole('img', { name: 'Awaiting host', exact: true })).toBeVisible()
+  await expect(pageB.locator('.directive-card .dc-waiting')).toBeVisible()
   await lockMisfortune(pageA)
-  await expect(pageB.getByRole('img', { name: 'Locked in — team-wide' })).toBeVisible()
+  await expect(pageB.locator('.directive-card .dc-verdict')).toBeVisible()
 
   // The operation's first mission also draws a strain — an optional, op-long
   // team risk. The host declines it; the call syncs to the joiner.
-  await expect(pageB.getByRole('img', { name: 'Strain call — awaiting host' })).toBeVisible()
-  await pageA.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
+  await expect(pageB.locator('.strain-card')).toBeVisible()
+  await pageA.locator('.strain-card').getByRole('button', { name: 'Skip' }).click()
   // The host deals the hand; the call syncs to the joiner.
   await pageA.getByRole('button', { name: 'Deal the pacts' }).click()
   await expect(pageB.getByRole('heading', { name: 'Swear your pacts' })).toBeVisible()
 
-  // Both lock pacts — the dive only starts once the whole squad is in.
-  await pageB.locator('.pact:not([disabled])').first().click()
-  await pageB.getByRole('button', { name: 'Lock in & dive' }).click()
-  await expect(pageB.getByText('Pacts sworn.')).toBeVisible()
+  // Both swear a pact — the dive only starts once the whole squad is in.
+  await pageB.locator('.condition').first().click()
+  await pageB.getByRole('button', { name: /^Swear 1 pact/ }).click()
+  await expect(pageB.locator('.locked-row')).toBeVisible()
 
-  await pageA.locator('.pact:not([disabled])').first().click()
-  await pageA.getByRole('button', { name: 'Lock in & dive' }).click()
+  await pageA.locator('.condition').first().click()
+  await pageA.getByRole('button', { name: /^Swear 1 pact/ }).click()
 
-  await expect(pageB.getByRole('heading', { name: 'Briefing' })).toBeVisible()
-  await expect(pageA.getByRole('heading', { name: 'Briefing' })).toBeVisible()
+  await expect(pageB.getByRole('heading', { name: 'Hold the line' })).toBeVisible()
+  await expect(pageA.getByRole('heading', { name: 'Hold the line' })).toBeVisible()
 
   // Presence: both divers show online dots on the host page.
-  await expect(pageA.locator('.diver-chip .lamp.teal')).toHaveCount(2)
+  await expect(pageA.locator('.dock .chip .lamp.teal')).toHaveCount(2)
 
   // Rewards: the host reports success, then the squad board shows the other
   // diver's whole offer with their banked pick lit — and it stays up after
   // the host banks their own.
-  await pageA.getByRole('button', { name: 'Mission complete' }).click()
+  await pageA.getByRole('button', { name: 'Extracted' }).click()
   await pageA.getByRole('button', { name: 'File report' }).click()
-  await expect(pageB.getByRole('heading', { name: 'Reward Draft' })).toBeVisible()
+  await expect(pageB.getByRole('heading', { name: 'Bank one item' })).toBeVisible()
   await expect(pageB.locator('.squad-pick[aria-label*=": Choosing"]')).toHaveCount(1)
-  await pageB.locator('.pod-card .pod-hit').first().click()
+  await pageB.locator('.loot-card').first().click()
+  await pageB.getByRole('button', { name: /^Bank / }).click()
   await expect(pageA.locator('.squad-pick.done')).toHaveCount(1)
   await expect(pageA.locator('.squad-pick.done .tile.banked img')).toBeVisible()
-  await pageA.locator('.pod-card .pod-hit').first().click()
+  await pageA.locator('.loot-card').first().click()
+  await pageA.getByRole('button', { name: /^Bank / }).click()
   await expect(pageA.locator('.squad-pick.done .tile.banked')).toHaveCount(1)
   await expect(pageB.locator('.squad-pick.done .tile.banked')).toHaveCount(1)
 
@@ -115,33 +114,34 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
-  await expect(pageA.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
+  await expect(pageA.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Sidekick')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
-  await expect(pageB.locator('.diver-chip')).toHaveCount(2)
+  await expect(pageB.locator('.dock .chip')).toHaveCount(2)
 
-  // Host spins, locks the misfortune in and declines the operation's strain;
+  // Host spins, takes the directive and declines the operation's strain;
   // the joiner stalls before locking pacts.
   await pageA.getByRole('button', { name: 'Spin', exact: true }).click()
   await lockMisfortune(pageA)
-  await pageA.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
+  await pageA.locator('.strain-card').getByRole('button', { name: 'Skip' }).click()
   await pageA.getByRole('button', { name: 'Deal the pacts' }).click()
-  await expect(pageB.getByRole('button', { name: 'Lock in & dive' })).toBeVisible()
+  await expect(pageB.getByRole('button', { name: /Swear|Dive with no pacts/ })).toBeVisible()
 
-  // Hovering the joiner's chip reveals the kick affordance.
-  await pageA.locator('.diver-chip').nth(1).hover()
-  await pageA.getByRole('button', { name: /Kick/ }).click()
-  await expect(pageA.locator('.diver-chip')).toHaveCount(1)
+  // The dock's manage menu kicks the stalled diver.
+  await pageA.getByRole('button', { name: 'Manage Sidekick' }).click()
+  await pageA.getByRole('menuitem', { name: 'Kick diver' }).click()
+  await expect(pageA.locator('.dock .chip')).toHaveCount(1)
 
   // The removed diver sees a removal notice…
   await expect(pageB.getByText('You were removed from this dive by the host.')).toBeVisible()
 
   // …and the dive no longer waits on them: the host locks pacts alone.
-  await pageA.getByRole('button', { name: 'Lock in & dive' }).click()
-  await expect(pageA.getByRole('heading', { name: 'Briefing' })).toBeVisible()
+  await pageA.locator('.condition').first().click()
+  await pageA.getByRole('button', { name: /^Swear 1 pact/ }).click()
+  await expect(pageA.getByRole('heading', { name: 'Hold the line' })).toBeVisible()
 
   await contextA.close()
   await contextB.close()
@@ -159,13 +159,13 @@ test('the Codex slide-over keeps the host seated', async ({ browser }) => {
   await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
-  await expect(pageA.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
+  await expect(pageA.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
-  await expect(pageB.locator('.diver-chip')).toHaveCount(2)
+  await expect(pageB.locator('.dock .chip')).toHaveCount(2)
 
   // Opening the Codex overlays the session — the socket stays mounted, so the
   // host is never migrated away.
@@ -178,9 +178,8 @@ test('the Codex slide-over keeps the host seated', async ({ browser }) => {
   await expect(drawer).toBeHidden()
 
   // Still host, still connected, still seated with the peer.
-  await expect(pageA.locator('.diver-chip')).toHaveCount(2)
-  await expect(pageA.locator('.crown')).toHaveCount(1)
-  await expect(pageA.locator('.diver-chip').filter({ hasText: 'Duo' })).toBeVisible()
+  await expect(pageA.locator('.dock .chip')).toHaveCount(2)
+  await expect(pageA.locator('.dock .chip').filter({ hasText: 'Duo' })).toBeVisible()
 
   await contextA.close()
   await contextB.close()
@@ -202,24 +201,22 @@ async function squadAtTheWheel(browser: Browser) {
   await pageA.getByRole('button', { name: 'Join the dive' }).click()
   await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
-  await expect(pageA.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
+  await expect(pageA.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
-  await expect(pageB.locator('.diver-chip')).toHaveCount(2)
+  await expect(pageB.locator('.dock .chip')).toHaveCount(2)
   return { contextA, contextB, pageA, pageB, code: pageA.url().split('/').pop()! }
 }
 
 test('when the whole squad leaves, the room waits and RESUME puts everyone back', async ({ browser }) => {
   const { contextA, contextB, pageA, pageB, code } = await squadAtTheWheel(browser)
 
-  await pageB.getByRole('button', { name: 'Leave', exact: true }).click()
-  await expect(pageB).toHaveURL(/\/$/)
-  await expect(pageA.locator('.diver-chip').filter({ hasText: 'Duo' })).toContainText('away')
-  await pageA.getByRole('button', { name: 'Leave', exact: true }).click()
-  await expect(pageA).toHaveURL(/\/$/)
+  await leaveDive(pageB)
+  await expect(pageA.locator('.dock .chip').filter({ hasText: 'Duo' })).toContainText('Away')
+  await leaveDive(pageA)
 
   // The room is still live on both Bridges — nothing was reset.
   for (const page of [pageA, pageB]) {
@@ -229,14 +226,14 @@ test('when the whole squad leaves, the room waits and RESUME puts everyone back'
 
   // The guest is back first and takes the helm; the host is still away.
   await pageB.getByRole('link', { name: 'RESUME' }).click()
-  await expect(pageB.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
-  await expect(pageB.locator('.diver-chip')).toHaveCount(2)
-  await expect(pageB.locator('.diver-chip').filter({ hasText: 'Host' })).toContainText('away')
+  await expect(pageB.locator('.call')).toBeVisible()
+  await expect(pageB.locator('.dock .chip')).toHaveCount(2)
+  await expect(pageB.locator('.dock .chip.away')).toContainText('Host')
   await expect(pageB.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled()
 
   await pageA.getByRole('link', { name: 'RESUME' }).click()
-  await expect(pageA.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
-  await expect(pageB.locator('.diver-chip').filter({ hasText: 'Host' })).not.toContainText('away')
+  await expect(pageA.locator('.call')).toBeVisible()
+  await expect(pageB.locator('.dock .chip.away')).toHaveCount(0)
 
   await contextA.close()
   await contextB.close()
@@ -244,15 +241,14 @@ test('when the whole squad leaves, the room waits and RESUME puts everyone back'
 
 test('the squad never waits on a diver who left', async ({ browser }) => {
   const { contextA, contextB, pageA, pageB } = await squadAtTheWheel(browser)
-  await pageB.getByRole('button', { name: 'Leave', exact: true }).click()
-  await expect(pageB).toHaveURL(/\/$/)
+  await leaveDive(pageB)
 
   await pageA.getByRole('button', { name: 'Spin', exact: true }).click()
   await lockMisfortune(pageA)
-  await pageA.locator('.strain').getByRole('button', { name: 'Opt out' }).click()
+  await pageA.locator('.strain-card').getByRole('button', { name: 'Skip' }).click()
   await pageA.getByRole('button', { name: 'Deal the pacts' }).click()
-  await pageA.getByRole('button', { name: 'Lock in & dive' }).click()
-  await expect(pageA.getByRole('heading', { name: 'Briefing' })).toBeVisible()
+  await pageA.getByRole('button', { name: 'Dive with no pacts' }).click()
+  await expect(pageA.getByRole('heading', { name: 'Hold the line' })).toBeVisible()
 
   await contextA.close()
   await contextB.close()

@@ -1,14 +1,24 @@
 <script setup lang="ts">
-import { MAJOR_ORDER_RISK, STRAIN_RISK, conditionRiskAt, directiveValorAt, missionsPerOperation } from '~~/shared/engine/config'
-import { canRerollWheel, currentMisfortune, currentStrain, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, strainDecision, teamRiskOf } from '~~/shared/engine/selectors'
-import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
-import { FRONTS } from '~~/shared/data/fronts'
-import type { DiveState, MajorOrderSelection } from '~~/shared/engine/types'
+import { conditionRiskAt, directiveValorAt, STRAIN_RISK } from '~~/shared/engine/config'
+import { frontById } from '~~/shared/engine/wheel'
+import { tierZones } from '~~/shared/engine/rewards'
+import {
+  canRerollWheel,
+  currentFront,
+  currentMisfortune,
+  currentStrain,
+  misfortuneDecision,
+  misfortuneStrandedDivers,
+  strainDecision,
+  teamRiskOf,
+} from '~~/shared/engine/selectors'
+import type { DiveState, MajorOrderSelection, RewardTier } from '~~/shared/engine/types'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   state: DiveState
-  canControl?: boolean
-}>(), { canControl: true })
+  selfId: string | null
+  canControl: boolean
+}>()
 
 const emit = defineEmits<{
   spin: []
@@ -17,723 +27,382 @@ const emit = defineEmits<{
   deal: []
   setMajorOrder: [order: MajorOrderSelection | null]
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
+  openKit: []
 }>()
 
 const misfortune = computed(() => currentMisfortune(props.state))
-const misfortuneRisk = computed(() =>
-  misfortune.value ? conditionRiskAt(misfortune.value.id, props.state.difficulty) : 0)
-// A squad directive stakes its risk × the squad-size weight in Valor — team rules outweigh pacts.
-const directiveValor = computed(() =>
-  misfortune.value ? directiveValorAt(misfortune.value.id, props.state.difficulty, props.state.divers.length) : 0)
+const strain = computed(() => currentStrain(props.state))
+const front = computed(() => currentFront(props.state))
+// Only the host's phone shows the wheel; squadmates have no spin to wait out.
+const drawing = useSpinReveal(() => props.state.wheel?.seed)
+const held = computed(() => drawing.value && props.canControl)
+const pinnedFronts = computed(() =>
+  (props.state.majorOrder?.fronts ?? [])
+    .map(id => frontById(id))
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null))
 const decision = computed(() => misfortuneDecision(props.state))
+const strainCall = computed(() => strainDecision(props.state))
+const hostName = computed(() =>
+  props.state.divers.find(diver => diver.id === props.state.hostId)?.name ?? 'The host')
+
+const directiveRisk = computed(() =>
+  misfortune.value ? conditionRiskAt(misfortune.value.id, props.state.difficulty) : 0)
+const strainRisk = computed(() =>
+  strain.value ? STRAIN_RISK[strain.value.id] ?? 0 : 0)
 const stranded = computed(() => misfortuneStrandedDivers(props.state))
 const acceptBlocked = computed(() => stranded.value.length > 0)
 const strandedReason = computed(() =>
-  `${stranded.value.map(d => d.name).join(', ')} can't field four stratagems under this rule — opt out or reroll.`)
+  stranded.value.length
+    ? `${stranded.value.map(diver => diver.name).join(', ')} can’t field this rule.`
+    : '')
+const canDeal = computed(() =>
+  props.state.phase === 'deal' || (decision.value.decided && strainCall.value.decided))
+const moOpen = ref(false)
 
-const strain = computed(() => currentStrain(props.state))
-const strainRisk = computed(() => STRAIN_RISK[strain.value?.id ?? ''] ?? 0)
-const strainCall = computed(() => strainDecision(props.state))
-// The drawn strain persists with the front for the whole operation, so the
-// card shows whenever one exists (not just on the first mission's decision).
-const strainVisible = computed(() =>
-  Boolean(props.state.strainId) && !props.state.majorOrder)
-
-const front = computed(() =>
-  props.state.frontId ? FRONTS.find(f => f.id === props.state.frontId) ?? null : null)
-const frontImage = computed(() => (front.value ? factionImageUrl(front.value.id) : undefined))
-const strainImage = computed(() => (strain.value ? strainImageUrl(strain.value.id) : undefined))
-
-const mo = computed(() => props.state.majorOrder)
-const moFronts = computed(() => majorOrderFronts(props.state))
-
-const misfortuneReroll = computed(() => canRerollWheel(props.state, 'misfortune'))
-const frontReroll = computed(() => canRerollWheel(props.state, 'front'))
-const strainReroll = computed(() => canRerollWheel(props.state, 'strain'))
-
-function rerollTitle(info: { free: boolean, reason: string | null }, wheel: string): string {
-  return info.reason ?? (info.free
-    ? `Reroll ${wheel} — free: combo already completed`
-    : `Reroll ${wheel} — spends a reroll token (${props.state.rerollTokens} left)`)
-}
-
-// Held back while the wheel turns so the pinned gauge doesn't reveal the draw early.
-const teamRisk = computed(() => teamRiskOf(props.state))
-const opLength = computed(() => missionsPerOperation(props.state.difficulty))
-
-const pendingText = computed(() => {
-  return decision.value.decided ? 'Directive called' : 'Directive pending'
+const callValor = computed(() => teamRiskOf(props.state))
+const directiveShare = computed(() =>
+  misfortune.value
+    ? directiveValorAt(misfortune.value.id, props.state.difficulty, props.state.divers.length)
+    : 0)
+const previewValor = computed(() => {
+  if (decision.value.decided) {
+    return callValor.value
+  }
+  return callValor.value + (props.state.misfortuneAccepted ? 0 : directiveShare.value)
+})
+const zones = computed(() => tierZones(props.state.difficulty, callValor.value))
+const previewZones = computed(() => tierZones(props.state.difficulty, previewValor.value))
+const deltas = computed<Partial<Record<RewardTier, number>>>(() => {
+  const result: Partial<Record<RewardTier, number>> = {}
+  for (const zone of zones.value) {
+    const before = previewZones.value.find(entry => entry.tier === zone.tier)
+    if (!before) {
+      continue
+    }
+    const delta = (before.chance - zone.chance) * 100
+    if (Math.abs(delta) >= 0.5) {
+      result[zone.tier] = delta
+    }
+  }
+  return result
+})
+const rollNote = computed(() => {
+  if (!misfortune.value) {
+    return ''
+  }
+  return props.state.misfortuneAccepted
+    ? `Accepted · ${misfortune.value.name}`
+    : `If accepted · ${misfortune.value.name}`
 })
 
-// The host gate: both calls in, the wheel holds until the host deals.
-const dealReady = computed(() =>
-  props.state.phase === 'deal'
-  && decision.value.decided
-  && strainCall.value.decided)
-
-// The gate readout counts the calls still outstanding (misfortune + strain).
-const gateText = computed(() => {
-  if (!props.state.wheel) {
-    return 'SPIN FIRST'
-  }
-  const needsStrain = strainVisible.value && Boolean(strain.value)
-  const need = 1 + (needsStrain ? 1 : 0)
-  const made = (decision.value.decided ? 1 : 0) + (needsStrain && strainCall.value.decided ? 1 : 0)
-  return `${made}/${need} CALLS`
-})
-
-const showMo = computed(() => !props.state.frontId)
-
-// The wheel's own spin clock: while it turns, the result cards stand down for a
-// "Drawing" placeholder so the draw neither spoils itself nor jerks the layout
-// as the bottom sections swap in. Matches WheelOfMisfortune's rotor.
-const SPIN_MS = 2800
-const drawing = ref(false)
-const drawer = ref<HTMLElement | null>(null)
-const sheet = ref<HTMLElement | null>(null)
-let spinTimer: ReturnType<typeof setTimeout> | undefined
-
-// Once the draw lands, the drawer opens so the calls it asks for are in reach.
-async function expandDrawer(behavior: ScrollBehavior) {
-  await nextTick()
-  if (drawer.value && sheet.value) {
-    drawer.value.scrollTo({ top: sheet.value.offsetTop, behavior })
-  }
-}
-watch(
-  () => props.state.wheel?.seed,
-  (seed, previous) => {
-    clearTimeout(spinTimer)
-    if (seed === undefined || seed === previous) {
-      drawing.value = false
-      return
-    }
-    const reduced = import.meta.client
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    // A fresh draw collapses the drawer so the spin plays out in view.
-    drawer.value?.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' })
-    if (reduced) {
-      drawing.value = false
-      void expandDrawer('auto')
-      return
-    }
-    drawing.value = true
-    spinTimer = setTimeout(() => {
-      drawing.value = false
-      void expandDrawer('smooth')
-    }, SPIN_MS)
-  },
-)
-onBeforeUnmount(() => clearTimeout(spinTimer))
-
-function acceptDisabled(): boolean {
-  return !props.canControl || acceptBlocked.value
-}
+const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'))
 </script>
 
 <template>
-  <div class="phone-wheel">
+  <section class="phone-call">
+    <header class="call-head">
+      <span class="kick">{{ canControl ? 'Your move' : 'Stand by' }}</span>
+      <h1 class="disp call-title">
+        {{ canControl ? 'Make the squad’s call' : `${hostName} is making the call` }}
+      </h1>
+      <p class="call-sub">
+        {{ canControl
+          ? 'Talk it over on voice. Everyone carries what you take.'
+          : 'The host spins the wheel and locks the squad’s call.' }}
+      </p>
+    </header>
+
     <div
-      ref="drawer"
-      class="body"
+      v-if="state.wheel && misfortune && !held"
+      class="directive"
+      :class="{ accepted: state.misfortuneAccepted }"
     >
-      <div class="stage">
-        <div
-          class="sweep"
-          aria-hidden="true"
-        />
-
-        <button
-          v-if="state.wheel"
-          class="ghost reroll"
-          type="button"
-          :disabled="!misfortuneReroll.allowed"
-          :aria-label="`Reroll the directive${misfortuneReroll.free ? ' (free)' : `, spends a token (${state.rerollTokens} left)`}`"
-          :title="misfortuneReroll.reason ?? undefined"
-          @click="emit('reroll', 'misfortune')"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.7"
-            aria-hidden="true"
-          >
-            <rect
-              x="3.5"
-              y="3.5"
-              width="17"
-              height="17"
-              rx="2"
-            />
-            <circle
-              cx="8.5"
-              cy="8.5"
-              r="1.3"
-              fill="currentColor"
-            />
-            <circle
-              cx="15.5"
-              cy="15.5"
-              r="1.3"
-              fill="currentColor"
-            />
-            <circle
-              cx="12"
-              cy="12"
-              r="1.3"
-              fill="currentColor"
-            />
-          </svg>
-          <span class="reroll-n">{{ state.rerollTokens }}</span>
-        </button>
-
-        <WheelOfMisfortune
-          :difficulty="state.difficulty"
-          :seed="state.wheel?.seed ?? null"
-          :can-control="canControl"
-          @spin="emit('spin')"
+      <div class="dc-top">
+        <span class="cap">Directive</span>
+        <RiskPips
+          :value="directiveRisk"
+          :max="5"
+          tone="gold"
         />
       </div>
-
+      <h2 class="disp dc-name">
+        {{ misfortune.name }}
+      </h2>
+      <p class="dc-rule">
+        {{ misfortune.rule }}.
+      </p>
       <div
-        ref="sheet"
-        class="cards"
+        v-if="!decision.decided && canControl"
+        class="dc-actions"
       >
-        <span
-          class="grabber"
-          aria-hidden="true"
-        />
-        <template v-if="showMo">
-          <MajorOrderPicker
-            :state="state"
-            :can-control="canControl"
-            @select="emit('setMajorOrder', $event)"
-          />
-        </template>
-
-        <div
-          v-if="state.wheel && drawing"
-          class="drawing"
-          aria-live="polite"
+        <button
+          class="take"
+          type="button"
+          :disabled="acceptBlocked"
+          @click="emit('decide', true)"
         >
-          <span class="disp drawing-word pulse">Drawing</span>
-          <span class="lbl">Directive · front · strain</span>
-        </div>
+          Take it
+        </button>
+        <button
+          class="skip"
+          type="button"
+          @click="emit('decide', false)"
+        >
+          Skip
+        </button>
+      </div>
+      <div
+        v-else
+        class="dc-verdict"
+        :class="state.misfortuneAccepted ? 'taken' : 'skipped'"
+      >
+        {{ state.misfortuneAccepted ? 'Taken' : 'Skipped' }}
+      </div>
+      <p
+        v-if="acceptBlocked && !decision.decided"
+        class="dc-block"
+      >
+        {{ strandedReason }}
+      </p>
+    </div>
 
-        <template v-else-if="state.wheel">
-          <div
-            class="card"
-            :class="decision.decided ? (decision.accepted ? 'locked' : 'safe') : 'open'"
-          >
-            <div class="card-head">
-              <span class="lbl">Directive · whole squad</span>
-              <span
-                v-if="decision.decided"
-                class="stamp disp"
-                :class="decision.accepted ? 'red' : 'khaki'"
-              >{{ decision.accepted ? 'Sworn' : 'Opted out' }}</span>
-            </div>
-            <div class="mis-name disp">
-              {{ misfortune?.name ?? 'Safe dive' }}
-            </div>
-            <div class="mis-row">
-              <span class="mis-rule">{{ misfortune?.rule ?? 'No directive — a zero-risk dive.' }}</span>
-              <span
-                v-if="misfortune"
-                class="mis-risk"
-              >
-                <span
-                  class="disp red"
-                >+{{ directiveValor }}</span>
-                <RiskPips
-                  :value="misfortuneRisk"
-                  :max="5"
-                />
-              </span>
-            </div>
-
-            <template v-if="!decision.decided">
-              <p
-                v-if="acceptBlocked && canControl"
-                class="block-note"
-              >
-                {{ strandedReason }}
-              </p>
-              <div class="mis-actions">
-                <HoldButton
-                  :label="acceptBlocked ? 'Blocked' : 'Lock it in'"
-                  hint="hold"
-                  tone="gold"
-                  :disabled="acceptDisabled()"
-                  :aria-label="acceptBlocked ? strandedReason : 'Accept the directive, hold to lock'"
-                  @confirm="emit('decide', true)"
-                />
-                <button
-                  class="ghost opt-out"
-                  type="button"
-                  :disabled="!canControl"
-                  @click="emit('decide', false)"
-                >
-                  <span class="disp">Opt out</span>
-                  <span class="sub">+0</span>
-                </button>
-              </div>
-            </template>
-            <template v-else-if="canControl">
-              <button
-                class="ghost change"
-                type="button"
-                @click="emit('decide', !decision.accepted)"
-              >
-                {{ decision.accepted ? 'Switch — opt out' : 'Switch — lock it in' }}
-              </button>
-            </template>
-          </div>
-
-          <div
-            v-if="strainVisible && strain"
-            class="card strain-card"
-          >
-            <div class="card-head">
-              <span class="lbl strain-l">Front · strain</span>
-              <span class="head-tools">
-                <button
-                  v-if="canControl"
-                  class="reroll-dice"
-                  type="button"
-                  :disabled="!frontReroll.allowed"
-                  :aria-label="rerollTitle(frontReroll, 'front')"
-                  :title="frontReroll.allowed ? undefined : rerollTitle(frontReroll, 'front')"
-                  @click="emit('reroll', 'front')"
-                ><IconDice /><span class="reroll-lbl">Front</span></button>
-                <button
-                  v-if="canControl && strain"
-                  class="reroll-dice"
-                  type="button"
-                  :disabled="!strainReroll.allowed"
-                  :aria-label="rerollTitle(strainReroll, 'strain')"
-                  :title="strainReroll.allowed ? undefined : rerollTitle(strainReroll, 'strain')"
-                  @click="emit('reroll', 'strain')"
-                ><IconDice /><span class="reroll-lbl">Strain</span></button>
-                <span
-                  v-if="strainCall.decided"
-                  class="stamp disp"
-                  :class="strainCall.accepted ? 'orange' : 'khaki'"
-                >{{ strainCall.accepted ? 'Committed' : 'Opted out' }}</span>
-              </span>
-            </div>
-            <div class="fs-grid">
-              <div class="fs-cell">
-                <span class="fs-icon">
-                  <img
-                    v-if="frontImage"
-                    :src="frontImage"
-                    :alt="front?.displayName ?? 'Front'"
-                  >
-                </span>
-                <span class="fs-copy">
-                  <span class="lbl fs-lbl">Front</span>
-                  <span class="fs-name">{{ front?.displayName ?? 'Unknown' }}</span>
-                </span>
-                <span class="fs-note">all {{ opLength }} missions</span>
-              </div>
-              <div class="fs-cell fs-strain">
-                <span class="fs-icon">
-                  <img
-                    v-if="strainImage"
-                    :src="strainImage"
-                    :alt="strain.name"
-                  >
-                </span>
-                <span class="fs-copy">
-                  <span class="lbl fs-lbl strain-l">Strain</span>
-                  <span class="fs-name disp">{{ strain.name }}</span>
-                </span>
-                <span class="fs-risk">
-                  <b class="disp orange">+{{ strainRisk }}</b>
-                  <i class="lbl">each mission</i>
-                </span>
-              </div>
-            </div>
-
-            <template v-if="!strainCall.decided">
-              <div class="mis-actions">
-                <HoldButton
-                  label="Commit"
-                  :hint="`hold · all ${opLength} missions`"
-                  tone="orange"
-                  :disabled="!canControl"
-                  @confirm="emit('decideStrain', true)"
-                />
-                <button
-                  class="ghost opt-out"
-                  type="button"
-                  :disabled="!canControl"
-                  @click="emit('decideStrain', false)"
-                >
-                  <span class="disp">Opt out</span>
-                  <span class="sub">+0</span>
-                </button>
-              </div>
-            </template>
-            <template v-else-if="canControl">
-              <button
-                class="ghost change"
-                type="button"
-                @click="emit('decideStrain', !strainCall.accepted)"
-              >
-                {{ strainCall.accepted ? 'Switch — opt out' : 'Switch — commit' }}
-              </button>
-            </template>
-          </div>
-
-          <div
-            v-if="mo"
-            class="card mo-card"
-          >
-            <div class="card-head">
-              <span class="lbl mo-l">Major Order · pinned</span>
-            </div>
-            <div class="mo-fronts">
-              <img
-                v-for="f in moFronts"
-                :key="f.id"
-                :src="factionImageUrl(f.id)"
-                :alt="f.displayName"
-                class="mo-icon"
-              >
-              <span class="mo-name">{{ moFronts.map(f => f.displayName).join(' / ') }}</span>
-              <span class="disp mo-risk">+{{ MAJOR_ORDER_RISK }}</span>
-            </div>
-          </div>
-        </template>
-
-        <template v-else-if="!canControl">
-          <p class="waiting">
-            Waiting for the host to spin…
-          </p>
-        </template>
+    <div
+      v-if="strain && state.wheel && !held"
+      class="strain"
+      :class="{ accepted: state.strainAccepted }"
+    >
+      <div class="dc-top">
+        <span class="cap">Strain · whole operation</span>
+        <RiskPips
+          :value="strainRisk"
+          :max="5"
+          tone="orange"
+        />
+      </div>
+      <h2 class="disp strain-name">
+        {{ strain.name }}
+      </h2>
+      <div
+        v-if="!strainCall.decided && canControl"
+        class="dc-actions"
+      >
+        <button
+          class="take"
+          type="button"
+          @click="emit('decideStrain', true)"
+        >
+          Take
+        </button>
+        <button
+          class="skip"
+          type="button"
+          @click="emit('decideStrain', false)"
+        >
+          Skip
+        </button>
+      </div>
+      <div
+        v-else
+        class="dc-verdict"
+        :class="state.strainAccepted ? 'taken' : 'skipped'"
+      >
+        {{ state.strainAccepted ? 'Taken' : 'Skipped' }}
       </div>
     </div>
 
-    <PhoneActionBar>
-      <template #detail>
-        <PhoneValor
-          :difficulty="state.difficulty"
-          :team-risk="drawing ? 0 : teamRisk"
-          :pact-risk="0"
-          :pending-text="decision.decided && (!strainVisible || strainCall.decided) ? 'Dealing pacts' : pendingText"
-        />
-      </template>
+    <ValorRoll
+      v-if="state.wheel && misfortune && !held"
+      :zones="previewZones"
+      :deltas="deltas"
+      :note="rollNote"
+      compact
+    />
+
+    <div
+      v-if="canControl"
+      class="wheel-wrap"
+    >
+      <WheelOfMisfortune
+        :difficulty="state.difficulty"
+        :seed="state.wheel?.seed ?? null"
+        :can-control="canControl"
+        @spin="emit('spin')"
+      />
+      <button
+        v-if="!state.frontId && !state.majorOrder"
+        class="mo-open"
+        type="button"
+        @click="moOpen = true"
+      >
+        Major Order · pin a front
+      </button>
+      <div
+        v-else-if="front && !held"
+        class="front-pin"
+      >
+        Front locked · <b>{{ front.displayName }}</b>
+      </div>
+      <div
+        v-else-if="state.majorOrder"
+        class="front-pin"
+      >
+        Major Order · <b>{{ pinnedFronts.map(entry => entry.displayName).join(' · ') }}</b>
+      </div>
+    </div>
+
+    <template v-if="!canControl">
+      <div
+        v-if="state.wheel && misfortune"
+        class="wait-note"
+      >
+        <span class="cap">Next</span>
+        <p>You’ll swear your own pacts when the host deals the hand.</p>
+      </div>
+      <KitSnapshot
+        :state="state"
+        :self-id="selfId"
+        @open="emit('openKit')"
+      />
+    </template>
+
+    <PhoneActionBar v-if="canControl">
       <template #primary>
-        <!-- Before the draw the pinned CTA is the spin itself: a dead "Deal the
-             pacts" here was the biggest control on screen while the only live
-             action hid in the wheel hub. -->
         <button
-          v-if="!state.wheel && canControl"
+          v-if="!state.wheel"
           class="bar-cta cta-sweep"
           type="button"
           @click="emit('spin')"
         >
           <span class="disp">Spin the wheel</span>
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.4"
-            aria-hidden="true"
-          ><path d="M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 3v18M3 12h18" /></svg>
         </button>
         <button
-          v-else-if="dealReady && canControl"
+          v-else
           class="bar-cta cta-sweep"
           type="button"
+          :disabled="!canDeal"
           @click="emit('deal')"
         >
           <span class="disp">Deal the pacts</span>
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.4"
-            aria-hidden="true"
-          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
         </button>
-        <div
-          v-else
-          class="bar-gate"
-          role="status"
+      </template>
+      <template #secondary>
+        <button
+          v-if="state.wheel"
+          class="bar-alt"
+          type="button"
+          :disabled="!rerollMisfortune.allowed"
+          :title="rerollMisfortune.reason ?? undefined"
+          @click="emit('reroll', 'misfortune')"
         >
-          <span
-            class="hazard-soft bar-gate-edge"
-            aria-hidden="true"
-          />
-          <span class="disp bar-gate-word">{{ state.wheel ? 'Deal the pacts' : 'Spin the wheel' }}</span>
-          <span class="bar-gate-meta">{{ dealReady || !state.wheel ? 'Waiting for the host' : gateText }}</span>
-        </div>
+          Reroll
+        </button>
       </template>
     </PhoneActionBar>
-  </div>
+    <PhoneActionBar v-else>
+      <template #primary>
+        <span class="bar-gate">Waiting on host</span>
+      </template>
+    </PhoneActionBar>
+
+    <AppDialog
+      v-model:open="moOpen"
+      title="Major Order"
+      description="Pin the operation's front to the live war order, or pick one manually."
+      size="md"
+    >
+      <MajorOrderPicker
+        :state="state"
+        :can-control="canControl"
+        @select="(order) => { emit('setMajorOrder', order); moOpen = false }"
+      />
+    </AppDialog>
+  </section>
 </template>
 
 <style scoped>
-.phone-wheel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-/* The phase body is a drawer: the wheel sticks to the top while the decision
-   sheet, tucked over its lower rim, rides up over it as the diver scrolls —
-   so a tall directive + strain stack gets the whole phase, not the sliver
-   left under the wheel. The page itself never scrolls. */
-.body {
-  position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
+.phone-call {
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: y proximity;
+  gap: 12px;
+  min-width: 0;
 }
-.stage {
-  position: sticky;
-  top: 0;
-  flex: 0 0 auto;
-  scroll-snap-align: start;
-  display: grid;
-  place-items: start center;
-  padding: 8px 12px 0;
-  overflow: hidden;
-}
-.sweep {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 56px;
-  background: linear-gradient(180deg, transparent, rgba(255, 214, 66, 0.05));
-  animation: sweepY 9s linear infinite;
-  pointer-events: none;
-}
-.stage :deep(.wheel-wrap) { width: min(100%, 300px, 46vh); }
-/* Short phones: the fixed bands leave ~290px, which the wheel used to take
-   whole, starving the decision sheet. Shrink it so the cards stay reachable. */
-@media (max-height: 740px) {
-  .stage :deep(.wheel-wrap) { width: min(100%, 300px, 34vh); }
-}
-.stage :deep(.risk-legend) { display: none; }
-
-.reroll {
-  position: absolute;
-  left: 10px;
-  top: 10px;
-  z-index: 2;
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  background: var(--ground);
-  color: var(--text);
-}
-.reroll:disabled { opacity: 0.4; }
-.reroll-n {
-  position: absolute;
-  right: -1px;
-  bottom: -1px;
-  display: grid;
-  place-items: center;
-  min-width: 20px;
-  height: 18px;
-  padding: 0 3px;
-  background: var(--panel);
-  border: 1px solid var(--line-2);
+.call-head { display: flex; flex-direction: column; gap: 5px; }
+.kick {
+  color: var(--gold);
   font-size: 10px;
   font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
 }
+.call-title { font-size: 34px; }
+.call-sub { margin: 0; color: var(--muted); font-size: 12px; }
 
-.cards {
-  position: relative;
-  z-index: 1;
-  flex: 1 0 auto;
-  margin-top: -22px;
-  scroll-snap-align: start;
+.directive,
+.strain {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 18px 12px 12px;
+  gap: 7px;
+  padding: 12px 13px;
+  background:
+    radial-gradient(ellipse 80% 80% at 20% 0%, rgba(255, 214, 66, 0.11), transparent 70%),
+    var(--panel);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, var(--line-3));
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.strain {
+  background:
+    radial-gradient(ellipse 80% 80% at 20% 0%, rgba(255, 159, 67, 0.1), transparent 70%),
+    var(--panel);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--orange) 45%, var(--line-3));
+}
+.directive.accepted { box-shadow: inset 0 0 0 2px var(--gold); }
+.strain.accepted { box-shadow: inset 0 0 0 2px var(--orange); }
+.dc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dc-name { font-size: 30px; color: var(--gold); }
+.strain-name { font-size: 22px; color: var(--orange); }
+.dc-rule { margin: 0; color: var(--khaki); font-size: 12px; }
+.dc-actions { display: flex; gap: 7px; }
+.take,
+.skip {
+  flex: 1;
+  min-height: 38px;
+  border: 0;
+  font: 800 11px var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.take { background: var(--gold); color: var(--on-gold); }
+.take:disabled { opacity: 0.4; }
+.skip { background: var(--rail); color: var(--khaki); box-shadow: inset 0 0 0 1px var(--line-4); }
+.dc-verdict {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.dc-verdict.taken { background: var(--gold); color: var(--on-gold); }
+.dc-verdict.skipped { background: var(--rail); color: var(--muted); }
+.dc-block { margin: 0; color: var(--red); font-size: 10px; }
+
+.wheel-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.phone-call :deep(.risk-legend) { display: none; }
+.wheel-wrap :deep(.wheel) { max-width: 360px; }
+.mo-open {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
   background: var(--rail);
-  border-top: 1px solid var(--line-3);
-  box-shadow: 0 -16px 28px rgba(11, 12, 9, 0.72);
-}
-
-.grabber {
-  position: absolute;
-  left: 50%;
-  top: 6px;
-  width: 40px;
-  height: 3px;
-  transform: translateX(-50%);
-  background: var(--line-4);
-}
-
-.drawing {
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 8px;
-  min-height: 160px;
-  border: 1px solid var(--line-1);
-  background: rgba(19, 21, 15, 0.6);
-}
-.drawing-word { font-size: 24px; color: var(--gold); }
-
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
-  background: var(--panel);
-  border: 1px solid var(--line-3);
-}
-.card.locked { border-color: var(--red); }
-.card.safe { border-color: var(--line-4); }
-.card-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-.card-head > .lbl { white-space: nowrap; }
-/* Two reroll dice plus a decision stamp outgrow a 360px card: wrap the
-   stamp under the dice rather than past the card edge. */
-.head-tools { display: inline-flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; min-width: 0; margin-left: auto; }
-.reroll-dice {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 9px;
-  border: 1px solid var(--line-3);
-  background: var(--ground);
-  color: var(--text);
-  cursor: pointer;
-}
-.reroll-dice:disabled { opacity: 0.4; cursor: not-allowed; }
-.reroll-dice :deep(svg) { width: 16px; height: 16px; flex-shrink: 0; }
-.reroll-lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
-.stamp {
-  padding: 3px 8px;
-  font-size: 12px;
-  border: 2px solid var(--gold);
-  color: var(--gold);
-}
-.stamp.red { border-color: var(--red); color: var(--red); }
-.stamp.orange { border-color: var(--orange); color: var(--orange); }
-.stamp.khaki { border-color: var(--khaki); color: var(--khaki); }
-.mis-name { font-size: 24px; color: var(--gold); }
-.mis-row { display: flex; align-items: center; gap: 10px; }
-.mis-rule { flex: 1 1 auto; min-width: 0; font-size: 13px; line-height: 1.3; }
-.mis-risk { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
-.mis-risk .red { font-size: 15px; color: var(--red); }
-.block-note {
-  margin: 0;
-  padding: 7px 9px;
-  border: 1px solid var(--red);
-  color: var(--red);
-  font-size: 11px;
-  line-height: 1.3;
-}
-.mis-actions { display: flex; gap: 8px; }
-.mis-actions :deep(.hold-btn) { flex: 1 1 auto; }
-.opt-out {
-  width: 104px;
-  height: 54px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  color: var(--text);
-}
-.opt-out .disp { font-size: 13px; }
-.opt-out .sub { font-size: 9px; font-weight: 700; letter-spacing: 0.2em; color: var(--muted); }
-.change {
-  align-self: flex-start;
-  height: 40px;
-  padding: 0 12px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  box-shadow: inset 0 0 0 1px var(--line-2);
   color: var(--khaki);
+  font: 600 10px var(--font-body);
+  letter-spacing: 0.06em;
 }
-
-.strain-card {
-  background: linear-gradient(90deg, rgba(255, 75, 62, 0.1), var(--panel) 60%);
-  border-color: rgba(255, 75, 62, 0.45);
-}
-.strain-l { color: var(--orange); }
-
-/* Front and strain read as two separate, labelled rows — no merged icons. */
-.fs-grid { display: flex; flex-direction: column; }
-.fs-cell {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 46px;
-  padding: 6px 0;
-  border-top: 1px dashed var(--line-3);
-}
-.fs-cell:first-child { border-top: 0; }
-.fs-icon {
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-}
-.fs-icon img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.fs-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
-.fs-lbl { font-size: 9px; }
-.fs-name {
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  overflow-wrap: anywhere;
-}
-.fs-note { flex-shrink: 0; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-.fs-risk { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-.fs-risk b { font-size: 16px; }
-.fs-risk i { font-size: 8px; font-style: normal; }
-.orange { color: var(--orange); }
-
-.mo-card { background: linear-gradient(90deg, rgba(255, 75, 62, 0.08), var(--panel) 60%); }
-.mo-l { color: var(--orange); }
-.mo-fronts { display: flex; align-items: center; gap: 8px; }
-.mo-icon { width: 28px; height: 28px; object-fit: contain; }
-.mo-name { flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-.mo-risk { font-size: 15px; color: var(--orange); }
-
-.waiting {
-  margin: 0;
-  padding: 18px 12px;
-  text-align: center;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-@keyframes sweepY {
-  0% { transform: translateY(-40%); }
-  100% { transform: translateY(900%); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .sweep { animation: none; opacity: 0.4; }
-}
+.front-pin { color: var(--muted); font-size: 11px; }
+.front-pin b { color: var(--red); }
+.wait-note { display: flex; flex-direction: column; gap: 4px; }
+.wait-note p { margin: 0; color: var(--muted); font-size: 12px; }
 </style>

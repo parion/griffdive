@@ -38,10 +38,10 @@ import {
 } from './pacts'
 import type { StratagemBanSource } from './pacts'
 import { catchUpOpsBehind, startingItemIds } from './progression'
-import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, bargainKindOf, rollBargainShelf, rollBonus, rollCeiling, rollRewardOptions, valorOf } from './rewards'
+import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, bargainKindOf, rollBargainShelf, rollBonus, rollCeiling, rollRewardOffer, rollRewardOptions, topTierOf, valorOf } from './rewards'
 import type { BargainSlot, RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
-import type { BargainDeal, BargainSlotKind, CrusadeMode, DiveState, DivePhase, DiverState, RewardTier } from './types'
+import type { BargainDeal, BargainSlotKind, CrusadeMode, DiveState, DivePhase, DiverState, MissionOutcome, RewardTier } from './types'
 import { eligibleMisfortunes, eligibleStrains, frontById, strainById } from './wheel'
 
 // A completed run is tracked by its full draw — misfortune, front and strain —
@@ -360,9 +360,6 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
     return []
   }
   const seed = diverOfferSeed(state, diver)
-  // Two rng streams derived from the offer seed: one rolls the tier ceiling,
-  // one rolls the options — every client computes the same offer.
-  const ceiling = diverRolledCeiling(state, diver)
   // The pool is the diver's own: warbonds are personal purchases, so each
   // diver rolls offers against the catalog they can actually use.
   const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
@@ -375,11 +372,13 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   // complete and never deadlock ADVANCE.
   const lostOptions = diver.failedPactIds.length * OPTIONS_LOST_PER_FAILED_PACT
     + (state.misfortuneFailed ? OPTIONS_LOST_PER_FAILED_DIRECTIVE : 0)
-  const count = optionsForDiver(state.lastReport.stars, ceiling, lostOptions)
-  return rollRewardOptions(
+  const count = optionsForDiver(state.lastReport.stars, lostOptions)
+  // Every option rolls its own d100 on the same Valor line. The tier is the
+  // rolled result, not a ceiling the option was then drawn under.
+  return rollRewardOffer(
     deriveSeed(seed, 2),
-    ceiling,
-    baseTierFor(state.difficulty),
+    state.difficulty,
+    diverValor(state, diver),
     count,
     pool,
     exclude,
@@ -475,7 +474,7 @@ export function draftSummaryFor(state: DiveState, diver: DiverState): DraftSumma
   }
   return {
     options,
-    ceiling: options.length > 0 ? diverRolledCeiling(state, diver) : null,
+    ceiling: topTierOf(options),
     status,
     bankedOptionId,
     bankedItemId,
@@ -657,16 +656,33 @@ export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOp
 
 // Honors are a limited prize: the squad only plays for a token on a full-star
 // clear, and only when the squad-size cadence is due (fewer divers, rarer
-// honors). Both must hold before the ceremony can spin or award.
+// honors). The report form spins before REPORT_RESULT lands, so it passes the
+// stars it has filled in; the filed report uses the same predicate.
+export function bonusEligibleFor(
+  outcome: MissionOutcome,
+  stars: number,
+  difficulty: number,
+  missionIndex: number,
+  squadSizeValue: number,
+): boolean {
+  if (outcome !== 'success' || stars < maxStarsFor(difficulty)) {
+    return false
+  }
+  return missionIndex % bonusIntervalFor(squadSizeValue) === 0
+}
+
 export function bonusEligible(state: DiveState): boolean {
   const report = state.lastReport
-  if (!report || report.outcome !== 'success') {
+  if (!report) {
     return false
   }
-  if (report.stars < maxStarsFor(state.difficulty)) {
-    return false
-  }
-  return state.missionIndex % bonusIntervalFor(squadSize(state)) === 0
+  return bonusEligibleFor(
+    report.outcome,
+    report.stars,
+    state.difficulty,
+    state.missionIndex,
+    squadSize(state),
+  )
 }
 
 // Why this mission has no honors, for the UI — null when it does (or when the

@@ -46,28 +46,30 @@ test('landscape tablet: the terminal keeps every phase inside the centre column'
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   // The cards stack under the wheel here; the drawn directive scrolls into view.
-  await expect(page.locator('.misfortune').getByRole('button', { name: 'Lock it in' })).toBeInViewport()
+  await expect(page.locator('.directive-card').getByRole('button', { name: 'Take it' })).toBeInViewport()
   await expectCentreFits(page)
   await expectNoVerticalOverflow(page)
 
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const optOut = page.getByRole('button', { name: /^Opt out/ }).first()
-    if (await optOut.isVisible().catch(() => false)) {
-      await optOut.click()
-    }
+  const directiveSkip = page.locator('.directive-card').getByRole('button', { name: 'Skip' })
+  if (await directiveSkip.isVisible().catch(() => false)) {
+    await directiveSkip.click()
+  }
+  const strainSkip = page.locator('.strain-card').getByRole('button', { name: 'Skip' })
+  if (await strainSkip.isVisible().catch(() => false)) {
+    await strainSkip.click()
   }
   await page.getByRole('button', { name: 'Deal the pacts' }).click()
-  await page.getByRole('button', { name: /^Lock in & dive/ }).click()
+  await page.getByRole('button', { name: 'Dive with no pacts' }).click()
   await expectCentreFits(page)
   await expectNoVerticalOverflow(page)
 
-  await page.getByRole('button', { name: 'Mission complete' }).click()
-  await expect(page.getByRole('heading', { name: 'Mission complete' })).toBeVisible()
+  await page.getByRole('button', { name: 'Extracted' }).click()
+  await expect(page.getByRole('heading', { name: 'Mission report' })).toBeVisible()
   await expectCentreFits(page)
   await expectNoVerticalOverflow(page)
 
   await page.getByRole('button', { name: 'File report' }).click()
-  await expect(page.getByRole('heading', { name: 'Reward Draft' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Bank one item' })).toBeVisible()
   await expectCentreFits(page)
   await expectNoVerticalOverflow(page)
 

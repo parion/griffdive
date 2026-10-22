@@ -1,10 +1,7 @@
 <script setup lang="ts">
-// The phone orchestrator: fixed bands + the current phase's phone layout. It
-// mirrors the desktop dive page's phase switch, but every phase renders a
-// bottom-sheet composition instead of the three-rail terminal.
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
-import { bargainLamp, bargainsClosedReason } from '~~/shared/engine/selectors'
-import type { CrusadeSettings, DiverState, DiveState, MajorOrderSelection, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
+import { bonusFor, bonusWinners, bargainLamp, bargainsClosedReason } from '~~/shared/engine/selectors'
+import type { CrusadeSettings, DiverState, DiveState, MajorOrderSelection, MissionOutcome, MissionReport } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -31,15 +28,13 @@ const emit = defineEmits<{
   setMajorOrder: [order: MajorOrderSelection | null]
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
   lockPacts: [pactIds: string[]]
-  pactRisk: [value: number]
   preview: [pactIds: string[]]
-  report: [payload: { outcome: MissionOutcome, stars: number, timePct: number, samples?: SampleCounts }]
+  report: [payload: MissionReport]
   failPact: [playerId: string, pactId: string]
   failDirective: []
   pick: [optionId: string, choiceItemId?: string]
   rerollRewards: []
-  banRewards: [optionIds: string[]]
-  spinBonus: []
+  spinBonus: [payload?: { stars: number, outcome: MissionOutcome }]
   awardBonus: [playerIds: string[]]
   advance: []
   forfeit: [itemId: string]
@@ -60,79 +55,35 @@ const emit = defineEmits<{
 }>()
 
 const phase = computed(() => props.state.phase)
+const reporting = ref(false)
+const squadOpen = ref(false)
+const menuOpen = ref(false)
 
-// The Bargains tile only rides the bar while the shop is open, so mid-mission
-// the actions keep the whole row. Its lamp says something on the shelf is
-// buyable right now, and pulses for a fresh operation's restock.
 const bargainsOpen = computed(() => !props.kicked && props.self !== null && !bargainsClosedReason(props.state))
 const lamp = computed(() => (props.self ? bargainLamp(props.state, props.self) : 'off'))
+const honors = computed(() => bonusFor(props.state))
+const honorsWinners = computed(() => bonusWinners(props.state).map(diver => diver.name))
+const honorsAwarded = computed(() => Boolean(props.state.bonusWinnerIds.length))
 
-// Host moderation rides the shell's bottom sheet: tapping a squadmate in the
-// bar opens their hand-over / kick actions.
-const modTarget = ref<string | null>(null)
-const modDiver = computed(() => props.state.divers.find(diver => diver.id === modTarget.value) ?? null)
-
-function initial(name: string): string {
-  return name.trim().slice(0, 1).toUpperCase() || '?'
-}
-function handover(diverId: string): void {
-  emit('transferHost', diverId)
-  modTarget.value = null
-}
-function kickDiver(diverId: string): void {
-  emit('kick', diverId)
-  modTarget.value = null
-}
+watch(phase, () => {
+  reporting.value = false
+})
 </script>
 
 <template>
   <DivePhoneShell>
     <template #header>
       <PhoneTopBar
+        :state="state"
+        :phase="phase"
+        :reporting="reporting"
         :mode="mode"
         :slot-name="slotName"
-        :status="status"
-        :saved="saved"
         :can-control="canControl"
         :is-host="isHost"
-        :lone-host="state.divers.length === 1"
-        :can-fork="canFork"
-        @copy-invite="emit('copyInvite')"
+        @open-squad="squadOpen = true"
         @open-armory="emit('openArmory')"
-        @open-tutorial="emit('openTutorial')"
-        @leave="emit('leave')"
-        @end="emit('end')"
-        @save-dive="emit('saveDive')"
-        @unsave-dive="emit('unsaveDive')"
-        @new-session="emit('newSession')"
-      />
-    </template>
-
-    <template #crusade>
-      <PhoneCrusadeBar
-        :difficulty="state.difficulty"
-        :achieved="state.achieved"
-        :failed="phase === 'forfeit'"
-        :mission-in-operation="state.missionInOperation"
-        :op-length="opLength"
-      />
-    </template>
-
-    <template #squad>
-      <PhoneSquadBar
-        :state="state"
-        :self-id="selfId"
-        :online="online"
-        :mode="mode"
-        :is-host="isHost"
-        @select="modTarget = $event"
-      />
-      <PhaseCue
-        v-if="!kicked"
-        :state="state"
-        :self-id="selfId"
-        :can-control="canControl"
-        band
+        @open-menu="menuOpen = true"
       />
     </template>
 
@@ -143,17 +94,6 @@ function kickDiver(diverId: string): void {
       >
         You were removed from this dive by the host.
       </p>
-
-      <PhoneActionBar v-if="kicked">
-        <template #primary>
-          <NuxtLink
-            class="bar-cta"
-            to="/"
-          >
-            <span class="disp">Back to base</span>
-          </NuxtLink>
-        </template>
-      </PhoneActionBar>
 
       <p
         v-if="lastError"
@@ -182,6 +122,7 @@ function kickDiver(diverId: string): void {
         <PhoneWheel
           v-else-if="phase === 'spin' || phase === 'decision' || phase === 'strain' || phase === 'deal'"
           :state="state"
+          :self-id="selfId"
           :can-control="canControl"
           @spin="emit('spin')"
           @decide="emit('decide', $event)"
@@ -198,7 +139,6 @@ function kickDiver(diverId: string): void {
           :self="self"
           :can-control="canControl"
           @lock="emit('lockPacts', $event)"
-          @pact-risk="emit('pactRisk', $event)"
           @preview="emit('preview', $event)"
         />
 
@@ -212,6 +152,9 @@ function kickDiver(diverId: string): void {
           @report="emit('report', $event)"
           @fail="(playerId, pactId) => emit('failPact', playerId, pactId)"
           @fail-directive="emit('failDirective')"
+          @reporting="reporting = $event"
+          @spin-bonus="emit('spinBonus', $event)"
+          @open-kit="emit('openArmory')"
         />
 
         <PhoneRewardDraft
@@ -223,9 +166,6 @@ function kickDiver(diverId: string): void {
           :op-length="opLength"
           @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
           @reroll="emit('rerollRewards')"
-          @ban="emit('banRewards', $event)"
-          @spin-bonus="emit('spinBonus')"
-          @award-bonus="emit('awardBonus', $event)"
           @advance="emit('advance')"
         />
 
@@ -267,53 +207,50 @@ function kickDiver(diverId: string): void {
         <span class="bb-bal">{{ self?.credits ?? 0 }}</span>
       </button>
     </template>
-
-    <template #sheet>
-      <Transition name="sheet">
-        <div
-          v-if="modDiver"
-          class="mod-sheet"
-          role="dialog"
-          aria-label="Moderate diver"
-        >
-          <span
-            class="sheet-top"
-            aria-hidden="true"
-          />
-          <div class="mod-head">
-            <span class="cut-sm disp mod-av">{{ initial(modDiver.name) }}</span>
-            <div class="mod-copy">
-              <span class="mod-name">{{ modDiver.name }}</span>
-              <span class="mod-sub">Host moderation</span>
-            </div>
-            <button
-              class="btn ghost mod-cancel"
-              type="button"
-              @click="modTarget = null"
-            >
-              Cancel
-            </button>
-          </div>
-          <div class="mod-actions">
-            <button
-              class="btn ghost"
-              type="button"
-              @click="handover(modDiver.id)"
-            >
-              Make host
-            </button>
-            <button
-              class="btn danger"
-              type="button"
-              @click="kickDiver(modDiver.id)"
-            >
-              Kick from squad
-            </button>
-          </div>
-        </div>
-      </Transition>
-    </template>
   </DivePhoneShell>
+
+  <AppDialog
+    v-model:open="squadOpen"
+    title="Squad"
+    description="Seats, status, and host controls."
+    size="lg"
+  >
+    <SquadDock
+      :state="state"
+      :self-id="selfId"
+      :online="online"
+      :mode="mode"
+      :is-host="isHost"
+      :can-control="canControl"
+      :slot-name="slotName"
+      :honors="honors"
+      :honors-winners="honorsWinners"
+      :honors-awarded="honorsAwarded"
+      inline-manage
+      @transfer-host="emit('transferHost', $event)"
+      @kick="emit('kick', $event)"
+      @copy-invite="emit('copyInvite')"
+      @award-bonus="emit('awardBonus', $event)"
+    />
+  </AppDialog>
+
+  <DiveMenu
+    v-model:open="menuOpen"
+    :mode="mode"
+    :saved="saved"
+    :can-fork="canFork"
+    :can-control="canControl"
+    :is-host="isHost"
+    :lone-host="state.divers.length === 1"
+    :room-code="slotName"
+    @open-tutorial="emit('openTutorial')"
+    @copy-invite="emit('copyInvite')"
+    @save-dive="emit('saveDive')"
+    @unsave-dive="emit('unsaveDive')"
+    @new-session="emit('newSession')"
+    @leave="emit('leave')"
+    @end="emit('end')"
+  />
 </template>
 
 <style scoped>
@@ -324,7 +261,7 @@ function kickDiver(diverId: string): void {
   height: 100%;
   min-height: 0;
   overflow-y: auto;
-  padding: 10px 12px 0;
+  padding: 12px 12px 0;
 }
 .bar-bargains {
   position: relative;
@@ -367,42 +304,4 @@ function kickDiver(diverId: string): void {
 }
 .phone-banner.kicked { border-color: var(--red); }
 .phone-banner.error { border-color: var(--red); color: var(--red); }
-
-.mod-sheet {
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  z-index: 5;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 14px 12px calc(14px + env(safe-area-inset-bottom, 0px));
-  background: var(--panel);
-  border-top: 2px solid var(--gold);
-}
-.sheet-top {
-  position: absolute;
-  left: 0;
-  top: -2px;
-  width: 64px;
-  height: 3px;
-  background: var(--gold);
-}
-.mod-head { display: flex; align-items: center; gap: 10px; }
-.mod-av {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  background: var(--line-2);
-  color: var(--text);
-  font-size: 14px;
-}
-.mod-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
-.mod-name { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-.mod-sub { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
-.mod-cancel { flex-shrink: 0; }
-.mod-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.mod-actions .btn { min-height: 48px; }
 </style>

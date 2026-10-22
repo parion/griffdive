@@ -1,7 +1,8 @@
 import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from '@prometheus-io/client'
 import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { ENGINE_VERSION, MAX_DIFFICULTY, MIN_DIFFICULTY } from '~~/shared/engine/config'
-import { activeDivers, diverRolledCeiling, diverValor, squadSize } from '~~/shared/engine/selectors'
+import { activeDivers, diverOptions, diverRolledCeiling, diverValor, squadSize } from '~~/shared/engine/selectors'
+import { topTierOf } from '~~/shared/engine/rewards'
 import { DIVE_PHASES } from '~~/shared/engine/types'
 import type { DivePhase, DiveState, EngineAction } from '~~/shared/engine/types'
 import type { PeerDirectory, RoomCensusEntry } from './room-sync'
@@ -376,7 +377,7 @@ export function createRoomMetrics(): RoomMetrics {
 
   const ceilingRolled = new Counter({
     name: 'griffdive_ceiling_total',
-    help: 'Rolled reward ceilings at report, by tier — the risk economy realized',
+    help: 'Top rolled loot tier per diver at report, by tier — the risk economy realized',
     labelNames: ['tier'],
     registers: [registry],
   })
@@ -648,12 +649,15 @@ export function createRoomMetrics(): RoomMetrics {
         if (typeof action.timePct === 'number') {
           reportTimePct.observe(Math.min(Math.max(action.timePct, 0), 100))
         }
-        // Valor and the rolled ceiling are read at the report: offerSeed lands
-        // there, no pact can change anymore, and this is the risk the mission
-        // actually ran on.
+        // Valor and the top rolled loot tier are read at the report: offerSeed
+        // lands there, no pact can change anymore, and this is the risk the
+        // mission actually ran on.
         for (const diver of activeDivers(after)) {
           valorAtReport.observe(diverValor(after, diver))
-          ceilingRolled.inc({ tier: diverRolledCeiling(after, diver).toLowerCase() })
+          // A failure has no loot offer; its forfeit still rolls the same
+          // Valor-capped ceiling, so keep the risk signal comparable.
+          const top = topTierOf(diverOptions(after, diver)) ?? diverRolledCeiling(after, diver)
+          ceilingRolled.inc({ tier: top.toLowerCase() })
         }
         break
       }

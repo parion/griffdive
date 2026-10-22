@@ -5,7 +5,7 @@
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core) and Phase 2 (realtime squads) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (285 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (460 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection — verified by a live two-peer smoke test and the Playwright E2E suite (solo flow,
@@ -17,16 +17,17 @@ worker with an offline shell + on-demand catalog art), the operation-long **fact
 (host-set front commitment that stays pinned for the whole run, +1 reroll token per completed operation — manual picker plus the live war API).
 **The Destroyer Terminal redesign has landed** — the whole UI moved to a single terminal language
 (dark ground/rail/panel surfaces, gold/red/orange/teal/purple signals, cut frames, hazard stripes,
-scanlines and a signature motion set). The dive is a fixed, no-scroll terminal (60px header with
-the room code + copy control · 84px climb strip · three rails · 52px Mission-phases bar), the
-Bridge home fits one desktop view (hero + climb ladder · 6-step mission loop · Valor odds ladder ·
-deploy rail with code-cell join and the service record · a full-width Major Order band and footer),
-the wheel is a real spinning SVG wheel, the Kit (UI name of the Armory) marks
-directive/pact bans per tile from engine selectors and ghost-previews the pact
-screen's unsworn selection, and an interactive six-beat Griffdiver
-Briefing (Identify · Spin · Pact · Reward · Warbonds · Deploy) onboards first-time divers. Engine,
-sync, saves and data are untouched; see
-[Destroyer Terminal design language](./design-language.md#destroyer-terminal-design-language). Hybrid **saved
+scanlines and a signature motion set). **The Lit pass then flattened the dive:** one header, one
+lit stage and one squad dock replace the climb strip and both rails. The four beats (Call · Pacts ·
+Dive · Loot) are the only navigation; hosts own the wheel/report chrome, while squadmates see
+their own kit and self-service pacts without host clutter. The Bridge home fits one desktop view
+(hero + climb ladder · 6-step mission loop · odds ladder · deploy rail with code-cell join and the
+service record · a full-width Major Order band and footer), the wheel is a real spinning SVG wheel,
+the Kit (UI name of the Armory) opens from the header and marks directive/pact bans per tile from
+engine selectors, and an interactive six-beat Griffdiver Briefing onboards first-time divers.
+Reward drafts now roll **one d100 per option** on the shared `ValorRoll` line (no ceiling-first
+draft, no Ban UI), and Squad Honors is spun in the report window and awarded from the dock. See
+[Destroyer Terminal design language](./design-language.md#destroyer-terminal-design-language---the-lit-pass). Hybrid **saved
 dives** have landed: any seated diver can pin a room server-side so it outlives the idle TTL and a
 browser clearing its storage, resuming through the existing rejoin path (see Saved dives).
 **Steam lobby codes** have landed too: the host can relay the `steam://joinlobby/…` link from the
@@ -43,13 +44,13 @@ accepted directive stakes its scaled risk × **1 / 1.25 / 1.5 / 1.75** for a squ
 (`TEAM_DIRECTIVE_VALOR_WEIGHTS`), because the more divers must hold one rule the harder it is — and
 a solo diver's directive is effectively personal. **Broken directives fail like pacts:** the host can mark an accepted directive failed in
 the field (`FAIL_MISFORTUNE`, host-only, `diving` phase) — its shared risk is voided for every diver
-and each diver forfeits one reward option. **Failure is per-diver:** a failed mission deals each diver a seeded forfeit offer from their earned gear, capped at their Valor ceiling (see Mission failure — the forfeit offer). UI copy calls the team scope **Squad Directive** and the
+and each diver forfeits one reward option. **Failure is per-diver:** a failed mission deals each diver a seeded forfeit offer from their earned gear, capped at their rolled Valor ceiling (see Mission failure — the forfeit offer). UI copy calls the team scope **Squad Directive** and the
 wheel the **Wheel of Adversity**; engine ids and the action union keep the `misfortune` name. The
 Field manual slide-over was retired — the Griffdiver Briefing covers onboarding. **Samples became
 Requisition currency:** a successful report banks a sample haul (time remaining is a multiplier) into
 every diver's purse, and once their draft resolves a per-diver rotating **Requisition stock** — its
-tiers drawn from the ceiling risk bought — lets them buy named items, priced by tier then type. The
-team-performance Valor term is gone; chosen risk is the only thing that moves the ceiling.
+tiers drawn from the difficulty band — lets them buy named items, priced by tier then type. The
+team-performance Valor term is gone; chosen risk is the only thing that moves the odds line.
 **Brasch's Bargains became an always-open shop paid in credits:** samples now bank as credits, and
 the shop opens from the dive header (phone: a credit tile on the action bar) in every phase but the
 mission itself. Every mission restocks one random slot per primary, secondary, throwable and armor
@@ -90,7 +91,7 @@ Each phase lands shippable. Update the relevant `docs/agents/` files (commands, 
   affordances (`@vite-pwa/nuxt`: installable manifest, generated icons, Workbox service worker with
   an offline app shell + on-demand catalog art) have landed, as have **Major Orders** (host-set
   front commitment + reroll bonus, manual picker plus the live war API; see Operation layer) and
-  the **Destroyer Terminal redesign** (single terminal language, three-rail dive shell, Bridge
+  the **Destroyer Terminal redesign** (single terminal language, lit-stage dive shell, Bridge
   home, phone layout, hidden `/kit`; see Destroyer Terminal design language).
   **Observability expanded:** the Prometheus registry now covers the whole loop — arrivals and
   invite-link health, the room census (phase and difficulty), the play funnel, chosen-risk

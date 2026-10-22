@@ -238,7 +238,7 @@ export type EngineAction
     | { type: 'CLAIM_CACHE', playerId: string, cacheOwnerId: string }
     | { type: 'REROLL_REWARDS', playerId: string, seed: number }
     | { type: 'BAN_REWARDS', playerId: string, optionIds: string[] }
-    | { type: 'SPIN_BONUS', seed: number }
+    | { type: 'SPIN_BONUS', seed: number, stars?: number, outcome?: MissionOutcome }
     | { type: 'AWARD_BONUS', playerIds: string[] }
     | { type: 'LEAVE_DIVE', playerId: string }
     | { type: 'SET_AWAY', playerId: string, away: boolean }

@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
-import { allDiversPicked, bonusEligible, canBanAnyReward, canBanReward, canRerollRewards, diverOptions, draftSummaryFor, pactRiskOf, rewardPoolFor, teamRiskOf } from '~~/shared/engine/selectors'
+import {
+  allDiversPicked,
+  canRerollRewards,
+  diverOptions,
+  draftSummaryFor,
+  pactRiskOf,
+  rewardPoolFor,
+  teamRiskOf,
+} from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -15,26 +23,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
   reroll: []
-  ban: [optionIds: string[]]
-  spinBonus: []
-  awardBonus: [playerIds: string[]]
   advance: []
 }>()
 
-// The draft and the honors ceremony are distinct screens, not stacked cards:
-// the reward draft links out to honors, honors runs the ceremony and advances.
-const view = defineModel<'draft' | 'honors'>('view', { default: 'draft' })
-
-// A new mission's draft always opens on the draft, never stuck on honors.
-watch(() => props.state.missionIndex, () => {
-  view.value = 'draft'
-})
-
 const options = computed(() => (props.self ? diverOptions(props.state, props.self) : []))
 
-// Liberty's Cross picks from the diver's own catalog: their declared warbonds
-// minus anything already owned and minus anything they have banned for the
-// rest of the crusade — the same allow-list PICK_REWARD enforces.
 const rewardPool = computed(() => {
   if (!props.self) {
     return []
@@ -45,73 +38,30 @@ const rewardPool = computed(() => {
 })
 const ownedIds = computed(() => props.state.personalInventories[props.selfId ?? ''] ?? [])
 
-// The rest of the squad's drafts — offer, rolled ceiling and outcome — so the
-// squad can compare pulls, before and after they pick.
 const squadDrafts = computed(() =>
   props.state.divers
     .filter(diver => diver.id !== props.selfId)
     .map(diver => ({ id: diver.id, name: diver.name, summary: draftSummaryFor(props.state, diver) })),
 )
-const ceiling = computed(() => (props.self ? draftSummaryFor(props.state, props.self).ceiling : null))
 
-// Bonus-honors token spenders: the engine owns the rules (token cost, an open
-// draft, non-choice targets) — this is the legible half. The allow-list drives
-// the draft's ban affordances.
 const rewardTokens = computed(() => props.self?.rewardTokens ?? 0)
 const canReroll = computed(() =>
   props.self ? canRerollRewards(props.state, props.self).allowed : false)
-const canBan = computed(() =>
-  props.self ? canBanAnyReward(props.state, props.self) : false)
-const bannableIds = computed(() => {
-  const self = props.self
-  if (!self) {
-    return []
-  }
-  return diverOptions(props.state, self)
-    .filter(option => canBanReward(props.state, self, option.optionId).allowed)
-    .map(option => option.optionId)
-})
-
 const ready = computed(() => allDiversPicked(props.state))
-// Honors are a limited prize: the ceremony only runs on a full-star clear that
-// lands on the squad-size cadence. Otherwise the draft advances directly.
-const bonusUp = computed(() => ready.value && bonusEligible(props.state))
-
 const draftResolved = computed(() =>
   props.self !== null && (props.self.pickedOptionId !== null || props.self.rewardBanned))
-const draftBanned = computed(() => props.self?.rewardBanned ?? false)
 
 const advanceLabel = computed(() =>
   props.state.missionInOperation >= props.opLength
     ? `Complete operation → difficulty ${Math.min(props.state.difficulty + 1, MAX_DIFFICULTY)}`
     : 'Next mission')
 
-// Ceiling preview inputs: the same figures the shell's Valor meter is built
-// from, so the track and the rail can never disagree.
 const teamRisk = computed(() => teamRiskOf(props.state))
 const pactRisk = computed(() => (props.self ? pactRiskOf(props.self, props.state.difficulty) : 0))
-
-const kicker = computed(() =>
-  `Mission ${props.state.missionInOperation} of ${props.opLength} · extracted`)
 </script>
 
 <template>
-  <RewardsSettlement
-    v-if="view === 'honors'"
-    :state="state"
-    :self-id="selfId"
-    :self="self"
-    :can-control="canControl"
-    :bonus-up="bonusUp"
-    :credits="self?.credits ?? 0"
-    :advance-label="advanceLabel"
-    @spin="emit('spinBonus')"
-    @award="playerIds => emit('awardBonus', playerIds)"
-    @advance="emit('advance')"
-  />
-
   <RewardDraft
-    v-else
     :options="options"
     :picked-id="self?.pickedOptionId ?? null"
     :pool="rewardPool"
@@ -120,23 +70,16 @@ const kicker = computed(() =>
     :squad-drafts="squadDrafts"
     :token-count="rewardTokens"
     :can-reroll="canReroll"
-    :can-ban="canBan"
-    :bannable-ids="bannableIds"
     :resolved="draftResolved"
-    :banned="draftBanned"
-    :banned-ids="self?.bannedItemIds ?? []"
-    :ceiling="ceiling"
     :stars="state.lastReport?.stars ?? 0"
     :difficulty="state.difficulty"
     :team-risk="teamRisk"
     :pact-risk="pactRisk"
     :ready="ready"
-    :bonus-up="bonusUp"
     :can-control="canControl"
-    :kicker="kicker"
+    :advance-label="advanceLabel"
     @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
     @reroll="emit('reroll')"
-    @ban="optionIds => emit('ban', optionIds)"
-    @open-honors="view = 'honors'"
+    @advance="emit('advance')"
   />
 </template>

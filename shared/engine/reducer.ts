@@ -7,7 +7,7 @@ import { STARTING_KITS, earnedKit, mergeKit, startingItemIds } from './progressi
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver } from './room'
 import { deriveSeed, hashString } from './rng'
-import { activeDivers, activeMisfortune, allDiversPicked, availableCaches, bonusEligible, canBuyItem, catchUpOptionsFor, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, strainDecision } from './selectors'
+import { activeDivers, activeMisfortune, allDiversPicked, availableCaches, bonusEligibleFor, canBuyItem, catchUpOptionsFor, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, squadSize, strainDecision } from './selectors'
 import { bargainKindOf, itemPrice, missionHaul } from './rewards'
 import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 
@@ -550,13 +550,33 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           }
         : undefined
       const report = { outcome: action.outcome, stars, timePct: action.timePct, samples }
+      // Honors are spun on the report form before the numbers are filed. If the
+      // filed report no longer qualifies, strike the spin and claw back any
+      // token it auto-banked — otherwise a full-star spin could be filed as a
+      // failure (or a lower-star clear) and still mint honors.
+      const honorsEligible = state.bonusSeed !== null
+        && bonusEligibleFor(
+          report.outcome,
+          report.stars,
+          state.difficulty,
+          state.missionIndex,
+          squadSize(state),
+        )
+      const revokeHonors = state.bonusSeed !== null && !honorsEligible
+      const bankedWinners = new Set(state.bonusWinnerIds)
+      const settleHonors = (divers: DiverState[]): DiverState[] => revokeHonors
+        ? divers.map(diver => bankedWinners.has(diver.id)
+            ? { ...diver, rewardTokens: Math.max(0, diver.rewardTokens - 1) }
+            : diver)
+        : divers
+      const honorsPatch = revokeHonors ? { bonusSeed: null, bonusWinnerIds: [] } : {}
       if (action.outcome === 'success') {
         // The sample haul banks as credits into every diver's purse. A diver
         // seated mid-mission sat out the dive, so the haul isn't theirs.
         // The deal freezes each diver's exclusions, so the offer every client
         // derives stays put for the whole draft window.
         const haul = missionHaul(report)
-        const divers = state.divers.map(diver =>
+        const divers = settleHonors(state.divers.map(diver =>
           diver.skipsCurrentDraft
             ? diver
             : {
@@ -564,7 +584,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
                 credits: diver.credits + haul,
                 draftExcludedIds: [...(state.personalInventories[diver.id] ?? []), ...diver.bannedItemIds],
               },
-        )
+        ))
         return commit(state, {
           phase: 'rewards',
           lastReport: report,
@@ -574,6 +594,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
             ...state.completedCombos,
             comboKey(state.wheel.misfortuneId, state.frontId, state.strainId),
           ],
+          ...honorsPatch,
         }, action)
       }
       // A failure deals every diver their forfeit offer, rolled like a draft off
@@ -582,7 +603,9 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       const failed = commit(state, {
         phase: 'forfeit',
         lastReport: report,
+        divers: settleHonors(state.divers),
         offerSeed: deriveSeed(state.wheel.seed, state.missionIndex),
+        ...honorsPatch,
       }, action)
       return settleForfeit(failed)
     }
@@ -892,15 +915,30 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
     }
 
     case 'SPIN_BONUS': {
-      // Host-only, like the Wheel: the contest is spun on click once the draft
-      // completes, and the seed is what syncs (spins are seeds). Honors only
-      // exist on a full-star clear at the squad-size cadence.
-      if (
-        state.phase !== 'rewards'
-        || state.bonusSeed !== null
-        || !allDiversPicked(state)
-        || !bonusEligible(state)
-      ) {
+      // Host-only, like the Wheel: the contest is spun on click at the report,
+      // before the loot draft, and the seed is what syncs (spins are seeds).
+      // The report form passes its stars because REPORT_RESULT has not landed
+      // yet; a filed report uses the same predicate.
+      if (state.phase !== 'diving' && state.phase !== 'rewards') {
+        return state
+      }
+      if (state.bonusSeed !== null) {
+        return state
+      }
+      const filed = state.lastReport
+      const outcome = state.phase === 'diving'
+        ? action.outcome ?? 'success'
+        : filed?.outcome ?? 'failure'
+      const stars = state.phase === 'diving'
+        ? action.stars ?? 0
+        : filed?.stars ?? 0
+      if (!bonusEligibleFor(
+        outcome,
+        stars,
+        state.difficulty,
+        state.missionIndex,
+        squadSize(state),
+      )) {
         return state
       }
       // Only one diver can win (solo, or a squad where everyone else sat the
@@ -927,14 +965,12 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // Host-only: the host reads HD2's end screen and names the winner(s) of
       // the spun contest. Ties are common, so the action carries a list — every
       // tied diver banks a token. Awarding banks the tokens immediately — there
-      // is no separate claim step. Eligibility is re-checked so a hostile
-      // client can't award on a mission that never earned honors.
+      // is no separate claim step. The spin already validated eligibility, and
+      // the award can happen at the report or in the dock during loot.
       if (
-        state.phase !== 'rewards'
+        (state.phase !== 'diving' && state.phase !== 'rewards')
         || state.bonusSeed === null
-        || !allDiversPicked(state)
         || state.bonusWinnerIds.length > 0
-        || !bonusEligible(state)
       ) {
         return state
       }

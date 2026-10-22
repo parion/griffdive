@@ -1,118 +1,74 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ left?: boolean, right?: boolean, leftCollapsed?: boolean }>(), {
-  left: true,
-  right: true,
-  leftCollapsed: false,
-})
+// The lit-pass dive shell: flat header, one stage, one squad dock. No rails,
+// no persistent ladder. Each phase is a single lit object on the stage.
 </script>
 
 <template>
   <div class="shell">
     <slot name="header" />
-    <slot name="ladder" />
 
-    <div
-      class="body"
-      :class="{ 'left-collapsed': leftCollapsed && left, 'no-left': !left, 'no-right': !right }"
+    <main
+      id="main-content"
+      class="stage grid-bg"
+      tabindex="-1"
     >
-      <aside
-        v-if="left"
-        class="rail rail-left scan"
-        :class="{ collapsed: leftCollapsed }"
-        aria-label="Crusade"
-      >
-        <slot name="left" />
-      </aside>
-
-      <main
-        id="main-content"
-        class="center grid-bg scan"
-        tabindex="-1"
-      >
+      <div
+        class="stage-glow"
+        aria-hidden="true"
+      />
+      <div class="stage-inner">
         <slot />
-      </main>
+      </div>
+    </main>
 
-      <aside
-        v-if="right"
-        class="rail rail-right"
-        aria-label="Kit and Valor"
-      >
-        <slot name="right" />
-      </aside>
-    </div>
-
-    <slot name="phases" />
+    <slot name="dock" />
   </div>
 </template>
 
 <style scoped>
-/* The dive is a fixed terminal: header, climb strip, three rails and the
-   mission-phase bar all share one viewport. Panels scroll internally, the page
-   never does. */
 .shell {
   height: 100vh;
   display: grid;
-  grid-template-rows: 60px 84px minmax(0, 1fr) 52px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
   background: var(--ground);
 }
-/* The rails give ground on small laptops and landscape tablets so the centre
-   phase keeps a usable width; they reach their design widths by ~1360px. */
-.body {
-  --rail-l: clamp(184px, 15vw, 216px);
-  --rail-r: clamp(248px, 21vw, 284px);
-  display: grid;
-  grid-template-columns: var(--rail-l) minmax(0, 1fr) var(--rail-r);
-  min-height: 0;
-  transition: grid-template-columns var(--dur-med) var(--ease-out);
-}
-.body.no-right { grid-template-columns: var(--rail-l) minmax(0, 1fr); }
-.body.no-left { grid-template-columns: minmax(0, 1fr) var(--rail-r); }
-.body.left-collapsed { grid-template-columns: 56px minmax(0, 1fr) var(--rail-r); }
-.body.left-collapsed.no-right { grid-template-columns: 56px minmax(0, 1fr); }
-
-.rail {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-panel);
-  padding: var(--sp-5) var(--sp-4);
-  background: var(--rail);
-  min-height: 0;
-  overflow-y: auto;
-}
-.rail-left { border-right: 1px solid var(--line-1); }
-.rail-left.collapsed { padding-left: var(--sp-2); padding-right: var(--sp-2); }
-.rail-right { border-left: 1px solid var(--line-1); }
-
-.center {
+.stage {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-panel);
-  padding: var(--gap-panel) var(--pad-page);
-  min-width: 0;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  container: center / inline-size;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: clamp(18px, 3vh, 34px) var(--pad-page) clamp(24px, 4vh, 48px);
+  background-color: var(--ground);
+  background-size: 44px 44px;
+  container: stage / inline-size;
 }
-.center :deep(> *) { min-width: 0; }
+.stage-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 58% 44% at 50% 38%, rgba(255, 214, 66, 0.055), transparent 70%),
+    linear-gradient(180deg, rgba(11, 12, 9, 0.2), rgba(11, 12, 9, 0.85));
+}
+.stage-inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1180px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2vh, 24px);
+  min-width: 0;
+  min-height: 0;
+}
+.stage-inner :deep(> *) { min-width: 0; }
 
-/* One structural breakpoint: below this the shell flows and the rails follow
-   the mission content instead of framing it. Everything inside is fluid. */
 @media (max-width: 1020px) {
-  .shell {
-    height: auto;
-    min-height: 100vh;
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
-    overflow: visible;
-  }
-  .body { grid-template-columns: minmax(0, 1fr); }
-  .body.no-right,
-  .body.no-left { grid-template-columns: minmax(0, 1fr); }
-  .rail { border: 0; padding: var(--sp-4) var(--pad-page); }
-  .center { order: 1; overflow: visible; }
-  .rail-left { order: 2; }
-  .rail-right { order: 3; }
+  .shell { height: auto; min-height: 100vh; grid-template-rows: auto minmax(0, 1fr) auto; overflow: visible; }
+  .stage { overflow: visible; }
 }
 </style>

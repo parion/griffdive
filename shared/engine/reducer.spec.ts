@@ -1454,6 +1454,7 @@ describe('PICK_REWARD — Diver\'s Choice (S+)', () => {
     const base = divingState(42, PACTS.map(pact => pact.id))
     const heavy: DiveState = {
       ...base,
+      difficulty: 10,
       wheel: { seed: 42, misfortuneId: 'noStratagems' },
       misfortuneAccepted: true,
       divers: base.divers.map(entry =>
@@ -1462,7 +1463,7 @@ describe('PICK_REWARD — Diver\'s Choice (S+)', () => {
           : entry),
     }
     const diver = requireDiver(heavy)
-    for (let offerSeed = 0; offerSeed < 4000; offerSeed++) {
+    for (let offerSeed = 0; offerSeed < 40000; offerSeed++) {
       const candidate: DiveState = {
         ...heavy,
         phase: 'rewards',
@@ -1585,7 +1586,7 @@ describe('reward tokens + bonus honors', () => {
     const state = withTokens(rewardsState(), 'p1', 1)
     const open = draftSummaryFor(state, requireDiver(state))
     expect(open.status).toBe('choosing')
-    expect(open.ceiling).toBe(diverRolledCeiling(state, requireDiver(state)))
+    expect(open.ceiling).toBe(open.options.map(option => option.tier).sort((a, b) => ['C', 'B', 'A', 'S', 'S+'].indexOf(b!) - ['C', 'B', 'A', 'S', 'S+'].indexOf(a!))[0])
     expect(open.bankedOptionId).toBeNull()
 
     const picked = pickFirst(state)
@@ -1611,13 +1612,12 @@ describe('reward tokens + bonus honors', () => {
     expect(reduce(gained, { type: 'PICK_REWARD', playerId: 'p1', optionId: option.optionId })).toBe(gained)
   })
 
-  it('reveals no contest until the host spins it, after the draft completes', () => {
+  it('reveals no contest until the host spins it, then spins at the report', () => {
     const state = rewardsState()
     // Nothing is drawn before the spin.
     expect(bonusFor(state)).toBeNull()
-    // The spin waits for the draft to complete.
-    expect(reduce(state, { type: 'SPIN_BONUS', seed: 7 })).toBe(state)
-    const spunState = spun(pickFirst(state), 7)
+    // Honors moved to the report: the spin no longer waits for the draft.
+    const spunState = spun(state, 7)
     const contest = bonusFor(spunState)
     expect(contest).not.toBeNull()
     expect(BONUS_STATS).toContainEqual(contest)
@@ -1674,6 +1674,29 @@ describe('reward tokens + bonus honors', () => {
     expect(reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1'] })).toBe(state)
   })
 
+  it('revokes a report-window spin when the filed report no longer qualifies', () => {
+    const spunReport = reduce(divingState(), {
+      type: 'SPIN_BONUS',
+      seed: 7,
+      outcome: 'success',
+      stars: 5,
+    })
+    expect(spunReport.bonusWinnerIds).toEqual(['p1'])
+    expect(spunReport.divers[0]?.rewardTokens).toBe(1)
+
+    // Filing a failure strikes the spin and claws the auto-banked token back.
+    const failed = reduce(spunReport, { type: 'REPORT_RESULT', outcome: 'failure', stars: 0 })
+    expect(failed.bonusSeed).toBeNull()
+    expect(failed.bonusWinnerIds).toEqual([])
+    expect(failed.divers[0]?.rewardTokens).toBe(0)
+
+    // Filing a lower-star clear does the same.
+    const low = reduce(spunReport, { type: 'REPORT_RESULT', outcome: 'success', stars: 1 })
+    expect(low.bonusSeed).toBeNull()
+    expect(low.bonusWinnerIds).toEqual([])
+    expect(low.divers[0]?.rewardTokens).toBe(0)
+  })
+
   it('leaves selection to the host when more than one diver can win', () => {
     let state = twoDiverRewards()
     state = reduce(state, { type: 'SPIN_BONUS', seed: 7 })
@@ -1706,14 +1729,9 @@ describe('reward tokens + bonus honors', () => {
     expect(reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1', 'ghost'] })).toBe(state)
   })
 
-  it('refuses to award on a mission that no longer qualifies', () => {
-    let state = twoDiverRewards()
-    state = reduce(state, { type: 'SPIN_BONUS', seed: 7 })
-    const lapsed: DiveState = {
-      ...state,
-      lastReport: { outcome: 'success', stars: 1 },
-    }
-    expect(reduce(lapsed, { type: 'AWARD_BONUS', playerIds: ['p2'] })).toBe(lapsed)
+  it('refuses to award before the contest is spun', () => {
+    const state = twoDiverRewards()
+    expect(reduce(state, { type: 'AWARD_BONUS', playerIds: ['p2'] })).toBe(state)
   })
 
   it('caps banked tokens', () => {
@@ -1818,6 +1836,7 @@ describe('reward tokens + bonus honors', () => {
     const base = divingState(42, PACTS.map(pact => pact.id))
     const heavy: DiveState = {
       ...base,
+      difficulty: 10,
       wheel: { seed: 42, misfortuneId: 'noStratagems' },
       misfortuneAccepted: true,
       divers: base.divers.map(entry =>
@@ -1827,7 +1846,7 @@ describe('reward tokens + bonus honors', () => {
     }
     const diver = requireDiver(heavy)
     let state: DiveState | null = null
-    for (let offerSeed = 0; offerSeed < 4000 && !state; offerSeed++) {
+    for (let offerSeed = 0; offerSeed < 40000 && !state; offerSeed++) {
       const candidate: DiveState = {
         ...heavy,
         phase: 'rewards',

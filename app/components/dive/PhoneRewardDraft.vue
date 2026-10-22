@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { ALL_WARBOND_CODES, ITEMS_BY_ID } from '~~/shared/data/catalog'
-import { itemImageUrl } from '~~/shared/data/images'
-import { POD_STAGGER } from '~/utils/motion'
+import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
+import { itemImageUrl } from '~~/shared/data/images'
+import { tierZones, topTierOf } from '~~/shared/engine/rewards'
+import type { RewardOption } from '~~/shared/engine/rewards'
 import {
   allDiversPicked,
-  bonusEligible,
-  bonusIneligibilityReason,
-  canBanAnyReward,
-  canBanReward,
   canRerollRewards,
   diverOptions,
   draftSummaryFor,
@@ -16,9 +13,8 @@ import {
   rewardPoolFor,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
-import type { Item } from '~~/shared/data/types'
-import type { RewardOption } from '~~/shared/engine/rewards'
-import type { DiverState, DiveState } from '~~/shared/engine/types'
+import type { DiverState, DiveState, RewardTier } from '~~/shared/engine/types'
+import { categoryLabel } from '~/utils/itemCategory'
 
 const props = defineProps<{
   state: DiveState
@@ -31,567 +27,318 @@ const props = defineProps<{
 const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
   reroll: []
-  ban: [optionIds: string[]]
-  spinBonus: []
-  awardBonus: [playerIds: string[]]
   advance: []
 }>()
 
 const options = computed(() => (props.self ? diverOptions(props.state, props.self) : []))
-const rewardPool = computed(() =>
-  props.self ? rewardPoolFor(props.self.warbondCodes ?? ALL_WARBOND_CODES) : [])
-const ownedIds = computed(() => props.state.personalInventories[props.selfId ?? ''] ?? [])
+const selectedId = ref<string | null>(null)
+const choiceItemId = ref<string | null>(null)
+const choiceOpen = ref(false)
 
-const rewardTokens = computed(() => props.self?.rewardTokens ?? 0)
-const canReroll = computed(() =>
-  props.self ? canRerollRewards(props.state, props.self).allowed : false)
-const canBan = computed(() =>
-  props.self ? canBanAnyReward(props.state, props.self) : false)
-const bannableIds = computed(() => {
-  const self = props.self
-  if (!self) {
+watch(options, () => {
+  selectedId.value = null
+  choiceItemId.value = null
+})
+
+const rewardPool = computed(() => {
+  if (!props.self) {
     return []
   }
-  return diverOptions(props.state, self)
-    .filter(option => canBanReward(props.state, self, option.optionId).allowed)
-    .map(option => option.optionId)
+  const banned = new Set(props.self.bannedItemIds)
+  return rewardPoolFor(props.self.warbondCodes ?? ALL_WARBOND_CODES)
+    .filter(item => !banned.has(item.id))
 })
-
-const ready = computed(() => allDiversPicked(props.state))
-const bonusUp = computed(() => ready.value && bonusEligible(props.state))
-const bonusNote = computed(() => bonusIneligibilityReason(props.state))
-const resolved = computed(() =>
-  props.self !== null && (props.self.pickedOptionId !== null || props.self.rewardBanned))
-const banned = computed(() => props.self?.rewardBanned ?? false)
-const chosen = computed(() =>
-  props.self?.pickedOptionId ? ITEMS_BY_ID.get(props.self.pickedOptionId) ?? null : null)
-// The advance sweep takes the colour of what the diver banked. Liberty's Cross
-// banks a catalog item that was never among the rolled options.
-const bankedSweep = computed(() => {
-  const pickedId = props.self?.pickedOptionId
-  if (!pickedId) {
-    return undefined
-  }
-  const rolled = options.value.find(option => option.optionId === pickedId && !option.choice)
-  const tier = rolled ? rolled.item.tier : options.value.some(option => option.choice) ? 'splus' : chosen.value?.tier
-  return tier ? { '--sweep': `color-mix(in srgb, var(--tier-${tier}) 70%, white)` } : undefined
-})
-const optionsLost = computed(() => props.self?.failedPactIds.length ?? 0)
-
-const advanceLabel = computed(() =>
-  props.state.missionInOperation >= props.opLength
-    ? `Advance · difficulty ${Math.min(props.state.difficulty + 1, MAX_DIFFICULTY)}`
-    : 'Next mission')
-
+const ownedIds = computed(() => props.state.personalInventories[props.selfId ?? ''] ?? [])
 const squadDrafts = computed(() =>
   props.state.divers
     .filter(diver => diver.id !== props.selfId)
-    .map(diver => ({ id: diver.id, name: diver.name, summary: draftSummaryFor(props.state, diver) })))
-const ceiling = computed(() => (props.self ? draftSummaryFor(props.state, props.self).ceiling : null))
+    .map(diver => ({ id: diver.id, name: diver.name, summary: draftSummaryFor(props.state, diver) })),
+)
+
+const canReroll = computed(() =>
+  props.self ? canRerollRewards(props.state, props.self).allowed : false)
+const ready = computed(() => allDiversPicked(props.state))
+const resolved = computed(() =>
+  props.self !== null && (props.self.pickedOptionId !== null || props.self.rewardBanned))
+
 const teamRisk = computed(() => teamRiskOf(props.state))
-
-// The options wait for the ceiling roll, then fade in worst-to-best so the
-// reveal builds to the top pull (Liberty's Cross last). A resolved draft or
-// reduced motion shows them at once. Presentation only.
-const reduced = import.meta.client
-  && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-const revealed = ref(false)
-const liveReveal = ref(false)
-// The track's own rest state: the odds only surface once it has stopped moving.
-const trackSettled = ref(false)
-function onClimbed(): void {
-  liveReveal.value = !resolved.value && !reduced
-  revealed.value = true
-  trackSettled.value = true
-}
-watch(() => props.self?.rewardRerollSeed, () => {
-  revealed.value = false
-  trackSettled.value = false
-})
-const TIER_ORDER = ['c', 'b', 'a', 's']
-const revealRanks = computed(() => {
-  const score = (option: RewardOption) => option.choice ? TIER_ORDER.length : TIER_ORDER.indexOf(option.item.tier)
-  const ranks: Record<string, number> = {}
-  options.value
-    .map((option, index) => ({ option, index }))
-    .sort((a, b) => score(a.option) - score(b.option) || a.index - b.index)
-    .forEach((entry, rank) => {
-      ranks[entry.option.optionId] = rank
-    })
-  return ranks
-})
-// No track to wait on (sat out, or no ceiling): nothing gates the rows.
-const showRows = computed(() => revealed.value || !ceiling.value || options.value.length === 0)
 const pactRisk = computed(() => (props.self ? pactRiskOf(props.self, props.state.difficulty) : 0))
+const zones = computed(() => tierZones(props.state.difficulty, teamRisk.value + pactRisk.value))
+const bestTier = computed<RewardTier | null>(() => topTierOf(options.value))
+const markers = computed(() =>
+  options.value
+    .filter(option => typeof option.roll === 'number')
+    .map(option => ({ roll: option.roll!, tier: tierOf(option) })))
 
-// ---- Ban mode ----------------------------------------------------------
+const advanceLabel = computed(() =>
+  props.state.missionInOperation >= props.opLength
+    ? `Start operation ${Math.min(props.state.difficulty + 1, MAX_DIFFICULTY)}`
+    : 'Next mission')
 
-// Matches the desktop draft's ban hold (RewardDraft).
-const BAN_HOLD_MS = 900
-const banMode = ref(false)
-const selectedBan = ref<string[]>([])
-
-function enterBan(): void {
-  banMode.value = true
-  selectedBan.value = []
+function tierOf(option: RewardOption): RewardTier {
+  return option.tier ?? (option.item.tier.toUpperCase() as RewardTier)
 }
 
-function exitBan(): void {
-  banMode.value = false
-  selectedBan.value = []
+function nameOf(option: RewardOption): string {
+  return option.choice ? 'Liberty’s Cross' : option.item.displayName
 }
 
-function toggleBan(optionId: string): void {
-  if (!bannableIds.value.includes(optionId)) {
+function categoryOf(option: RewardOption): string {
+  return option.choice ? 'Any item' : categoryLabel(option.item.category)
+}
+
+function choose(option: RewardOption): void {
+  if (resolved.value) {
     return
   }
-  selectedBan.value = selectedBan.value.includes(optionId)
-    ? selectedBan.value.filter(id => id !== optionId)
-    : [...selectedBan.value, optionId]
+  if (option.choice) {
+    selectedId.value = option.optionId
+    choiceOpen.value = true
+    return
+  }
+  selectedId.value = selectedId.value === option.optionId ? null : option.optionId
+  choiceItemId.value = null
 }
 
-function confirmBan(): void {
-  emit('ban', [...selectedBan.value])
-  exitBan()
+function chooseCross(itemId: string): void {
+  choiceItemId.value = itemId
+  choiceOpen.value = false
 }
 
-function imageUrl(item: Item): string | undefined {
-  return itemImageUrl(item)
+const selectedOption = computed(() =>
+  options.value.find(option => option.optionId === selectedId.value) ?? null)
+const selectedName = computed(() => {
+  if (!selectedOption.value) {
+    return ''
+  }
+  if (selectedOption.value.choice && choiceItemId.value) {
+    return rewardPool.value.find(item => item.id === choiceItemId.value)?.displayName ?? 'Liberty’s Cross'
+  }
+  return nameOf(selectedOption.value)
+})
+
+function bank(): void {
+  if (!selectedId.value) {
+    return
+  }
+  if (selectedOption.value?.choice && !choiceItemId.value) {
+    choiceOpen.value = true
+    return
+  }
+  emit('pick', selectedId.value, choiceItemId.value ?? undefined)
 }
 
-function tierOf(option: RewardOption): string {
-  return option.choice ? 'S+' : option.item.tier.toUpperCase()
-}
+const pickedOption = computed(() =>
+  options.value.find(option => option.optionId === props.self?.pickedOptionId) ?? null)
+const pickedName = computed(() =>
+  pickedOption.value ? nameOf(pickedOption.value) : (props.self?.pickedOptionId ? 'item' : ''))
 </script>
 
 <template>
-  <div class="phone-rewards">
-    <RewardsSettlement
-      v-if="ready"
-      :state="state"
-      :self-id="selfId"
-      :self="self"
-      :can-control="canControl"
-      :bonus-up="bonusUp"
-      :credits="self?.credits ?? 0"
-      :advance-label="advanceLabel"
+  <section class="phone-loot">
+    <header class="head">
+      <span class="kick">Liberty provides · {{ '★'.repeat(state.lastReport?.stars ?? 0) }}</span>
+      <h1 class="disp title">
+        Bank one item
+      </h1>
+    </header>
+
+    <ValorRoll
+      v-if="options.length"
+      :zones="zones"
+      :markers="markers"
+      label="Your Valor rolls"
+      :note="`Best ${bestTier ?? '—'}`"
       compact
-      @spin="emit('spinBonus')"
-      @award="playerIds => emit('awardBonus', playerIds)"
-      @advance="emit('advance')"
     />
 
-    <template v-else>
-      <div class="scroll">
-        <div class="draft-head">
-          <h1 class="disp">
-            Reward draft
-          </h1>
-          <span class="token-chips">
-            <i
-              v-for="n in 3"
-              :key="n"
-              :class="{ on: n <= rewardTokens }"
-            />
-            <b>{{ rewardTokens }}/3</b>
-          </span>
-        </div>
-
-        <CeilingTrack
-          v-if="ceiling && options.length"
-          :difficulty="state.difficulty"
-          :ceiling="ceiling"
-          :team-risk="teamRisk"
-          :pact-risk="pactRisk"
-          class="phone-track"
-          :instant="resolved"
-          :replay-key="self?.rewardRerollSeed ?? 0"
-          :settled="trackSettled"
-          @climbed="onClimbed"
-        />
-
-        <p
-          v-if="optionsLost > 0"
-          class="lost-note"
-        >
-          {{ optionsLost }} failed pact{{ optionsLost === 1 ? '' : 's' }} · one fewer option
-        </p>
-
-        <div
-          class="rows"
-          role="group"
-          aria-label="Reward options"
-        >
-          <template
-            v-for="(option, index) in options"
-            :key="option.optionId"
-          >
-            <LibertyCrossBand
-              v-if="option.choice && showRows"
-              :reveal-rank="revealRanks[option.optionId]"
-              :instant="!liveReveal"
-              :pool="rewardPool"
-              :owned-ids="ownedIds"
-              :can-pick="!!self && !resolved"
-              :picked="self?.pickedOptionId === option.optionId"
-              :dimmed="resolved && self?.pickedOptionId !== option.optionId"
-              :ban-mode="banMode"
-              @choose="itemId => emit('pick', option.optionId, itemId)"
-            />
-            <button
-              v-else-if="!option.choice"
-              class="row"
-              :style="{ '--delay': `${(revealRanks[option.optionId] ?? 0) * POD_STAGGER}ms` }"
-              :class="{
-                waiting: !showRows,
-                live: showRows && liveReveal,
-                lead: index === 0,
-                picked: self?.pickedOptionId === option.optionId,
-                dimmed: resolved && self?.pickedOptionId !== option.optionId,
-                banning: banMode,
-                selected: selectedBan.includes(option.optionId),
-                bannable: bannableIds.includes(option.optionId),
-              }"
-              type="button"
-              :data-tier="tierOf(option)"
-              :disabled="!showRows || !self || (resolved && !banMode) || (banMode && !bannableIds.includes(option.optionId))"
-              :aria-label="`${option.item.displayName}, tier ${tierOf(option)}${index === 0 ? ', ceiling pick' : ''}${banMode ? ', toggle ban' : ', claim'}`"
-              @click="banMode ? toggleBan(option.optionId) : emit('pick', option.optionId)"
-            >
-              <span
-                class="row-tier"
-                aria-hidden="true"
-              />
-              <span class="row-art grid-bg">
-                <img
-                  v-if="imageUrl(option.item)"
-                  :src="imageUrl(option.item)"
-                  alt=""
-                >
-              </span>
-              <span class="row-copy">
-                <span class="row-top">
-                  <b
-                    class="tb"
-                    :data-tier="tierOf(option)"
-                  >{{ tierOf(option) }}</b>
-                  <span
-                    v-if="index === 0"
-                    class="lead-tag"
-                  >Ceiling</span>
-                  <span class="row-cat">{{ categoryLabel(option.item.category) }}</span>
-                </span>
-                <span class="row-name">{{ option.item.displayName }}</span>
-              </span>
-              <span class="row-end">
-                <span
-                  v-if="banMode"
-                  class="ban-box"
-                  :class="{ on: selectedBan.includes(option.optionId) }"
-                >✕</span>
-                <svg
-                  v-else
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.2"
-                  aria-hidden="true"
-                ><path d="M9 5l7 7-7 7" /></svg>
-              </span>
-              <span
-                v-if="self?.pickedOptionId === option.optionId"
-                class="stamp disp row-stamp gold-stamp"
-              >Banked</span>
-            </button>
-          </template>
-        </div>
-
-        <SquadDraftBoard
-          v-if="squadDrafts.length && !banMode && showRows"
-          :drafts="squadDrafts"
-          compact
-        />
-      </div>
-
-      <PhoneActionBar>
-        <template #detail>
-          <div
-            v-if="resolved && !banMode"
-            class="result"
-          >
-            <span class="lbl">{{ banned ? 'Banned' : 'Banked' }}</span>
-            <span class="result-name">{{ banned ? 'Offer purged for the crusade' : chosen?.displayName ?? '—' }}</span>
-          </div>
-          <div
-            v-else
-            class="foot-tokens"
-          >
-            <span class="lbl">{{ banMode ? 'Ban mode · tap items to purge' : 'Reward tokens' }}</span>
-            <span class="chit-row">
-              <i
-                v-for="n in 3"
-                :key="n"
-                :class="{ on: n <= rewardTokens }"
-              />
-              <b>{{ rewardTokens }}/3</b>
-            </span>
-          </div>
-        </template>
-
-        <template
-          v-if="banMode"
-          #secondary
-        >
-          <button
-            class="bar-alt"
-            type="button"
-            @click="exitBan"
-          >
-            Cancel
-          </button>
-        </template>
-        <template
-          v-else-if="!resolved"
-          #secondary
-        >
-          <button
-            class="bar-alt"
-            type="button"
-            :disabled="!canReroll"
-            @click="emit('reroll')"
-          >
-            Reroll
-          </button>
-        </template>
-
-        <template #primary>
-          <HoldButton
-            v-if="banMode"
-            class="cut"
-            :label="selectedBan.length ? `Ban ${selectedBan.length}` : 'Select items'"
-            hint="hold to confirm"
-            tone="red"
-            :duration="BAN_HOLD_MS"
-            :disabled="selectedBan.length === 0"
-            @confirm="confirmBan"
-          />
-          <template v-else-if="resolved">
-            <button
-              v-if="canControl"
-              class="bar-cta cta-sweep"
-              type="button"
-              :style="bankedSweep"
-              :disabled="!ready"
-              @click="emit('advance')"
-            >
-              <span class="disp">{{ ready ? advanceLabel : 'Waiting on squad' }}</span>
-            </button>
-            <div
-              v-else
-              class="bar-gate"
-              role="status"
-            >
-              <span
-                class="hazard-soft bar-gate-edge"
-                aria-hidden="true"
-              />
-              <span class="disp bar-gate-word">Next mission</span>
-              <span class="bar-gate-meta">{{ ready ? 'Host advances' : 'Waiting on squad' }}</span>
-            </div>
-          </template>
-          <button
-            v-else
-            class="bar-alt red"
-            type="button"
-            :disabled="!canBan"
-            @click="enterBan"
-          >
-            Ban items
-          </button>
-        </template>
-      </PhoneActionBar>
-
-      <p
-        v-if="bonusNote && !resolved"
-        class="honor-note"
+    <div class="cards">
+      <button
+        v-for="option in options"
+        :key="option.optionId"
+        class="loot-card"
+        :class="{ selected: selectedId === option.optionId, faded: resolved, cross: option.choice }"
+        :data-tier="tierOf(option)"
+        type="button"
+        :aria-pressed="selectedId === option.optionId"
+        :aria-label="`${nameOf(option)}, ${tierOf(option)} tier${option.roll ? `, rolled ${option.roll}` : ''}`"
+        @click="choose(option)"
       >
-        {{ bonusNote }}
-      </p>
-    </template>
-  </div>
+        <span
+          v-if="!option.choice"
+          class="thumb"
+        >
+          <img
+            v-if="itemImageUrl(option.item)"
+            :src="itemImageUrl(option.item)"
+            alt=""
+            loading="lazy"
+            draggable="false"
+          >
+        </span>
+        <span
+          v-else
+          class="thumb cross-thumb disp"
+        >S+</span>
+        <span class="card-copy">
+          <span class="meta">
+            <span
+              v-if="option.roll"
+              class="roll"
+            >{{ option.roll }}</span>
+            <span class="cat">{{ categoryOf(option) }}</span>
+          </span>
+          <span class="name disp">{{ nameOf(option) }}</span>
+          <span
+            v-if="selectedId === option.optionId"
+            class="pick-mark"
+          >Selected ✓</span>
+        </span>
+        <span class="tier disp">{{ tierOf(option) }}</span>
+      </button>
+    </div>
+
+    <div
+      v-if="squadDrafts.length"
+      class="squad-mini"
+    >
+      <span class="cap">Squad drafts</span>
+      <div
+        v-for="draft in squadDrafts"
+        :key="draft.id"
+        class="draft-row"
+      >
+        <b>{{ draft.name }}</b>
+        <span>{{ draft.summary.status === 'banked' ? 'Banked ✓' : draft.summary.status === 'skipped' ? 'Sat out' : 'Picking…' }}</span>
+      </div>
+    </div>
+
+    <PhoneActionBar>
+      <template #secondary>
+        <button
+          class="bar-alt"
+          type="button"
+          :disabled="!canReroll || resolved"
+          @click="emit('reroll')"
+        >
+          Reroll
+        </button>
+      </template>
+      <template #primary>
+        <button
+          v-if="!resolved"
+          class="bar-cta cta-sweep"
+          type="button"
+          :disabled="!selectedId"
+          @click="bank"
+        >
+          <span class="disp">{{ selectedId ? `Bank ${selectedName}` : 'Select an item' }}</span>
+        </button>
+        <button
+          v-else-if="ready && canControl"
+          class="bar-cta cta-sweep"
+          type="button"
+          @click="emit('advance')"
+        >
+          <span class="disp">{{ advanceLabel }}</span>
+        </button>
+        <span
+          v-else
+          class="bar-gate"
+        >{{ pickedName ? `Banked ${pickedName}` : 'Draft resolved' }}</span>
+      </template>
+    </PhoneActionBar>
+
+    <DiversChoicePicker
+      v-if="choiceOpen"
+      :open="choiceOpen"
+      :pool="rewardPool"
+      :owned-ids="ownedIds"
+      @close="choiceOpen = false"
+      @choose="chooseCross"
+    />
+  </section>
 </template>
 
 <style scoped>
-.phone-rewards { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px 16px 14px;
-}
-
-.draft-head { display: flex; align-items: center; justify-content: space-between; }
-.draft-head h1 { margin: 0; font-size: 17px; color: var(--text); }
-.token-chips { display: flex; align-items: center; gap: 3px; }
-.token-chips i,
-.chit-row i {
-  width: 11px;
-  height: 13px;
-  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-  background: var(--line-2);
-}
-.token-chips i.on,
-.chit-row i.on { background: var(--gold); }
-.token-chips b { margin-left: 5px; font-size: 12px; color: var(--muted); }
-
-.lost-note {
-  margin: 0;
-  padding: 6px 9px;
-  border: 1px dashed var(--red);
-  color: var(--red);
+.phone-loot { display: flex; flex-direction: column; gap: 11px; min-width: 0; }
+.head { display: flex; flex-direction: column; gap: 5px; }
+.kick {
+  color: var(--gold);
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
-
-.rows { display: flex; flex-direction: column; gap: 8px; }
-.phone-track { margin-bottom: 14px; }
-.row.waiting { opacity: 0; pointer-events: none; }
-.row.live { animation: row-in 0.5s var(--ease-out) var(--delay) backwards; }
-@keyframes row-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: none; }
-}
-
-/* Rarity reads at a glance: A and S rows carry a tier-tinted sheen, S faster. */
-.row[data-tier='A']:not(:disabled),
-.row[data-tier='S']:not(:disabled) { overflow: hidden; }
-.row[data-tier='A']:not(:disabled)::after,
-.row[data-tier='S']:not(:disabled)::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--row-tier) 30%, transparent) 50%, transparent 70%);
-  transform: translateX(-130%);
-  animation: ctaSweep 4.4s var(--ease-out) infinite;
-}
-.row[data-tier='A'] { --row-tier: var(--tier-a); }
-.row[data-tier='S'] { --row-tier: var(--tier-s); }
-.row[data-tier='S']:not(:disabled)::after { animation-duration: 2.6s; }
-.row[data-tier='S'] .row-tier { background: var(--tier-s); }
-@media (prefers-reduced-motion: reduce) {
-  .row::after { display: none; }
-}
-
-.row {
-  position: relative;
+.title { font-size: 34px; }
+.cards { display: flex; flex-direction: column; gap: 8px; }
+.loot-card {
+  --tier: var(--tier-c);
   display: flex;
   align-items: center;
-  gap: 12px;
-  height: 76px;
-  padding: 0 10px 0 0;
-  background: var(--panel);
-  border: 1px solid var(--line-2);
+  gap: 10px;
+  min-height: 78px;
+  padding: 7px 10px 7px 7px;
+  border: 1px solid var(--line-3);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tier) 12%, var(--panel)), var(--panel) 55%);
   color: var(--text);
   text-align: left;
+  font: inherit;
   cursor: pointer;
-  overflow: hidden;
-  transition: border-color var(--dur-fast), opacity var(--dur-fast);
 }
-.row.lead { border-color: color-mix(in srgb, var(--gold) 55%, var(--line-3)); }
-.row.picked { border-color: var(--red); box-shadow: 0 0 18px color-mix(in srgb, var(--red) 28%, transparent); }
-.row.dimmed { opacity: 0.4; filter: grayscale(0.5); }
-.row.banning { border-color: color-mix(in srgb, var(--red) 45%, var(--line-3)); }
-.row.selected { background: color-mix(in srgb, var(--red) 12%, var(--panel)); }
-
-.row-tier { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--line-3); }
-.row.lead .row-tier { background: var(--gold); }
-.row-art {
+.loot-card[data-tier='C'] { --tier: var(--tier-c); }
+.loot-card[data-tier='B'] { --tier: var(--tier-b); }
+.loot-card[data-tier='A'] { --tier: var(--tier-a); }
+.loot-card[data-tier='S'] { --tier: var(--tier-s); }
+.loot-card[data-tier='S+'] { --tier: var(--tier-splus); }
+.loot-card.selected {
+  border-color: var(--tier);
+  box-shadow: inset 0 0 0 2px var(--tier), 0 0 18px color-mix(in srgb, var(--tier) 25%, transparent);
+}
+.loot-card.faded { opacity: 0.45; }
+.thumb {
   display: grid;
   place-items: center;
-  width: 58px;
-  height: 58px;
-  margin-left: 10px;
-  flex-shrink: 0;
-  background-color: var(--ground);
-  background-size: 12px 12px;
-  border: 1px solid var(--line-2);
+  width: 62px;
+  height: 62px;
+  flex: none;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line-2);
 }
-.row-art img { width: 44px; height: 44px; object-fit: contain; }
-.row-copy { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.row-top { display: flex; align-items: center; gap: 7px; min-width: 0; }
-.row-top .tb { min-width: 24px; height: 20px; display: inline-grid; place-items: center; font-size: 11px; }
-.lead-tag { font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); }
-.row-cat {
-  margin-left: auto;
+.thumb img { max-width: 90%; max-height: 90%; object-fit: contain; }
+.cross-thumb { color: var(--tier-splus); font-size: 24px; }
+.card-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.meta { display: flex; align-items: center; gap: 6px; }
+.roll {
   padding: 1px 5px;
-  border: 1px solid var(--line-2);
-  font-size: 9px;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--tier);
+  color: var(--tier);
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  white-space: nowrap;
 }
-.row-name {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.cat { color: var(--muted); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; }
+.name { font-size: 17px; line-height: 1.05; overflow-wrap: anywhere; }
+.pick-mark { color: var(--tier); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.tier {
+  flex: none;
+  color: var(--tier);
+  font-size: 34px;
+  line-height: 1;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--tier) 40%, transparent);
 }
-.row-end { flex-shrink: 0; width: 26px; display: grid; place-items: center; color: var(--khaki); }
-.ban-box {
-  width: 20px;
-  height: 20px;
-  display: grid;
-  place-items: center;
-  border: 2px solid var(--red);
-  color: var(--red);
+.squad-mini { display: flex; flex-direction: column; gap: 4px; }
+.draft-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+  padding: 0 8px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line-2);
   font-size: 11px;
 }
-.ban-box.on { background: var(--red); color: var(--ground); }
-.row-stamp {
-  position: absolute;
-  right: 40px;
-  top: 7px;
-  padding: 3px 6px;
-  font-size: 11px;
-  border: 2px solid var(--gold);
-  color: var(--gold);
-  background: rgba(11, 12, 9, 0.88);
-}
-.gold-stamp { border-color: var(--gold); color: var(--gold); }
-
-.foot-tokens { display: flex; flex-direction: column; gap: 6px; }
-.foot-tokens .lbl { font-size: 9px; }
-.chit-row { display: flex; align-items: center; gap: 3px; }
-.chit-row b { margin-left: 4px; font-size: 12px; color: var(--muted); }
-.result { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.result-name {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--gold);
-}
-.honor-note {
-  margin: 0;
-  padding: 8px 16px;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
+.draft-row b { font-weight: 700; }
+.draft-row span { color: var(--muted); font-size: 10px; }
 </style>

@@ -75,7 +75,7 @@ Update this table the moment a command lands.
 - **Naming:** components `PascalCase.vue` grouped by domain folder; composables `useThing`;
   engine modules lowercase noun/verb; types/interfaces `PascalCase`; catalog ids `camelCase`
   (upstream parity). Components register under their bare file name (`pathPrefix: false` in
-  `nuxt.config.ts`) — templates use bare PascalCase (`<WheelPanel>`), never the folder-prefixed
+  `nuxt.config.ts`) — templates use bare PascalCase (`<DivePhaseWheel>`), never the folder-prefixed
   alias.
 - **Components are dumb about rules.** They take state + emit intents. No tier math, no risk math,
   no progression logic in `app/components/**` — call engine selectors instead.
@@ -86,7 +86,7 @@ Update this table the moment a command lands.
   strips: `v-model`, `tabs`, `label`), and `AppTooltip` (`content`, `disabled`; carries its own
   provider). Do not hand-roll dialogs, focus traps, scroll locks or tab strips. One-off controls
   use the Reka primitive directly (`RadioGroup` in `StarRating`/`CrusadeSetup`, `Checkbox` in
-  `PactPicker`) so the semantics live with the component. The global foundation lives in
+  `ConditionCard`) so the semantics live with the component. The global foundation lives in
   `main.css` (`:focus-visible` ring, `.sr-only`, `.skip-link`) and `app.vue` (skip link →
   `#main-content`, carried by every page `<main>` with `tabindex="-1"`). `.sr-only` pins itself with
   explicit offsets — an absolutely positioned label with auto offsets takes the viewport as its
