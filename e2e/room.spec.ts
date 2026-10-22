@@ -32,17 +32,17 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   // blocks seating until they provide a name.
   await pageB.goto(pageA.url())
   await expect(pageB.getByLabel('Your name')).toBeVisible()
-  await expect(pageB.locator('.dock .chip')).toHaveCount(0)
+  await expect(pageB.locator('.dock .seat')).toHaveCount(0)
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
 
-  await expect(pageB.locator('.dock .chip')).toHaveCount(2)
-  await expect(pageB.locator('.dock .chip.self')).toContainText('Duo')
+  await expect(pageB.locator('.dock .seat')).toHaveCount(2)
+  await expect(pageB.locator('.dock .seat.self')).toContainText('Duo')
   // Only the host gets the wheel control.
   await expect(pageB.getByRole('button', { name: 'Spin', exact: true })).toBeDisabled()
   await expect(pageB.getByLabel(/Copy invite link/)).toBeVisible()
-  await expect(pageA.locator('.dock .chip').filter({ hasText: 'Duo' })).toBeVisible()
+  await expect(pageA.locator('.dock .seat').filter({ hasText: 'Duo' })).toBeVisible()
 
   // Host spins; the seeded result syncs to the joiner. The joiner's card shows
   // the pending decision — only the host can take or skip it.
@@ -71,7 +71,7 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await expect(pageA.getByRole('heading', { name: 'Hold the line' })).toBeVisible()
 
   // Presence: both divers show online dots on the host page.
-  await expect(pageA.locator('.dock .chip .lamp.teal')).toHaveCount(2)
+  await expect(pageA.locator('.dock .seat .lamp.teal')).toHaveCount(2)
 
   // Rewards: the host reports success, then the squad board shows the other
   // diver's whole offer with their banked pick lit — and it stays up after
@@ -120,7 +120,7 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   await pageB.getByLabel('Your name').fill('Sidekick')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
-  await expect(pageB.locator('.dock .chip')).toHaveCount(2)
+  await expect(pageB.locator('.dock .seat')).toHaveCount(2)
 
   // Host spins, takes the directive and declines the operation's strain;
   // the joiner stalls before locking pacts.
@@ -133,7 +133,7 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   // The dock's manage menu kicks the stalled diver.
   await pageA.getByRole('button', { name: 'Manage Sidekick' }).click()
   await pageA.getByRole('menuitem', { name: 'Kick diver' }).click()
-  await expect(pageA.locator('.dock .chip')).toHaveCount(1)
+  await expect(pageA.locator('.dock .seat')).toHaveCount(1)
 
   // The removed diver sees a removal notice…
   await expect(pageB.getByText('You were removed from this dive by the host.')).toBeVisible()
@@ -165,7 +165,7 @@ test('the Codex slide-over keeps the host seated', async ({ browser }) => {
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
-  await expect(pageB.locator('.dock .chip')).toHaveCount(2)
+  await expect(pageB.locator('.dock .seat')).toHaveCount(2)
 
   // Opening the Codex overlays the session — the socket stays mounted, so the
   // host is never migrated away.
@@ -178,8 +178,8 @@ test('the Codex slide-over keeps the host seated', async ({ browser }) => {
   await expect(drawer).toBeHidden()
 
   // Still host, still connected, still seated with the peer.
-  await expect(pageA.locator('.dock .chip')).toHaveCount(2)
-  await expect(pageA.locator('.dock .chip').filter({ hasText: 'Duo' })).toBeVisible()
+  await expect(pageA.locator('.dock .seat')).toHaveCount(2)
+  await expect(pageA.locator('.dock .seat').filter({ hasText: 'Duo' })).toBeVisible()
 
   await contextA.close()
   await contextB.close()
@@ -207,7 +207,7 @@ async function squadAtTheWheel(browser: Browser) {
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
-  await expect(pageB.locator('.dock .chip')).toHaveCount(2)
+  await expect(pageB.locator('.dock .seat')).toHaveCount(2)
   return { contextA, contextB, pageA, pageB, code: pageA.url().split('/').pop()! }
 }
 
@@ -215,7 +215,7 @@ test('when the whole squad leaves, the room waits and RESUME puts everyone back'
   const { contextA, contextB, pageA, pageB, code } = await squadAtTheWheel(browser)
 
   await leaveDive(pageB)
-  await expect(pageA.locator('.dock .chip').filter({ hasText: 'Duo' })).toContainText('Away')
+  await expect(pageA.locator('.dock .seat').filter({ hasText: 'Duo' })).toContainText('Away')
   await leaveDive(pageA)
 
   // The room is still live on both Bridges — nothing was reset.
@@ -227,13 +227,13 @@ test('when the whole squad leaves, the room waits and RESUME puts everyone back'
   // The guest is back first and takes the helm; the host is still away.
   await pageB.getByRole('link', { name: 'RESUME' }).click()
   await expect(pageB.locator('.call')).toBeVisible()
-  await expect(pageB.locator('.dock .chip')).toHaveCount(2)
-  await expect(pageB.locator('.dock .chip.away')).toContainText('Host')
+  await expect(pageB.locator('.dock .seat')).toHaveCount(2)
+  await expect(pageB.locator('.dock .seat.away')).toContainText('Host')
   await expect(pageB.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled()
 
   await pageA.getByRole('link', { name: 'RESUME' }).click()
   await expect(pageA.locator('.call')).toBeVisible()
-  await expect(pageB.locator('.dock .chip.away')).toHaveCount(0)
+  await expect(pageB.locator('.dock .seat.away')).toHaveCount(0)
 
   await contextA.close()
   await contextB.close()

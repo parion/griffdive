@@ -41,7 +41,7 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: clamp(18px, 3vh, 34px) var(--pad-page) clamp(24px, 4vh, 48px);
+  padding: clamp(14px, 2.4vh, 28px) var(--pad-page) clamp(16px, 3vh, 32px);
   background-color: var(--ground);
   background-size: 44px 44px;
   container: stage / inline-size;
@@ -51,7 +51,7 @@
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 58% 44% at 50% 38%, rgba(255, 214, 66, 0.055), transparent 70%),
+    radial-gradient(ellipse 58% 48% at 50% 46%, rgba(255, 214, 66, 0.07), transparent 70%),
     linear-gradient(180deg, rgba(11, 12, 9, 0.2), rgba(11, 12, 9, 0.85));
 }
 .stage-inner {
@@ -59,6 +59,10 @@
   z-index: 1;
   width: 100%;
   max-width: 1180px;
+  /* Auto block margins centre the beat when it is shorter than the stage and
+     fall back to top-aligned scrolling when it is taller — unlike
+     align-items: center, which would clip the top of an overflowing beat. */
+  margin-block: auto;
   display: flex;
   flex-direction: column;
   gap: clamp(14px, 2vh, 24px);

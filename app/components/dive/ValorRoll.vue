@@ -106,7 +106,10 @@ function markerTone(marker: { roll: number, tier?: RewardTier }): RewardTier {
       >Locked in</span>
     </div>
 
-    <div class="roll-stage">
+    <div
+      class="roll-stage"
+      :class="{ pinned: markers.length > 0 }"
+    >
       <div
         class="roll-pins"
         aria-hidden="true"
@@ -216,10 +219,13 @@ function markerTone(marker: { roll: number, tier?: RewardTier }): RewardTier {
   text-transform: uppercase;
 }
 
+/* Headroom for the pin flags only when there are pins; the call and pacts
+   lines carry none and would otherwise float under an empty band. */
 .roll-stage {
   position: relative;
-  padding-top: 28px;
+  padding-top: 4px;
 }
+.roll-stage.pinned { padding-top: 30px; }
 
 /* Ruler: a hairline of tick marks over the strip. */
 .roll-ruler {
@@ -367,7 +373,7 @@ function markerTone(marker: { roll: number, tier?: RewardTier }): RewardTier {
 }
 
 .roll.compact .roll-strip { height: 22px; }
-.roll.compact .roll-stage { padding-top: 24px; }
+.roll.compact .roll-stage.pinned { padding-top: 26px; }
 .roll.compact .roll-labels { height: 27px; }
 .roll.compact .zone-label .letter { font-size: 14px; }
 .roll.compact .pin-flag { font-size: 12px; padding: 3px 5px 2px; }

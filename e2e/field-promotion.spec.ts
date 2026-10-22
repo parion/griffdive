@@ -53,7 +53,7 @@ test('joiners settle their Field Promotion before they dive; a forked-out diver 
 
   // The returning diver is recognized: their own kit, no promotion to settle.
   await joinAs(pageR, code, 'Fallen')
-  await expect(pageR.locator('.dock .chip.self')).toContainText('Fallen')
+  await expect(pageR.locator('.dock .seat.self')).toContainText('Fallen')
   await expect(pageR.getByRole('dialog', { name: 'Field Promotion' })).toHaveCount(0)
 
   // A new joiner is held at the gate and claims the one kit left.
@@ -74,7 +74,7 @@ test('joiners settle their Field Promotion before they dive; a forked-out diver 
   await gateP.getByRole('button', { name: /^Promotion picks/ }).click()
   await gateP.getByRole('radio').first().click()
   await expect(gateP).toBeHidden()
-  await expect(pageR.locator('.dock .chip')).toHaveCount(4)
+  await expect(pageR.locator('.dock .seat')).toHaveCount(4)
 
   await returning.close()
   await claimer.close()

@@ -32,17 +32,17 @@ const opNumber = computed(() =>
 <template>
   <header class="phone-top">
     <div class="row1">
-      <span class="diff-mark">
-        <img
-          class="diff-emblem"
-          :src="difficultyImageUrl(state.difficulty)"
-          alt=""
-          draggable="false"
-        >
-        <span class="diff-num disp">{{ state.difficulty }}</span>
-      </span>
+      <img
+        class="diff-emblem"
+        :src="difficultyImageUrl(state.difficulty)"
+        alt=""
+        draggable="false"
+      >
       <span class="diff-copy">
-        <span class="diff-name">{{ diffName }}</span>
+        <span class="diff-line">
+          <b class="diff-num disp">{{ state.difficulty }}</b>
+          <span class="diff-name">{{ diffName }}</span>
+        </span>
         <span class="diff-sub">
           Op {{ opNumber }}
           <span class="pips">
@@ -174,24 +174,15 @@ const opNumber = computed(() =>
   border-bottom: 1px solid var(--line-1);
 }
 .row1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.diff-mark {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 34px;
-  flex: none;
-  background: linear-gradient(180deg, #ffe57a, var(--gold) 50%, #e0b000);
-  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
-}
 .diff-emblem {
-  width: 30px;
-  height: 16px;
+  width: 46px;
+  height: 22px;
+  flex: none;
   object-fit: contain;
-  opacity: 0.55;
-  filter: brightness(0.2);
+  filter: drop-shadow(0 0 8px rgba(255, 214, 66, 0.18));
 }
-.diff-num { position: absolute; font-size: 18px; color: var(--on-gold); line-height: 1; }
+.diff-line { display: flex; align-items: baseline; gap: 6px; }
+.diff-num { color: var(--gold); font-size: 17px; line-height: 1; }
 .diff-copy { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .diff-name {
   font-size: 11px;

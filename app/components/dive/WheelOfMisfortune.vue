@@ -13,15 +13,17 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ spin: [] }>()
 
 const SIZE = 460
-const R = 226
+const R = 210
+const BEZEL = 222
 const CX = SIZE / 2
 const CY = SIZE / 2
 
 // The design draws every segment dark — risk rides a 6×6 pip at the outer rim,
 // never the wedge fill, so a roll never spoils its own draw. The landed segment
-// alone lifts to a dark gold.
+// alone lights up gold and juts past the rim toward the pointer.
 const SEG_DARK = ['#1B1E15', '#15170F']
-const SEG_HIT = '#3B3413'
+const SEG_HIT = 'var(--gold)'
+const HIT_REACH = 18
 
 const segments = computed(() =>
   eligibleMisfortunes().map((misfortune) => {
@@ -44,12 +46,18 @@ function polar(radius: number, deg: number): [number, number] {
   return [CX + radius * Math.cos(a), CY + radius * Math.sin(a)]
 }
 
-function slicePath(startDeg: number, endDeg: number): string {
-  const [x1, y1] = polar(R, startDeg)
-  const [x2, y2] = polar(R, endDeg)
+function slicePath(startDeg: number, endDeg: number, radius = R): string {
+  const [x1, y1] = polar(radius, startDeg)
+  const [x2, y2] = polar(radius, endDeg)
   const large = endDeg - startDeg > 180 ? 1 : 0
-  return `M ${CX} ${CY} L ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} Z`
+  return `M ${CX} ${CY} L ${x1} ${y1} A ${radius} ${radius} 0 ${large} 1 ${x2} ${y2} Z`
 }
+
+const landed = computed(() => drawnIndex.value >= 0 && !spinning.value)
+const hitPath = computed(() =>
+  landed.value
+    ? slicePath(drawnIndex.value * step.value - step.value / 2, drawnIndex.value * step.value + step.value / 2, R + HIT_REACH)
+    : '')
 
 function segmentFill(i: number): string {
   // The landed wedge only lifts once the spin settles — never while it turns,
@@ -70,7 +78,8 @@ const pips = computed(() =>
     const ty = Math.cos(a)
     return Array.from({ length: segment.risk }, (_, k) => {
       const off = (k - (segment.risk - 1) / 2) * 9
-      return { key: `${segment.id}-${k}`, x: bx + off * tx - 3, y: by + off * ty - 3, tone: segment.tone }
+      const tone = i === drawnIndex.value && !spinning.value ? 'var(--on-gold)' : segment.tone
+      return { key: `${segment.id}-${k}`, x: bx + off * tx - 3, y: by + off * ty - 3, tone }
     })
   }))
 
@@ -78,14 +87,27 @@ const pips = computed(() =>
 // are expressed in `cqw` against the wheel box (the design's 460px coordinate
 // system) and resolve against whatever width the wheel is given. Without this
 // the labels overflow the smaller phone wheel.
-const LABEL_WIDTH = 122
+const LABEL_WIDTH = 108
 const LABEL_FONT_CAP = 11.5
 const WHEEL_UNIT = SIZE
 function wheelUnits(px: number): string {
   return `${((px / WHEEL_UNIT) * 100).toFixed(3)}cqw`
 }
+// Labels on the wheel's left half would read upside down at rest. Those swing
+// round to start from the rim instead, so every label reads left to right
+// with the wheel parked — and the landed one, at the pointer, never flips.
+function flipped(i: number): boolean {
+  const angle = (((i * step.value + rotation.value) % 360) + 360) % 360
+  return angle > 90 && angle < 270
+}
+function labelTransform(i: number): string {
+  const base = `rotate(${i * step.value}deg)`
+  return flipped(i)
+    ? `${base} translateX(calc(var(--label-x) + var(--label-w))) rotate(180deg)`
+    : `${base} translateX(var(--label-x))`
+}
 function labelSize(name: string): string {
-  return wheelUnits(Math.min(LABEL_FONT_CAP, 116 / (name.length * 0.66)))
+  return wheelUnits(Math.min(LABEL_FONT_CAP, 104 / (name.length * 0.66)))
 }
 
 const reduced = import.meta.client
@@ -130,9 +152,9 @@ watch(
 
 const spinning = computed(() => isSpinning.value || props.spinning)
 const hubText = computed(() =>
-  props.seed === null ? 'Spin' : spinning.value ? '···' : `+${drawnRisk.value}`)
+  props.seed === null ? 'Spin' : spinning.value ? '···' : '')
 const hubSub = computed(() =>
-  props.seed === null ? 'HOST' : spinning.value ? 'DRAWING' : 'TEAM RISK')
+  props.seed === null ? 'HOST' : spinning.value ? 'DRAWING' : `RISK ${drawnRisk.value}`)
 // The accessible name keeps the plain "Spin" call-to-action the specs and E2E
 // rely on; the visible hub text carries the design's HOST / TEAM RISK copy.
 const hubLabel = computed(() => {
@@ -163,19 +185,29 @@ const hubLabel = computed(() => {
           <circle
             :cx="CX"
             :cy="CY"
-            :r="R"
-            fill="var(--rail)"
-            stroke="var(--line-4)"
+            :r="BEZEL + 6"
+            fill="none"
+            stroke="var(--gold)"
+            stroke-opacity="0.35"
             stroke-width="1"
+          />
+          <circle
+            class="bezel-ticks"
+            :cx="CX"
+            :cy="CY"
+            :r="BEZEL"
+            fill="none"
+            stroke="var(--gold)"
+            stroke-width="9"
+            stroke-dasharray="1.6 5.38"
           />
           <circle
             :cx="CX"
             :cy="CY"
-            :r="R - 12"
-            fill="none"
-            stroke="var(--line-2)"
-            stroke-width="14"
-            stroke-dasharray="2 20.4"
+            :r="R"
+            fill="var(--rail)"
+            stroke="var(--line-4)"
+            stroke-width="1"
           />
           <g
             v-for="(segment, i) in segments"
@@ -188,6 +220,12 @@ const hubLabel = computed(() => {
               stroke-width="1"
             />
           </g>
+          <path
+            v-if="landed"
+            class="hit-wedge"
+            :d="hitPath"
+            :fill="SEG_HIT"
+          />
           <rect
             v-for="pip in pips"
             :key="pip.key"
@@ -215,8 +253,8 @@ const hubLabel = computed(() => {
             v-for="(segment, i) in segments"
             :key="segment.id"
             class="seg-label"
-            :class="{ hit: i === drawnIndex && !spinning }"
-            :style="{ transform: `rotate(${i * step}deg) translateX(var(--label-x))`, fontSize: labelSize(segment.name) }"
+            :class="{ hit: i === drawnIndex && !spinning, flip: flipped(i) }"
+            :style="{ transform: labelTransform(i), fontSize: labelSize(segment.name) }"
           >{{ segment.name }}</span>
         </div>
       </div>
@@ -238,18 +276,19 @@ const hubLabel = computed(() => {
         :aria-label="hubLabel"
         @click="emit('spin')"
       >
-        <span class="disp hub-word">{{ hubText }}</span>
+        <RiskPips
+          v-if="seed !== null && !spinning && drawnRisk > 0"
+          class="hub-skulls"
+          :value="drawnRisk"
+          :max="drawnRisk"
+          tone="red"
+        />
+        <span
+          v-else
+          class="disp hub-word"
+        >{{ hubText }}</span>
         <span class="hub-sub">{{ hubSub }}</span>
       </button>
-    </div>
-
-    <div
-      class="risk-legend"
-      aria-hidden="true"
-    >
-      <span class="risk-item"><span class="risk-sw khaki" />Risk 1–2</span>
-      <span class="risk-item"><span class="risk-sw orange" />Risk 3</span>
-      <span class="risk-item"><span class="risk-sw red" />Risk 4–5</span>
     </div>
   </div>
 </template>
@@ -265,34 +304,17 @@ const hubLabel = computed(() => {
 }
 .wheel-wrap {
   position: relative;
-  width: min(100%, 460px);
+  width: var(--wheel-size, min(100%, 460px));
   aspect-ratio: 1;
   margin-inline: auto;
   flex-shrink: 0;
   container-type: size;
 }
-.risk-legend {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  flex-wrap: wrap;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.risk-item { display: inline-flex; align-items: center; gap: 6px; }
-.risk-sw { width: 8px; height: 8px; flex-shrink: 0; }
-.risk-sw.khaki { background: var(--khaki); }
-.risk-sw.orange { background: var(--orange); }
-.risk-sw.red { background: var(--red); }
 .halo {
   position: absolute;
-  inset: -3.913cqw;
+  inset: -6cqw;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 214, 66, 0.07) 0%, transparent 62%);
+  background: radial-gradient(circle, rgba(255, 214, 66, 0.09) 0%, transparent 64%);
   pointer-events: none;
 }
 .rotor {
@@ -321,7 +343,18 @@ const hubLabel = computed(() => {
   color: var(--khaki);
   text-transform: uppercase;
 }
-.seg-label.hit { color: var(--gold); }
+.seg-label.flip { justify-content: flex-end; }
+.seg-label.hit { color: var(--on-gold); }
+.hit-wedge {
+  filter: drop-shadow(0 0 14px rgba(255, 214, 66, 0.55));
+  transform-origin: 50% 50%;
+  animation: wedge-lit 0.5s var(--ease-impact) both;
+}
+@keyframes wedge-lit {
+  0% { opacity: 0; transform: scale(0.94); }
+  60% { opacity: 1; transform: scale(1.015); }
+  100% { opacity: 1; transform: none; }
+}
 
 .pointer {
   position: absolute;
@@ -404,9 +437,10 @@ const hubLabel = computed(() => {
 }
 .hub-word { font-size: clamp(15px, 6.522cqw, 30px); }
 .hub.live .hub-word { font-size: clamp(13px, 5.652cqw, 26px); }
+.hub-skulls :deep(i) { width: clamp(12px, 5.2cqw, 26px); height: clamp(12px, 5.2cqw, 26px); }
 .hub-sub { font-size: clamp(7px, 2.174cqw, 10px); font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; }
 
 @media (max-width: 1020px) {
-  .wheel-wrap { width: min(100%, 320px); }
+  .wheel-wrap { width: var(--wheel-size, min(100%, 320px)); }
 }
 </style>

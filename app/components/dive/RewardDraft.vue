@@ -285,13 +285,15 @@ const kickerText = computed(() => {
         :style="{ '--i': index }"
         @click="choose(option)"
       >
-        <span class="tier-letter disp">{{ tierOf(option) }}</span>
-        <span class="card-meta">
-          <span
-            v-if="rollOf(option)"
-            class="roll-badge"
-          >{{ rollOf(option) }}</span>
-          <span class="cat">{{ categoryOf(option) }}</span>
+        <span class="card-top">
+          <span class="card-meta">
+            <span
+              v-if="rollOf(option)"
+              class="roll-badge"
+            >{{ rollOf(option) }}</span>
+            <span class="cat">{{ categoryOf(option) }}</span>
+          </span>
+          <span class="tier-letter disp">{{ tierOf(option) }}</span>
         </span>
 
         <span
@@ -316,19 +318,21 @@ const kickerText = computed(() => {
           >
         </span>
 
-        <span class="item-name disp">{{ nameOf(option) }}</span>
-        <span
-          v-if="selectedId === option.optionId"
-          class="selected-mark"
-        >Selected ✓</span>
-        <span
-          v-else-if="pickedId === option.optionId || (option.choice && pickedId !== null)"
-          class="selected-mark banked-mark"
-        >Banked ✓</span>
-        <span
-          v-else
-          class="selected-mark empty"
-        >{{ promotion ? 'Claim' : 'Select' }}</span>
+        <span class="card-foot">
+          <span class="item-name disp">{{ nameOf(option) }}</span>
+          <span
+            v-if="selectedId === option.optionId"
+            class="selected-mark"
+          >Selected ✓</span>
+          <span
+            v-else-if="pickedId === option.optionId || (option.choice && pickedId !== null)"
+            class="selected-mark banked-mark"
+          >Banked ✓</span>
+          <span
+            v-else
+            class="selected-mark empty"
+          >{{ promotion ? 'Claim' : 'Select' }}</span>
+        </span>
       </button>
     </div>
 
@@ -466,9 +470,9 @@ const kickerText = computed(() => {
 .loot {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   width: 100%;
-  max-width: 1040px;
+  max-width: 1000px;
   margin: 0 auto;
 }
 .loot-head {
@@ -503,10 +507,10 @@ const kickerText = computed(() => {
 
 .loot-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
   align-items: stretch;
-  padding-top: 4px;
+  padding-top: 6px;
 }
 .loot-card {
   --edge: var(--line-3);
@@ -514,53 +518,65 @@ const kickerText = computed(() => {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  min-height: 300px;
-  padding: 14px 16px 16px;
+  gap: 10px;
+  padding: 14px 14px 14px;
   border: 1px solid var(--edge);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--tier) 10%, var(--panel)), var(--panel) 58%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tier) 12%, var(--panel)), var(--panel) 55%);
   color: var(--text);
   text-align: left;
   font: inherit;
   cursor: pointer;
-  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-  transition: transform var(--dur-med) var(--ease-out), filter var(--dur-med), box-shadow var(--dur-med);
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  transition: transform var(--dur-med) var(--ease-out), filter var(--dur-med), box-shadow var(--dur-med), opacity var(--dur-med);
+  animation: deal-in 0.55s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 110ms);
+}
+@keyframes deal-in {
+  from { opacity: 0; translate: 0 30px; }
+  to { opacity: 1; translate: 0 0; }
 }
 .loot-card[data-tier='C'] { --tier: var(--tier-c); }
 .loot-card[data-tier='B'] { --tier: var(--tier-b); }
 .loot-card[data-tier='A'] { --tier: var(--tier-a); }
 .loot-card[data-tier='S'] { --tier: var(--tier-s); }
 .loot-card[data-tier='S+'] { --tier: var(--tier-splus); }
-.loot-card:hover:not(.faded) { transform: translateY(-4px); filter: brightness(1.06); }
+.loot-card:hover:not(.faded) { transform: translateY(-4px); filter: brightness(1.08); }
+.loot-card:hover:not(.faded) .media img { transform: scale(1.05); }
 .loot-card.selected {
   --edge: var(--tier);
-  transform: translateY(-9px);
-  box-shadow: inset 0 0 0 2px var(--tier), 0 0 26px color-mix(in srgb, var(--tier) 28%, transparent);
+  transform: translateY(-8px);
+  box-shadow: inset 0 0 0 2px var(--tier), 0 0 34px color-mix(in srgb, var(--tier) 32%, transparent);
 }
 .loot-card.banked {
   --edge: var(--gold);
-  box-shadow: inset 0 0 0 2px var(--gold), 0 0 22px rgba(255, 214, 66, 0.2);
+  box-shadow: inset 0 0 0 2px var(--gold), 0 0 28px rgba(255, 214, 66, 0.22);
 }
-.loot-card.faded { opacity: 0.42; filter: saturate(0.5); }
+.loot-card.faded { opacity: 0.38; filter: saturate(0.4); }
 .loot-card.cross {
   --edge: var(--tier-splus);
   background: linear-gradient(180deg, rgba(255, 75, 62, 0.16), var(--panel) 58%);
 }
 
-.tier-letter {
-  position: absolute;
-  top: 6px;
-  right: 13px;
-  color: var(--tier);
-  font-size: 44px;
-  line-height: 1;
-  text-shadow: 0 0 18px color-mix(in srgb, var(--tier) 45%, transparent);
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 30px;
 }
+.tier-letter {
+  color: var(--tier);
+  font-size: 40px;
+  line-height: 0.8;
+  text-shadow: 0 0 20px color-mix(in srgb, var(--tier) 50%, transparent);
+}
+.selected .tier-letter,
+.banked .tier-letter { animation: slamIn 0.4s var(--ease-impact) both; }
 .card-meta {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 22px;
+  min-width: 0;
   color: var(--tier);
   font-size: 10px;
   font-weight: 700;
@@ -568,46 +584,65 @@ const kickerText = computed(() => {
   text-transform: uppercase;
 }
 .roll-badge {
-  padding: 2px 6px;
+  padding: 3px 6px 2px;
   background: var(--ground);
   box-shadow: inset 0 0 0 1px var(--tier);
   color: var(--tier);
   letter-spacing: 0.05em;
 }
-.cat { color: var(--muted); }
+.cat { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* The art is the card: a fixed-aspect well that letterboxes every catalog
+   image (framed weapon renders, booster hexes, stratagem glyphs) whole. */
 .media {
-  display: grid;
-  place-items: center;
-  height: 108px;
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
   border: 1px solid var(--line-2);
   background:
+    radial-gradient(ellipse 70% 70% at 50% 55%, color-mix(in srgb, var(--tier) 16%, transparent), transparent 75%),
     linear-gradient(rgba(184, 176, 141, 0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(184, 176, 141, 0.04) 1px, transparent 1px),
     var(--ground);
-  background-size: 26px 26px;
+  background-size: 100% 100%, 22px 22px, 22px 22px, auto;
   overflow: hidden;
 }
 .media img {
-  max-width: 88%;
-  max-height: 88%;
+  position: absolute;
+  inset: 9%;
+  width: 82%;
+  height: 82%;
   object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55));
+  transition: transform var(--dur-med) var(--ease-out);
 }
-.cross-media { flex-direction: column; gap: 6px; color: var(--tier-splus); }
-.cross-mark { font-size: 34px; line-height: 1; }
+.selected .media,
+.banked .media { border-color: color-mix(in srgb, var(--tier) 55%, var(--line-2)); }
+.cross-media {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--tier-splus);
+}
+.cross-mark { font-size: 44px; line-height: 1; }
 .cross-name { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
 
+.card-foot { display: flex; flex-direction: column; gap: 5px; margin-top: auto; }
 .item-name {
-  font-size: 21px;
-  line-height: 1.05;
-  margin-top: auto;
+  font-size: 15px;
+  line-height: 1.1;
+  color: var(--khaki);
   overflow-wrap: anywhere;
 }
+.selected .item-name,
+.banked .item-name { color: var(--text); }
 .selected-mark {
   color: var(--tier);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 .selected-mark.empty { color: var(--dim); }
@@ -656,7 +691,13 @@ const kickerText = computed(() => {
   text-transform: uppercase;
   cursor: pointer;
 }
-.cta:disabled { opacity: 0.4; cursor: not-allowed; }
+.cta:not(:disabled) { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -3px 0 rgba(110, 80, 0, 0.35), 0 0 34px rgba(255, 214, 66, 0.24); }
+.cta:disabled {
+  background: var(--raised);
+  color: var(--dim);
+  box-shadow: inset 0 0 0 1px var(--line-3);
+  cursor: not-allowed;
+}
 .banked-note { color: var(--muted); font-size: 13px; }
 
 .picks { display: inline-flex; gap: 4px; }
@@ -678,12 +719,17 @@ const kickerText = computed(() => {
   .loot { gap: 12px; }
   .loot-title { font-size: 38px; }
   .loot-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
-  .loot-card { min-height: 0; display: grid; grid-template-columns: 76px minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: 12px; }
-  .loot-card .media { grid-row: 1 / 4; height: 76px; width: 76px; }
-  .tier-letter { position: static; grid-column: 2; font-size: 28px; }
-  .card-meta { grid-column: 2; }
-  .item-name { grid-column: 2; font-size: 18px; }
-  .selected-mark { grid-column: 2; }
+  .loot-card {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    column-gap: 14px;
+    row-gap: 6px;
+  }
+  .loot-card .media { grid-row: 1 / 3; aspect-ratio: 1; }
+  .card-top { grid-column: 2; }
+  .card-foot { grid-column: 2; }
+  .item-name { font-size: 16px; }
   .loot-actions { justify-content: stretch; }
   .cta { flex: 1; min-width: 0; }
 }

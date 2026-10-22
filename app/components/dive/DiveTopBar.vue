@@ -56,17 +56,17 @@ const creditLabel = computed(() => {
 <template>
   <header class="top">
     <div class="identity">
-      <span class="diff-mark">
-        <img
-          class="diff-emblem"
-          :src="difficultyImageUrl(state.difficulty)"
-          alt=""
-          draggable="false"
-        >
-        <span class="diff-num disp">{{ state.difficulty }}</span>
-      </span>
+      <img
+        class="diff-emblem"
+        :src="difficultyImageUrl(state.difficulty)"
+        alt=""
+        draggable="false"
+      >
       <span class="diff-copy">
-        <span class="diff-name">{{ diffName }}</span>
+        <span class="diff-line">
+          <b class="diff-num disp">{{ state.difficulty }}</b>
+          <span class="diff-name">{{ diffName }}</span>
+        </span>
         <span class="diff-sub">
           Op {{ opNumber }}
           <span
@@ -167,16 +167,22 @@ const creditLabel = computed(() => {
       <button
         class="navb"
         type="button"
+        aria-label="Codex"
+        title="Codex"
         @click="codexOpen = true"
       >
-        Codex
+        <IconBook class="navb-icon" />
+        <span class="navb-word">Codex</span>
       </button>
       <button
         class="navb"
         type="button"
+        aria-label="Warbonds"
+        title="Warbonds"
         @click="warbondsOpen = true"
       >
-        Warbonds
+        <IconWarbond class="navb-icon" />
+        <span class="navb-word">Warbonds</span>
       </button>
 
       <span
@@ -240,29 +246,19 @@ const creditLabel = computed(() => {
   flex: 1 1 250px;
   min-width: 0;
 }
-.diff-mark {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 58px;
-  height: 52px;
-  flex: none;
-  color: var(--on-gold);
-  background: linear-gradient(180deg, #ffe57a, var(--gold) 50%, #e0b000);
-  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
-}
 .diff-emblem {
-  width: 36px;
-  height: 19px;
+  width: 66px;
+  height: 32px;
+  flex: none;
   object-fit: contain;
-  opacity: 0.55;
-  filter: brightness(0.2);
+  filter: drop-shadow(0 0 10px rgba(255, 214, 66, 0.18));
 }
+.diff-line { display: flex; align-items: baseline; gap: 8px; }
 .diff-num {
-  position: absolute;
-  font-size: 24px;
+  color: var(--gold);
+  font-size: 22px;
   line-height: 1;
-  color: var(--on-gold);
+  text-shadow: 0 0 14px rgba(255, 214, 66, 0.35);
 }
 .diff-copy {
   display: flex;
@@ -349,6 +345,7 @@ const creditLabel = computed(() => {
   color: var(--muted);
 }
 .navb:hover { box-shadow: none; color: var(--text); }
+.navb-icon { display: none; width: 20px; height: 20px; }
 .menu { width: 40px; padding: 0; background: transparent; box-shadow: none; }
 .menu:hover { box-shadow: none; }
 
@@ -370,7 +367,17 @@ const creditLabel = computed(() => {
 }
 .link-lamp.on { background: var(--teal); box-shadow: 0 0 6px var(--teal); }
 
-@media (max-width: 1100px) {
+/* Narrow desktops trade the nav words for glyphs so the header stays one row. */
+@media (max-width: 1240px) {
+  .top { gap: 14px 16px; }
+  .identity { flex-basis: 200px; }
+  .actions { flex-basis: auto; }
+  .navb { width: 40px; padding: 0; }
+  .navb-icon { display: block; }
+  .navb-word { display: none; }
+  .beats :deep(.beat) { padding-inline: 18px; min-width: 0; }
+}
+@media (max-width: 980px) {
   .top { gap: 10px 16px; padding-top: 8px; padding-bottom: 8px; }
   .beats { order: 3; flex: 1 1 100%; }
   .actions { flex: 0 1 auto; }

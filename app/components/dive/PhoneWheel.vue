@@ -121,8 +121,8 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         <span class="cap">Directive</span>
         <RiskPips
           :value="directiveRisk"
-          :max="5"
-          tone="gold"
+          :max="directiveRisk"
+          tone="red"
         />
       </div>
       <h2 class="disp dc-name">
@@ -175,7 +175,7 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         <span class="cap">Strain · whole operation</span>
         <RiskPips
           :value="strainRisk"
-          :max="5"
+          :max="strainRisk"
           tone="orange"
         />
       </div>

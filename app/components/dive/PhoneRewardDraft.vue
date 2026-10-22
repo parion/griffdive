@@ -271,14 +271,22 @@ const pickedName = computed(() =>
   text-transform: uppercase;
 }
 .title { font-size: 34px; }
-.cards { display: flex; flex-direction: column; gap: 8px; }
+.cards { display: flex; flex-direction: column; gap: 10px; }
+.cards > * { animation: deal-in 0.5s var(--ease-out) both; }
+.cards > :nth-child(2) { animation-delay: 90ms; }
+.cards > :nth-child(3) { animation-delay: 180ms; }
+.cards > :nth-child(4) { animation-delay: 270ms; }
+@keyframes deal-in {
+  from { opacity: 0; translate: 0 18px; }
+  to { opacity: 1; translate: 0 0; }
+}
 .loot-card {
   --tier: var(--tier-c);
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 78px;
-  padding: 7px 10px 7px 7px;
+  min-height: 110px;
+  padding: 7px 12px 7px 7px;
   border: 1px solid var(--line-3);
   background: linear-gradient(90deg, color-mix(in srgb, var(--tier) 12%, var(--panel)), var(--panel) 55%);
   color: var(--text);
@@ -296,16 +304,27 @@ const pickedName = computed(() =>
   box-shadow: inset 0 0 0 2px var(--tier), 0 0 18px color-mix(in srgb, var(--tier) 25%, transparent);
 }
 .loot-card.faded { opacity: 0.45; }
+/* The art leads the row; the name is its caption. */
 .thumb {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 62px;
-  height: 62px;
+  width: 96px;
+  height: 96px;
   flex: none;
-  background: var(--ground);
+  background:
+    radial-gradient(ellipse 70% 70% at 50% 55%, color-mix(in srgb, var(--tier) 18%, transparent), transparent 75%),
+    var(--ground);
   box-shadow: inset 0 0 0 1px var(--line-2);
 }
-.thumb img { max-width: 90%; max-height: 90%; object-fit: contain; }
+.thumb img {
+  position: absolute;
+  inset: 8%;
+  width: 84%;
+  height: 84%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
+}
 .cross-thumb { color: var(--tier-splus); font-size: 24px; }
 .card-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
 .meta { display: flex; align-items: center; gap: 6px; }
@@ -318,7 +337,7 @@ const pickedName = computed(() =>
   font-weight: 700;
 }
 .cat { color: var(--muted); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; }
-.name { font-size: 17px; line-height: 1.05; overflow-wrap: anywhere; }
+.name { font-size: 15px; line-height: 1.1; overflow-wrap: anywhere; }
 .pick-mark { color: var(--tier); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .tier {
   flex: none;

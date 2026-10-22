@@ -57,15 +57,21 @@ set; extracted references are git-ignored and presentation-only. Nothing here to
 `app/components/dive/DiveFrame.vue` is the no-rail dive shell: a three-row grid of **header ·
 stage · squad dock**, exactly one viewport tall on desktop. The stage is the only scroll area and
 holds one lit object per beat; the old climb strip, left squad rail, right Kit/Valor rail and bottom
-PhaseRail are gone.
+PhaseRail are gone. Each beat centres itself on the stage (`margin-block: auto` on the stage inner,
+so a beat taller than the stage still scrolls from the top), and the beats are sized to land their
+primary CTA above the fold on a 1440×900 desktop.
 
-- **`DiveTopBar`** carries the identity block (in-game difficulty emblem + number, difficulty name,
+- **`DiveTopBar`** carries the identity block (the in-game difficulty emblem shown as-is — never
+  boxed in a hex or tinted — then the gold number, difficulty name,
   op number and mission pips, front emblem), the four **`PhaseTabs`** beats (Call · Pacts · Dive ·
   Loot, current beat filled gold, finished beats checked), and the action tiles — Brasch's Bargains
   (credit glyph + balance, disabled with its reason mid-mission, gold lamp when something is
-  affordable), Kit, Codex, Warbonds, connection lamp and the session menu. Back to the Bridge lives
+  affordable), Kit, Codex, Warbonds, connection lamp and the session menu. Under 1240px Codex and
+  Warbonds collapse to glyph buttons (keeping their accessible names) so the header stays one row
+  down to 980px. Back to the Bridge lives
   in `DiveMenu`, because the global bridge header stands down on `/dive`.
-- **`SquadDock`** anchors the bottom: status lamps and names for every diver, open seats, Steam
+- **`SquadDock`** anchors the bottom: status lamps and names for every diver (`.seat` cards in
+  mixed case — not the global `.chip` tag utility), open seats, Steam
   lobby and invite copy, and the squad-honors token picker once a contest is spun. `DiveMenu` holds
   tutorial/field manual, Bridge, pin/unpin, new session, leave and end. On a phone the same dock
   lives in the **Squad** dialog, and host actions render inline there (a portalled dropdown would
@@ -76,9 +82,13 @@ PhaseRail are gone.
 
 #### Call — `DivePhaseWheel`
 
-One lit call: `WheelOfMisfortune` (a real seeded SVG wheel, hub button is the only spin control)
-beside the drawn **Squad Directive** and, on the operation's first mission, the **strain** card.
-Both cards use the same take/skip grammar; a stranded rule disables "Take it" with the reason. The
+One lit call: `WheelOfMisfortune` (a real seeded SVG wheel inside a gold tick bezel; the hub button
+is the only spin control) fills the left column at stage height (`--wheel-size`). The landed wedge
+lights gold and juts past the rim; labels on the wheel's left half flip to read upright; the hub
+shows the drawn rule's skulls and "Risk N" — never "+N". There is no risk legend. The heading and
+the drawn **Squad Directive** sit in the right column and, on the operation's first mission, the **strain** card.
+The strain is a compact row (emblem, name, blurb, small take/skip). Both use the same take/skip
+grammar; a stranded rule disables "Take it" with the reason. The
 `ValorRoll` strip under them previews the percentage-point movement of hovering or picking a rule.
 The host's **Deal the pacts** CTA waits until both calls are decided. Major Order pinning opens the
 `MajorOrderPicker` dialog; a pinned order shows on the stage before the first spin as well as after
@@ -86,16 +96,19 @@ it. Rerolls sit under the deal CTA as quiet secondary controls.
 
 #### Pacts — `PactScreen`
 
-A self-service hand of `ConditionCard`s. Each card carries its own risk skulls, rule, accountability
-line, live odds line and sealed stamp; picks preview the odds strip as they toggle. The CTA is
+A centred, self-service hand of `ConditionCard`s dealt in with a stagger. Each card carries only
+its lit risk skulls, the vow in quotes, any benched-kit note, the accountability line and the
+inked SWORN stamp. There are no per-card odds words: hovering or picking previews the one odds
+strip under the hand. The CTA is
 "Swear N pacts" (or "Dive with no pacts"), and a locked diver sees the sworn stamp while the rest of
 the squad finishes. There is no Kit rail: the header's **Kit** tile opens the same `ArmoryDrawer`
 everywhere.
 
 #### Dive — `DivePhaseDiving`
 
-The field screen keeps the directive, accepted strain and each diver's sworn pacts with one-tap
-"Mark broken" (confirm on the second tap). Hosts call **Extracted** or **Mission failed**; squadmates
+The field screen is two columns: the teal-lit directive card (HOLDING / BROKEN) and accepted strain
+on the left over the locked odds line, and a **Pacts sworn** ledger on the right — one row per
+pact (diver, lit skulls, name, one-tap "Mark broken", confirm on the second tap). Hosts call **Extracted** or **Mission failed**; squadmates
 get their own `KitSnapshot` pane and a waiting gate. The kit is visible by default for non-hosts and
 opens full-height from the header for everyone.
 
@@ -109,13 +122,16 @@ reports pin **File report / File failure** in the fixed action bar.
 
 #### Loot — `RewardDraft`
 
-The draft is "Bank one item": one card per option, each stamped with its **rolled tier and d100
-face**, with the same odds line above carrying one pin per option. The old ceiling-climb intro,
+The draft is "Bank one item": one card per option, dealt in with a stagger. **The item art is the
+card**: a 4:3 well (a square thumb on phones) letterboxes the whole catalog image with
+`object-fit: contain` — never crop it — and the name is a quiet caption under it. Each card is
+stamped with its **rolled tier and d100 face**, with the same odds line above carrying one pin per option. The old ceiling-climb intro,
 `CeilingTrack`, ban flow and settlement screen are retired. Picking a card selects it; the CTA banks
 it; a resolved draft waits on the squad. The **`SquadDraftBoard`** shows each squadmate's offered
 tiles and status, and the reroll control spends a banked honors token. Liberty's Cross is one card,
 not a band above the pods. When the last mission is banked, **`OperationCleared`** carries the climb
-to the next difficulty and points at Brasch's restock.
+to the next difficulty — the next in-game difficulty emblem slams in over rays, above a 3–10
+chevron ladder underlined in each rung's base tier — and points at Brasch's restock.
 
 #### ValorRoll — the one odds primitive
 
@@ -143,7 +159,8 @@ dive uses `ValorRoll`.
 
 `usePhoneShell` swaps the desktop tree for `DivePhone` (`DivePhoneShell` + `Phone*`). It is a fixed
 column: `PhoneTopBar` (identity, Squad, Kit, Codex, menu) over `PhaseTabs`, a scrolling stage, and a
-pinned `footer.phone-bar`. The bar never changes shape: optional detail above, an optional secondary
+pinned `footer.phone-bar`. The bar never changes shape — its CTA label stays on one line and
+ellipsizes a long item name: optional detail above, an optional secondary
 on the left and one primary action filling the rest, supplied through `PhoneActionBar`'s deferred
 teleports. Report and forfeit actions use the same bar. The squad sheet is a dialog with inline
 moderation; the wheel call is a flat top-down stage (directive, strain, wheel), not a bottom sheet.

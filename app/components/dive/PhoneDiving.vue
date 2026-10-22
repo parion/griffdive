@@ -165,7 +165,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         >
           <RiskPips
             :value="pact.risk"
-            :max="5"
+            :max="pact.risk"
             tone="red"
           />
           <span>{{ pact.name }}</span>
