@@ -9,7 +9,6 @@ import {
   CREDIT_PRICE_TYPE,
   CREDIT_PRICE_TYPE_DEFAULT,
   SAMPLE_CREDITS,
-  S_PLUS_BONUS_OPTIONS,
   S_PLUS_OVERFLOW_CAP,
   S_PLUS_UPGRADE_DIVISOR,
   S_OVERFLOW_CAP,
@@ -186,25 +185,21 @@ export function rollBonus(seed: number): BonusStat {
   return BONUS_STATS[pickIndex(rng, BONUS_STATS.length)]!
 }
 
-export function optionsForStars(stars: number, ceiling: RewardTier): number {
+export function optionsForStars(stars: number): number {
   const clamped = Math.min(Math.max(Math.round(stars), 0), STARS_TO_OPTIONS.length - 1)
-  const count = Math.min(STARS_TO_OPTIONS[clamped] ?? 1, MAX_OPTIONS)
-  if (ceiling === 'S+') {
-    return Math.min(count + S_PLUS_BONUS_OPTIONS, MAX_OPTIONS + S_PLUS_BONUS_OPTIONS)
-  }
-  return count
+  return Math.min(STARS_TO_OPTIONS[clamped] ?? 1, MAX_OPTIONS)
 }
 
 // The options a diver's draft actually offers: the star count less the options
 // lost to a failed pact or a broken team directive, floored at one so the draft
 // can always complete (AGENTS.md: Reward math). The single source for both the
-// rolled offer and the preview.
+// rolled offer and the preview. S+ is one of the rolled tiers now, not an extra
+// slot: a Cross replaces an option rather than adding one.
 export function optionsForDiver(
   stars: number,
-  ceiling: RewardTier,
   lostOptions: number,
 ): number {
-  return Math.max(1, optionsForStars(stars, ceiling) - lostOptions)
+  return Math.max(1, optionsForStars(stars) - lostOptions)
 }
 
 // Reward options live in the band the difficulty guarantees (its base tier) and
@@ -226,12 +221,158 @@ function tierIndex(tier: RewardTier): number {
   return tier === 'S+' ? TIER_INDEX.s : TIER_INDEX[tier.toLowerCase() as Tier]
 }
 
+// The lit roll: one d100 line split into tier zones. `start`/`end` are
+// percentage points from the left (0–100), so the UI can draw each zone at its
+// true width and a needle at the rolled number. The base tier is a hard floor,
+// so tiers below it carry zero width and are never rolled.
+export interface TierZone {
+  tier: RewardTier
+  start: number
+  end: number
+  chance: number
+}
+
+export function tierZones(difficulty: number, valor: number): TierZone[] {
+  const reach: Record<RewardTier, number> = {
+    'C': 1,
+    'B': oddsToReach(difficulty, valor, 'B'),
+    'A': oddsToReach(difficulty, valor, 'A'),
+    'S': oddsToReach(difficulty, valor, 'S'),
+    'S+': oddsToReach(difficulty, valor, 'S+'),
+  }
+  let cursor = 0
+  return CEILING_LADDER.map((tier, index) => {
+    const next = CEILING_LADDER[index + 1]
+    const chance = Math.max(0, reach[tier] - (next ? reach[next]! : 0))
+    const start = cursor
+    cursor += chance * 100
+    return { tier, start, end: cursor, chance }
+  }).map((zone, index, zones) => ({
+    ...zone,
+    end: index === zones.length - 1 ? 100 : zone.end,
+  }))
+}
+
+// A d100 result (1–100) lands in the half-open zone centred on its face. The
+// 0.5 offset keeps a face on a boundary inside the lower zone, matching the
+// needle drawn at the same position.
+export function tierForRoll(roll: number, zones: readonly TierZone[]): RewardTier {
+  const position = Math.min(99.999, Math.max(0, roll - 0.5))
+  return zones.find(zone => zone.chance > 0 && position < zone.end)?.tier
+    ?? zones[zones.length - 1]!.tier
+}
+
 export interface RewardOption {
   optionId: string
   item: Item
   // Liberty's Cross: the diver names the item when picking (PICK_REWARD's
   // choiceItemId); the placeholder item is display-only.
   choice?: boolean
+  // The lit loot roll: the d100 face and the tier it landed in. Older derived
+  // offers (forfeit, Field Promotion) leave these unset.
+  roll?: number
+  tier?: RewardTier
+}
+
+// Every draft option rolls its own d100 on the same odds line. This replaces
+// the old ceiling-first offer: the rolled tier is the item's tier, so the
+// needle on the strip and the big letter on the card can never disagree.
+export function rollRewardOffer(
+  seed: number,
+  difficulty: number,
+  valor: number,
+  count: number,
+  pool: readonly Item[],
+  excludeIds: ReadonlySet<string>,
+): RewardOption[] {
+  const zones = tierZones(difficulty, valor)
+  const rng = mulberry32(seed)
+  const taken = new Set<string>()
+  const available = pool.filter(item => !excludeIds.has(item.id))
+  const picked: RewardOption[] = []
+  let crossPicked = false
+
+  const rollFace = (): number => Math.floor(rng() * 100) + 1
+
+  const faceInZone = (tier: RewardTier): number => {
+    const zone = zones.find(entry => entry.tier === tier && entry.chance > 0)
+    if (!zone) {
+      return rollFace()
+    }
+    const width = Math.max(0.01, zone.end - zone.start)
+    return Math.min(100, Math.max(1, Math.floor(zone.start + rng() * width) + 1))
+  }
+
+  const nearestTier = (tier: RewardTier): Item | undefined => {
+    const target = tierIndex(tier)
+    const remaining = available.filter(item => !taken.has(item.id))
+    if (remaining.length === 0) {
+      return undefined
+    }
+    const distance = (item: Item): number => {
+      const index = TIER_INDEX[item.tier]
+      return index >= target ? index - target : (target - index) * 1.5
+    }
+    const nearest = Math.min(...remaining.map(distance))
+    const band = remaining.filter(item => distance(item) === nearest)
+    return band[Math.floor(rng() * band.length)]
+  }
+
+  for (let index = 0; index < count; index++) {
+    let roll = rollFace()
+    let tier = tierForRoll(roll, zones)
+
+    if (tier === 'S+') {
+      if (crossPicked) {
+        // Only one Cross per draft: a second S+ face rolls again inside S so
+        // the needle never points at S+ for an S card.
+        tier = 'S'
+        roll = faceInZone(tier)
+      }
+      else {
+        crossPicked = true
+        picked.push({
+          optionId: DIVERS_CHOICE_OPTION_ID,
+          item: DIVERS_CHOICE_ITEM,
+          choice: true,
+          roll,
+          tier: 'S+',
+        })
+        continue
+      }
+    }
+
+    const exact = available.filter(
+      item => !taken.has(item.id) && item.tier === tier.toLowerCase(),
+    )
+    const item = exact.length > 0
+      ? exact[Math.floor(rng() * exact.length)]
+      : nearestTier(tier)
+
+    // Deep-crusade exhaustion: the band is empty, so show the nearest stocked
+    // item and move the needle into its true tier rather than lie about it.
+    if (item && item.tier.toUpperCase() !== tier) {
+      tier = item.tier.toUpperCase() as RewardTier
+      roll = faceInZone(tier)
+    }
+    if (!item) {
+      break
+    }
+    taken.add(item.id)
+    picked.push({ optionId: item.id, item, roll, tier })
+  }
+
+  return picked
+}
+
+export function topTierOf(options: readonly RewardOption[]): RewardTier | null {
+  if (options.length === 0) {
+    return null
+  }
+  return options.reduce<RewardTier>((best, option) => {
+    const tier = option.tier ?? (option.item.tier.toUpperCase() as RewardTier)
+    return CEILING_LADDER.indexOf(tier) > CEILING_LADDER.indexOf(best) ? tier : best
+  }, 'C')
 }
 
 export function rollRewardOptions(

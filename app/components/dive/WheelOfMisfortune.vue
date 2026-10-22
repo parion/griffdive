@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { conditionRiskAt } from '~~/shared/engine/config'
 import { deriveMisfortune, eligibleMisfortunes } from '~~/shared/engine/wheel'
+import { WHEEL_SPIN_MS } from '~/utils/motion'
 
 const props = withDefaults(defineProps<{
   difficulty: number
@@ -121,7 +122,7 @@ watch(
       isSpinning.value = true
       spinTimer = setTimeout(() => {
         isSpinning.value = false
-      }, 2800)
+      }, WHEEL_SPIN_MS)
     }
   },
   { immediate: true },
@@ -150,7 +151,7 @@ const hubLabel = computed(() => {
       />
       <div
         class="rotor"
-        :style="{ transform: `rotate(${rotation}deg)` }"
+        :style="{ transform: `rotate(${rotation}deg)`, transitionDuration: `${WHEEL_SPIN_MS}ms` }"
       >
         <svg
           :width="SIZE"
@@ -292,15 +293,19 @@ const hubLabel = computed(() => {
   inset: -3.913cqw;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255, 214, 66, 0.07) 0%, transparent 62%);
+  pointer-events: none;
 }
 .rotor {
   position: absolute;
   inset: 0;
-  transition: transform 2.8s cubic-bezier(0.12, 0.72, 0.1, 1);
+  transition: transform cubic-bezier(0.12, 0.72, 0.1, 1);
+  /* A rotating square's transparent corners grow past the wheel's layout box;
+     never let them steal a tap from the call controls above. */
+  pointer-events: none;
 }
 .rotor svg { width: 100%; height: 100%; display: block; }
 
-.labels { position: absolute; inset: 0; }
+.labels { position: absolute; inset: 0; pointer-events: none; }
 .seg-label {
   position: absolute;
   left: 50%;
@@ -328,6 +333,7 @@ const hubLabel = computed(() => {
   background: var(--gold);
   clip-path: polygon(0 50%, 100% 0, 100% 100%);
   filter: drop-shadow(0 0 8px rgba(255, 214, 66, 0.6));
+  pointer-events: none;
 }
 .pointer-line {
   position: absolute;
@@ -337,6 +343,7 @@ const hubLabel = computed(() => {
   height: 2px;
   margin-top: -1px;
   background: var(--gold);
+  pointer-events: none;
 }
 
 .hub {

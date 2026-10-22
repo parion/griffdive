@@ -1,312 +1,231 @@
 <script setup lang="ts">
-import { onClickOutside } from '@vueuse/core'
-import type { DiveSessionStatus } from '~/composables/useDiveSession'
+import { missionsPerOperation } from '~~/shared/engine/config'
+import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
+import { difficultyImageUrl, factionImageUrl } from '~~/shared/data/images'
+import type { DivePhase, DiveState } from '~~/shared/engine/types'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
+  state: DiveState
+  phase: DivePhase
+  reporting?: boolean
   mode: 'local' | 'room'
   slotName: string
-  status: DiveSessionStatus
-  saved?: boolean
   canControl?: boolean
   isHost?: boolean
-  loneHost?: boolean
-  canFork?: boolean
-}>(), { saved: false, canControl: false, isHost: false, loneHost: false, canFork: false })
-
-const emit = defineEmits<{
-  copyInvite: []
-  openArmory: []
-  openTutorial: []
-  leave: []
-  end: []
-  saveDive: []
-  unsaveDive: []
-  newSession: []
 }>()
 
-const { codexOpen, warbondsOpen } = useDrawers()
-const roomCode = computed(() => (props.slotName || '').toUpperCase())
+const emit = defineEmits<{
+  openSquad: []
+  openArmory: []
+  openCodex: []
+  openMenu: []
+}>()
 
-const menuOpen = ref(false)
-const menuRef = ref<HTMLElement | null>(null)
-onClickOutside(menuRef, () => {
-  menuOpen.value = false
-})
-
-function run(action: () => void): void {
-  menuOpen.value = false
-  action()
-}
+const { codexOpen } = useDrawers()
+const diffName = computed(() => difficultyName(props.state.difficulty))
+const front = computed(() => props.state.frontId ? factionImageUrl(props.state.frontId) : null)
+const opLength = computed(() => missionsPerOperation(props.state.difficulty))
+const opNumber = computed(() =>
+  catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
 </script>
 
 <template>
   <header class="phone-top">
-    <NuxtLink
-      to="/"
-      class="mark"
-      aria-label="Griffdive bridge"
-    >
-      <BrandMark :size="24" />
-    </NuxtLink>
-
-    <button
-      v-if="mode === 'room'"
-      class="ghost room"
-      type="button"
-      :aria-label="`Room ${roomCode}, copy invite link`"
-      @click="emit('copyInvite')"
-    >
-      <span class="lbl room-l">Room</span>
-      <span class="room-code">{{ roomCode }}</span>
-      <IconCopy />
-    </button>
-    <span
-      v-else
-      class="solo"
-      aria-label="Solo crusade"
-    >
-      <span
-        class="lamp gold"
-        aria-hidden="true"
-      />
-      Solo
-    </span>
-
-    <span class="grow" />
-
-    <div
-      ref="menuRef"
-      class="menu-wrap"
-    >
+    <div class="row1">
+      <span class="diff-mark">
+        <img
+          class="diff-emblem"
+          :src="difficultyImageUrl(state.difficulty)"
+          alt=""
+          draggable="false"
+        >
+        <span class="diff-num disp">{{ state.difficulty }}</span>
+      </span>
+      <span class="diff-copy">
+        <span class="diff-name">{{ diffName }}</span>
+        <span class="diff-sub">
+          Op {{ opNumber }}
+          <span class="pips">
+            <i
+              v-for="i in opLength"
+              :key="i"
+              :class="{ on: i <= state.missionInOperation }"
+            />
+          </span>
+        </span>
+      </span>
+      <img
+        v-if="front"
+        class="front"
+        :src="front"
+        alt=""
+        draggable="false"
+      >
+      <span class="grow" />
+      <button
+        class="squad-btn"
+        type="button"
+        @click="emit('openSquad')"
+      >
+        <span
+          class="squad-lamp"
+          aria-hidden="true"
+        />
+        Squad
+      </button>
+      <button
+        class="kit-btn"
+        type="button"
+        aria-label="Kit"
+        @click="emit('openArmory')"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <rect
+            x="3.5"
+            y="3.5"
+            width="7"
+            height="7"
+          />
+          <rect
+            x="13.5"
+            y="3.5"
+            width="7"
+            height="7"
+          />
+          <rect
+            x="3.5"
+            y="13.5"
+            width="7"
+            height="7"
+          />
+          <rect
+            x="13.5"
+            y="13.5"
+            width="7"
+            height="7"
+          />
+        </svg>
+        Kit
+      </button>
+      <button
+        class="icon-btn"
+        type="button"
+        aria-label="Codex"
+        @click="codexOpen = true"
+      >
+        <IconBook />
+      </button>
       <button
         class="icon-btn"
         type="button"
         aria-label="Dive menu"
-        aria-haspopup="menu"
-        :aria-expanded="menuOpen"
-        @click="menuOpen = !menuOpen"
-        @keydown.esc="menuOpen = false"
+        @click="emit('openMenu')"
       >
         <svg
-          width="22"
-          height="22"
+          width="18"
+          height="18"
           viewBox="0 0 24 24"
           fill="currentColor"
           aria-hidden="true"
         >
           <circle
-            cx="12"
-            cy="5"
-            r="1.8"
-          /><circle
+            cx="5"
+            cy="12"
+            r="1.7"
+          />
+          <circle
             cx="12"
             cy="12"
-            r="1.8"
-          /><circle
-            cx="12"
-            cy="19"
-            r="1.8"
+            r="1.7"
+          />
+          <circle
+            cx="19"
+            cy="12"
+            r="1.7"
           />
         </svg>
       </button>
-
-      <div
-        v-if="menuOpen"
-        class="menu cut-sm"
-        role="menu"
-      >
-        <button
-          class="menu-item"
-          type="button"
-          role="menuitem"
-          @click="run(() => (codexOpen = true))"
-        >
-          Codex
-        </button>
-        <button
-          class="menu-item"
-          type="button"
-          role="menuitem"
-          @click="run(() => (warbondsOpen = true))"
-        >
-          Warbonds
-        </button>
-        <button
-          class="menu-item"
-          type="button"
-          role="menuitem"
-          @click="run(() => emit('openTutorial'))"
-        >
-          Tutorial
-        </button>
-        <button
-          v-if="canFork"
-          class="menu-item"
-          type="button"
-          role="menuitem"
-          @click="run(() => emit('newSession'))"
-        >
-          New session
-        </button>
-        <span
-          v-if="mode === 'room'"
-          class="menu-sep"
-        />
-        <button
-          v-if="mode === 'room' && !saved"
-          class="menu-item"
-          type="button"
-          role="menuitem"
-          @click="run(() => emit('saveDive'))"
-        >
-          Save dive
-        </button>
-        <button
-          v-if="mode === 'room' && saved && isHost"
-          class="menu-item"
-          type="button"
-          role="menuitem"
-          @click="run(() => emit('unsaveDive'))"
-        >
-          Unpin dive
-        </button>
-        <button
-          v-if="mode === 'room'"
-          class="menu-item"
-          type="button"
-          role="menuitem"
-          @click="run(() => emit('leave'))"
-        >
-          Leave dive
-        </button>
-        <button
-          v-if="canControl"
-          class="menu-item danger"
-          type="button"
-          role="menuitem"
-          @click="run(() => emit('end'))"
-        >
-          End crusade
-        </button>
-      </div>
     </div>
 
-    <button
-      class="icon-btn kit"
-      type="button"
-      aria-haspopup="dialog"
-      @click="emit('openArmory')"
-    >
-      <IconKit class="kit-icon" />
-      <span>Kit</span>
-    </button>
+    <PhaseTabs
+      class="tabs"
+      :phase="phase"
+      :reporting="reporting"
+    />
   </header>
 </template>
 
 <style scoped>
 .phone-top {
-  position: relative;
-  z-index: 30;
   flex-shrink: 0;
-  height: 48px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 6px;
-  padding: 0 4px;
+  padding: 8px 10px 0;
+  background: linear-gradient(180deg, #14160f, var(--ground));
   border-bottom: 1px solid var(--line-1);
-  background: var(--ground);
 }
-.mark {
+.row1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.diff-mark {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
+  width: 38px;
+  height: 34px;
+  flex: none;
+  background: linear-gradient(180deg, #ffe57a, var(--gold) 50%, #e0b000);
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
 }
-.grow { flex: 1 1 auto; }
-.icon-btn.kit {
-  width: auto;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 44px;
-  padding: 0 10px;
+.diff-emblem {
+  width: 30px;
+  height: 16px;
+  object-fit: contain;
+  opacity: 0.55;
+  filter: brightness(0.2);
+}
+.diff-num { position: absolute; font-size: 18px; color: var(--on-gold); line-height: 1; }
+.diff-copy { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.diff-name {
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
-.kit-icon { width: 18px; height: 18px; }
-
-.room {
-  display: flex;
+.diff-sub { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 10px; }
+.pips { display: flex; gap: 3px; }
+.pips i { width: 12px; height: 4px; box-shadow: inset 0 0 0 1px var(--line-4); }
+.pips i.on { background: var(--gold); box-shadow: 0 0 4px rgba(255, 214, 66, 0.5); }
+.front { width: 18px; height: 18px; object-fit: contain; }
+.grow { flex: 1; }
+.squad-btn,
+.kit-btn,
+.icon-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 44px;
-  min-width: 0;
-  padding: 0 10px;
-  border-color: var(--line-2);
-  color: var(--text);
-}
-.room-l { font-size: 9px; }
-.room-code {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.24em;
-  color: var(--text);
-}
-.room :deep(svg) { width: 15px; height: 15px; color: var(--khaki); flex-shrink: 0; }
-
-.solo {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  height: 44px;
-  padding: 0 10px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--khaki);
-}
-
-.menu-wrap { position: relative; }
-.menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
-  z-index: 40;
-  min-width: 190px;
-  padding: 4px;
-  background: var(--raised);
-  border: 1px solid var(--line-3);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
-}
-.menu-item {
-  display: block;
-  width: 100%;
-  padding: 12px 12px;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 7px;
   border: 0;
-  background: none;
-  color: var(--text);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 700;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--khaki);
+  font: 700 9px var(--font-body);
   letter-spacing: 0.08em;
-  text-align: left;
   text-transform: uppercase;
   cursor: pointer;
 }
-.menu-item:hover { background: color-mix(in srgb, var(--gold) 12%, transparent); color: var(--gold); }
-.menu-item.danger { color: var(--red); }
-.menu-item.danger:hover { background: color-mix(in srgb, var(--red) 16%, transparent); color: var(--red); }
-.menu-sep { display: block; height: 1px; margin: 4px 8px; background: var(--line-2); }
-
-.icon-btn {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-}
+.squad-lamp { width: 6px; height: 6px; background: var(--teal); }
+.icon-btn { width: 34px; padding: 0; justify-content: center; }
+.icon-btn :deep(svg) { width: 17px; height: 17px; }
+.tabs { padding-bottom: 7px; }
+.tabs :deep(.beats) { width: 100%; }
 </style>

@@ -68,3 +68,6 @@ export const REGISTRY_AUTOFILE = 800
 
 /** Join briefing Valor dial (ms): the scroll-in sweep moves Valor one point per DIAL_STEP. */
 export const DIAL_STEP = 450
+
+/** Wheel rotation (ms): the rotor transition and the result reveal share this clock. */
+export const WHEEL_SPIN_MS = 2800

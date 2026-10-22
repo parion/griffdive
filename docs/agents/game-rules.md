@@ -27,20 +27,20 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
    pool filters out pacts the accepted misfortune makes redundant or impossible; a declined draw
    offers from the full catalog. Each diver privately picks a subset of their offer (0 to all; a
    pick strictly implied by another is refused — see Redundant picks).
-   The reward-tier preview updates live with their personal ceiling.
+   The odds line previews the tier chances their personal Valor buys, before a pact is sworn.
 4. **Dive** — play the mission in Helldivers 2. Success = main objectives complete **and** the squad
    extracts. Objectives complete + squad wipe = failure (extraction rule).
 5. **Report** — squad records outcome: success (stars 1–max, optional time %) or failure (no stars,
-   no reward draft — each diver faces a forfeit offer instead).
+   no reward draft — each diver faces a forfeit offer instead). On a full-star clear the report
+   window also spins **bonus honors** — a random end-screen stat the host resolves to a winner, who
+   banks a reward token (see Reward tokens & squad honors).
 6. **Rewards** (success only) — the host files the report (stars + time + the samples the squad
-   extracted), which banks a credit haul into every diver's purse. Each diver is then offered N
-   options rolled against their personal tier ceiling and picks one; all rewards go to the diver's
-   personal inventory — stratagems included. Armor rewards are **passives**; the catalog has no armor pieces (see
-   inventory model). Credits bank into each diver's purse for **Brasch's Bargains**, the
-   shop that restocks every mission (see Brasch's Bargains — credits). On a
-   full-star clear, once every diver has picked, the squad spins **bonus honors** — a random
-   end-screen stat the host resolves to a winner, who banks a reward token (see Reward tokens & squad
-   honors).
+   extracted), which banks a credit haul into every diver's purse. Each diver is then dealt N
+   options; **every option rolls its own d100 tier** on the same Valor odds line, and the diver
+   picks one. All rewards go to the diver's personal inventory — stratagems included. Armor
+   rewards are **passives**; the catalog has no armor pieces (see inventory model). Credits bank
+   into each diver's purse for **Brasch's Bargains**, the shop that restocks every mission (see
+   Brasch's Bargains — credits).
 7. **Advance** — next mission, which draws a fresh misfortune (the front and strain persist).
    Completing all missions of an operation bumps the crusade difficulty by +1 and the next
    operation draws a fresh front+strain. Failure restarts the operation (mission 1) at the same
@@ -326,7 +326,7 @@ Smoke Strike plus Orbital EMS/Smoke Strike) and reserve adds no more.
 **Failed pacts:** a broken pact is marked **failed** (`FAIL_PACT{playerId,pactId}`) while the
 mission runs — during the diving phase only, by the diver themselves or by the host refereeing the
 squad (server refuses everyone else; the UI asks for a confirm since the mark is one-way). A
-failed pact is **voided**: its pact risk stops counting toward Valor, so both the ceiling previews
+failed pact is **voided**: its pact risk stops counting toward Valor, so both the odds line
 and the rolled offer drop, and it costs one reward option (`OPTIONS_LOST_PER_FAILED_PACT` in
 `shared/engine/config.ts`, floored at one so the draft always completes and never deadlocks
 ADVANCE). Failed pacts ride the diver's state (`failedPactIds`), reset with the pacts every
@@ -336,7 +336,7 @@ mission, and land in the action log for audit.
 broken in the field (`FAIL_MISFORTUNE`, host-only, `diving` phase only; the UI asks for a confirm
 since the mark is one-way) and `state.misfortuneFailed` is set. The unconditional restrictions it
 imposed still stand for the mission, but its **shared risk is voided for every diver** — `teamRiskOf`
-drops the directive's contribution, so every diver's Valor and ceiling preview fall — and each diver
+drops the directive's contribution, so every diver's Valor and odds preview fall — and each diver
 forfeits one reward option (`OPTIONS_LOST_PER_FAILED_DIRECTIVE`, floored at one). The
 operation-long strain and a live Major Order are untouched: they carry no rule to break. The mark
 resets with the pacts every mission.
@@ -356,7 +356,7 @@ pactRisk      = sum of the diver's picked pacts (max 12 at diff 7+: the
                 rolled 2–3-pact offer bounds what a diver can stack)
 
 (samples are NOT Valor. They bank as credits — see
- Brasch's Bargains — credits — and never move the ceiling.)
+ Brasch's Bargains — credits — and never move the odds.)
 
 (misfortune and pact risk are read through `conditionRiskAt(id, difficulty)`,
  so the same condition is worth different Valor at different altitudes;
@@ -365,7 +365,9 @@ pactRisk      = sum of the diver's picked pacts (max 12 at diff 7+: the
 base tier:     diff 3–5 → C   diff 6–7 → B   diff 8–10 → A
 meter:         the Valor gauge tops out at 11; Valor past it is Luck
 effective:     E = min(Valor, 11),  Luck = max(0, Valor − 11)
-ceiling roll:  start at the base tier; each step to the next tier succeeds:
+odds ladder:   the reach chance for each tier is a chain from the base tier;
+               the draft no longer rolls one ceiling. Each option rolls its own
+               d100 across these cumulative zones:
                  rung 1     0.95 × (1 − (1 − t)²)
                  rung 2     0.30 × (1 − (1 − t)²)
                  A→S        reach × min(0.95, min(0.8, max(0, E − sFloor + 1)
@@ -395,11 +397,13 @@ ceiling roll:  start at the base tier; each step to the next tier succeeds:
                A trickle of risk still can't buy the top at altitude, and
                neither top rung is ever guaranteed.
 
-option band:   the difficulty's base tier (hard floor) → the rolled ceiling
-option roll:   the draft leads with one option at the ceiling (or the highest
-               tier the pool still has), then fills the rest a band down,
-               weighted TIER_ROLL_WEIGHT_BASE^(tierIndex − baseIndex) — one top
-               pick plus support, never a flood of top-tier gear
+option roll:   each option rolls a d100 face on the odds line. Zone width is
+               reach(tier) − reach(next tier), from the base tier to S+; the
+               face's zone sets that option's tier. A stocked item of the rolled
+               tier is drawn from the diver's personal pool (a nearest-stocked
+               fallback moves the needle into the item's true tier). An S+ face
+               is Liberty's Cross; a second S+ face in the same draft rerolls
+               inside S, so the needle never disagrees with the card.
 ```
 
 - Difficulty alone never buys S or S+; only stacked chosen risk does. The top rungs are **Valor
@@ -425,55 +429,44 @@ option roll:   the draft leads with one option at the ceiling (or the highest
   (`OVERFLOW_S_LUCK` / `OVERFLOW_S_PLUS_LUCK`), so overstacking is never wasted. Even absolute max
   overstack (Valor 24.25 — a four-diver squad, strain included) leaves S+ a longshot (≤20% at altitude;
   `S_PLUS_OVERFLOW_CAP`). A zero-Valor dive always rolls its base tier. Samples are a separate
-  currency and never nudge Valor: chosen risk alone moves the ceiling, so skill and loot never carry a
+  currency and never nudge Valor: chosen risk alone moves the odds line, so skill and loot never carry a
   run (they fund Brasch's Bargains instead).
-- **Valor is surfaced as the Valor meter** (`app/components/dive/ValorMeter.vue`, the desktop
-  rail's Valor tab): a live gauge stacking each source (directive, strain, Major Order, run mode,
-  pacts) with a tier ladder from the difficulty's base tier to the previewed ceiling and the odds
-  of reaching it. It reads zero during `spin`, then renders in the decision and pacts windows (live, reacting to pact toggles and the misfortune decision), the
-  diving Briefing (locked) and the reward draft (locked). Its
-  display scale is the
-  fixed `VALOR_METER_MAX` (11) in `shared/engine/config.ts`; once Valor exceeds it the gauge reads
-  "Meter broken" and shows the banked Luck. `maxValorFor(difficulty)` in
-  `shared/engine/selectors.ts` still reports the most a difficulty *could* stack, i.e. its overflow
-  potential. The meter is presentation only and never gates a roll. The gauge is Reka's
-  `ProgressRoot`/`ProgressIndicator` (accessible `role="progressbar"` with
-  `aria-valuenow/max/valuetext`).
+- **Valor is surfaced as a roll, not a number.** `app/components/dive/ValorRoll.vue` draws the
+  odds line as tier zones whose widths are the cumulative reach chances; a marker pin sits at each
+  rolled option's d100 face. Hovering or focusing a pact previews the percentage-point movement each
+  zone gains or loses. No screen shows a numeric Valor total and no rule is gated on the gauge.
+  `VALOR_METER_MAX` and the Luck caps remain internal odds math.
 - The reward pool is personal: each diver rolls against the catalog of warbonds *they* declared
   (plus `warbondCode === 'none'` items) — never the squad's or the host's.
 - Higher difficulties inside a band climb easier: diff 5 rolls into B more readily than diff 3,
   diff 10 into S more readily than diff 8 (`bandPosition`).
-- Ceiling = the best tier that *can* appear in that diver's options; the roll is seeded from the
-  offer seed (two rng streams: one ceiling, one options) so every client computes the same offer.
-  Options live in the band from the difficulty's **base tier** (a hard floor — a Super Helldive
-  never offers C-tier gear) up to the ceiling. The draft **leads with one option at the ceiling**
-  — the class the diver earned — then fills the rest a band down, weighted toward the top
-  (`tierWeight`), so a high ceiling lands as one top pick plus support rather than a flood of
-  top-tier gear. A thin pool falls back to the highest tier it still has, so the slot never drops;
-  an **S+** ceiling adds the Liberty's Cross slot on top.
-- **S+ = Liberty's Cross.** No catalog item carries the S+ tier, so the S+ bonus slot is a free
-  pick: the diver claims **any item from their own catalog** — same personal-pool rules as every
-  reward (warbond-owned items only, nothing already owned). The option
-  rides a stable sentinel id (`DIVERS_CHOICE_OPTION_ID` in `shared/engine/rewards.ts`); the UI
-  opens a minified codex picker for it, and `PICK_REWARD` carries the named item in
-  `choiceItemId`. `pickedOptionId` always records the banked item's id.
+- **Each option rolls its own tier.** The draft is seeded from the offer seed (one rng stream) so
+  every client computes the same faces and items. An option's d100 face lands in a tier zone; a
+  stocked item of that tier is drawn from the diver's personal pool. The difficulty's **base tier**
+  stays a hard floor (a Super Helldive never offers C-tier gear). A thin pool falls back to the
+  nearest stocked tier and the needle moves with it, so the roll never lies about the card.
+- **S+ = Liberty's Cross.** No catalog item carries the S+ tier. A rolled S+ face becomes the Cross:
+  the diver claims **any item from their own catalog** — same personal-pool rules as every reward
+  (warbond-owned items only, nothing already owned). One Cross per draft; a second S+ face rerolls
+  inside S. The option rides a stable sentinel id (`DIVERS_CHOICE_OPTION_ID` in
+  `shared/engine/rewards.ts`); the UI opens a minified codex picker, and `PICK_REWARD` carries the
+  named item in `choiceItemId`.
 - **The offer is frozen at the deal.** `REPORT_RESULT` snapshots each drafting diver's holdings
   and bans into `DiverState.draftExcludedIds`, and `diverOptions` rolls against that snapshot, not
-  live holdings — so a pick, a Bargains purchase or a ban never reshuffles an offer the squad has
-  seen, and every client (and a reload) re-derives the same pods. `PICK_REWARD` refuses an item the
-  diver has gained since the deal (a catch-up claim), so the frozen offer can't bank a duplicate.
-  The snapshot resets with the pacts. It is optional: a pre-snapshot save falls back to live
-  holdings, so it needs no schema bump.
-- **Drafts are public.** Offers, ceilings and picks are derived state every client already holds,
-  so the draft shows the squad's: `draftSummaryFor` (offer, rolled ceiling, status, the banked
-  option — a Cross pick maps to the Cross slot — and banned options) feeds the squad board, which
-  reveals once the diver's own pods land and stays up after they pick.
-- Previews stay legible: the UI shows base tier → best plausible tier (`maxCeiling`: the highest tier whose
-  odds of being reached are ≥ `CEILING_PREVIEW_FLOOR`, 1%) with the odds of reaching it
-  (`ceilingOddsPercent`, whole percent). A tier under the floor reads 0% and unlit, so the ladder
-  never fades a tier priced above 0% or lights one priced at 0%.
+  live holdings — so a pick or a Bargains purchase never reshuffles an offer the squad has seen,
+  and every client (and a reload) re-derives the same cards. `PICK_REWARD` refuses an item the diver
+  has gained since the deal (a catch-up claim), so the frozen offer can't bank a duplicate. The
+  snapshot resets with the pacts. A pre-snapshot save falls back to live holdings.
+- **Drafts are public.** Options, their rolled tiers and picks are derived state every client
+  already holds, so the draft shows the squad's: `draftSummaryFor` (options, top rolled tier, status,
+  the banked option — a Cross pick maps to the Cross slot) feeds the squad board. The displayed
+  ceiling is the best tier actually rolled (`topTierOf`), never a hypothetical the diver missed.
+- Previews stay legible: every zone is labelled with its tier and odds (percentage points of
+  movement while previewing a pact), a non-zero chance below 0.5% reads `<1%`, and a 0% zone is
+  silent. The join briefing's onboarding dial reads the same zone chances (`tierZones`) as
+  the live roll line, so onboarding and the draft can never disagree.
 - **Option count** comes from stars (mission performance), lookup table `starsToOptions`:
-  `[1,1,2,3,4,4]` (index = stars), capped at 4; S+ grants +1 (cap 5). Stars themselves are
+  `[1,1,2,3,4,4]` (index = stars), capped at 4. Stars themselves are
   difficulty-capped per the game (wiki.gg/Missions): max 3 at diffs 3–4, 4 at 5–6, 5 at 7+; a
   completed mission never awards 0 and a failed mission awards none (`maxStarsFor` in
   `shared/engine/config.ts`).
@@ -557,9 +550,9 @@ Promotion or a claimed cache). The surplus starting kit was never won, so it is 
   restarts immediately.
 - **Offer size:** one item per star the difficulty could have awarded (`maxStarsFor`: 3 at diff 3–4,
   4 at 5–6, 5 at 7+), capped by the earned pool.
-- **The Valor ceiling applies to the loss too.** The offer rolls through the same machinery as a
-  reward draft (`rollRewardOptions`) against the diver's own kit, capped at the **same rolled
-  ceiling** their Valor bought for the mission (`diverRolledCeiling`; S+ stakes as S). It leads with
+- **The loss keeps the same odds line.** The Forfeit offer is a ceiling-style draw
+  (`rollRewardOptions`) against the diver's own kit, capped at the **rolled ceiling** their Valor
+  bought for the mission (`diverRolledCeiling`; S+ stakes as S). It leads with
   the best item the ceiling reaches, then fills weighted toward the top, from the floor tier C up —
   so risk raises the tier at stake exactly as it raises the tier on offer. A zero-Valor dive only
   exposes gear up to the difficulty's base tier. A kit with nothing under the ceiling falls back to
@@ -576,37 +569,39 @@ Promotion or a claimed cache). The surplus starting kit was never won, so it is 
 
 ### Reward tokens & squad honors
 
-After a successful mission's reward draft completes, the squad spins one **bonus honors** contest (a
+**Honors are spun in the report window.** On a **full-star clear**
+(`stars === maxStarsFor(difficulty)`) the mission report offers one **bonus honors** contest (a
 Mario-Party bonus star): a random stat from HD2's end-of-mission screen — kills, accuracy, deaths,
 stims, samples, friendly fire, … — with a winning direction (*most* or *least*), each entry in
-`BONUS_STATS` (`shared/engine/config.ts`). Honors are a **limited prize** (`bonusEligible`): a token
-only lands on a **full-star clear** (`stars === maxStarsFor(difficulty)`) and only when the
-**squad-size cadence** is due — `BONUS_TOKEN_INTERVAL` awards a four-diver squad every mission, a
-three- or two-diver squad every other mission, and a solo diver every third. Off the cadence or short
-of full stars, the reward phase skips the ceremony entirely. When due, the contest is **spun on
-click** (`SPIN_BONUS{seed}`, host-only) once every diver has picked, and the seed is what syncs:
-`rollBonus` (stream salt 4) derives the same stat on every client. **The app never captures the
-stats**: the host reads HD2's stats screen and names the winner(s) (`AWARD_BONUS{playerIds}`,
-host-only). Ties are common, so an award names **one or several** divers — every tied diver banks a
-token. Awarding banks each winner's **one flexible reward token** immediately (capped at
-`REWARD_TOKEN_CAP`, 3) — there is no separate claim step. When only one diver can win (solo, or a
-squad where everyone else sat the draft out), selection is redundant: the spin resolves the ceremony
-and banks the token by itself.
+`BONUS_STATS` (`shared/engine/config.ts`). Honors are a **limited prize** (`bonusEligibleFor`): the
+token only lands when the **squad-size cadence** is due — `BONUS_TOKEN_INTERVAL` awards a
+four-diver squad every mission, a three- or two-diver squad every other mission, and a solo diver
+every third. Off the cadence or short of full stars, the report card states why instead of offering
+the spin.
 
-A token is spent by its owner during a reward draft on one of:
-- **Reroll** (`REROLL_REWARDS`) — redraw the diver's own offer. A reroll must move (a seed that
-  re-derives the same offer is refused, mirroring `REROLL_WHEEL`), and both the ceiling and option
-  streams turn.
-- **Ban** (`BAN_REWARDS`) — a separate flow: the diver selects any or all of the offered non-choice
-  items to purge from their personal reward and catch-up pools for the rest of the crusade
-  (`bannedItemIds`). Banning **forfeits that mission's reward pick** (`rewardBanned` resolves the
-  draft with no item), so the diver may clear the whole offer. Liberty's Cross is a free pick, not an
-  item, so it cannot be banned.
+When due, the contest is **spun on click** (`SPIN_BONUS{seed, stars?, outcome?}`, host-only) from
+the report form. The form passes the stars/outcome it is about to file because `REPORT_RESULT` has
+not landed yet; a spin from the rewards phase reads the filed report instead. The seed is what
+syncs: `rollBonus` (stream salt 4) derives the same stat on every client. **The pending report must
+still qualify:** if the host files a failure or a lower-star clear after spinning, `REPORT_RESULT`
+strikes the seed and claws back any token the spin auto-banked, so changing the result cannot mint
+honors. **The app never captures the stats**: the host reads HD2's stats screen and names the
+winner(s) (`AWARD_BONUS{playerIds}`, host-only) from the squad dock. Ties are common, so an award
+names **one or several** divers — every tied diver banks a token. Awarding banks each winner's **one
+flexible reward token** immediately (capped at `REWARD_TOKEN_CAP`, 3); there is no separate claim
+step. When only one diver can win (solo, or a squad where everyone else sat the draft out),
+selection is redundant: the spin resolves the ceremony and banks the token by itself.
+
+A token is spent by its owner during a reward draft on a **Reroll** (`REROLL_REWARDS`): redraw the
+diver's own offer. A reroll must move (a seed that re-derives the same offer is refused, mirroring
+`REROLL_WHEEL`), and the single offer stream turns both the rolled faces and the items. **Ban**
+(`BAN_REWARDS`) remains in the engine for older sessions and saves, but the lit-pass UI no longer
+offers it; the redesigned draft spends tokens on rerolls only.
 
 The ceremony is a **soft gate**: `ADVANCE` never waits on it, and an unspun/unawarded contest dies
-with the mission reset. Tokens and bans are personal and persist across missions; reroll seeds and
-the ban flag reset with the pacts. Negative targeting (bans) does not violate "guarantee rarity
-class, never specific items" — it narrows a pool, it never names a reward.
+with the mission reset. Claimed tokens persist across missions; reroll seeds and the old ban flag
+reset with the pacts. Negative targeting (bans) did not violate "guarantee rarity class, never
+specific items" — it narrows a pool, it never names a reward.
 
 ### Inventory model
 
@@ -632,7 +627,7 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
 - **Sizing:** one option per completed operation behind (`difficulty − variant start difficulty`),
   capped at `CATCHUP_CAP` (4) in `shared/engine/config.ts`.
 - **Tier:** options roll at the **current difficulty's base tier with Valor 0** — the engine's own
-  "a zero-Valor dive always rolls its base tier" rule. No ceiling roll, so S/S+ and Liberty's Cross
+  "a zero-Valor dive always rolls its base tier" rule. At base tier with zero Valor, so S/S+ and Liberty's Cross
   are structurally unreachable. Risk remains the joiner's choice from their first mission; the
   promotion only buys altitude parity.
 - **Derivation:** the offer is **frozen to the diver**: it derives from the diver's own id (a

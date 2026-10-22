@@ -29,14 +29,14 @@
   everyone; the squad never waits on a diver who left), Codex slide-over (opens over the dive without dropping the session),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
   non-dismissible name gate, star-rating keyboard navigation), phone host moderation
-  (`phone.spec.ts`: the 390px squad bar opens the moderation bottom sheet), phone reward draft
+  (`phone.spec.ts`: the 390px Squad button opens the squad dialog with inline host actions), phone reward draft
   (`phone-rewards.spec.ts`: a non-host phone diver banks their own pick), phone layout
   (`phone-layout.spec.ts`: no sideways overflow at 360px with a multi-front live Major Order, the live
-  spin CTA, touch-scrubbing the report time bar), the phone action bar
+  spin CTA, tapping the report's larger time cells), the phone action bar
   (`phone-action-bar.spec.ts`: the bar is pinned to the bottom edge with a live primary action on every
-  screen from lobby to honors, plus confirm-failure and the surrender bar), tablet layout (`tablet-layout.spec.ts`: at
-  1024×768 every phase fits the centre column without the page scrolling vertically, and the drawn
-   directive's Lock it in is in view; at
+  screen from lobby to loot, plus confirm-failure and the surrender bar), tablet layout (`tablet-layout.spec.ts`: at
+  1024×768 every phase fits the centre stage without the page scrolling vertically, and the drawn
+   directive's Take it is in view; at
   768×1024 the phone shell widens to the tablet), the join briefing (`join-briefing.spec.ts`: a
   named host skips every gate and gets the tutorial, a squadmate reads the one-page briefing — callsign
   focused on load, Enter files it and opens the squad card, issued kit, Codex drawer, the dial's

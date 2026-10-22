@@ -37,36 +37,40 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
 
   await expectPinnedBar(page, '1-lobby')
   await page.getByRole('button', { name: 'Launch crusade' }).click()
-  await expect(page.locator('.phone-wheel')).toBeVisible()
+  await expect(page.locator('.phone-call')).toBeVisible()
 
   await expectPinnedBar(page, '2-wheel-spin')
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'Spin the wheel' }).click()
-  await expect(page.locator('.phone-wheel .card').first()).toBeVisible()
+  await expect(page.locator('.directive .take')).toBeVisible()
   await expectPinnedBar(page, '3-wheel-decision')
 
   // Opting out of both calls keeps the flow deterministic (no stranded rules).
-  await page.locator('.phone-wheel .opt-out').first().click()
-  await page.locator('.phone-wheel .strain-card .opt-out').click()
+  await page.locator('.directive .skip').click()
+  await page.locator('.strain .skip').click()
   await expectPinnedBar(page, '4-wheel-deal')
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'Deal the pacts' }).click()
 
   await expect(page.locator('.phone-pacts')).toBeVisible()
   await expectPinnedBar(page, '5-pacts')
-  await page.locator('#phone-bar-primary').getByRole('button', { name: /Lock in/ }).click()
+  await page.locator('#phone-bar-primary').getByRole('button', { name: 'Dive with no pacts' }).click()
   await expectPinnedBar(page, '6-diving')
 
-  await page.locator('#phone-bar-primary').getByRole('button', { name: 'Mission complete' }).click()
+  await page.locator('#phone-bar-primary').getByRole('button', { name: 'Extracted' }).click()
+  await expect(page.getByRole('heading', { name: 'Mission report' })).toBeVisible()
   await expectPinnedBar(page, '7-report')
+
+  // Honors moved to the report window: spin while the numbers are in hand.
+  await page.getByRole('button', { name: 'Spin the stat' }).click()
+  await expect(page.getByText('Host banked the token.', { exact: true })).toBeVisible()
+
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'File report' }).click()
 
-  await expect(page.locator('.phone-rewards .row').first()).toBeVisible()
+  await expect(page.locator('.phone-loot .loot-card').first()).toBeVisible()
   await expectPinnedBar(page, '8-draft')
-  await page.locator('.phone-rewards .row').first().click()
+  await page.locator('.phone-loot .loot-card').first().click()
   await expectPinnedBar(page, '9-draft-banked')
-  await page.locator('#phone-bar-primary').getByRole('button').first().click()
-
-  await expect(page.getByRole('region', { name: 'Squad honors' })).toBeVisible()
-  await expectPinnedBar(page, '10-honors')
+  await page.locator('#phone-bar-primary').getByRole('button', { name: /^Bank / }).click()
+  await expect(page.locator('#phone-bar-primary').getByRole('button', { name: 'Next mission' })).toBeVisible()
 
   await context.close()
 })
@@ -85,37 +89,37 @@ test('phone: a failed mission lands on the pinned remove bar', async ({ browser 
   const primary = page.locator('#phone-bar-primary')
   async function diveToPacts(firstMission: boolean): Promise<void> {
     await primary.getByRole('button', { name: 'Spin the wheel' }).click()
+    await page.locator('.directive .skip').click()
     // The strain call only opens on an operation's first mission.
-    await page.locator('.phone-wheel .opt-out').first().click()
     if (firstMission) {
-      await page.locator('.phone-wheel .strain-card .opt-out').click()
+      await page.locator('.strain .skip').click()
     }
     await primary.getByRole('button', { name: 'Deal the pacts' }).click()
-    await primary.getByRole('button', { name: /Lock in/ }).click()
+    await primary.getByRole('button', { name: 'Dive with no pacts' }).click()
   }
 
   await page.getByRole('button', { name: 'Launch crusade' }).click()
   await diveToPacts(true)
 
   // Failure only takes earned gear, so clear mission 1 and bank a reward first.
-  await primary.getByRole('button', { name: 'Mission complete' }).click()
+  await primary.getByRole('button', { name: 'Extracted' }).click()
   await primary.getByRole('button', { name: 'File report' }).click()
-  await page.locator('.phone-rewards .row').first().click()
-  await primary.getByRole('button').first().click()
+  await page.locator('.phone-loot .loot-card').first().click()
+  await primary.getByRole('button', { name: /^Bank / }).click()
   await primary.getByRole('button', { name: /Next mission/ }).click()
   await diveToPacts(false)
 
   await page.locator('#phone-bar-secondary').getByRole('button', { name: 'Mission failed' }).click()
-  await expectPinnedBar(page, '11-diving-confirm-failure')
+  await expectPinnedBar(page, '10-diving-confirm-failure')
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'File failure' }).click()
 
   await expect(page.getByRole('heading', { name: 'Mission failed' }).first()).toBeVisible()
-  await expectPinnedBar(page, '12-forfeit')
+  await expectPinnedBar(page, '11-forfeit')
 
   // Picking an item arms the hold-to-confirm remove.
   await page.locator('.sur-tile').first().click()
   await expect(page.locator('#phone-bar-primary').getByRole('button', { name: /Remove/ })).toBeEnabled()
-  await expectPinnedBar(page, '13-forfeit-armed')
+  await expectPinnedBar(page, '12-forfeit-armed')
 
   await context.close()
 })

@@ -55,27 +55,31 @@ test('squadmates read one briefing page; the host keeps the tutorial', async ({ 
 
   // Scrolled into view, the dial sweeps to Valor 6 at difficulty 5; both stay
   // hand-adjustable and read the engine's real ceiling odds.
-  const valor = joiner.getByLabel('Valor', { exact: true })
+  const valor = joiner.getByLabel('Chosen risk', { exact: true })
   await valor.scrollIntoViewIfNeeded()
   await expect(valor).toHaveValue('6')
   await expect(joiner.getByRole('slider', { name: 'Difficulty' })).toHaveValue('5')
   await valor.fill('0')
-  await expect(joiner.getByLabel(/^Ceiling odds/).getByText('Base')).toBeVisible()
+  await expect(joiner.getByLabel(/^Tier odds/).getByText('Base')).toBeVisible()
 
   await join.click()
   await expectJoinerLanded(joiner)
-  await expect(host.locator('.diver-chip').filter({ hasText: 'Duo' })).toBeVisible()
+  await expect(host.locator('.dock .chip').filter({ hasText: 'Duo' })).toBeVisible()
 
-  // The Tutorial control replays the briefing for a squadmate, never the host's tutorial.
-  await joiner.getByRole('button', { name: 'Tutorial', exact: true }).click()
+  // The session menu replays the briefing for a squadmate, never the host's tutorial.
+  await joiner.getByRole('button', { name: 'Session menu' }).click()
+  const joinerMenu = joiner.getByRole('dialog', { name: 'Session' })
+  await joinerMenu.getByRole('button', { name: /Tutorial \/ field manual/ }).click()
   const manual = joiner.getByRole('dialog', { name: 'Field manual' })
   await expect(manual).toBeVisible()
   await expect(joiner.getByRole('dialog', { name: 'Griffdive tutorial' })).toBeHidden()
   await manual.getByRole('button', { name: 'Back to the dive' }).click()
   await expect(manual).toBeHidden()
 
-  // The host's Tutorial control still opens the host tutorial.
-  await host.getByRole('button', { name: 'Tutorial', exact: true }).click()
+  // The host's menu still opens the host tutorial.
+  await host.getByRole('button', { name: 'Session menu' }).click()
+  const hostMenu = host.getByRole('dialog', { name: 'Session' })
+  await hostMenu.getByRole('button', { name: /Tutorial \/ field manual/ }).click()
   await expect(host.getByRole('dialog', { name: 'Griffdive tutorial' })).toBeVisible()
   await dismissBriefing(host)
 
@@ -87,5 +91,5 @@ test('squadmates read one briefing page; the host keeps the tutorial', async ({ 
   await expect(veteran.getByLabel('The squad').getByText('Duo', { exact: true })).toBeVisible()
   await veteran.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(veteran)
-  await expect(host.locator('.diver-chip').filter({ hasText: 'Veteran' })).toBeVisible()
+  await expect(host.locator('.dock .chip').filter({ hasText: 'Veteran' })).toBeVisible()
 })

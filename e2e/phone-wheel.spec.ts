@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { dismissWarbondIntro } from './helpers'
 
-// The phone wheel phase is a drawer: the wheel sticks to the top and the
-// directive/strain sheet scrolls up over it — the page itself never scrolls.
-test('phone wheel: decision sheet expands over the wheel', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
+// The phone call is one flat lit stage: directive and strain first, the wheel
+// below, and the fixed action bar carrying the spin/deal gate.
+test('phone wheel: the call reads top-down and the action bar follows the beat', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' })
   const page = await context.newPage()
 
   await page.goto('/')
@@ -14,47 +14,38 @@ test('phone wheel: decision sheet expands over the wheel', async ({ browser }) =
   await dismissWarbondIntro(page)
 
   // The legend is gone from the phone wheel.
-  await expect(page.locator('.phone-wheel .legend')).toHaveCount(0)
-  await expect(page.locator('.phone-wheel .risk-legend')).toBeHidden()
+  await expect(page.locator('.phone-call .legend')).toHaveCount(0)
+  await expect(page.locator('.phone-call .risk-legend')).toBeHidden()
+  await expect(page.locator('.beats .beat.current')).toContainText('Call')
 
-  // Spin the wheel from its hub.
+  // Spin from the wheel hub.
   await page.locator('.hub').click()
-  await expect(page.locator('.phone-wheel .card').first()).toBeVisible()
+  await expect(page.locator('.directive .take')).toBeVisible()
+  await expect(page.locator('.strain .take')).toBeVisible()
+  await expect(page.locator('.beats .beat.current')).toContainText('Call')
 
-  const pageScroll = await page.locator('.phone-scroll').evaluate(el => el.scrollHeight <= el.clientHeight + 1)
-  expect(pageScroll).toBe(true)
+  // The two calls are separate, deliberate taps. A stranded draw disables
+  // "Take it", so skip that one; either call leaves the strain open and the
+  // deal gate disabled.
+  const take = page.locator('.directive .take')
+  if (await take.isEnabled()) {
+    await take.click()
+    await expect(page.locator('.directive .dc-verdict')).toContainText('Taken')
+  }
+  else {
+    await page.locator('.directive .skip').click()
+    await expect(page.locator('.directive .dc-verdict')).toContainText('Skipped')
+  }
+  await expect(page.locator('#phone-bar-primary').getByRole('button', { name: 'Deal the pacts' })).toBeDisabled()
 
-  const drawer = page.locator('.phone-wheel .body')
-  expect(await drawer.evaluate(el => getComputedStyle(el).overflowY)).toBe('auto')
+  await page.locator('.strain .skip').click()
+  await expect(page.locator('#phone-bar-primary').getByRole('button', { name: 'Deal the pacts' })).toBeEnabled()
 
-  const geometry = () => page.evaluate(() => ({
-    wheel: document.querySelector('.phone-wheel .wheel-wrap')!.getBoundingClientRect().toJSON() as DOMRect,
-    sheetTop: document.querySelector('.phone-wheel .cards')!.getBoundingClientRect().top,
-  }))
-
-  // Once the spin lands the drawer opens on its own.
-  await expect.poll(() => drawer.evaluate(el => el.scrollTop)).toBeGreaterThan(0)
-  await drawer.evaluate((el) => {
-    el.scrollTop = 0
-  })
-
-  // Collapsed: the sheet tucks over the wheel's lower rim, the wheel on screen.
-  const collapsed = await geometry()
-  expect(collapsed.sheetTop).toBeLessThan(collapsed.wheel.bottom)
-  expect(collapsed.sheetTop).toBeGreaterThan(collapsed.wheel.top)
-
-  // The cards need more room than the collapsed sheet: the drawer scrolls.
-  expect(await drawer.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true)
-
-  // Expanded: the wheel holds its place and the sheet rides up over it,
-  // bringing the strain card (whole-operation faction commitment) in.
-  await drawer.evaluate((el) => {
-    el.scrollTop = el.scrollHeight
-  })
-  await expect(page.locator('.phone-wheel .strain-card')).toBeInViewport()
-  const expanded = await geometry()
-  expect(expanded.wheel.top).toBeCloseTo(collapsed.wheel.top, 0)
-  expect(expanded.sheetTop).toBeLessThan(collapsed.sheetTop - 100)
+  // The body scrolls; the shell and bar stay fixed.
+  const scrolls = await page.locator('.phone-scroll').evaluate(el => el.scrollHeight >= el.clientHeight)
+  expect(scrolls).toBe(true)
+  const bar = await page.locator('.phone-bar').boundingBox()
+  expect(bar!.y + bar!.height).toBeCloseTo(844, 0)
 
   await context.close()
 })

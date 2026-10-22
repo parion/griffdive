@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import {
-  MAX_OPTIONS,
   SAMPLE_CREDITS,
-  STARS_TO_OPTIONS,
-  TIME_HAUL_FLOOR,
   bonusIntervalFor,
   maxStarsFor,
   sampleAvailability,
@@ -11,22 +8,29 @@ import {
 import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import { missionHaul, optionsForDiver, timeHaulMultiplier } from '~~/shared/engine/rewards'
 import {
+  bonusEligibleFor,
+  bonusFor,
+  bonusWinners,
   currentFront,
-  diverCeiling,
+  squadSize,
 } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionOutcome, MissionReport, SampleCounts } from '~~/shared/engine/types'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   state: DiveState
   selfId: string | null
   self: DiverState | null
   outcome: MissionOutcome
   opLength: number
-}>()
+  // On phones the report's primary actions pin to the shell's action bar so
+  // the long form never buries them below the fold.
+  phone?: boolean
+}>(), { phone: false })
 
 const emit = defineEmits<{
   submit: [payload: MissionReport]
   cancel: []
+  spinBonus: [payload: { stars: number, outcome: MissionOutcome }]
 }>()
 
 const maxStars = computed(() => maxStarsFor(props.state.difficulty))
@@ -49,47 +53,8 @@ const report = computed<MissionReport>(() => ({
 }))
 
 const haul = computed(() => missionHaul(props.outcome === 'success' ? report.value : null))
-
-const timeFrac = computed(() => Math.min(1, Math.max(0, timePct.value / 100)))
 const timeMultiplier = computed(() => timeHaulMultiplier(timePct.value))
-const timeNote = computed(() =>
-  `×${timeMultiplier.value.toFixed(2)} · FLOOR ${TIME_HAUL_FLOOR.toFixed(2)}`)
-
-// Credits by sample rarity — the tri-color bar.
-const samplePoints = computed(() => ({
-  common: Math.max(0, samples.value.common) * SAMPLE_CREDITS.common,
-  rare: Math.max(0, samples.value.rare) * SAMPLE_CREDITS.rare,
-  super: Math.max(0, samples.value.super) * SAMPLE_CREDITS.super,
-}))
-const sampleFractions = computed(() => {
-  const raw = [samplePoints.value.common, samplePoints.value.rare, samplePoints.value.super]
-  const total = raw.reduce((sum, n) => sum + n, 0)
-  return {
-    total,
-    common: total > 0 ? raw[0]! / total : 0,
-    rare: total > 0 ? raw[1]! / total : 0,
-    super: total > 0 ? raw[2]! / total : 0,
-  }
-})
-// The raw haul against the extraction multiplier, before the floor.
-const sampleNote = computed(() => `${sampleFractions.value.total} credits`)
-
-const opNumber = computed(() =>
-  catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
-
-const ceiling = computed(() => (props.self ? diverCeiling(props.state, props.self) : 'C'))
-const optionCount = computed(() =>
-  optionsForDiver(stars.value, ceiling.value, props.self?.failedPactIds.length ?? 0))
-
-// The credit purse this report will top up.
-const purseBefore = computed(() => props.self?.credits ?? 0)
-const purseAfter = computed(() => purseBefore.value + haul.value)
-
-const frontLabel = computed(() => front.value?.displayName ?? 'Unknown front')
-const honorsEligible = computed(() =>
-  props.outcome === 'success'
-  && stars.value === maxStars.value
-  && props.state.missionIndex % bonusIntervalFor(props.state.divers.length) === 0)
+const timeFrac = computed(() => Math.min(1, Math.max(0, timePct.value / 100)))
 
 const sampleRows = computed(() => [
   { key: 'common' as const, label: 'Common', tone: 'common' as const, icon: '/images/svgs/Common_Sample_Icon.svg', max: sampleMax.value.common },
@@ -100,134 +65,112 @@ const sampleRows = computed(() => [
   value: `${samples.value[row.key] * SAMPLE_CREDITS[row.key]} cr`,
 })))
 
-// The design's reward table is a stars→options distribution, not the tier
-// ladder (the ceiling already lives on the Valor rail).
-const rewardTable = computed(() => Array.from({ length: maxStars.value }, (_, i) => {
-  const k = i + 1
-  return { stars: k, options: STARS_TO_OPTIONS[k] ?? 1, current: k === stars.value }
-}))
+const opNumber = computed(() =>
+  catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
+
+const optionCount = computed(() =>
+  optionsForDiver(stars.value, props.self?.failedPactIds.length ?? 0))
+
+const honorsEligible = computed(() =>
+  props.outcome === 'success'
+  && bonusEligibleFor(
+    props.outcome,
+    stars.value,
+    props.state.difficulty,
+    props.state.missionIndex,
+    squadSize(props.state),
+  ))
+
+const honors = computed(() => bonusFor(props.state))
+const winners = computed(() => bonusWinners(props.state))
+const honorsAwarded = computed(() => props.state.bonusWinnerIds.length > 0)
+const honorsReason = computed(() => {
+  if (props.outcome !== 'success') {
+    return 'No honors on a failed mission.'
+  }
+  if (stars.value < maxStars.value) {
+    return 'Squad Honors need a full-star clear.'
+  }
+  const interval = bonusIntervalFor(squadSize(props.state))
+  return `Honors are due every ${interval} mission${interval === 1 ? '' : 's'} for a squad of ${squadSize(props.state)}.`
+})
+
+const timeCells = Array.from({ length: 20 }, (_, index) => (index + 1) * 5)
+
+function setTime(value: number): void {
+  timePct.value = Math.min(100, Math.max(0, value))
+}
 
 function submit(): void {
   emit('submit', report.value)
+}
+
+function spin(): void {
+  if (!honorsEligible.value || honors.value) {
+    return
+  }
+  emit('spinBonus', { stars: stars.value, outcome: props.outcome })
 }
 </script>
 
 <template>
   <section class="report">
-    <header
-      class="report-banner"
-      :class="outcome"
-    >
+    <header class="report-head">
       <span
-        class="banner-flash"
-        aria-hidden="true"
-      />
-      <div class="banner-row">
-        <span
-          class="hazard banner-bar barL"
-          aria-hidden="true"
-        />
-        <h1 class="disp banner-title">
-          {{ outcome === 'success' ? 'Mission complete' : 'Mission failed' }}
-        </h1>
-        <span
-          class="hazard banner-bar barR"
-          aria-hidden="true"
-        />
-      </div>
-      <div class="banner-bread">
-        <span>OP {{ opNumber }} · MISSION {{ state.missionInOperation }}/{{ opLength }}</span>
-        <span class="sep">/</span>
-        <span>{{ state.difficulty }} · {{ difficultyName(state.difficulty).toUpperCase() }}</span>
-        <span class="sep">/</span>
-        <span :style="front ? { color: front.accent } : undefined">{{ frontLabel }}</span>
-        <span class="sep">/</span>
-        <span
-          v-if="outcome === 'success'"
-          class="teal-line"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.4"
-            aria-hidden="true"
-          >
-            <path d="M12 20V8M7 13l5-5 5 5M4 4h16" />
-          </svg>
-          OBJECTIVES + EXTRACTION
-        </span>
-        <span
-          v-else
-          class="red-line"
-        >NO EXTRACTION · OPERATION REPEATS</span>
-      </div>
+        class="kick"
+        :class="{ red: outcome === 'failure' }"
+      >{{ outcome === 'success' ? 'Extraction confirmed' : 'No extraction' }}</span>
+      <h1 class="disp report-title">
+        {{ outcome === 'success' ? 'Mission report' : 'Mission failed' }}
+      </h1>
+      <p class="report-sub">
+        {{ outcome === 'success'
+          ? 'Copy the numbers off the end-of-mission screen.'
+          : 'The operation repeats at the same difficulty. Every diver owes one earned item.' }}
+      </p>
     </header>
 
-    <div
-      v-if="outcome === 'success'"
-      class="report-grid"
-    >
-      <div class="report-left">
+    <template v-if="outcome === 'success'">
+      <div class="report-grid">
         <section
-          class="rcard"
-          aria-label="Stars"
+          class="card stars-card"
+          aria-label="Mission stars"
         >
-          <div class="rcard-head">
-            <span class="lbl">Stars</span>
-            <span class="rcard-note">MAX {{ maxStars }} AT {{ difficultyName(state.difficulty).toUpperCase() }}</span>
-          </div>
-          <div class="stars-row">
-            <StarRating
-              v-model="stars"
-              :length="maxStars"
-              size="lg"
-            />
-            <div class="stars-readout">
-              <span class="disp stars-num">{{ stars }}</span>
-              <span class="disp stars-max">/{{ maxStars }}</span>
-            </div>
-          </div>
-          <div
-            class="honors-strip"
-            :class="honorsEligible ? 'on' : 'off'"
-            role="status"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <path d="M8 2l4 6 4-6M12 22a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13z" />
-            </svg>
-            <span>{{ honorsEligible ? 'FULL STARS · SQUAD HONORS UNLOCKED' : 'SQUAD HONORS · NEED FULL STARS' }}</span>
-            <span class="honors-token">
-              <span
-                v-if="honorsEligible"
-                class="hex on"
-                aria-hidden="true"
-              />
-              {{ honorsEligible ? '+1 TOKEN' : 'NO TOKEN' }}
-            </span>
+          <span class="cap">Mission stars</span>
+          <StarRating
+            v-model="stars"
+            :length="maxStars"
+            size="lg"
+          />
+          <span
+            v-if="stars === maxStars"
+            class="full-tag"
+          >Full-star clear</span>
+          <span
+            v-else
+            class="full-tag off"
+          >{{ maxStars - stars }} star{{ maxStars - stars === 1 ? '' : 's' }} missed</span>
+          <div class="stars-foot">
+            <span>Each diver drafts</span>
+            <b class="disp">{{ optionCount }}</b>
+            <span>loot option{{ optionCount === 1 ? '' : 's' }}</span>
           </div>
         </section>
 
         <section
-          class="rcard samples-card"
-          aria-label="Samples"
+          class="card haul-card"
+          aria-label="Credits haul"
         >
-          <div class="rcard-head">
-            <span class="lbl">Samples</span>
-            <span class="rcard-note teal-note">{{ sampleNote }}</span>
+          <div class="card-head">
+            <span class="cap">Credits haul</span>
+            <span class="tiny">Samples × time = credits</span>
           </div>
-          <div class="sample-grid">
+
+          <div class="samples">
             <SampleCanister
               v-for="row in sampleRows"
               :key="row.key"
               v-model="samples[row.key]"
-              class="sample-slot"
               :max="row.max"
               :tone="row.tone"
               :label="row.label"
@@ -235,465 +178,555 @@ function submit(): void {
               :value="row.value"
             />
           </div>
-        </section>
 
-        <section
-          class="rcard"
-          aria-label="Time remaining"
-        >
-          <SegmentedBar
-            v-model="timePct"
-            :max="100"
-            label="Time remaining"
-            aria-label="Time remaining percent"
-            :note="timeNote"
-          />
+          <div class="time-block">
+            <div class="time-head">
+              <span class="cap teal-text">Time remaining</span>
+              <span class="disp time-value">{{ timePct }}<small>%</small></span>
+            </div>
+            <div class="time-row">
+              <button
+                class="step"
+                type="button"
+                aria-label="Less time remaining"
+                @click="setTime(timePct - 5)"
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.4"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14" />
+                </svg>
+              </button>
+              <div
+                class="time-cells"
+                role="group"
+                aria-label="Time remaining percent"
+              >
+                <button
+                  v-for="cell in timeCells"
+                  :key="cell"
+                  class="time-cell"
+                  :class="{ on: cell <= timePct }"
+                  type="button"
+                  :aria-label="`Set time remaining to ${cell} percent`"
+                  :aria-pressed="cell <= timePct && (cell === timePct || cell + 5 > timePct)"
+                  @click="setTime(cell)"
+                />
+              </div>
+              <button
+                class="step"
+                type="button"
+                aria-label="More time remaining"
+                @click="setTime(timePct + 5)"
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.4"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12h14M12 5v14" />
+                </svg>
+              </button>
+            </div>
+            <div class="time-foot">
+              <span class="mult">× {{ timeMultiplier.toFixed(2) }}</span>
+              <span class="tiny">{{ timeFrac === 1 ? 'Full clock' : `${Math.round(timeFrac * 100)}% of the clock` }}</span>
+            </div>
+          </div>
+
+          <div class="haul-total">
+            <span>Every diver banks the same haul</span>
+            <span class="haul-value disp">
+              =
+              <IconCredit />
+              +{{ haul }}
+            </span>
+          </div>
         </section>
       </div>
 
-      <aside class="report-right">
-        <section
-          class="rcard reward-preview"
-          aria-label="Reward draft preview"
-        >
-          <div class="rcard-head">
-            <span class="lbl">Reward draft</span>
-            <span class="rcard-note">EACH DIVER</span>
-          </div>
-          <div class="opt-row">
-            <span class="opt-stars">
-              <span class="disp">{{ stars }}</span>
-              <svg
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"
-                  fill="currentColor"
-                />
-              </svg>
-            </span>
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.4"
-              aria-hidden="true"
-              class="opt-arrow"
-            >
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-            <span class="disp opt-num">{{ optionCount }}</span>
-            <span class="opt-label">REWARD<br>OPTIONS</span>
-          </div>
-          <div
-            class="crates"
+      <section
+        class="honors-card"
+        :class="{ live: honorsEligible, done: honorsAwarded }"
+        aria-label="Squad Honors"
+      >
+        <div class="honors-id">
+          <span
+            class="honors-hex"
             aria-hidden="true"
-          >
-            <span
-              v-for="i in MAX_OPTIONS"
-              :key="i"
-              class="crate"
-              :class="{ on: i <= optionCount }"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.7"
-              >
-                <path d="M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10" />
-              </svg>
+          >1</span>
+          <span class="honors-copy">
+            <span class="disp">Squad Honors</span>
+            <span class="tiny">
+              {{ honorsEligible ? 'Spin now so the squad knows what to chase' : honorsReason }}
             </span>
-          </div>
-          <div
-            class="stars-table"
-            aria-hidden="true"
-          >
-            <div
-              v-for="row in rewardTable"
-              :key="row.stars"
-              class="stars-col"
-              :class="{ current: row.current }"
-            >
-              <div class="stars-blocks">
-                <span
-                  v-for="j in MAX_OPTIONS"
-                  :key="j"
-                  :class="{ on: j <= row.options }"
-                />
-              </div>
-              <span class="stars-label">{{ row.stars }}★</span>
-            </div>
-          </div>
-        </section>
-
-        <section
-          class="rcard perf-card"
-          aria-label="Credit haul"
-        >
-          <div class="rcard-head">
-            <span class="lbl teal-note">Credits</span>
-            <span class="rcard-note">SQUAD HAUL × TIME</span>
-          </div>
-          <div
-            class="disp perf-value"
-            aria-live="polite"
-          >
-            <CreditAmount
-              :value="haul"
-              signed
-            />
-          </div>
-          <div class="perf-bar">
-            <div class="perf-bar-head">
-              <span>TIME LEFT</span>
-              <span>{{ Math.round(timeFrac * 100) }}% · {{ timeNote }}</span>
-            </div>
-            <div class="perf-track">
-              <span
-                class="perf-fill teal"
-                :style="{ width: `${timeFrac * 100}%` }"
-              />
-            </div>
-          </div>
-          <div class="perf-bar">
-            <div class="perf-bar-head">
-              <span>SAMPLES</span>
-              <span>{{ sampleFractions.total }} cr</span>
-            </div>
-            <div class="perf-track tri">
-              <span
-                class="perf-fill common"
-                :style="{ width: `${sampleFractions.common * 100}%` }"
-              />
-              <span
-                class="perf-fill rare"
-                :style="{ width: `${sampleFractions.rare * 100}%` }"
-              />
-              <span
-                class="perf-fill super"
-                :style="{ width: `${sampleFractions.super * 100}%` }"
-              />
-            </div>
-          </div>
-          <div class="perf-valor">
-            <span class="lbl">Credit bank</span>
-            <span class="perf-valor-nums">
-              <CreditAmount
-                class="disp v-base"
-                :value="purseBefore"
-              />
-              <span class="disp v-arrow">→</span>
-              <CreditAmount
-                class="disp v-final"
-                :value="purseAfter"
-              />
-            </span>
-          </div>
-        </section>
-
-        <!-- Cancel sits beside the CTA: on its own row it pushed the fixed dive
-             terminal into scroll at 1440×900. -->
-        <div class="file-row">
-          <button
-            class="btn ghost tiny cancel"
-            type="button"
-            @click="emit('cancel')"
-          >
-            Cancel
-          </button>
-          <button
-            class="btn primary cut file-cta cta-sweep"
-            type="button"
-            @click="submit"
-          >
-            <span class="file-copy">
-              <span class="disp">File report</span>
-              <span class="file-sub">{{ stars }}/{{ maxStars }} STARS</span>
-            </span>
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.4"
-              aria-hidden="true"
-            >
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-          </button>
+          </span>
         </div>
-      </aside>
-    </div>
+
+        <button
+          v-if="honorsEligible && !honors"
+          class="honors-spin"
+          type="button"
+          @click="spin"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            aria-hidden="true"
+          >
+            <rect
+              x="3.5"
+              y="3.5"
+              width="17"
+              height="17"
+              rx="4.5"
+            />
+            <g
+              fill="currentColor"
+              stroke="none"
+            >
+              <circle
+                cx="8.3"
+                cy="8.3"
+                r="1.5"
+              />
+              <circle
+                cx="15.7"
+                cy="8.3"
+                r="1.5"
+              />
+              <circle
+                cx="12"
+                cy="12"
+                r="1.5"
+              />
+              <circle
+                cx="8.3"
+                cy="15.7"
+                r="1.5"
+              />
+              <circle
+                cx="15.7"
+                cy="15.7"
+                r="1.5"
+              />
+            </g>
+          </svg>
+          Spin the stat
+        </button>
+
+        <span
+          v-else-if="honors"
+          class="honors-stat"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            aria-hidden="true"
+          >
+            <path d="M13 2 4 14h6l-1 8 9-12h-6z" />
+          </svg>
+          <b class="disp">{{ honors.label }}</b>
+        </span>
+
+        <span
+          v-if="honors"
+          class="honors-note"
+        >
+          <template v-if="honorsAwarded">
+            {{ winners.length === 1 ? winners[0]!.name : `${winners.length} divers tied` }} banked the token.
+          </template>
+          <template v-else-if="squadSize(state) === 1">
+            Token banked.
+          </template>
+          <template v-else>
+            Award the token from the squad bar.
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <path d="M12 4v16M5 13l7 7 7-7" />
+            </svg>
+          </template>
+        </span>
+      </section>
+    </template>
+
+    <section
+      v-else
+      class="card fail-card"
+      aria-label="Mission failure"
+    >
+      <span class="cap red-text">Operation repeats</span>
+      <p class="fail-copy">
+        No stars, no loot, no haul. The squad restarts the operation at
+        <b>{{ difficultyName(state.difficulty) }}</b>. Each diver who dove owes one earned item.
+      </p>
+      <div class="fail-line">
+        <span>Op {{ opNumber }} · Mission {{ state.missionInOperation }}/{{ opLength }}</span>
+        <span v-if="front">· {{ front.displayName }}</span>
+      </div>
+    </section>
 
     <div
-      v-else
-      class="report-failure"
+      v-if="!phone"
+      class="report-actions"
     >
-      <p class="failure-note">
-        No stars · the operation repeats at this difficulty, and every diver
-        forfeits one item from their own kit.
-      </p>
-      <div class="row report-actions">
-        <button
-          class="btn danger cut"
-          type="button"
-          @click="submit"
+      <button
+        class="back"
+        type="button"
+        @click="emit('cancel')"
+      >
+        Back to the field
+      </button>
+      <button
+        class="cta cut cta-sweep"
+        type="button"
+        @click="submit"
+      >
+        {{ outcome === 'success' ? 'File report' : 'File failure' }}
+        <svg
+          width="22"
+          height="14"
+          viewBox="0 0 22 14"
+          aria-hidden="true"
         >
-          File failure
-        </button>
+          <path
+            d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
+    </div>
+
+    <PhoneActionBar v-else>
+      <template #secondary>
         <button
-          class="btn ghost tiny"
+          class="bar-alt"
           type="button"
           @click="emit('cancel')"
         >
-          Cancel
+          Back
         </button>
-      </div>
-    </div>
+      </template>
+      <template #primary>
+        <button
+          class="bar-cta cta-sweep"
+          type="button"
+          @click="submit"
+        >
+          <span class="disp">{{ outcome === 'success' ? 'File report' : 'File failure' }}</span>
+        </button>
+      </template>
+    </PhoneActionBar>
   </section>
 </template>
 
 <style scoped>
-.report { display: flex; flex-direction: column; gap: 16px; min-height: 0; container: report / inline-size; }
-
-/* ---- Banner ---- */
-.report-banner {
-  position: relative;
-  overflow: hidden;
-  flex-shrink: 0;
-  min-height: 112px;
+.report {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 12px;
-  padding: 0 24px;
-  background: var(--panel);
-  border: 1px solid var(--line-4);
+  gap: clamp(14px, 2vh, 22px);
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
 }
-.report-banner.failure { border-color: color-mix(in srgb, var(--red) 55%, var(--line-4)); }
-.banner-flash {
-  position: absolute;
-  inset: 0;
-  background: var(--gold);
-  pointer-events: none;
-  animation: flashIn 0.6s 0.18s ease-out both;
-}
-.report-banner.failure .banner-flash { background: var(--red); }
-.banner-row {
-  display: flex;
+.report-head { display: flex; flex-direction: column; gap: 7px; }
+.kick {
+  display: inline-flex;
   align-items: center;
-  gap: 22px;
-  position: relative;
-}
-.banner-bar {
-  flex-grow: 1;
-  height: 18px;
-  display: block;
-}
-.banner-bar.barL {
-  transform-origin: right;
-  animation: barL 0.45s 0.22s var(--ease-out) both;
-}
-.banner-bar.barR {
-  transform-origin: left;
-  animation: barL 0.45s 0.22s var(--ease-out) both;
-}
-.banner-title {
-  margin: 0;
-  font-size: clamp(24px, 5.4cqi, 44px);
-  white-space: nowrap;
+  gap: 10px;
   color: var(--gold);
-  animation: slam 0.5s var(--ease-out) both;
-}
-.report-banner.failure .banner-title { color: var(--red); }
-.banner-bread {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 12px;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.18em;
-  color: var(--khaki);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
 }
-.banner-bread .sep { color: var(--line-4); }
-.teal-line { display: inline-flex; align-items: center; gap: 6px; color: var(--teal); }
-.teal-line svg { width: 13px; height: 13px; }
-.red-line { color: var(--red); }
+.kick::before {
+  content: '';
+  width: 22px;
+  height: 2px;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+.kick.red { color: var(--red); }
+.report-title { font-size: clamp(38px, 4.6vw, 58px); }
+.report-sub { margin: 0; color: var(--muted); font-size: 14px; }
 
-/* ---- Grid ---- */
 .report-grid {
-  flex-grow: 1;
-  min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  gap: 18px;
+  align-items: stretch;
 }
-.report-left { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
-.report-right { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
-
-.rcard {
-  padding: 14px 18px;
-  background: var(--panel);
-  border: 1px solid var(--line-3);
+.card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-.samples-card { flex-grow: 1; }
-.rcard-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-}
-.rcard-note { font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: var(--muted); }
-.teal-note { color: var(--teal); }
-
-/* Stars */
-.stars-row { display: flex; align-items: center; gap: 18px; }
-.stars-readout { margin-left: auto; display: flex; align-items: baseline; gap: 4px; }
-.stars-num { font-size: 3.4rem; color: var(--gold); line-height: 1; }
-.stars-max { font-size: 1.4rem; color: var(--dim); }
-.honors-strip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid var(--gold);
-  color: var(--gold);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-}
-.honors-strip svg { width: 18px; height: 18px; flex-shrink: 0; }
-.honors-strip.off { border: 1px dashed var(--line-4); color: var(--muted); }
-.honors-token { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--text); }
-.honors-strip.off .honors-token { color: var(--muted); }
-.hex {
-  width: 9px;
-  height: 11px;
-  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-  background: var(--gold);
-}
-.hex:not(.on) { background: var(--line-2); }
-
-/* Samples */
-.sample-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
+  padding: 20px 22px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line-3);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  min-width: 0;
+}
+.stars-card {
   align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 42%, rgba(255, 214, 66, 0.14), transparent 70%),
+    var(--panel);
 }
-.sample-slot + .sample-slot {
-  padding-left: 14px;
-  border-left: 1px dashed var(--line-2);
+.stars-card :deep(.star) {
+  border: 0;
+  background: transparent;
+  width: 4.6rem;
+  height: 4.6rem;
 }
+.stars-card :deep(.star-glyph) { width: 3.3rem; height: 3.3rem; }
+.full-tag {
+  display: inline-flex;
+  padding: 4px 9px;
+  background: var(--gold);
+  color: var(--on-gold);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.full-tag.off { background: var(--line-3); color: var(--muted); }
+.stars-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  padding-top: 13px;
+  border-top: 1px solid var(--line-2);
+  color: var(--khaki);
+  font-size: 14px;
+}
+.stars-foot b { color: var(--gold); font-size: 34px; line-height: 1; text-shadow: 0 0 18px rgba(255, 214, 66, 0.45); }
 
-/* Reward preview */
-.opt-row { display: flex; align-items: center; gap: 10px; }
-.opt-stars { display: flex; align-items: center; gap: 4px; }
-.opt-stars .disp { font-size: 1.7rem; color: var(--gold); }
-.opt-stars svg { width: 20px; height: 20px; color: var(--gold); }
-.opt-arrow { width: 18px; height: 18px; color: var(--muted); margin-left: 2px; }
-.opt-num { font-size: 1.7rem; color: var(--text); }
-.opt-label { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; line-height: 1.25; color: var(--khaki); }
-.crates { display: flex; gap: 8px; }
-.crate {
-  flex-grow: 1;
-  flex-basis: 0;
-  height: 44px;
+.card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.tiny { color: var(--dim); font-size: 11px; letter-spacing: 0.04em; }
+.teal-text { color: var(--teal); }
+.red-text { color: var(--red); }
+
+.samples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  align-items: flex-end;
+}
+.samples :deep(.canister) { flex: 1 1 150px; }
+.time-block { display: flex; flex-direction: column; gap: 8px; }
+.time-head { display: flex; justify-content: space-between; align-items: baseline; }
+.time-value { color: var(--teal); font-size: 20px; }
+.time-value small { font-size: 11px; color: var(--muted); margin-left: 2px; }
+.time-row { display: flex; align-items: center; gap: 8px; }
+.step {
   display: grid;
   place-items: center;
-  border: 1px dashed var(--line-3);
+  width: 32px;
+  height: 38px;
+  flex: none;
+  border: 0;
   background: var(--rail);
-  color: var(--ghost-ink);
-}
-.crate.on { border-style: solid; border-color: var(--gold); background: color-mix(in srgb, var(--gold) 6%, var(--rail)); color: var(--gold); }
-.crate svg { width: 26px; height: 26px; }
-.stars-table {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--line-2);
-}
-.stars-col { flex-grow: 1; flex-basis: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; }
-.stars-blocks { display: flex; flex-direction: column-reverse; gap: 2px; width: 100%; }
-.stars-blocks span { height: 6px; background: var(--raised); }
-.stars-col:not(.current) .stars-blocks span.on { background: var(--line-5); }
-.stars-col.current .stars-blocks span.on { background: var(--gold); }
-.stars-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); }
-.stars-col.current .stars-label { color: var(--gold); }
-
-/* Performance */
-.perf-card { flex-grow: 1; }
-.perf-value { font-size: 3rem; color: var(--teal); line-height: 1; }
-.perf-bar { display: flex; flex-direction: column; gap: 5px; }
-.perf-bar-head {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  box-shadow: inset 0 0 0 1px var(--line-3);
   color: var(--khaki);
+  cursor: pointer;
 }
-.perf-track { height: 6px; background: var(--raised); display: flex; }
-.perf-fill { display: block; height: 6px; }
-.perf-fill.teal { background: var(--teal); }
-.perf-fill.common { background: var(--sample-common); }
-.perf-fill.rare { background: var(--sample-rare); }
-.perf-fill.super { background: var(--sample-super); }
-.perf-track.tri { gap: 1px; }
-.perf-valor {
+.step:hover { color: var(--text); box-shadow: inset 0 0 0 1px var(--line-5); }
+.time-cells {
   display: flex;
+  gap: 3px;
+  flex: 1;
+  height: 38px;
+  min-width: 0;
+}
+.time-cell {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: var(--rail);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  cursor: pointer;
+}
+.time-cell.on {
+  background: color-mix(in srgb, var(--teal) 38%, var(--rail));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--teal) 55%, var(--line-2));
+}
+.time-foot { display: flex; align-items: baseline; gap: 12px; }
+.mult { color: var(--teal); font: 800 22px var(--font-display); font-stretch: 125%; }
+.haul-total {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--line-2);
+  padding-top: 12px;
+  border-top: 2px solid var(--line-4);
+  color: var(--khaki);
+  font-size: 13px;
 }
-.perf-valor-nums { display: flex; align-items: baseline; gap: 8px; }
-.v-base { font-size: 1.4rem; color: var(--gold); }
-.v-arrow { color: var(--muted); }
-.v-final { font-size: 1.4rem; color: var(--teal); }
-.v-delta { font-size: 1rem; color: var(--teal); }
-
-.file-cta {
-  flex-shrink: 0;
-  min-height: 60px;
-  display: flex;
+.haul-value {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 0 16px 0 20px;
+  gap: 8px;
+  color: var(--gold);
+  font-size: 32px;
+  text-shadow: 0 0 18px rgba(255, 214, 66, 0.45);
 }
-.file-copy { display: flex; flex-direction: column; gap: 4px; text-align: left; }
-.file-copy .disp { font-size: 1.2rem; white-space: nowrap; }
-.file-sub { font-size: 10px; font-weight: 700; letter-spacing: 0.2em; white-space: nowrap; }
-.file-cta svg { width: 22px; height: 22px; }
-.file-row { flex-shrink: 0; display: flex; align-items: stretch; gap: 8px; }
-.file-row .file-cta { flex: 1 1 auto; min-width: 0; }
-.cancel { flex-shrink: 0; padding: 0 12px; }
+.haul-value :deep(.credit-mark) { width: 24px; height: 24px; }
 
-.report-failure { display: flex; flex-direction: column; gap: 12px; }
-.failure-note { margin: 0; color: var(--muted); }
-.report-actions { align-items: center; }
+.honors-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 22px;
+  padding: 15px 20px;
+  background: linear-gradient(90deg, rgba(255, 214, 66, 0.09), var(--panel) 45%);
+  box-shadow: inset 0 0 0 1px var(--line-3);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.honors-card.live { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, var(--line-3)); }
+.honors-card.done { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--teal) 45%, var(--line-3)); }
+.honors-id { display: flex; align-items: center; gap: 12px; }
+.honors-hex {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 38px;
+  flex: none;
+  background: linear-gradient(180deg, #ffe57a, var(--gold) 50%, #e0b000);
+  color: var(--on-gold);
+  font: 800 16px var(--font-display);
+  font-stretch: 125%;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+.honors-copy { display: flex; flex-direction: column; gap: 2px; }
+.honors-copy .disp { font-size: 18px; }
+.honors-spin {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 0 16px;
+  border: 0;
+  background: var(--gold);
+  color: var(--on-gold);
+  font: 800 13px var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.honors-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 0 14px;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--gold), 0 0 18px rgba(255, 214, 66, 0.22);
+  color: var(--gold);
+}
+.honors-stat .disp { font-size: 18px; }
+.honors-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  color: var(--khaki);
+  font-size: 13px;
+}
 
-@container report (max-width: 720px) {
+.fail-card { max-width: 720px; }
+.fail-copy { margin: 0; color: var(--khaki); font-size: 15px; line-height: 1.5; }
+.fail-line { color: var(--dim); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  padding-top: 4px;
+}
+.back {
+  min-height: 44px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: 500 14px var(--font-body);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--line-4);
+  cursor: pointer;
+}
+.back:hover { color: var(--text); }
+.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-width: 300px;
+  min-height: 58px;
+  padding: 0 24px;
+  border: 0;
+  background: linear-gradient(180deg, #ffe57a 0%, var(--gold) 45%, #f0bf1a 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -3px 0 rgba(110, 80, 0, 0.35);
+  color: var(--on-gold);
+  font: 800 17px var(--font-display);
+  font-stretch: 125%;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+@media (max-width: 800px) {
   .report-grid { grid-template-columns: minmax(0, 1fr); }
-}
-@container report (max-width: 480px) {
-  .sample-grid { grid-template-columns: minmax(0, 1fr); }
-  .sample-slot + .sample-slot {
-    padding-left: 0;
-    padding-top: 12px;
-    border-left: 0;
-    border-top: 1px dashed var(--line-2);
+  /* 20 time faces become seven-column rows instead of an 8px-tall sliver. */
+  .time-cells {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-auto-rows: 30px;
+    height: auto;
+    gap: 3px;
   }
+  .time-cell { min-height: 30px; }
+  .step { height: auto; align-self: stretch; }
+  .stars-card { padding: 16px; }
+  .stars-card :deep(.star) { width: 3.5rem; height: 3.5rem; }
+  .stars-card :deep(.star-glyph) { width: 2.5rem; height: 2.5rem; }
+  .report-actions { justify-content: stretch; }
+  .cta { flex: 1; min-width: 0; }
+  .honors-note { margin-left: 0; }
 }
 </style>

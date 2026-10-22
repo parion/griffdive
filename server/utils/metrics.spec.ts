@@ -220,9 +220,11 @@ describe('room-metrics', () => {
     expect(text).toMatch(/griffdive_samples_haul_sum\{rarity="common"\} 12/)
     expect(text).toMatch(/griffdive_samples_haul_count\{rarity="super"\} 1/)
     expect(text).toContain('griffdive_valor_at_report_count 2')
-    expect(text).toMatch(/griffdive_ceiling_total\{tier="[a-s+]"\} 2/)
-    expect(text).toMatch(/griffdive_rewards_picked_total\{tier="[cbas]",category="[^"]+"\} 1/)
-    expect(text).toMatch(/griffdive_forfeits_total\{tier="[cbas]",category="[^"]+"\} 1/)
+    // Each diver rolls their own loot tier, so the two reports can land on
+    // different tiers (and S+ is a two-character label).
+    expect(text.match(/griffdive_ceiling_total\{tier="[a-s]\+?"\} 1/g)).toHaveLength(2)
+    expect(text).toMatch(/griffdive_rewards_picked_total\{tier="[cbas]\+?",category="[^"]+"\} 1/)
+    expect(text).toMatch(/griffdive_forfeits_total\{tier="[cbas]\+?",category="[^"]+"\} 1/)
     expect(text).toMatch(/griffdive_operation_restarts_total\{difficulty="3"\} 1/)
   })
 

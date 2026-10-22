@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS } from '../data/catalog'
 import type { Item, ItemCategory, Tier } from '../data/types'
 import { BARGAIN_SLOTS, CREDIT_PRICE_TIER, CREDIT_PRICE_TYPE, SAMPLE_CREDITS, TIME_HAUL_FLOOR, VALOR_METER_MAX, sPlusValorFloorFor, sValorFloorFor } from './config'
-import { ceilingOddsPercent, DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, haulValue, itemPrice, maxCeiling, missionHaul, oddsToReach, optionsForDiver, optionsForStars, rollCeiling, rollBargainShelf, rollRewardOptions, tierWeight, timeHaulMultiplier, valorOf } from './rewards'
+import { ceilingOddsPercent, DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, haulValue, itemPrice, maxCeiling, missionHaul, oddsToReach, optionsForDiver, optionsForStars, rollCeiling, rollBargainShelf, rollRewardOffer, rollRewardOptions, tierForRoll, tierWeight, tierZones, topTierOf, timeHaulMultiplier, valorOf } from './rewards'
 import { mulberry32 } from './rng'
 import type { RewardTier } from './types'
 
@@ -263,36 +263,26 @@ describe('meter overflow luck', () => {
 
 describe('optionsForStars', () => {
   it('follows the stars lookup table', () => {
-    expect([0, 1, 2, 3, 4, 5].map(stars => optionsForStars(stars, 'B')))
+    expect([0, 1, 2, 3, 4, 5].map(stars => optionsForStars(stars)))
       .toEqual([1, 1, 2, 3, 4, 4])
   })
 
-  it('grants the S+ bonus option, capped at 5', () => {
-    expect(optionsForStars(5, 'S+')).toBe(5)
-    expect(optionsForStars(0, 'S+')).toBe(2)
-  })
-
   it('clamps out-of-range stars', () => {
-    expect(optionsForStars(99, 'C')).toBe(4)
-    expect(optionsForStars(-3, 'C')).toBe(1)
+    expect(optionsForStars(99)).toBe(4)
+    expect(optionsForStars(-3)).toBe(1)
   })
 })
 
 describe('optionsForDiver', () => {
   it('forfeits one option per failed pact', () => {
-    expect(optionsForDiver(5, 'B', 0)).toBe(4)
-    expect(optionsForDiver(5, 'B', 1)).toBe(3)
-    expect(optionsForDiver(3, 'B', 1)).toBe(2)
+    expect(optionsForDiver(5, 0)).toBe(4)
+    expect(optionsForDiver(5, 1)).toBe(3)
+    expect(optionsForDiver(3, 1)).toBe(2)
   })
 
   it('never drops below one option, so the draft can always complete', () => {
-    expect(optionsForDiver(0, 'C', 5)).toBe(1)
-    expect(optionsForDiver(5, 'B', 99)).toBe(1)
-  })
-
-  it('keeps the S+ bonus option before the failed-pact penalty', () => {
-    expect(optionsForDiver(5, 'S+', 0)).toBe(5)
-    expect(optionsForDiver(5, 'S+', 2)).toBe(3)
+    expect(optionsForDiver(0, 5)).toBe(1)
+    expect(optionsForDiver(5, 99)).toBe(1)
   })
 })
 
@@ -314,6 +304,86 @@ describe('tierWeight', () => {
     expect(tierWeight('a', 'A', 'S+')).toBe(1)
     expect(tierWeight('s', 'A', 'S+')).toBe(2)
     expect(tierWeight('b', 'A', 'S+')).toBe(0)
+  })
+})
+
+describe('tierZones / tierForRoll', () => {
+  it('draws zones that sum to 100 and match the reach curve', () => {
+    for (let difficulty = 3; difficulty <= 10; difficulty++) {
+      for (let valor = 0; valor <= 16; valor += 0.5) {
+        const zones = tierZones(difficulty, valor)
+        expect(zones.reduce((sum, zone) => sum + zone.chance, 0)).toBeCloseTo(1, 6)
+        expect(zones[0]!.start).toBe(0)
+        expect(zones[zones.length - 1]!.end).toBe(100)
+        expect(zones.find(zone => zone.tier === 'B')!.chance)
+          .toBeCloseTo(oddsToReach(difficulty, valor, 'B') - oddsToReach(difficulty, valor, 'A'), 6)
+      }
+    }
+  })
+
+  it('keeps zero-Valor dives on the base tier', () => {
+    expect(tierZones(3, 0).find(zone => zone.tier === 'C')!.chance).toBeCloseTo(1, 6)
+    expect(tierZones(10, 0).find(zone => zone.tier === 'A')!.chance).toBeCloseTo(1, 6)
+    for (let roll = 1; roll <= 100; roll++) {
+      expect(tierForRoll(roll, tierZones(10, 0))).toBe('A')
+    }
+  })
+
+  it('maps every face into exactly one zone', () => {
+    const zones = tierZones(6, 7)
+    for (let roll = 1; roll <= 100; roll++) {
+      expect(zones.some(zone => zone.tier === tierForRoll(roll, zones))).toBe(true)
+    }
+  })
+})
+
+describe('rollRewardOffer (one d100 per option)', () => {
+  it('is deterministic and stamps every option with its roll and tier', () => {
+    const a = rollRewardOffer(99, 6, 7, 3, ALL_ITEMS, new Set())
+    const b = rollRewardOffer(99, 6, 7, 3, ALL_ITEMS, new Set())
+    expect(a.map(option => ({ id: option.optionId, roll: option.roll, tier: option.tier })))
+      .toEqual(b.map(option => ({ id: option.optionId, roll: option.roll, tier: option.tier })))
+    for (const option of a) {
+      expect(option.roll).toBeGreaterThanOrEqual(1)
+      expect(option.roll).toBeLessThanOrEqual(100)
+      expect(option.tier).toBeDefined()
+    }
+  })
+
+  it('never offers a tier below the difficulty floor', () => {
+    for (let seed = 0; seed < 100; seed++) {
+      const options = rollRewardOffer(seed, 8, 4, 4, ALL_ITEMS, new Set())
+      for (const option of options) {
+        expect(['a', 's']).toContain(option.item.tier)
+      }
+    }
+  })
+
+  it('can roll Liberty’s Cross on the top tier without adding an extra slot', () => {
+    const options = rollRewardOffer(4, 10, 24, 4, ALL_ITEMS, new Set())
+    expect(options).toHaveLength(4)
+    const cross = options.filter(option => option.choice)
+    expect(cross.length).toBeLessThanOrEqual(1)
+    for (const option of cross) {
+      expect(option.optionId).toBe(DIVERS_CHOICE_OPTION_ID)
+      expect(option.tier).toBe('S+')
+    }
+  })
+
+  it('excludes owned items and never repeats an item', () => {
+    const owned = new Set(['ar23liberator'])
+    const options = rollRewardOffer(5, 6, 7, 4, ALL_ITEMS, owned)
+    const ids = options.filter(option => !option.choice).map(option => option.optionId)
+    expect(ids).not.toContain('ar23liberator')
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('reports the top rolled tier for the squad board', () => {
+    const options = rollRewardOffer(12, 6, 7, 3, ALL_ITEMS, new Set())
+    expect(topTierOf(options)).toBe(options.map(option => option.tier).sort((a, b) => {
+      const rank = ['C', 'B', 'A', 'S', 'S+']
+      return rank.indexOf(a!) - rank.indexOf(b!)
+    }).at(-1))
   })
 })
 

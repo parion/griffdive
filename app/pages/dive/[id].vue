@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { useIntervalFn, useLocalStorage } from '@vueuse/core'
+import { useIntervalFn } from '@vueuse/core'
+import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { createSaveDoc } from '~~/shared/engine/saves'
-import { bargainLamp, bargainsClosedReason, diverOptions, majorOrderFronts, pactRiskOf, promotionPending, teamRiskBreakdown, teamRiskOf } from '~~/shared/engine/selectors'
+import { bargainLamp, bargainsClosedReason, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
-import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
+import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionOutcome, MissionReport } from '~~/shared/engine/types'
 import { hasDiverName, rememberDiverName, storeSeat } from '~/composables/useGameSocket'
 
 const route = useRoute()
@@ -29,12 +30,16 @@ const {
   opLength,
   phaseKey,
   diverName,
-  nameDraft,
   setNameDraft,
   commitName,
 } = useDiveView(session)
 
 const dispatch = (action: EngineAction) => session.dispatch(action)
+
+watch(phase, () => {
+  operationCleared.value = false
+  reporting.value = false
+})
 
 const armoryOpen = ref(false)
 
@@ -48,69 +53,31 @@ watch(bargainsClosed, (closed) => {
   }
 })
 
-// The desktop right rail tabs between the Kit and Valor. It is shell state, so
-// the diver's choice survives phase changes.
-const railTab = ref<'kit' | 'valor'>('kit')
-
-// The left rail collapses to an icon column; the choice is per browser so a
-// diver who wants the wider mission centre keeps it across dives.
-const leftCollapsed = useLocalStorage('griffdive:dive:rail-left-collapsed', false)
-
-// The rail and the climb strip are shell state, not phase state: the page
-// composes them from selectors so every phase shares one rail.
+// The shell is now one stage and one dock: the Kit is a drawer for every
+// diver, not a permanent rail. The old Valor readout is gone; the odds strip
+// inside each phase carries the same information without a numeric total.
 const variantName = computed(() =>
   VARIANTS.find(variant => variant.id === state.value?.settings?.variant)?.name ?? 'Crusade')
 const crusadeLabel = computed(() => `${diverName(selfId.value)} · ${variantName.value}`)
 
-const teamRisk = computed(() => state.value ? teamRiskOf(state.value) : 0)
-const riskBreakdown = computed(() =>
-  state.value
-    ? teamRiskBreakdown(state.value)
-    : { misfortuneRisk: 0, strainRisk: 0, majorOrderRisk: 0, mode: null, modeValor: 0, total: 0 })
 // While a diver is still picking pacts the phase reports its live selection
-// upward, so the shell's Valor rail previews the stake before the lock — and
-// the Kit can ghost-grey the items those unsworn pacts would ban.
-const livePactRisk = ref(0)
+// upward, so the Kit can ghost-grey the items those unsworn pacts would ban.
 const pactPreview = ref<string[]>([])
 const pactPreviewIds = computed(() =>
   state.value?.phase === 'pacts' && !self.value?.pactsLocked ? pactPreview.value : [])
-const pactRisk = computed(() => {
-  const diver = self.value
-  if (!diver) {
-    return 0
-  }
-  if (state.value?.phase === 'pacts' && !diver.pactsLocked) {
-    return livePactRisk.value
-  }
-  return state.value ? pactRiskOf(diver, state.value.difficulty) : 0
-})
-const valorLocked = computed(() => {
-  const phase = state.value?.phase
-  return phase === 'diving' || phase === 'rewards' || phase === 'forfeit' || phase === 'complete'
-})
-const pendingText = computed(() => {
-  switch (state.value?.phase) {
-    case 'spin': return 'Awaiting spin'
-    case 'decision':
-    case 'strain': return 'Deciding'
-    case 'deal': return 'Ready to deal'
-    case 'pacts': return 'Pacts pending'
-    default: return ''
-  }
-})
-const valorReadout = computed(() => ({
-  difficulty: state.value?.difficulty ?? 0,
-  teamRisk: teamRisk.value,
-  misfortuneRisk: riskBreakdown.value.misfortuneRisk,
-  strainRisk: riskBreakdown.value.strainRisk,
-  majorOrderRisk: riskBreakdown.value.majorOrderRisk,
-  modeRisk: riskBreakdown.value.modeValor,
-  modeLabel: riskBreakdown.value.mode === 'penance' ? 'Super Penance' : 'SEAF Support',
-  pactRisk: pactRisk.value,
-  locked: valorLocked.value,
-  diverName: diverName(selfId.value),
-  pendingText: pendingText.value,
-}))
+
+// The report form and the in-field screen share one beat tab; the shell swaps
+// its label to REPORT while the form is open.
+const reporting = ref(false)
+const operationCleared = ref(false)
+
+// Squad Honors: the contest is spun at the report and awarded from the dock.
+// The shell only reads the derived state; the engine owns eligibility.
+const honors = computed(() => (state.value ? bonusFor(state.value) : null))
+const honorsWinners = computed(() => (state.value ? bonusWinners(state.value).map(diver => diver.name) : []))
+const honorsAwarded = computed(() => Boolean(state.value?.bonusWinnerIds.length))
+const sessionMenuOpen = ref(false)
+const steamOpen = ref(false)
 
 // Warbonds are what each diver actually owns — declared per diver, any phase,
 // and driven by the global Warbonds drawer. A local save seeds the working list
@@ -377,12 +344,6 @@ function rerollRewards(): void {
   dispatch({ type: 'REROLL_REWARDS', playerId: diver.id, seed })
 }
 
-function banRewards(optionIds: string[]): void {
-  if (selfId.value) {
-    dispatch({ type: 'BAN_REWARDS', playerId: selfId.value, optionIds })
-  }
-}
-
 // Brasch's Bargains: one shelf item per operation, paid in credits (self-service).
 function buyItem(itemId: string): void {
   if (selfId.value) {
@@ -390,8 +351,13 @@ function buyItem(itemId: string): void {
   }
 }
 
-function spinBonus(): void {
-  dispatch({ type: 'SPIN_BONUS', seed: session.newSeed() })
+function spinBonus(payload?: { stars: number, outcome: MissionOutcome }): void {
+  dispatch({
+    type: 'SPIN_BONUS',
+    seed: session.newSeed(),
+    stars: payload?.stars,
+    outcome: payload?.outcome,
+  })
 }
 
 function awardBonus(playerIds: string[]): void {
@@ -425,6 +391,26 @@ function claimCache(cacheOwnerId: string): void {
 }
 
 function advance(): void {
+  const current = state.value
+  if (!current) {
+    return
+  }
+  // The boards give the operation clear its own beat. The engine stays in
+  // rewards until the host starts the next operation, so a reload can always
+  // recover; the CTA is the only thing that advances.
+  if (
+    current.phase === 'rewards'
+    && current.missionInOperation >= opLength.value
+    && current.difficulty < MAX_DIFFICULTY
+  ) {
+    operationCleared.value = true
+    return
+  }
+  dispatch({ type: 'ADVANCE' })
+}
+
+function startNextOperation(): void {
+  operationCleared.value = false
   dispatch({ type: 'ADVANCE' })
 }
 
@@ -659,14 +645,12 @@ function launchCrusade(settings: CrusadeSettings): void {
       @set-major-order="setMajorOrder"
       @reroll="reroll"
       @lock-pacts="lockPacts"
-      @pact-risk="livePactRisk = $event"
       @preview="pactPreview = $event"
       @report="report"
       @fail-pact="failPact"
       @fail-directive="failDirective"
       @pick="pick"
       @reroll-rewards="rerollRewards"
-      @ban-rewards="banRewards"
       @spin-bonus="spinBonus"
       @award-bonus="awardBonus"
       @advance="advance"
@@ -687,98 +671,26 @@ function launchCrusade(settings: CrusadeSettings): void {
       @dismiss-error="session.dismissError()"
     />
 
-    <DiveFrame
-      v-else-if="state"
-      :left="state.phase !== 'forfeit'"
-      :right="state.phase !== 'lobby'"
-      :left-collapsed="leftCollapsed"
-    >
+    <DiveFrame v-else-if="state">
       <template #header>
         <DiveTopBar
-          :crusade-label="crusadeLabel"
-          :difficulty="state.difficulty"
+          :state="state"
+          :phase="state.phase"
+          :reporting="reporting"
           :mode="session.mode"
           :slot-name="session.slotName.value"
           :status="session.status.value"
           :saved="Boolean(session.saved.value)"
           :can-control="canControl"
           :is-host="session.selfIsHost.value"
-          :lone-host="state.divers.length === 1"
-          :can-fork="canFork"
           :credits="self?.credits ?? 0"
           :bargains-closed="bargainsClosed"
           :bargain-lamp="self ? bargainLamp(state, self) : 'off'"
-          @copy-invite="copyInvite"
           @open-bargains="bargainsOpen = true"
+          @open-kit="armoryOpen = true"
           @open-tutorial="openBriefing"
-          @leave="leaveDive"
-          @end="endDive"
-          @save-dive="saveDive"
-          @unsave-dive="unsaveDive"
-          @new-session="newSessionOpen = true"
+          @open-menu="sessionMenuOpen = true"
         />
-      </template>
-
-      <template #ladder>
-        <CrusadeStrip
-          :difficulty="state.difficulty"
-          :achieved="state.achieved"
-          :failed="state.phase === 'forfeit'"
-          :mission-in-operation="state.missionInOperation"
-          :op-length="opLength"
-          :route="state.phase === 'lobby'"
-        />
-      </template>
-
-      <template #left>
-        <SquadStrip
-          :state="state"
-          :self-id="selfId"
-          :online="session.online.value"
-          :mode="session.mode"
-          :is-host="session.selfIsHost.value"
-          :can-control="canControl"
-          :name-draft="nameDraft"
-          :collapsed="leftCollapsed"
-          @update:name-draft="setNameDraft"
-          @commit="commitName"
-          @transfer-host="transferHost"
-          @kick="kick"
-          @toggle="leftCollapsed = !leftCollapsed"
-        />
-
-        <SteamLobbyBox
-          v-if="session.mode === 'room'"
-          :steam="session.steam.value"
-          :is-host="session.selfIsHost.value"
-          :collapsed="leftCollapsed"
-          @set-steam="session.setSteam"
-          @expand="leftCollapsed = false"
-        />
-
-        <div
-          v-if="!leftCollapsed"
-          class="rail-lower"
-        >
-          <MissionReportSummary
-            v-if="state.phase === 'rewards'"
-            :state="state"
-          />
-        </div>
-      </template>
-
-      <template #right>
-        <KitValorRail
-          v-model="railTab"
-          :state="state"
-          :self-id="selfId"
-          :valor="valorReadout"
-          :preview-pact-ids="pactPreviewIds"
-        />
-      </template>
-
-      <template #phases>
-        <PhaseRail :phase="state.phase" />
       </template>
 
       <p
@@ -841,7 +753,6 @@ function launchCrusade(settings: CrusadeSettings): void {
             :self="self"
             :can-control="canControl"
             @lock="lockPacts"
-            @pact-risk="livePactRisk = $event"
             @preview="pactPreview = $event"
           />
 
@@ -855,10 +766,20 @@ function launchCrusade(settings: CrusadeSettings): void {
             @report="report"
             @fail="failPact"
             @fail-directive="failDirective"
+            @reporting="reporting = $event"
+            @spin-bonus="spinBonus"
+          />
+
+          <OperationCleared
+            v-if="operationCleared && phase === 'rewards'"
+            :state="state"
+            :can-control="canControl"
+            @start="startNextOperation"
+            @open-bargains="bargainsOpen = true"
           />
 
           <DivePhaseRewards
-            v-if="phase === 'rewards'"
+            v-else-if="phase === 'rewards'"
             :state="state"
             :self-id="selfId"
             :self="self"
@@ -866,9 +787,6 @@ function launchCrusade(settings: CrusadeSettings): void {
             :op-length="opLength"
             @pick="pick"
             @reroll="rerollRewards"
-            @ban="banRewards"
-            @spin-bonus="spinBonus"
-            @award-bonus="awardBonus"
             @advance="advance"
           />
 
@@ -888,6 +806,27 @@ function launchCrusade(settings: CrusadeSettings): void {
           />
         </div>
       </Transition>
+
+      <template #dock>
+        <SquadDock
+          :state="state"
+          :self-id="selfId"
+          :online="session.online.value"
+          :mode="session.mode"
+          :is-host="session.selfIsHost.value"
+          :can-control="canControl"
+          :slot-name="session.slotName.value"
+          :steam="session.steam.value"
+          :honors="honors"
+          :honors-winners="honorsWinners"
+          :honors-awarded="honorsAwarded"
+          @transfer-host="transferHost"
+          @kick="kick"
+          @copy-invite="copyInvite"
+          @open-steam="steamOpen = true"
+          @award-bonus="awardBonus"
+        />
+      </template>
     </DiveFrame>
     <p
       v-else
@@ -896,15 +835,48 @@ function launchCrusade(settings: CrusadeSettings): void {
       Loading dive…
     </p>
 
-    <!-- Desktop carries the Kit in its right rail; the phone shell has no rail,
-         so its header opens the Kit in a drawer. -->
+    <!-- The Kit is a drawer for every diver now; the old desktop rail is gone. -->
     <ArmoryDrawer
-      v-if="state && isPhone"
+      v-if="state"
       v-model:open="armoryOpen"
       :state="state"
       :self-id="selfId"
       :preview-pact-ids="pactPreviewIds"
     />
+
+    <DiveMenu
+      v-if="state"
+      v-model:open="sessionMenuOpen"
+      :mode="session.mode"
+      :saved="Boolean(session.saved.value)"
+      :can-fork="canFork"
+      :can-control="canControl"
+      :is-host="session.selfIsHost.value"
+      :lone-host="state.divers.length === 1"
+      :room-code="session.slotName.value"
+      @open-tutorial="openBriefing"
+      @copy-invite="copyInvite"
+      @save-dive="saveDive"
+      @unsave-dive="unsaveDive"
+      @new-session="newSessionOpen = true"
+      @leave="leaveDive"
+      @end="endDive"
+    />
+
+    <AppDialog
+      v-if="state"
+      v-model:open="steamOpen"
+      title="Steam lobby"
+      description="Paste the join link from Helldivers 2 so the squad can meet in-game."
+      size="sm"
+    >
+      <SteamLobbyBox
+        :steam="session.steam.value"
+        :is-host="session.selfIsHost.value"
+        @set-steam="session.setSteam"
+        @expand="steamOpen = true"
+      />
+    </AppDialog>
 
     <BargainsDrawer
       v-if="state"

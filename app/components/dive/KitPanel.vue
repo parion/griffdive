@@ -337,6 +337,7 @@ function jumpTo(id: string) {
   letter-spacing: 0.02em;
   line-height: 1.2;
   overflow-wrap: break-word;
+  hyphens: auto;
   text-transform: uppercase;
   color: var(--text);
 }

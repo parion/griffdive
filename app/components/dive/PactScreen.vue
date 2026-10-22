@@ -1,23 +1,11 @@
 <script setup lang="ts">
-import { conditionRiskAt, missionsPerOperation } from '~~/shared/engine/config'
-import { factionImageUrl, strainImageUrl } from '~~/shared/data/images'
+import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { pactName } from '~~/shared/data/pacts'
-import {
-  applyPactToggle,
-  hasLegalLoadout,
-  pactConflictsWith,
-  pactRiskTotal,
-  pactSubsumedBy,
-} from '~~/shared/engine/pacts'
-import {
-  activeMisfortune,
-  currentFront,
-  currentStrain,
-  pactOfferFor,
-  teamRiskBreakdown,
-} from '~~/shared/engine/selectors'
-import { catchUpOpsBehind } from '~~/shared/engine/progression'
-import type { DiverState, DiveState } from '~~/shared/engine/types'
+import { conditionRiskAt } from '~~/shared/engine/config'
+import { PACT_BANS_STRATAGEM, applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
+import { tierZones } from '~~/shared/engine/rewards'
+import { activeMisfortune, currentStrain, pactOfferFor, teamRiskOf } from '~~/shared/engine/selectors'
+import type { DiverState, DiveState, RewardTier } from '~~/shared/engine/types'
 
 const props = withDefaults(defineProps<{
   state: DiveState
@@ -26,25 +14,16 @@ const props = withDefaults(defineProps<{
   canControl?: boolean
 }>(), { canControl: true })
 
-const opLength = computed(() => missionsPerOperation(props.state.difficulty))
-
 const emit = defineEmits<{
   lock: [pactIds: string[]]
-  pactRisk: [value: number]
   preview: [pactIds: string[]]
 }>()
 
 const selection = ref<string[]>([])
+const hoveredId = ref<string | null>(null)
 
-// A new draw or a flipped decision rolls a fresh offer — start the pick clean.
 watch(
-  () => props.state.wheel?.seed,
-  () => {
-    selection.value = []
-  },
-)
-watch(
-  () => props.state.misfortuneAccepted,
+  () => [props.state.wheel?.seed, props.state.misfortuneAccepted],
   () => {
     selection.value = []
   },
@@ -53,33 +32,39 @@ watch(
 const offer = computed(() =>
   props.selfId ? pactOfferFor(props.state, props.selfId) : [])
 
-// The Valor rail lives in the shell, so the screen reports its live selection
-// risk upward. Presentation only — `pactRiskTotal` is the engine's own sum. The
-// selection also rides up as a preview, so the Kit can grey what these pacts
-// would ban before the diver locks the hand.
+const misfortune = computed(() => activeMisfortune(props.state))
+const strain = computed(() => currentStrain(props.state))
+const locked = computed(() => Boolean(props.self?.pactsLocked))
+const teamRisk = computed(() => teamRiskOf(props.state))
+const owned = computed(() => props.state.personalInventories[props.selfId ?? ''] ?? [])
+
 watch(
   selection,
   (ids) => {
-    emit('pactRisk', pactRiskTotal(ids, props.state.difficulty))
     emit('preview', ids)
   },
   { immediate: true },
 )
 
 function toggle(pactId: string): void {
+  if (locked.value) {
+    return
+  }
   selection.value = applyPactToggle(
     offer.value.map(pact => pact.id),
     selection.value,
     pactId,
   )
+  // The pointer is still over the card after a tap; clear the hover preview so
+  // the strip settles on the hand that is actually sworn.
+  hoveredId.value = null
 }
 
-// Offered pacts the current selection rules out — greyed with the reason.
 const coverage = computed<Record<string, string>>(() => {
   const blocked: Record<string, string> = {}
-  const misfortuneId = activeMisfortune(props.state)?.id ?? null
-  const owned = props.state.personalInventories[props.selfId ?? ''] ?? []
-  const baseLegal = hasLegalLoadout(misfortuneId, [], owned)
+  const misfortuneId = misfortune.value?.id ?? null
+  const kit = owned.value
+  const baseLegal = hasLegalLoadout(misfortuneId, [], kit)
   for (const pact of offer.value) {
     if (selection.value.includes(pact.id)) {
       continue
@@ -94,276 +79,207 @@ const coverage = computed<Record<string, string>>(() => {
       blocked[pact.id] = `Conflicts with ${pactName(conflict)}`
       continue
     }
-    if (baseLegal && !hasLegalLoadout(misfortuneId, [...selection.value, pact.id], owned)) {
+    if (baseLegal && !hasLegalLoadout(misfortuneId, [...selection.value, pact.id], kit)) {
       blocked[pact.id] = 'Leaves too few stratagems to ready up'
     }
   }
   return blocked
 })
 
-const locked = computed(() => Boolean(props.self?.pactsLocked))
+function riskOf(pactId: string): number {
+  return conditionRiskAt(pactId, props.state.difficulty)
+}
 
-// ---- Summary bar --------------------------------------------------------
+function pactValue(ids: string[]): number {
+  return teamRisk.value + pactRiskTotal(ids, props.state.difficulty)
+}
 
-const front = computed(() => currentFront(props.state))
-const strain = computed(() => currentStrain(props.state))
-const misfortune = computed(() => activeMisfortune(props.state))
+const currentValor = computed(() => pactValue(selection.value))
+const zones = computed(() => tierZones(props.state.difficulty, currentValor.value))
 
-// Pips show the condition's raw 1–5 risk; the `+N` badge shows the weighted
-// Valor it stakes (team rules outweigh pacts).
-const directiveRisk = computed(() =>
-  props.state.misfortuneAccepted
-    ? conditionRiskAt(misfortune.value?.id ?? '', props.state.difficulty)
-    : 0)
-const breakdown = computed(() => teamRiskBreakdown(props.state))
+// Previewing a card lights the ground it wins. With nothing hovered, the strip
+// compares the current hand against the team floor, so every sworn pact keeps
+// its percentage-point gain visible.
+const previewValor = computed(() => {
+  if (hoveredId.value) {
+    const isOn = selection.value.includes(hoveredId.value)
+    const ids = isOn
+      ? selection.value.filter(id => id !== hoveredId.value)
+      : [...selection.value, hoveredId.value]
+    return pactValue(ids)
+  }
+  return currentValor.value
+})
 
-const frontImage = computed(() => (front.value ? factionImageUrl(front.value.id) : undefined))
-const strainImage = computed(() => (strain.value ? strainImageUrl(strain.value.id) : undefined))
-const opLongRisk = computed(() => breakdown.value.strainRisk + breakdown.value.majorOrderRisk)
+const previewZones = computed(() => tierZones(props.state.difficulty, previewValor.value))
 
-// ---- Hold-to-lock ------------------------------------------------------
+const deltas = computed<Partial<Record<RewardTier, number>>>(() => {
+  const result: Partial<Record<RewardTier, number>> = {}
+  for (const zone of zones.value) {
+    const before = previewZones.value.find(entry => entry.tier === zone.tier)
+    if (!before) {
+      continue
+    }
+    const delta = (before.chance - zone.chance) * 100
+    if (Math.abs(delta) >= 0.5) {
+      result[zone.tier] = delta
+    }
+  }
+  return result
+})
 
-const HOLD_MS = 650
-const holding = ref(false)
-const committed = ref(false)
-let holdTimer: ReturnType<typeof setTimeout> | undefined
+const selectionNames = computed(() =>
+  selection.value.map(id => pactName(id)).join(' · '))
 
-const canLock = computed(() => !locked.value && offer.value.length > 0)
+function oddsLine(pactId: string): string {
+  if (selection.value.includes(pactId)) {
+    return ''
+  }
+  const valor = pactValue([...selection.value, pactId])
+  const next = tierZones(props.state.difficulty, valor)
+  const chance = (tier: RewardTier): string => {
+    const zone = next.find(entry => entry.tier === tier)
+    const value = (zone?.chance ?? 0) * 100
+    if (value > 0 && value < 0.5) {
+      return '<1%'
+    }
+    return `${Math.round(value)}%`
+  }
+  return `If sworn: B to ${chance('B')}, A to ${chance('A')}, S ${chance('S') === '0%' ? 'opens at <1%' : `to ${chance('S')}`}`
+}
+
+function bannedNote(pactId: string): string {
+  const predicate = PACT_BANS_STRATAGEM[pactId]
+  if (!predicate) {
+    return ''
+  }
+  const names = owned.value
+    .map(id => ITEMS_BY_ID.get(id))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    .filter(item => predicate(item))
+    .map(item => item.displayName)
+  if (names.length === 0) {
+    return ''
+  }
+  return `Benches ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}`
+}
+
+const ctaLabel = computed(() => {
+  const count = selection.value.length
+  if (count === 0) {
+    return 'Dive with no pacts'
+  }
+  return `Swear ${count} pact${count === 1 ? '' : 's'}`
+})
 
 function lockNow(): void {
-  emit('lock', selection.value)
-}
-function down(): void {
-  if (!canLock.value) {
-    return
-  }
-  committed.value = false
-  holding.value = true
-  clearTimeout(holdTimer)
-  holdTimer = setTimeout(() => {
-    committed.value = true
-    holding.value = false
-    lockNow()
-  }, HOLD_MS)
-}
-function up(): void {
-  holding.value = false
-  clearTimeout(holdTimer)
-  if (committed.value) {
-    setTimeout(() => {
-      committed.value = false
-    }, 300)
+  if (!locked.value) {
+    emit('lock', selection.value)
   }
 }
-function click(): void {
-  if (committed.value) {
-    committed.value = false
-    return
-  }
-  if (canLock.value) {
-    lockNow()
-  }
-}
-onBeforeUnmount(() => clearTimeout(holdTimer))
-
-const swornText = computed(() => `${selection.value.length}/${offer.value.length} sworn`)
-const opNumber = computed(() =>
-  catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
-const opLabel = computed(() =>
-  `Operation ${opNumber.value} · Mission ${props.state.missionInOperation} of ${opLength.value} · ${props.self?.name ?? 'offer'}'s offer`)
 </script>
 
 <template>
   <section class="pact-screen">
     <header class="pact-head">
-      <div class="pact-head-l">
-        <span class="lbl">{{ opLabel }}</span>
-        <h1 class="disp pact-title">
-          Swear your pacts
-        </h1>
-      </div>
-      <div
-        class="offer-tally"
-        role="status"
-      >
-        <span
-          class="offer-pips"
-          aria-hidden="true"
-        >
-          <span
-            v-for="(pact, i) in offer"
-            :key="pact.id"
-            class="offer-pip"
-            :class="{ on: i < selection.length }"
-          />
-        </span>
-        <span class="tally-text">{{ swornText }}</span>
-      </div>
+      <span class="kick">Your move</span>
+      <h1 class="disp pact-title">
+        Swear your pacts
+      </h1>
+      <p class="pact-sub">
+        Only you carry them. Break one in the field and it costs you a loot option.
+      </p>
     </header>
 
-    <section
-      class="team-bar"
-      aria-label="Team risk, locked for the squad"
+    <div
+      v-if="misfortune"
+      class="directive-strip"
     >
+      <span class="cap">Squad directive</span>
+      <RiskPips
+        :value="conditionRiskAt(misfortune.id, state.difficulty)"
+        :max="5"
+        tone="gold"
+      />
+      <b class="disp directive-name">{{ misfortune.name }}</b>
+      <span class="directive-rule">{{ misfortune.rule }}</span>
       <span
-        class="team-bar-lock hazard-soft"
-        aria-hidden="true"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.2"
-        >
-          <path d="M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3" />
-        </svg>
-      </span>
+        v-if="strain"
+        class="strain-note"
+      >{{ strain.name }} · whole operation</span>
+    </div>
+    <div
+      v-else
+      class="directive-strip safe"
+    >
+      <span class="cap">Squad directive</span>
+      <b class="disp directive-name">Safe dive</b>
+      <span class="directive-rule">No team rule accepted. The squad carries only its pacts.</span>
+    </div>
 
-      <div class="team-cell">
-        <span class="lbl">Directive · squad</span>
-        <div class="team-cell-row">
-          <RiskPips
-            :value="directiveRisk"
-            :max="5"
-            tone="gold"
-          />
-          <span class="team-name">{{ misfortune?.name ?? 'Safe dive' }}</span>
-          <span
-            v-if="breakdown.misfortuneRisk > 0"
-            class="team-risk disp"
-          >+{{ breakdown.misfortuneRisk }}</span>
-        </div>
-      </div>
+    <div
+      class="hand"
+      role="group"
+      aria-label="Pact offer"
+    >
+      <ConditionCard
+        v-for="(pact, index) in offer"
+        :key="pact.id"
+        :condition="pact"
+        :risk="riskOf(pact.id)"
+        :selected="selection.includes(pact.id)"
+        :stamp="selection.includes(pact.id) ? 'Sworn' : ''"
+        :blocked="coverage[pact.id] ?? ''"
+        :odds-line="oddsLine(pact.id)"
+        :note="bannedNote(pact.id)"
+        :disabled="locked"
+        :tilt="selection.includes(pact.id) ? 0 : index % 2 === 0 ? -1.1 : 1.1"
+        @select="toggle(pact.id)"
+        @mouseenter="hoveredId = pact.id"
+        @mouseleave="hoveredId = null"
+        @focus="hoveredId = pact.id"
+        @blur="hoveredId = null"
+      />
+    </div>
 
-      <div
-        v-if="front"
-        class="team-cell front-cell"
-        :style="{ '--front-accent': front.accent }"
-      >
-        <span class="lbl">Front · strain · op-long</span>
-        <div class="team-cell-row">
-          <img
-            v-if="frontImage"
-            :src="frontImage"
-            alt=""
-            width="26"
-            height="26"
-            class="team-front-icon"
-          >
-          <img
-            v-if="strainImage && state.strainAccepted"
-            :src="strainImage"
-            alt=""
-            width="18"
-            height="18"
-            class="team-strain-icon"
-          >
-          <span class="team-name"><b class="front-name">{{ front.displayName }}</b><template v-if="strain && state.strainAccepted"> · {{ strain.name }}</template></span>
-          <span
-            v-if="opLongRisk > 0"
-            class="team-risk disp op-long"
-          >+{{ opLongRisk }}</span>
-        </div>
-        <div
-          v-if="opLongRisk > 0"
-          class="hold-pips"
-          role="img"
-          :aria-label="`Held for all ${opLength} missions of the operation`"
-        >
-          <span
-            v-for="i in opLength"
-            :key="i"
-            class="hold-cell on"
-          />
-        </div>
-      </div>
-
-      <div
-        v-if="breakdown.modeValor > 0"
-        class="team-cell mode-cell"
-      >
-        <span class="lbl">Mode · run-long</span>
-        <div class="team-cell-row">
-          <span
-            v-if="breakdown.mode === 'penance'"
-            class="flames lit"
-            aria-hidden="true"
-          ><i /><i /><i /></span>
-          <span class="team-name">{{ breakdown.mode === 'penance' ? 'Super Penance' : 'SEAF Support' }}</span>
-          <span class="team-risk disp">+{{ breakdown.modeValor }}</span>
-        </div>
-      </div>
-
-      <div
-        class="team-cell team-total"
-        role="img"
-        :aria-label="`Team risk ${breakdown.total}, the floor under every diver's Valor`"
-      >
-        <span class="lbl">Team</span>
-        <div class="team-cell-row">
-          <span class="total-pips">
-            <span
-              v-for="i in directiveRisk"
-              :key="`m${i}`"
-              class="total-pip gold"
-            />
-            <span
-              v-for="i in opLongRisk"
-              :key="`o${i}`"
-              class="total-pip orange"
-            />
-            <span
-              v-for="i in breakdown.modeValor"
-              :key="`d${i}`"
-              class="total-pip orange"
-            />
-          </span>
-          <span class="total-num disp">{{ breakdown.total }}</span>
-        </div>
-      </div>
-    </section>
-
-    <PactPicker
-      :offer="offer"
-      :selected="selection"
-      :blocked="coverage"
-      :disabled="locked"
-      :difficulty="state.difficulty"
-      @toggle="toggle"
+    <ValorRoll
+      :zones="previewZones"
+      :deltas="deltas"
+      :note="selectionNames ? `With ${selectionNames}` : 'No pacts sworn'"
+      :locked="locked"
     />
 
     <div class="pact-cta">
       <button
         v-if="!locked"
-        class="hold cut cta-sweep"
+        class="cta cut cta-sweep"
         type="button"
-        :disabled="!canLock"
-        aria-label="Lock in &amp; dive — press and hold to lock"
-        @pointerdown="down"
-        @pointerup="up"
-        @pointerleave="up"
-        @click="click"
+        :disabled="offer.length === 0"
+        @click="lockNow"
       >
-        <span
-          class="hazard crawl hold-fill"
-          :class="{ on: holding }"
+        {{ ctaLabel }}
+        <svg
+          width="22"
+          height="14"
+          viewBox="0 0 22 14"
           aria-hidden="true"
-        />
-        <span class="hold-label">
-          <span class="disp">Lock in &amp; dive</span>
-          <span class="hold-sub">HOLD TO LOCK</span>
-        </span>
+        >
+          <path
+            d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
+            fill="currentColor"
+          />
+        </svg>
       </button>
       <div
         v-else
         class="locked-row"
         role="status"
       >
-        <span class="disp locked-stamp stamp">Locked</span>
-        <p class="locked-copy">
-          <span>Pacts sworn.</span>
-          <span class="muted">Waiting for the rest of the squad…</span>
-        </p>
+        <span class="locked-stamp disp">Sworn</span>
+        <span class="locked-copy">
+          <b>{{ selectionNames || 'No pacts' }}</b>
+          <span>Waiting for the rest of the squad…</span>
+        </span>
       </div>
     </div>
   </section>
@@ -373,170 +289,108 @@ const opLabel = computed(() =>
 .pact-screen {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  min-height: 0;
+  gap: 16px;
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
 }
-
-.pact-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  position: relative;
-}
-.pact-head-l { display: flex; flex-direction: column; gap: 6px; }
-.pact-title { margin: 0; font-size: var(--fs-h1); color: var(--text); }
-
-.offer-tally {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  height: 44px;
-  padding: 0 0.9rem;
-  border: 1px solid var(--line-2);
-  background: var(--rail);
-}
-.offer-pips { display: flex; gap: 4px; }
-.offer-pip {
-  width: 12px;
-  height: 17px;
-  border: 1px solid var(--line-4);
-  background: var(--panel);
-  transition: background-color 0.25s var(--ease-out), border-color 0.25s var(--ease-out);
-}
-.offer-pip.on { background: var(--gold); border-color: var(--gold); }
-.tally-text {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--khaki);
-  white-space: nowrap;
-}
-
-/* ---- Team risk summary bar ---- */
-.team-bar {
-  margin-top: 18px;
-  display: flex;
-  align-items: stretch;
-  min-height: 56px;
-  border: 1px solid var(--line-2);
-  background: var(--rail);
-}
-.team-bar-lock {
-  width: 44px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  color: var(--gold);
-  border-right: 1px solid var(--line-2);
-}
-.team-bar-lock svg {
-  width: 18px;
-  height: 18px;
-  padding: 2px;
-  background: var(--rail);
-  box-sizing: content-box;
-}
-.team-cell {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 6px;
-  padding: 0.5rem 1.1rem;
-  border-right: 1px solid var(--line-1);
-  min-width: 0;
-}
-.team-cell .lbl { font-size: 9px; }
-.team-cell-row {
-  display: flex;
+.pact-head { display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
+.kick {
+  display: inline-flex;
   align-items: center;
   gap: 10px;
-  min-width: 0;
-}
-.team-name {
-  font-size: 14px;
+  color: var(--gold);
+  font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+.kick::before {
+  content: '';
+  width: 22px;
+  height: 2px;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+.pact-title { font-size: clamp(38px, 4.4vw, 56px); }
+.pact-sub { margin: 0; color: var(--muted); font-size: 14px; }
+
+.directive-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 42px;
+  padding: 6px 12px;
+  background: linear-gradient(90deg, rgba(255, 214, 66, 0.1), var(--panel) 60%);
+  box-shadow: inset 0 0 0 1px var(--line-3);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+.directive-strip.safe { background: var(--panel); }
+.directive-name { font-size: 18px; color: var(--gold); }
+.directive-rule { color: var(--khaki); font-size: 13px; }
+.strain-note {
+  margin-left: auto;
+  color: var(--orange);
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.front-name { color: var(--front-accent, var(--red)); }
-.front-cell {
-  flex-grow: 1;
-  position: relative;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--red) 8%, transparent), transparent 70%);
-}
-.team-front-icon { width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; }
-.team-strain-icon { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
-.team-risk { color: var(--gold); font-size: 1.05rem; }
-.team-risk.op-long { color: var(--orange); }
-.hold-pips { display: flex; align-items: center; gap: 3px; margin-left: auto; }
-.hold-cell { width: 10px; height: 10px; border: 2px solid var(--orange); background: var(--orange); }
-.team-total { border-right: 0; background: var(--panel); }
-.total-pips { display: flex; gap: 2px; }
-.total-pip { width: 9px; height: 9px; }
-.total-pip.gold { background: var(--gold); }
-.total-pip.orange { background: var(--orange); }
-.total-num { font-size: 2rem; color: var(--text); }
 
-/* ---- CTA ---- */
-.pact-cta { margin-top: 1rem; }
-.hold {
-  position: relative;
-  overflow: hidden;
-  width: 100%;
-  min-height: 62px;
+.hand {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+.hand > * { min-width: 0; }
+
+.pact-cta { display: flex; justify-content: center; }
+.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: min(100%, 560px);
+  min-height: 58px;
+  padding: 0 24px;
   border: 0;
-  background: var(--gold);
+  background: linear-gradient(180deg, #ffe57a 0%, var(--gold) 45%, #f0bf1a 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -3px 0 rgba(110, 80, 0, 0.35);
   color: var(--on-gold);
-  touch-action: none;
-  user-select: none;
+  font: 800 17px var(--font-display);
+  font-stretch: 125%;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   cursor: pointer;
 }
-.hold:disabled { opacity: 0.4; cursor: not-allowed; }
-.hold-fill {
-  position: absolute;
-  inset: 0;
-  opacity: 0.4;
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 650ms linear;
-}
-.hold-fill.on { transform: scaleX(1); }
-.hold-fill:not(.on) { transition: none; }
-.hold-label {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-}
-.hold-sub { font-size: 10px; font-weight: 700; letter-spacing: 0.24em; }
+.cta:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .locked-row {
   display: flex;
   align-items: center;
-  gap: 22px;
-  min-height: 62px;
+  gap: 20px;
+  width: min(100%, 620px);
+  min-height: 58px;
 }
 .locked-stamp {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 8px 18px;
-  font-size: 1.6rem;
+  padding: 5px 14px;
   border: 3px solid var(--gold);
   color: var(--gold);
+  font-size: 22px;
+  transform: rotate(-7deg);
+  -webkit-mask-image: repeating-linear-gradient(118deg, #000 0 3px, rgba(0, 0, 0, 0.45) 3px 4px, #000 4px 9px);
+  mask-image: repeating-linear-gradient(118deg, #000 0 3px, rgba(0, 0, 0, 0.45) 3px 4px, #000 4px 9px);
 }
-.locked-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+.locked-copy { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.locked-copy b { color: var(--text); }
+.locked-copy span { color: var(--muted); font-size: 12px; }
+
+@media (max-width: 720px) {
+  .pact-screen { gap: 12px; }
+  .pact-title { font-size: 38px; }
+  .hand { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .pact-cta { justify-content: stretch; }
+  .cta { width: 100%; }
 }
-.locked-copy .muted { font-size: 11px; letter-spacing: 0.14em; }
 </style>

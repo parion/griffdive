@@ -25,15 +25,15 @@ export async function dismissWarbondIntro(page: Page): Promise<void> {
 }
 
 // The wheel draw is random, and a rule the squad can't field (e.g. Oops, All
-// Airstrikes on the standard kit) disables "Lock it in" outright. Reroll the
+// Airstrikes on the standard kit) disables "Take it" outright. Reroll the
 // directive until it is fieldable so the flow stays deterministic — the engine
 // refuses a reroll that returns the same draw, so a token always moves it. The
 // specs run with reduced motion, so the reveal never transiently disables the
 // lock; a disabled lock here means a genuinely stranded rule.
 export async function lockMisfortune(page: Page): Promise<void> {
-  const card = page.locator('.misfortune')
-  const accept = card.getByRole('button', { name: 'Lock it in' })
-  const reroll = page.getByRole('button', { name: /^Reroll the directive/ })
+  const card = page.locator('.directive-card')
+  const accept = card.getByRole('button', { name: 'Take it' })
+  const reroll = page.getByRole('button', { name: /^Reroll directive/ })
   for (let attempt = 0; attempt < 5 && (await accept.isDisabled()); attempt++) {
     if (await reroll.isDisabled().catch(() => true)) {
       break
@@ -42,8 +42,8 @@ export async function lockMisfortune(page: Page): Promise<void> {
     await page.waitForTimeout(150)
   }
   if (await accept.isDisabled()) {
-    // No fieldable draw and no reroll left: fall back to the zero-risk opt-out.
-    await card.getByRole('button', { name: 'Opt out' }).click()
+    // No fieldable draw and no reroll left: fall back to the zero-risk skip.
+    await card.getByRole('button', { name: 'Skip' }).click()
     return
   }
   await accept.click()

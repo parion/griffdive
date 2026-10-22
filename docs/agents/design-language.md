@@ -15,29 +15,25 @@ Design principles — every gameplay decision must honor these:
 1. **Risk is chosen, never forced.** A zero/low-risk dive is always available (Penitent Crusade
    baseline). Wheel randomness draws the whole catalogue every mission; difficulty scales each
    condition's risk, and rerolls exist.
-2. **Risk is legible.** Before committing to a dive, the UI shows exactly what tier ceiling the
-   current risk buys (skull icons à la Dead Cells cursed-biome doors / Hades' Erebus gates). No
-   hidden math.
-3. **Reward scales with stakes.** Flat drops regardless of difficulty is the documented failure of
-   both Penitent Crusade and Dead Cells' late-game cursed chests. Risk must move the odds — and the
-   shelf: chosen risk rolls the draft ceiling, and altitude raises the tiers Brasch's Bargains stocks.
+2. **Risk is legible.** Before committing, the UI shows the tier odds the current risk buys as one
+   d100 line: zone widths, percentage-point movement, and the face each option rolled. Skulls are
+   costs. There is no numeric Valor total to decode.
+3. **Reward scales with stakes.** Each reward option rolls its own tier on that line; altitude and
+   chosen risk move the whole line, and Brasch's Bargains stocks higher tiers at altitude.
 4. **Guarantee rarity class, never specific items** (Balatro skip tags). Players buy a *chance* at
    better gear, not a shopping list — with one deliberate exception: **Brasch's Bargains** sells
-   one named item per mission for credits, from the operation's base tier up to one tier above (see
-   Brasch's Bargains — credits). The wheel and the draft still guarantee classes.
+   one named item per mission for credits, from the operation's base tier up to one tier above.
 5. **Misfortunes reshape decisions, not stats** (Deep Rock Galactic's mutator design). A misfortune
    should change loadout strategy, route, or behavior — not just make numbers bigger.
 6. **Team risk is shared; personal risk is personal** (Slay the Spire 2 co-op model). The whole squad
    carries the misfortune; each diver carries their own pacts and drafts their own rewards.
-7. **Failure is a setback, not a wipe.** Repeat the difficulty, every diver forfeits one earned item from a
-   dealt offer (tier-capped by the Valor they took on), keep climbing.
+7. **Failure is a setback, not a wipe.** Repeat the difficulty, every diver forfeits one earned item
+   from a dealt offer (tier-capped by the Valor they took on), keep climbing.
 
-### Destroyer Terminal design language
+### Destroyer Terminal design language — the Lit pass
 
-The whole UI speaks one terminal language (the redesign source lives at
-`.orca/drops/Griffdive — Destroyer Terminal redesign.html`; extracted references under
-`.orca/drops/extracted/`, both git-ignored). It is presentation only — it never touches the
-engine.
+The whole UI speaks one terminal language. The redesign source is the **Griffdive Lit Pass** board
+set; extracted references are git-ignored and presentation-only. Nothing here touches the engine.
 
 - **Tokens** live in `app/assets/css/main.css`: surfaces `--ground/--rail/--panel/--raised`
   (`#0B0C09`/`#0E100B`/`#13150F`/`#1A1D15`), lines `--line-1…5`, inks
@@ -45,212 +41,128 @@ engine.
   tiers `--tier-*`, plus the `--font-body` (Chakra Petch) / `--font-display` (Archivo 125%)
   pair, the ease/duration tokens, a 4px spacing scale (`--sp-1…8`) and **fluid** layout/type
   tokens (`--pad-page/--pad-panel/--gap-panel/--gap-grid`, `--fs-cap/sm/body/h1/display`) built on
-  `clamp()`. Prefer the tokens and container queries (`@container`) over viewport `@media`; keep
-  breakpoints structural and few. Legacy token names (`--bg`, `--bg-raised`, …) are kept as
-  aliases.
+  `clamp()`. Prefer the tokens and container queries (`@container`) over viewport `@media`.
 - **Utilities**: type `.disp/.lbl/.cap/.sub/.vl/.odl`; shape `.cut/.cut-sm/.chev/.ticks/.hazard/
   .hatch/.scan/.grid-bg/.hex/.tag-shape`; panels `.panel/.sec/.sec-h/.dash`; controls `.btn/
   .ghost/.icon-btn/.chip/.nb`; data atoms `.tb/.tier-badge/.pips/.chit/.chits/.lamp/.stp/.chan`.
 - **Motion**: ambient loops are CSS classes (`.pulse/.rise/.stamp/.slam/.glow/.blinkc/.glitch/…`);
-  one-shot reveals use `motion-v` presets in `app/utils/motion.ts` (`riseIn/slamIn`, with the
-  `SPRING_SNAP` / `SPRING_POP` transitions). Animation is presentation, never rules; every effect
-  honours
-  `prefers-reduced-motion` (global CSS guard + explicit `matchMedia` in JS-driven reels and the
-  wheel reveal).
-  **Forward actions sweep:** every control that moves the squad on (Launch, the Spin hub, Deal,
-  Lock in, Mission complete / File report, Squad Honors / Advance, Forfeit, the tutorial's Next,
-  the join briefing's Join the dive)
-  carries `.cta-sweep` — the pending-directive sheen — only while it is actionable (disabled
-  controls never sweep). `--sweep` tints it: on the reward screen the continue buttons take the
-  banked item's tier colour, sweeping faster for S and S+. **Reveals ramp with rarity:** reward
-  pods land worst-to-best (`revealRank`), S holds a beat longer before landing, and emphasis
-  scales with tier — A a quiet tier sheen, S a soft landing brighten plus a slow-breathing glow. **Liberty's Cross
-  is not a pod:** `LibertyCrossBand` is a single full-width frame above the rolled pods (one box —
-  no card inside a card) that lands last. It never flashes or bursts: a hairline of light draws
-  across the reserved slot, the band opens from it (a `clip-path` polygon settling into the
-  `cut-sm` silhouette), then `LibertyCrossEmblem` — the winged four-point cross in the Wheel's rim,
-  the brand mark's swept-blade language — assembles feather by feather behind slow masked rays and
-  a one-off soft bloom, and the claim button goes live. The timeline keys off one `--delay`;
-  reduced motion and reloads skip straight to the open band. The phone draft renders the same
-  band (narrow container query: crest beside the copy, claim button full width). Glows ride the
-  unclipped `.pod-slot` as `drop-shadow` (the card's `clip-path` clips box-shadows); Motion owns
-  the card's transform, so tier effects use filters only. Phone reward rows carry the same tier sheen.
-  **The ceiling climbs first:** `CeilingTrack` is a compact, unlabeled bar whose home is the draft
-  header's top right (the phone puts it under the title). On desktop the draft opens on it: the
-  track is lifted centre stage over a dashed intro stage (a measured FLIP transform — it never
-  leaves its header slot in the DOM) with a `Ceiling roll · Valor` kicker. From the base node it
-  fills one tier per `CEILING_STEP`, popping each node it reaches with the caret riding the head;
-  the failed step stalls red with a shake, the ceiling node fills solid, the stage flashes the
-  ceiling's tier colour and an `X Tier` verdict slams in. After `CEILING_HOLD` the transform is
-  released and the track docks into the corner over `CEILING_DOCK` while the stage fades; only then
-  does the cabinet mount and the pods drop (timings in `app/utils/motion.ts`). Tapping the stage
-  skips ahead. Per-step odds stay hidden over each link; they fade in only once the bar has come to
-  rest and the diver points at it (hover on desktop, a tap on a phone), and a step the odds never
-  reach (0%) drops its connector with the node beyond it reading dotted. Reduced motion and
-  resolved drafts skip the intro
-  and land instantly; a reroll replays the whole sequence. The phone has no centre stage: its
-  rows stay hidden while the track climbs under the title, then fade in worst-to-best (Liberty's
-  Cross last, `POD_STAGGER` apart) once it lands; the squad board follows them. Pods give ground in a short cabinet by
-  shrinking the art stage, never the name or the Claim footer. **Drafts are social:** once the diver's own pods land,
-  `SquadDraftBoard` shows each squadmate's offer as small tier-edged tiles with their ceiling and
-  status — the banked tile pops and glows, the rest fade, bans are crossed out — and it stays up
-  after the diver picks so the squad can compare pulls.
-  **The Field Promotion is a choice, then a draft:** `FieldPromotionGate` carries a stylized
-  header (teal rank chevrons — one per pick granted — over a display-font title, Warbonds in the
-  header actions) and opens on two columns (stacked under 40rem). The left lists fallen divers'
-  kits under a one-line italic subline, each kit a single tight tier-edged row led by
-  `IconSalute` — a line sketch of a saluting Helldiver, outlines in currentColor, parts filled with
-  `--salute-cut` so nearer parts occlude — standing on the row itself (no frame), taller than the
-  row and running off its bottom edge, under a tilted gold memorial ribbon carrying the diver's
-  name (pointer devices fade it in on hover/focus; touch always shows it, and the stacked phone layout moves it into the space above the salute); then the item tiles in the
-  squad-board tile language (hover/focus labels via `AppTooltip`, best gear first); then Claim
-  kit. The right column *is* the call-in button, static (no sweep or hover motion): a honeycomb
-  of gold hexes — one per pick owed, each stamped with the base tier — echoing the picks chits on
-  the draft. Calling in is final (no way back) and
-  hands off to the reward draft's cabinet (`RewardDraft variant="promotion"`, titled Promotion
-  Picks) with the dialog's own header hidden (`hideTitle`): no ceiling roll, stars, tokens, squad
-  board or footer — capped, centred pods, the picks-left chits and Warbonds on the header's right
-  (chits only on phones), and a fresh drop after every claim.
-- **Shell**: `app.vue` renders the terminal header (brand mark + `ALPHA` + uplink + nav) on every
-  route except the dive, which renders its own `DiveTopBar` (crusade + difficulty emblem + room
-  code/copy + Tutorial + the labelled Bargains/Codex/Warbonds ship nav — labels, never bare icons;
-  Bargains carries the credit glyph and balance and disables with its reason mid-mission; its lamp
-  (shared with the phone tile, `bargainLamp`) is solid gold when something is buyable and pulses
-  only for a new operation's restock, until the diver buys from it; the
-  Kit needs no header entry on desktop because it lives in the right rail). `components/dive/DiveFrame.vue` is the
-  no-scroll dive shell — grid rows `60px 84px minmax(0,1fr) 52px` and fluid columns
-  `clamp(184px,15vw,216px) 1fr clamp(248px,21vw,284px)` (the rails give ground on landscape
-  tablets and small laptops and reach their design widths by ~1360px):
-  header · `CrusadeStrip` (the horizontal 3→10 climb) · left rail (Squad, led by `PhaseCue`) ·
-  centre phase · right rail (`KitValorRail`: **Kit** and **Valor** tabs) · `PhaseRail` (bottom
-  Mission phases). The centre is a named `center` inline-size container and each wide phase
-  (`WheelPanel`, `MissionReport`, `DivePhaseDiving`, `BonusCeremony`) is its own container, so
-  phases adapt to the width they actually get, not the viewport: the wheel stacks its decision
-  cards under a smaller wheel below ~620px (scrolling the drawn directive into view once the spin
-  lands), the report drops to one column below 720px, the honors reel stacks over its Spin, and
-  the reward token bar wraps. `CrusadeStrip` rungs are single-line: number, name, and (current rung only) mission pips right
-  after the label; the base tier is a coloured bottom edge, not a label. A narrow strip keeps names only
-  on the current rung; on phones every rung is number + bar. An active difficulty 10 gets a slow gold
-  breath/sweep. Names and mission counts stay in the accessible labels. The tutorial drops its
-  dossier column at ≤1180px. The Valor tab doubles as a readout: the live total over a bar split by source (directive gold,
-  strain orange, Major Order teal, mode khaki, pacts red — the same colours as the meter's cells and
-  legend, via `app/utils/valor.ts`). This total, the meter's head and the phone/landing Valor figures
-  all render through `ValorFigure`, which drops the fractional tail — decimal point included — to
-  smaller type so the digits left of the decimal read as the headline. The tab choice is shell state
-  and survives phase changes; it defaults to Kit. The rail carries nothing else: no Valor explainer, no honors token banks, no
-  forfeit "carries over" card.
-  The left rail collapses to a `56px` icon column (persisted in `localStorage`): the header chevron
-  expands it back, while collapsed each diver becomes their first letter with the active lamp to its
-  left and thin token bars beneath, the Steam card shrinks to a single icon button (no labels), and
-  the Squad heading, `PhaseCue` and `MissionReportSummary` drop out.
-  **One lead per beat:** `PhaseCue` answers "whose move is it?" (`Your move` gold / `Stand by`
-  teal), fed by `awaitingDiverIds` + `canControl` — the answer to playtesters losing the thread
-  between phases. On desktop it sits in the squad rail under the Squad heading (`rail`; a banner
-  atop the centre column pushed the fixed terminal into scroll), and every diver chip carries the
-  matching lamp — gold and pulsing on whoever `actingDiverIds` says the squad is waiting on (the
-  host on host-run beats), teal otherwise — with a status naming the beat ("spinning", "choosing
-  pacts", "in game", …). `PhaseRail` is a progress readout, never
-  a control: the current beat is an underlined gold label (a filled gold chevron read as a second
-  Spin button) and finished beats show a check. The old wheel-pool card was dropped (the wheel
-  already shows every rule).
-  `WheelOfMisfortune.vue` is a real SVG wheel whose rotation is derived from the wheel seed.
-  On the `rewards` phase the centre swaps between the `RewardDraft` pod cabinet and the
-  `RewardsSettlement` screen — the draft's post-pick CTA hands off to the settlement, which carries
-  the `BonusCeremony` honors contest; when honors aren't due that turn the ceremony is replaced by a
-  disabled panel. **Brasch's Bargains is never a phase screen:** it lives in its own slide-over
-  (`BargainsDrawer` → `BraschBargains`; the drawer header is its only title), reachable from the
-  header and the phone bar in every phase except the mission. The shelf never changes shape: a
-  buy lights its card gold (`Requisitioned`) and veils the rest with a lock and "Brasch will be back
-  next mission"; a kind bought earlier in the operation shows as a dashed, veiled card reading
-  "Restocked by Brasch next operation". Credits always render through
-  `CreditAmount` (the custom `IconCredit` glyph + figure), never "pts". The left rail gains `MissionReportSummary` on the rewards phase.
-  The Kit (`KitPanel.vue`) is deliberately lean: an optional row of diver names (no warbonds, no
-  token chits), a sticky toolbar (an **Earned only** switch that hides the starting kit, and jump
-  chips that scroll to each group), then the diver's own items by category with live ban washes.
-  Stratagems split by type (Eagle / Orbital / Supply / Defense) and every group always renders —
-  an empty one reads "None" (or "None earned yet" in earned mode) so a missing booster is stated,
-  not implied. Every owned item shows,
-  the shared reserve stratagems included (they are most of a fresh diver's stratagem loadout);
-  the separate reserve block, the "stratagems fieldable" readiness block and the key bar are
-  gone — playtesters could not read them. On desktop it is the rail's Kit tab and has no other entry
-  point (the desktop lobby, which has no right rail, shows no Kit). The phone shell's header
-  opens the same panel in an in-app drawer (`ArmoryDrawer.vue`), titled **Kit** in every player-facing string (code keeps the `armory`
-  names). The
-  Griffdiver Briefing (`BriefingOverlay.vue`) is presented as the **Griffdive tutorial**: a framed
-  dialog (hazard edge, `TRAINING` badge, "Step n of 6") over the dimmed dive, never a full-bleed
-  takeover — players mistook the old briefing for the game. It is **the host's alone** (it teaches
-  the host's controls; a redesign for current mechanics is pending): it opens once at the founding
-  diver's first seat, commits the name typed on its Identify step, never chains into the Warbonds
-  panel (its Warbonds step covers ownership), and is replayable from the host's Tutorial control.
-  **Squadmates get `JoinBriefing.vue`** instead — playtesters joining by link drowned in a tutorial
-  for controls the host drives. It is one scrolling page, not steps or a coach-mark overlay (too
-  SaaS for a game): a hazard-edged top bar with the room code, then the hero — "You've been
-  drafted." beside the vertically centred **citizen registry** (it stays centred while the squad
-  card unfolds under it), whose callsign *is* the page's input (a bare field
-  whose only border is a dotted gold rule that breathes while empty, a pencil-marked `Callsign`
-  label, the cursor locked in on load). Filing the callsign (Enter, leaving the field, or a saved
-  name filing itself) rolls the class strip — A–D struck one per `REGISTRY_BEAT`, E slams in red,
-  the *Griffdiver* stamp lands — and only then does the live squad card (seats, host, difficulty,
-  phase, a Field Promotion note) unfold beneath it (a grid-row reveal, `inert` while folded); a
-  seating-blocked note never waits on it. Four numbered sections follow — **01 Identify** (padded off the hero;
-  a small khaki "Helldivers are Class A." over a display-size "You are Class E.", centred against the **issued surplus kit** from `startingItemIds`, grouped as icon tiles,
-  weapons wide; every other diver's callsign — squad seats and the hero's host — renders
-  uppercase in the registry's display type), **02 The host drives. You dive.** (the mission loop as six beat cards tagged Host
-  teal / You gold / Squad khaki, the `Your move` / `Stand by` cue legend, the forfeit footnote),
-  **03 Risk buys loot** (Risk → Valor → Ceiling → Loot chain and a dial with **Valor and
-  difficulty sliders** reading `ceilingOddsPercent`; the first time it scrolls into view it sweeps
-  Valor 2→6 and difficulty 3→5 together, one point per `DIAL_STEP`, until touched; its footer names
-  the dialled difficulty's base tier and the squad's real altitude), and **04 Where your gear
-  lives** — a teal blueprint *deck plan* of the screen they'll land on (desktop three-rail or phone
-  shell, picked by `usePhoneShell`) with numbered hex markers and stratagem-beacon pings, beside a
-  legend whose rows light their marker on hover/focus and whose Codex/Warbonds buttons open the
-  real drawers over the page. A sticky go-bar carries the callsign (an empty one is a button that
-  jumps to the field) and the `Join the dive` CTA, which sweeps only once it is live; joining never
-  waits on the registry animation. Timings live in `app/utils/motion.ts` (`REGISTRY_*`,
-  `DIAL_STEP`); reduced motion files and sweeps instantly. Inside the
-  dive the same component renders in `review` mode as the squadmate's **Field manual** dialog
-  (no input, `Back to the dive`). One structural breakpoint (1020px) flows the
-  shell and stacks the rails. Below it `usePhoneShell` swaps the whole three-rail tree for
-  `DivePhone` (`DivePhoneShell` + `Phone*`), a fixed-band shell whose phase content is a
-  bottom-sheet/fixed-footer layout.
-  **Phone action bar:** one frame — `footer.phone-bar` in `DivePhoneShell` — pins to the bottom of
-  every phone screen, lobby to forfeit to complete, and never changes shape. Page-relevant info sits
-  on top (`#phone-bar-detail`: the `PhoneValor` readout on the wheel, pacts and dive; the credit haul on
-  the report; reward tokens / the banked item on the draft; the credit purse on the settlement; launch
-  facts in the lobby; status copy on forfeit and complete), and a 56px action row sits below it: an
-  optional **secondary** on the left (`.bar-alt` — Cancel, Mission failed, Reroll, Skip, Delete save)
-  and the **primary** filling the rest (`.bar-cta`, a `HoldButton`, or the dashed `.bar-gate` while the
-  squad waits on the host). Ahead of both, the shell's own `lead` slot holds one compact 52px tile:
-  the Brasch's Bargains credit glyph over the balance, with the same `bargainLamp` as the desktop
-  nav (solid when something is affordable, pulsing for a new operation's restock). It only appears
-  while the shop is open, so mid-mission the actions keep the whole row, and it never grows a label
-  (that's the bloat guard). Phases never render their own footer: they fill the zones through
-  `PhoneActionBar`, whose deferred Teleports target the shell. Panels shared with the desktop dive
-  (`DivePhaseLobby`, `DivePhaseForfeit`, `DivePhaseComplete`, `BonusCeremony`/`RewardsSettlement`) take
-  a `phone` / `compact` prop that docks their actions there instead of inline; `PhoneActionBar inline`
-  renders the same slots in place on desktop. The host-moderation sheet overlays the bar. A new phone
-  phase must supply a primary — `e2e/phone-action-bar.spec.ts` fails a screen without one. Portrait tablets share that shell: its column grows to
-  `min(100vw, 720px)` rather than floating as a phone strip, and phone phase bodies must stay
-  fluid to that width (pinned CTAs fill the sheet). `PhaseCue` rides there as a slim fixed band under the squad
-  bar (`band` prop) so phase bodies keep their no-scroll layout. Phone rules from the mobile
-  checkup: the pinned footer CTA is always the phase's *live* action (the wheel's is "Spin the
-  wheel" before the draw, never a dead deal gate); self-service actions (`PICK_REWARD` and kin)
-  gate on the diver's own state, never on `canControl`, which is host control; short phones
-  (≤740px tall) shrink the wheel so the decision sheet stays reachable; the wheel phase body is a
-  drawer — the wheel sticks to the top and the directive/strain sheet scrolls up over it (the phase
-  body scrolls, never the page), collapsing for each fresh draw and expanding once the spin lands; nav controls keep their
-  text labels on phones; and nothing may widen the layout viewport — flex items holding long live
-  text (the Major Order's faction indicator) need `min-width: 0`.
-- **Armory detection**: the Armory never computes bans.
-  `armoryRules(state, diver, previewPactIds?)` lists the active misfortune/pact rules and
-  `itemBannedInArmory(state, diver, item, previewPactIds?)` returns why a stratagem is greyed; both
-  wrap `stratagemBanReason` in `shared/engine/pacts.ts` — the same predicate `legalStratagemCount` /
-  `hasLoadout` use, so the screen and the floor can never disagree. The pact screen reports its
-  unsworn selection up as preview ids: the Kit ghost-greys what those pacts *would* ban — dashed
-  frames, a pulsing ghost overlay on the tile media, dashed reason labels, dashed
-  `Pact · if sworn` rule chips and preview-banned floor pips — while the count drops live, and the
-  preview clears the moment the hand is locked (sworn bounds show solid, never ghosted). Preview
-  ids already sworn are deduped.
-- **Foundations kit**: a hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`; includes a replayable Liberty's Cross specimen) specimens
-  the tokens/atoms so contributors can sanity-check the language. It is dev reference, not a
-  product surface.
+  one-shot reveals use `motion-v` presets in `app/utils/motion.ts` (`riseIn/slamIn`, `SPRING_SNAP`,
+  `SPRING_POP`). Animation is presentation, never rules; every effect honors
+  `prefers-reduced-motion`. **Forward actions sweep:** actionable controls that move the squad on
+  carry `.cta-sweep` only while live (disabled controls never sweep). The wheel, the odds strip and
+  the loot pins keep their state in the engine; motion only reveals it.
+
+#### Desktop shell — one lit stage
+
+`app/components/dive/DiveFrame.vue` is the no-rail dive shell: a three-row grid of **header ·
+stage · squad dock**, exactly one viewport tall on desktop. The stage is the only scroll area and
+holds one lit object per beat; the old climb strip, left squad rail, right Kit/Valor rail and bottom
+PhaseRail are gone.
+
+- **`DiveTopBar`** carries the identity block (in-game difficulty emblem + number, difficulty name,
+  op number and mission pips, front emblem), the four **`PhaseTabs`** beats (Call · Pacts · Dive ·
+  Loot, current beat filled gold, finished beats checked), and the action tiles — Brasch's Bargains
+  (credit glyph + balance, disabled with its reason mid-mission, gold lamp when something is
+  affordable), Kit, Codex, Warbonds, connection lamp and the session menu. Back to the Bridge lives
+  in `DiveMenu`, because the global bridge header stands down on `/dive`.
+- **`SquadDock`** anchors the bottom: status lamps and names for every diver, open seats, Steam
+  lobby and invite copy, and the squad-honors token picker once a contest is spun. `DiveMenu` holds
+  tutorial/field manual, Bridge, pin/unpin, new session, leave and end. On a phone the same dock
+  lives in the **Squad** dialog, and host actions render inline there (a portalled dropdown would
+  land under the modal overlay).
+- **`PhaseTabs`** replaced the old "whose move?" cue. The current beat is the lead; host-only
+  controls are visibly absent for squadmates rather than disabled chrome. A non-host sees "Stand by"
+  and the host's name on the call, but still swears their own pacts and banks their own loot.
+
+#### Call — `DivePhaseWheel`
+
+One lit call: `WheelOfMisfortune` (a real seeded SVG wheel, hub button is the only spin control)
+beside the drawn **Squad Directive** and, on the operation's first mission, the **strain** card.
+Both cards use the same take/skip grammar; a stranded rule disables "Take it" with the reason. The
+`ValorRoll` strip under them previews the percentage-point movement of hovering or picking a rule.
+The host's **Deal the pacts** CTA waits until both calls are decided. Major Order pinning opens the
+`MajorOrderPicker` dialog; a pinned order shows on the stage before the first spin as well as after
+it. Rerolls sit under the deal CTA as quiet secondary controls.
+
+#### Pacts — `PactScreen`
+
+A self-service hand of `ConditionCard`s. Each card carries its own risk skulls, rule, accountability
+line, live odds line and sealed stamp; picks preview the odds strip as they toggle. The CTA is
+"Swear N pacts" (or "Dive with no pacts"), and a locked diver sees the sworn stamp while the rest of
+the squad finishes. There is no Kit rail: the header's **Kit** tile opens the same `ArmoryDrawer`
+everywhere.
+
+#### Dive — `DivePhaseDiving`
+
+The field screen keeps the directive, accepted strain and each diver's sworn pacts with one-tap
+"Mark broken" (confirm on the second tap). Hosts call **Extracted** or **Mission failed**; squadmates
+get their own `KitSnapshot` pane and a waiting gate. The kit is visible by default for non-hosts and
+opens full-height from the header for everyone.
+
+#### Report — `MissionReport`
+
+The report window is a two-column lit form on desktop and one column on phones: mission stars,
+credit haul (sample tubes + time cells), and the **Squad Honors** card. Honors are spun here, before
+filing, so the squad knows what to chase; the card states why a turn is ineligible. The filed report
+must still qualify or the engine strikes the spin and claws back an auto-banked solo token. Phone
+reports pin **File report / File failure** in the fixed action bar.
+
+#### Loot — `RewardDraft`
+
+The draft is "Bank one item": one card per option, each stamped with its **rolled tier and d100
+face**, with the same odds line above carrying one pin per option. The old ceiling-climb intro,
+`CeilingTrack`, ban flow and settlement screen are retired. Picking a card selects it; the CTA banks
+it; a resolved draft waits on the squad. The **`SquadDraftBoard`** shows each squadmate's offered
+tiles and status, and the reroll control spends a banked honors token. Liberty's Cross is one card,
+not a band above the pods. When the last mission is banked, **`OperationCleared`** carries the climb
+to the next difficulty and points at Brasch's restock.
+
+#### ValorRoll — the one odds primitive
+
+`app/components/dive/ValorRoll.vue` draws the Valor odds line: tier zones whose widths are
+cumulative reach chances, a ruler, zone labels with odds (or percentage-point deltas), and pins at
+each rolled face. It is used on the call, pacts, dive (locked) and loot (pins) screens, so the same
+visual grammar explains every roll. Zones under 0.5% read `<1%`; 0% zones are silent. It is
+presentation only and reads `tierZones` from the engine.
+
+#### Kit, Codex, Warbonds
+
+The Kit (`ArmoryDrawer` → `KitPanel`) is reached from the header on desktop and phone; there is no
+persistent rail. It keeps the lean diver list, earned-only switch, jump chips and live ban washes.
+Codex and Warbonds remain the shared drawers. Brasch's Bargains remains a slide-over from the credit
+tile, never a phase screen.
+
+#### Join briefing and host tutorial
+
+`JoinBriefing` is still the joiner's one-page "You've been drafted." registry, and `BriefingOverlay`
+is still the host's replayable Griffdive tutorial. Their deck-plan illustration now depicts the lit
+stage or the phone shell, not three rails. The onboarding odds dial remains a teaching aid; the live
+dive uses `ValorRoll`.
+
+#### Phone shell
+
+`usePhoneShell` swaps the desktop tree for `DivePhone` (`DivePhoneShell` + `Phone*`). It is a fixed
+column: `PhoneTopBar` (identity, Squad, Kit, Codex, menu) over `PhaseTabs`, a scrolling stage, and a
+pinned `footer.phone-bar`. The bar never changes shape: optional detail above, an optional secondary
+on the left and one primary action filling the rest, supplied through `PhoneActionBar`'s deferred
+teleports. Report and forfeit actions use the same bar. The squad sheet is a dialog with inline
+moderation; the wheel call is a flat top-down stage (directive, strain, wheel), not a bottom sheet.
+Short phones keep the call's take/skip buttons reachable by scrolling, and tap targets stay at least
+24px. No page-level horizontal overflow is allowed; long live text needs `min-width: 0`.
+
+Portrait tablets share the phone shell, growing its column to `min(100vw, 720px)`. Landscape tablets
+use the desktop shell until the structural breakpoint.
+
+#### Accessibility
+
+Dialogs trap focus, restore it on close and are `aria-modal`; the global skip link targets
+`#main-content` on every page. Icon-only controls carry `aria-label`; phase beats expose
+`aria-current="step"`; the odds line labels every zone and pin for assistive tech; decorative wheel
+layers are `aria-hidden` and `pointer-events: none` so a rotating square can't steal a tap.
+`e2e/a11y.spec.ts` guards the foundation.
+
+#### Foundations kit
+
+A hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`; includes a replayable Liberty's
+Cross specimen) specimens the tokens/atoms so contributors can sanity-check the language. It is dev
+reference, not a product surface.

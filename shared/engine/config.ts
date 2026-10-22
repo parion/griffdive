@@ -1,6 +1,6 @@
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 26
+export const ENGINE_VERSION = 27
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -93,7 +93,6 @@ export function penanceValorAt(difficulty: number): number {
 // Team performance is felt at every star: 1★=1, 2★=2, 3★=3, 4★=4, 5★=4 (cap).
 export const STARS_TO_OPTIONS = [1, 1, 2, 3, 4, 4] as const
 export const MAX_OPTIONS = 4
-export const S_PLUS_BONUS_OPTIONS = 1
 // Each pact marked failed in the field forfeits this many reward options —
 // the stake the diver never actually carried (AGENTS.md: Reward math).
 export const OPTIONS_LOST_PER_FAILED_PACT = 1

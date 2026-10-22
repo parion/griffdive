@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { MAJOR_ORDER_RISK, STRAIN_RISK, conditionRiskAt, directiveValorAt, maxStarsFor } from '~~/shared/engine/config'
-import { activeMisfortune, activeStrain, currentFront, pactRiskOf, teamRiskOf } from '~~/shared/engine/selectors'
-import { factionImageUrl } from '~~/shared/data/images'
-import type { DiverState, DiveState, MissionOutcome, SampleCounts } from '~~/shared/engine/types'
+import { conditionRiskAt, missionsPerOperation } from '~~/shared/engine/config'
+import { pactName } from '~~/shared/data/pacts'
+import {
+  activeMisfortune,
+  activeStrain,
+} from '~~/shared/engine/selectors'
+import type { DiverState, DiveState, MissionOutcome, MissionReport } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -13,34 +16,55 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  report: [payload: { outcome: MissionOutcome, stars: number, timePct: number, samples?: SampleCounts }]
+  report: [payload: MissionReport]
   fail: [playerId: string, pactId: string]
   failDirective: []
+  reporting: [open: boolean]
+  spinBonus: [payload: { stars: number, outcome: MissionOutcome }]
+  openKit: []
 }>()
 
 const misfortune = computed(() => activeMisfortune(props.state))
-const front = computed(() => currentFront(props.state))
-const frontImage = computed(() => (front.value ? factionImageUrl(front.value.id) : undefined))
 const strain = computed(() => activeStrain(props.state))
-const teamRisk = computed(() => teamRiskOf(props.state))
-const pactRisk = computed(() =>
-  props.self ? pactRiskOf(props.self, props.state.difficulty) : 0)
-
-const misfortuneRisk = computed(() =>
-  props.state.misfortuneAccepted
-    ? conditionRiskAt(misfortune.value?.id ?? '', props.state.difficulty)
-    : 0)
-const strainRisk = computed(() =>
-  props.state.strainAccepted ? STRAIN_RISK[strain.value?.id ?? ''] ?? 0 : 0)
-const majorOrderRisk = computed(() => (props.state.majorOrder?.live ? MAJOR_ORDER_RISK : 0))
-
-// A broken team directive voids its shared Valor entirely.
+const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const directiveFailed = computed(() => props.state.misfortuneFailed)
-const directiveValor = computed(() =>
-  props.state.misfortuneAccepted && !props.state.misfortuneFailed
-    ? directiveValorAt(misfortune.value?.id ?? '', props.state.difficulty, props.state.divers.length)
-    : 0)
 const confirmFail = ref(false)
+
+const pactsByDiver = computed(() =>
+  props.state.divers.map(diver => ({
+    id: diver.id,
+    name: diver.name,
+    isHost: diver.id === props.state.hostId,
+    pacts: diver.pactIds.map(id => ({
+      id,
+      name: pactName(id),
+      risk: conditionRiskAt(id, props.state.difficulty),
+      failed: diver.failedPactIds.includes(id),
+    })),
+  })))
+
+const ownPacts = computed(() =>
+  pactsByDiver.value.find(entry => entry.id === props.selfId)?.pacts ?? [])
+
+const armedPact = ref<string | null>(null)
+
+function canMark(diverId: string): boolean {
+  return props.selfId === diverId || props.isHost
+}
+
+function markPact(diverId: string, pactId: string): void {
+  if (!canMark(diverId)) {
+    return
+  }
+  const key = `${diverId}:${pactId}`
+  if (armedPact.value !== key) {
+    armedPact.value = key
+    return
+  }
+  armedPact.value = null
+  emit('fail', diverId, pactId)
+}
+
 function toggleFail(): void {
   if (!confirmFail.value) {
     confirmFail.value = true
@@ -50,204 +74,153 @@ function toggleFail(): void {
   emit('failDirective')
 }
 
-const mode = ref<'none' | 'success' | 'failure'>('none')
-const stars = ref(1)
-const time = ref(0)
-const samples = ref<SampleCounts>({ common: 0, rare: 0, super: 0 })
+const reportMode = ref<'none' | 'success' | 'failure'>('none')
 
-const maxStars = computed(() => maxStarsFor(props.state.difficulty))
-
-function reset(): void {
-  stars.value = maxStars.value
-  time.value = 0
-  samples.value = { common: 0, rare: 0, super: 0 }
+function submit(payload: MissionReport): void {
+  emit('report', payload)
+  reportMode.value = 'none'
 }
 
-function open(next: 'success' | 'failure'): void {
-  mode.value = next
-  reset()
+function cancelReport(): void {
+  reportMode.value = 'none'
 }
 
-function submit(): void {
-  // Keep the report mounted until the phase actually flips (a room round-trip
-  // is async), so the in-field screen never flashes between report and rewards.
-  emit('report', mode.value === 'success'
-    ? { outcome: 'success', stars: stars.value, timePct: time.value, samples: { ...samples.value } }
-    : { outcome: 'failure', stars: 0, timePct: 0 })
-}
+watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true })
 </script>
 
 <template>
-  <PhoneReport
-    v-if="mode === 'success'"
-    v-model:stars="stars"
-    v-model:time="time"
-    v-model:samples="samples"
-    :state="state"
-    :credits="self?.credits ?? 0"
-    @submit="submit"
-    @cancel="mode = 'none'"
-  />
-
-  <div
-    v-else
-    class="phone-diving"
+  <section
+    v-if="reportMode === 'none'"
+    class="phone-field"
   >
-    <div class="scroll">
-      <section
-        class="status"
-        aria-label="Team risk, locked for the squad"
-      >
-        <span
-          class="status-icon hazard-soft"
-          aria-hidden="true"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            aria-hidden="true"
-          ><rect
-            x="6"
-            y="11"
-            width="12"
-            height="9"
-          /><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" /></svg>
-        </span>
-        <div class="status-stack">
-          <div class="status-line">
-            <span class="lbl">Directive</span>
-            <span
-              v-if="misfortune"
-              class="risk-chip red"
-              role="img"
-              :aria-label="`Directive risk ${misfortuneRisk} of 5`"
-            ><b>{{ misfortuneRisk }}</b><i /></span>
-            <span class="status-name">{{ misfortune?.name ?? 'Safe dive' }}</span>
-          </div>
-          <div class="status-line">
-            <span class="lbl">Front</span>
-            <img
-              v-if="frontImage"
-              :src="frontImage"
-              :alt="front?.displayName ?? ''"
-              class="status-front"
-            >
-            <span class="status-name">{{ strain?.name ?? front?.displayName ?? 'Unknown' }}</span>
-            <span
-              v-if="strainRisk"
-              class="disp status-val orange"
-            >+{{ strainRisk }}</span>
-            <span
-              v-else-if="majorOrderRisk"
-              class="disp status-val teal"
-            >MO +{{ majorOrderRisk }}</span>
-          </div>
-        </div>
-        <div
-          class="status-total"
-          role="img"
-          :aria-label="`Team risk ${teamRisk}`"
-        >
-          <span class="lbl">Team</span>
-          <span class="disp total-n">{{ teamRisk }}</span>
-        </div>
-      </section>
+    <header class="head">
+      <span class="kick">In the field</span>
+      <h1 class="disp title">
+        Hold the line
+      </h1>
+      <p class="lede">
+        Play the mission in Helldivers 2. If something breaks, mark it here.
+      </p>
+    </header>
 
-      <div
-        v-if="directiveFailed"
-        class="directive-failed"
-        role="status"
-      >
-        <span>SQUAD DIRECTIVE FAILED · RISK VOIDED · −1 OPTION</span>
+    <article
+      class="directive"
+      :class="{ broken: directiveFailed }"
+    >
+      <div class="dc-top">
+        <span class="cap">Squad directive</span>
+        <span
+          class="status"
+          :class="directiveFailed ? 'red' : 'teal'"
+        >{{ directiveFailed ? 'Broken' : 'Holding' }}</span>
       </div>
-      <div
-        v-else-if="canControl && state.misfortuneAccepted"
-        class="directive-fail"
-      >
-        <span class="lbl">Directive · {{ misfortune?.name }} · +{{ directiveValor }} Valor</span>
+      <h2 class="disp dc-name">
+        {{ misfortune?.name ?? 'Safe dive' }}
+      </h2>
+      <p class="dc-rule">
+        {{ misfortune?.rule ?? 'No team rule was accepted this mission.' }}
+      </p>
+      <div class="dc-foot">
+        <span>{{ directiveFailed ? 'Risk voided' : 'Raising everyone’s loot' }}</span>
         <button
-          class="btn danger tiny"
+          v-if="canControl && misfortune && !directiveFailed"
+          class="mark"
+          :class="{ armed: confirmFail }"
           type="button"
-          :aria-label="confirmFail ? 'Confirm the directive is broken — this cannot be undone' : 'Mark the squad directive failed'"
           @click="toggleFail"
         >
-          {{ confirmFail ? 'Confirm — void it?' : 'Mark failed' }}
+          {{ confirmFail ? 'Confirm?' : 'Mark broken' }}
         </button>
       </div>
+    </article>
 
-      <PactBriefing
-        :divers="state.divers"
-        :self-id="selfId"
-        :is-host="isHost"
-        :difficulty="state.difficulty"
-        @fail="(playerId, pactId) => emit('fail', playerId, pactId)"
-      />
-
-      <div
-        v-if="mode === 'failure'"
-        class="failure"
-      >
-        <span class="disp failure-title">Mission failed</span>
-        <span class="failure-sub">No stars · the operation repeats · each diver forfeits one item</span>
-      </div>
+    <div
+      v-if="strain && state.strainAccepted"
+      class="strain-line"
+    >
+      <b>{{ strain.name }}</b>
+      <span>strain · whole operation</span>
     </div>
 
-    <PhoneActionBar>
-      <template #detail>
-        <PhoneValor
-          :difficulty="state.difficulty"
-          :team-risk="teamRisk"
-          :pact-risk="pactRisk"
-          locked
-        />
-      </template>
-
-      <template
-        v-if="canControl && mode === 'failure'"
-        #secondary
+    <section class="sworn">
+      <span class="cap">Pacts sworn</span>
+      <div
+        v-for="diver in pactsByDiver"
+        :key="diver.id"
+        class="sworn-row"
       >
-        <button
-          class="bar-alt"
-          type="button"
-          @click="mode = 'none'"
+        <span class="sworn-name">
+          <b>{{ diver.name }}</b>
+          <i v-if="diver.isHost">Host</i>
+        </span>
+        <span
+          v-if="diver.pacts.length === 0"
+          class="none"
+        >No pacts</span>
+        <span
+          v-for="pact in diver.pacts"
+          :key="pact.id"
+          class="pact-chip"
+          :class="{ failed: pact.failed }"
         >
-          Cancel
-        </button>
-      </template>
-      <template
-        v-else-if="canControl"
-        #secondary
-      >
+          <RiskPips
+            :value="pact.risk"
+            :max="5"
+            tone="red"
+          />
+          <span>{{ pact.name }}</span>
+          <button
+            v-if="!pact.failed && canMark(diver.id)"
+            class="mark-pact"
+            :class="{ armed: armedPact === `${diver.id}:${pact.id}` }"
+            type="button"
+            @click="markPact(diver.id, pact.id)"
+          >
+            {{ armedPact === `${diver.id}:${pact.id}` ? 'Confirm?' : 'I broke it' }}
+          </button>
+          <span
+            v-else-if="pact.failed"
+            class="void"
+          >Void</span>
+        </span>
+      </div>
+    </section>
+
+    <KitSnapshot
+      v-if="!isHost"
+      :state="state"
+      :self-id="selfId"
+      @open="emit('openKit')"
+    />
+
+    <div
+      v-if="isHost"
+      class="host-note"
+    >
+      <span class="cap">Host calls the result</span>
+      <p>Extracted or failed, then file the report.</p>
+    </div>
+
+    <PhoneActionBar v-if="canControl">
+      <template #secondary>
         <button
           class="bar-alt red"
           type="button"
-          @click="open('failure')"
+          @click="reportMode = 'failure'"
         >
           Mission failed
         </button>
       </template>
-
       <template #primary>
         <button
-          v-if="canControl && mode === 'failure'"
-          class="bar-cta red"
-          type="button"
-          @click="submit"
-        >
-          <span class="disp">File failure</span>
-        </button>
-        <button
-          v-else-if="canControl"
           class="bar-cta cta-sweep"
           type="button"
-          @click="open('success')"
+          @click="reportMode = 'success'"
         >
-          <span class="disp">Mission complete</span>
+          <span class="disp">Extracted</span>
           <svg
-            width="22"
-            height="22"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -255,123 +228,125 @@ function submit(): void {
             aria-hidden="true"
           ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
         </button>
-        <div
-          v-else
-          class="bar-gate"
-          role="status"
-        >
-          <span
-            class="hazard-soft bar-gate-edge"
-            aria-hidden="true"
-          />
-          <span class="disp bar-gate-word">Mission report</span>
-          <span class="bar-gate-meta">Waiting for the host</span>
-        </div>
       </template>
     </PhoneActionBar>
-  </div>
+    <PhoneActionBar v-else>
+      <template #secondary>
+        <button
+          v-if="ownPacts.some(pact => !pact.failed)"
+          class="bar-alt"
+          type="button"
+          @click="markPact(selfId ?? '', ownPacts.find(pact => !pact.failed)?.id ?? '')"
+        >
+          I broke it
+        </button>
+      </template>
+      <template #primary>
+        <span class="bar-gate">Waiting on host</span>
+      </template>
+    </PhoneActionBar>
+  </section>
+
+  <MissionReport
+    v-else
+    :state="state"
+    :self-id="selfId"
+    :self="self"
+    :outcome="reportMode"
+    :op-length="opLength"
+    phone
+    @submit="submit"
+    @cancel="cancelReport"
+    @spin-bonus="emit('spinBonus', $event)"
+  />
 </template>
 
 <style scoped>
-.phone-diving { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px 16px 14px;
-}
-
-.status {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
-  align-items: stretch;
-  border: 1px solid var(--line-2);
-  background: var(--rail);
-}
-.status-icon {
-  display: grid;
-  place-items: center;
-  border-right: 1px solid var(--line-2);
-  color: var(--gold);
-}
-.status-icon svg { width: 18px; height: 18px; background: var(--rail); padding: 2px; box-sizing: content-box; }
-.status-stack {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 8px 12px;
-}
-.status-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.status-front { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
-.risk-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-  padding: 1px 5px;
-  border: 1px solid currentColor;
-}
-.risk-chip b { font-size: 12px; font-weight: 700; line-height: 1; }
-.risk-chip i { width: 7px; height: 7px; background: currentColor; }
-.risk-chip.red { color: var(--red); }
-.risk-chip.orange { color: var(--orange); }
-.status-name {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.status-sep { color: var(--line-4); }
-.status-val { font-size: 14px; white-space: nowrap; }
-.gold { color: var(--gold); }
-.orange { color: var(--orange); }
-.teal { color: var(--teal); }
-.status-total {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 0 14px;
-  background: var(--panel);
-}
-.total-n { font-size: 26px; color: var(--text); }
-
-.directive-failed {
-  padding: 8px 10px;
-  border: 1px solid var(--red);
-  background: color-mix(in srgb, var(--red) 10%, var(--panel));
+.phone-field { display: flex; flex-direction: column; gap: 11px; min-width: 0; }
+.head { display: flex; flex-direction: column; gap: 5px; }
+.kick {
+  color: var(--teal);
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--red);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
 }
-.directive-fail {
+.title { font-size: 34px; }
+.lede { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+
+.directive {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 13px;
+  background:
+    radial-gradient(ellipse 80% 80% at 20% 0%, rgba(255, 214, 66, 0.11), transparent 70%),
+    var(--panel);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, var(--line-3));
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.directive.broken { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 50%, var(--line-3)); }
+.dc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.status { padding: 2px 7px; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.status.teal { background: var(--teal); color: var(--on-gold); }
+.status.red { color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
+.dc-name { font-size: 30px; color: var(--gold); }
+.broken .dc-name { color: var(--red); }
+.dc-rule { margin: 0; color: var(--khaki); font-size: 12px; }
+.dc-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
-  border: 1px dashed color-mix(in srgb, var(--red) 45%, var(--line-3));
-}
-.directive-fail .lbl { color: var(--muted); }
-
-.failure {
-  display: flex;
-  flex-direction: column;
   gap: 8px;
-  padding: 14px;
-  border: 1px solid var(--red);
-  background: color-mix(in srgb, var(--red) 8%, var(--panel));
+  padding-top: 7px;
+  border-top: 1px solid var(--line-2);
+  color: var(--muted);
+  font-size: 10px;
 }
-.failure-title { font-size: 22px; color: var(--red); }
-.failure-sub { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--khaki); }
+.mark,
+.mark-pact {
+  min-height: 28px;
+  padding: 0 7px;
+  border: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line-4);
+  color: var(--khaki);
+  font: 700 9px var(--font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.mark.armed,
+.mark-pact.armed { color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
+.strain-line { display: flex; align-items: center; gap: 7px; color: var(--orange); font-size: 11px; }
+.strain-line span { color: var(--muted); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+.sworn { display: flex; flex-direction: column; gap: 6px; }
+.sworn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 9px;
+  min-height: 34px;
+  padding: 4px 8px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+.sworn-name { display: flex; align-items: baseline; gap: 5px; min-width: 62px; }
+.sworn-name b { font-size: 11px; }
+.sworn-name i { color: var(--gold); font-size: 8px; font-style: normal; letter-spacing: 0.08em; text-transform: uppercase; }
+.none { color: var(--dim); font-size: 11px; }
+.pact-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 1px 5px 1px 6px;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line-3);
+  font-size: 10px;
+}
+.pact-chip.failed { opacity: 0.55; }
+.pact-chip :deep(.pips i) { width: 11px; height: 11px; }
+.void { color: var(--red); font-size: 8px; font-weight: 800; text-transform: uppercase; }
+.host-note { display: flex; flex-direction: column; gap: 3px; }
+.host-note p { margin: 0; color: var(--muted); font-size: 11px; }
 </style>

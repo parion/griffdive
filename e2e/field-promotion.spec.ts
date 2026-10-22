@@ -53,7 +53,7 @@ test('joiners settle their Field Promotion before they dive; a forked-out diver 
 
   // The returning diver is recognized: their own kit, no promotion to settle.
   await joinAs(pageR, code, 'Fallen')
-  await expect(pageR.getByText('(you)')).toBeVisible()
+  await expect(pageR.locator('.dock .chip.self')).toContainText('Fallen')
   await expect(pageR.getByRole('dialog', { name: 'Field Promotion' })).toHaveCount(0)
 
   // A new joiner is held at the gate and claims the one kit left.
@@ -63,7 +63,7 @@ test('joiners settle their Field Promotion before they dive; a forked-out diver 
   await expect(gate.getByRole('button', { name: /^Claim .+'s kit/ })).toHaveCount(1)
   await gate.getByRole('button', { name: /^Claim Other's kit: UAV Recon/ }).click()
   await expect(gate).toBeHidden()
-  await expect(pageC.getByRole('heading', { name: 'Wheel of Adversity' })).toBeVisible()
+  await expect(pageC.locator('.call')).toBeVisible()
 
   // No kits remain, so the next joiner takes their one promotion pick.
   await joinAs(pageP, code, 'Picker')
@@ -72,9 +72,9 @@ test('joiners settle their Field Promotion before they dive; a forked-out diver 
   await expect(gateP.getByRole('button', { name: /^Claim .+'s kit/ })).toHaveCount(0)
   await expect(gateP.getByText('No kits on the field')).toBeVisible()
   await gateP.getByRole('button', { name: /^Promotion picks/ }).click()
-  await gateP.getByRole('button', { name: /^Claim .+ tier/ }).first().click()
+  await gateP.getByRole('radio').first().click()
   await expect(gateP).toBeHidden()
-  await expect(pageR.locator('.diver-chip')).toHaveCount(4)
+  await expect(pageR.locator('.dock .chip')).toHaveCount(4)
 
   await returning.close()
   await claimer.close()

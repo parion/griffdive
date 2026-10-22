@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { dismissWarbondIntro, expectJoinerLanded } from './helpers'
 
-test('phone host moderation: tap a squadmate, hand over or kick', async ({ browser }) => {
+test('phone host moderation: open the squad, hand over or kick', async ({ browser }) => {
   const contextA = await browser.newContext({ viewport: { width: 390, height: 844 } })
   const contextB = await browser.newContext({ viewport: { width: 390, height: 844 } })
   const pageA = await contextA.newPage()
@@ -19,14 +19,21 @@ test('phone host moderation: tap a squadmate, hand over or kick', async ({ brows
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
 
-  // The host's phone squad bar offers moderation on the joiner (not self).
-  const duo = pageA.getByRole('button', { name: /Duo: / })
-  await expect(duo).toBeVisible()
-  await duo.click()
-  await expect(pageA.getByRole('dialog', { name: 'Moderate diver' })).toBeVisible()
-  await expect(pageA.getByRole('button', { name: 'Make host' })).toBeVisible()
+  // The host's phone squad sheet offers moderation on the joiner (not self).
+  await pageA.getByRole('button', { name: 'Squad' }).click()
+  const squad = pageA.getByRole('dialog', { name: 'Squad' })
+  await expect(squad).toBeVisible()
+  await squad.getByRole('button', { name: 'Make host' }).click()
 
-  // Hand host over — the joiner's bar now offers moderation, the host's does not.
-  await pageA.getByRole('button', { name: 'Make host' }).click()
-  await expect(pageB.getByRole('button', { name: /Host: / })).toBeVisible()
+  // Hand host over — the joiner's sheet now offers moderation, the old host's
+  // no longer does.
+  await pageB.getByRole('button', { name: 'Squad' }).click()
+  const squadB = pageB.getByRole('dialog', { name: 'Squad' })
+  await expect(squadB.getByRole('button', { name: 'Kick diver' })).toBeVisible()
+  await pageA.keyboard.press('Escape')
+  await pageA.getByRole('button', { name: 'Squad' }).click()
+  await expect(pageA.getByRole('dialog', { name: 'Squad' }).getByRole('button', { name: /^(Make host|Kick diver)$/ })).toHaveCount(0)
+
+  await contextA.close()
+  await contextB.close()
 })
