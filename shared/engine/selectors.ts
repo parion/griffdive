@@ -41,7 +41,7 @@ import { catchUpOpsBehind, startingItemIds } from './progression'
 import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, bargainKindOf, rollBargainShelf, rollBonus, rollCeiling, rollRewardOffer, rollRewardOptions, topTierOf, valorOf } from './rewards'
 import type { BargainSlot, RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
-import type { BargainDeal, BargainSlotKind, CrusadeMode, DiveState, DivePhase, DiverState, MissionOutcome, RewardTier } from './types'
+import type { BargainDeal, BargainSlotKind, CrusadeMode, DiveState, DivePhase, DiverState, MajorOrderPlanet, MissionOutcome, RewardTier } from './types'
 import { eligibleMisfortunes, eligibleStrains, frontById, strainById } from './wheel'
 
 // A completed run is tracked by its full draw — misfortune, front and strain —
@@ -81,6 +81,17 @@ export function majorOrderFronts(state: DiveState): readonly Front[] {
   }
   const pool = FRONTS.filter(front => ids.includes(front.id))
   return pool.length > 0 ? pool : FRONTS
+}
+
+// The MO planet(s) the drawn front points at. The wheel rolls a faction, but
+// the order is fought on planets; the card lists them all, and the front pin
+// names the one(s) on the rolled front. A manual pick or a planet-less kill
+// order has no planet metadata, so this stays empty.
+export function majorOrderPlanetsForFront(state: DiveState): MajorOrderPlanet[] {
+  if (!state.frontId || !state.majorOrder?.planets?.length) {
+    return []
+  }
+  return state.majorOrder.planets.filter(planet => planet.front === state.frontId)
 }
 
 export function currentStrain(state: DiveState): Strain | null {

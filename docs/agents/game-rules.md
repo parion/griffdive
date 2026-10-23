@@ -178,7 +178,10 @@ narrows that draw to the live war's front(s) — see Operation layer.
 Griffdive tracks the live Helldivers 2 **Major Order** without ever fetching from the engine. The
 host sets the operation's MO before its first spin (`SET_MAJOR_ORDER`, host-only; valid only in the
 `spin` phase while `frontId === null`): it **pins the operation's front draw** to the MO's
-front(s). The spin still randomizes within them, so a multi-front order never locks one front; a
+**active** front(s). A front is active only while at least one of its MO planets still needs
+liberation and can actually be fought; a multi-faction, planet-based order therefore contributes
+just the fronts that are open now, and a gated planet (one behind another capture) adds its faction
+only once it opens. The spin still randomizes within them, so a multi-front order never locks one front; a
 single-front order does, and its front reroll is refused. A chosen order draws **no strain** — the
 front *is* the order, so there is no random subfaction and no operation-long subfaction risk. The
 front locks in for the operation exactly as before. **A chosen order is a run-long commitment:** it
@@ -204,33 +207,43 @@ The Bridge's live-MO band carries a one-click **Start campaign** CTA that seeds 
 with the live order before its first spin (the same `SET_MAJOR_ORDER` the picker sends), so a diver
 can drop straight onto the war front; the manual picker remains the no-order fallback.
 
-The MO's front(s) and display metadata (`title`, `planets` — index, name, front and current
-liberation % — and `expiresAt`) live on `state.majorOrder`; the metadata is pass-through for the
-in-game-style panel (`MajorOrderCard`) and syncs with the snapshot. The card renders the pinned
-front(s) by name and the planets, but **not** the `title`: the in-game order text is long and says
-nothing about the match, so Griffdive omits it (the title still rides the wheel's tooltip). **The
-engine is pure** — it consumes a front list it was handed and never knows about HTTP. **The live
-API (Phase B) only fills the host's choice:** a cached server proxy
-(`server/api/war/major-order.get.ts` → `server/utils/major-order.ts`) normalizes the community war
-API — `api.helldivers2.dev/api/v1/assignments` joined to
-`helldiverstrainingmanual.com/api/v1/war/campaign` for planet→faction and liberation — into a
-`MajorOrderSelection` the picker offers as one click (`useMajorOrder`, refetched on mount). The
+The MO's active front(s) and display metadata (`title`, `planets` — index, name, front, current
+liberation % and whether the planet is currently reachable — and `expiresAt`) live on
+`state.majorOrder`; the metadata is pass-through for the in-game-style panel (`MajorOrderCard`) and
+syncs with the snapshot. The card renders the pinned front(s) by name and the planets, but **not**
+the `title`: the in-game order text is long and says nothing about the match, so Griffdive omits it
+(the title still rides the wheel's tooltip). It marks a gated planet "Not available yet" and the
+wheel's front pin names the planet(s) on the rolled front (`majorOrderPlanetsForFront`), so a
+faction result tells the squad which world to drop on. **The engine is pure** — it consumes a front
+list it was handed and never knows about HTTP. **The live API (Phase B) only fills the host's
+choice:** a cached server proxy (`server/api/war/major-order.get.ts` →
+`server/utils/major-order.ts`) normalizes the community war API —
+`api.helldivers2.dev/api/v1/assignments` joined to
+`helldiverstrainingmanual.com/api/v1/war/campaign` for planet→faction and liberation, plus
+`api.helldivers2.dev/api/v1/planets` for current owner and warp links — into a
+`MajorOrderSelection` the picker offers as one click (`useMajorOrder`, refetched on mount). A
+target planet is reachable when its own warp-link list contains a Super Earth-held world (a defense
+is always playable). A liberated target (100%) or one still gated behind another capture contributes
+no front, while a faction-only kill task still names its front directly. If the planet roster fetch
+fails, the proxy falls back to every incomplete target instead of blanking the order. The
 chooser renders inside the faction card's pre-roll slot — the front is drawn with the first spin
 anyway, so that space is idle before the roll; the front card then carries the MO tag for the
 operation. Offline/static builds, a failed fetch, or the `GRIFFDIVE_DISABLE_MO_API=1` kill switch
 all fall back to the manual picker. The proxy caches for 10 minutes, retries once with a 6s
 timeout, and serves its last good order (stale) when a refresh fails — it never caches a failure. It
 answers `{ order, status }` — `active`, `none` (the API replied with an empty list), `no-front` (an
-order exists but names no front we can resolve — e.g. sample gathering or a faction-less kill order),
+order exists but has no active front — no resolvable target, or every target is gated or already
+liberated, e.g. sample gathering or a faction-less kill order),
 or `unavailable` (a failed or garbled fetch) — so the picker can tell "No active Major Order" and
-"doesn't target a front" apart from "Failed to retrieve active MO". Task payloads are decoded **by
+"has no active front yet" apart from "Failed to retrieve active MO". Task payloads are decoded **by
 label**: `valueTypes[i]` labels `values[i]` (community reverse-engineered; 1 = faction, 12 = planet).
 A planet slot resolves through the campaign join; otherwise a faction slot (2 Terminids, 3 Automatons,
 4 Illuminate) names the front directly, so enemy-focused kill orders — including cross-faction ones —
 resolve with no enemy table. Anything unrecognized contributes no front and degrades to the manual
 picker. Each task shape that names no front is
 logged once per process (`[major-order] task names no front: …`, visible in `fly logs`), so a new order
-type surfaces without flooding the stream.
+type surfaces without flooding the stream; a known planet that is merely gated or already liberated
+is an availability fact, not a decoder gap, so it is not logged.
 
 ### Team layer — faction strains
 

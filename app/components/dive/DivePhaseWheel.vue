@@ -8,6 +8,7 @@ import {
   currentFront,
   currentMisfortune,
   currentStrain,
+  majorOrderPlanetsForFront,
   misfortuneDecision,
   misfortuneStrandedDivers,
   strainDecision,
@@ -40,6 +41,8 @@ const pinnedFronts = computed(() =>
   (props.state.majorOrder?.fronts ?? [])
     .map(id => frontById(id))
     .filter((entry): entry is NonNullable<typeof entry> => entry !== null))
+const frontPlanetsLabel = computed(() =>
+  majorOrderPlanetsForFront(props.state).map(planet => planet.name).join(' / '))
 const strain = computed(() => currentStrain(props.state))
 const strainImage = computed(() => (strain.value ? strainImageUrl(strain.value.id) : undefined))
 const decision = computed(() => misfortuneDecision(props.state))
@@ -166,16 +169,28 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
       >
         <span class="cap">Front locked</span>
         <b>{{ front.displayName }}</b>
+        <span
+          v-if="frontPlanetsLabel"
+          class="front-planet"
+        >· {{ frontPlanetsLabel }}</span>
         <span v-if="strain && state.strainAccepted">· {{ strain.name }}</span>
       </div>
-      <div
+      <button
         v-else-if="state.majorOrder"
         class="front-pin"
+        type="button"
+        :disabled="!canControl || Boolean(state.frontId)"
+        :title="canControl && !state.frontId ? 'Change the Major Order' : undefined"
+        @click="moOpen = true"
       >
         <span class="cap">Major Order pinned</span>
         <b>{{ pinnedFronts.map(entry => entry.displayName).join(' · ') }}</b>
         <span v-if="strain && state.strainAccepted">· {{ strain.name }}</span>
-      </div>
+        <span
+          v-if="canControl && !state.frontId"
+          class="mo-pin-change"
+        >Change</span>
+      </button>
     </div>
 
     <div class="decision-side">
@@ -529,6 +544,23 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   font-size: 12px;
 }
 .front-pin b { color: var(--red); }
+button.front-pin {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+button.front-pin:disabled { cursor: default; }
+button.front-pin:not(:disabled):hover b { color: var(--gold); }
+.front-planet { color: var(--gold); font-weight: 700; }
+.mo-pin-change {
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .decision-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 
 .directive-card {

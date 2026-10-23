@@ -160,3 +160,109 @@ describe('unresolvedTasks', () => {
     expect(unresolvedTasks([], CAMPAIGN)).toEqual([])
   })
 })
+
+// The live Liberty Day order (2026-10-23): one task per faction, but only the
+// two fronts whose planets are reachable are actually playable. Zea Rugosia is
+// gated behind Haldus, so the Illuminate front must wait.
+const EDGE_TASKS = [
+  { type: 11, values: [1, 1, 261], valueTypes: [3, 11, 12] },
+  { type: 11, values: [1, 1, 75], valueTypes: [3, 11, 12] },
+  { type: 11, values: [1, 1, 7], valueTypes: [3, 11, 12] },
+]
+
+const EDGE_ASSIGNMENT = assignment({ tasks: EDGE_TASKS })
+
+const EDGE_CAMPAIGN = [
+  { planetIndex: 261, name: 'Fury', faction: 'Automatons', percentage: 99.8, defense: false },
+  { planetIndex: 75, name: 'Esker', faction: 'Terminids', percentage: 2.2, defense: false },
+  { planetIndex: 7, name: 'Zea Rugosia', faction: 'Illuminates', percentage: 0, defense: false },
+]
+
+const EDGE_WAR = [
+  { index: 261, currentOwner: 'Automaton', waypoints: [154, 158, 242], disabled: false },
+  { index: 75, currentOwner: 'Terminids', waypoints: [122, 123, 124], disabled: false },
+  { index: 7, currentOwner: 'Illuminate', waypoints: [178], disabled: false },
+  { index: 154, currentOwner: 'Humans', waypoints: [107, 155], disabled: false },
+  { index: 124, currentOwner: 'Humans', waypoints: [269], disabled: false },
+  { index: 178, currentOwner: 'Illuminate', waypoints: [135], disabled: false },
+]
+
+describe('active fronts (multi-faction planet order)', () => {
+  it('pins only the fronts the war can actually be fought on', () => {
+    const order = normalizeMajorOrder([EDGE_ASSIGNMENT], EDGE_CAMPAIGN, EDGE_WAR)
+    expect(order?.fronts).toEqual(['automatons', 'terminids'])
+    expect(order?.planets).toEqual([
+      { index: 261, name: 'Fury', front: 'automatons', liberation: 99.8, available: true },
+      { index: 75, name: 'Esker', front: 'terminids', liberation: 2.2, available: true },
+      { index: 7, name: 'Zea Rugosia', front: 'illuminate', liberation: 0, available: false },
+    ])
+  })
+
+  it('drops a liberated front and adds a gated front when its warp link opens', () => {
+    const campaign = EDGE_CAMPAIGN.map(planet =>
+      planet.planetIndex === 261 ? { ...planet, percentage: 100 } : planet)
+    expect(normalizeMajorOrder([EDGE_ASSIGNMENT], campaign, EDGE_WAR)?.fronts)
+      .toEqual(['terminids'])
+
+    const war = EDGE_WAR.map(planet =>
+      planet.index === 178 ? { ...planet, currentOwner: 'Humans' } : planet)
+    expect(normalizeMajorOrder([EDGE_ASSIGNMENT], campaign, war)?.fronts)
+      .toEqual(['terminids', 'illuminate'])
+  })
+
+  it('keeps a front while any of its planets is still active', () => {
+    const tasks = [
+      { type: 11, values: [1, 1, 198], valueTypes: [3, 11, 12] },
+      { type: 11, values: [1, 1, 217], valueTypes: [3, 11, 12] },
+    ]
+    const campaign = [
+      { planetIndex: 198, name: 'Marfark', faction: 'Automatons', percentage: 100, defense: false },
+      { planetIndex: 217, name: 'Vandalon IV', faction: 'Automatons', percentage: 12, defense: false },
+    ]
+    const war = [
+      { index: 198, currentOwner: 'Automaton', waypoints: [154], disabled: false },
+      { index: 217, currentOwner: 'Automaton', waypoints: [154], disabled: false },
+      { index: 154, currentOwner: 'Humans', waypoints: [], disabled: false },
+    ]
+    expect(normalizeMajorOrder([assignment({ tasks })], campaign, war)?.fronts)
+      .toEqual(['automatons'])
+  })
+
+  it('falls back to every incomplete target when the planet roster is unavailable', () => {
+    const order = normalizeMajorOrder([EDGE_ASSIGNMENT], EDGE_CAMPAIGN)
+    expect(order?.fronts).toEqual(['automatons', 'terminids', 'illuminate'])
+    expect(order?.planets?.every(planet => planet.available === undefined)).toBe(true)
+  })
+
+  it('treats a defense as playable even without a friendly warp link', () => {
+    const tasks = [{ type: 11, values: [1, 1, 261], valueTypes: [3, 11, 12] }]
+    const campaign = [
+      { planetIndex: 261, name: 'Fury', faction: 'Automatons', percentage: 100, defense: true },
+    ]
+    const war = [{ index: 261, currentOwner: 'Automaton', waypoints: [158], disabled: false }]
+    const order = normalizeMajorOrder([assignment({ tasks })], campaign, war)
+    expect(order?.fronts).toEqual(['automatons'])
+    expect(order?.planets?.[0]?.available).toBe(true)
+  })
+
+  it('excludes a disabled target', () => {
+    const war = EDGE_WAR.map(planet =>
+      planet.index === 75 ? { ...planet, disabled: true } : planet)
+    expect(normalizeMajorOrder([EDGE_ASSIGNMENT], EDGE_CAMPAIGN, war)?.fronts)
+      .toEqual(['automatons'])
+  })
+
+  it('keeps faction-only kill order fronts regardless of planet availability', () => {
+    const tasks = [
+      { type: 3, values: [2, 0, 100], valueTypes: [1, 2, 3] },
+      { type: 3, values: [3, 0, 100], valueTypes: [1, 2, 3] },
+    ]
+    expect(normalizeMajorOrder([assignment({ tasks })], EDGE_CAMPAIGN, EDGE_WAR)?.fronts)
+      .toEqual(['terminids', 'automatons'])
+  })
+
+  it('does not flag a planet task the war roster knows about', () => {
+    const tasks = [{ type: 11, values: [1, 1, 261], valueTypes: [3, 11, 12] }]
+    expect(unresolvedTasks([assignment({ tasks })], [], EDGE_WAR)).toEqual([])
+  })
+})

@@ -7,6 +7,7 @@ import {
   currentFront,
   currentMisfortune,
   currentStrain,
+  majorOrderPlanetsForFront,
   misfortuneDecision,
   misfortuneStrandedDivers,
   strainDecision,
@@ -40,6 +41,8 @@ const pinnedFronts = computed(() =>
   (props.state.majorOrder?.fronts ?? [])
     .map(id => frontById(id))
     .filter((entry): entry is NonNullable<typeof entry> => entry !== null))
+const frontPlanetsLabel = computed(() =>
+  majorOrderPlanetsForFront(props.state).map(planet => planet.name).join(' / '))
 const decision = computed(() => misfortuneDecision(props.state))
 const strainCall = computed(() => strainDecision(props.state))
 const hostName = computed(() =>
@@ -246,14 +249,24 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         v-else-if="front && !held"
         class="front-pin"
       >
-        Front locked · <b>{{ front.displayName }}</b>
+        Front locked · <b>{{ front.displayName }}</b><span
+          v-if="frontPlanetsLabel"
+          class="front-planet"
+        > · {{ frontPlanetsLabel }}</span>
       </div>
-      <div
+      <button
         v-else-if="state.majorOrder"
         class="front-pin"
+        type="button"
+        :disabled="!canControl || Boolean(state.frontId)"
+        :title="canControl && !state.frontId ? 'Change the Major Order' : undefined"
+        @click="moOpen = true"
       >
-        Major Order · <b>{{ pinnedFronts.map(entry => entry.displayName).join(' · ') }}</b>
-      </div>
+        Major Order · <b>{{ pinnedFronts.map(entry => entry.displayName).join(' · ') }}</b><span
+          v-if="canControl && !state.frontId"
+          class="mo-pin-change"
+        > · Change</span>
+      </button>
     </div>
 
     <template v-if="!canControl">
@@ -410,6 +423,23 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
 }
 .front-pin { color: var(--muted); font-size: 11px; }
 .front-pin b { color: var(--red); }
+button.front-pin {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.front-pin:disabled { cursor: default; }
+button.front-pin:not(:disabled):hover b { color: var(--gold); }
+.front-planet { color: var(--gold); font-weight: 700; }
+.mo-pin-change {
+  color: var(--gold);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .wait-note { display: flex; flex-direction: column; gap: 4px; }
 .wait-note p { margin: 0; color: var(--muted); font-size: 12px; }
 </style>
