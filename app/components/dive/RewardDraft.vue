@@ -540,6 +540,7 @@ const kickerText = computed(() => {
   transition: transform var(--dur-med) var(--ease-out), filter var(--dur-med), box-shadow var(--dur-med), opacity var(--dur-med);
 }
 .loot-slot { --reveal-cut: 12px; }
+.loot-cross { --cross-gap: 18px; }
 .loot-card[data-tier='C'] { --tier: var(--tier-c); }
 .loot-card[data-tier='B'] { --tier: var(--tier-b); }
 .loot-card[data-tier='A'] { --tier: var(--tier-a); }
@@ -701,6 +702,7 @@ const kickerText = computed(() => {
 
 @media (max-width: 720px) {
   .loot { gap: 12px; }
+  .loot-cross { --cross-gap: 12px; }
   .loot-title { font-size: 38px; }
   .loot-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .loot-card {

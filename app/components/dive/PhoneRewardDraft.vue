@@ -169,6 +169,7 @@ const pickedName = computed(() =>
     <LibertyCrossBand
       v-if="crossOption"
       :key="offerKey"
+      class="phone-cross"
       :pool="rewardPool"
       :owned-ids="ownedIds"
       :delay="instantReveal ? 0 : cues.get(crossOption.optionId)!.start"
@@ -278,6 +279,7 @@ const pickedName = computed(() =>
 
 <style scoped>
 .phone-loot { display: flex; flex-direction: column; gap: 11px; min-width: 0; }
+.phone-cross { --cross-gap: 11px; }
 .head { display: flex; flex-direction: column; gap: 5px; }
 .kick {
   color: var(--gold);

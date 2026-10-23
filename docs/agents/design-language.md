@@ -181,7 +181,9 @@ band's claim button then shows the chosen name with "Change pick".
 right** (`revealTimeline` in `app/utils/rewardReveal.ts`), with drama scaled by tier: C deals in, B
 rises with a faint flash, A drops with a flash, sheen and shockwave ring, S flickers a charge in its
 empty slot then slams in with a double ring, a jolt and an ambient glow. **Liberty's Cross unfurls
-last** as the finale (its band's beam → open → crest). Every option's Valor pin is timed
+last** as the finale and stays a surprise until then: the band takes no space (no placeholder)
+until its suspense beat, when its row folds open and pushes the cards down, then the beam → open →
+crest plays. Hosts set `--cross-gap` to their flex gap so the collapsed row leaves no double gap. Every option's Valor pin is timed
 (`pinDelay`) to strike the line as its card lands; S/S+ pins flare. Pacing lives in
 `REVEAL_BEATS`. A draft that is already resolved on mount shows settled, and nothing gates input —
 cards are pickable from the first frame.
