@@ -3,7 +3,7 @@ import { ITEMS_BY_ID, WARBONDS } from '../data/catalog'
 import { MAX_DIFFICULTY, MIN_DIFFICULTY, STRAIN_RISK, conditionRiskAt, directiveValorAt, directiveWeightFor } from './config'
 import { itemPrice, oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { actingDiverIds, activeMisfortune, activeStrain, armoryRules, awaitingDiverIds, bargainLamp, bargainShelfFor, bargainSlotKinds, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
+import { actingDiverIds, activeMisfortune, activeStrain, armoryRules, awaitingDiverIds, bargainLamp, bargainShelfFor, bargainSlotKinds, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, majorOrderPlanetsForFront, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
 import { isPactSelectable, rollPactOffer } from './pacts'
 import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -461,5 +461,27 @@ describe('squad-only pacts', () => {
     const offeredInSquad = Array.from({ length: 300 }, (_, seed) => rollPactOffer(seed + 1, null, 10, 2))
       .some(offer => offer.some(pact => pact.id === 'deadWeight'))
     expect(offeredInSquad).toBe(true)
+  })
+})
+
+describe('majorOrderPlanetsForFront', () => {
+  it('names the MO planet(s) on the drawn front', () => {
+    const base = createDiveState({ variant: 'medium' }, 'host', 'Griffin')
+    const state: DiveState = {
+      ...base,
+      frontId: 'automatons',
+      majorOrder: {
+        fronts: ['automatons', 'terminids'],
+        planets: [
+          { index: 261, name: 'Fury', front: 'automatons', liberation: 99.8, available: true },
+          { index: 75, name: 'Esker', front: 'terminids', liberation: 2.2, available: true },
+        ],
+      },
+    }
+    expect(majorOrderPlanetsForFront(state).map(planet => planet.name)).toEqual(['Fury'])
+    expect(majorOrderPlanetsForFront({ ...state, frontId: 'terminids' }).map(planet => planet.name))
+      .toEqual(['Esker'])
+    expect(majorOrderPlanetsForFront({ ...state, frontId: null })).toEqual([])
+    expect(majorOrderPlanetsForFront({ ...state, majorOrder: null })).toEqual([])
   })
 })

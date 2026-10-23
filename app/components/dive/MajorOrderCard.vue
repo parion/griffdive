@@ -115,6 +115,10 @@ function liberationWidth(value: number): string {
           <div class="mo-planet-body">
             <span class="mo-planet-head">
               <span class="mo-planet-name">{{ planet.name }}</span>
+              <span
+                v-if="planet.available === false && planet.liberation < 100"
+                class="mo-planet-note"
+              >Not available yet</span>
               <span class="mo-planet-pct">{{ planet.liberation.toFixed(1) }}%</span>
             </span>
             <span
@@ -216,6 +220,13 @@ function liberationWidth(value: number): string {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text);
+}
+.mo-planet-note {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .mo-planet-pct { margin-left: auto; font-weight: 700; color: var(--red); }
 

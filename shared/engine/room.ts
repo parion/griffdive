@@ -246,7 +246,13 @@ function sanitizeMajorOrder(raw: unknown): MajorOrderSelection | null {
       if (!planet || typeof planet !== 'object') {
         return []
       }
-      const entry = planet as { index?: unknown, name?: unknown, front?: unknown, liberation?: unknown }
+      const entry = planet as {
+        index?: unknown
+        name?: unknown
+        front?: unknown
+        liberation?: unknown
+        available?: unknown
+      }
       if (typeof entry.front !== 'string' || !known.has(entry.front) || typeof entry.name !== 'string') {
         return []
       }
@@ -255,6 +261,7 @@ function sanitizeMajorOrder(raw: unknown): MajorOrderSelection | null {
         name: entry.name.slice(0, 80),
         front: entry.front as FrontId,
         liberation: clampInt(entry.liberation, 0, 100, 0),
+        ...(typeof entry.available === 'boolean' ? { available: entry.available } : {}),
       }]
     })
   }

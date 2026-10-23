@@ -114,19 +114,26 @@ export interface WheelResult {
 
 // A Major Order is the live war's operation-long commitment, set by the host
 // before the operation's first spin. It pins the operation's front draw to the
-// MO's front(s) — the squad plays where Super Earth needs them — and banks an
-// extra reroll token when the operation completes. The metadata fields are
-// display-only (Phase B fills them from the war API; manual entry leaves them
-// unset). The engine reads `fronts` alone.
+// MO's active front(s) — the squad plays where Super Earth needs them — and
+// banks an extra reroll token when the operation completes. The metadata fields
+// are display-only (Phase B fills them from the war API; manual entry leaves
+// them unset). The engine reads `fronts` alone.
 export interface MajorOrderPlanet {
   index: number
   name: string
   front: FrontId
   // Liberation progress, 0–100, for the order-overview bar.
   liberation: number
+  // Whether the planet is on the front line right now (a warp link from a
+  // Super Earth-held world). Unset when the war feed could not resolve it; the
+  // picker then treats the planet as active.
+  available?: boolean
 }
 
 export interface MajorOrderSelection {
+  // The active fronts: only targets still needing liberation and currently
+  // reachable. A gated planet (behind another capture) does not pin its faction
+  // until it opens. Faction-only kill tasks contribute their front directly.
   fronts: FrontId[]
   // True only for a selection that came from the live war API. The reroll-token
   // carrot pays for playing the actual order, so a manual front pick (live
