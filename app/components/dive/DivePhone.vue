@@ -2,7 +2,7 @@
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { allDiversPicked, bonusFor, bonusWinners, bargainLamp, bargainsClosedReason } from '~~/shared/engine/selectors'
-import type { CrusadeSettings, DiverState, DiveState, MajorOrderSelection, MissionOutcome, MissionReport } from '~~/shared/engine/types'
+import type { DiverState, DiveState, MissionOutcome, MissionReport } from '~~/shared/engine/types'
 import type { SteamLobbyInfo } from '~~/shared/types/messages'
 
 const props = defineProps<{
@@ -28,7 +28,6 @@ const emit = defineEmits<{
   decide: [accepted: boolean]
   decideStrain: [accepted: boolean]
   deal: []
-  setMajorOrder: [order: MajorOrderSelection | null]
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
   lockPacts: [pactIds: string[]]
   preview: [pactIds: string[]]
@@ -42,7 +41,6 @@ const emit = defineEmits<{
   advance: []
   buy: [itemId: string]
   forfeit: [itemId: string]
-  start: [settings: CrusadeSettings]
   kick: [diverId: string]
   transferHost: [diverId: string]
   copyInvite: []
@@ -126,17 +124,8 @@ const operationClimbs = computed(() =>
       </p>
 
       <template v-if="!kicked">
-        <DivePhaseLobby
-          v-if="phase === 'lobby'"
-          :state="state"
-          :self-id="selfId"
-          :can-control="canControl"
-          phone
-          @start="emit('start', $event)"
-        />
-
         <PhoneWheel
-          v-else-if="phase === 'spin' || phase === 'decision' || phase === 'strain' || phase === 'deal'"
+          v-if="phase === 'spin' || phase === 'decision' || phase === 'strain' || phase === 'deal'"
           :state="state"
           :self-id="selfId"
           :can-control="canControl"
@@ -144,7 +133,6 @@ const operationClimbs = computed(() =>
           @decide="emit('decide', $event)"
           @decide-strain="emit('decideStrain', $event)"
           @deal="emit('deal')"
-          @set-major-order="emit('setMajorOrder', $event)"
           @reroll="emit('reroll', $event)"
         />
 

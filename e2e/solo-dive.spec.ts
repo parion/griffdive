@@ -123,7 +123,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeVisible()
 })
 
-test('a live Major Order pins the front for the operation', async ({ page }) => {
+test('a live Major Order chosen at setup pins the front for the run', async ({ page }) => {
   // Deterministic live order: the real war may have none running.
   await page.route('**/api/war/major-order', route => route.fulfill({
     status: 200,
@@ -145,27 +145,24 @@ test('a live Major Order pins the front for the operation', async ({ page }) => 
 
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
+
+  // The front plan is part of the crusade setup, not the call screen.
+  await page.getByRole('button', { name: /^Variant and warbonds/ }).click()
+  const setup = page.getByRole('dialog', { name: 'Variant & warbonds' })
+  // A live order is the default plan, featured with its fronts.
+  const orderPlan = setup.getByRole('radio', { name: /Major Order/ })
+  await expect(orderPlan).toHaveAttribute('aria-checked', 'true')
+  await expect(orderPlan).toContainText('Automatons')
+  // The gated planet does not pin its front until it opens.
+  await expect(orderPlan).not.toContainText('Illuminate')
+  await setup.getByRole('button', { name: /^Close/ }).first().click()
+  // Its name contains "warbonds": let it close before the dive's intro check.
+  await expect(setup).toBeHidden()
   await page.getByRole('button', { name: 'Solo drop' }).click()
   await dismissWarbondIntro(page)
 
-  // The live order waits behind the pin control on the call screen.
-  await page.getByRole('button', { name: /Major Order.*Pin a front/ }).click()
-  const picker = page.getByRole('dialog', { name: 'Major Order' })
-  await expect(picker.getByText('Marfark')).toBeVisible()
-  // The gated planet stays on the overview but does not pin its front.
-  await expect(picker.getByText('Zea Rugosia')).toBeVisible()
-  await expect(picker.getByText('Not available yet')).toBeVisible()
-  await picker.getByRole('button', { name: /Play this order/ }).click()
-  await expect(picker).toBeHidden()
+  await expect(page.locator('.front-pin')).toContainText('Major Order pinned')
   await expect(page.locator('.front-pin')).toContainText('Automatons')
-
-  // The pinned pin is the host's way back in: the live order can be re-read as
-  // the war moves (another front completes, a gated planet opens).
-  await page.locator('.front-pin').click()
-  const pinnedPicker = page.getByRole('dialog', { name: 'Major Order' })
-  await expect(pinnedPicker.getByRole('button', { name: 'Change' })).toBeVisible()
-  await pinnedPicker.getByRole('button', { name: 'Close' }).click()
-  await expect(pinnedPicker).toBeHidden()
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await expect(page.locator('.front-pin')).toContainText('Automatons')
@@ -205,7 +202,7 @@ test('the Bridge campaign CTA seeds a dive with the live order already pinned', 
   await expect(page.locator('.front-pin')).toContainText('Marfark')
 })
 
-test('a manual faction pick pins the front without a Major Order tag', async ({ page }) => {
+test('a faction locked at setup pins the front without a Major Order tag', async ({ page }) => {
   // Force the no-order state so the manual prompt is deterministic.
   await page.route('**/api/war/major-order', route => route.fulfill({
     status: 200,
@@ -215,15 +212,22 @@ test('a manual faction pick pins the front without a Major Order tag', async ({ 
 
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')
+
+  await page.getByRole('button', { name: /^Variant and warbonds/ }).click()
+  const setup = page.getByRole('dialog', { name: 'Variant & warbonds' })
+  // With no order running, the Major Order plan can't be chosen.
+  await expect(setup.getByText('No active Major Order')).toBeVisible()
+  await expect(setup.getByRole('radio', { name: /Major Order/ })).toBeDisabled()
+  await setup.getByRole('radio', { name: /Lock a faction/ }).click()
+  await setup.getByRole('group', { name: 'Locked faction' })
+    .getByRole('button', { name: 'Automatons', exact: true }).click()
+  await setup.getByRole('button', { name: /^Close/ }).first().click()
+  // Its name contains "warbonds": let it close before the dive's intro check.
+  await expect(setup).toBeHidden()
   await page.getByRole('button', { name: 'Solo drop' }).click()
   await dismissWarbondIntro(page)
 
-  await page.getByRole('button', { name: /Major Order.*Pin a front/ }).click()
-  const picker = page.getByRole('dialog', { name: 'Major Order' })
-  await expect(picker.getByText(/No active Major Order/)).toBeVisible()
-  await picker.getByRole('group', { name: 'Major Order front' })
-    .getByRole('button', { name: 'Automatons', exact: true }).click()
-  await expect(picker).toBeHidden()
+  await expect(page.locator('.front-pin')).toContainText('Faction locked')
   await expect(page.locator('.front-pin')).toContainText('Automatons')
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()

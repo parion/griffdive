@@ -68,6 +68,11 @@ export const MAJOR_ORDER_REROLL_BONUS = 1
 // a manual front pick is a preference with no risk and no carrot.
 export const MAJOR_ORDER_RISK = 2
 
+// A squad that neither follows the order nor locks a front rolls a fresh one
+// every operation: it can't build for the enemy before the spin, so it carries
+// a small fixed risk on every mission of the run.
+export const FRONT_ROLL_RISK = 1
+
 // The hard/suicide starts pick one of two mutually exclusive modes. The SEAF
 // Support Package is the assisted ride: extra gear plus a small flat Valor bump
 // on every mission. Super Penance is the hellish one: no support gear and a

@@ -14,7 +14,7 @@ import {
   strainDecision,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
-import type { DiverState, DiveState, MajorOrderSelection, RewardTier } from '~~/shared/engine/types'
+import type { DiverState, DiveState, RewardTier } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -28,7 +28,6 @@ const emit = defineEmits<{
   decide: [accepted: boolean]
   decideStrain: [accepted: boolean]
   deal: []
-  setMajorOrder: [order: MajorOrderSelection | null]
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
 }>()
 
@@ -99,7 +98,6 @@ const waitingForStrain = computed(() =>
 const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'))
 const rerollFront = computed(() => canRerollWheel(props.state, 'front'))
 const rerollStrain = computed(() => canRerollWheel(props.state, 'strain'))
-const moOpen = ref(false)
 
 const cardNote = computed(() => {
   if (!misfortune.value) {
@@ -143,28 +141,8 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
         @spin="emit('spin')"
       />
 
-      <button
-        v-if="!state.frontId && !state.majorOrder && canControl"
-        class="mo-open"
-        type="button"
-        @click="moOpen = true"
-      >
-        <span class="cap">Major Order</span>
-        <span>Pin a front for this operation</span>
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          aria-hidden="true"
-        >
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
-      </button>
       <div
-        v-else-if="front && !drawing"
+        v-if="front && !drawing"
         class="front-pin"
       >
         <span class="cap">Front locked</span>
@@ -175,22 +153,14 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
         >· {{ frontPlanetsLabel }}</span>
         <span v-if="strain && state.strainAccepted">· {{ strain.name }}</span>
       </div>
-      <button
+      <div
         v-else-if="state.majorOrder"
         class="front-pin"
-        type="button"
-        :disabled="!canControl || Boolean(state.frontId)"
-        :title="canControl && !state.frontId ? 'Change the Major Order' : undefined"
-        @click="moOpen = true"
       >
-        <span class="cap">Major Order pinned</span>
+        <span class="cap">{{ state.majorOrder.live ? 'Major Order pinned' : 'Faction locked' }}</span>
         <b>{{ pinnedFronts.map(entry => entry.displayName).join(' · ') }}</b>
         <span v-if="strain && state.strainAccepted">· {{ strain.name }}</span>
-        <span
-          v-if="canControl && !state.frontId"
-          class="mo-pin-change"
-        >Change</span>
-      </button>
+      </div>
     </div>
 
     <div class="decision-side">
@@ -457,19 +427,6 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
         </p>
       </div>
     </div>
-
-    <AppDialog
-      v-model:open="moOpen"
-      title="Major Order"
-      description="Pin the operation's front to the live war order, or pick one manually."
-      size="md"
-    >
-      <MajorOrderPicker
-        :state="state"
-        :can-control="canControl"
-        @select="(order) => { emit('setMajorOrder', order); moOpen = false }"
-      />
-    </AppDialog>
   </section>
 </template>
 
@@ -515,25 +472,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   gap: 14px;
   min-width: 0;
 }
-.mo-open,
 .front-pin { width: min(100%, 420px); }
-.mo-open {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 0;
-  background: var(--rail);
-  box-shadow: inset 0 0 0 1px var(--line-2);
-  color: var(--khaki);
-  font: 600 11px var(--font-body);
-  letter-spacing: 0.06em;
-  text-align: left;
-  cursor: pointer;
-}
-.mo-open .cap { margin-right: auto; color: var(--gold); }
-.mo-open:hover { color: var(--text); box-shadow: inset 0 0 0 1px var(--line-5); }
 .front-pin {
   display: flex;
   align-items: baseline;
@@ -544,23 +483,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   font-size: 12px;
 }
 .front-pin b { color: var(--red); }
-button.front-pin {
-  padding: 0;
-  border: 0;
-  background: none;
-  font-family: inherit;
-  cursor: pointer;
-}
-button.front-pin:disabled { cursor: default; }
-button.front-pin:not(:disabled):hover b { color: var(--gold); }
 .front-planet { color: var(--gold); font-weight: 700; }
-.mo-pin-change {
-  color: var(--gold);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
 .decision-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 
 .directive-card {

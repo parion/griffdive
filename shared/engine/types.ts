@@ -12,9 +12,17 @@ export type CrusadeVariant = 'medium' | 'hard' | 'suicide'
 // stake). Undefined on the medium start, which offers neither.
 export type CrusadeMode = 'seaf' | 'penance'
 
+// How every operation's front is chosen, locked at setup for the whole run:
+// 'majorOrder' follows the live war order and 'locked' pins the one front the
+// host picked (both ride state.majorOrder, live or not), while 'rolled' draws
+// a fresh front with each operation's first spin. Absent on runs started
+// before the setup-time choice: those roll without the rolled-front risk.
+export type FrontPlan = 'majorOrder' | 'locked' | 'rolled'
+
 export interface CrusadeSettings {
   variant: CrusadeVariant
   mode?: CrusadeMode
+  front?: FrontPlan
 }
 
 // Every phase a dive can sit in, in mission order. The array is the runtime
@@ -112,12 +120,12 @@ export interface WheelResult {
   misfortuneId: string
 }
 
-// A Major Order is the live war's operation-long commitment, set by the host
-// before the operation's first spin. It pins the operation's front draw to the
-// MO's active front(s) — the squad plays where Super Earth needs them — and
-// banks an extra reroll token when the operation completes. The metadata fields
-// are display-only (Phase B fills them from the war API; manual entry leaves
-// them unset). The engine reads `fronts` alone.
+// A Major Order is the live war's run-long commitment, chosen at crusade setup.
+// It pins every operation's front draw to the MO's active front(s) — the squad
+// plays where Super Earth needs them — and banks an extra reroll token when each
+// operation completes. The metadata fields are display-only (Phase B fills them
+// from the war API; a manual front lock leaves them unset). The engine reads
+// `fronts` alone.
 export interface MajorOrderPlanet {
   index: number
   name: string
@@ -196,10 +204,10 @@ export interface DiveState {
   // `strainAccepted` so the call can be answered before the misfortune without
   // the phase having to carry it.
   strainDecided: boolean
-  // The operation's Major Order commitment, host-set before the first spin: it
-  // pins the front draw to the MO's front(s) for the operation and banks an
-  // extra reroll token on completion. null = no Major Order. Chosen fresh each
-  // operation; a failure restart keeps it with the locked front.
+  // The run's front pin, chosen at setup (settings.front): a live Major Order
+  // or a manually locked front. It pins every operation's front draw, and a
+  // live order banks an extra reroll token on each completion. null = the
+  // front rolls every operation.
   majorOrder: MajorOrderSelection | null
   rerollTokens: number
   completedCombos: string[]
@@ -226,12 +234,11 @@ export interface DiveState {
 }
 
 export type EngineAction
-  = | { type: 'START_DIVE', settings: CrusadeSettings, seed?: number }
+  = | { type: 'START_DIVE', settings: CrusadeSettings, seed?: number, majorOrder?: MajorOrderSelection | null }
     | { type: 'SPIN_WHEEL', seed: number }
     | { type: 'ACCEPT_MISFORTUNE', accepted: boolean }
     | { type: 'ACCEPT_STRAIN', accepted: boolean }
     | { type: 'DEAL_PACTS' }
-    | { type: 'SET_MAJOR_ORDER', order: MajorOrderSelection | null }
     | { type: 'REROLL_WHEEL', wheel: 'misfortune' | 'front' | 'strain', seed: number }
     | { type: 'SET_PACTS', playerId: string, pactIds: string[] }
     | { type: 'FAIL_PACT', playerId: string, pactId: string }

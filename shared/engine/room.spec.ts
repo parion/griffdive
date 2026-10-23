@@ -157,6 +157,21 @@ describe('forkCrusade (personal session saves)', () => {
     expect(forked.frontId).toBe(state.frontId)
   })
 
+  it('carries the setup front plan and its pin into the new session', () => {
+    const live = createDiveState({ variant: 'medium', front: 'majorOrder' }, 'p1', 'Griffin', undefined, undefined, { fronts: ['automatons'], live: true })
+    const forkedLive = forkCrusade(live, 'p1')!
+    expect(forkedLive.settings?.front).toBe('majorOrder')
+    expect(forkedLive.majorOrder).toMatchObject({ fronts: ['automatons'], live: true })
+
+    const rolled = forkCrusade(createDiveState({ variant: 'medium', front: 'rolled' }, 'p1', 'Griffin'), 'p1')!
+    expect(rolled.settings?.front).toBe('rolled')
+    expect(rolled.majorOrder).toBeNull()
+
+    // A plan whose pin went missing never keeps claiming the live carrot.
+    const stripped = forkCrusade({ ...live, majorOrder: null }, 'p1')!
+    expect(stripped.settings?.front).toBe('rolled')
+  })
+
   it('lets any seat be the owner; an unknown id falls back to the saved host', () => {
     let state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
     state = joinDiver(state, 'p2', 'Two')!
