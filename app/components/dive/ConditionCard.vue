@@ -10,7 +10,6 @@ const props = withDefaults(defineProps<{
   stampTone?: 'gold' | 'teal' | 'red'
   blocked?: string
   note?: string
-  oddsLine?: string
   disabled?: boolean
   compact?: boolean
   open?: boolean
@@ -22,7 +21,6 @@ const props = withDefaults(defineProps<{
   stampTone: 'gold',
   blocked: '',
   note: '',
-  oddsLine: '',
   disabled: false,
   compact: false,
   open: false,
@@ -64,8 +62,8 @@ function choose(): void {
     <span class="condition-head">
       <RiskPips
         :value="risk"
-        :max="5"
-        :tone="stampTone === 'red' ? 'red' : 'gold'"
+        :max="risk"
+        :tone="selected ? 'gold' : 'red'"
       />
       <span class="risk-word cap">Risk {{ risk }}</span>
     </span>
@@ -84,14 +82,13 @@ function choose(): void {
       />
     </span>
 
-    <span class="condition-name disp">{{ condition.name }}</span>
+    <span
+      class="condition-name disp"
+      :style="fitWord(condition.name)"
+    >{{ condition.name }}</span>
 
     <template v-if="expanded">
-      <span class="condition-rule">{{ condition.rule }}</span>
-      <span
-        v-if="oddsLine"
-        class="odds"
-      >{{ oddsLine }}</span>
+      <span class="condition-rule">“{{ condition.rule }}”</span>
       <span
         v-if="note"
         class="note"
@@ -121,6 +118,7 @@ function choose(): void {
 .condition {
   --edge: var(--line-3);
   position: relative;
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -176,19 +174,22 @@ function choose(): void {
   min-height: 18px;
 }
 .condition-head :deep(.pips i) { width: 17px; height: 17px; }
-.risk-word { color: var(--muted); }
+.risk-word { color: var(--red); }
+.selected .risk-word { color: var(--gold); }
 
 .stamp {
   position: absolute;
   z-index: 4;
-  top: 18px;
-  right: 10px;
+  top: 96px;
+  right: 8px;
   padding: 3px 10px 2px;
   border: 3px solid currentColor;
   color: var(--gold);
   font-size: 18px;
   letter-spacing: 0.16em;
-  transform: rotate(-10deg);
+  transform: rotate(-7deg);
+  animation: stampIn 0.42s var(--ease-out) both;
+  background: rgba(11, 12, 9, 0.6);
   -webkit-mask-image: repeating-linear-gradient(118deg, #000 0 3px, rgba(0, 0, 0, 0.45) 3px 4px, #000 4px 9px);
   mask-image: repeating-linear-gradient(118deg, #000 0 3px, rgba(0, 0, 0, 0.45) 3px 4px, #000 4px 9px);
   pointer-events: none;
@@ -199,7 +200,7 @@ function choose(): void {
 .media {
   display: grid;
   place-items: center;
-  min-height: 96px;
+  min-height: 108px;
   border: 1px solid var(--line-2);
   background:
     linear-gradient(rgba(184, 176, 141, 0.04) 1px, transparent 1px),
@@ -220,26 +221,19 @@ function choose(): void {
 }
 
 .condition-name {
-  font-size: clamp(22px, 2vw, 28px);
+  font-size: min(clamp(22px, 2vw, 28px), 100cqi / var(--fit-len, 1));
   line-height: 1.02;
   color: var(--text);
-  overflow-wrap: anywhere;
 }
-.compact .condition-name { font-size: 22px; }
+.compact .condition-name { font-size: min(22px, 100cqi / var(--fit-len, 1)); }
 
 .condition-rule {
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.45;
   color: var(--khaki);
 }
-.odds {
-  color: var(--gold);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
 .note {
-  color: var(--muted);
+  color: var(--orange);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -288,5 +282,6 @@ function choose(): void {
   transform: none;
 }
 .compact .media { min-height: 70px; }
+.compact .stamp { top: 18px; right: 10px; }
 .compact .condition-rule { font-size: 13px; }
 </style>

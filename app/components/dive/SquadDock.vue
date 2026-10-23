@@ -156,7 +156,7 @@ function kick(diverId: string): void {
       <div
         v-for="diver in state.divers"
         :key="diver.id"
-        class="chip"
+        class="seat"
         :class="{ self: isSelf(diver), away: diver.away }"
       >
         <span
@@ -164,7 +164,7 @@ function kick(diverId: string): void {
           :class="lampClass(diver)"
           aria-hidden="true"
         />
-        <span class="chip-copy">
+        <span class="seat-copy">
           <b>{{ diver.name }}</b>
           <i>{{ statusOf(diver) }}</i>
         </span>
@@ -403,25 +403,25 @@ function kick(diverId: string): void {
 .honors-award:disabled { opacity: 0.35; cursor: not-allowed; }
 .honors-done { background: transparent; color: var(--teal); padding: 0 4px; }
 
-.chip {
+.seat {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 12px;
   min-height: 48px;
-  padding: 0 4px 0 11px;
+  padding: 0 6px 0 14px;
   background: var(--panel);
   box-shadow: inset 0 0 0 1px var(--line-2);
   min-width: 0;
 }
-.chip.self { box-shadow: inset 0 0 0 1px var(--line-4); }
-.chip.away { opacity: 0.55; }
-.chip-copy { display: flex; flex-direction: column; line-height: 1.2; min-width: 70px; }
-.chip-copy b { font-size: 13px; font-weight: 700; }
-.chip-copy i {
+.seat.self { box-shadow: inset 0 0 0 1px var(--line-4); }
+.seat.away { opacity: 0.55; }
+.seat-copy { display: flex; flex-direction: column; gap: 1px; flex: 1; line-height: 1.2; min-width: 120px; }
+.seat-copy b { font-size: 14px; font-weight: 700; color: var(--text); }
+.seat-copy i {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-style: normal;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 .lamp {
   width: 8px;
@@ -522,7 +522,7 @@ function kick(diverId: string): void {
 
 @media (max-width: 900px) {
   .link-label { display: none; }
-  .chip-copy { min-width: 0; }
+  .seat-copy { min-width: 0; }
   .dock { padding-top: 8px; padding-bottom: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {

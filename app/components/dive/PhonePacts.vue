@@ -110,22 +110,6 @@ const deltas = computed<Partial<Record<RewardTier, number>>>(() => {
 const selectionNames = computed(() =>
   selection.value.map(id => pactName(id)).join(' · '))
 
-function oddsLine(pactId: string): string {
-  if (selection.value.includes(pactId)) {
-    return ''
-  }
-  const next = tierZones(props.state.difficulty, pactValue([...selection.value, pactId]))
-  const chance = (tier: RewardTier): string => {
-    const zone = next.find(entry => entry.tier === tier)
-    const value = (zone?.chance ?? 0) * 100
-    if (value > 0 && value < 0.5) {
-      return '<1%'
-    }
-    return `${Math.round(value)}%`
-  }
-  return `If sworn: B to ${chance('B')}, A to ${chance('A')}, S ${chance('S') === '0%' ? 'opens at <1%' : `to ${chance('S')}`}`
-}
-
 function bannedNote(pactId: string): string {
   const predicate = PACT_BANS_STRATAGEM[pactId]
   if (!predicate) {
@@ -173,7 +157,7 @@ function lockNow(): void {
       <span class="cap">Squad directive</span>
       <RiskPips
         :value="conditionRiskAt(misfortune.id, state.difficulty)"
-        :max="5"
+        :max="conditionRiskAt(misfortune.id, state.difficulty)"
         tone="gold"
       />
       <b class="disp">{{ misfortune.name }}</b>
@@ -201,7 +185,6 @@ function lockNow(): void {
         :selected="selection.includes(pact.id)"
         :stamp="selection.includes(pact.id) ? 'Sworn' : ''"
         :blocked="coverage[pact.id] ?? ''"
-        :odds-line="oddsLine(pact.id)"
         :note="bannedNote(pact.id)"
         :disabled="locked"
         :tilt="selection.includes(pact.id) ? 0 : index % 2 === 0 ? -0.8 : 0.8"

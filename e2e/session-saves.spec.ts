@@ -21,7 +21,7 @@ test('any seated diver forks the crusade into a new session', async ({ browser }
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
-  await expect(pageB.locator('.dock .chip')).toHaveCount(2)
+  await expect(pageB.locator('.dock .seat')).toHaveCount(2)
 
   // The host continues the crusade as a brand-new session: a fresh code, the
   // host seated where the dive stopped, the current room untouched.
@@ -36,15 +36,15 @@ test('any seated diver forks the crusade into a new session', async ({ browser }
   await expect(pageA).not.toHaveURL(oldUrl)
   await expect(pageA).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
   await expect(pageA.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
-  await expect(pageA.locator('.dock .chip')).toHaveCount(1)
+  await expect(pageA.locator('.dock .seat')).toHaveCount(1)
 
   // A new diver comes aboard the new session through its invite link.
   await pageC.goto(pageA.url())
   await pageC.getByLabel('Your name').fill('Late')
   await pageC.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageC)
-  await expect(pageA.locator('.dock .chip')).toHaveCount(2)
-  await expect(pageC.locator('.dock .chip.self')).toBeVisible()
+  await expect(pageA.locator('.dock .seat')).toHaveCount(2)
+  await expect(pageC.locator('.dock .seat.self')).toBeVisible()
 
   await contextA.close()
   await contextB.close()
@@ -69,11 +69,11 @@ test('a solo save hosts an online session from the home record', async ({ browse
   await card.getByRole('button', { name: 'HOST' }).click()
 
   await expect(page).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
-  await expect(page.locator('.dock .chip')).toHaveCount(1)
+  await expect(page.locator('.dock .seat')).toHaveCount(1)
   // The local owner's name carries into the new online session, so there is
   // no second name gate.
   await expect(page.getByLabel('Your name')).toHaveCount(0)
-  await expect(page.locator('.dock .chip.self')).toContainText('Griffon')
+  await expect(page.locator('.dock .seat.self')).toContainText('Griffon')
 
   // A second browser joins the new online session.
   const contextB = await browser.newContext()
@@ -82,7 +82,7 @@ test('a solo save hosts an online session from the home record', async ({ browse
   await pageB.getByLabel('Your name').fill('Late')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
-  await expect(pageB.locator('.dock .chip')).toHaveCount(2)
+  await expect(pageB.locator('.dock .seat')).toHaveCount(2)
 
   await context.close()
   await contextB.close()

@@ -503,7 +503,16 @@ details.panel summary {
   clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
   transition: filter var(--dur-fast), transform 0.08s;
 }
-.bar-cta .disp { font-size: 18px; }
+/* One line, always: a long item name truncates instead of growing the bar. */
+.bar-cta .disp {
+  min-width: 0;
+  overflow: hidden;
+  font-size: clamp(13px, 3.9vw, 18px);
+  font-stretch: 104%;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .bar-cta svg { flex-shrink: 0; }
 .bar-cta:hover:not(:disabled) { filter: brightness(1.1); }
 .bar-cta:active:not(:disabled) { transform: translateY(1px); }

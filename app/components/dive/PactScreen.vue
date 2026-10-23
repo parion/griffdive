@@ -131,23 +131,6 @@ const deltas = computed<Partial<Record<RewardTier, number>>>(() => {
 const selectionNames = computed(() =>
   selection.value.map(id => pactName(id)).join(' · '))
 
-function oddsLine(pactId: string): string {
-  if (selection.value.includes(pactId)) {
-    return ''
-  }
-  const valor = pactValue([...selection.value, pactId])
-  const next = tierZones(props.state.difficulty, valor)
-  const chance = (tier: RewardTier): string => {
-    const zone = next.find(entry => entry.tier === tier)
-    const value = (zone?.chance ?? 0) * 100
-    if (value > 0 && value < 0.5) {
-      return '<1%'
-    }
-    return `${Math.round(value)}%`
-  }
-  return `If sworn: B to ${chance('B')}, A to ${chance('A')}, S ${chance('S') === '0%' ? 'opens at <1%' : `to ${chance('S')}`}`
-}
-
 function bannedNote(pactId: string): string {
   const predicate = PACT_BANS_STRATAGEM[pactId]
   if (!predicate) {
@@ -198,8 +181,8 @@ function lockNow(): void {
       <span class="cap">Squad directive</span>
       <RiskPips
         :value="conditionRiskAt(misfortune.id, state.difficulty)"
-        :max="5"
-        tone="gold"
+        :max="conditionRiskAt(misfortune.id, state.difficulty)"
+        tone="red"
       />
       <b class="disp directive-name">{{ misfortune.name }}</b>
       <span class="directive-rule">{{ misfortune.rule }}</span>
@@ -230,7 +213,6 @@ function lockNow(): void {
         :selected="selection.includes(pact.id)"
         :stamp="selection.includes(pact.id) ? 'Sworn' : ''"
         :blocked="coverage[pact.id] ?? ''"
-        :odds-line="oddsLine(pact.id)"
         :note="bannedNote(pact.id)"
         :disabled="locked"
         :tilt="selection.includes(pact.id) ? 0 : index % 2 === 0 ? -1.1 : 1.1"
@@ -289,12 +271,14 @@ function lockNow(): void {
 .pact-screen {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  align-items: center;
+  gap: 18px;
   width: 100%;
-  max-width: 980px;
+  max-width: 1040px;
   margin: 0 auto;
 }
-.pact-head { display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
+.pact-screen > * { width: 100%; }
+.pact-head { display: flex; flex-direction: column; gap: 8px; align-items: center; text-align: center; }
 .kick {
   display: inline-flex;
   align-items: center;
@@ -305,32 +289,35 @@ function lockNow(): void {
   letter-spacing: 0.24em;
   text-transform: uppercase;
 }
-.kick::before {
+.kick::before,
+.kick::after {
   content: '';
   width: 22px;
   height: 2px;
   background: currentColor;
   box-shadow: 0 0 8px currentColor;
 }
-.pact-title { font-size: clamp(38px, 4.4vw, 56px); }
+.pact-title { font-size: clamp(36px, 3.8vw, 52px); }
 .pact-sub { margin: 0; color: var(--muted); font-size: 14px; }
 
 .directive-strip {
+  width: auto;
+  max-width: 100%;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 8px 12px;
   min-height: 42px;
   padding: 6px 12px;
   background: linear-gradient(90deg, rgba(255, 214, 66, 0.1), var(--panel) 60%);
-  box-shadow: inset 0 0 0 1px var(--line-3);
-  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  box-shadow: inset 3px 0 0 var(--gold), inset 0 0 0 1px var(--line-3);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
 }
 .directive-strip.safe { background: var(--panel); }
-.directive-name { font-size: 18px; color: var(--gold); }
+.directive-name { font-size: 18px; color: var(--gold); text-shadow: 0 0 16px rgba(255, 214, 66, 0.3); }
 .directive-rule { color: var(--khaki); font-size: 13px; }
 .strain-note {
-  margin-left: auto;
   color: var(--orange);
   font-size: 11px;
   letter-spacing: 0.08em;
@@ -339,10 +326,21 @@ function lockNow(): void {
 
 .hand {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 300px));
+  justify-content: center;
+  gap: 28px;
   align-items: stretch;
+  padding-top: 6px;
 }
+.hand > :deep(*) { animation: deal-in 0.5s var(--ease-out) both; }
+.hand > :deep(:nth-child(2)) { animation-delay: 90ms; }
+.hand > :deep(:nth-child(3)) { animation-delay: 180ms; }
+.hand > :deep(:nth-child(4)) { animation-delay: 270ms; }
+@keyframes deal-in {
+  from { opacity: 0; translate: 0 26px; }
+  to { opacity: 1; translate: 0 0; }
+}
+.pact-screen > :deep(.roll) { max-width: 640px; }
 .hand > * { min-width: 0; }
 
 .pact-cta { display: flex; justify-content: center; }
@@ -351,12 +349,12 @@ function lockNow(): void {
   align-items: center;
   justify-content: center;
   gap: 14px;
-  width: min(100%, 560px);
+  width: min(100%, 460px);
   min-height: 58px;
   padding: 0 24px;
   border: 0;
   background: linear-gradient(180deg, #ffe57a 0%, var(--gold) 45%, #f0bf1a 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -3px 0 rgba(110, 80, 0, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -3px 0 rgba(110, 80, 0, 0.35), 0 0 34px rgba(255, 214, 66, 0.24);
   color: var(--on-gold);
   font: 800 17px var(--font-display);
   font-stretch: 125%;

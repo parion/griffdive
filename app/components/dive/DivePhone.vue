@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
-import { bonusFor, bonusWinners, bargainLamp, bargainsClosedReason } from '~~/shared/engine/selectors'
+import { MAX_DIFFICULTY } from '~~/shared/engine/config'
+import { allDiversPicked, bonusFor, bonusWinners, bargainLamp, bargainsClosedReason } from '~~/shared/engine/selectors'
 import type { CrusadeSettings, DiverState, DiveState, MajorOrderSelection, MissionOutcome, MissionReport } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -37,6 +38,7 @@ const emit = defineEmits<{
   spinBonus: [payload?: { stars: number, outcome: MissionOutcome }]
   awardBonus: [playerIds: string[]]
   advance: []
+  buy: [itemId: string]
   forfeit: [itemId: string]
   start: [settings: CrusadeSettings]
   kick: [diverId: string]
@@ -68,6 +70,11 @@ const honorsAwarded = computed(() => Boolean(props.state.bonusWinnerIds.length))
 watch(phase, () => {
   reporting.value = false
 })
+
+// Same regroup beats as the desktop shell, derived from synced state.
+const squadBanked = computed(() => phase.value === 'rewards' && allDiversPicked(props.state))
+const operationClimbs = computed(() =>
+  props.state.missionInOperation >= props.opLength && props.state.difficulty < MAX_DIFFICULTY)
 </script>
 
 <template>
@@ -155,6 +162,29 @@ watch(phase, () => {
           @reporting="reporting = $event"
           @spin-bonus="emit('spinBonus', $event)"
           @open-kit="emit('openArmory')"
+        />
+
+        <OperationCleared
+          v-else-if="squadBanked && operationClimbs"
+          :state="state"
+          :self="self"
+          :self-id="selfId"
+          :can-control="canControl"
+          phone
+          @start="emit('advance')"
+          @buy="emit('buy', $event)"
+        />
+
+        <MissionCleared
+          v-else-if="squadBanked"
+          :state="state"
+          :self="self"
+          :self-id="selfId"
+          :can-control="canControl"
+          :op-length="opLength"
+          phone
+          @advance="emit('advance')"
+          @buy="emit('buy', $event)"
         />
 
         <PhoneRewardDraft
