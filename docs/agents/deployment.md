@@ -42,7 +42,14 @@ solo play started from the Bridge runs entirely in the browser (`useDiveEngine` 
 is invisible, and `REPORT_RESULT` is honor-system — treat outcomes as directional.
 
 CI/CD: `.github/workflows/ci.yml` runs lint/typecheck/unit tests + the Playwright E2E suite on
-every PR and push to `main`; pushes never deploy. **Releases are batched and started by hand:**
+every PR and push to `main`; pushes never deploy to production. **Staging:** after CI and E2E pass,
+every push to `main` runs the `deploy-staging` job, which deploys `fly.staging.toml`
+(`griffdive-staging.fly.dev`, own `griffdive_staging_data` volume, idle-stops, no reviewer gate,
+`staging` GitHub environment) using the `FLY_STAGING_TOKEN` repo secret (a deploy token scoped to
+the staging app) and smoke-checks `/`. Merges accumulate there until a release. One-time setup:
+`fly apps create griffdive-staging`, `fly volumes create griffdive_staging_data --app
+griffdive-staging --region ams --size 1`, `fly tokens create deploy --app griffdive-staging`, and
+the `staging` environment in GitHub. **Releases are batched and started by hand:**
 when the accumulated merges are ready, run *CI/CD → Run workflow* from `main`
 (`workflow_dispatch`), which re-verifies the batch and then hands to the `deploy` job. That job
 targets the `production` GitHub environment, which is configured with a required reviewer, so the

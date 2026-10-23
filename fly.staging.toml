@@ -1,0 +1,32 @@
+# Staging config for the `deploy-staging` job in .github/workflows/ci.yml: every
+# merge to main lands here, and production only ships on a manual release.
+# Create the app and volume once before the first deploy:
+#   fly apps create griffdive-staging
+#   fly volumes create griffdive_staging_data --app griffdive-staging --region ams --size 1
+app = 'griffdive-staging'
+primary_region = 'ams'
+
+[build]
+
+[env]
+  HOST = '0.0.0.0'
+  PORT = '8080'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Staging sleeps when idle and wakes on the next request — no always-on cost.
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+# Own volume so staging rooms never touch production state. Same single-machine
+# constraint as prod: a volume binds to one machine and peers are in-process.
+[[mounts]]
+  source = 'griffdive_staging_data'
+  destination = '/app/.data'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'

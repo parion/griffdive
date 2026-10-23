@@ -42,7 +42,31 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
 
-  # Batched releases, started by hand: pushes to main never deploy. When the
+  # Every green push to main lands on staging, so merges accumulate there for
+  # hands-on testing before a production release. No reviewer gate; the
+  # separate app and volume keep it isolated from production data.
+  deploy-staging:
+    name: Deploy staging
+    needs: [ci, e2e]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: staging
+      cancel-in-progress: false
+    environment:
+      name: staging
+      url: https://griffdive-staging.fly.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy
+        run: flyctl deploy --config fly.staging.toml --remote-only --wait-timeout 300
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_STAGING_TOKEN }}
+      - name: Smoke check
+        run: curl -fsS --retry 5 --retry-delay 5 --retry-connrefused --retry-max-time 120 https://griffdive-staging.fly.dev/ > /dev/null
+
+  # Batched releases, started by hand: pushes to main never deploy to production. When the
   # accumulated merges are ready, run this workflow from main (Actions → CI/CD
   # → Run workflow); it re-verifies the batch, then the production environment
   # (Settings → Environments) holds the run until its required reviewer
