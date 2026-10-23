@@ -110,7 +110,7 @@ function playSuggestion(): void {
         <span>{{ status === 'none'
           ? 'No active Major Order — the wheel draws the front as usual.'
           : status === 'no-front'
-            ? 'The active Major Order doesn\'t target a front — the wheel draws it as usual.'
+            ? 'The active Major Order has no active front yet — the wheel draws it as usual.'
             : 'Failed to retrieve active MO' }}</span>
         <button
           class="mo-refresh"

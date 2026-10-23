@@ -134,7 +134,10 @@ test('a live Major Order pins the front for the operation', async ({ page }) => 
         fronts: ['automatons'],
         live: true,
         title: 'Liberate the designated planets.',
-        planets: [{ index: 198, name: 'Marfark', front: 'automatons', liberation: 89.7 }],
+        planets: [
+          { index: 198, name: 'Marfark', front: 'automatons', liberation: 89.7, available: true },
+          { index: 7, name: 'Zea Rugosia', front: 'illuminate', liberation: 0, available: false },
+        ],
         expiresAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
       },
     }),
@@ -149,12 +152,25 @@ test('a live Major Order pins the front for the operation', async ({ page }) => 
   await page.getByRole('button', { name: /Major Order.*Pin a front/ }).click()
   const picker = page.getByRole('dialog', { name: 'Major Order' })
   await expect(picker.getByText('Marfark')).toBeVisible()
+  // The gated planet stays on the overview but does not pin its front.
+  await expect(picker.getByText('Zea Rugosia')).toBeVisible()
+  await expect(picker.getByText('Not available yet')).toBeVisible()
   await picker.getByRole('button', { name: /Play this order/ }).click()
   await expect(picker).toBeHidden()
   await expect(page.locator('.front-pin')).toContainText('Automatons')
 
+  // The pinned pin is the host's way back in: the live order can be re-read as
+  // the war moves (another front completes, a gated planet opens).
+  await page.locator('.front-pin').click()
+  const pinnedPicker = page.getByRole('dialog', { name: 'Major Order' })
+  await expect(pinnedPicker.getByRole('button', { name: 'Change' })).toBeVisible()
+  await pinnedPicker.getByRole('button', { name: 'Close' }).click()
+  await expect(pinnedPicker).toBeHidden()
+
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await expect(page.locator('.front-pin')).toContainText('Automatons')
+  // The front is a faction; the order is fought on a planet. The pin names it.
+  await expect(page.locator('.front-pin')).toContainText('Marfark')
 })
 
 test('the Bridge campaign CTA seeds a dive with the live order already pinned', async ({ page }) => {
@@ -186,6 +202,7 @@ test('the Bridge campaign CTA seeds a dive with the live order already pinned', 
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await expect(page.locator('.front-pin')).toContainText('Automatons')
+  await expect(page.locator('.front-pin')).toContainText('Marfark')
 })
 
 test('a manual faction pick pins the front without a Major Order tag', async ({ page }) => {
