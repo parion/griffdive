@@ -81,7 +81,10 @@ merge with them.
   in `DiveMenu`, because the global bridge header stands down on `/dive`.
 - **`SquadDock`** anchors the bottom: status lamps and names for every diver (`.seat` cards in
   mixed case — not the global `.chip` tag utility), open seats, Steam
-  lobby and invite copy, and the squad-honors token picker once a contest is spun. `DiveMenu` holds
+  lobby and invite copy, and the squad-honors token picker once a contest is spun. For the host the
+  Steam control toggles a **Steam lobby bar** docked just above the squad bar: pin or change the
+  `steam://joinlobby/…` link, copy it, jump into the lobby, or remove it. Squadmates (and the host
+  on a phone, which has no squad bar) get the join dialog instead. `DiveMenu` holds
   tutorial/field manual, Bridge, pin/unpin, new session, leave and end. On a phone the same dock
   lives in the **Squad** dialog, and host actions render inline there (a portalled dropdown would
   land under the modal overlay).

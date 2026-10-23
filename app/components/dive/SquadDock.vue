@@ -20,6 +20,7 @@ const props = withDefaults(defineProps<{
   canControl?: boolean
   slotName?: string
   steam?: SteamLobbyInfo | null
+  steamPanelOpen?: boolean
   honors?: BonusStat | null
   honorsWinners?: string[]
   honorsAwarded?: boolean
@@ -32,6 +33,7 @@ const props = withDefaults(defineProps<{
   canControl: false,
   slotName: '',
   steam: null,
+  steamPanelOpen: false,
   honors: null,
   honorsWinners: () => [],
   honorsAwarded: false,
@@ -291,9 +293,13 @@ function kick(diverId: string): void {
       <button
         v-if="mode === 'room'"
         class="link-btn"
+        :class="{ open: isHost && steamPanelOpen }"
         type="button"
-        aria-label="Copy Steam lobby link"
+        :aria-label="isHost ? 'Steam lobby settings' : 'Open Steam lobby'"
         title="Steam lobby"
+        :aria-expanded="isHost ? steamPanelOpen : undefined"
+        :aria-controls="isHost && steamPanelOpen ? 'steam-lobby-bar' : undefined"
+        :aria-haspopup="isHost ? undefined : 'dialog'"
         @click="emit('openSteam')"
       >
         <IconSteam />
@@ -481,6 +487,7 @@ function kick(diverId: string): void {
   cursor: pointer;
 }
 .link-btn:hover { color: var(--text); box-shadow: inset 0 0 0 1px var(--line-5); }
+.link-btn.open { color: var(--text); box-shadow: inset 0 0 0 1px var(--line-5); }
 .link-btn.invite .code { color: var(--text); font-weight: 700; letter-spacing: 0.06em; }
 .link-btn svg { width: 16px; height: 16px; }
 

@@ -189,6 +189,49 @@ test('the Codex slide-over keeps the host seated', async ({ browser }) => {
 // budget (10 a minute), and these specs create rooms of their own.
 const ownAddress = { extraHTTPHeaders: { 'x-forwarded-for': '10.42.0.1' } }
 
+test('the host manages the Steam lobby from a dock bar', async ({ browser }) => {
+  const context = await browser.newContext(ownAddress)
+  const page = await context.newPage()
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Host an online dive' }).click()
+  await page.getByLabel('Your name').fill('Host')
+  await page.getByRole('button', { name: 'Join the dive' }).click()
+  await dismissWarbondIntro(page)
+  await page.getByRole('button', { name: 'Launch crusade' }).click()
+  await expect(page.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
+
+  // The dock control is a disclosure, not a dialog, for the host.
+  const toggle = page.getByRole('button', { name: 'Steam lobby settings' })
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+  const bar = page.getByRole('region', { name: 'Steam Lobby' })
+  await expect(bar).toBeVisible()
+  const input = bar.getByLabel('Steam lobby link')
+  await expect(input).toBeFocused()
+
+  await input.fill('steam://joinlobby/553850/42/7')
+  await bar.getByRole('button', { name: 'Pin lobby' }).click()
+
+  // The pinned link swaps the editor for the join card without closing the bar.
+  await expect(bar.getByRole('link', { name: /Join Lobby/ }))
+    .toHaveAttribute('href', 'steam://joinlobby/553850/42/7')
+  await bar.getByRole('button', { name: 'Change' }).click()
+  await expect(input).toHaveValue('steam://joinlobby/553850/42/7')
+  await bar.getByRole('button', { name: 'Cancel' }).click()
+
+  await bar.getByRole('button', { name: 'Remove' }).click()
+  await expect(input).toBeVisible()
+  await expect(input).toHaveValue('')
+
+  await bar.getByRole('button', { name: 'Close Steam lobby' }).click()
+  await expect(bar).toBeHidden()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+  await context.close()
+})
+
 async function squadAtTheWheel(browser: Browser) {
   const contextA = await browser.newContext(ownAddress)
   const contextB = await browser.newContext(ownAddress)

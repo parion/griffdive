@@ -3,6 +3,7 @@ import type { DiveSessionStatus } from '~/composables/useDiveSession'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { allDiversPicked, bonusFor, bonusWinners, bargainLamp, bargainsClosedReason } from '~~/shared/engine/selectors'
 import type { CrusadeSettings, DiverState, DiveState, MajorOrderSelection, MissionOutcome, MissionReport } from '~~/shared/engine/types'
+import type { SteamLobbyInfo } from '~~/shared/types/messages'
 
 const props = defineProps<{
   state: DiveState
@@ -19,6 +20,7 @@ const props = defineProps<{
   kicked: boolean
   canFork: boolean
   lastError: string | null
+  steam: SteamLobbyInfo | null
 }>()
 
 const emit = defineEmits<{
@@ -44,6 +46,7 @@ const emit = defineEmits<{
   kick: [diverId: string]
   transferHost: [diverId: string]
   copyInvite: []
+  openSteam: []
   openArmory: []
   openBargains: []
   openTutorial: []
@@ -60,6 +63,12 @@ const phase = computed(() => props.state.phase)
 const reporting = ref(false)
 const squadOpen = ref(false)
 const menuOpen = ref(false)
+
+// No squad bar on a phone, so the Steam control hands off to the join dialog.
+function openSteamFromSquad(): void {
+  squadOpen.value = false
+  nextTick(() => emit('openSteam'))
+}
 
 const bargainsOpen = computed(() => !props.kicked && props.self !== null && !bargainsClosedReason(props.state))
 const lamp = computed(() => (props.self ? bargainLamp(props.state, props.self) : 'off'))
@@ -253,6 +262,7 @@ const operationClimbs = computed(() =>
       :is-host="isHost"
       :can-control="canControl"
       :slot-name="slotName"
+      :steam="steam"
       :honors="honors"
       :honors-winners="honorsWinners"
       :honors-awarded="honorsAwarded"
@@ -260,6 +270,7 @@ const operationClimbs = computed(() =>
       @transfer-host="emit('transferHost', $event)"
       @kick="emit('kick', $event)"
       @copy-invite="emit('copyInvite')"
+      @open-steam="openSteamFromSquad"
       @award-bonus="emit('awardBonus', $event)"
     />
   </AppDialog>

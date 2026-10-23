@@ -98,6 +98,7 @@ const honorsWinners = computed(() => (state.value ? bonusWinners(state.value).ma
 const honorsAwarded = computed(() => Boolean(state.value?.bonusWinnerIds.length))
 const sessionMenuOpen = ref(false)
 const steamOpen = ref(false)
+const steamBarOpen = ref(false)
 
 // Warbonds are what each diver actually owns — declared per diver, any phase,
 // and driven by the global Warbonds drawer. A local save seeds the working list
@@ -243,6 +244,13 @@ watch(
     }
   },
 )
+
+// The Steam editor is the host's dock, so the crown moving away closes it.
+watch(() => session.selfIsHost.value, (isHost) => {
+  if (!isHost) {
+    steamBarOpen.value = false
+  }
+})
 
 // A dropped socket silently pauses sync and re-seats host — say so, but only
 // once per outage so auto-reconnect churn doesn't spam the stack.
@@ -533,6 +541,16 @@ function copyInvite(): void {
     .catch(() => pushToast('Could not copy the invite'))
 }
 
+// The host edits the Steam lobby in a dock bar; squadmates get the join dialog.
+// Phones keep the dialog for the host too — there is no squad bar to dock above.
+function openSteam(): void {
+  if (session.selfIsHost.value && !isPhone.value) {
+    steamBarOpen.value = !steamBarOpen.value
+    return
+  }
+  steamOpen.value = true
+}
+
 // Host moderation.
 function kick(diverId: string): void {
   dispatch({ type: 'KICK_DIVER', playerId: diverId })
@@ -638,6 +656,7 @@ function launchCrusade(settings: CrusadeSettings): void {
       :kicked="kicked"
       :can-fork="canFork"
       :last-error="session.lastError.value?.message ?? null"
+      :steam="session.steam.value"
       @spin="spin"
       @decide="decideMisfortune"
       @decide-strain="decideStrain"
@@ -660,6 +679,7 @@ function launchCrusade(settings: CrusadeSettings): void {
       @kick="kick"
       @transfer-host="transferHost"
       @copy-invite="copyInvite"
+      @open-steam="openSteam"
       @open-armory="armoryOpen = true"
       @open-bargains="bargainsOpen = true"
       @open-tutorial="openBriefing"
@@ -826,24 +846,35 @@ function launchCrusade(settings: CrusadeSettings): void {
       </Transition>
 
       <template #dock>
-        <SquadDock
-          :state="state"
-          :self-id="selfId"
-          :online="session.online.value"
-          :mode="session.mode"
-          :is-host="session.selfIsHost.value"
-          :can-control="canControl"
-          :slot-name="session.slotName.value"
-          :steam="session.steam.value"
-          :honors="honors"
-          :honors-winners="honorsWinners"
-          :honors-awarded="honorsAwarded"
-          @transfer-host="transferHost"
-          @kick="kick"
-          @copy-invite="copyInvite"
-          @open-steam="steamOpen = true"
-          @award-bonus="awardBonus"
-        />
+        <div class="dock-stack">
+          <Transition name="steam-bar">
+            <SteamLobbyBar
+              v-if="steamBarOpen && session.mode === 'room' && session.selfIsHost.value"
+              :steam="session.steam.value"
+              @set-steam="session.setSteam"
+              @close="steamBarOpen = false"
+            />
+          </Transition>
+          <SquadDock
+            :state="state"
+            :self-id="selfId"
+            :online="session.online.value"
+            :mode="session.mode"
+            :is-host="session.selfIsHost.value"
+            :can-control="canControl"
+            :slot-name="session.slotName.value"
+            :steam="session.steam.value"
+            :steam-panel-open="steamBarOpen"
+            :honors="honors"
+            :honors-winners="honorsWinners"
+            :honors-awarded="honorsAwarded"
+            @transfer-host="transferHost"
+            @kick="kick"
+            @copy-invite="copyInvite"
+            @open-steam="openSteam"
+            @award-bonus="awardBonus"
+          />
+        </div>
       </template>
     </DiveFrame>
     <p
@@ -885,14 +916,15 @@ function launchCrusade(settings: CrusadeSettings): void {
       v-if="state"
       v-model:open="steamOpen"
       title="Steam lobby"
-      description="Paste the join link from Helldivers 2 so the squad can meet in-game."
+      :description="session.selfIsHost.value
+        ? 'Paste the join link from Helldivers 2 so the squad can meet in-game.'
+        : 'Join the host’s lobby in Steam, or copy the link for later.'"
       size="sm"
     >
       <SteamLobbyBox
         :steam="session.steam.value"
         :is-host="session.selfIsHost.value"
         @set-steam="session.setSteam"
-        @expand="steamOpen = true"
       />
     </AppDialog>
 
@@ -970,6 +1002,21 @@ function launchCrusade(settings: CrusadeSettings): void {
 
 .phase-stack { display: grid; gap: var(--gap-panel); }
 
+.dock-stack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.steam-bar-enter-active,
+.steam-bar-leave-active {
+  transition: opacity var(--dur-med) var(--ease-out), translate var(--dur-med) var(--ease-out);
+}
+.steam-bar-enter-from,
+.steam-bar-leave-to {
+  opacity: 0;
+  translate: 0 10px;
+}
+
 .error-banner {
   border-color: var(--red);
   color: var(--red);
@@ -987,5 +1034,10 @@ function launchCrusade(settings: CrusadeSettings): void {
   flex-direction: column;
   gap: var(--gap-panel);
   min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .steam-bar-enter-active,
+  .steam-bar-leave-active { transition: none; }
 }
 </style>
