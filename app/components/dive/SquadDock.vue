@@ -20,6 +20,7 @@ const props = withDefaults(defineProps<{
   canControl?: boolean
   slotName?: string
   steam?: SteamLobbyInfo | null
+  steamPanelOpen?: boolean
   honors?: BonusStat | null
   honorsWinners?: string[]
   honorsAwarded?: boolean
@@ -32,6 +33,7 @@ const props = withDefaults(defineProps<{
   canControl: false,
   slotName: '',
   steam: null,
+  steamPanelOpen: false,
   honors: null,
   honorsWinners: () => [],
   honorsAwarded: false,
@@ -191,17 +193,6 @@ function kick(diverId: string): void {
             />
           </svg>
         </button>
-        <button
-          v-if="mode === 'room'"
-          class="icon-mini"
-          type="button"
-          :aria-label="`${diver.name}'s Steam profile`"
-          :disabled="!steam"
-          :title="steam ? 'Steam profile' : 'No Steam lobby'"
-          @click="emit('openSteam')"
-        >
-          <IconSteam />
-        </button>
         <span
           v-if="canControl && !isSelf(diver) && inlineManage"
           class="manage-inline"
@@ -288,12 +279,34 @@ function kick(diverId: string): void {
     </div>
 
     <div class="link-side">
+      <a
+        v-if="mode === 'room' && !isHost && steam"
+        class="link-btn join-game cut-sm"
+        :href="steam.link"
+        rel="noopener"
+        aria-label="Join Game"
+        title="Join Game"
+      >
+        <IconSteam />
+        <span class="link-label">Join Game</span>
+        <svg
+          class="join-arrow"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          aria-hidden="true"
+        ><path d="M7 17L17 7M9 7h8v8" /></svg>
+      </a>
       <button
-        v-if="mode === 'room'"
+        v-else-if="mode === 'room' && isHost"
         class="link-btn"
+        :class="{ open: steamPanelOpen }"
         type="button"
-        aria-label="Copy Steam lobby link"
+        aria-label="Steam lobby settings"
         title="Steam lobby"
+        :aria-expanded="steamPanelOpen"
+        :aria-controls="steamPanelOpen ? 'steam-lobby-bar' : undefined"
         @click="emit('openSteam')"
       >
         <IconSteam />
@@ -481,6 +494,20 @@ function kick(diverId: string): void {
   cursor: pointer;
 }
 .link-btn:hover { color: var(--text); box-shadow: inset 0 0 0 1px var(--line-5); }
+.link-btn.open { color: var(--text); box-shadow: inset 0 0 0 1px var(--line-5); }
+.link-btn.join-game {
+  --steam-deep: #171a21;
+  background: linear-gradient(180deg, #67c1f5 0%, #417a9b 100%);
+  color: var(--steam-deep);
+  box-shadow: none;
+  transition: filter var(--dur-fast) var(--ease-out);
+}
+.link-btn.join-game:hover {
+  color: var(--steam-deep);
+  box-shadow: none;
+  filter: brightness(1.08);
+}
+.link-btn.join-game .join-arrow { width: 14px; height: 14px; }
 .link-btn.invite .code { color: var(--text); font-weight: 700; letter-spacing: 0.06em; }
 .link-btn svg { width: 16px; height: 16px; }
 
