@@ -167,10 +167,12 @@ const operationClimbs = computed(() =>
         <OperationCleared
           v-else-if="squadBanked && operationClimbs"
           :state="state"
+          :self="self"
+          :self-id="selfId"
           :can-control="canControl"
           phone
           @start="emit('advance')"
-          @open-bargains="emit('openBargains')"
+          @buy="emit('buy', $event)"
         />
 
         <MissionCleared

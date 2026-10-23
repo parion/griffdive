@@ -116,6 +116,9 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
 
   // Medium's two-mission operation closes on the climb screen.
   await expect(page.getByRole('heading', { name: 'The squad climbs' })).toBeVisible()
+  // The climb regroups too: the operation's last haul and a last call at Brasch.
+  await expect(page.getByRole('article', { name: 'Your haul' }).locator('img')).toBeVisible()
+  await expect(page.locator('.cleared .bb-card')).toHaveCount(4)
   await page.getByRole('button', { name: /Start operation 2/ }).click()
   await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeVisible()
 })

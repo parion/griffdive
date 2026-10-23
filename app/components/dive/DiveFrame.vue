@@ -73,6 +73,6 @@
 
 @media (max-width: 1020px) {
   .shell { height: auto; min-height: 100vh; grid-template-rows: auto minmax(0, 1fr) auto; overflow: visible; }
-  .stage { overflow: visible; }
+  .stage { overflow: visible; overflow-x: clip; }
 }
 </style>

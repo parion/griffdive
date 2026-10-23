@@ -145,9 +145,12 @@ draft hands off to an interstitial; the engine stays in rewards and the host's A
 way on. Mid-operation that is **`MissionCleared`** ("Regroup"): a mission track (secured drops lit
 teal, the next one breathing gold), the diver's banked haul as a hero card with the credits it
 earned, the squad's picks (`SquadDraftBoard`), and **Brasch's Bargains inline** so divers shop
-while they wait. At the operation's end, **`OperationCleared`** carries the climb
+while they wait. Both beats share **`BankedHaul`** (the haul hero card). At the operation's end, **`OperationCleared`** carries the climb
 to the next difficulty — the next in-game difficulty emblem slams in over rays, above a 3–10
-chevron ladder underlined in each rung's base tier — and points at Brasch's restock.
+chevron ladder underlined in each rung's base tier — then regroups like the mission beat: the haul, the squad's picks and Brasch's shelf as a **last
+call** (the shelf restocks at the new altitude only when the next operation starts). Its backdrop
+is alive: two ray fields counter-rotate behind the emblem, a halo breathes, embers rise and the
+headline takes one pass of light — all stilled by reduced motion.
 
 #### ValorRoll — the one odds primitive
 

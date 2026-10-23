@@ -779,9 +779,11 @@ function launchCrusade(settings: CrusadeSettings): void {
             <OperationCleared
               v-if="squadBanked && operationClimbs"
               :state="state"
+              :self="self"
+              :self-id="selfId"
               :can-control="canControl"
               @start="advance"
-              @open-bargains="bargainsOpen = true"
+              @buy="buyItem"
             />
             <MissionCleared
               v-else-if="squadBanked"
