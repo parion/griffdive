@@ -1290,10 +1290,11 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
       <div class="mo-play">
         <span class="lbl">Play it:</span>
         <span class="mo-carrot">
-          <span
-            class="hex"
-            aria-hidden="true"
-          />+{{ MAJOR_ORDER_RISK }} VALOR
+          <RiskPips
+            :value="MAJOR_ORDER_RISK"
+            :max="MAJOR_ORDER_RISK"
+            tone="gold"
+          />BETTER ODDS
         </span>
         <span class="mo-carrot">
           <span

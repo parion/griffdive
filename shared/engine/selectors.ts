@@ -38,11 +38,11 @@ import {
   stratagemBanReason,
 } from './pacts'
 import type { StratagemBanSource } from './pacts'
-import { catchUpOpsBehind, startingItemIds } from './progression'
+import { STARTING_KITS, catchUpOpsBehind, startingItemIds } from './progression'
 import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, bargainKindOf, rollBargainShelf, rollBonus, rollCeiling, rollRewardOffer, rollRewardOptions, topTierOf, valorOf } from './rewards'
 import type { BargainSlot, RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
-import type { BargainDeal, BargainSlotKind, CrusadeMode, DiveState, DivePhase, DiverState, MissionOutcome, RewardTier } from './types'
+import type { BargainDeal, BargainSlotKind, CrusadeMode, CrusadeSettings, DiveState, DivePhase, DiverState, FrontPlan, MissionOutcome, RewardTier } from './types'
 import { eligibleMisfortunes, eligibleStrains, frontById, strainById } from './wheel'
 
 // A completed run is tracked by its full draw — misfortune, front and strain —
@@ -161,15 +161,36 @@ export interface TeamRiskBreakdown {
 
 // The run-long mode's flat per-mission Valor: SEAF Support Package (assisted)
 // or Super Penance (hellish). Zero on the medium start, which has no mode.
-export function modeValorOf(state: DiveState): number {
-  const mode = state.settings?.mode
+export function modeValorAt(mode: CrusadeMode | undefined, difficulty: number): number {
   if (mode === 'seaf') {
-    return seafSupportValorAt(state.difficulty)
+    return seafSupportValorAt(difficulty)
   }
   if (mode === 'penance') {
-    return penanceValorAt(state.difficulty)
+    return penanceValorAt(difficulty)
   }
   return 0
+}
+
+export function modeValorOf(state: DiveState): number {
+  return modeValorAt(state.settings?.mode, state.difficulty)
+}
+
+// The fixed team risk a front plan carries on every mission: a live Major
+// Order or a rolled front. A locked front is a preference and carries none.
+export function frontPlanRisk(plan: FrontPlan | undefined): number {
+  if (plan === 'majorOrder') {
+    return MAJOR_ORDER_RISK
+  }
+  return plan === 'rolled' ? FRONT_ROLL_RISK : 0
+}
+
+// What a crusade's setup commits the squad to on every mission before any
+// directive, strain or pact: the front plan plus the mode, at the start
+// difficulty. The setup screen previews it on the Valor roll; once the run
+// starts teamRiskBreakdown carries the same terms.
+export function setupRiskOf(settings: CrusadeSettings): number {
+  const start = STARTING_KITS[settings.variant].startDifficulty
+  return frontPlanRisk(settings.front) + modeValorAt(settings.mode, start)
 }
 
 // The legible split of the team term for the pacts summary bar — same inputs,

@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
 import type { FrontId } from '~~/shared/data/fronts'
-import { PENANCE_VALOR, SEAF_SUPPORT_VALOR, baseTierFor, missionsPerOperation } from '~~/shared/engine/config'
+import { baseTierFor } from '~~/shared/engine/config'
 import { STARTING_KITS, VARIANTS } from '~~/shared/engine/progression'
-import type { CrusadeMode, CrusadeVariant, FrontPlan, MajorOrderSelection } from '~~/shared/engine/types'
+import { modeValorAt } from '~~/shared/engine/selectors'
+import type { CrusadeMode, CrusadeSettings, CrusadeVariant, FrontPlan, MajorOrderSelection } from '~~/shared/engine/types'
 import type { MajorOrderStatus } from '~/composables/useMajorOrder'
 
 // The crusade's setup, shared by the Bridge's solo dialog and the room lobby:
-// where to fight (the front plan, Major Order first), then where to start (the
-// difficulty) and, on the hard/suicide starts, how (SEAF or Penance). Two
-// columns once there is room; one stack on a phone.
+// where to fight (the front plan, Major Order first), where to start (the
+// difficulty) and, on the hard/suicide starts, how (SEAF or Penance), then the
+// kit it issues and what the whole setup buys on the Valor roll — risk shows
+// as skulls and odds, never a Valor number.
 const props = withDefaults(defineProps<{
   variant: CrusadeVariant
   mode?: CrusadeMode
@@ -19,7 +21,9 @@ const props = withDefaults(defineProps<{
   orderStatus: MajorOrderStatus
   orderPending?: boolean
   disabled?: boolean
-}>(), { mode: 'seaf', orderPending: false, disabled: false })
+  // The lobby pins the odds in its launch bar instead.
+  showOdds?: boolean
+}>(), { mode: 'seaf', orderPending: false, disabled: false, showOdds: true })
 
 const emit = defineEmits<{
   'update:variant': [variant: CrusadeVariant]
@@ -41,17 +45,20 @@ const cards = computed(() => VARIANTS.map((entry) => {
     name: entry.name,
     start,
     tier: baseTierFor(start),
-    missions: missionsPerOperation(start),
     hasMode: start >= 5,
   }
 }))
 
 const selected = computed(() => cards.value.find(card => card.id === props.variant) ?? cards.value[0]!)
 
-function modeValor(id: CrusadeMode): number {
-  const table = id === 'penance' ? PENANCE_VALOR : SEAF_SUPPORT_VALOR
-  return table[selected.value.start] ?? 0
-}
+const activeMode = computed(() => (selected.value.hasMode ? props.mode : undefined))
+const settings = computed<CrusadeSettings>(() => ({
+  variant: props.variant,
+  ...(activeMode.value ? { mode: activeMode.value } : {}),
+  front: props.frontPlan,
+}))
+
+const { zones, deltas } = useSetupOdds(settings)
 </script>
 
 <template>
@@ -103,16 +110,16 @@ function modeValor(id: CrusadeMode): number {
             :value="entry.id"
             class="variant cut-sm"
             :class="{ on: variant === entry.id }"
-            :aria-label="`${entry.name}, start at difficulty ${entry.start}, base tier ${entry.tier}, ${entry.missions} missions per operation`"
+            :aria-label="`${entry.name}, start at difficulty ${entry.start}, base tier ${entry.tier}`"
           >
             <span class="v-num disp">{{ entry.start }}</span>
             <span class="v-name">{{ entry.name }}</span>
             <span class="v-meta">
+              <span class="v-base">Base tier</span>
               <span
                 class="tb v-tier"
                 :data-tier="entry.tier"
               >{{ entry.tier }}</span>
-              <span class="v-ops">{{ entry.missions }} / op</span>
             </span>
           </RadioGroupItem>
         </RadioGroupRoot>
@@ -133,9 +140,45 @@ function modeValor(id: CrusadeMode): number {
             :class="{ on: mode === m.id, penance: m.id === 'penance' }"
           >
             <span class="m-name">{{ m.name }}</span>
-            <span class="m-note">{{ m.note }} · +{{ modeValor(m.id) }} Valor / mission</span>
+            <span class="m-note">
+              <RiskPips
+                :value="modeValorAt(m.id, selected.start)"
+                :max="modeValorAt(m.id, selected.start)"
+                tone="gold"
+              />
+              {{ m.note }}
+            </span>
           </RadioGroupItem>
         </RadioGroupRoot>
+      </section>
+
+      <section
+        class="block"
+        aria-labelledby="setup-kit-h"
+      >
+        <h2
+          id="setup-kit-h"
+          class="lbl block-h"
+        >
+          Starting kit
+        </h2>
+        <StartingKit
+          :variant="variant"
+          :mode="activeMode"
+        />
+      </section>
+
+      <section
+        v-if="showOdds"
+        class="block odds"
+        aria-label="What the setup buys"
+      >
+        <ValorRoll
+          :zones="zones"
+          :deltas="deltas"
+          label="Setup odds"
+          note="Every mission, before directives and pacts"
+        />
       </section>
     </div>
   </div>
@@ -187,8 +230,8 @@ function modeValor(id: CrusadeMode): number {
 }
 .variant.on .v-name { color: var(--text); }
 .v-meta { display: flex; align-items: center; gap: 8px; margin-top: auto; }
+.v-base { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; color: var(--muted); }
 .v-tier { font-size: 0.68rem; min-width: 1.3rem; padding: 0.05rem 0.25rem; }
-.v-ops { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 
 .modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .mode {
@@ -202,9 +245,19 @@ function modeValor(id: CrusadeMode): number {
 .m-name { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .mode.on .m-name { color: var(--gold); }
 .mode.penance.on .m-name { color: var(--orange); }
-.m-note { font-size: 11px; line-height: 1.25; color: var(--muted); }
+.m-note { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; line-height: 1.25; color: var(--muted); }
 .mode.on .m-note { color: var(--khaki); }
 
+/* Wide: where to fight spans; the start and its kit sit side by side. */
+@container setup (min-width: 760px) {
+  .setup { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; }
+  .block:first-child,
+  .odds { grid-column: 1 / -1; }
+}
+@container setup (max-width: 420px) {
+  .v-meta { gap: 5px; }
+  .v-base { font-size: 8px; letter-spacing: 0.08em; }
+}
 @container setup (max-width: 360px) {
   .variant { min-height: 88px; padding: 8px; }
   .v-num { font-size: 1.8rem; }

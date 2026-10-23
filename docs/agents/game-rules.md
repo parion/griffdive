@@ -204,6 +204,10 @@ following the war does not forfeit Valor potential; a manual lock is a preferenc
 no carrot, so only playing the actual war objective pays. A multi-front order still randomizes
 within its fronts every operation; a single-front order (or a lock) refuses the front reroll.
 
+Setup never shows risk as a Valor number: each plan's fixed risk (`frontPlanRisk`) and the mode's
+(`modeValorAt`) render as skulls, and `setupRiskOf(settings)` — the same terms `teamRiskBreakdown`
+charges once the run starts, at the start difficulty — drives the setup's odds preview.
+
 **Playing the war is the default:** whenever a live order is known, setup opens on the `majorOrder`
 plan (featured first, tagged Recommended) until the host picks another; with no order it opens on
 `rolled`.

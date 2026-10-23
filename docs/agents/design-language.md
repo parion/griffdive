@@ -104,12 +104,19 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
   opens **Make host / Kick diver**. On launch the pods drop through the doors (`podDrop`).
 - The host gets **`CrusadeSetup`** (shared with the Bridge's setup dialog): *Where to fight* —
   `FrontPlanPicker` with the live **Major Order** as the featured, pre-selected card (its fronts as
-  equal tiles on narrow widths, perks and countdown), *Lock a faction* and *Roll each op* as quieter
-  alternatives — then *Starting difficulty* (three compact number cards) and, on 5/7, the
-  SEAF/Penance pair. Squadmates see a **Stand by** card with a Declare warbonds CTA instead of
-  disabled controls (the host's picks are local until launch).
-- One pinned **launch bar**: a one-line summary and the hold-to-launch CTA (full width on phones).
-  There is no pre-launch checklist.
+  equal tiles on narrow widths, perks and countdown); on wide containers it is one big button in
+  the left column with *Lock a faction* and *Roll each op* stacked on the right — then *Starting
+  difficulty* (three number cards, each with its **Base tier**) and, on 5/7, the SEAF/Penance pair,
+  then the **Starting kit** (`StartingKit`: the issued gear grouped by kind, SEAF Support items
+  edged teal). Squadmates see a **Stand by** card with a Declare warbonds CTA instead of disabled
+  controls (the host's picks are local until launch). Diver names are all caps.
+- **Risk never shows as a Valor number.** Each plan and mode carries its per-mission risk as
+  `RiskPips` skulls (`frontPlanRisk` / `modeValorAt` from the engine), and what the whole setup buys
+  is a **Setup odds** `ValorRoll` (`useSetupOdds` → `setupRiskOf`): the odds line at the start
+  difficulty, lit only where the setup gains over a bare start.
+- One pinned **launch bar**: the Setup odds strip (compact) beside the hold-to-launch CTA (stacked
+  and full width on phones); the Bridge dialog shows the same strip inline. There is no pre-launch
+  checklist.
 
 #### Call — `DivePhaseWheel`
 

@@ -51,6 +51,13 @@ const selectedVariant = computed(() => VARIANTS.find(entry => entry.id === varia
 const startDifficulty = computed(() => STARTING_KITS[variant.value].startDifficulty)
 const modeActive = computed(() => startDifficulty.value >= 5)
 
+const settings = computed<CrusadeSettings>(() => ({
+  variant: variant.value,
+  ...(modeActive.value ? { mode: mode.value } : {}),
+  front: frontPlan.value,
+}))
+const { zones, deltas } = useSetupOdds(settings)
+
 const frontSummary = computed(() => {
   if (frontPlan.value === 'majorOrder') {
     return 'Major Order'
@@ -155,11 +162,9 @@ function launch(): void {
     return
   }
   launched.value = true
-  const settings: CrusadeSettings = modeActive.value
-    ? { variant: variant.value, mode: mode.value, front: frontPlan.value }
-    : { variant: variant.value, front: frontPlan.value }
+  const launchSettings = settings.value
   const majorOrder = pin.value
-  launchTimer = setTimeout(() => emit('start', settings, majorOrder), reduced ? 0 : 650)
+  launchTimer = setTimeout(() => emit('start', launchSettings, majorOrder), reduced ? 0 : 650)
 }
 </script>
 
@@ -365,6 +370,7 @@ function launch(): void {
           :order-status="orderStatus"
           :order-pending="orderPending"
           :disabled="launched"
+          :show-odds="false"
           @update:front-plan="chooseFrontPlan"
           @refresh-order="refreshOrder"
         />
@@ -405,9 +411,21 @@ function launch(): void {
         class="launch-notch"
         aria-hidden="true"
       />
-      <div class="launch-sum">
-        <span class="lbl">{{ launched ? 'Launched' : canControl ? 'Ready to drop' : 'Waiting on the host' }}</span>
-        <span class="launch-line">{{ canControl ? summary : `${hostName} launches the crusade` }}</span>
+      <ValorRoll
+        v-if="canControl"
+        class="launch-odds"
+        :zones="zones"
+        :deltas="deltas"
+        label="Setup odds"
+        note="Every mission"
+        compact
+      />
+      <div
+        v-else
+        class="launch-sum"
+      >
+        <span class="lbl">Waiting on the host</span>
+        <span class="launch-line">{{ hostName }} launches the crusade</span>
       </div>
       <HoldButton
         v-if="canControl"
@@ -633,7 +651,8 @@ button.bay.open:hover .pod-plus { stroke: var(--gold); }
   overflow: hidden;
   font-size: 0.92rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -688,6 +707,7 @@ button.bay.open:hover .tag-name { color: var(--gold); }
 }
 .launch-notch { position: absolute; left: 0; top: -1px; width: 64px; height: 3px; background: var(--gold); }
 .launch-sum { display: grid; gap: 4px; min-width: 0; margin-right: auto; }
+.launch-odds { flex: 1 1 auto; max-width: 640px; margin-right: auto; }
 .launch-line {
   overflow: hidden;
   font-size: 0.95rem;
@@ -704,6 +724,7 @@ button.bay.open:hover .tag-name { color: var(--gold); }
   .well { height: clamp(100px, 15vh, 132px); }
   .launch { flex-direction: column; align-items: stretch; gap: 10px; }
   .launch-btn { width: 100%; min-height: 56px; }
+  .launch-odds { max-width: none; margin-right: 0; }
   .launch-line { font-size: 0.8rem; }
 }
 @container hangar (max-width: 420px) {
@@ -713,7 +734,6 @@ button.bay.open:hover .tag-name { color: var(--gold); }
   .bar-room-code { font-size: 0.78rem; letter-spacing: 0.12em; }
   .bar-room svg { display: none; }
   .tag { padding: 6px 6px 8px; }
-  .launch-sum .lbl { display: none; }
   .tag-bay { display: none; }
   .tag-name { font-size: 0.74rem; }
   .bay.open .tag-name { font-size: 0.66rem; }

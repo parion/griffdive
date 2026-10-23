@@ -4,7 +4,8 @@ import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
 import { FRONTS } from '~~/shared/data/fronts'
 import type { FrontId } from '~~/shared/data/fronts'
 import { factionImageUrl } from '~~/shared/data/images'
-import { FRONT_ROLL_RISK, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK } from '~~/shared/engine/config'
+import { MAJOR_ORDER_REROLL_BONUS } from '~~/shared/engine/config'
+import { frontPlanRisk } from '~~/shared/engine/selectors'
 import type { FrontPlan, MajorOrderSelection } from '~~/shared/engine/types'
 import type { MajorOrderStatus } from '~/composables/useMajorOrder'
 
@@ -31,6 +32,11 @@ const now = ref(Date.now())
 useIntervalFn(() => {
   now.value = Date.now()
 }, 30_000)
+
+// Skulls, never Valor numbers: each plan's fixed per-mission risk, read from
+// the engine so the cards and the odds preview can't disagree.
+const orderRisk = frontPlanRisk('majorOrder')
+const rollRisk = frontPlanRisk('rolled')
 
 const orderFronts = computed(() =>
   FRONTS.filter(front => props.order?.fronts.includes(front.id)))
@@ -99,7 +105,14 @@ function pick(value: unknown): void {
           class="fp-missing"
         >{{ orderMissing }}</span>
         <span class="fp-perks">
-          <span>+{{ MAJOR_ORDER_RISK }} Valor / mission</span>
+          <span class="fp-risk">
+            <RiskPips
+              :value="orderRisk"
+              :max="orderRisk"
+              tone="gold"
+            />
+            Every mission
+          </span>
           <span>+{{ MAJOR_ORDER_REROLL_BONUS }} reroll / op</span>
           <span
             v-if="countdown"
@@ -118,7 +131,7 @@ function pick(value: unknown): void {
           <span class="fp-radio" />
           <span class="fp-alt-body">
             <span class="fp-title">Lock a faction</span>
-            <span class="fp-alt-note">Same enemy all run · +0 Valor</span>
+            <span class="fp-alt-note">Same enemy all run · no risk</span>
           </span>
         </RadioGroupItem>
         <RadioGroupItem
@@ -130,7 +143,14 @@ function pick(value: unknown): void {
           <span class="fp-radio" />
           <span class="fp-alt-body">
             <span class="fp-title">Roll each op</span>
-            <span class="fp-alt-note">Random enemy · +{{ FRONT_ROLL_RISK }} Valor / mission</span>
+            <span class="fp-alt-note fp-risk">
+              <RiskPips
+                :value="rollRisk"
+                :max="rollRisk"
+                tone="gold"
+              />
+              Random enemy every op
+            </span>
           </span>
         </RadioGroupItem>
       </div>
@@ -272,6 +292,8 @@ function pick(value: unknown): void {
   color: var(--khaki);
 }
 .fp-mo.on .fp-perks { color: var(--gold); }
+.fp-risk { display: inline-flex; align-items: center; gap: 6px; }
+.fp-risk :deep(.pips) { flex-shrink: 0; }
 .fp-mo .fp-perks .fp-ends { color: var(--muted); }
 .fp-mo:disabled .fp-perks { color: var(--dim); }
 
@@ -341,6 +363,12 @@ function pick(value: unknown): void {
 .fp-retry:hover { border-color: var(--gold); color: var(--gold); }
 .fp-retry svg { width: 15px; height: 15px; }
 
+/* Wide: the order is one big button, the alternatives stack beside it. */
+@container fp (min-width: 640px) {
+  .fp-group { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  .fp-mo { align-content: space-between; }
+  .fp-alts { grid-template-columns: 1fr; grid-auto-rows: 1fr; }
+}
 @container fp (max-width: 520px) {
   .fp-fronts { display: grid; grid-template-columns: repeat(var(--fp-count), minmax(0, 1fr)); }
   .fp-chip {

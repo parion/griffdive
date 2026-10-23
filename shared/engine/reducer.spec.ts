@@ -8,7 +8,7 @@ import { DIVERS_CHOICE_OPTION_ID, bargainKindOf, itemPrice, maxCeiling } from '.
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { activeMisfortune, allDiversPicked, availableCaches, awaitingDiverIds, bargainShelfFor, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, pactRiskOf, promotionPending, rewardPoolFor, squadSize, teamRiskOf } from './selectors'
+import { activeMisfortune, allDiversPicked, availableCaches, awaitingDiverIds, bargainShelfFor, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, setupRiskOf, pactRiskOf, promotionPending, rewardPoolFor, squadSize, teamRiskOf } from './selectors'
 import { deriveFront, deriveStrain } from './wheel'
 import type { DiveState, DiverState, EngineAction } from './types'
 
@@ -1940,6 +1940,26 @@ describe('front plan (chosen at crusade setup)', () => {
     // the host deal, and the operation carries no subfaction risk.
     const decided = reduce(spun, { type: 'ACCEPT_MISFORTUNE', accepted: false })
     expect(decided.phase).toBe('deal')
+  })
+
+  it('previews the same setup risk the run then charges on its first mission', () => {
+    const plans = [
+      { front: 'majorOrder' as const, order: { fronts: ['terminids' as const], live: true } },
+      { front: 'locked' as const, order: { fronts: ['terminids' as const] } },
+      { front: 'rolled' as const, order: null },
+    ]
+    for (const variant of ['medium', 'hard', 'suicide'] as const) {
+      for (const mode of [undefined, 'seaf', 'penance'] as const) {
+        for (const { front, order } of plans) {
+          const settings = { variant, ...(mode ? { mode } : {}), front }
+          const spun = reduce(
+            createDiveState(settings, 'p1', 'Griffin', undefined, undefined, order),
+            { type: 'SPIN_WHEEL', seed: 5 },
+          )
+          expect(teamRiskOf(spun), `${variant}/${mode}/${front}`).toBe(setupRiskOf(settings))
+        }
+      }
+    }
   })
 
   it('prices each plan: live order, locked front, rolled front', () => {

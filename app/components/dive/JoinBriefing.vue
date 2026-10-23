@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { useIntersectionObserver } from '@vueuse/core'
-import { ITEMS_BY_ID, WARBONDS } from '~~/shared/data/catalog'
+import { WARBONDS } from '~~/shared/data/catalog'
 import { difficultyImageUrl, itemImageUrl } from '~~/shared/data/images'
-import type { Item, ItemCategory } from '~~/shared/data/types'
 import { MAX_DIFFICULTY, MAX_NAME_LENGTH, MIN_DIFFICULTY, SQUAD_SIZE_MAX, VALOR_METER_MAX } from '~~/shared/engine/config'
 import { STARTING_KITS, difficultyName, startingItemIds } from '~~/shared/engine/progression'
 import { tierZones } from '~~/shared/engine/rewards'
@@ -143,20 +142,10 @@ const status = computed(() => (props.state ? PHASE_STATUS[props.state.phase] : '
 
 // ---- 01 · the kit a Class E diver is issued --------------------------------
 // The lobby has no settings yet, so it shows the bare surplus every start shares.
-const KIT_GROUPS: readonly { label: string, categories: readonly ItemCategory[] }[] = [
-  { label: 'Stratagems', categories: ['Supply', 'Eagle', 'Orbital', 'Defense'] },
-  { label: 'Weapons', categories: ['primary', 'secondary', 'throwable'] },
-  { label: 'Armor', categories: ['armorPassive'] },
-  { label: 'Boosters', categories: ['booster'] },
-]
 const kitMode = computed(() => props.state?.settings?.mode)
-const kitItems = computed<Item[]>(() =>
-  startingItemIds(props.state?.settings?.variant ?? 'medium', kitMode.value)
-    .map(id => ITEMS_BY_ID.get(id))
-    .filter((item): item is Item => !!item))
-const kitGroups = computed(() => KIT_GROUPS
-  .map(group => ({ label: group.label, items: kitItems.value.filter(item => group.categories.includes(item.category)) }))
-  .filter(group => group.items.length > 0))
+const kitIds = computed(() => startingItemIds(props.state?.settings?.variant ?? 'medium', kitMode.value))
+const kitCount = computed(() => kitIds.value.length)
+const kitGroupList = computed(() => kitGroups(kitIds.value))
 
 // ---- 02 · the mission loop, split by who acts ------------------------------
 type Who = 'host' | 'you' | 'all'
@@ -523,10 +512,10 @@ function submit(): void {
                 id="jb-kit-h"
                 class="lbl gold"
               >Issued kit · surplus</span>
-              <span class="cap"><b>{{ kitItems.length }}</b> items</span>
+              <span class="cap"><b>{{ kitCount }}</b> items</span>
             </div>
             <div
-              v-for="group in kitGroups"
+              v-for="group in kitGroupList"
               :key="group.label"
               class="jb-kit-g"
             >
