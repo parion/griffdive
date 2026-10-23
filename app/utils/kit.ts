@@ -1,5 +1,5 @@
 import { ITEMS_BY_ID } from '~~/shared/data/catalog'
-import type { Item } from '~~/shared/data/types'
+import type { Item, ItemCategory } from '~~/shared/data/types'
 import { startingItemIds } from '~~/shared/engine/progression'
 import type { DiveState } from '~~/shared/engine/types'
 
@@ -68,4 +68,26 @@ export function earnedKitItems(state: DiveState, diverId: string | null): Item[]
   }
   const starting = new Set(startingItemIds(state.settings.variant, state.settings.mode))
   return items.filter(item => !starting.has(item.id))
+}
+
+// How an issued kit reads at a glance: stratagems, weapons, armor, boosters.
+const KIT_GROUPS: readonly { label: string, categories: readonly ItemCategory[] }[] = [
+  { label: 'Stratagems', categories: ['Supply', 'Eagle', 'Orbital', 'Defense'] },
+  { label: 'Weapons', categories: ['primary', 'secondary', 'throwable'] },
+  { label: 'Armor', categories: ['armorPassive'] },
+  { label: 'Boosters', categories: ['booster'] },
+]
+
+export interface KitGroup {
+  label: string
+  items: Item[]
+}
+
+export function kitGroups(itemIds: readonly string[]): KitGroup[] {
+  const items = itemIds
+    .map(id => ITEMS_BY_ID.get(id))
+    .filter((item): item is Item => !!item)
+  return KIT_GROUPS
+    .map(group => ({ label: group.label, items: items.filter(item => group.categories.includes(item.category)) }))
+    .filter(group => group.items.length > 0)
 }

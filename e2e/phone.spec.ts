@@ -19,7 +19,16 @@ test('phone host moderation: open the squad, hand over or kick', async ({ browse
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
 
-  // The host's phone squad sheet offers moderation on the joiner (not self).
+  // In the hangar the host manages a squadmate from their bay.
+  await pageA.getByRole('button', { name: /Bay 02, Duo.*manage/ }).click()
+  const bayManage = pageA.getByRole('dialog', { name: /Bay 02 · Duo/ })
+  await expect(bayManage.getByRole('button', { name: 'Kick diver' })).toBeVisible()
+  await pageA.keyboard.press('Escape')
+  await expect(bayManage).toBeHidden()
+
+  // Once launched, the phone squad sheet carries moderation (never on self).
+  await pageA.getByRole('button', { name: /^Launch crusade/ }).click()
+  await expect(pageA.locator('.phone-call')).toBeVisible()
   await pageA.getByRole('button', { name: 'Squad' }).click()
   const squad = pageA.getByRole('dialog', { name: 'Squad' })
   await expect(squad).toBeVisible()

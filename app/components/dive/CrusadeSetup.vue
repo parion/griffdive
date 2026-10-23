@@ -1,207 +1,258 @@
 <script setup lang="ts">
 import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
-import { PENANCE_VALOR, SEAF_SUPPORT_VALOR, baseTierFor, missionsPerOperation } from '~~/shared/engine/config'
-import { STARTING_KITS, VARIANTS, difficultyName } from '~~/shared/engine/progression'
-import type { CrusadeMode, CrusadeVariant } from '~~/shared/engine/types'
+import type { FrontId } from '~~/shared/data/fronts'
+import { baseTierFor } from '~~/shared/engine/config'
+import { STARTING_KITS, VARIANTS } from '~~/shared/engine/progression'
+import { modeValorAt } from '~~/shared/engine/selectors'
+import type { CrusadeMode, CrusadeSettings, CrusadeVariant, FrontPlan, MajorOrderSelection } from '~~/shared/engine/types'
+import type { MajorOrderStatus } from '~/composables/useMajorOrder'
 
+// The crusade's setup, shared by the Bridge's solo dialog and the room lobby:
+// where to fight (the front plan, Major Order first), where to start (the
+// difficulty) and, on the hard/suicide starts, how (SEAF or Penance), then the
+// kit it issues and the skulls the whole setup carries — risk shows as skulls,
+// never a Valor number.
 const props = withDefaults(defineProps<{
   variant: CrusadeVariant
   mode?: CrusadeMode
-  startLabel?: string
-  showStart?: boolean
-}>(), { mode: 'seaf', startLabel: 'Start crusade', showStart: true })
+  frontPlan: FrontPlan
+  lockedFront: FrontId
+  order: MajorOrderSelection | null
+  orderStatus: MajorOrderStatus
+  orderPending?: boolean
+  disabled?: boolean
+  // The lobby pins the total in its launch bar instead.
+  showRisk?: boolean
+}>(), { mode: 'seaf', orderPending: false, disabled: false, showRisk: true })
 
 const emit = defineEmits<{
   'update:variant': [variant: CrusadeVariant]
   'update:mode': [mode: CrusadeMode]
-  'start': []
+  'update:frontPlan': [plan: FrontPlan]
+  'update:lockedFront': [front: FrontId]
+  'refreshOrder': []
 }>()
 
-const MODES: readonly { id: CrusadeMode, name: string, blurb: string }[] = [
-  { id: 'seaf', name: 'SEAF Support Package', blurb: 'Assisted ride: extra gear + a small Valor boost.' },
-  { id: 'penance', name: 'Super Penance', blurb: 'No aid. A larger Valor stake, for the wicked.' },
+const MODES: readonly { id: CrusadeMode, name: string, note: string }[] = [
+  { id: 'seaf', name: 'SEAF Support', note: 'Extra gear' },
+  { id: 'penance', name: 'Super Penance', note: 'No aid' },
 ]
 
 const cards = computed(() => VARIANTS.map((entry) => {
   const start = STARTING_KITS[entry.id].startDifficulty
   return {
-    ...entry,
+    id: entry.id,
+    name: entry.name,
     start,
     tier: baseTierFor(start),
-    missions: missionsPerOperation(start),
     hasMode: start >= 5,
   }
 }))
 
 const selected = computed(() => cards.value.find(card => card.id === props.variant) ?? cards.value[0]!)
-const modeActive = computed(() => selected.value.hasMode)
 
-function select(value: unknown): void {
-  emit('update:variant', value as CrusadeVariant)
-}
-
-function pickMode(id: CrusadeMode): void {
-  emit('update:mode', id)
-}
-
-function modeValor(id: CrusadeMode): number {
-  const table = id === 'penance' ? PENANCE_VALOR : SEAF_SUPPORT_VALOR
-  return table[selected.value.start] ?? 0
-}
+const activeMode = computed(() => (selected.value.hasMode ? props.mode : undefined))
+const settings = computed<CrusadeSettings>(() => ({
+  variant: props.variant,
+  ...(activeMode.value ? { mode: activeMode.value } : {}),
+  front: props.frontPlan,
+}))
 </script>
 
 <template>
-  <div class="setup">
-    <RadioGroupRoot
-      :model-value="variant"
-      class="variant-grid"
-      aria-label="Variant"
-      @update:model-value="select"
-    >
-      <RadioGroupItem
-        v-for="entry in cards"
-        :key="entry.id"
-        :value="entry.id"
-        class="variant-card cut-sm"
-        :class="{ on: variant === entry.id }"
+  <div class="setup-wrap">
+    <div class="setup">
+      <section
+        class="block"
+        aria-labelledby="setup-front-h"
       >
-        <span class="vl">{{ entry.start }} START</span>
-        <span class="vc-body">
-          <span class="vc-head">
-            <strong class="vc-name disp">{{ entry.name }}</strong>
-            <span
-              class="tb vc-tier"
-              :data-tier="entry.tier"
-            >{{ entry.tier }}</span>
-          </span>
-          <span class="vc-diff cap">{{ difficultyName(entry.start) }}</span>
-          <span class="vc-meta odl">OP {{ entry.missions }} MISSIONS</span>
-          <span class="vc-pips">
-            <i
-              v-for="k in entry.missions"
-              :key="k"
-            />
-          </span>
-          <span class="vc-desc muted small">{{ entry.description }}</span>
-        </span>
-      </RadioGroupItem>
-    </RadioGroupRoot>
+        <h2
+          id="setup-front-h"
+          class="lbl block-h"
+        >
+          Where to fight
+        </h2>
+        <FrontPlanPicker
+          :plan="frontPlan"
+          :locked-front="lockedFront"
+          :order="order"
+          :status="orderStatus"
+          :pending="orderPending"
+          :disabled="disabled"
+          @update:plan="emit('update:frontPlan', $event)"
+          @update:locked-front="emit('update:lockedFront', $event)"
+          @refresh="emit('refreshOrder')"
+        />
+      </section>
 
-    <div
-      v-if="modeActive"
-      class="mode-pick"
-      role="radiogroup"
-      aria-label="Starting mode"
-    >
-      <button
-        v-for="m in MODES"
-        :key="m.id"
-        type="button"
-        role="radio"
-        class="mode-card cut-sm"
-        :class="{ on: mode === m.id, penance: m.id === 'penance', lit: m.id === 'penance' && mode === m.id }"
-        :aria-checked="mode === m.id"
-        @click="pickMode(m.id)"
+      <section
+        class="block"
+        aria-labelledby="setup-start-h"
       >
-        <span class="mode-head">
-          <span class="mode-name">{{ m.name }}</span>
-          <span
-            v-if="m.id === 'penance'"
-            class="flames"
-            aria-hidden="true"
-          ><i /><i /><i /></span>
-          <span
-            v-else
-            class="mode-badge"
-          >ASSIST</span>
-        </span>
-        <span class="mode-blurb">{{ m.blurb }}</span>
-        <span class="mode-valor">+{{ modeValor(m.id) }} Valor / mission</span>
-      </button>
+        <h2
+          id="setup-start-h"
+          class="lbl block-h"
+        >
+          Starting difficulty
+        </h2>
+        <RadioGroupRoot
+          :model-value="variant"
+          class="variants"
+          aria-labelledby="setup-start-h"
+          :disabled="disabled"
+          @update:model-value="emit('update:variant', $event as CrusadeVariant)"
+        >
+          <RadioGroupItem
+            v-for="entry in cards"
+            :key="entry.id"
+            :value="entry.id"
+            class="variant cut-sm"
+            :class="{ on: variant === entry.id }"
+            :aria-label="`${entry.name}, start at difficulty ${entry.start}, base tier ${entry.tier}`"
+          >
+            <span class="v-num disp">{{ entry.start }}</span>
+            <span class="v-name">{{ entry.name }}</span>
+            <span class="v-meta">
+              <span class="v-base">Base tier</span>
+              <span
+                class="tb v-tier"
+                :data-tier="entry.tier"
+              >{{ entry.tier }}</span>
+            </span>
+          </RadioGroupItem>
+        </RadioGroupRoot>
+
+        <RadioGroupRoot
+          v-if="selected.hasMode"
+          :model-value="mode"
+          class="modes"
+          aria-label="Starting mode"
+          :disabled="disabled"
+          @update:model-value="emit('update:mode', $event as CrusadeMode)"
+        >
+          <RadioGroupItem
+            v-for="m in MODES"
+            :key="m.id"
+            :value="m.id"
+            class="mode cut-sm"
+            :class="{ on: mode === m.id, penance: m.id === 'penance' }"
+          >
+            <span class="m-name">{{ m.name }}</span>
+            <span class="m-note">
+              <RiskPips
+                :value="modeValorAt(m.id, selected.start)"
+                :max="modeValorAt(m.id, selected.start)"
+                tone="gold"
+              />
+              {{ m.note }}
+            </span>
+          </RadioGroupItem>
+        </RadioGroupRoot>
+      </section>
+
+      <section
+        class="block"
+        aria-labelledby="setup-kit-h"
+      >
+        <h2
+          id="setup-kit-h"
+          class="lbl block-h"
+        >
+          Starting kit
+        </h2>
+        <StartingKit
+          :variant="variant"
+          :mode="activeMode"
+        />
+      </section>
+
+      <section
+        v-if="showRisk"
+        class="block risk"
+        aria-label="Setup risk"
+      >
+        <SetupRisk :settings="settings" />
+      </section>
     </div>
-
-    <button
-      v-if="showStart"
-      class="btn primary block cut-sm"
-      type="button"
-      @click="emit('start')"
-    >
-      {{ startLabel }}
-    </button>
   </div>
 </template>
 
 <style scoped>
-.setup { display: grid; gap: 0.85rem; }
-
-.variant-grid {
+.setup-wrap { min-width: 0; container: setup / inline-size; }
+.setup {
   display: grid;
-  gap: 0.5rem;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
 }
+.block { display: grid; align-content: start; gap: 8px; min-width: 0; }
+.block-h { margin: 0; }
 
-.variant-card {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.55rem 0.6rem;
-  border: 1px solid var(--line-2);
-  background: var(--rail);
-  cursor: pointer;
-  text-align: left;
-  color: inherit;
-  font: inherit;
-  transition: border-color var(--dur-fast), background-color var(--dur-fast);
-}
-.variant-card:hover { border-color: var(--line-4); }
-.variant-card.on {
-  border-color: var(--gold);
-  background: rgba(255, 214, 66, 0.05);
-}
-
-.vc-body { display: grid; gap: 0.2rem; min-width: 0; flex-grow: 1; }
-.vc-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-.vc-name { font-size: 0.9rem; color: var(--text); }
-.vc-tier { font-size: 0.68rem; min-width: 1.3rem; padding: 0.05rem 0.25rem; }
-.vc-diff { color: var(--gold); }
-.vc-meta { color: var(--dim); }
-.vc-pips { display: flex; gap: 3px; }
-.vc-pips i {
-  width: 14px;
-  height: 4px;
-  border: 1px solid var(--line-4);
-}
-.variant-card.on .vc-pips i { border-color: var(--gold); }
-.vc-desc { line-height: 1.3; }
-
-/* Starting mode (hard/suicide) ------------------------------------------ */
-.mode-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
-.mode-card {
-  display: grid;
-  gap: 0.25rem;
-  padding: 0.55rem 0.6rem;
-  border: 1px solid var(--line-2);
-  background: var(--rail);
+.variants { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.variant,
+.mode {
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
+  border: 1px solid var(--line-2);
+  background: var(--panel);
   transition: border-color var(--dur-fast), background-color var(--dur-fast);
 }
-.mode-card:hover { border-color: var(--line-4); }
-.mode-card.on { border-color: var(--gold); background: rgba(255, 214, 66, 0.05); }
-.mode-card.penance.on { border-color: var(--orange); background: rgba(255, 108, 61, 0.06); }
-.mode-head { display: flex; align-items: center; gap: 0.5rem; }
-.mode-name { font-size: 0.82rem; font-weight: 700; letter-spacing: 0.04em; }
-.mode-card.penance.on .mode-name { color: var(--orange); }
-.mode-badge {
-  margin-left: auto;
-  padding: 1px 6px;
-  border: 1px solid var(--teal);
-  color: var(--teal);
-  font-size: 9px;
+.variant:hover:not(:disabled),
+.mode:hover:not(:disabled) { border-color: var(--line-4); }
+.variant:disabled,
+.mode:disabled { cursor: not-allowed; opacity: 0.6; }
+
+.variant {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-height: 96px;
+  padding: 10px 12px;
+}
+.variant.on { border-color: var(--gold); background: var(--raised); box-shadow: inset 0 -3px 0 var(--gold); }
+.v-num { font-size: 2.1rem; line-height: 1; color: var(--text); }
+.variant.on .v-num { color: var(--gold); }
+.v-name {
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: var(--khaki);
 }
-.mode-blurb { font-size: 11px; line-height: 1.3; color: var(--muted); }
-.mode-valor { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: var(--khaki); text-transform: uppercase; }
+.variant.on .v-name { color: var(--text); }
+.v-meta { display: flex; align-items: center; gap: 8px; margin-top: auto; }
+.v-base { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; color: var(--muted); }
+.v-tier { font-size: 0.68rem; min-width: 1.3rem; padding: 0.05rem 0.25rem; }
+
+.modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.mode {
+  display: grid;
+  gap: 3px;
+  min-height: 52px;
+  padding: 8px 12px;
+}
+.mode.on { border-color: var(--gold); background: var(--raised); }
+.mode.penance.on { border-color: var(--orange); }
+.m-name { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.mode.on .m-name { color: var(--gold); }
+.mode.penance.on .m-name { color: var(--orange); }
+.m-note { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; line-height: 1.25; color: var(--muted); }
+.mode.on .m-note { color: var(--khaki); }
+
+/* Wide: where to fight spans; the start and its kit sit side by side. */
+@container setup (min-width: 760px) {
+  .setup { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; }
+  .block:first-child,
+  .risk { grid-column: 1 / -1; }
+}
+@container setup (max-width: 420px) {
+  .v-meta { gap: 5px; }
+  .v-base { font-size: 8px; letter-spacing: 0.08em; }
+}
+@container setup (max-width: 360px) {
+  .variant { min-height: 88px; padding: 8px; }
+  .v-num { font-size: 1.8rem; }
+}
 </style>

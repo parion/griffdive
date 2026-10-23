@@ -305,13 +305,6 @@ function dealPacts(): void {
   dispatch({ type: 'DEAL_PACTS' })
 }
 
-// The Major Order is the operation's front commitment, host-set before the
-// first spin: it pins the front draw and banks a reroll token on completion.
-// The picker's live suggestion (Phase B) carries the same selection shape.
-function setMajorOrder(order: MajorOrderSelection | null): void {
-  dispatch({ type: 'SET_MAJOR_ORDER', order })
-}
-
 function lockPacts(pactIds: string[]): void {
   if (selfId.value) {
     dispatch({ type: 'SET_PACTS', playerId: selfId.value, pactIds })
@@ -557,9 +550,9 @@ function confirmJoinBriefing(name: string): void {
   confirmJoinName(name)
 }
 
-function launchCrusade(settings: CrusadeSettings): void {
+function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelection | null): void {
   commitName()
-  dispatch({ type: 'START_DIVE', settings, seed: session.newSeed() })
+  dispatch({ type: 'START_DIVE', settings, seed: session.newSeed(), majorOrder })
 }
 </script>
 
@@ -622,6 +615,21 @@ function launchCrusade(settings: CrusadeSettings): void {
       :slot-name="session.slotName.value"
     />
 
+    <DivePhaseLobby
+      v-else-if="state && state.phase === 'lobby' && !kicked"
+      :state="state"
+      :self-id="selfId"
+      :can-control="canControl"
+      :room-code="session.slotName.value"
+      :last-error="session.lastError.value?.message ?? null"
+      @start="launchCrusade"
+      @copy-invite="copyInvite"
+      @open-menu="sessionMenuOpen = true"
+      @transfer-host="transferHost"
+      @kick="kick"
+      @dismiss-error="session.dismissError()"
+    />
+
     <DivePhone
       v-else-if="state && isPhone"
       :state="state"
@@ -642,7 +650,6 @@ function launchCrusade(settings: CrusadeSettings): void {
       @decide="decideMisfortune"
       @decide-strain="decideStrain"
       @deal="dealPacts"
-      @set-major-order="setMajorOrder"
       @reroll="reroll"
       @lock-pacts="lockPacts"
       @preview="pactPreview = $event"
@@ -656,7 +663,6 @@ function launchCrusade(settings: CrusadeSettings): void {
       @advance="advance"
       @buy="buyItem"
       @forfeit="forfeit"
-      @start="launchCrusade"
       @kick="kick"
       @transfer-host="transferHost"
       @copy-invite="copyInvite"
@@ -725,14 +731,6 @@ function launchCrusade(settings: CrusadeSettings): void {
           :key="phaseKey"
           class="phase-stack"
         >
-          <DivePhaseLobby
-            v-if="phase === 'lobby'"
-            :state="state"
-            :self-id="selfId"
-            :can-control="canControl"
-            @start="launchCrusade"
-          />
-
           <DivePhaseWheel
             v-if="phase === 'spin' || phase === 'decision' || phase === 'strain' || phase === 'deal'"
             :state="state"
@@ -743,7 +741,6 @@ function launchCrusade(settings: CrusadeSettings): void {
             @decide="decideMisfortune"
             @decide-strain="decideStrain"
             @deal="dealPacts"
-            @set-major-order="setMajorOrder"
             @reroll="reroll"
           />
 

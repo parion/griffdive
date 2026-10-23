@@ -89,6 +89,36 @@ merge with them.
   controls are visibly absent for squadmates rather than disabled chrome. A non-host sees "Stand by"
   and the host's name on the call, but still swears their own pacts and banks their own loot.
 
+#### Setup — Hellpod Bays (`DivePhaseLobby`)
+
+The room's setup is the one screen that stands outside the dive shells: no `DiveTopBar`,
+`SquadDock`, `PhoneTopBar` or phone action bar, since there is no crusade to report on yet. It is a
+single responsive page (container queries on `.hangar`) for phone and desktop alike:
+
+- A slim **hangar bar**: back to the Bridge, the title, the room code (tap copies the invite) and
+  the session menu.
+- **Four bays in one row at every width**, each a lit well with an SVG hellpod standing over
+  hazard-striped doors. A seated pod shows the diver's initial in its window (gold for you, teal
+  well lamp for the squad); an open bay is a dashed ghost pod. Every bay is a big click target:
+  an open bay copies the invite, your own pod opens Warbonds, and the host's tap on a squadmate
+  opens **Make host / Kick diver**. On launch the pods drop through the doors (`podDrop`).
+- The host gets **`CrusadeSetup`** (shared with the Bridge's setup dialog): *Where to fight* —
+  `FrontPlanPicker` with the live **Major Order** as the featured, pre-selected card (its fronts as
+  equal tiles on narrow widths, perks and countdown); on wide containers it is one big button in
+  the left column with *Lock a faction* and *Roll each op* stacked on the right — then *Starting
+  difficulty* (three number cards, each with its **Base tier**) and, on 5/7, the SEAF/Penance pair,
+  then the **Starting kit** (`StartingKit`: the issued gear grouped by kind, SEAF Support items
+  edged teal). Squadmates see a **Stand by** card with a Declare warbonds CTA instead of disabled
+  controls (the host's picks are local until launch). Diver names are all caps.
+- **Risk never shows as a Valor number.** Each plan and mode carries its per-mission risk as
+  `RiskPips` skulls (`frontPlanRisk` / `modeValorAt` from the engine). `SetupRisk` totals them
+  (`setupRiskOf`, out of 5) and states the game's core trade beside the total — **"More skulls,
+  higher-tier rewards"** with a C→S tier ladder that brightens as it climbs — rather than an odds
+  table: setup teaches the rule the whole run plays by.
+- One pinned **launch bar**: the compact `SetupRisk` (one row on desktop, two on phones) beside the
+  hold-to-launch CTA (stacked and full width on phones); the Bridge dialog shows the same total
+  inline. There is no pre-launch checklist.
+
 #### Call — `DivePhaseWheel`
 
 One lit call: `WheelOfMisfortune` (a real seeded SVG wheel inside a gold tick bezel; the hub button
@@ -99,9 +129,9 @@ the drawn **Squad Directive** sit in the right column and, on the operation's fi
 The strain is a compact row (emblem, name, blurb, small take/skip). Both use the same take/skip
 grammar; a stranded rule disables "Take it" with the reason. The
 `ValorRoll` strip under them previews the percentage-point movement of hovering or picking a rule.
-The host's **Deal the pacts** CTA waits until both calls are decided. Major Order pinning opens the
-`MajorOrderPicker` dialog; a pinned order shows on the stage before the first spin as well as after
-it. Rerolls sit under the deal CTA as quiet secondary controls.
+The host's **Deal the pacts** CTA waits until both calls are decided. The front plan (Major Order /
+locked faction / rolled) is chosen at setup with `FrontPlanPicker`, never here; a pinned run shows
+its one-line pin on the stage before the first spin as well as after it. Rerolls sit under the deal CTA as quiet secondary controls.
 
 #### Pacts — `PactScreen`
 

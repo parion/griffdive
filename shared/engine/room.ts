@@ -15,7 +15,7 @@ import {
   missionsPerOperation,
 } from './config'
 import { VARIANTS, catchUpOpsBehind, earnedKit, mergeKit, startingItemIds } from './progression'
-import type { BargainDeal, BargainSlotKind, DivePhase, DiveState, DiverState, LegacyCache, MajorOrderSelection, WheelResult } from './types'
+import type { BargainDeal, BargainSlotKind, DivePhase, DiveState, DiverState, FrontPlan, LegacyCache, MajorOrderSelection, WheelResult } from './types'
 
 // A freshly created room: no settings, no divers. The first joiner becomes
 // host; START_DIVE applies the variant kit to everyone present.
@@ -219,7 +219,7 @@ function sanitizeWheel(raw: unknown): WheelResult | null {
   return { seed: wheel.seed, misfortuneId: wheel.misfortuneId }
 }
 
-function sanitizeMajorOrder(raw: unknown): MajorOrderSelection | null {
+export function sanitizeMajorOrder(raw: unknown): MajorOrderSelection | null {
   if (!raw || typeof raw !== 'object') {
     return null
   }
@@ -266,6 +266,28 @@ function sanitizeMajorOrder(raw: unknown): MajorOrderSelection | null {
     })
   }
   return selection
+}
+
+// The setup's front plan and the pin it carries must agree: a Major Order plan
+// needs a live order, a locked plan exactly one front (never live, so it banks
+// nothing), and a rolled plan no pin at all. A plan whose pin is missing or
+// malformed degrades to rolling the front. An absent plan (a pre-setup-choice
+// run) keeps whatever pin it already had.
+export function resolveFrontPlan(
+  plan: FrontPlan | undefined,
+  order: unknown,
+): { front: FrontPlan | undefined, majorOrder: MajorOrderSelection | null } {
+  const selection = sanitizeMajorOrder(order)
+  if (plan === undefined) {
+    return { front: undefined, majorOrder: selection }
+  }
+  if (plan === 'majorOrder' && selection?.live) {
+    return { front: plan, majorOrder: selection }
+  }
+  if (plan === 'locked' && selection && selection.fronts.length === 1) {
+    return { front: plan, majorOrder: { fronts: selection.fronts } }
+  }
+  return { front: 'rolled', majorOrder: null }
 }
 
 // A forked host is the only diver left at the forfeit screen, so nobody may be
@@ -383,6 +405,8 @@ export function forkCrusade(
     ?? divers[0]!
 
   const { variant, mode } = state.settings
+  const knownPlan = (['majorOrder', 'locked', 'rolled'] as const).find(plan => plan === state.settings?.front)
+  const { front, majorOrder } = resolveFrontPlan(knownPlan, state.majorOrder)
   const ownerKit = [...new Set(stringArray(state.personalInventories?.[owner.id], 1000))]
   // Only the latest session's squad parks: caches inherited from an earlier
   // session were that session's to claim, and each fork re-parking them piled
@@ -412,6 +436,7 @@ export function forkCrusade(
     settings: {
       variant,
       ...(mode === 'seaf' || mode === 'penance' ? { mode } : {}),
+      ...(front ? { front } : {}),
     },
     difficulty,
     missionIndex: clampInt(state.missionIndex, 0, 100_000, 0),
@@ -426,7 +451,7 @@ export function forkCrusade(
     strainId,
     strainAccepted: state.strainAccepted === true,
     strainDecided: state.strainDecided === true,
-    majorOrder: sanitizeMajorOrder(state.majorOrder),
+    majorOrder,
     rerollTokens: clampInt(state.rerollTokens, 0, 10, REROLL_TOKENS_PER_OPERATION),
     completedCombos: stringArray(state.completedCombos, 2000),
     personalInventories: { [owner.id]: ownerKit },

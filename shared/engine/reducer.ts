@@ -1,11 +1,9 @@
 import { ALL_WARBOND_CODES, ITEMS_BY_ID, WARBONDS } from '../data/catalog'
-import { FRONTS } from '../data/fronts'
-import type { FrontId } from '../data/fronts'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection } from './types'
 import { ACTION_LOG_CAP, MAJOR_ORDER_REROLL_BONUS, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, REWARD_TOKEN_CAP, maxStarsFor, missionsPerOperation } from './config'
 import { STARTING_KITS, earnedKit, mergeKit, startingItemIds } from './progression'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
-import { createLobbyState, joinDiver } from './room'
+import { createLobbyState, joinDiver, resolveFrontPlan } from './room'
 import { deriveSeed, hashString } from './rng'
 import { activeDivers, activeMisfortune, allDiversPicked, availableCaches, bonusEligibleFor, canBuyItem, catchUpOptionsFor, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, squadSize, strainDecision } from './selectors'
 import { bargainKindOf, itemPrice, missionHaul } from './rewards'
@@ -17,6 +15,7 @@ export function createDiveState(
   hostName: string,
   warbondCodes?: string[],
   seed?: number,
+  majorOrder?: MajorOrderSelection | null,
 ): DiveState {
   const lobby = joinDiver(createLobbyState(), hostId, hostName) ?? createLobbyState()
   // The host's own warbond selection, applied like any self-service action so
@@ -24,7 +23,7 @@ export function createDiveState(
   const seated = warbondCodes
     ? reduce(lobby, { type: 'SET_WARBONDS', playerId: hostId, warbondCodes })
     : lobby
-  return reduce(seated, { type: 'START_DIVE', settings, seed })
+  return reduce(seated, { type: 'START_DIVE', settings, seed, majorOrder })
 }
 
 function commit(state: DiveState, patch: Partial<DiveState>, action: EngineAction): DiveState {
@@ -35,7 +34,14 @@ function commit(state: DiveState, patch: Partial<DiveState>, action: EngineActio
   }
 }
 
-function applyStart(state: DiveState, settings: CrusadeSettings, seed: number | undefined): Partial<DiveState> {
+function applyStart(
+  state: DiveState,
+  requested: CrusadeSettings,
+  seed: number | undefined,
+  order: MajorOrderSelection | null | undefined,
+): Partial<DiveState> {
+  const { front, majorOrder } = resolveFrontPlan(requested.front, order)
+  const settings: CrusadeSettings = front ? { ...requested, front } : requested
   const kit = STARTING_KITS[settings.variant]
   const personalInventories: Record<string, string[]> = {}
   for (const diver of state.divers) {
@@ -56,7 +62,7 @@ function applyStart(state: DiveState, settings: CrusadeSettings, seed: number | 
     strainId: null,
     strainAccepted: false,
     strainDecided: false,
-    majorOrder: null,
+    majorOrder,
     personalInventories,
   }
 }
@@ -197,7 +203,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (state.settings) {
         return state
       }
-      return commit(state, applyStart(state, action.settings, action.seed), action)
+      return commit(state, applyStart(state, action.settings, action.seed, action.majorOrder), action)
     }
 
     case 'SPIN_WHEEL': {
@@ -206,9 +212,9 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }
       // Every mission draws its own misfortune; the front and its strain are
       // drawn once per operation, with the first spin, and persist across its
-      // missions. A Major Order pins the front pool to the fronts the host set
-      // before this spin — and a chosen order has no random subfaction: the
-      // front is the order, so no strain is drawn (or offered) for it.
+      // missions. A Major Order (or a locked front) pins the front pool to the
+      // fronts chosen at setup — and a pinned front has no random subfaction:
+      // the front is the order, so no strain is drawn (or offered) for it.
       const frontId = state.frontId ?? deriveFront(action.seed, majorOrderFronts(state))
       const drawingOperation = state.frontId === null
       return commit(state, {
@@ -306,57 +312,6 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         return state
       }
       return commit(state, { phase: 'pacts' }, action)
-    }
-
-    case 'SET_MAJOR_ORDER': {
-      // The Major Order pins the operation's front draw, so it is answered
-      // before the first spin: once the front is drawn the operation is
-      // committed and the MO rides the locked front (a failure restart keeps
-      // it, like the front). A new operation starts with frontId null, which
-      // reopens the call.
-      if (state.phase !== 'spin' || state.frontId !== null) {
-        return state
-      }
-      if (!action.order) {
-        return commit(state, { majorOrder: null }, action)
-      }
-      const known = new Set<string>(FRONTS.map(front => front.id))
-      const fronts = [...new Set(action.order.fronts)]
-        .filter((id): id is FrontId => known.has(id))
-      if (fronts.length === 0) {
-        return commit(state, { majorOrder: null }, action)
-      }
-      const selection: MajorOrderSelection = { fronts }
-      // Only a live-war selection earns the completion token; a manual front
-      // pick pins the front but banks nothing.
-      if (action.order.live === true) {
-        selection.live = true
-      }
-      // Display metadata is pass-through (Phase B fills it from the war API):
-      // sanitized to bounded strings so a hostile client can't bloat the room.
-      if (typeof action.order.title === 'string' && action.order.title.trim()) {
-        selection.title = action.order.title.trim().slice(0, 120)
-      }
-      if (Array.isArray(action.order.planets)) {
-        selection.planets = action.order.planets
-          .filter(planet =>
-            planet
-            && typeof planet.name === 'string'
-            && planet.name.trim().length > 0
-            && Number.isInteger(planet.index)
-            && known.has(planet.front))
-          .map(planet => ({
-            index: planet.index,
-            name: planet.name.trim().slice(0, 60),
-            front: planet.front,
-            liberation: Math.min(100, Math.max(0, Number.isFinite(planet.liberation) ? planet.liberation : 0)),
-          }))
-          .slice(0, 8)
-      }
-      if (typeof action.order.expiresAt === 'string') {
-        selection.expiresAt = action.order.expiresAt.slice(0, 40)
-      }
-      return commit(state, { majorOrder: selection }, action)
     }
 
     case 'REROLL_WHEEL': {
@@ -738,13 +693,12 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
             strainId: null,
             strainAccepted: false,
             strainDecided: false,
-            majorOrder: null,
           }, action)
         }
         // Operation completed: a fresh operation draws a new front with its
-        // first spin. A chosen Major Order is a run-long commitment, so it stays
-        // pinned (the host replaces or clears it in the next spin phase) and
-        // every operation played toward a live one banks its extra reroll token.
+        // first spin. The setup's front pin is a run-long commitment, so it
+        // stays pinned and every operation played toward a live order banks
+        // its extra reroll token.
         const next = resetForNextMission(state)
         return commit(state, {
           missionIndex,

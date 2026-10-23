@@ -554,7 +554,8 @@ liberated target drops its front. `MajorOrderPlanet.available` carries the flag 
 "Not available yet" note, and `majorOrderPlanetsForFront` names the MO planet(s) on the rolled front
 so the wheel pin reads "Front locked · Automatons · Fury". Covered by server normalization tests
 (the live Fury/Esker/Zea fixtures, staged unlock, defense, disabled target, missing roster) and the
-selector/E2E planet-pin assertions.
+selector/E2E planet-pin assertions. (`MajorOrderCard` and its note retired when the front plan
+moved to crusade setup; the setup's Major Order card lists only the active fronts.)
 
 ### Hardening backlog (deferred)
 
