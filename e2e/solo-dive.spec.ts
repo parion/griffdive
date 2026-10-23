@@ -54,6 +54,10 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('radio', { name: '3 stars' })).toHaveAttribute('aria-checked', 'true')
   const commonSamples = page.getByRole('slider', { name: 'Common samples' })
   await expect(commonSamples).toHaveAttribute('aria-valuenow', '0')
+  // Medium spawns at most 18 commons; the Sample Scanner can double pickups,
+  // so the report ceiling is 36.
+  await page.getByLabel('Common sample count').fill('30')
+  await expect(commonSamples).toHaveAttribute('aria-valuenow', '30')
   await page.getByLabel('Common sample count').fill('12')
   await expect(commonSamples).toHaveAttribute('aria-valuenow', '12')
   await page.getByRole('button', { name: 'Set time remaining to 60 percent' }).click()

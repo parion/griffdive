@@ -346,8 +346,8 @@ export const BARGAIN_STREAM = 5
 export const FORFEIT_STREAM = 6
 
 // wiki.gg/Sample "availability by difficulty": the most of each rarity a map
-// can hold at a difficulty (ranges capped at their upper bound). Drives the
-// report form's slider maxima, and is why sample Valor scales with altitude —
+// can spawn at a difficulty (ranges capped at their upper bound). Drives the
+// report form's base ceiling, and is why sample Valor scales with altitude —
 // rares are absent at 3, supers until 6.
 export const SAMPLE_AVAILABILITY: Readonly<Record<number, { common: number, rare: number, super: number }>> = {
   3: { common: 18, rare: 0, super: 0 },
@@ -364,6 +364,23 @@ export function sampleAvailability(
   difficulty: number,
 ): { common: number, rare: number, super: number } {
   return SAMPLE_AVAILABILITY[difficulty] ?? SAMPLE_AVAILABILITY[MAX_DIFFICULTY]!
+}
+
+// wiki.gg/Sample Scanner: a 15% chance to receive twice the samples on every
+// pickup, all rarities — so a squad can recover more than the map spawned. The
+// report form tops out at the all-pickups-double ceiling; the filed count stays
+// honor-system.
+export const SAMPLE_SCANNER_PICKUP_MULTIPLIER = 2
+
+export function sampleReportCeiling(
+  difficulty: number,
+): { common: number, rare: number, super: number } {
+  const available = sampleAvailability(difficulty)
+  return {
+    common: available.common * SAMPLE_SCANNER_PICKUP_MULTIPLIER,
+    rare: available.rare * SAMPLE_SCANNER_PICKUP_MULTIPLIER,
+    super: available.super * SAMPLE_SCANNER_PICKUP_MULTIPLIER,
+  }
 }
 
 export function baseTierFor(difficulty: number): RewardTier {
