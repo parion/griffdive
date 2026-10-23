@@ -34,7 +34,7 @@ useIntervalFn(() => {
 }, 30_000)
 
 // Skulls, never Valor numbers: each plan's fixed per-mission risk, read from
-// the engine so the cards and the odds preview can't disagree.
+// the engine so the cards and the setup's skull total can't disagree.
 const orderRisk = frontPlanRisk('majorOrder')
 const rollRisk = frontPlanRisk('rolled')
 

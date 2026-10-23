@@ -211,7 +211,8 @@ within its fronts every operation; a single-front order (or a lock) refuses the 
 
 Setup never shows risk as a Valor number: each plan's fixed risk (`frontPlanRisk`) and the mode's
 (`modeValorAt`) render as skulls, and `setupRiskOf(settings)` — the same terms `teamRiskBreakdown`
-charges once the run starts, at the start difficulty — drives the setup's odds preview.
+charges once the run starts, at the start difficulty — is the setup's skull total, shown with the
+rule it buys: more skulls, higher-tier rewards.
 
 **Playing the war is the default:** whenever a live order is known, setup opens on the `majorOrder`
 plan (featured first, tagged Recommended) until the host picks another; with no order it opens on

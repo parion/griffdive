@@ -111,12 +111,13 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
   edged teal). Squadmates see a **Stand by** card with a Declare warbonds CTA instead of disabled
   controls (the host's picks are local until launch). Diver names are all caps.
 - **Risk never shows as a Valor number.** Each plan and mode carries its per-mission risk as
-  `RiskPips` skulls (`frontPlanRisk` / `modeValorAt` from the engine), and what the whole setup buys
-  is a **Setup odds** `ValorRoll` (`useSetupOdds` → `setupRiskOf`): the odds line at the start
-  difficulty, lit only where the setup gains over a bare start.
-- One pinned **launch bar**: the Setup odds strip (compact) beside the hold-to-launch CTA (stacked
-  and full width on phones); the Bridge dialog shows the same strip inline. There is no pre-launch
-  checklist.
+  `RiskPips` skulls (`frontPlanRisk` / `modeValorAt` from the engine). `SetupRisk` totals them
+  (`setupRiskOf`, out of 5) and states the game's core trade beside the total — **"More skulls,
+  higher-tier rewards"** with a C→S tier ladder that brightens as it climbs — rather than an odds
+  table: setup teaches the rule the whole run plays by.
+- One pinned **launch bar**: the compact `SetupRisk` (one row on desktop, two on phones) beside the
+  hold-to-launch CTA (stacked and full width on phones); the Bridge dialog shows the same total
+  inline. There is no pre-launch checklist.
 
 #### Call — `DivePhaseWheel`
 

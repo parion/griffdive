@@ -56,7 +56,6 @@ const settings = computed<CrusadeSettings>(() => ({
   ...(modeActive.value ? { mode: mode.value } : {}),
   front: frontPlan.value,
 }))
-const { zones, deltas } = useSetupOdds(settings)
 
 const frontSummary = computed(() => {
   if (frontPlan.value === 'majorOrder') {
@@ -370,7 +369,7 @@ function launch(): void {
           :order-status="orderStatus"
           :order-pending="orderPending"
           :disabled="launched"
-          :show-odds="false"
+          :show-risk="false"
           @update:front-plan="chooseFrontPlan"
           @refresh-order="refreshOrder"
         />
@@ -411,13 +410,10 @@ function launch(): void {
         class="launch-notch"
         aria-hidden="true"
       />
-      <ValorRoll
+      <SetupRisk
         v-if="canControl"
-        class="launch-odds"
-        :zones="zones"
-        :deltas="deltas"
-        label="Setup odds"
-        note="Every mission"
+        class="launch-risk"
+        :settings="settings"
         compact
       />
       <div
@@ -707,7 +703,7 @@ button.bay.open:hover .tag-name { color: var(--gold); }
 }
 .launch-notch { position: absolute; left: 0; top: -1px; width: 64px; height: 3px; background: var(--gold); }
 .launch-sum { display: grid; gap: 4px; min-width: 0; margin-right: auto; }
-.launch-odds { flex: 1 1 auto; max-width: 640px; margin-right: auto; }
+.launch-risk { flex: 1 1 auto; min-width: 0; margin-right: auto; }
 .launch-line {
   overflow: hidden;
   font-size: 0.95rem;
@@ -724,7 +720,7 @@ button.bay.open:hover .tag-name { color: var(--gold); }
   .well { height: clamp(100px, 15vh, 132px); }
   .launch { flex-direction: column; align-items: stretch; gap: 10px; }
   .launch-btn { width: 100%; min-height: 56px; }
-  .launch-odds { max-width: none; margin-right: 0; }
+  .launch-risk { margin-right: 0; }
   .launch-line { font-size: 0.8rem; }
 }
 @container hangar (max-width: 420px) {

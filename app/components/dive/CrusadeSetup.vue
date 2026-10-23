@@ -10,8 +10,8 @@ import type { MajorOrderStatus } from '~/composables/useMajorOrder'
 // The crusade's setup, shared by the Bridge's solo dialog and the room lobby:
 // where to fight (the front plan, Major Order first), where to start (the
 // difficulty) and, on the hard/suicide starts, how (SEAF or Penance), then the
-// kit it issues and what the whole setup buys on the Valor roll — risk shows
-// as skulls and odds, never a Valor number.
+// kit it issues and the skulls the whole setup carries — risk shows as skulls,
+// never a Valor number.
 const props = withDefaults(defineProps<{
   variant: CrusadeVariant
   mode?: CrusadeMode
@@ -21,9 +21,9 @@ const props = withDefaults(defineProps<{
   orderStatus: MajorOrderStatus
   orderPending?: boolean
   disabled?: boolean
-  // The lobby pins the odds in its launch bar instead.
-  showOdds?: boolean
-}>(), { mode: 'seaf', orderPending: false, disabled: false, showOdds: true })
+  // The lobby pins the total in its launch bar instead.
+  showRisk?: boolean
+}>(), { mode: 'seaf', orderPending: false, disabled: false, showRisk: true })
 
 const emit = defineEmits<{
   'update:variant': [variant: CrusadeVariant]
@@ -57,8 +57,6 @@ const settings = computed<CrusadeSettings>(() => ({
   ...(activeMode.value ? { mode: activeMode.value } : {}),
   front: props.frontPlan,
 }))
-
-const { zones, deltas } = useSetupOdds(settings)
 </script>
 
 <template>
@@ -169,16 +167,11 @@ const { zones, deltas } = useSetupOdds(settings)
       </section>
 
       <section
-        v-if="showOdds"
-        class="block odds"
-        aria-label="What the setup buys"
+        v-if="showRisk"
+        class="block risk"
+        aria-label="Setup risk"
       >
-        <ValorRoll
-          :zones="zones"
-          :deltas="deltas"
-          label="Setup odds"
-          note="Every mission, before directives and pacts"
-        />
+        <SetupRisk :settings="settings" />
       </section>
     </div>
   </div>
@@ -252,7 +245,7 @@ const { zones, deltas } = useSetupOdds(settings)
 @container setup (min-width: 760px) {
   .setup { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; }
   .block:first-child,
-  .odds { grid-column: 1 / -1; }
+  .risk { grid-column: 1 / -1; }
 }
 @container setup (max-width: 420px) {
   .v-meta { gap: 5px; }

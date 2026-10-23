@@ -38,8 +38,9 @@ app/
                    CrusadeLadder — the vertical 3→10 ladder (achieved screen),
                    FieldPromotionGate — the mid-crusade catch-up gate,
                    ForfeitPicker — one diver's dealt forfeit offer,
-                   CrusadeSetup + FrontPlanPicker + StartingKit — the shared crusade setup
-                   (front plan, start difficulty, mode, issued kit) used by the Bridge
+                   CrusadeSetup + FrontPlanPicker + StartingKit + SetupRisk — the shared
+                   crusade setup (front plan, start difficulty, mode, issued kit, skull
+                   total via setupRiskOf) used by the Bridge
                    dialog and the lobby,
                    ArmoryDrawer + KitPanel — the Kit drawer and the lean Kit itself,
                    BraschBargains + BargainsDrawer — the per-mission shop in a slide-over,
@@ -83,7 +84,6 @@ app/
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
                    useMajorOrder (live war proxy → the setup's Major Order plan; null offline),
                    useFrontPlan (the launcher's front plan; defaults to a live order),
-                   useSetupOdds (the setup's Valor-roll preview via setupRiskOf),
                    useChangelog (GitHub release deployments + commits → phase-carded changelog
                    entries via utils/changelog.ts, 10-min cache),
                    usePhoneShell (the 1020px breakpoint as JS, so the dive can swap the whole
