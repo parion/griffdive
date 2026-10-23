@@ -206,23 +206,24 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
 
 /* The backdrop lives: two ray fields turn against each other behind the
    emblem, a halo breathes, and embers rise past the climb. It spans the stage
-   width but is clipped to the beat's height so it never adds scroll. */
+   width but is clipped to the beat's height so it never adds scroll. It reaches well above the beat so the rays fade out
+   instead of meeting a hard top edge. */
 .backdrop {
   position: absolute;
   z-index: -1;
-  top: -40px;
+  top: -560px;
   bottom: 0;
   left: 50%;
   width: 100vw;
   translate: -50% 0;
   overflow: hidden;
   pointer-events: none;
-  mask-image: linear-gradient(180deg, #000 0 72%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0 calc(100% - 200px), transparent 100%);
 }
 .rays {
   position: absolute;
   left: 50%;
-  top: 76px;
+  top: 636px;
   width: 1700px;
   height: 1700px;
   margin: -850px 0 0 -850px;
@@ -241,7 +242,7 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
 .halo {
   position: absolute;
   left: 50%;
-  top: 76px;
+  top: 636px;
   width: 520px;
   height: 320px;
   margin: -160px 0 0 -260px;
