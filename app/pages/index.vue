@@ -320,7 +320,11 @@ const moFrontsLabel = computed(() =>
     .map(id => FRONTS.find(front => front.id === id)?.displayName ?? id)
     .join(' / '),
 )
-const moPlanet = computed(() => liveOrder.value?.planets?.[0] ?? null)
+const moPlanet = computed(() =>
+  liveOrder.value?.planets?.find(planet => planet.front === moFront.value && planet.available !== false)
+  ?? liveOrder.value?.planets?.find(planet => planet.available !== false)
+  ?? liveOrder.value?.planets?.[0]
+  ?? null)
 const moCountdown = computed(() => {
   const expires = liveOrder.value?.expiresAt ? Date.parse(liveOrder.value.expiresAt) : Number.NaN
   if (!Number.isFinite(expires)) {
@@ -1318,7 +1322,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
     >
       <span class="lbl gold">Major Order</span>
       <span class="muted small">
-        {{ moStatus === 'none' ? 'No active Major Order — the wheel picks the front' : moStatus === 'no-front' ? 'Major Order has no front — the wheel picks the front' : 'War feed unavailable — the wheel picks the front' }}
+        {{ moStatus === 'none' ? 'No active Major Order — the wheel picks the front' : moStatus === 'no-front' ? 'Major Order has no active front yet — the wheel picks the front' : 'War feed unavailable — the wheel picks the front' }}
       </span>
     </section>
 

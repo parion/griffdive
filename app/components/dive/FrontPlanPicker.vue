@@ -49,7 +49,7 @@ const orderMissing = computed(() => {
   return props.status === 'none'
     ? 'No active Major Order right now.'
     : props.status === 'no-front'
-      ? 'The active order targets no front.'
+      ? 'The active order has no open front yet.'
       : 'Couldn’t reach the war feed.'
 })
 

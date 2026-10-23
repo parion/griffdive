@@ -8,6 +8,7 @@ import {
   currentFront,
   currentMisfortune,
   currentStrain,
+  majorOrderPlanetsForFront,
   misfortuneDecision,
   misfortuneStrandedDivers,
   strainDecision,
@@ -39,6 +40,8 @@ const pinnedFronts = computed(() =>
   (props.state.majorOrder?.fronts ?? [])
     .map(id => frontById(id))
     .filter((entry): entry is NonNullable<typeof entry> => entry !== null))
+const frontPlanetsLabel = computed(() =>
+  majorOrderPlanetsForFront(props.state).map(planet => planet.name).join(' / '))
 const strain = computed(() => currentStrain(props.state))
 const strainImage = computed(() => (strain.value ? strainImageUrl(strain.value.id) : undefined))
 const decision = computed(() => misfortuneDecision(props.state))
@@ -144,6 +147,10 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
       >
         <span class="cap">Front locked</span>
         <b>{{ front.displayName }}</b>
+        <span
+          v-if="frontPlanetsLabel"
+          class="front-planet"
+        >· {{ frontPlanetsLabel }}</span>
         <span v-if="strain && state.strainAccepted">· {{ strain.name }}</span>
       </div>
       <div
@@ -476,6 +483,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   font-size: 12px;
 }
 .front-pin b { color: var(--red); }
+.front-planet { color: var(--gold); font-weight: 700; }
 .decision-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 
 .directive-card {

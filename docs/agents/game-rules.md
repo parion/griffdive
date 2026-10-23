@@ -185,9 +185,14 @@ carries the pin the plan needs:
 
 | Plan | Pin (`state.majorOrder`) | Front draw | Strain | Team risk / mission | Carrot |
 | --- | --- | --- | --- | --- | --- |
-| `majorOrder` | the live order (`live: true`) | within the order's front(s) | none | `MAJOR_ORDER_RISK` (2) | `MAJOR_ORDER_REROLL_BONUS` (1) extra reroll token per completed operation |
+| `majorOrder` | the live order (`live: true`) | within the order's active front(s) | none | `MAJOR_ORDER_RISK` (2) | `MAJOR_ORDER_REROLL_BONUS` (1) extra reroll token per completed operation |
 | `locked` | `{ fronts: [front] }` (never live) | that front | none | 0 | none |
 | `rolled` | `null` | full roster, fresh each operation | drawn as usual | `FRONT_ROLL_RISK` (1) | none |
+
+A front is **active** only while at least one of its MO planets still needs liberation and can
+actually be fought, so a multi-faction, planet-based order contributes just the fronts open now; a
+gated planet (one behind another capture) adds its faction only once it opens, and a faction-only
+kill task names its front directly.
 
 The reducer validates the pair (`resolveFrontPlan` in `room.ts`): a `majorOrder` plan without a
 live order, a `locked` plan without exactly one known front, or any malformed pin **degrades to
@@ -225,32 +230,40 @@ The Bridge's live-MO band carries a one-click **Start campaign** CTA that starts
 the `majorOrder` plan with the live order (the same `START_DIVE` pin the setup sends), so a diver
 can drop straight onto the war front.
 
-The MO's front(s) and display metadata (`title`, `planets` — index, name, front and current
-liberation % — and `expiresAt`) live on `state.majorOrder`; the metadata is pass-through (the
+The MO's active front(s) and display metadata (`title`, `planets` — index, name, front, current
+liberation % and whether the planet is currently reachable — and `expiresAt`) live on `state.majorOrder`; the metadata is pass-through (the
 Bridge's MO band renders the planets) and syncs with the snapshot. The setup shows the order's
 front(s) and countdown, but **not** the `title`: the in-game order text is long and says nothing
-about the match, so Griffdive omits it. **The
+about the match, so Griffdive omits it. Once the front is drawn, the wheel's front pin names the MO
+planet(s) on it (`majorOrderPlanetsForFront`), so a faction result tells the squad which world to
+drop on. **The
 engine is pure** — it consumes a front list it was handed and never knows about HTTP. **The live
 API (Phase B) only fills the host's choice:** a cached server proxy
 (`server/api/war/major-order.get.ts` → `server/utils/major-order.ts`) normalizes the community war
 API — `api.helldivers2.dev/api/v1/assignments` joined to
-`helldiverstrainingmanual.com/api/v1/war/campaign` for planet→faction and liberation — into a
+`helldiverstrainingmanual.com/api/v1/war/campaign` for planet→faction and liberation, plus
+`api.helldivers2.dev/api/v1/planets` for current owner and warp links — into a
 `MajorOrderSelection` the setup's `FrontPlanPicker` offers as the Major Order plan (`useMajorOrder`,
-refetched on mount; `useFrontPlan` owns the default). Offline/static
+refetched on mount; `useFrontPlan` owns the default). A target planet is reachable when its own
+warp-link list contains a Super Earth-held world (a defense is always playable). A liberated target
+(100%) or one still gated behind another capture contributes no front; if the planet roster fetch
+fails, the proxy falls back to every incomplete target instead of blanking the order. Offline/static
 builds, a failed fetch, or the `GRIFFDIVE_DISABLE_MO_API=1` kill switch disable that plan (an order
 that vanishes under the selection falls back to `rolled`), leaving the lock and roll plans. The proxy caches for 10 minutes, retries once with a 6s
 timeout, and serves its last good order (stale) when a refresh fails — it never caches a failure. It
 answers `{ order, status }` — `active`, `none` (the API replied with an empty list), `no-front` (an
-order exists but names no front we can resolve — e.g. sample gathering or a faction-less kill order),
+order exists but has no active front — no resolvable target, or every target is gated or already
+liberated, e.g. sample gathering or a faction-less kill order),
 or `unavailable` (a failed or garbled fetch) — so the setup can tell "No active Major Order" and
-"doesn't target a front" apart from "Failed to retrieve active MO". Task payloads are decoded **by
+"has no open front yet" apart from "Failed to retrieve active MO". Task payloads are decoded **by
 label**: `valueTypes[i]` labels `values[i]` (community reverse-engineered; 1 = faction, 12 = planet).
 A planet slot resolves through the campaign join; otherwise a faction slot (2 Terminids, 3 Automatons,
 4 Illuminate) names the front directly, so enemy-focused kill orders — including cross-faction ones —
 resolve with no enemy table. Anything unrecognized contributes no front and leaves only the lock and
 roll plans. Each task shape that names no front is
 logged once per process (`[major-order] task names no front: …`, visible in `fly logs`), so a new order
-type surfaces without flooding the stream.
+type surfaces without flooding the stream; a known planet that is merely gated or already liberated
+is an availability fact, not a decoder gap, so it is not logged.
 
 ### Team layer — faction strains
 

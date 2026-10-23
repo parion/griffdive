@@ -7,6 +7,7 @@ import {
   currentFront,
   currentMisfortune,
   currentStrain,
+  majorOrderPlanetsForFront,
   misfortuneDecision,
   misfortuneStrandedDivers,
   strainDecision,
@@ -39,6 +40,8 @@ const pinnedFronts = computed(() =>
   (props.state.majorOrder?.fronts ?? [])
     .map(id => frontById(id))
     .filter((entry): entry is NonNullable<typeof entry> => entry !== null))
+const frontPlanetsLabel = computed(() =>
+  majorOrderPlanetsForFront(props.state).map(planet => planet.name).join(' / '))
 const decision = computed(() => misfortuneDecision(props.state))
 const strainCall = computed(() => strainDecision(props.state))
 const hostName = computed(() =>
@@ -236,7 +239,10 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         v-if="front && !held"
         class="front-pin"
       >
-        Front locked · <b>{{ front.displayName }}</b>
+        Front locked · <b>{{ front.displayName }}</b><span
+          v-if="frontPlanetsLabel"
+          class="front-planet"
+        > · {{ frontPlanetsLabel }}</span>
       </div>
       <div
         v-else-if="state.majorOrder"
@@ -377,6 +383,7 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
 .wheel-wrap :deep(.wheel) { max-width: 360px; }
 .front-pin { color: var(--muted); font-size: 11px; }
 .front-pin b { color: var(--red); }
+.front-planet { color: var(--gold); font-weight: 700; }
 .wait-note { display: flex; flex-direction: column; gap: 4px; }
 .wait-note p { margin: 0; color: var(--muted); font-size: 12px; }
 </style>

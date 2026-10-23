@@ -134,7 +134,10 @@ test('a live Major Order chosen at setup pins the front for the run', async ({ p
         fronts: ['automatons'],
         live: true,
         title: 'Liberate the designated planets.',
-        planets: [{ index: 198, name: 'Marfark', front: 'automatons', liberation: 89.7 }],
+        planets: [
+          { index: 198, name: 'Marfark', front: 'automatons', liberation: 89.7, available: true },
+          { index: 7, name: 'Zea Rugosia', front: 'illuminate', liberation: 0, available: false },
+        ],
         expiresAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
       },
     }),
@@ -150,6 +153,8 @@ test('a live Major Order chosen at setup pins the front for the run', async ({ p
   const orderPlan = setup.getByRole('radio', { name: /Major Order/ })
   await expect(orderPlan).toHaveAttribute('aria-checked', 'true')
   await expect(orderPlan).toContainText('Automatons')
+  // The gated planet does not pin its front until it opens.
+  await expect(orderPlan).not.toContainText('Illuminate')
   await setup.getByRole('button', { name: /^Close/ }).first().click()
   // Its name contains "warbonds": let it close before the dive's intro check.
   await expect(setup).toBeHidden()
@@ -161,6 +166,8 @@ test('a live Major Order chosen at setup pins the front for the run', async ({ p
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await expect(page.locator('.front-pin')).toContainText('Automatons')
+  // The front is a faction; the order is fought on a planet. The pin names it.
+  await expect(page.locator('.front-pin')).toContainText('Marfark')
 })
 
 test('the Bridge campaign CTA seeds a dive with the live order already pinned', async ({ page }) => {
@@ -192,6 +199,7 @@ test('the Bridge campaign CTA seeds a dive with the live order already pinned', 
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await expect(page.locator('.front-pin')).toContainText('Automatons')
+  await expect(page.locator('.front-pin')).toContainText('Marfark')
 })
 
 test('a faction locked at setup pins the front without a Major Order tag', async ({ page }) => {
