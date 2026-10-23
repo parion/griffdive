@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_DIFFICULTY, MIN_DIFFICULTY, bandPosition, baseTierFor, bonusIntervalFor, maxStarsFor, missionsPerOperation, upgradeOdds, VALOR_METER_MAX } from './config'
+import { MAX_DIFFICULTY, MIN_DIFFICULTY, SAMPLE_SCANNER_PICKUP_MULTIPLIER, bandPosition, baseTierFor, bonusIntervalFor, maxStarsFor, missionsPerOperation, sampleAvailability, sampleReportCeiling, upgradeOdds, VALOR_METER_MAX } from './config'
 
 describe('baseTierFor (reward scale-back bands)', () => {
   it.each([
@@ -76,6 +76,24 @@ describe('maxStarsFor (wiki.gg/Missions, Mission Result)', () => {
       expect(maxStarsFor(difficulty)).toBeGreaterThanOrEqual(1)
       expect(maxStarsFor(difficulty)).toBeLessThanOrEqual(5)
     }
+  })
+})
+
+describe('sampleReportCeiling (Sample Scanner)', () => {
+  it('allows twice the map spawn count at every rarity', () => {
+    for (let difficulty = MIN_DIFFICULTY; difficulty <= MAX_DIFFICULTY; difficulty++) {
+      const available = sampleAvailability(difficulty)
+      expect(sampleReportCeiling(difficulty)).toEqual({
+        common: available.common * SAMPLE_SCANNER_PICKUP_MULTIPLIER,
+        rare: available.rare * SAMPLE_SCANNER_PICKUP_MULTIPLIER,
+        super: available.super * SAMPLE_SCANNER_PICKUP_MULTIPLIER,
+      })
+    }
+  })
+
+  it('lets a Medium haul exceed the map spawn cap', () => {
+    expect(sampleAvailability(3).common).toBe(18)
+    expect(sampleReportCeiling(3).common).toBe(36)
   })
 })
 
