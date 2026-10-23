@@ -19,21 +19,16 @@ const draft = ref('')
 const input = ref<HTMLInputElement | null>(null)
 const joinLink = ref<HTMLAnchorElement | null>(null)
 const saving = ref(false)
-const clearing = ref(false)
 
 const normalized = computed(() => normalizeSteamLobbyLink(draft.value))
 const invalid = computed(() => draft.value.trim().length > 0 && !normalized.value)
 
-// The save/remove round-trips replace the focused control with the other view;
-// move focus to the result rather than dropping it on the document.
+// The save round-trip replaces the focused control with the join card; move
+// focus to the result rather than dropping it on the document.
 watch(() => props.steam, (steam) => {
   if (saving.value && steam) {
     saving.value = false
     nextTick(() => joinLink.value?.focus())
-  }
-  if (clearing.value && !steam) {
-    clearing.value = false
-    focusInput()
   }
 })
 
@@ -62,10 +57,8 @@ function save(): void {
 }
 
 function clear(): void {
-  clearing.value = true
   emit('setSteam', '')
-  editing.value = false
-  draft.value = ''
+  emit('close')
 }
 
 function copy(): void {
@@ -258,6 +251,7 @@ onMounted(() => {
   gap: 10px 12px;
   width: 100%;
   max-width: 1180px;
+  min-height: 60px;
   margin-inline: auto;
   padding: 9px var(--pad-page);
 }
@@ -310,15 +304,21 @@ onMounted(() => {
 .steam-editor {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   flex: 1 1 360px;
   min-width: 0;
 }
-.steam-field { flex: 1 1 240px; min-width: 0; }
+.steam-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 240px;
+  min-width: 0;
+}
 .steam-input {
   width: 100%;
-  min-height: 38px;
+  min-height: 42px;
   padding: 7px 10px;
   background: var(--steam-deep);
   border: 1px solid var(--steam-mid);
@@ -330,7 +330,14 @@ onMounted(() => {
 .steam-input::placeholder { color: var(--dim); }
 .steam-input:focus { outline: none; border-color: var(--steam-blue); box-shadow: none; }
 
-.steam-hint { margin: 4px 0 0; font-size: 10px; line-height: 1.4; color: var(--red); }
+.steam-hint {
+  flex: 0 1 auto;
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--red);
+  white-space: nowrap;
+}
 
 .steam-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .steam-editor .steam-actions { flex: 0 0 auto; }

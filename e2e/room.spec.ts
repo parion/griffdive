@@ -190,8 +190,10 @@ test('the Codex slide-over keeps the host seated', async ({ browser }) => {
 const ownAddress = { extraHTTPHeaders: { 'x-forwarded-for': '10.42.0.1' } }
 
 test('the host manages the Steam lobby from a dock bar', async ({ browser }) => {
-  const context = await browser.newContext(ownAddress)
-  const page = await context.newPage()
+  const contextA = await browser.newContext(ownAddress)
+  const contextB = await browser.newContext(ownAddress)
+  const page = await contextA.newPage()
+  const pageB = await contextB.newPage()
 
   await page.goto('/')
   await page.getByRole('button', { name: 'Host an online dive' }).click()
@@ -201,7 +203,9 @@ test('the host manages the Steam lobby from a dock bar', async ({ browser }) => 
   await page.getByRole('button', { name: 'Launch crusade' }).click()
   await expect(page.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
 
-  // The dock control is a disclosure, not a dialog, for the host.
+  // The dock control is a disclosure, not a dialog, for the host. Individual
+  // seats carry no Steam buttons.
+  await expect(page.getByRole('button', { name: /Steam profile/ })).toHaveCount(0)
   const toggle = page.getByRole('button', { name: 'Steam lobby settings' })
   await toggle.click()
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')
@@ -210,26 +214,51 @@ test('the host manages the Steam lobby from a dock bar', async ({ browser }) => 
   await expect(bar).toBeVisible()
   const input = bar.getByLabel('Steam lobby link')
   await expect(input).toBeFocused()
+  const editorHeight = (await bar.boundingBox())!.height
+
+  // A bad paste must not change the bar's height either.
+  await input.fill('not-a-lobby-link')
+  await expect(bar.getByText('Not a Helldivers 2 lobby link.')).toBeVisible()
+  expect((await bar.boundingBox())!.height).toBe(editorHeight)
 
   await input.fill('steam://joinlobby/553850/42/7')
   await bar.getByRole('button', { name: 'Pin lobby' }).click()
 
-  // The pinned link swaps the editor for the join card without closing the bar.
+  // The pinned link swaps the editor for the join card without resizing or
+  // closing the bar.
   await expect(bar.getByRole('link', { name: /Join Lobby/ }))
     .toHaveAttribute('href', 'steam://joinlobby/553850/42/7')
+  expect((await bar.boundingBox())!.height).toBe(editorHeight)
+
+  // A squadmate gets a direct Join Lobby link instead of the host's control.
+  await pageB.goto(page.url())
+  await pageB.getByLabel('Your name').fill('Duo')
+  await pageB.getByRole('button', { name: 'Join the dive' }).click()
+  await expectJoinerLanded(pageB)
+  const joinerLink = pageB.getByRole('link', { name: 'Join Steam lobby' })
+  await expect(joinerLink).toHaveAttribute('href', 'steam://joinlobby/553850/42/7')
+  await expect(pageB.getByRole('button', { name: 'Steam lobby settings' })).toHaveCount(0)
+  await expect(pageB.getByRole('button', { name: /Steam profile/ })).toHaveCount(0)
+
   await bar.getByRole('button', { name: 'Change' }).click()
   await expect(input).toHaveValue('steam://joinlobby/553850/42/7')
+  expect((await bar.boundingBox())!.height).toBe(editorHeight)
   await bar.getByRole('button', { name: 'Cancel' }).click()
 
+  // Removing the link closes the bar and takes the squadmate's link with it.
   await bar.getByRole('button', { name: 'Remove' }).click()
-  await expect(input).toBeVisible()
-  await expect(input).toHaveValue('')
-
-  await bar.getByRole('button', { name: 'Close Steam lobby' }).click()
   await expect(bar).toBeHidden()
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(joinerLink).toHaveCount(0)
 
-  await context.close()
+  // Reopening shows the empty editor; the bar's close control dismisses it.
+  await toggle.click()
+  await expect(bar.getByLabel('Steam lobby link')).toBeFocused()
+  await bar.getByRole('button', { name: 'Close Steam lobby' }).click()
+  await expect(bar).toBeHidden()
+
+  await contextA.close()
+  await contextB.close()
 })
 
 async function squadAtTheWheel(browser: Browser) {

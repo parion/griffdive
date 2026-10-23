@@ -4,7 +4,6 @@ import { normalizeSteamLobbyLink } from '~~/shared/utils/steam-lobby'
 
 const props = defineProps<{
   steam: SteamLobbyInfo | null
-  isHost: boolean
 }>()
 
 const emit = defineEmits<{ setSteam: [link: string] }>()
@@ -14,7 +13,7 @@ const { push: pushToast } = useToasts()
 const editing = ref(false)
 const draft = ref('')
 
-const showEditor = computed(() => props.isHost && (!props.steam || editing.value))
+const showEditor = computed(() => !props.steam || editing.value)
 const normalized = computed(() => normalizeSteamLobbyLink(draft.value))
 const invalid = computed(() => draft.value.trim().length > 0 && !normalized.value)
 
@@ -98,7 +97,6 @@ function copy(): void {
           Copy link
         </button>
         <button
-          v-if="isHost"
           class="steam-btn"
           type="button"
           @click="startEdit"
@@ -106,7 +104,6 @@ function copy(): void {
           Change
         </button>
         <button
-          v-if="isHost"
           class="steam-btn danger"
           type="button"
           @click="clear"
@@ -117,7 +114,7 @@ function copy(): void {
     </template>
 
     <form
-      v-else-if="showEditor"
+      v-else
       class="steam-editor"
       @submit.prevent="save"
     >
@@ -166,13 +163,6 @@ function copy(): void {
         </button>
       </div>
     </form>
-
-    <p
-      v-else
-      class="steam-empty"
-    >
-      The host hasn't pinned a Steam lobby link yet.
-    </p>
   </section>
 </template>
 
@@ -263,7 +253,6 @@ function copy(): void {
 .steam-hint { margin: 0; font-size: 10px; line-height: 1.45; color: var(--muted); }
 .steam-hint code { color: var(--steam-blue); font-size: 9.5px; }
 .steam-hint.err { color: var(--red); }
-.steam-empty { margin: 0; font-size: 11px; line-height: 1.45; color: var(--muted); }
 
 .steam-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .steam-btn {

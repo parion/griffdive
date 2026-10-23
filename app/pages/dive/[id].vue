@@ -541,14 +541,17 @@ function copyInvite(): void {
     .catch(() => pushToast('Could not copy the invite'))
 }
 
-// The host edits the Steam lobby in a dock bar; squadmates get the join dialog.
-// Phones keep the dialog for the host too — there is no squad bar to dock above.
+// Host-owned: desktop toggles the dock bar; a phone opens the dialog because
+// there is no squad bar to dock above.
 function openSteam(): void {
-  if (session.selfIsHost.value && !isPhone.value) {
-    steamBarOpen.value = !steamBarOpen.value
+  if (!session.selfIsHost.value) {
     return
   }
-  steamOpen.value = true
+  if (isPhone.value) {
+    steamOpen.value = true
+    return
+  }
+  steamBarOpen.value = !steamBarOpen.value
 }
 
 // Host moderation.
@@ -916,14 +919,11 @@ function launchCrusade(settings: CrusadeSettings): void {
       v-if="state"
       v-model:open="steamOpen"
       title="Steam lobby"
-      :description="session.selfIsHost.value
-        ? 'Paste the join link from Helldivers 2 so the squad can meet in-game.'
-        : 'Join the host’s lobby in Steam, or copy the link for later.'"
+      description="Paste the join link from Helldivers 2 so the squad can meet in-game."
       size="sm"
     >
       <SteamLobbyBox
         :steam="session.steam.value"
-        :is-host="session.selfIsHost.value"
         @set-steam="session.setSteam"
       />
     </AppDialog>

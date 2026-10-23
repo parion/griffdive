@@ -193,17 +193,6 @@ function kick(diverId: string): void {
             />
           </svg>
         </button>
-        <button
-          v-if="mode === 'room'"
-          class="icon-mini"
-          type="button"
-          :aria-label="`${diver.name}'s Steam profile`"
-          :disabled="!steam"
-          :title="steam ? 'Steam profile' : 'No Steam lobby'"
-          @click="emit('openSteam')"
-        >
-          <IconSteam />
-        </button>
         <span
           v-if="canControl && !isSelf(diver) && inlineManage"
           class="manage-inline"
@@ -290,16 +279,26 @@ function kick(diverId: string): void {
     </div>
 
     <div class="link-side">
-      <button
-        v-if="mode === 'room'"
+      <a
+        v-if="mode === 'room' && !isHost && steam"
         class="link-btn"
-        :class="{ open: isHost && steamPanelOpen }"
+        :href="steam.link"
+        rel="noopener"
+        aria-label="Join Steam lobby"
+        title="Join Steam lobby"
+      >
+        <IconSteam />
+        <span class="link-label">Join Lobby</span>
+      </a>
+      <button
+        v-else-if="mode === 'room' && isHost"
+        class="link-btn"
+        :class="{ open: steamPanelOpen }"
         type="button"
-        :aria-label="isHost ? 'Steam lobby settings' : 'Open Steam lobby'"
+        aria-label="Steam lobby settings"
         title="Steam lobby"
-        :aria-expanded="isHost ? steamPanelOpen : undefined"
-        :aria-controls="isHost && steamPanelOpen ? 'steam-lobby-bar' : undefined"
-        :aria-haspopup="isHost ? undefined : 'dialog'"
+        :aria-expanded="steamPanelOpen"
+        :aria-controls="steamPanelOpen ? 'steam-lobby-bar' : undefined"
         @click="emit('openSteam')"
       >
         <IconSteam />
