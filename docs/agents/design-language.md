@@ -59,7 +59,16 @@ stage · squad dock**, exactly one viewport tall on desktop. The stage is the on
 holds one lit object per beat; the old climb strip, left squad rail, right Kit/Valor rail and bottom
 PhaseRail are gone. Each beat centres itself on the stage (`margin-block: auto` on the stage inner,
 so a beat taller than the stage still scrolls from the top), and the beats are sized to land their
-primary CTA above the fold on a 1440×900 desktop.
+primary CTA above the fold on a 1440×900 desktop. A new beat always opens scrolled to its top.
+Beat swaps never flash the previous screen: local UI (an open report form) stays mounted until
+the engine's phase change unmounts it, rather than closing itself first.
+
+**Display names never split mid-word.** Card names in the display font bind `fitWord(name)`
+(`app/utils/fitWord.ts`, measured Archivo advances) and cap their size at
+`min(<size>, 100cqi / var(--fit-len))` inside an inline-size container, with
+`overflow-wrap: normal`. A long word shrinks to fit its card; it never orphans its last letter.
+Scoped classes must not reuse global utility names (`.chip`, `.sub`, `.cap`…) — scoped rules
+merge with them.
 
 - **`DiveTopBar`** carries the identity block (the in-game difficulty emblem shown as-is — never
   boxed in a hex or tinted — then the gold number, difficulty name,
@@ -129,7 +138,14 @@ stamped with its **rolled tier and d100 face**, with the same odds line above ca
 `CeilingTrack`, ban flow and settlement screen are retired. Picking a card selects it; the CTA banks
 it; a resolved draft waits on the squad. The **`SquadDraftBoard`** shows each squadmate's offered
 tiles and status, and the reroll control spends a banked honors token. Liberty's Cross is one card,
-not a band above the pods. When the last mission is banked, **`OperationCleared`** carries the climb
+not a band above the pods.
+
+Once **every** diver has banked (`allDiversPicked`, synced state, so the whole squad sees it), the
+draft hands off to an interstitial; the engine stays in rewards and the host's ADVANCE is the only
+way on. Mid-operation that is **`MissionCleared`** ("Regroup"): a mission track (secured drops lit
+teal, the next one breathing gold), the diver's banked haul as a hero card with the credits it
+earned, the squad's picks (`SquadDraftBoard`), and **Brasch's Bargains inline** so divers shop
+while they wait. At the operation's end, **`OperationCleared`** carries the climb
 to the next difficulty — the next in-game difficulty emblem slams in over rays, above a 3–10
 chevron ladder underlined in each rung's base tier — and points at Brasch's restock.
 
@@ -162,7 +178,8 @@ column: `PhoneTopBar` (identity, Squad, Kit, Codex, menu) over `PhaseTabs`, a sc
 pinned `footer.phone-bar`. The bar never changes shape — its CTA label stays on one line and
 ellipsizes a long item name: optional detail above, an optional secondary
 on the left and one primary action filling the rest, supplied through `PhoneActionBar`'s deferred
-teleports. Report and forfeit actions use the same bar. The squad sheet is a dialog with inline
+teleports. Report and forfeit actions use the same bar, and so do the `MissionCleared` and
+`OperationCleared` interstitials (their `phone` variants put the host's CTA in the bar). The squad sheet is a dialog with inline
 moderation; the wheel call is a flat top-down stage (directive, strain, wheel), not a bottom sheet.
 Short phones keep the call's take/skip buttons reachable by scrolling, and tap targets stay at least
 24px. No page-level horizontal overflow is allowed; long live text needs `min-width: 0`.

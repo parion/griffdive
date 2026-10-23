@@ -188,7 +188,10 @@ const pickedName = computed(() =>
             >{{ option.roll }}</span>
             <span class="cat">{{ categoryOf(option) }}</span>
           </span>
-          <span class="name disp">{{ nameOf(option) }}</span>
+          <span
+            class="name disp"
+            :style="fitWord(nameOf(option))"
+          >{{ nameOf(option) }}</span>
           <span
             v-if="selectedId === option.optionId"
             class="pick-mark"
@@ -326,7 +329,7 @@ const pickedName = computed(() =>
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
 }
 .cross-thumb { color: var(--tier-splus); font-size: 24px; }
-.card-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.card-copy { container-type: inline-size; display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
 .meta { display: flex; align-items: center; gap: 6px; }
 .roll {
   padding: 1px 5px;
@@ -337,7 +340,7 @@ const pickedName = computed(() =>
   font-weight: 700;
 }
 .cat { color: var(--muted); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; }
-.name { font-size: 15px; line-height: 1.1; overflow-wrap: anywhere; }
+.name { font-size: min(15px, 100cqi / var(--fit-len, 1)); line-height: 1.1; }
 .pick-mark { color: var(--tier); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .tier {
   flex: none;

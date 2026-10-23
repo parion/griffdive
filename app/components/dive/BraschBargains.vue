@@ -191,6 +191,9 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
 @container (min-width: 560px) {
   .bb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+@container (min-width: 600px) {
+  .bb-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
 .bb-card {
   position: relative;
   display: flex;
@@ -213,13 +216,21 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
   justify-content: space-between;
   gap: 8px;
 }
+/* The art leads each slot, letterboxed whole like the loot cards. */
 .bb-stage {
+  position: relative;
   display: grid;
   place-items: center;
-  min-height: 64px;
+  aspect-ratio: 4 / 3;
   border: 1px solid var(--line-2);
 }
-.bb-art { width: 52px; height: 52px; object-fit: contain; }
+.bb-art {
+  position: absolute;
+  inset: 10%;
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
 .bb-item {
   font-size: 13px;
   font-weight: 700;

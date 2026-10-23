@@ -215,7 +215,10 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
               tone="red"
             />
           </div>
-          <h2 class="disp dc-name">
+          <h2
+            class="disp dc-name"
+            :style="fitWord(misfortune.name)"
+          >
             {{ misfortune.name }}
           </h2>
           <p class="dc-rule">
@@ -305,7 +308,10 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
                 tone="orange"
               />
             </span>
-            <b class="disp strain-name">{{ strain.name }}</b>
+            <b
+              class="disp strain-name"
+              :style="fitWord(strain.name)"
+            >{{ strain.name }}</b>
             <span class="strain-blurb">{{ strain.blurb }}</span>
           </span>
           <span
@@ -527,6 +533,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
 
 .directive-card {
   position: relative;
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -553,11 +560,10 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
 .dc-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .dc-top :deep(.pips i) { width: 18px; height: 18px; }
 .dc-name {
-  font-size: clamp(28px, 2.9vw, 42px);
+  font-size: min(clamp(28px, 2.9vw, 42px), 100cqi / var(--fit-len, 1));
   line-height: 0.95;
   color: var(--gold);
   text-shadow: 0 0 28px rgba(255, 214, 66, 0.25);
-  overflow-wrap: anywhere;
 }
 .dc-rule { margin: 0; color: var(--khaki); font-size: 15px; line-height: 1.4; }
 .dc-actions { display: flex; gap: 8px; padding-top: 6px; }
@@ -637,10 +643,10 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   color: var(--red);
 }
 .strain-icon img { width: 100%; height: 100%; object-fit: contain; }
-.strain-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.strain-copy { container-type: inline-size; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .strain-cap { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
 .strain-cap :deep(.pips i) { width: 12px; height: 12px; }
-.strain-name { font-size: 18px; line-height: 1.05; color: var(--text); }
+.strain-name { font-size: min(18px, 100cqi / var(--fit-len, 1)); line-height: 1.05; color: var(--text); }
 .strain-blurb {
   display: -webkit-box;
   overflow: hidden;

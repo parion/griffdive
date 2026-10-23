@@ -125,7 +125,10 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
           tone="red"
         />
       </div>
-      <h2 class="disp dc-name">
+      <h2
+        class="disp dc-name"
+        :style="fitWord(misfortune.name)"
+      >
         {{ misfortune.name }}
       </h2>
       <p class="dc-rule">
@@ -179,7 +182,10 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
           tone="orange"
         />
       </div>
-      <h2 class="disp strain-name">
+      <h2
+        class="disp strain-name"
+        :style="fitWord(strain.name)"
+      >
         {{ strain.name }}
       </h2>
       <div
@@ -339,6 +345,7 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
 
 .directive,
 .strain {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -358,8 +365,8 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
 .directive.accepted { box-shadow: inset 0 0 0 2px var(--gold); }
 .strain.accepted { box-shadow: inset 0 0 0 2px var(--orange); }
 .dc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.dc-name { font-size: 30px; color: var(--gold); }
-.strain-name { font-size: 22px; color: var(--orange); }
+.dc-name { font-size: min(30px, 100cqi / var(--fit-len, 1)); color: var(--gold); }
+.strain-name { font-size: min(22px, 100cqi / var(--fit-len, 1)); color: var(--orange); }
 .dc-rule { margin: 0; color: var(--khaki); font-size: 12px; }
 .dc-actions { display: flex; gap: 7px; }
 .take,

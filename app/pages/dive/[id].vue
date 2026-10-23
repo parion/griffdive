@@ -2,7 +2,7 @@
 import { useIntervalFn } from '@vueuse/core'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { createSaveDoc } from '~~/shared/engine/saves'
-import { bargainLamp, bargainsClosedReason, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending } from '~~/shared/engine/selectors'
+import { allDiversPicked, bargainLamp, bargainsClosedReason, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionOutcome, MissionReport } from '~~/shared/engine/types'
@@ -37,7 +37,6 @@ const {
 const dispatch = (action: EngineAction) => session.dispatch(action)
 
 watch(phase, () => {
-  operationCleared.value = false
   reporting.value = false
 })
 
@@ -69,7 +68,28 @@ const pactPreviewIds = computed(() =>
 // The report form and the in-field screen share one beat tab; the shell swaps
 // its label to REPORT while the form is open.
 const reporting = ref(false)
-const operationCleared = ref(false)
+
+// Once the whole squad has banked, everyone regroups on an interstitial instead
+// of idling on the draft: a mission-cleared beat mid-operation, the climb at
+// its end. It is derived from synced state, so every diver sees the same beat;
+// the engine stays in rewards and the host's ADVANCE is the only way on.
+const squadBanked = computed(() =>
+  state.value?.phase === 'rewards' && allDiversPicked(state.value))
+const operationClimbs = computed(() =>
+  Boolean(state.value)
+  && state.value!.missionInOperation >= opLength.value
+  && state.value!.difficulty < MAX_DIFFICULTY)
+
+// A new beat starts at its top. Without this the stage keeps the scroll the
+// last beat left behind — banking from the bottom of the draft would open the
+// next screen halfway down. Narrow desktops scroll the window instead.
+watch([phaseKey, squadBanked], () => {
+  if (!import.meta.client) {
+    return
+  }
+  document.getElementById('main-content')?.scrollTo({ top: 0 })
+  window.scrollTo({ top: 0 })
+})
 
 // Squad Honors: the contest is spun at the report and awarded from the dock.
 // The shell only reads the derived state; the engine owns eligibility.
@@ -391,26 +411,6 @@ function claimCache(cacheOwnerId: string): void {
 }
 
 function advance(): void {
-  const current = state.value
-  if (!current) {
-    return
-  }
-  // The boards give the operation clear its own beat. The engine stays in
-  // rewards until the host starts the next operation, so a reload can always
-  // recover; the CTA is the only thing that advances.
-  if (
-    current.phase === 'rewards'
-    && current.missionInOperation >= opLength.value
-    && current.difficulty < MAX_DIFFICULTY
-  ) {
-    operationCleared.value = true
-    return
-  }
-  dispatch({ type: 'ADVANCE' })
-}
-
-function startNextOperation(): void {
-  operationCleared.value = false
   dispatch({ type: 'ADVANCE' })
 }
 
@@ -654,6 +654,7 @@ function launchCrusade(settings: CrusadeSettings): void {
       @spin-bonus="spinBonus"
       @award-bonus="awardBonus"
       @advance="advance"
+      @buy="buyItem"
       @forfeit="forfeit"
       @start="launchCrusade"
       @kick="kick"
@@ -770,25 +771,40 @@ function launchCrusade(settings: CrusadeSettings): void {
             @spin-bonus="spinBonus"
           />
 
-          <OperationCleared
-            v-if="operationCleared && phase === 'rewards'"
-            :state="state"
-            :can-control="canControl"
-            @start="startNextOperation"
-            @open-bargains="bargainsOpen = true"
-          />
-
-          <DivePhaseRewards
-            v-else-if="phase === 'rewards'"
-            :state="state"
-            :self-id="selfId"
-            :self="self"
-            :can-control="canControl"
-            :op-length="opLength"
-            @pick="pick"
-            @reroll="rerollRewards"
-            @advance="advance"
-          />
+          <Transition
+            v-if="phase === 'rewards'"
+            name="phase"
+            mode="out-in"
+          >
+            <OperationCleared
+              v-if="squadBanked && operationClimbs"
+              :state="state"
+              :can-control="canControl"
+              @start="advance"
+              @open-bargains="bargainsOpen = true"
+            />
+            <MissionCleared
+              v-else-if="squadBanked"
+              :state="state"
+              :self="self"
+              :self-id="selfId"
+              :can-control="canControl"
+              :op-length="opLength"
+              @advance="advance"
+              @buy="buyItem"
+            />
+            <DivePhaseRewards
+              v-else
+              :state="state"
+              :self-id="selfId"
+              :self="self"
+              :can-control="canControl"
+              :op-length="opLength"
+              @pick="pick"
+              @reroll="rerollRewards"
+              @advance="advance"
+            />
+          </Transition>
 
           <DivePhaseForfeit
             v-if="phase === 'forfeit'"

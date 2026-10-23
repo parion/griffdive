@@ -71,7 +71,11 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.locator('.roll-pins .pin')).toHaveCount(3)
   await page.locator('.loot-card').first().click()
   await page.getByRole('button', { name: /^Bank / }).click()
-  await expect(page.locator('.loot-card.banked')).toHaveCount(1)
+  // With the whole squad banked, the dive regroups between missions: the
+  // banked haul, Brasch's shelf inline, and the host's call to drop again.
+  await expect(page.getByRole('heading', { name: 'Regroup' })).toBeVisible()
+  await expect(page.getByRole('article', { name: 'Your haul' }).locator('img')).toBeVisible()
+  await expect(page.locator('.mc .bb-card')).toHaveCount(4)
 
   // Brasch's Bargains opens from the header between missions: one slot each
   // for primary, secondary, throwable and armor passive at Medium.
@@ -109,7 +113,6 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
 
   await page.locator('.loot-card').first().click()
   await page.getByRole('button', { name: /^Bank / }).click()
-  await page.getByRole('button', { name: /Complete operation/ }).click()
 
   // Medium's two-mission operation closes on the climb screen.
   await expect(page.getByRole('heading', { name: 'The squad climbs' })).toBeVisible()

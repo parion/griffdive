@@ -4,10 +4,13 @@ import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
 import type { DiveState } from '~~/shared/engine/types'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   state: DiveState
   canControl: boolean
-}>()
+  phone?: boolean
+}>(), { phone: false })
+const hostName = computed(() =>
+  props.state.divers.find(diver => diver.id === props.state.hostId)?.name ?? 'the host')
 
 const emit = defineEmits<{ start: [], openBargains: [] }>()
 
@@ -21,7 +24,7 @@ const rungs = computed(() => Array.from({ length: MAX_DIFFICULTY - 2 }, (_, i) =
   return {
     n,
     tier: baseTierFor(n),
-    state: n < nextDifficulty.value ? 'cleared' : n === nextDifficulty.value ? 'current' : 'locked',
+    state: n < nextDifficulty.value ? 'climbed' : n === nextDifficulty.value ? 'current' : 'locked',
   }
 }))
 </script>
@@ -44,7 +47,7 @@ const rungs = computed(() => Array.from({ length: MAX_DIFFICULTY - 2 }, (_, i) =
     <h1 class="disp title">
       The squad climbs
     </h1>
-    <p class="sub">
+    <p class="next-drop">
       Next drop: <b>Difficulty {{ nextDifficulty }} · {{ nextName }}</b>
     </p>
 
@@ -65,8 +68,24 @@ const rungs = computed(() => Array.from({ length: MAX_DIFFICULTY - 2 }, (_, i) =
       </li>
     </ol>
 
+    <PhoneActionBar v-if="phone">
+      <template #primary>
+        <button
+          v-if="canControl"
+          class="bar-cta cta-sweep"
+          type="button"
+          @click="emit('start')"
+        >
+          <span class="disp">Start operation {{ nextOp }}</span>
+        </button>
+        <span
+          v-else
+          class="bar-gate"
+        >Waiting on {{ hostName }}</span>
+      </template>
+    </PhoneActionBar>
     <button
-      v-if="canControl"
+      v-else-if="canControl"
       class="cta cut cta-sweep"
       type="button"
       @click="emit('start')"
@@ -88,7 +107,7 @@ const rungs = computed(() => Array.from({ length: MAX_DIFFICULTY - 2 }, (_, i) =
       v-else
       class="waiting"
     >
-      Waiting for the host to start operation {{ nextOp }}…
+      Waiting for {{ hostName }} to start operation {{ nextOp }}…
     </p>
 
     <button
@@ -169,8 +188,8 @@ const rungs = computed(() => Array.from({ length: MAX_DIFFICULTY - 2 }, (_, i) =
   color: var(--text);
   text-shadow: 0 0 40px rgba(255, 214, 66, 0.18);
 }
-.sub { margin: 0; color: var(--muted); font-size: 16px; }
-.sub b { color: var(--text); }
+.next-drop { margin: 0; color: var(--muted); font-size: 16px; }
+.next-drop b { color: var(--text); }
 .ladder {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
@@ -200,7 +219,7 @@ const rungs = computed(() => Array.from({ length: MAX_DIFFICULTY - 2 }, (_, i) =
 .rung[data-tier='B'] { --tier: var(--tier-b); }
 .rung[data-tier='A'] { --tier: var(--tier-a); }
 .rung[data-tier='S'] { --tier: var(--tier-s); }
-.rung.cleared { color: var(--muted); background: var(--raised); }
+.rung.climbed { color: var(--muted); background: var(--raised); }
 .rung.current {
   color: var(--on-gold);
   background: linear-gradient(180deg, #ffe57a, var(--gold) 50%, #f0bf1a);

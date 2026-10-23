@@ -319,7 +319,10 @@ const kickerText = computed(() => {
         </span>
 
         <span class="card-foot">
-          <span class="item-name disp">{{ nameOf(option) }}</span>
+          <span
+            class="item-name disp"
+            :style="fitWord(nameOf(option))"
+          >{{ nameOf(option) }}</span>
           <span
             v-if="selectedId === option.optionId"
             class="selected-mark"
@@ -629,12 +632,11 @@ const kickerText = computed(() => {
 .cross-mark { font-size: 44px; line-height: 1; }
 .cross-name { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
 
-.card-foot { display: flex; flex-direction: column; gap: 5px; margin-top: auto; }
+.card-foot { container-type: inline-size; display: flex; flex-direction: column; gap: 5px; margin-top: auto; }
 .item-name {
-  font-size: 15px;
+  font-size: min(15px, 100cqi / var(--fit-len, 1));
   line-height: 1.1;
   color: var(--khaki);
-  overflow-wrap: anywhere;
 }
 .selected .item-name,
 .banked .item-name { color: var(--text); }
@@ -729,7 +731,7 @@ const kickerText = computed(() => {
   .loot-card .media { grid-row: 1 / 3; aspect-ratio: 1; }
   .card-top { grid-column: 2; }
   .card-foot { grid-column: 2; }
-  .item-name { font-size: 16px; }
+  .item-name { font-size: min(16px, 100cqi / var(--fit-len, 1)); }
   .loot-actions { justify-content: stretch; }
   .cta { flex: 1; min-width: 0; }
 }

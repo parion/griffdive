@@ -83,9 +83,10 @@ function toggleFail(): void {
 
 const reportMode = ref<'none' | 'success' | 'failure'>('none')
 
+// The report stays on screen after filing: the phase change unmounts it. Closing
+// it here first would flash the field screen for a frame before the next beat.
 function submit(payload: MissionReport): void {
   emit('report', payload)
-  reportMode.value = 'none'
 }
 
 function openReport(mode: 'success' | 'failure'): void {
@@ -130,7 +131,10 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
               :class="directiveFailed ? 'red' : 'teal'"
             >{{ directiveFailed ? 'Broken' : 'Holding' }}</span>
           </div>
-          <h2 class="disp directive-name">
+          <h2
+            class="disp directive-name"
+            :style="fitWord(misfortune?.name ?? 'Safe dive')"
+          >
             {{ misfortune?.name ?? 'Safe dive' }}
           </h2>
           <p class="directive-rule">
@@ -362,6 +366,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 .kit-pane { grid-area: kit; }
 
 .directive-card {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -390,11 +395,10 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 .status.teal { color: var(--on-gold); background: var(--teal); box-shadow: 0 0 12px rgba(74, 215, 200, 0.4); }
 .status.red { color: var(--red); background: var(--ground); box-shadow: inset 0 0 0 1px var(--red); }
 .directive-name {
-  font-size: clamp(32px, 3.6vw, 48px);
+  font-size: min(clamp(32px, 3.6vw, 48px), 100cqi / var(--fit-len, 1));
   line-height: 0.95;
   color: var(--gold);
   text-shadow: 0 0 26px rgba(255, 214, 66, 0.25);
-  overflow-wrap: anywhere;
 }
 .broken .directive-name { color: var(--red); text-decoration: line-through; text-decoration-thickness: 3px; text-shadow: none; }
 .directive-rule { margin: 0; color: var(--khaki); font-size: 15px; }

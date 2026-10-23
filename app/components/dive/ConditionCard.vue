@@ -82,7 +82,10 @@ function choose(): void {
       />
     </span>
 
-    <span class="condition-name disp">{{ condition.name }}</span>
+    <span
+      class="condition-name disp"
+      :style="fitWord(condition.name)"
+    >{{ condition.name }}</span>
 
     <template v-if="expanded">
       <span class="condition-rule">“{{ condition.rule }}”</span>
@@ -115,6 +118,7 @@ function choose(): void {
 .condition {
   --edge: var(--line-3);
   position: relative;
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -217,12 +221,11 @@ function choose(): void {
 }
 
 .condition-name {
-  font-size: clamp(22px, 2vw, 28px);
+  font-size: min(clamp(22px, 2vw, 28px), 100cqi / var(--fit-len, 1));
   line-height: 1.02;
   color: var(--text);
-  overflow-wrap: anywhere;
 }
-.compact .condition-name { font-size: 22px; }
+.compact .condition-name { font-size: min(22px, 100cqi / var(--fit-len, 1)); }
 
 .condition-rule {
   font-size: 15px;

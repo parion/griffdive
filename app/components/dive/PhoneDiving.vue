@@ -76,9 +76,10 @@ function toggleFail(): void {
 
 const reportMode = ref<'none' | 'success' | 'failure'>('none')
 
+// The report stays on screen after filing: the phase change unmounts it. Closing
+// it here first would flash the field screen for a frame before the next beat.
 function submit(payload: MissionReport): void {
   emit('report', payload)
-  reportMode.value = 'none'
 }
 
 function cancelReport(): void {
@@ -114,7 +115,10 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
           :class="directiveFailed ? 'red' : 'teal'"
         >{{ directiveFailed ? 'Broken' : 'Holding' }}</span>
       </div>
-      <h2 class="disp dc-name">
+      <h2
+        class="disp dc-name"
+        :style="fitWord(misfortune?.name ?? 'Safe dive')"
+      >
         {{ misfortune?.name ?? 'Safe dive' }}
       </h2>
       <p class="dc-rule">
@@ -275,6 +279,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 .lede { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
 
 .directive {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -290,7 +295,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 .status { padding: 2px 7px; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
 .status.teal { background: var(--teal); color: var(--on-gold); }
 .status.red { color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
-.dc-name { font-size: 30px; color: var(--gold); }
+.dc-name { font-size: min(30px, 100cqi / var(--fit-len, 1)); color: var(--gold); }
 .broken .dc-name { color: var(--red); }
 .dc-rule { margin: 0; color: var(--khaki); font-size: 12px; }
 .dc-foot {
