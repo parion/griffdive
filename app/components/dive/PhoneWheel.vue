@@ -12,7 +12,7 @@ import {
   strainDecision,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
-import type { DiveState, MajorOrderSelection, RewardTier } from '~~/shared/engine/types'
+import type { DiveState, RewardTier } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -25,7 +25,6 @@ const emit = defineEmits<{
   decide: [accepted: boolean]
   decideStrain: [accepted: boolean]
   deal: []
-  setMajorOrder: [order: MajorOrderSelection | null]
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
   openKit: []
 }>()
@@ -57,7 +56,6 @@ const strandedReason = computed(() =>
     : '')
 const canDeal = computed(() =>
   props.state.phase === 'deal' || (decision.value.decided && strainCall.value.decided))
-const moOpen = ref(false)
 
 const callValor = computed(() => teamRiskOf(props.state))
 const directiveShare = computed(() =>
@@ -234,16 +232,8 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         :can-control="canControl"
         @spin="emit('spin')"
       />
-      <button
-        v-if="!state.frontId && !state.majorOrder"
-        class="mo-open"
-        type="button"
-        @click="moOpen = true"
-      >
-        Major Order · pin a front
-      </button>
       <div
-        v-else-if="front && !held"
+        v-if="front && !held"
         class="front-pin"
       >
         Front locked · <b>{{ front.displayName }}</b>
@@ -252,7 +242,7 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         v-else-if="state.majorOrder"
         class="front-pin"
       >
-        Major Order · <b>{{ pinnedFronts.map(entry => entry.displayName).join(' · ') }}</b>
+        {{ state.majorOrder.live ? 'Major Order' : 'Faction locked' }} · <b>{{ pinnedFronts.map(entry => entry.displayName).join(' · ') }}</b>
       </div>
     </div>
 
@@ -309,19 +299,6 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         <span class="bar-gate">Waiting on host</span>
       </template>
     </PhoneActionBar>
-
-    <AppDialog
-      v-model:open="moOpen"
-      title="Major Order"
-      description="Pin the operation's front to the live war order, or pick one manually."
-      size="md"
-    >
-      <MajorOrderPicker
-        :state="state"
-        :can-control="canControl"
-        @select="(order) => { emit('setMajorOrder', order); moOpen = false }"
-      />
-    </AppDialog>
   </section>
 </template>
 
@@ -398,16 +375,6 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
 .wheel-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .phone-call :deep(.risk-legend) { display: none; }
 .wheel-wrap :deep(.wheel) { max-width: 360px; }
-.mo-open {
-  min-height: 34px;
-  padding: 0 10px;
-  border: 0;
-  background: var(--rail);
-  box-shadow: inset 0 0 0 1px var(--line-2);
-  color: var(--khaki);
-  font: 600 10px var(--font-body);
-  letter-spacing: 0.06em;
-}
 .front-pin { color: var(--muted); font-size: 11px; }
 .front-pin b { color: var(--red); }
 .wait-note { display: flex; flex-direction: column; gap: 4px; }

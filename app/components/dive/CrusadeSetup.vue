@@ -2,11 +2,14 @@
 import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
 import { PENANCE_VALOR, SEAF_SUPPORT_VALOR, baseTierFor, missionsPerOperation } from '~~/shared/engine/config'
 import { STARTING_KITS, VARIANTS, difficultyName } from '~~/shared/engine/progression'
-import type { CrusadeMode, CrusadeVariant } from '~~/shared/engine/types'
+import type { FrontId } from '~~/shared/data/fronts'
+import type { CrusadeMode, CrusadeVariant, FrontPlan } from '~~/shared/engine/types'
 
 const props = withDefaults(defineProps<{
   variant: CrusadeVariant
   mode?: CrusadeMode
+  frontPlan: FrontPlan
+  lockedFront: FrontId
   startLabel?: string
   showStart?: boolean
 }>(), { mode: 'seaf', startLabel: 'Start crusade', showStart: true })
@@ -14,6 +17,8 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   'update:variant': [variant: CrusadeVariant]
   'update:mode': [mode: CrusadeMode]
+  'update:frontPlan': [plan: FrontPlan]
+  'update:lockedFront': [front: FrontId]
   'start': []
 }>()
 
@@ -120,6 +125,22 @@ function modeValor(id: CrusadeMode): number {
       </button>
     </div>
 
+    <section
+      class="front-plan"
+      aria-labelledby="front-plan-h"
+    >
+      <span
+        id="front-plan-h"
+        class="lbl"
+      >Front · locks at launch</span>
+      <FrontPlanPicker
+        :plan="frontPlan"
+        :locked-front="lockedFront"
+        @update:plan="emit('update:frontPlan', $event)"
+        @update:locked-front="emit('update:lockedFront', $event)"
+      />
+    </section>
+
     <button
       v-if="showStart"
       class="btn primary block cut-sm"
@@ -133,6 +154,7 @@ function modeValor(id: CrusadeMode): number {
 
 <style scoped>
 .setup { display: grid; gap: 0.85rem; }
+.front-plan { display: grid; gap: 0.4rem; }
 
 .variant-grid {
   display: grid;

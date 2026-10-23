@@ -37,7 +37,7 @@ app/
                    CrusadeLadder — the vertical 3→10 ladder (achieved screen),
                    FieldPromotionGate — the mid-crusade catch-up gate,
                    ForfeitPicker — one diver's dealt forfeit offer,
-                   MajorOrderPicker/MajorOrderCard — the pre-spin MO chooser and panel,
+                   FrontPlanPicker/MajorOrderCard — the setup's front-plan chooser and MO panel,
                    ArmoryDrawer + KitPanel — the Kit drawer and the lean Kit itself,
                    BraschBargains + BargainsDrawer — the per-mission shop in a slide-over,
                    AchievedOverlay — the full-bleed Griffdive achieved takeover,
@@ -78,7 +78,7 @@ app/
                    warbond declaration shared by the Warbonds drawer, the home setup and every
                    seated dive),
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
-                   useMajorOrder (live war proxy → the picker's suggestion; null offline),
+                   useMajorOrder (live war proxy → the setup's Major Order plan; null offline),
                    useChangelog (GitHub release deployments + commits → phase-carded changelog
                    entries via utils/changelog.ts, 10-min cache),
                    usePhoneShell (the 1020px breakpoint as JS, so the dive can swap the whole
@@ -183,8 +183,8 @@ rooms every 15 min so the `MAX_ROOMS` backstop rarely matters.
 
 Canonical engine actions (the reducer union; keep names stable):
 
-`START_DIVE{settings,seed?}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
-`DEAL_PACTS{}` `SET_MAJOR_ORDER{order}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
+`START_DIVE{settings,seed?,majorOrder?}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
+`DEAL_PACTS{}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?,samples?}` `FORFEIT_ITEM{playerId,itemId}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `BUY_ITEM{playerId,itemId}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
@@ -193,7 +193,7 @@ Canonical engine actions (the reducer union; keep names stable):
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
-`ACCEPT_STRAIN`, `DEAL_PACTS`, `SET_MAJOR_ORDER`, `REROLL_WHEEL`, `REPORT_RESULT`, `FAIL_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
+`ACCEPT_STRAIN`, `DEAL_PACTS`, `REROLL_WHEEL`, `REPORT_RESULT`, `FAIL_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE`, `SET_AWAY` are
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated

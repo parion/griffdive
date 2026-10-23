@@ -10,6 +10,7 @@ import type { Item } from '../data/types'
 import {
   BARGAIN_SLOTS,
   BARGAIN_STREAM,
+  FRONT_ROLL_RISK,
   MAJOR_ORDER_RISK,
   OPTIONS_LOST_PER_FAILED_DIRECTIVE,
   FORFEIT_STREAM,
@@ -142,16 +143,17 @@ export function misfortuneStrandedDivers(state: DiveState): DiverState[] {
 }
 
 // The team term stacks the per-mission misfortune (when accepted), the
-// operation-long strain (when accepted), the live Major Order commitment and
-// the run-long mode (SEAF Support Package or Super Penance): the latter three
-// are felt on every mission of the operation/run, so they compound over its
-// 2–3 missions. A live MO replaces the strain, so its fixed risk is what keeps
-// the operation's Valor potential intact. The SEAF/Penance mode is a flat
-// team Valor stake, not a rule — see config.
+// operation-long strain (when accepted), the setup's front plan (a live Major
+// Order or a rolled front) and the run-long mode (SEAF Support Package or Super
+// Penance): the latter three are felt on every mission of the operation/run, so
+// they compound over its 2–3 missions. A live MO replaces the strain, so its
+// fixed risk is what keeps the operation's Valor potential intact. The
+// SEAF/Penance mode is a flat team Valor stake, not a rule — see config.
 export interface TeamRiskBreakdown {
   misfortuneRisk: number
   strainRisk: number
   majorOrderRisk: number
+  frontRollRisk: number
   mode: CrusadeMode | null
   modeValor: number
   total: number
@@ -180,14 +182,16 @@ export function teamRiskBreakdown(state: DiveState): TeamRiskBreakdown {
     ? STRAIN_RISK[state.strainId ?? ''] ?? 0
     : 0
   const majorOrderRisk = state.majorOrder?.live ? MAJOR_ORDER_RISK : 0
+  const frontRollRisk = state.settings?.front === 'rolled' ? FRONT_ROLL_RISK : 0
   const modeValor = modeValorOf(state)
   return {
     misfortuneRisk,
     strainRisk,
     majorOrderRisk,
+    frontRollRisk,
     mode: state.settings?.mode ?? null,
     modeValor,
-    total: misfortuneRisk + strainRisk + majorOrderRisk + modeValor,
+    total: misfortuneRisk + strainRisk + majorOrderRisk + frontRollRisk + modeValor,
   }
 }
 

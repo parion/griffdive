@@ -7,13 +7,14 @@ import {
   missionsPerOperation,
 } from '~~/shared/engine/config'
 import { catchUpOpsBehind, difficultyName, STARTING_KITS } from '~~/shared/engine/progression'
-import { createDiveState, reduce } from '~~/shared/engine/reducer'
+import { createDiveState } from '~~/shared/engine/reducer'
 import { oddsToReach } from '~~/shared/engine/rewards'
 import { createSaveDoc } from '~~/shared/engine/saves'
 import { FRONTS } from '~~/shared/data/fronts'
 import { factionImageUrl } from '~~/shared/data/images'
 import { isRoomCode } from '~~/shared/utils/room-code'
-import type { CrusadeMode, CrusadeSettings, CrusadeVariant, DiveState, RewardTier } from '~~/shared/engine/types'
+import type { FrontId } from '~~/shared/data/fronts'
+import type { CrusadeMode, CrusadeSettings, CrusadeVariant, DiveState, FrontPlan, RewardTier } from '~~/shared/engine/types'
 import type { DiveSaveInfo } from '~~/shared/types/messages'
 import type { SaveDoc, SessionSave } from '~~/shared/types/save'
 import { storeSeat, storedDiverName, storedSeat } from '~/composables/useGameSocket'
@@ -27,6 +28,8 @@ const { ownedWarbonds: myWarbonds, setOwned: setMyWarbonds } = useOwnedWarbonds(
 const diverName = ref('Griffin')
 const variant = ref<CrusadeVariant>('medium')
 const mode = ref<CrusadeMode>('seaf')
+const frontPlan = ref<FrontPlan>('rolled')
+const lockedFront = ref<FrontId>('terminids')
 const slotList = ref<{ id: string, doc: SaveDoc }[]>([])
 const sessionList = ref<SessionSave[]>([])
 const joinCode = ref('')
@@ -156,34 +159,32 @@ const VARIANTS_LABELS: Record<CrusadeVariant, string> = {
   suicide: 'Suicide Mission',
 }
 
-function createCrusade(alignToOrder: boolean): void {
+function createCrusade(plan: FrontPlan): void {
   const name = diverName.value.trim() || 'Diver'
-  const settings: CrusadeSettings = STARTING_KITS[variant.value].startDifficulty >= 5
+  const base: CrusadeSettings = STARTING_KITS[variant.value].startDifficulty >= 5
     ? { variant: variant.value, mode: mode.value }
     : { variant: variant.value }
-  let state = createDiveState(
-    settings,
+  const state = createDiveState(
+    { ...base, front: plan },
     crypto.randomUUID(),
     name,
     [...myWarbonds.value],
     crypto.getRandomValues(new Uint32Array(1))[0],
+    frontPinFor(plan, lockedFront.value, liveOrder.value),
   )
-  // The band's campaign CTA hands the live order straight to the wheel, so the
-  // front is pinned before the first spin — the host never has to re-pick.
-  if (alignToOrder && liveOrder.value) {
-    state = reduce(state, { type: 'SET_MAJOR_ORDER', order: liveOrder.value })
-  }
   const variantName = VARIANTS_LABELS[variant.value] ?? 'Crusade'
   const id = saves.createSlot(state, `${name} · ${variantName}`)
   navigateTo(`/dive/${id}`)
 }
 
 function startCrusade(): void {
-  createCrusade(false)
+  createCrusade(frontPlan.value)
 }
 
+// The band's campaign CTA commits the run to the live order at setup, so the
+// front is pinned before the first spin — the host never has to re-pick.
 function startCrusadeWithMo(): void {
-  createCrusade(true)
+  createCrusade('majorOrder')
 }
 
 async function hostOnlineDive(): Promise<void> {
@@ -828,7 +829,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
             class="btn ghost variant-btn"
             type="button"
             aria-haspopup="dialog"
-            :aria-label="`Variant and warbonds: ${variantLabel}, ${myWarbonds.length} warbonds`"
+            :aria-label="`Variant and warbonds: ${variantLabel}, ${FRONT_PLAN_LABELS[frontPlan]} front, ${myWarbonds.length} warbonds`"
             @click="variantOpen = true"
           >
             <svg
@@ -1330,11 +1331,13 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
     <AppDialog
       v-model:open="variantOpen"
       title="Variant & warbonds"
-      description="Your starting kit and the warbonds you own. Rewards roll from your warbonds only."
+      description="Your starting kit, the run's front plan and the warbonds you own. Rewards roll from your warbonds only."
     >
       <CrusadeSetup
         v-model:variant="variant"
         v-model:mode="mode"
+        v-model:front-plan="frontPlan"
+        v-model:locked-front="lockedFront"
         :show-start="false"
       />
       <WarbondPicker

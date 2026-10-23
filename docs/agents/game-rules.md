@@ -11,8 +11,9 @@ operation**, with the operation's first spin, and persists across its missions �
 restart keeps it. Every mission begins with a fresh misfortune draw. Per mission:
 1. **Spin** — the squad spins the Wheel of Misfortune: one **misfortune** (team-wide restriction)
    for this mission; the operation's first spin also draws the **front** (Terminids / Automatons /
-   Illuminate) and its **strain** (an optional subfaction). Before the operation's first spin the
-   host may set the **Major Order**, pinning the front draw to it — see Operation layer.
+   Illuminate) and its **strain** (an optional subfaction). The run's **front plan** — follow the
+   live **Major Order**, lock one faction, or roll every operation — is chosen at crusade setup and
+   pins (or frees) that draw for the whole run — see Operation layer.
 2. **Decide** — before any pact exists, the squad (host executes, IRL voice vote) **accepts or
    declines** the drawn misfortune. Declining runs a zero-team-risk dive; accepting applies the
    misfortune's **team risk** (1–5) to every diver's Valor for this mission. A reroll redraws and
@@ -92,8 +93,8 @@ roll, the squad (host executes, IRL voice vote) **accepts or declines** it. Decl
 zero-team-risk dive; accepting stakes the misfortune's **team risk** in Valor for every diver —
 weighted by squad size — **1× solo, 1.25× duo, 1.5× trio, 1.75× four divers** — because the more
 divers must hold one rule the harder it is (`TEAM_DIRECTIVE_VALOR_WEIGHTS` / `directiveWeightFor`,
-read from the live roster; the operation-long strain and live Major Order keep their own unweighted
-fixed values). Once accepted, the host
+read from the live roster; the operation-long strain, the live Major Order and the rolled-front
+risk keep their own unweighted fixed values). Once accepted, the host
 may mark it **failed** in the field if the squad breaks the rule (`FAIL_MISFORTUNE`, `diving` phase,
 host-only): the shared risk is voided for every diver and each forfeits one reward option — see
 Failed directives. A reroll redraws and resets the decision (returning the squad to the `decision`
@@ -170,39 +171,51 @@ to reroll into, so the front reroll is refused ("Only one front on this Major Or
 rerolls stay available in any decision or pact window (until the first pact lock).
 
 **Fronts:** the front is drawn with the operation's first spin (one per operation) and drives combo
-tracking and its strain roster. It exists for flavor and the reroll economy. A **Major Order**
-narrows that draw to the live war's front(s) — see Operation layer.
+tracking and its strain roster. It exists for flavor and the reroll economy. The setup's **front
+plan** decides how free that draw is: a **Major Order** narrows it to the live war's front(s), a
+**locked** faction pins it, and a **rolled** plan leaves the whole roster — see Operation layer.
 
-### Operation layer — Major Orders
+### Operation layer — front plan & Major Orders
 
-Griffdive tracks the live Helldivers 2 **Major Order** without ever fetching from the engine. The
-host sets the operation's MO before its first spin (`SET_MAJOR_ORDER`, host-only; valid only in the
-`spin` phase while `frontId === null`): it **pins the operation's front draw** to the MO's
-front(s). The spin still randomizes within them, so a multi-front order never locks one front; a
-single-front order does, and its front reroll is refused. A chosen order draws **no strain** — the
-front *is* the order, so there is no random subfaction and no operation-long subfaction risk. The
-front locks in for the operation exactly as before. **A chosen order is a run-long commitment:** it
-stays pinned across operations (completing one clears only the drawn front, not the order), so every
-later operation redraws its front within the order's fronts and, when the order is live, banks the
-reroll bonus and carries the risk again. The engine is pure and has no clock, so nothing expires it
-automatically — the host replaces it (a fresh live order) or clears it ("No order") in any operation's
-`spin` phase before the front is drawn, and `MajorOrderCard` flags an elapsed `expiresAt` as
-"ending". Once chosen, the picker collapses to a one-line pinned strip (the order's faction
-emblems, stacked with a slight offset, "Major Order Run", host-only **Change**) at every operation's start — the full order card only reappears on Change. A manual pick is
-pinned the same way. A failure restart keeps the order with the locked
-front, like the front itself. Playing toward an MO is
-an **opt-in carrot, never a tax**: a **live** MO-aligned operation banks `MAJOR_ORDER_REROLL_BONUS`
-(1) extra reroll token when it completes, so the next operation starts with two, and carries a fixed
-`MAJOR_ORDER_RISK` (2) team risk on **every mission** of the operation — the operation-long risk the
-strain would otherwise have supplied, so a live MO does not forfeit the operation's Valor potential.
-A **manual** front pick — the picker's optional override when no live order is running — pins the
-front but carries no risk and no carrot, so only playing the actual war objective pays. When no order
-is running the operation simply follows the standard process (the wheel draws the front, and a strain
-with it); the picker never directs the squad to pick one. Tiers and
-rewards are untouched — risk stays the only thing that buys rarity (principle 1: risk is chosen).
-The Bridge's live-MO band carries a one-click **Start campaign** CTA that seeds a fresh operation
-with the live order before its first spin (the same `SET_MAJOR_ORDER` the picker sends), so a diver
-can drop straight onto the war front; the manual picker remains the no-order fallback.
+The host chooses the run's **front plan** at crusade setup, beside the variant and mode (the
+Bridge's setup dialog for solo, the lobby for online rooms), and it **locks at launch** for the
+whole crusade — there is no mid-run change, so the call is visible before the first dive and the
+wheel screen carries no picker. `settings.front` records the plan; `START_DIVE{settings, majorOrder}`
+carries the pin the plan needs:
+
+| Plan | Pin (`state.majorOrder`) | Front draw | Strain | Team risk / mission | Carrot |
+| --- | --- | --- | --- | --- | --- |
+| `majorOrder` | the live order (`live: true`) | within the order's front(s) | none | `MAJOR_ORDER_RISK` (2) | `MAJOR_ORDER_REROLL_BONUS` (1) extra reroll token per completed operation |
+| `locked` | `{ fronts: [front] }` (never live) | that front | none | 0 | none |
+| `rolled` | `null` | full roster, fresh each operation | drawn as usual | `FRONT_ROLL_RISK` (1) | none |
+
+The reducer validates the pair (`resolveFrontPlan` in `room.ts`): a `majorOrder` plan without a
+live order, a `locked` plan without exactly one known front, or any malformed pin **degrades to
+`rolled`**; a `locked` pin is stripped of `live` so it can never bank the carrot, and a `rolled`
+plan drops any pin it was sent. Runs started before the setup-time choice carry no
+`settings.front`: they keep whatever pin they had and roll without the rolled-front risk.
+
+The rolled-front risk prices the blind: a squad that neither follows the war nor commits to one
+enemy can't build for the front until the spin, so it earns a small fixed Valor on every mission
+of the run, on top of any strain it takes. A pinned front (live or locked) draws **no strain** — the
+front *is* the order, so there is no random subfaction and no operation-long subfaction risk. A
+live order's fixed risk is the operation-long risk the strain would otherwise have supplied, so
+following the war does not forfeit Valor potential; a manual lock is a preference with no risk and
+no carrot, so only playing the actual war objective pays. A multi-front order still randomizes
+within its fronts every operation; a single-front order (or a lock) refuses the front reroll.
+
+**The pin is a run-long commitment:** completing an operation clears only the drawn front, so every
+later operation redraws within the pin and, when the order is live, banks the reroll bonus and
+carries the risk again. A failure restart keeps the pin with the locked front, like the front
+itself. The engine is pure and has no clock, so nothing expires an order — `MajorOrderCard` flags
+an elapsed `expiresAt` as "ending", and the squad keeps playing the order it signed up for. On the
+call screen a pinned run shows a one-line pin before the first spin ("Major Order pinned" or
+"Faction locked" with the front(s)); a rolled run shows the drawn front after the spin, as before.
+Playing toward an MO stays an **opt-in carrot, never a tax**. Tiers and rewards are untouched —
+risk stays the only thing that buys rarity (principle 1: risk is chosen).
+The Bridge's live-MO band carries a one-click **Start campaign** CTA that starts a solo crusade on
+the `majorOrder` plan with the live order (the same `START_DIVE` pin the setup sends), so a diver
+can drop straight onto the war front.
 
 The MO's front(s) and display metadata (`title`, `planets` — index, name, front and current
 liberation % — and `expiresAt`) live on `state.majorOrder`; the metadata is pass-through for the
@@ -214,21 +227,20 @@ API (Phase B) only fills the host's choice:** a cached server proxy
 (`server/api/war/major-order.get.ts` → `server/utils/major-order.ts`) normalizes the community war
 API — `api.helldivers2.dev/api/v1/assignments` joined to
 `helldiverstrainingmanual.com/api/v1/war/campaign` for planet→faction and liberation — into a
-`MajorOrderSelection` the picker offers as one click (`useMajorOrder`, refetched on mount). The
-chooser renders inside the faction card's pre-roll slot — the front is drawn with the first spin
-anyway, so that space is idle before the roll; the front card then carries the MO tag for the
-operation. Offline/static builds, a failed fetch, or the `GRIFFDIVE_DISABLE_MO_API=1` kill switch
-all fall back to the manual picker. The proxy caches for 10 minutes, retries once with a 6s
+`MajorOrderSelection` the setup's `FrontPlanPicker` offers as the Major Order plan (`useMajorOrder`,
+refetched on mount); with the plan selected the picker shows the full `MajorOrderCard`. Offline/static
+builds, a failed fetch, or the `GRIFFDIVE_DISABLE_MO_API=1` kill switch disable that plan (an order
+that vanishes under the selection falls back to `rolled`), leaving the lock and roll plans. The proxy caches for 10 minutes, retries once with a 6s
 timeout, and serves its last good order (stale) when a refresh fails — it never caches a failure. It
 answers `{ order, status }` — `active`, `none` (the API replied with an empty list), `no-front` (an
 order exists but names no front we can resolve — e.g. sample gathering or a faction-less kill order),
-or `unavailable` (a failed or garbled fetch) — so the picker can tell "No active Major Order" and
+or `unavailable` (a failed or garbled fetch) — so the setup can tell "No active Major Order" and
 "doesn't target a front" apart from "Failed to retrieve active MO". Task payloads are decoded **by
 label**: `valueTypes[i]` labels `values[i]` (community reverse-engineered; 1 = faction, 12 = planet).
 A planet slot resolves through the campaign join; otherwise a faction slot (2 Terminids, 3 Automatons,
 4 Illuminate) names the front directly, so enemy-focused kill orders — including cross-faction ones —
-resolve with no enemy table. Anything unrecognized contributes no front and degrades to the manual
-picker. Each task shape that names no front is
+resolve with no enemy table. Anything unrecognized contributes no front and leaves only the lock and
+roll plans. Each task shape that names no front is
 logged once per process (`[major-order] task names no front: …`, visible in `fly logs`), so a new order
 type surfaces without flooding the stream.
 

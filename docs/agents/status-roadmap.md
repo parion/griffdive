@@ -89,8 +89,9 @@ Each phase lands shippable. Update the relevant `docs/agents/` files (commands, 
 - **Phase 4 — Polish + deploy (in progress).** Wheel animation juice, reward draft ceremony, theme
   pass, Fly.io deploy + CI/CD (approval-gated batch releases, PR previews, metrics) and PWA
   affordances (`@vite-pwa/nuxt`: installable manifest, generated icons, Workbox service worker with
-  an offline app shell + on-demand catalog art) have landed, as have **Major Orders** (host-set
-  front commitment + reroll bonus, manual picker plus the live war API; see Operation layer) and
+  an offline app shell + on-demand catalog art) have landed, as have **Major Orders** (a run-long
+  front plan chosen at setup — live order, locked faction, or rolled with +1 risk — plus the live
+  war API; see Operation layer) and
   the **Destroyer Terminal redesign** (single terminal language, lit-stage dive shell, Bridge
   home, phone layout, hidden `/kit`; see Destroyer Terminal design language).
   **Observability expanded:** the Prometheus registry now covers the whole loop — arrivals and

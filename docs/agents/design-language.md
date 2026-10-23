@@ -99,9 +99,9 @@ the drawn **Squad Directive** sit in the right column and, on the operation's fi
 The strain is a compact row (emblem, name, blurb, small take/skip). Both use the same take/skip
 grammar; a stranded rule disables "Take it" with the reason. The
 `ValorRoll` strip under them previews the percentage-point movement of hovering or picking a rule.
-The host's **Deal the pacts** CTA waits until both calls are decided. Major Order pinning opens the
-`MajorOrderPicker` dialog; a pinned order shows on the stage before the first spin as well as after
-it. Rerolls sit under the deal CTA as quiet secondary controls.
+The host's **Deal the pacts** CTA waits until both calls are decided. The front plan (Major Order /
+locked faction / rolled) is chosen at setup with `FrontPlanPicker`, never here; a pinned run shows
+its one-line pin on the stage before the first spin as well as after it. Rerolls sit under the deal CTA as quiet secondary controls.
 
 #### Pacts — `PactScreen`
 

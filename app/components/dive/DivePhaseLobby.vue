@@ -2,7 +2,8 @@
 import { WARBONDS } from '~~/shared/data/catalog'
 import { PENANCE_VALOR, SEAF_SUPPORT_VALOR, baseTierFor, missionsPerOperation } from '~~/shared/engine/config'
 import { STARTING_KITS, VARIANTS, difficultyName } from '~~/shared/engine/progression'
-import type { CrusadeMode, CrusadeSettings, CrusadeVariant, DiveState } from '~~/shared/engine/types'
+import type { FrontId } from '~~/shared/data/fronts'
+import type { CrusadeMode, CrusadeSettings, CrusadeVariant, DiveState, FrontPlan, MajorOrderSelection } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -12,7 +13,7 @@ const props = defineProps<{
   phone?: boolean
 }>()
 
-const emit = defineEmits<{ start: [settings: CrusadeSettings] }>()
+const emit = defineEmits<{ start: [settings: CrusadeSettings, majorOrder: MajorOrderSelection | null] }>()
 
 const { ownedWarbonds } = useOwnedWarbonds()
 
@@ -22,6 +23,12 @@ const variant = ref<CrusadeVariant>('medium')
 // The hard/suicide mode toggle: the SEAF Support Package (assisted, default)
 // or Super Penance (hellish). Only meaningful on the top two difficulties.
 const mode = ref<CrusadeMode>('seaf')
+// Where the run fights, locked at launch with the variant: the live Major
+// Order, one locked faction, or a fresh roll every operation.
+const frontPlan = ref<FrontPlan>('rolled')
+const lockedFront = ref<FrontId>('terminids')
+const { order: liveOrder } = useMajorOrder()
+const frontLabel = computed(() => FRONT_PLAN_LABELS[frontPlan.value].toUpperCase())
 const launched = ref(false)
 let launchTimer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(launchTimer))
@@ -175,9 +182,10 @@ function launchNow(): void {
   }
   launched.value = true
   const settings: CrusadeSettings = modeActive.value
-    ? { variant: variant.value, mode: mode.value }
-    : { variant: variant.value }
-  launchTimer = setTimeout(() => emit('start', settings), reduced ? 0 : 750)
+    ? { variant: variant.value, mode: mode.value, front: frontPlan.value }
+    : { variant: variant.value, front: frontPlan.value }
+  const pin = frontPinFor(frontPlan.value, lockedFront.value, liveOrder.value)
+  launchTimer = setTimeout(() => emit('start', settings, pin), reduced ? 0 : 750)
 }
 
 interface CheckView {
@@ -194,6 +202,7 @@ const checks = computed<CheckView[]>(() => [
   ...(modeActive.value
     ? [{ label: 'Mode', v: mode.value === 'penance' ? 'SUPER PENANCE' : 'SEAF SUPPORT', ok: true, wait: false }]
     : []),
+  { label: 'Front', v: frontLabel.value, ok: true, wait: false },
   { label: 'Warbonds', v: `${warbondCount.value} / ${WARBONDS.length} DECLARED`, ok: true, wait: false },
   launched.value
     ? { label: 'Operation 1', v: 'SPIN NEXT', ok: true, wait: false }
@@ -555,6 +564,24 @@ const checks = computed<CheckView[]>(() => [
       </div>
     </section>
 
+    <section
+      class="modes"
+      aria-labelledby="front-plan-h"
+    >
+      <div class="variants-head">
+        <span
+          id="front-plan-h"
+          class="lbl"
+        >Front</span>
+        <span class="variants-hint">{{ launched ? 'LOCKED FOR THIS CRUSADE' : 'HOST SETS · LOCKS AT LAUNCH' }}</span>
+      </div>
+      <FrontPlanPicker
+        v-model:plan="frontPlan"
+        v-model:locked-front="lockedFront"
+        :disabled="!canControl || launched"
+      />
+    </section>
+
     <div
       class="launch-row"
       :class="{ docked: phone }"
@@ -582,6 +609,10 @@ const checks = computed<CheckView[]>(() => [
             >
               <span class="lbl">Mode</span>
               <span class="sum-v">{{ mode === 'penance' ? 'SUPER PENANCE' : 'SEAF SUPPORT' }}</span>
+            </div>
+            <div class="sum-box">
+              <span class="lbl">Front</span>
+              <span class="sum-v">{{ frontLabel }}</span>
             </div>
             <div class="sum-box">
               <span class="lbl">Operation 1</span>

@@ -291,7 +291,7 @@ export function createRoomMetrics(): RoomMetrics {
 
   const majorOrders = new Counter({
     name: 'griffdive_major_order_total',
-    help: 'Major Order commitments set in the spin phase',
+    help: 'Crusade front plans chosen at setup (live order, manual lock, rolled)',
     labelNames: ['kind'],
     registers: [registry],
   })
@@ -593,6 +593,7 @@ export function createRoomMetrics(): RoomMetrics {
       case 'START_DIVE': {
         missionsStarted.inc({ difficulty: String(after.difficulty) })
         squadSizes.observe(squadSize(after))
+        majorOrders.inc({ kind: after.majorOrder?.live ? 'live' : after.majorOrder ? 'manual' : 'rolled' })
         break
       }
       case 'ACCEPT_MISFORTUNE': {
@@ -608,10 +609,6 @@ export function createRoomMetrics(): RoomMetrics {
           decision: action.accepted ? 'accepted' : 'declined',
           strain: after.strainId ?? 'unknown',
         })
-        break
-      }
-      case 'SET_MAJOR_ORDER': {
-        majorOrders.inc({ kind: action.order === null ? 'cleared' : action.order.live ? 'live' : 'manual' })
         break
       }
       case 'REROLL_WHEEL': {

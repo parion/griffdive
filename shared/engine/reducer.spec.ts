@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS, ALL_WARBOND_CODES, ITEMS_BY_ID } from '../data/catalog'
 import type { FrontId } from '../data/fronts'
 import { PACTS } from '../data/pacts'
-import { BONUS_STATS, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, PENANCE_VALOR, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor, directiveValorAt, maxStarsFor, seafSupportValorAt } from './config'
+import { BONUS_STATS, FRONT_ROLL_RISK, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, PENANCE_VALOR, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor, directiveValorAt, maxStarsFor, seafSupportValorAt } from './config'
 import { SEAF_SUPPORT_KIT, startingItemIds } from './progression'
 import { DIVERS_CHOICE_OPTION_ID, bargainKindOf, itemPrice, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
@@ -1887,16 +1887,17 @@ describe('unknown actions', () => {
   })
 })
 
-describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
+describe('front plan (chosen at crusade setup)', () => {
   function withOrder(front: FrontId): DiveState {
-    return reduce(freshState(), { type: 'SET_MAJOR_ORDER', order: { fronts: [front] } })
+    return createDiveState({ ...SETTINGS, front: 'locked' }, 'p1', 'Griffin', undefined, undefined, { fronts: [front] })
   }
 
   function withLiveOrder(...fronts: FrontId[]): DiveState {
-    return reduce(freshState(), {
-      type: 'SET_MAJOR_ORDER',
-      order: { fronts, live: true },
-    })
+    return createDiveState({ ...SETTINGS, front: 'majorOrder' }, 'p1', 'Griffin', undefined, undefined, { fronts, live: true })
+  }
+
+  function rolled(): DiveState {
+    return createDiveState({ ...SETTINGS, front: 'rolled' }, 'p1', 'Griffin')
   }
 
   function playOperation(state: DiveState, seeds: number[]): DiveState {
@@ -1920,17 +1921,18 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
     return next
   }
 
-  it('pins the operation front draw to the ordered front', () => {
+  it('pins the operation front draw to the locked front', () => {
     for (const front of ['terminids', 'automatons', 'illuminate'] as const) {
       const set = withOrder(front)
-      expect(set.majorOrder?.fronts).toEqual([front])
+      expect(set.settings?.front).toBe('locked')
+      expect(set.majorOrder).toEqual({ fronts: [front] })
       for (let seed = 0; seed < 40; seed++) {
         expect(reduce(set, { type: 'SPIN_WHEEL', seed }).frontId).toBe(front)
       }
     }
   })
 
-  it('draws no strain for a Major Order operation', () => {
+  it('draws no strain for a pinned front', () => {
     const spun = reduce(withOrder('terminids'), { type: 'SPIN_WHEEL', seed: 5 })
     expect(spun.strainId).toBeNull()
     expect(spun.phase).toBe('decision')
@@ -1940,27 +1942,43 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
     expect(decided.phase).toBe('deal')
   })
 
-  it('adds its team risk only for a live order', () => {
+  it('prices each plan: live order, locked front, rolled front', () => {
     const live = reduce(withLiveOrder('terminids'), { type: 'SPIN_WHEEL', seed: 5 })
     expect(teamRiskOf(live)).toBe(MAJOR_ORDER_RISK)
-    // A manual front pick pins the front but carries no risk (and no carrot).
+    // A manual front lock pins the front but carries no risk (and no carrot).
     const manual = reduce(withOrder('terminids'), { type: 'SPIN_WHEEL', seed: 5 })
     expect(teamRiskOf(manual)).toBe(0)
+    // Rolling the front every operation carries its own fixed risk.
+    const roll = reduce(rolled(), { type: 'SPIN_WHEEL', seed: 5 })
+    expect(roll.majorOrder).toBeNull()
+    expect(roll.strainId).not.toBeNull()
+    expect(teamRiskOf(roll)).toBe(FRONT_ROLL_RISK)
+    // A run started before the setup choice rolls without it.
+    expect(teamRiskOf(spunState(5))).toBe(0)
   })
 
-  it('refuses a Major Order once the front is drawn', () => {
-    const spun = spunState(42)
-    expect(reduce(spun, { type: 'SET_MAJOR_ORDER', order: { fronts: ['terminids'] } })).toBe(spun)
+  it('keeps the rolled-front risk on every mission of every operation', () => {
+    const next = playOperation(rolled(), [11, 22])
+    expect(next.difficulty).toBe(4)
+    expect(teamRiskOf(reduce(next, { type: 'SPIN_WHEEL', seed: 33 }))).toBe(FRONT_ROLL_RISK)
   })
 
-  it('normalizes unknown and empty fronts to no order', () => {
-    const unknown = reduce(freshState(), {
-      type: 'SET_MAJOR_ORDER',
-      order: { fronts: ['bogus' as FrontId] },
-    })
-    expect(unknown.majorOrder).toBeNull()
-    const empty = reduce(freshState(), { type: 'SET_MAJOR_ORDER', order: { fronts: [] } })
-    expect(empty.majorOrder).toBeNull()
+  it('degrades a plan without a valid pin to a rolled front', () => {
+    const noOrder = createDiveState({ ...SETTINGS, front: 'majorOrder' }, 'p1', 'Griffin')
+    expect(noOrder.settings?.front).toBe('rolled')
+    expect(noOrder.majorOrder).toBeNull()
+    const manualAsLive = createDiveState({ ...SETTINGS, front: 'majorOrder' }, 'p1', 'Griffin', undefined, undefined, { fronts: ['terminids'] })
+    expect(manualAsLive.settings?.front).toBe('rolled')
+    const unknown = createDiveState({ ...SETTINGS, front: 'locked' }, 'p1', 'Griffin', undefined, undefined, { fronts: ['bogus' as FrontId] })
+    expect(unknown.settings?.front).toBe('rolled')
+    const wideLock = createDiveState({ ...SETTINGS, front: 'locked' }, 'p1', 'Griffin', undefined, undefined, { fronts: ['terminids', 'automatons'] })
+    expect(wideLock.settings?.front).toBe('rolled')
+    // A lock never banks the live carrot, whatever the client claimed.
+    const liveLock = createDiveState({ ...SETTINGS, front: 'locked' }, 'p1', 'Griffin', undefined, undefined, { fronts: ['terminids'], live: true })
+    expect(liveLock.majorOrder).toEqual({ fronts: ['terminids'] })
+    // A rolled plan carries no pin even if one was sent.
+    const rolledWithOrder = createDiveState({ ...SETTINGS, front: 'rolled' }, 'p1', 'Griffin', undefined, undefined, { fronts: ['terminids'], live: true })
+    expect(rolledWithOrder.majorOrder).toBeNull()
   })
 
   it('refuses a front reroll when one front is pinned, allows it when the order spans fronts', () => {
@@ -1969,11 +1987,7 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
       allowed: false,
       reason: 'Only one front on this Major Order',
     })
-    const wide = reduce(freshState(), {
-      type: 'SET_MAJOR_ORDER',
-      order: { fronts: ['terminids', 'automatons'] },
-    })
-    const wideSpun = reduce(wide, { type: 'SPIN_WHEEL', seed: 5 })
+    const wideSpun = reduce(withLiveOrder('terminids', 'automatons'), { type: 'SPIN_WHEEL', seed: 5 })
     expect(canRerollWheel(wideSpun, 'front').allowed).toBe(true)
   })
 
@@ -1999,37 +2013,19 @@ describe('SET_MAJOR_ORDER (live Major Order commitment)', () => {
     expect(second.majorOrder?.fronts).toEqual(['terminids', 'automatons'])
   })
 
-  it('lets the host replace or clear the carried order in the next spin phase', () => {
-    const carried = playOperation(withLiveOrder('terminids'), [11, 22])
-    const replaced = reduce(carried, {
-      type: 'SET_MAJOR_ORDER',
-      order: { fronts: ['illuminate'], live: true },
-    })
-    expect(replaced.majorOrder?.fronts).toEqual(['illuminate'])
-    const cleared = reduce(carried, { type: 'SET_MAJOR_ORDER', order: null })
-    expect(cleared.majorOrder).toBeNull()
-    expect(cleared.strainId).toBeNull()
-  })
-
-  it('keeps a manual pick pinned too, without a token', () => {
+  it('keeps a manual lock pinned too, without a token', () => {
     const completed = playOperation(withOrder('terminids'), [11, 22])
     expect(completed.majorOrder?.fronts).toEqual(['terminids'])
     expect(completed.rerollTokens).toBe(1)
   })
 
-  it('banks no token for a manual front pick', () => {
-    const completed = playOperation(withOrder('terminids'), [11, 22])
-    expect(completed.difficulty).toBe(4)
-    expect(completed.rerollTokens).toBe(1)
-  })
-
-  it('keeps the baseline token count without an order', () => {
-    const completed = playOperation(freshState(), [11, 22])
+  it('keeps the baseline token count when the front rolls', () => {
+    const completed = playOperation(rolled(), [11, 22])
     expect(completed.rerollTokens).toBe(1)
     expect(completed.majorOrder).toBeNull()
   })
 
-  it('keeps the order across a failure restart (the front is locked)', () => {
+  it('keeps the pin across a failure restart (the front is locked)', () => {
     let state = reduce(withOrder('terminids'), { type: 'SPIN_WHEEL', seed: 7 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })
     if (state.phase === 'strain') {

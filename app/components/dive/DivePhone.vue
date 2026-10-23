@@ -26,7 +26,6 @@ const emit = defineEmits<{
   decide: [accepted: boolean]
   decideStrain: [accepted: boolean]
   deal: []
-  setMajorOrder: [order: MajorOrderSelection | null]
   reroll: [wheel: 'misfortune' | 'front' | 'strain']
   lockPacts: [pactIds: string[]]
   preview: [pactIds: string[]]
@@ -40,7 +39,7 @@ const emit = defineEmits<{
   advance: []
   buy: [itemId: string]
   forfeit: [itemId: string]
-  start: [settings: CrusadeSettings]
+  start: [settings: CrusadeSettings, majorOrder: MajorOrderSelection | null]
   kick: [diverId: string]
   transferHost: [diverId: string]
   copyInvite: []
@@ -123,7 +122,7 @@ const operationClimbs = computed(() =>
           :self-id="selfId"
           :can-control="canControl"
           phone
-          @start="emit('start', $event)"
+          @start="(settings, majorOrder) => emit('start', settings, majorOrder)"
         />
 
         <PhoneWheel
@@ -135,7 +134,6 @@ const operationClimbs = computed(() =>
           @decide="emit('decide', $event)"
           @decide-strain="emit('decideStrain', $event)"
           @deal="emit('deal')"
-          @set-major-order="emit('setMajorOrder', $event)"
           @reroll="emit('reroll', $event)"
         />
 

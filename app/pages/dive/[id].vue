@@ -305,13 +305,6 @@ function dealPacts(): void {
   dispatch({ type: 'DEAL_PACTS' })
 }
 
-// The Major Order is the operation's front commitment, host-set before the
-// first spin: it pins the front draw and banks a reroll token on completion.
-// The picker's live suggestion (Phase B) carries the same selection shape.
-function setMajorOrder(order: MajorOrderSelection | null): void {
-  dispatch({ type: 'SET_MAJOR_ORDER', order })
-}
-
 function lockPacts(pactIds: string[]): void {
   if (selfId.value) {
     dispatch({ type: 'SET_PACTS', playerId: selfId.value, pactIds })
@@ -557,9 +550,9 @@ function confirmJoinBriefing(name: string): void {
   confirmJoinName(name)
 }
 
-function launchCrusade(settings: CrusadeSettings): void {
+function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelection | null): void {
   commitName()
-  dispatch({ type: 'START_DIVE', settings, seed: session.newSeed() })
+  dispatch({ type: 'START_DIVE', settings, seed: session.newSeed(), majorOrder })
 }
 </script>
 
@@ -642,7 +635,6 @@ function launchCrusade(settings: CrusadeSettings): void {
       @decide="decideMisfortune"
       @decide-strain="decideStrain"
       @deal="dealPacts"
-      @set-major-order="setMajorOrder"
       @reroll="reroll"
       @lock-pacts="lockPacts"
       @preview="pactPreview = $event"
@@ -743,7 +735,6 @@ function launchCrusade(settings: CrusadeSettings): void {
             @decide="decideMisfortune"
             @decide-strain="decideStrain"
             @deal="dealPacts"
-            @set-major-order="setMajorOrder"
             @reroll="reroll"
           />
 
