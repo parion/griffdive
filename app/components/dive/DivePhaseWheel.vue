@@ -48,6 +48,27 @@ const decision = computed(() => misfortuneDecision(props.state))
 const strainCall = computed(() => strainDecision(props.state))
 const hostName = computed(() =>
   props.state.divers.find(diver => diver.id === props.state.hostId)?.name ?? 'The host')
+// The front/major-order line belongs with the directive it was drawn with.
+// While the wheel turns, hold the plan that was pinned before this draw.
+const frontLine = computed(() => {
+  if (front.value && !drawing.value) {
+    return {
+      cap: 'Front locked',
+      name: front.value.displayName,
+      planet: frontPlanetsLabel.value,
+      strain: strain.value && props.state.strainAccepted ? strain.value.name : '',
+    }
+  }
+  if (props.state.majorOrder && pinnedFronts.value.length) {
+    return {
+      cap: props.state.majorOrder.live ? 'Major Order pinned' : 'Faction locked',
+      name: pinnedFronts.value.map(entry => entry.displayName).join(' · '),
+      planet: '',
+      strain: strain.value && props.state.strainAccepted ? strain.value.name : '',
+    }
+  }
+  return null
+})
 
 const directiveRisk = computed(() =>
   misfortune.value ? conditionRiskAt(misfortune.value.id, props.state.difficulty) : 0)
@@ -100,13 +121,13 @@ const rerollFront = computed(() => canRerollWheel(props.state, 'front'))
 const rerollStrain = computed(() => canRerollWheel(props.state, 'strain'))
 
 const cardNote = computed(() => {
-  if (!misfortune.value) {
-    return ''
+  if (drawing.value || !misfortune.value) {
+    return 'Base odds'
   }
-  if (props.state.misfortuneAccepted) {
-    return `${misfortune.value.name}'s share`
+  if (!decision.value.decided) {
+    return `If taken · ${misfortune.value.name}`
   }
-  return `If accepted · ${misfortune.value.name}`
+  return props.state.misfortuneAccepted ? `${misfortune.value.name}'s share` : 'Skipped · base odds'
 })
 
 function take(): void {
@@ -140,27 +161,6 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
         :can-control="canControl"
         @spin="emit('spin')"
       />
-
-      <div
-        v-if="front && !drawing"
-        class="front-pin"
-      >
-        <span class="cap">Front locked</span>
-        <b>{{ front.displayName }}</b>
-        <span
-          v-if="frontPlanetsLabel"
-          class="front-planet"
-        >· {{ frontPlanetsLabel }}</span>
-        <span v-if="strain && state.strainAccepted">· {{ strain.name }}</span>
-      </div>
-      <div
-        v-else-if="state.majorOrder"
-        class="front-pin"
-      >
-        <span class="cap">{{ state.majorOrder.live ? 'Major Order pinned' : 'Faction locked' }}</span>
-        <b>{{ pinnedFronts.map(entry => entry.displayName).join(' · ') }}</b>
-        <span v-if="strain && state.strainAccepted">· {{ strain.name }}</span>
-      </div>
     </div>
 
     <div class="decision-side">
@@ -238,12 +238,12 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
           >
             {{ state.misfortuneAccepted ? 'Taken' : 'Skipped' }}
             <button
-              v-if="canControl && state.phase === 'decision'"
+              v-if="canControl"
               class="switch"
               type="button"
               @click="emit('decide', !state.misfortuneAccepted)"
             >
-              Switch
+              Switch to {{ state.misfortuneAccepted ? 'skip' : 'take' }}
             </button>
           </div>
           <div
@@ -259,6 +259,22 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
             {{ strandedReason }}
           </p>
         </article>
+
+        <div
+          v-if="frontLine"
+          class="front-pin"
+        >
+          <span class="cap">{{ frontLine.cap }}</span>
+          <b>{{ frontLine.name }}</b>
+          <span
+            v-if="frontLine.planet"
+            class="front-planet"
+          >· {{ frontLine.planet }}</span>
+          <span
+            v-if="frontLine.strain"
+            class="front-strain"
+          >· {{ frontLine.strain }}</span>
+        </div>
 
         <article
           v-if="strain"
@@ -325,12 +341,12 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
           >
             {{ state.strainAccepted ? 'Taken' : 'Skipped' }}
             <button
-              v-if="canControl && state.phase === 'strain'"
+              v-if="canControl && state.missionInOperation === 1"
               class="switch"
               type="button"
               @click="emit('decideStrain', !state.strainAccepted)"
             >
-              Switch
+              Switch to {{ state.strainAccepted ? 'skip' : 'take' }}
             </button>
           </span>
           <span
@@ -413,19 +429,61 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
         </p>
       </template>
 
-      <div
-        v-else
-        class="empty-call"
-      >
-        <span class="cap">{{ drawing ? 'Drawing' : 'No directive yet' }}</span>
-        <p class="disp empty-title">
-          {{ drawing ? 'The wheel turns…' : canControl ? 'Hit the hub to spin' : 'Waiting on the spin' }}
-        </p>
-        <p class="empty-copy">
-          The wheel draws this mission’s directive. Every rule is on it at every difficulty —
-          altitude only changes what the risk buys.
-        </p>
-      </div>
+      <template v-else>
+        <article class="directive-card empty-call">
+          <div class="dc-top">
+            <span class="cap">{{ drawing ? 'Drawing' : 'Directive' }}</span>
+          </div>
+          <p class="disp empty-title">
+            {{ drawing ? 'The wheel turns…' : canControl ? 'Awaiting the draw' : 'Waiting on the spin' }}
+          </p>
+          <p class="empty-copy">
+            The wheel draws this mission’s directive. Every rule is on it at every difficulty —
+            altitude only changes what the risk buys.
+          </p>
+        </article>
+
+        <div
+          v-if="frontLine"
+          class="front-pin"
+        >
+          <span class="cap">{{ frontLine.cap }}</span>
+          <b>{{ frontLine.name }}</b>
+          <span
+            v-if="frontLine.planet"
+            class="front-planet"
+          >· {{ frontLine.planet }}</span>
+          <span
+            v-if="frontLine.strain"
+            class="front-strain"
+          >· {{ frontLine.strain }}</span>
+        </div>
+
+        <ValorRoll
+          :zones="zones"
+          note="Base odds"
+          compact
+        />
+
+        <div
+          v-if="canControl"
+          class="deal-row"
+        >
+          <button
+            class="cta cut"
+            :class="{ 'live': !drawing, 'cta-sweep': !drawing }"
+            type="button"
+            :disabled="drawing"
+            @click="emit('spin')"
+          >
+            {{ drawing ? 'The wheel turns…' : 'Spin the wheel' }}
+            <IconRefresh
+              class="cta-icon"
+              aria-hidden="true"
+            />
+          </button>
+        </div>
+      </template>
     </div>
   </section>
 </template>
@@ -435,7 +493,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 470px);
   gap: clamp(24px, 4vw, 64px);
-  align-items: center;
+  align-items: start;
   width: 100%;
   max-width: 1180px;
   margin: 0 auto;
@@ -469,21 +527,23 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
   min-width: 0;
 }
-.front-pin { width: min(100%, 420px); }
 .front-pin {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  justify-content: center;
-  gap: 8px;
-  min-height: 30px;
+  gap: 4px 8px;
+  min-height: 20px;
+  padding: 0 2px;
   color: var(--khaki);
   font-size: 12px;
 }
+.front-pin .cap { color: var(--muted); }
 .front-pin b { color: var(--red); }
 .front-planet { color: var(--gold); font-weight: 700; }
+.front-strain { color: var(--orange); }
 .decision-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 
 .directive-card {
@@ -669,18 +729,15 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
 .reroll:hover:not(:disabled) { color: var(--gold); text-decoration-color: currentColor; }
 .reroll:disabled { opacity: 0.35; cursor: not-allowed; text-decoration: none; }
 .waiting { color: var(--muted); font-size: 13px; text-align: center; }
+/* The pre-spin card reserves the settled card's footprint so the front line,
+   odds strip and CTA never jump when the directive lands. */
 .empty-call {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 22px 24px;
-  background:
-    repeating-linear-gradient(-45deg, rgba(255, 214, 66, 0.025) 0 10px, transparent 10px 20px),
-    var(--panel);
-  box-shadow: inset 0 0 0 1px var(--line-2);
+  justify-content: center;
+  min-height: 202px;
 }
-.empty-title { font-size: 28px; color: var(--gold); }
-.empty-copy { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.empty-title { margin: 0; color: var(--gold); font-size: 28px; line-height: 0.98; }
+.empty-copy { margin: 0; max-width: 44ch; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.cta-icon { width: 20px; height: 20px; }
 
 /* Short desktops: shed the explainer line before the CTA leaves the fold. */
 @media (min-width: 901px) and (max-height: 860px) {

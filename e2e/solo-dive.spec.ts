@@ -1,6 +1,43 @@
 import { expect, test } from '@playwright/test'
 import { dismissWarbondIntro, lockMisfortune } from './helpers'
 
+test('call: the CTA, odds line and front pin hold one layout across the draw', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Diver name').fill('Griffon')
+  await page.getByRole('button', { name: 'Solo drop' }).click()
+  await dismissWarbondIntro(page)
+
+  const call = page.locator('.call')
+  // Pre-spin already shows the settled layout: placeholder directive, odds
+  // line and the primary spin control.
+  await expect(call.locator('.directive-card.empty-call')).toBeVisible()
+  await expect(call.locator('.roll-strip')).toBeVisible()
+  await expect(call.locator('.roll-note')).toContainText('Base odds')
+  const spin = call.getByRole('button', { name: 'Spin the wheel' })
+  await expect(spin).toBeVisible()
+  await spin.click()
+
+  // The same column order survives the draw, with the primary action now the
+  // deal gate. A shrinking tier reads settled odds, never a red negative.
+  const card = call.locator('.directive-card')
+  await expect(card.getByRole('button', { name: 'Take it' })).toBeVisible()
+  await expect(call.locator('.decision-side .roll-strip')).toBeVisible()
+  const labels = await call.locator('.zone-label .letter').allInnerTexts()
+  expect(labels.filter(Boolean).some(label => label.includes('-'))).toBe(false)
+  // The front line moved out from under the wheel and now follows the card.
+  await expect(call.locator('.decision-side .front-pin')).toBeVisible()
+
+  // The call is a toggle, not a one-shot: flip it and flip it back.
+  await lockMisfortune(page)
+  const verdict = card.locator('.dc-verdict')
+  await expect(verdict).toBeVisible()
+  const taken = await verdict.evaluate(el => el.classList.contains('taken'))
+  await verdict.getByRole('button', { name: /^Switch to/ }).click()
+  await expect(verdict).toHaveClass(taken ? /skipped/ : /taken/)
+  await verdict.getByRole('button', { name: /^Switch to/ }).click()
+  await expect(verdict).toHaveClass(taken ? /taken/ : /skipped/)
+})
+
 test('solo dive flow: spin → pacts → report → rewards → advance', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Diver name').fill('Griffon')

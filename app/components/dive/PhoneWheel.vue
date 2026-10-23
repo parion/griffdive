@@ -47,6 +47,28 @@ const strainCall = computed(() => strainDecision(props.state))
 const hostName = computed(() =>
   props.state.divers.find(diver => diver.id === props.state.hostId)?.name ?? 'The host')
 
+// The front/major-order line stays with the directive now, not under the wheel.
+// While the host's draw reels, hold the plan that was already pinned.
+const frontLine = computed(() => {
+  if (front.value && !held.value) {
+    return {
+      cap: 'Front locked',
+      name: front.value.displayName,
+      planet: frontPlanetsLabel.value,
+      strain: strain.value && props.state.strainAccepted ? strain.value.name : '',
+    }
+  }
+  if (props.state.majorOrder && pinnedFronts.value.length) {
+    return {
+      cap: props.state.majorOrder.live ? 'Major Order pinned' : 'Faction locked',
+      name: pinnedFronts.value.map(entry => entry.displayName).join(' · '),
+      planet: '',
+      strain: strain.value && props.state.strainAccepted ? strain.value.name : '',
+    }
+  }
+  return null
+})
+
 const directiveRisk = computed(() =>
   misfortune.value ? conditionRiskAt(misfortune.value.id, props.state.difficulty) : 0)
 const strainRisk = computed(() =>
@@ -88,13 +110,23 @@ const deltas = computed<Partial<Record<RewardTier, number>>>(() => {
   return result
 })
 const rollNote = computed(() => {
-  if (!misfortune.value) {
-    return ''
+  if (!misfortune.value || held.value) {
+    return 'Base odds'
+  }
+  if (!decision.value.decided) {
+    return `If taken · ${misfortune.value.name}`
   }
   return props.state.misfortuneAccepted
-    ? `Accepted · ${misfortune.value.name}`
-    : `If accepted · ${misfortune.value.name}`
+    ? `${misfortune.value.name}'s share`
+    : 'Skipped · base odds'
 })
+
+// Pre-spin the odds line still shows the current team Valor; once the directive
+// lands it previews the movement taking it would buy.
+const showingPreview = computed(() => Boolean(props.state.wheel && misfortune.value && !held.value))
+const rollZones = computed(() => (showingPreview.value ? previewZones.value : zones.value))
+const rollDeltas = computed<Partial<Record<RewardTier, number>>>(() =>
+  showingPreview.value ? deltas.value : {})
 
 const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'))
 </script>
@@ -114,7 +146,22 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
     </header>
 
     <div
-      v-if="state.wheel && misfortune && !held"
+      v-if="!state.wheel || held"
+      class="directive empty"
+    >
+      <div class="dc-top">
+        <span class="cap">{{ held ? 'Drawing' : 'Directive' }}</span>
+      </div>
+      <h2 class="disp dc-name empty-title">
+        {{ held ? 'The wheel turns…' : 'Awaiting the draw' }}
+      </h2>
+      <p class="dc-rule">
+        The wheel draws this mission’s directive. Every rule is on it at every difficulty.
+      </p>
+    </div>
+
+    <div
+      v-else-if="misfortune"
       class="directive"
       :class="{ accepted: state.misfortuneAccepted }"
     >
@@ -156,11 +203,25 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         </button>
       </div>
       <div
-        v-else
+        v-else-if="decision.decided"
         class="dc-verdict"
         :class="state.misfortuneAccepted ? 'taken' : 'skipped'"
       >
         {{ state.misfortuneAccepted ? 'Taken' : 'Skipped' }}
+        <button
+          v-if="canControl"
+          class="switch"
+          type="button"
+          @click="emit('decide', !state.misfortuneAccepted)"
+        >
+          Switch to {{ state.misfortuneAccepted ? 'skip' : 'take' }}
+        </button>
+      </div>
+      <div
+        v-else
+        class="dc-waiting"
+      >
+        Waiting on the host…
       </div>
       <p
         v-if="acceptBlocked && !decision.decided"
@@ -168,6 +229,22 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
       >
         {{ strandedReason }}
       </p>
+    </div>
+
+    <div
+      v-if="frontLine"
+      class="front-pin"
+    >
+      <span class="cap">{{ frontLine.cap }}</span>
+      <b>{{ frontLine.name }}</b>
+      <span
+        v-if="frontLine.planet"
+        class="front-planet"
+      >· {{ frontLine.planet }}</span>
+      <span
+        v-if="frontLine.strain"
+        class="front-strain"
+      >· {{ frontLine.strain }}</span>
     </div>
 
     <div
@@ -209,18 +286,31 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         </button>
       </div>
       <div
-        v-else
+        v-else-if="strainCall.decided"
         class="dc-verdict"
         :class="state.strainAccepted ? 'taken' : 'skipped'"
       >
         {{ state.strainAccepted ? 'Taken' : 'Skipped' }}
+        <button
+          v-if="canControl && state.missionInOperation === 1"
+          class="switch"
+          type="button"
+          @click="emit('decideStrain', !state.strainAccepted)"
+        >
+          Switch to {{ state.strainAccepted ? 'skip' : 'take' }}
+        </button>
+      </div>
+      <div
+        v-else
+        class="dc-waiting"
+      >
+        Waiting on the host…
       </div>
     </div>
 
     <ValorRoll
-      v-if="state.wheel && misfortune && !held"
-      :zones="previewZones"
-      :deltas="deltas"
+      :zones="rollZones"
+      :deltas="rollDeltas"
       :note="rollNote"
       compact
     />
@@ -235,21 +325,6 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         :can-control="canControl"
         @spin="emit('spin')"
       />
-      <div
-        v-if="front && !held"
-        class="front-pin"
-      >
-        Front locked · <b>{{ front.displayName }}</b><span
-          v-if="frontPlanetsLabel"
-          class="front-planet"
-        > · {{ frontPlanetsLabel }}</span>
-      </div>
-      <div
-        v-else-if="state.majorOrder"
-        class="front-pin"
-      >
-        {{ state.majorOrder.live ? 'Major Order' : 'Faction locked' }} · <b>{{ pinnedFronts.map(entry => entry.displayName).join(' · ') }}</b>
-      </div>
     </div>
 
     <template v-if="!canControl">
@@ -347,6 +422,14 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
 }
 .directive.accepted { box-shadow: inset 0 0 0 2px var(--gold); }
 .strain.accepted { box-shadow: inset 0 0 0 2px var(--orange); }
+.directive.empty {
+  justify-content: center;
+  min-height: 142px;
+  background:
+    repeating-linear-gradient(-45deg, rgba(255, 214, 66, 0.025) 0 10px, transparent 10px 20px),
+    var(--panel);
+}
+.empty-title { font-size: 26px; line-height: 0.98; }
 .dc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .dc-name { font-size: min(30px, 100cqi / var(--fit-len, 1)); color: var(--gold); }
 .strain-name { font-size: min(22px, 100cqi / var(--fit-len, 1)); color: var(--orange); }
@@ -368,6 +451,8 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
   min-height: 28px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 0 8px;
   font-size: 10px;
   font-weight: 800;
@@ -377,13 +462,35 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
 .dc-verdict.taken { background: var(--gold); color: var(--on-gold); }
 .dc-verdict.skipped { background: var(--rail); color: var(--muted); }
 .dc-block { margin: 0; color: var(--red); font-size: 10px; }
+.dc-waiting { color: var(--dim); font-size: 11px; }
+.switch {
+  min-height: 24px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: 700 9px var(--font-body);
+  letter-spacing: 0.1em;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-transform: uppercase;
+}
 
 .wheel-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .phone-call :deep(.risk-legend) { display: none; }
 .wheel-wrap :deep(.wheel) { max-width: 360px; }
-.front-pin { color: var(--muted); font-size: 11px; }
+.front-pin {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 7px;
+  min-height: 18px;
+  color: var(--khaki);
+  font-size: 11px;
+}
+.front-pin .cap { color: var(--muted); }
 .front-pin b { color: var(--red); }
 .front-planet { color: var(--gold); font-weight: 700; }
+.front-strain { color: var(--orange); }
 .wait-note { display: flex; flex-direction: column; gap: 4px; }
 .wait-note p { margin: 0; color: var(--muted); font-size: 12px; }
 </style>
