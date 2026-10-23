@@ -3,10 +3,11 @@ import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
 import type { RewardOption } from '~~/shared/engine/rewards'
-import { tierZones, topTierOf } from '~~/shared/engine/rewards'
+import { bankedOptionId, tierZones, topTierOf } from '~~/shared/engine/rewards'
 import type { DraftSummary } from '~~/shared/engine/selectors'
 import type { RewardTier } from '~~/shared/engine/types'
 import { categoryLabel } from '~/utils/itemCategory'
+import { pinDelay, revealTimeline } from '~/utils/rewardReveal'
 
 interface SquadDraft {
   id: string
@@ -81,7 +82,6 @@ const emit = defineEmits<{
 const promotion = computed(() => props.variant === 'promotion')
 const selectedId = ref<string | null>(null)
 const choiceItemId = ref<string | null>(null)
-const choiceOpen = ref(false)
 
 watch(() => props.options, () => {
   selectedId.value = null
@@ -91,10 +91,28 @@ watch(() => props.options, () => {
 const resolved = computed(() => props.resolved || props.pickedId !== null)
 const bestTier = computed<RewardTier | null>(() => topTierOf(props.options))
 const zones = computed(() => tierZones(props.difficulty, props.teamRisk + props.pactRisk))
+// Liberty's Cross unfurls as its own band above the cards; the cards deal in
+// left to right and the band opens last as the finale.
+const cards = computed(() => props.options.filter(option => !option.choice))
+// Remounting on a new offer replays the unfurl after a reroll.
+const offerKey = computed(() => props.options.map(option => option.optionId).join())
+const crossOption = computed(() => props.options.find(option => option.choice) ?? null)
+const cues = computed(() => {
+  const order = crossOption.value ? [...cards.value, crossOption.value] : cards.value
+  const timeline = revealTimeline(order.map(tierOf))
+  return new Map(order.map((option, index) => [option.optionId, timeline[index]!]))
+})
+// A reload onto a resolved draft shows the settled cabinet, no replay.
+const instantReveal = resolved.value
 const markers = computed(() =>
-  props.options
-    .filter(option => typeof option.roll === 'number')
-    .map(option => ({ roll: option.roll!, tier: tierOf(option) })),
+  props.options.flatMap(option => typeof option.roll === 'number'
+    ? [{
+        key: option.optionId,
+        roll: option.roll,
+        tier: tierOf(option),
+        delay: instantReveal ? undefined : pinDelay(cues.value.get(option.optionId)!),
+      }]
+    : []),
 )
 
 function tierOf(option: RewardOption): RewardTier {
@@ -112,16 +130,9 @@ function nameOf(option: RewardOption): string {
   return option.item.displayName
 }
 
-function categoryOf(option: RewardOption): string {
-  if (option.choice) {
-    return 'Any item'
-  }
-  return categoryLabel(option.item.category)
-}
-
-function imageOf(option: RewardOption): string | undefined {
-  return option.choice ? undefined : itemImageUrl(option.item)
-}
+const crossSelected = computed(() => crossOption.value !== null && selectedId.value === crossOption.value.optionId)
+const crossChosenName = computed(() =>
+  crossSelected.value && choiceItemId.value ? ITEMS_BY_ID.get(choiceItemId.value)?.displayName ?? null : null)
 
 function chosenItemName(): string {
   if (!selectedId.value) {
@@ -137,8 +148,9 @@ function chosenItemName(): string {
   return nameOf(option)
 }
 
+const bankedId = computed(() => bankedOptionId(props.options, props.pickedId))
 const pickedOption = computed(() =>
-  props.options.find(option => option.optionId === props.pickedId) ?? null)
+  props.options.find(option => option.optionId === bankedId.value) ?? null)
 const pickedItem = computed(() => {
   if (!props.pickedId) {
     return null
@@ -167,27 +179,23 @@ function choose(option: RewardOption): void {
     emit('pick', option.optionId)
     return
   }
-  if (option.choice) {
-    selectedId.value = option.optionId
-    choiceOpen.value = true
-    return
-  }
   selectedId.value = selectedId.value === option.optionId ? null : option.optionId
   choiceItemId.value = null
 }
 
 function chooseCross(itemId: string): void {
+  if (resolved.value || !crossOption.value) {
+    return
+  }
+  selectedId.value = crossOption.value.optionId
   choiceItemId.value = itemId
-  choiceOpen.value = false
 }
 
 function bank(): void {
   if (!selectedId.value) {
     return
   }
-  const option = props.options.find(entry => entry.optionId === selectedId.value)
-  if (option?.choice && !choiceItemId.value) {
-    choiceOpen.value = true
+  if (crossSelected.value && !choiceItemId.value) {
     return
   }
   emit('pick', selectedId.value, choiceItemId.value ?? undefined)
@@ -262,81 +270,89 @@ const kickerText = computed(() => {
       compact
     />
 
+    <LibertyCrossBand
+      v-if="crossOption"
+      :key="offerKey"
+      class="loot-cross"
+      :pool="pool"
+      :owned-ids="ownedIds"
+      :delay="instantReveal ? 0 : cues.get(crossOption.optionId)!.start"
+      :instant="instantReveal"
+      :can-pick="!resolved"
+      :picked="crossSelected || bankedId === crossOption.optionId"
+      :dimmed="resolved && bankedId !== crossOption.optionId"
+      :stamp="resolved && bankedId === crossOption.optionId ? 'Banked' : null"
+      :chosen-name="crossChosenName"
+      @choose="chooseCross"
+    />
+
     <div
       class="loot-grid"
       role="radiogroup"
       :aria-label="promotion ? 'Promotion options' : 'Reward options'"
     >
-      <button
-        v-for="(option, index) in options"
+      <RewardReveal
+        v-for="option in cards"
         :key="option.optionId"
-        class="loot-card"
-        :class="{
-          selected: selectedId === option.optionId,
-          banked: pickedId === option.optionId || (option.choice && pickedId !== null),
-          faded: resolved && pickedId !== option.optionId && !(option.choice && pickedId !== null),
-          cross: option.choice,
-        }"
-        :data-tier="tierOf(option)"
-        type="button"
-        role="radio"
-        :aria-checked="selectedId === option.optionId"
-        :aria-label="`${nameOf(option)}, ${tierOf(option)} tier${rollOf(option) ? `, rolled ${rollOf(option)}` : ''}`"
-        :style="{ '--i': index }"
-        @click="choose(option)"
+        class="loot-slot"
+        :cue="cues.get(option.optionId)!"
+        :instant="instantReveal"
+        :muted="resolved && bankedId !== option.optionId"
       >
-        <span class="card-top">
-          <span class="card-meta">
-            <span
-              v-if="rollOf(option)"
-              class="roll-badge"
-            >{{ rollOf(option) }}</span>
-            <span class="cat">{{ categoryOf(option) }}</span>
+        <button
+          class="loot-card"
+          :class="{
+            selected: selectedId === option.optionId,
+            banked: bankedId === option.optionId,
+            faded: resolved && bankedId !== option.optionId,
+          }"
+          :data-tier="tierOf(option)"
+          type="button"
+          role="radio"
+          :aria-checked="selectedId === option.optionId"
+          :aria-label="`${nameOf(option)}, ${tierOf(option)} tier${rollOf(option) ? `, rolled ${rollOf(option)}` : ''}`"
+          @click="choose(option)"
+        >
+          <span class="card-top">
+            <span class="card-meta">
+              <span class="cat">{{ categoryLabel(option.item.category) }}</span>
+            </span>
+            <span class="tier-letter disp">{{ tierOf(option) }}</span>
           </span>
-          <span class="tier-letter disp">{{ tierOf(option) }}</span>
-        </span>
 
-        <span
-          v-if="option.choice"
-          class="media cross-media"
-          aria-hidden="true"
-        >
-          <span class="cross-mark disp">S+</span>
-          <span class="cross-name">Liberty’s Cross</span>
-        </span>
-        <span
-          v-else
-          class="media"
-          aria-hidden="true"
-        >
-          <img
-            v-if="imageOf(option)"
-            :src="imageOf(option)"
-            alt=""
-            loading="lazy"
-            draggable="false"
+          <span
+            class="media"
+            aria-hidden="true"
           >
-        </span>
+            <img
+              v-if="itemImageUrl(option.item)"
+              :src="itemImageUrl(option.item)"
+              alt=""
+              loading="lazy"
+              draggable="false"
+            >
+          </span>
 
-        <span class="card-foot">
-          <span
-            class="item-name disp"
-            :style="fitWord(nameOf(option))"
-          >{{ nameOf(option) }}</span>
-          <span
-            v-if="selectedId === option.optionId"
-            class="selected-mark"
-          >Selected ✓</span>
-          <span
-            v-else-if="pickedId === option.optionId || (option.choice && pickedId !== null)"
-            class="selected-mark banked-mark"
-          >Banked ✓</span>
-          <span
-            v-else
-            class="selected-mark empty"
-          >{{ promotion ? 'Claim' : 'Select' }}</span>
-        </span>
-      </button>
+          <span class="card-foot">
+            <span
+              class="item-name disp"
+              :style="fitWord(nameOf(option))"
+            >{{ nameOf(option) }}</span>
+            <span
+              v-if="selectedId === option.optionId"
+              class="selected-mark"
+            >Selected ✓</span>
+            <span
+              v-else-if="bankedId === option.optionId"
+              class="selected-mark banked-mark"
+            >Banked ✓</span>
+            <span
+              v-else
+              class="selected-mark empty"
+            >{{ promotion ? 'Claim' : 'Select' }}</span>
+          </span>
+        </button>
+      </RewardReveal>
     </div>
 
     <div
@@ -457,15 +473,6 @@ const kickerText = computed(() => {
         <span v-if="!ready"> Waiting for the squad…</span>
       </span>
     </div>
-
-    <DiversChoicePicker
-      v-if="choiceOpen"
-      :open="choiceOpen"
-      :pool="pool"
-      :owned-ids="ownedIds"
-      @close="choiceOpen = false"
-      @choose="chooseCross"
-    />
   </section>
 </template>
 
@@ -531,13 +538,9 @@ const kickerText = computed(() => {
   cursor: pointer;
   clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
   transition: transform var(--dur-med) var(--ease-out), filter var(--dur-med), box-shadow var(--dur-med), opacity var(--dur-med);
-  animation: deal-in 0.55s var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 110ms);
 }
-@keyframes deal-in {
-  from { opacity: 0; translate: 0 30px; }
-  to { opacity: 1; translate: 0 0; }
-}
+.loot-slot { --reveal-cut: 12px; }
+.loot-cross { --cross-gap: 18px; }
 .loot-card[data-tier='C'] { --tier: var(--tier-c); }
 .loot-card[data-tier='B'] { --tier: var(--tier-b); }
 .loot-card[data-tier='A'] { --tier: var(--tier-a); }
@@ -555,10 +558,6 @@ const kickerText = computed(() => {
   box-shadow: inset 0 0 0 2px var(--gold), 0 0 28px rgba(255, 214, 66, 0.22);
 }
 .loot-card.faded { opacity: 0.38; filter: saturate(0.4); }
-.loot-card.cross {
-  --edge: var(--tier-splus);
-  background: linear-gradient(180deg, rgba(255, 75, 62, 0.16), var(--panel) 58%);
-}
 
 .card-top {
   display: flex;
@@ -573,8 +572,9 @@ const kickerText = computed(() => {
   line-height: 0.8;
   text-shadow: 0 0 20px color-mix(in srgb, var(--tier) 50%, transparent);
 }
-.selected .tier-letter,
-.banked .tier-letter { animation: slamIn 0.4s var(--ease-impact) both; }
+.loot-card:not([data-tier='C']) .tier-letter { animation: slamIn 0.45s var(--ease-impact) var(--impact, 0ms) backwards; }
+.loot-card.selected .tier-letter,
+.loot-card.banked .tier-letter { animation: slamIn 0.4s var(--ease-impact) both; }
 .card-meta {
   display: flex;
   align-items: center;
@@ -585,13 +585,6 @@ const kickerText = computed(() => {
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-}
-.roll-badge {
-  padding: 3px 6px 2px;
-  background: var(--ground);
-  box-shadow: inset 0 0 0 1px var(--tier);
-  color: var(--tier);
-  letter-spacing: 0.05em;
 }
 .cat { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -621,16 +614,6 @@ const kickerText = computed(() => {
 }
 .selected .media,
 .banked .media { border-color: color-mix(in srgb, var(--tier) 55%, var(--line-2)); }
-.cross-media {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  color: var(--tier-splus);
-}
-.cross-mark { font-size: 44px; line-height: 1; }
-.cross-name { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
 
 .card-foot { container-type: inline-size; display: flex; flex-direction: column; gap: 5px; margin-top: auto; }
 .item-name {
@@ -719,6 +702,7 @@ const kickerText = computed(() => {
 
 @media (max-width: 720px) {
   .loot { gap: 12px; }
+  .loot-cross { --cross-gap: 12px; }
   .loot-title { font-size: 38px; }
   .loot-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .loot-card {

@@ -34,7 +34,7 @@ import type { Rng } from './rng'
 import type { BargainSlotKind, MissionReport, RewardTier, SampleCounts } from './types'
 
 const TIER_INDEX: Readonly<Record<Tier, number>> = { c: 0, b: 1, a: 2, s: 3 }
-const CEILING_LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
+export const CEILING_LADDER: readonly RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
 // One step of the ceiling ladder. The top rungs (S, S+) don't use the shared
 // step curve: each has a Valor floor, its own ramp and the smooth ladder
@@ -363,6 +363,17 @@ export function rollRewardOffer(
   }
 
   return picked
+}
+
+// PICK_REWARD records the banked item's id, so a Liberty's Cross claim names
+// an item that matches no option: when nothing matches, the Cross was banked.
+export function bankedOptionId(options: readonly RewardOption[], pickedId: string | null): string | null {
+  if (pickedId === null) {
+    return null
+  }
+  return options.find(option => option.optionId === pickedId)?.optionId
+    ?? options.find(option => option.choice)?.optionId
+    ?? null
 }
 
 export function topTierOf(options: readonly RewardOption[]): RewardTier | null {
