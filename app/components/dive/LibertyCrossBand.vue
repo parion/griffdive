@@ -17,7 +17,9 @@ const props = withDefaults(defineProps<{
   stamp?: string | null
   // Extra wait before the unfurl starts (ms).
   delay?: number
-}>(), { revealRank: 0, instant: false, canPick: true, picked: false, dimmed: false, banMode: false, stamp: null, delay: 0 })
+  // The item named through the codex, pending the bank.
+  chosenName?: string | null
+}>(), { revealRank: 0, instant: false, canPick: true, picked: false, dimmed: false, banMode: false, stamp: null, delay: 0, chosenName: null })
 
 const titleId = useId()
 
@@ -77,7 +79,7 @@ function onChoose(itemId: string): void {
       aria-hidden="true"
     >
       <span class="hazard-soft placeholder-bar" />
-      <span class="lbl placeholder-label">Bonus slot</span>
+      <span class="lbl placeholder-label">S+ roll</span>
     </div>
     <span
       class="cross-beam"
@@ -116,7 +118,7 @@ function onChoose(itemId: string): void {
             class="tb cross-mark"
             data-tier="S+"
           >S+</span>
-          Bonus slot
+          Liberty’s favor
         </span>
         <h3
           :id="titleId"
@@ -125,7 +127,7 @@ function onChoose(itemId: string): void {
           Liberty’s Cross
         </h3>
         <p class="cross-sub">
-          The ceiling broke the scale — claim any item from your codex.
+          Liberty’s light has seen your valor. Name any item in your codex, Helldiver — it is yours.
         </p>
       </div>
 
@@ -137,9 +139,9 @@ function onChoose(itemId: string): void {
         :disabled="!selectable"
         @click="openPicker"
       >
-        <span class="disp claim-word">Claim any item</span>
+        <span class="disp claim-word">{{ chosenName ?? 'Claim any item' }}</span>
         <span class="claim-sub">
-          Search the codex
+          {{ chosenName ? 'Change pick' : 'Search the codex' }}
           <svg
             width="14"
             height="14"
@@ -331,10 +333,11 @@ function onChoose(itemId: string): void {
 }
 .cross-sub {
   margin: 0;
-  max-width: 44ch;
-  font-size: var(--fs-sm);
-  line-height: 1.4;
-  color: var(--muted);
+  max-width: 46ch;
+  font-size: clamp(14px, 2.2cqi, 17px);
+  line-height: 1.45;
+  color: var(--khaki);
+  text-wrap: pretty;
 }
 
 .cross-claim {

@@ -48,21 +48,15 @@ const style = computed(() => ({
         aria-hidden="true"
       />
     </template>
-    <span
-      v-if="!instant && cue.tier === 'S+'"
-      class="reveal-beam"
-      aria-hidden="true"
-    />
   </div>
 </template>
 
 <style scoped>
 .reveal {
   --tier: var(--tier-c);
-  /* Hosts with cut corners set --reveal-cut so the overlays and the S+ open
-     resolve onto the card's own silhouette. */
+  /* Hosts with cut corners set --reveal-cut so the overlays resolve onto the
+     card's own silhouette. */
   --reveal-shape: polygon(var(--reveal-cut, 0px) 0, 100% 0, 100% calc(100% - var(--reveal-cut, 0px)), calc(100% - var(--reveal-cut, 0px)) 100%, 0 100%, 0 var(--reveal-cut, 0px));
-  --ease-unfurl: cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   display: grid;
   min-width: 0;
@@ -70,7 +64,6 @@ const style = computed(() => ({
 .reveal[data-tier='B'] { --tier: var(--tier-b); }
 .reveal[data-tier='A'] { --tier: var(--tier-a); }
 .reveal[data-tier='S'] { --tier: var(--tier-s); }
-.reveal[data-tier='S+'] { --tier: var(--tier-splus); }
 
 /* Entrances fill backwards only, so once a card lands its own hover, selected
    and faded states own transform, filter and opacity again. */
@@ -83,13 +76,8 @@ const style = computed(() => ({
     jolt 0.36s ease-out var(--impact) backwards,
     glow 3.6s ease-in-out calc(var(--impact) + 1.2s) infinite;
 }
-.reveal[data-tier='S+'] { animation: cross-breathe 5s ease-in-out calc(var(--delay) + 2.6s) infinite; }
-/* The open rides the card, not the slot, so the beam stays visible above it. */
-.reveal[data-tier='S+'] > :slotted(*) { animation: cross-open 1.2s var(--ease-unfurl) calc(var(--delay) + 0.5s) backwards; }
 .reveal.muted[data-tier='S'] { animation: slam 1s var(--delay) backwards, jolt 0.36s ease-out var(--impact) backwards; }
-.reveal.muted[data-tier='S+'] { animation: none; }
-.reveal.instant[data-tier],
-.reveal.instant[data-tier] > :slotted(*) { animation: none; }
+.reveal.instant[data-tier] { animation: none; }
 
 /* Overlay layers follow the card's cut so light never spills past a corner. */
 .reveal-fx {
@@ -117,10 +105,8 @@ const style = computed(() => ({
 .reveal[data-tier='B'] .reveal-flash { animation: flash 0.45s ease-out var(--impact); --flash: 0.35; }
 .reveal[data-tier='A'] .reveal-flash { animation: flash 0.6s ease-out var(--impact); --flash: 0.6; }
 .reveal[data-tier='S'] .reveal-flash { animation: flash 0.9s ease-out var(--impact); --flash: 0.95; }
-.reveal[data-tier='S+'] .reveal-flash { animation: flash 1.6s ease-in-out calc(var(--delay) + 0.9s); --flash: 0.55; }
 .reveal[data-tier='A'] .reveal-sheen { animation: sheen 0.9s var(--ease-out) calc(var(--impact) + 0.1s); }
 .reveal[data-tier='S'] .reveal-sheen { animation: sheen 1.1s var(--ease-out) calc(var(--impact) + 0.15s); }
-.reveal[data-tier='S+'] .reveal-sheen { animation: sheen 2.2s var(--ease-out) calc(var(--delay) + 2.2s); }
 
 /* Shockwave off the impact: one ring for A, a double for S. */
 .reveal-ring {
@@ -148,22 +134,6 @@ const style = computed(() => ({
   box-shadow: 0 0 22px color-mix(in srgb, var(--tier) 40%, transparent), inset 0 0 30px color-mix(in srgb, var(--tier) 25%, transparent);
   clip-path: var(--reveal-shape);
   animation: charge 0.72s linear var(--delay);
-}
-
-/* Liberty's Cross: a line of light draws across, then the card opens from it. */
-.reveal-beam {
-  position: absolute;
-  left: 4%;
-  right: 4%;
-  top: 50%;
-  z-index: 4;
-  height: 2px;
-  margin-top: -1px;
-  opacity: 0;
-  pointer-events: none;
-  background: linear-gradient(90deg, transparent, var(--tier-s) 18%, var(--tier-splus) 82%, transparent);
-  box-shadow: 0 0 18px 2px color-mix(in srgb, var(--tier-splus) 45%, transparent);
-  animation: beam 1.6s var(--ease-snap) var(--delay);
 }
 
 @keyframes deal {
@@ -216,31 +186,10 @@ const style = computed(() => ({
   60%, 80% { opacity: 1; }
   100% { opacity: 0; }
 }
-@keyframes cross-open {
-  from {
-    clip-path: polygon(var(--reveal-cut, 0px) 50%, 100% 50%, 100% 50%, calc(100% - var(--reveal-cut, 0px)) 50%, 0 50%, 0 50%);
-    opacity: 0.4;
-  }
-  to {
-    clip-path: var(--reveal-shape);
-    opacity: 1;
-  }
-}
-@keyframes cross-breathe {
-  0%, 100% { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--tier-splus) 25%, transparent)); }
-  50% { filter: drop-shadow(0 0 16px color-mix(in srgb, var(--tier-splus) 45%, transparent)); }
-}
-@keyframes beam {
-  0% { transform: scaleX(0); opacity: 0; }
-  25% { opacity: 1; }
-  55% { transform: scaleX(1); opacity: 1; }
-  100% { transform: scaleX(1); opacity: 0; }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .reveal-fx,
   .reveal-ring,
-  .reveal-charge,
-  .reveal-beam { display: none; }
+  .reveal-charge { display: none; }
 }
 </style>

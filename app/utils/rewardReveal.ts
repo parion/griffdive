@@ -1,18 +1,18 @@
-import { CEILING_LADDER } from '~~/shared/engine/rewards'
 import type { RewardTier } from '~~/shared/engine/types'
 
 /**
  * Reward reveal pacing (ms). `lead` runs from a card's first frame to its
  * impact; `hold` is the beat after impact before the next card starts. Rarer
  * tiers wind up longer and leave more air, so the drama scales with the pull.
- * S+ follows the Liberty's Cross unfurl: the beam draws, then the card opens.
+ * S+ is `LibertyCrossBand`'s unfurl: its suspense beat, the beam, then the
+ * band opens around 900ms in.
  */
 export const REVEAL_BEATS: Readonly<Record<RewardTier, { lead: number, hold: number }>> = {
   'C': { lead: 260, hold: 90 },
   'B': { lead: 340, hold: 150 },
   'A': { lead: 420, hold: 280 },
   'S': { lead: 700, hold: 420 },
-  'S+': { lead: 950, hold: 0 },
+  'S+': { lead: 1280, hold: 0 },
 }
 
 /** Quiet beat before the first card, so the Valor line reads first. */
@@ -27,22 +27,15 @@ export interface RevealCue {
   impact: number
 }
 
-/**
- * Cards keep their grid order but land worst-to-best, so the best pull is
- * always the finale. Ties land in reading order.
- */
+/** Cards land one after another in the order given (reading order on screen). */
 export function revealTimeline(tiers: readonly RewardTier[]): RevealCue[] {
-  const order = tiers
-    .map((tier, index) => ({ tier, index }))
-    .sort((a, b) => CEILING_LADDER.indexOf(a.tier) - CEILING_LADDER.indexOf(b.tier) || a.index - b.index)
-  const cues: RevealCue[] = Array.from({ length: tiers.length })
   let clock = REVEAL_OPENING
-  for (const { tier, index } of order) {
+  return tiers.map((tier) => {
     const beat = REVEAL_BEATS[tier]
-    cues[index] = { tier, start: clock, impact: clock + beat.lead }
+    const cue = { tier, start: clock, impact: clock + beat.lead }
     clock += beat.lead + beat.hold
-  }
-  return cues
+    return cue
+  })
 }
 
 /** The Valor pin drops so it strikes the line as its card lands. */

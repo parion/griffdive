@@ -169,22 +169,22 @@ reports pin **File report / File failure** in the fixed action bar.
 The draft is "Bank one item": one card per option. **The item art is the
 card**: a 4:3 well (a square thumb on phones) letterboxes the whole catalog image with
 `object-fit: contain` — never crop it — and the name is a quiet caption under it. Each card is
-stamped with its **rolled tier and d100 face**, with the same odds line above carrying one pin per option. The old ceiling-climb intro,
+stamped with its **rolled tier** only; the d100 faces live on the odds line above, one pin per option. The old ceiling-climb intro,
 `CeilingTrack`, ban flow and settlement screen are retired. Picking a card selects it; the CTA banks
 it; a resolved draft waits on the squad. The **`SquadDraftBoard`** shows each squadmate's offered
-tiles and status, and the reroll control spends a banked honors token. Liberty's Cross is one card,
-not a band above the pods: it takes **its own full-width row at the top** (art left, copy right on
-desktop), placed first in the DOM so focus order matches.
+tiles and status, and the reroll control spends a banked honors token. An S+ roll is **Liberty's Cross**, shown
+not as a card but as the full-width **`LibertyCrossBand`** above the cards (crest, lore line, "Claim
+any item" opening the codex picker). Naming an item selects the Cross and the CTA banks it; the
+band's claim button then shows the chosen name with "Change pick".
 
-**The reveal is the fanfare.** Each card is wrapped in `RewardReveal`; cards keep their grid slot
-but land **worst-to-best** (`revealTimeline` in `app/utils/rewardReveal.ts`), so the best pull is
-always the finale, and drama scales with tier: C deals in, B rises with a faint flash, A drops with
-a flash, sheen and shockwave ring, S flickers a charge in its empty slot then slams in with a
-double ring, a jolt and an ambient glow. **S+ (Liberty's Cross) keeps its unfurl** — a beam draws
-across, the card opens from it, and the `LibertyCrossEmblem` crest assembles in the art well. Every
-option's Valor pin is timed (`pinDelay`) to strike the line as its card lands; S/S+ pins flare. Pacing
-lives in `REVEAL_BEATS`. A draft that is already resolved on mount shows settled, and nothing gates
-input — cards are pickable from the first frame.
+**The reveal is the fanfare.** Each card is wrapped in `RewardReveal` and cards deal in **left to
+right** (`revealTimeline` in `app/utils/rewardReveal.ts`), with drama scaled by tier: C deals in, B
+rises with a faint flash, A drops with a flash, sheen and shockwave ring, S flickers a charge in its
+empty slot then slams in with a double ring, a jolt and an ambient glow. **Liberty's Cross unfurls
+last** as the finale (its band's beam → open → crest). Every option's Valor pin is timed
+(`pinDelay`) to strike the line as its card lands; S/S+ pins flare. Pacing lives in
+`REVEAL_BEATS`. A draft that is already resolved on mount shows settled, and nothing gates input —
+cards are pickable from the first frame.
 
 Once **every** diver has banked (`allDiversPicked`, synced state, so the whole squad sees it), the
 draft hands off to an interstitial; the engine stays in rewards and the host's ADVANCE is the only

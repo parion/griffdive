@@ -2956,7 +2956,7 @@ onBeforeUnmount(() => {
       <div class="sh">
         <span class="disp sn">11b</span><h2 class="lbl">
           Reward reveal
-        </h2><span class="dash" /><span class="sub">worst-to-best · drama by tier · pins land with cards</span>
+        </h2><span class="dash" /><span class="sub">left to right · drama by tier · Cross unfurls last</span>
       </div>
 
       <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px">

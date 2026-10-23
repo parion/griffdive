@@ -34,7 +34,6 @@ const emit = defineEmits<{
 const options = computed(() => (props.self ? diverOptions(props.state, props.self) : []))
 const selectedId = ref<string | null>(null)
 const choiceItemId = ref<string | null>(null)
-const choiceOpen = ref(false)
 
 watch(options, () => {
   selectedId.value = null
@@ -66,22 +65,26 @@ const teamRisk = computed(() => teamRiskOf(props.state))
 const pactRisk = computed(() => (props.self ? pactRiskOf(props.self, props.state.difficulty) : 0))
 const zones = computed(() => tierZones(props.state.difficulty, teamRisk.value + pactRisk.value))
 const bestTier = computed<RewardTier | null>(() => topTierOf(options.value))
-// Liberty's Cross takes its own row above the rest; cues stay indexed by
-// offer position so the reveal order is unchanged.
-const layout = computed(() => {
-  const entries = options.value.map((option, index) => ({ option, index }))
-  return [...entries.filter(entry => entry.option.choice), ...entries.filter(entry => !entry.option.choice)]
+// Liberty's Cross unfurls as its own band above the cards; the cards deal in
+// top to bottom and the band opens last as the finale.
+const cards = computed(() => options.value.filter(option => !option.choice))
+// Remounting on a new offer replays the unfurl after a reroll.
+const offerKey = computed(() => options.value.map(option => option.optionId).join())
+const crossOption = computed(() => options.value.find(option => option.choice) ?? null)
+const cues = computed(() => {
+  const order = crossOption.value ? [...cards.value, crossOption.value] : cards.value
+  const timeline = revealTimeline(order.map(tierOf))
+  return new Map(order.map((option, index) => [option.optionId, timeline[index]!]))
 })
-const cues = computed(() => revealTimeline(options.value.map(tierOf)))
 // A reload onto a resolved draft shows the settled list, no replay.
 const instantReveal = resolved.value
 const markers = computed(() =>
-  options.value.flatMap((option, index) => typeof option.roll === 'number'
+  options.value.flatMap(option => typeof option.roll === 'number'
     ? [{
         key: option.optionId,
         roll: option.roll,
         tier: tierOf(option),
-        delay: instantReveal ? undefined : pinDelay(cues.value[index]!),
+        delay: instantReveal ? undefined : pinDelay(cues.value.get(option.optionId)!),
       }]
     : []))
 
@@ -98,17 +101,8 @@ function nameOf(option: RewardOption): string {
   return option.choice ? 'Liberty’s Cross' : option.item.displayName
 }
 
-function categoryOf(option: RewardOption): string {
-  return option.choice ? 'Any item' : categoryLabel(option.item.category)
-}
-
 function choose(option: RewardOption): void {
   if (resolved.value) {
-    return
-  }
-  if (option.choice) {
-    selectedId.value = option.optionId
-    choiceOpen.value = true
     return
   }
   selectedId.value = selectedId.value === option.optionId ? null : option.optionId
@@ -116,8 +110,11 @@ function choose(option: RewardOption): void {
 }
 
 function chooseCross(itemId: string): void {
+  if (resolved.value || !crossOption.value) {
+    return
+  }
+  selectedId.value = crossOption.value.optionId
   choiceItemId.value = itemId
-  choiceOpen.value = false
 }
 
 const selectedOption = computed(() =>
@@ -137,7 +134,6 @@ function bank(): void {
     return
   }
   if (selectedOption.value?.choice && !choiceItemId.value) {
-    choiceOpen.value = true
     return
   }
   emit('pick', selectedId.value, choiceItemId.value ?? undefined)
@@ -146,6 +142,8 @@ function bank(): void {
 const bankedId = computed(() => bankedOptionId(options.value, props.self?.pickedOptionId ?? null))
 const pickedOption = computed(() =>
   options.value.find(option => option.optionId === bankedId.value) ?? null)
+const crossChosenName = computed(() =>
+  selectedOption.value?.choice && choiceItemId.value ? selectedName.value : null)
 const pickedName = computed(() =>
   pickedOption.value ? nameOf(pickedOption.value) : (props.self?.pickedOptionId ? 'item' : ''))
 </script>
@@ -168,28 +166,39 @@ const pickedName = computed(() =>
       compact
     />
 
+    <LibertyCrossBand
+      v-if="crossOption"
+      :key="offerKey"
+      :pool="rewardPool"
+      :owned-ids="ownedIds"
+      :delay="instantReveal ? 0 : cues.get(crossOption.optionId)!.start"
+      :instant="instantReveal"
+      :can-pick="!resolved"
+      :picked="selectedId === crossOption.optionId || bankedId === crossOption.optionId"
+      :dimmed="resolved && bankedId !== crossOption.optionId"
+      :stamp="resolved && bankedId === crossOption.optionId ? 'Banked' : null"
+      :chosen-name="crossChosenName"
+      @choose="chooseCross"
+    />
+
     <div class="cards">
       <RewardReveal
-        v-for="{ option, index } in layout"
+        v-for="option in cards"
         :key="option.optionId"
-        :class="{ 'cross-slot': option.choice }"
-        :cue="cues[index]!"
+        :cue="cues.get(option.optionId)!"
         :instant="instantReveal"
         :muted="resolved && bankedId !== option.optionId"
       >
         <button
           class="loot-card"
-          :class="{ selected: selectedId === option.optionId, faded: resolved && bankedId !== option.optionId, cross: option.choice }"
+          :class="{ selected: selectedId === option.optionId, faded: resolved && bankedId !== option.optionId }"
           :data-tier="tierOf(option)"
           type="button"
           :aria-pressed="selectedId === option.optionId"
           :aria-label="`${nameOf(option)}, ${tierOf(option)} tier${option.roll ? `, rolled ${option.roll}` : ''}`"
           @click="choose(option)"
         >
-          <span
-            v-if="!option.choice"
-            class="thumb"
-          >
+          <span class="thumb">
             <img
               v-if="itemImageUrl(option.item)"
               :src="itemImageUrl(option.item)"
@@ -198,20 +207,8 @@ const pickedName = computed(() =>
               draggable="false"
             >
           </span>
-          <span
-            v-else
-            class="thumb cross-thumb"
-          >
-            <LibertyCrossEmblem :instant="instantReveal" />
-          </span>
           <span class="card-copy">
-            <span class="meta">
-              <span
-                v-if="option.roll"
-                class="roll"
-              >{{ option.roll }}</span>
-              <span class="cat">{{ categoryOf(option) }}</span>
-            </span>
+            <span class="cat">{{ categoryLabel(option.item.category) }}</span>
             <span
               class="name disp"
               :style="fitWord(nameOf(option))"
@@ -276,15 +273,6 @@ const pickedName = computed(() =>
         >{{ pickedName ? `Banked ${pickedName}` : 'Draft resolved' }}</span>
       </template>
     </PhoneActionBar>
-
-    <DiversChoicePicker
-      v-if="choiceOpen"
-      :open="choiceOpen"
-      :pool="rewardPool"
-      :owned-ids="ownedIds"
-      @close="choiceOpen = false"
-      @choose="chooseCross"
-    />
   </section>
 </template>
 
@@ -300,7 +288,6 @@ const pickedName = computed(() =>
 }
 .title { font-size: 34px; }
 .cards { display: flex; flex-direction: column; gap: 10px; }
-.cross-slot + :not(.cross-slot) { margin-top: 6px; }
 .loot-card {
   --tier: var(--tier-c);
   display: flex;
@@ -346,17 +333,7 @@ const pickedName = computed(() =>
   object-fit: contain;
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
 }
-.cross-thumb { padding: 6px; }
 .card-copy { container-type: inline-size; display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
-.meta { display: flex; align-items: center; gap: 6px; }
-.roll {
-  padding: 1px 5px;
-  background: var(--ground);
-  box-shadow: inset 0 0 0 1px var(--tier);
-  color: var(--tier);
-  font-size: 10px;
-  font-weight: 700;
-}
 .cat { color: var(--muted); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; }
 .name { font-size: min(15px, 100cqi / var(--fit-len, 1)); line-height: 1.1; }
 .pick-mark { color: var(--tier); font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }

@@ -82,7 +82,6 @@ const emit = defineEmits<{
 const promotion = computed(() => props.variant === 'promotion')
 const selectedId = ref<string | null>(null)
 const choiceItemId = ref<string | null>(null)
-const choiceOpen = ref(false)
 
 watch(() => props.options, () => {
   selectedId.value = null
@@ -92,22 +91,26 @@ watch(() => props.options, () => {
 const resolved = computed(() => props.resolved || props.pickedId !== null)
 const bestTier = computed<RewardTier | null>(() => topTierOf(props.options))
 const zones = computed(() => tierZones(props.difficulty, props.teamRisk + props.pactRisk))
-// Liberty's Cross takes its own row above the rest; cues stay indexed by
-// offer position so the reveal order is unchanged.
-const layout = computed(() => {
-  const entries = props.options.map((option, index) => ({ option, index }))
-  return [...entries.filter(entry => entry.option.choice), ...entries.filter(entry => !entry.option.choice)]
+// Liberty's Cross unfurls as its own band above the cards; the cards deal in
+// left to right and the band opens last as the finale.
+const cards = computed(() => props.options.filter(option => !option.choice))
+// Remounting on a new offer replays the unfurl after a reroll.
+const offerKey = computed(() => props.options.map(option => option.optionId).join())
+const crossOption = computed(() => props.options.find(option => option.choice) ?? null)
+const cues = computed(() => {
+  const order = crossOption.value ? [...cards.value, crossOption.value] : cards.value
+  const timeline = revealTimeline(order.map(tierOf))
+  return new Map(order.map((option, index) => [option.optionId, timeline[index]!]))
 })
-const cues = computed(() => revealTimeline(props.options.map(tierOf)))
 // A reload onto a resolved draft shows the settled cabinet, no replay.
 const instantReveal = resolved.value
 const markers = computed(() =>
-  props.options.flatMap((option, index) => typeof option.roll === 'number'
+  props.options.flatMap(option => typeof option.roll === 'number'
     ? [{
         key: option.optionId,
         roll: option.roll,
         tier: tierOf(option),
-        delay: instantReveal ? undefined : pinDelay(cues.value[index]!),
+        delay: instantReveal ? undefined : pinDelay(cues.value.get(option.optionId)!),
       }]
     : []),
 )
@@ -127,16 +130,9 @@ function nameOf(option: RewardOption): string {
   return option.item.displayName
 }
 
-function categoryOf(option: RewardOption): string {
-  if (option.choice) {
-    return 'Any item'
-  }
-  return categoryLabel(option.item.category)
-}
-
-function imageOf(option: RewardOption): string | undefined {
-  return option.choice ? undefined : itemImageUrl(option.item)
-}
+const crossSelected = computed(() => crossOption.value !== null && selectedId.value === crossOption.value.optionId)
+const crossChosenName = computed(() =>
+  crossSelected.value && choiceItemId.value ? ITEMS_BY_ID.get(choiceItemId.value)?.displayName ?? null : null)
 
 function chosenItemName(): string {
   if (!selectedId.value) {
@@ -183,27 +179,23 @@ function choose(option: RewardOption): void {
     emit('pick', option.optionId)
     return
   }
-  if (option.choice) {
-    selectedId.value = option.optionId
-    choiceOpen.value = true
-    return
-  }
   selectedId.value = selectedId.value === option.optionId ? null : option.optionId
   choiceItemId.value = null
 }
 
 function chooseCross(itemId: string): void {
+  if (resolved.value || !crossOption.value) {
+    return
+  }
+  selectedId.value = crossOption.value.optionId
   choiceItemId.value = itemId
-  choiceOpen.value = false
 }
 
 function bank(): void {
   if (!selectedId.value) {
     return
   }
-  const option = props.options.find(entry => entry.optionId === selectedId.value)
-  if (option?.choice && !choiceItemId.value) {
-    choiceOpen.value = true
+  if (crossSelected.value && !choiceItemId.value) {
     return
   }
   emit('pick', selectedId.value, choiceItemId.value ?? undefined)
@@ -278,17 +270,32 @@ const kickerText = computed(() => {
       compact
     />
 
+    <LibertyCrossBand
+      v-if="crossOption"
+      :key="offerKey"
+      class="loot-cross"
+      :pool="pool"
+      :owned-ids="ownedIds"
+      :delay="instantReveal ? 0 : cues.get(crossOption.optionId)!.start"
+      :instant="instantReveal"
+      :can-pick="!resolved"
+      :picked="crossSelected || bankedId === crossOption.optionId"
+      :dimmed="resolved && bankedId !== crossOption.optionId"
+      :stamp="resolved && bankedId === crossOption.optionId ? 'Banked' : null"
+      :chosen-name="crossChosenName"
+      @choose="chooseCross"
+    />
+
     <div
       class="loot-grid"
       role="radiogroup"
       :aria-label="promotion ? 'Promotion options' : 'Reward options'"
     >
       <RewardReveal
-        v-for="{ option, index } in layout"
+        v-for="option in cards"
         :key="option.optionId"
         class="loot-slot"
-        :class="{ 'cross-slot': option.choice }"
-        :cue="cues[index]!"
+        :cue="cues.get(option.optionId)!"
         :instant="instantReveal"
         :muted="resolved && bankedId !== option.optionId"
       >
@@ -298,7 +305,6 @@ const kickerText = computed(() => {
             selected: selectedId === option.optionId,
             banked: bankedId === option.optionId,
             faded: resolved && bankedId !== option.optionId,
-            cross: option.choice,
           }"
           :data-tier="tierOf(option)"
           type="button"
@@ -309,30 +315,18 @@ const kickerText = computed(() => {
         >
           <span class="card-top">
             <span class="card-meta">
-              <span
-                v-if="rollOf(option)"
-                class="roll-badge"
-              >{{ rollOf(option) }}</span>
-              <span class="cat">{{ categoryOf(option) }}</span>
+              <span class="cat">{{ categoryLabel(option.item.category) }}</span>
             </span>
             <span class="tier-letter disp">{{ tierOf(option) }}</span>
           </span>
 
           <span
-            v-if="option.choice"
-            class="media cross-media"
-            aria-hidden="true"
-          >
-            <LibertyCrossEmblem :instant="instantReveal" />
-          </span>
-          <span
-            v-else
             class="media"
             aria-hidden="true"
           >
             <img
-              v-if="imageOf(option)"
-              :src="imageOf(option)"
+              v-if="itemImageUrl(option.item)"
+              :src="itemImageUrl(option.item)"
               alt=""
               loading="lazy"
               draggable="false"
@@ -479,15 +473,6 @@ const kickerText = computed(() => {
         <span v-if="!ready"> Waiting for the squad…</span>
       </span>
     </div>
-
-    <DiversChoicePicker
-      v-if="choiceOpen"
-      :open="choiceOpen"
-      :pool="pool"
-      :owned-ids="ownedIds"
-      @close="choiceOpen = false"
-      @choose="chooseCross"
-    />
   </section>
 </template>
 
@@ -572,10 +557,6 @@ const kickerText = computed(() => {
   box-shadow: inset 0 0 0 2px var(--gold), 0 0 28px rgba(255, 214, 66, 0.22);
 }
 .loot-card.faded { opacity: 0.38; filter: saturate(0.4); }
-.loot-card.cross {
-  --edge: var(--tier-splus);
-  background: linear-gradient(180deg, rgba(255, 75, 62, 0.16), var(--panel) 58%);
-}
 
 .card-top {
   display: flex;
@@ -603,13 +584,6 @@ const kickerText = computed(() => {
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-}
-.roll-badge {
-  padding: 3px 6px 2px;
-  background: var(--ground);
-  box-shadow: inset 0 0 0 1px var(--tier);
-  color: var(--tier);
-  letter-spacing: 0.05em;
 }
 .cat { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -639,14 +613,6 @@ const kickerText = computed(() => {
 }
 .selected .media,
 .banked .media { border-color: color-mix(in srgb, var(--tier) 55%, var(--line-2)); }
-.cross-media {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8%;
-}
 
 .card-foot { container-type: inline-size; display: flex; flex-direction: column; gap: 5px; margin-top: auto; }
 .item-name {
@@ -732,22 +698,6 @@ const kickerText = computed(() => {
 .pick-hex.on { color: var(--on-gold); background: var(--gold); }
 
 .promotion .loot-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-
-/* Liberty's Cross spans the full row above the draft: art left, copy right. */
-.loot-slot.cross-slot { grid-column: 1 / -1; }
-@media (min-width: 721px) {
-  .loot-card.cross {
-    display: grid;
-    grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
-    column-gap: 22px;
-    row-gap: 8px;
-  }
-  .loot-card.cross .media { grid-row: 1 / 3; aspect-ratio: 3 / 2; }
-  .loot-card.cross .card-top,
-  .loot-card.cross .card-foot { grid-column: 2; }
-  .loot-card.cross .item-name { font-size: min(30px, 100cqi / var(--fit-len, 1)); }
-}
 
 @media (max-width: 720px) {
   .loot { gap: 12px; }
