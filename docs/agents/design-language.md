@@ -166,14 +166,25 @@ reports pin **File report / File failure** in the fixed action bar.
 
 #### Loot — `RewardDraft`
 
-The draft is "Bank one item": one card per option, dealt in with a stagger. **The item art is the
+The draft is "Bank one item": one card per option. **The item art is the
 card**: a 4:3 well (a square thumb on phones) letterboxes the whole catalog image with
 `object-fit: contain` — never crop it — and the name is a quiet caption under it. Each card is
 stamped with its **rolled tier and d100 face**, with the same odds line above carrying one pin per option. The old ceiling-climb intro,
 `CeilingTrack`, ban flow and settlement screen are retired. Picking a card selects it; the CTA banks
 it; a resolved draft waits on the squad. The **`SquadDraftBoard`** shows each squadmate's offered
 tiles and status, and the reroll control spends a banked honors token. Liberty's Cross is one card,
-not a band above the pods.
+not a band above the pods: it takes **its own full-width row at the top** (art left, copy right on
+desktop), placed first in the DOM so focus order matches.
+
+**The reveal is the fanfare.** Each card is wrapped in `RewardReveal`; cards keep their grid slot
+but land **worst-to-best** (`revealTimeline` in `app/utils/rewardReveal.ts`), so the best pull is
+always the finale, and drama scales with tier: C deals in, B rises with a faint flash, A drops with
+a flash, sheen and shockwave ring, S flickers a charge in its empty slot then slams in with a
+double ring, a jolt and an ambient glow. **S+ (Liberty's Cross) keeps its unfurl** — a beam draws
+across, the card opens from it, and the `LibertyCrossEmblem` crest assembles in the art well. Every
+option's Valor pin is timed (`pinDelay`) to strike the line as its card lands; S/S+ pins flare. Pacing
+lives in `REVEAL_BEATS`. A draft that is already resolved on mount shows settled, and nothing gates
+input — cards are pickable from the first frame.
 
 Once **every** diver has banked (`allDiversPicked`, synced state, so the whole squad sees it), the
 draft hands off to an interstitial; the engine stays in rewards and the host's ADVANCE is the only
@@ -235,6 +246,6 @@ layers are `aria-hidden` and `pointer-events: none` so a rotating square can't s
 
 #### Foundations kit
 
-A hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`; includes a replayable Liberty's
-Cross specimen) specimens the tokens/atoms so contributors can sanity-check the language. It is dev
+A hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`; includes replayable Liberty's
+Cross and reward-reveal specimens) specimens the tokens/atoms so contributors can sanity-check the language. It is dev
 reference, not a product surface.

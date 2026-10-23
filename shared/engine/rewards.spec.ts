@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS } from '../data/catalog'
 import type { Item, ItemCategory, Tier } from '../data/types'
 import { BARGAIN_SLOTS, CREDIT_PRICE_TIER, CREDIT_PRICE_TYPE, SAMPLE_CREDITS, TIME_HAUL_FLOOR, VALOR_METER_MAX, sPlusValorFloorFor, sValorFloorFor } from './config'
-import { ceilingOddsPercent, DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, haulValue, itemPrice, maxCeiling, missionHaul, oddsToReach, optionsForDiver, optionsForStars, rollCeiling, rollBargainShelf, rollRewardOffer, rollRewardOptions, tierForRoll, tierWeight, tierZones, topTierOf, timeHaulMultiplier, valorOf } from './rewards'
+import { bankedOptionId, ceilingOddsPercent, DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, haulValue, itemPrice, maxCeiling, missionHaul, oddsToReach, optionsForDiver, optionsForStars, rollCeiling, rollBargainShelf, rollRewardOffer, rollRewardOptions, tierForRoll, tierWeight, tierZones, topTierOf, timeHaulMultiplier, valorOf } from './rewards'
 import { mulberry32 } from './rng'
 import type { RewardTier } from './types'
 
@@ -466,5 +466,26 @@ describe('rollRewardOptions', () => {
     )
     const options = rollRewardOptions(11, 'A', 'A', 2, ALL_ITEMS, bandIds)
     expect(options.length).toBeGreaterThan(0)
+  })
+})
+
+describe('bankedOptionId', () => {
+  const item = ALL_ITEMS[0]!
+  const offer = [
+    { optionId: item.id, item },
+    { optionId: DIVERS_CHOICE_OPTION_ID, item: DIVERS_CHOICE_ITEM, choice: true },
+  ]
+
+  it('is null before a pick', () => {
+    expect(bankedOptionId(offer, null)).toBeNull()
+  })
+
+  it('matches a regular option by its item id', () => {
+    expect(bankedOptionId(offer, item.id)).toBe(item.id)
+  })
+
+  it('resolves a Cross claim (any other item id) to the Cross option', () => {
+    expect(bankedOptionId(offer, ALL_ITEMS[1]!.id)).toBe(DIVERS_CHOICE_OPTION_ID)
+    expect(bankedOptionId([offer[0]!], ALL_ITEMS[1]!.id)).toBeNull()
   })
 })
