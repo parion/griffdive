@@ -235,7 +235,7 @@ test('the host manages the Steam lobby from a dock bar', async ({ browser }) => 
   await pageB.getByLabel('Your name').fill('Duo')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
-  const joinerLink = pageB.getByRole('link', { name: 'Join Steam lobby' })
+  const joinerLink = pageB.getByRole('link', { name: 'Join Game' })
   await expect(joinerLink).toHaveAttribute('href', 'steam://joinlobby/553850/42/7')
   await expect(pageB.getByRole('button', { name: 'Steam lobby settings' })).toHaveCount(0)
   await expect(pageB.getByRole('button', { name: /Steam profile/ })).toHaveCount(0)

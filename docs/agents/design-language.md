@@ -84,7 +84,7 @@ merge with them.
   squad-honors token picker once a contest is spun. For the host the Steam control toggles a
   **Steam lobby bar** docked just above the squad bar: pin or change the `steam://joinlobby/…`
   link, copy it, jump into the lobby, or remove it — removal closes the bar. A squadmate gets a
-  direct **Join Lobby** link to the pinned lobby instead, and no Steam control at all while the
+  direct **Join Game** link to the pinned lobby instead, and no Steam control at all while the
   host hasn't pinned one. Steam lives on those two dock controls, never on an individual seat.
   The host on a phone (which has no squad bar) gets the dialog instead. `DiveMenu` holds
   tutorial/field manual, Bridge, pin/unpin, new session, leave and end. On a phone the same dock

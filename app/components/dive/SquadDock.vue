@@ -281,14 +281,22 @@ function kick(diverId: string): void {
     <div class="link-side">
       <a
         v-if="mode === 'room' && !isHost && steam"
-        class="link-btn"
+        class="link-btn join-game cut-sm"
         :href="steam.link"
         rel="noopener"
-        aria-label="Join Steam lobby"
-        title="Join Steam lobby"
+        aria-label="Join Game"
+        title="Join Game"
       >
         <IconSteam />
-        <span class="link-label">Join Lobby</span>
+        <span class="link-label">Join Game</span>
+        <svg
+          class="join-arrow"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          aria-hidden="true"
+        ><path d="M7 17L17 7M9 7h8v8" /></svg>
       </a>
       <button
         v-else-if="mode === 'room' && isHost"
@@ -487,6 +495,19 @@ function kick(diverId: string): void {
 }
 .link-btn:hover { color: var(--text); box-shadow: inset 0 0 0 1px var(--line-5); }
 .link-btn.open { color: var(--text); box-shadow: inset 0 0 0 1px var(--line-5); }
+.link-btn.join-game {
+  --steam-deep: #171a21;
+  background: linear-gradient(180deg, #67c1f5 0%, #417a9b 100%);
+  color: var(--steam-deep);
+  box-shadow: none;
+  transition: filter var(--dur-fast) var(--ease-out);
+}
+.link-btn.join-game:hover {
+  color: var(--steam-deep);
+  box-shadow: none;
+  filter: brightness(1.08);
+}
+.link-btn.join-game .join-arrow { width: 14px; height: 14px; }
 .link-btn.invite .code { color: var(--text); font-weight: 700; letter-spacing: 0.06em; }
 .link-btn svg { width: 16px; height: 16px; }
 
