@@ -2,7 +2,7 @@
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { allDiversPicked, bonusFor, bonusWinners, bargainLamp, bargainsClosedReason } from '~~/shared/engine/selectors'
-import type { CrusadeSettings, DiverState, DiveState, MajorOrderSelection, MissionOutcome, MissionReport } from '~~/shared/engine/types'
+import type { DiverState, DiveState, MissionOutcome, MissionReport } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -39,7 +39,6 @@ const emit = defineEmits<{
   advance: []
   buy: [itemId: string]
   forfeit: [itemId: string]
-  start: [settings: CrusadeSettings, majorOrder: MajorOrderSelection | null]
   kick: [diverId: string]
   transferHost: [diverId: string]
   copyInvite: []
@@ -116,17 +115,8 @@ const operationClimbs = computed(() =>
       </p>
 
       <template v-if="!kicked">
-        <DivePhaseLobby
-          v-if="phase === 'lobby'"
-          :state="state"
-          :self-id="selfId"
-          :can-control="canControl"
-          phone
-          @start="(settings, majorOrder) => emit('start', settings, majorOrder)"
-        />
-
         <PhoneWheel
-          v-else-if="phase === 'spin' || phase === 'decision' || phase === 'strain' || phase === 'deal'"
+          v-if="phase === 'spin' || phase === 'decision' || phase === 'strain' || phase === 'deal'"
           :state="state"
           :self-id="selfId"
           :can-control="canControl"

@@ -615,6 +615,21 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       :slot-name="session.slotName.value"
     />
 
+    <DivePhaseLobby
+      v-else-if="state && state.phase === 'lobby' && !kicked"
+      :state="state"
+      :self-id="selfId"
+      :can-control="canControl"
+      :room-code="session.slotName.value"
+      :last-error="session.lastError.value?.message ?? null"
+      @start="launchCrusade"
+      @copy-invite="copyInvite"
+      @open-menu="sessionMenuOpen = true"
+      @transfer-host="transferHost"
+      @kick="kick"
+      @dismiss-error="session.dismissError()"
+    />
+
     <DivePhone
       v-else-if="state && isPhone"
       :state="state"
@@ -648,7 +663,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @advance="advance"
       @buy="buyItem"
       @forfeit="forfeit"
-      @start="launchCrusade"
       @kick="kick"
       @transfer-host="transferHost"
       @copy-invite="copyInvite"
@@ -717,14 +731,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
           :key="phaseKey"
           class="phase-stack"
         >
-          <DivePhaseLobby
-            v-if="phase === 'lobby'"
-            :state="state"
-            :self-id="selfId"
-            :can-control="canControl"
-            @start="launchCrusade"
-          />
-
           <DivePhaseWheel
             v-if="phase === 'spin' || phase === 'decision' || phase === 'strain' || phase === 'deal'"
             :state="state"

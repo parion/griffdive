@@ -13,7 +13,6 @@ import { createSaveDoc } from '~~/shared/engine/saves'
 import { FRONTS } from '~~/shared/data/fronts'
 import { factionImageUrl } from '~~/shared/data/images'
 import { isRoomCode } from '~~/shared/utils/room-code'
-import type { FrontId } from '~~/shared/data/fronts'
 import type { CrusadeMode, CrusadeSettings, CrusadeVariant, DiveState, FrontPlan, RewardTier } from '~~/shared/engine/types'
 import type { DiveSaveInfo } from '~~/shared/types/messages'
 import type { SaveDoc, SessionSave } from '~~/shared/types/save'
@@ -28,8 +27,6 @@ const { ownedWarbonds: myWarbonds, setOwned: setMyWarbonds } = useOwnedWarbonds(
 const diverName = ref('Griffin')
 const variant = ref<CrusadeVariant>('medium')
 const mode = ref<CrusadeMode>('seaf')
-const frontPlan = ref<FrontPlan>('rolled')
-const lockedFront = ref<FrontId>('terminids')
 const slotList = ref<{ id: string, doc: SaveDoc }[]>([])
 const sessionList = ref<SessionSave[]>([])
 const joinCode = ref('')
@@ -39,7 +36,15 @@ const hosting = ref(false)
 
 // The live Major Order band at the foot of the Bridge: pass-through metadata
 // from the war proxy (never the engine).
-const { order: liveOrder, status: moStatus } = useMajorOrder()
+const {
+  plan: frontPlan,
+  lockedFront,
+  choose: chooseFrontPlan,
+  order: liveOrder,
+  status: moStatus,
+  pending: moPending,
+  refresh: refreshOrder,
+} = useFrontPlan()
 
 interface OnlineDive { code: string, state: DiveState | null, saved: DiveSaveInfo | null }
 
@@ -1336,11 +1341,16 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
       <CrusadeSetup
         v-model:variant="variant"
         v-model:mode="mode"
-        v-model:front-plan="frontPlan"
         v-model:locked-front="lockedFront"
-        :show-start="false"
+        :front-plan="frontPlan"
+        :order="liveOrder"
+        :order-status="moStatus"
+        :order-pending="moPending"
+        @update:front-plan="chooseFrontPlan"
+        @refresh-order="refreshOrder"
       />
       <WarbondPicker
+        class="setup-warbonds"
         :warbond-codes="myWarbonds"
         @update:warbond-codes="setMyWarbonds"
       />
@@ -1361,6 +1371,9 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
   padding: var(--gap-panel) var(--pad-page);
   overflow: hidden;
 }
+
+/* Variant & warbonds dialog: the setup and the warbond list read as two blocks. */
+.setup-warbonds { margin-top: 20px; }
 
 /* Hero ------------------------------------------------------------------ */
 .hero {

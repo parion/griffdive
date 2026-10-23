@@ -35,8 +35,12 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
   await page.getByRole('button', { name: 'Join the dive' }).click()
   await dismissWarbondIntro(page)
 
-  await expectPinnedBar(page, '1-lobby')
-  await page.getByRole('button', { name: 'Launch crusade' }).click()
+  // Setup stands alone (no dive bars); its launch CTA pins to the bottom edge.
+  const launch = page.getByRole('button', { name: /^Launch crusade/ })
+  const launchBox = await launch.boundingBox()
+  expect(launchBox!.y + launchBox!.height).toBeGreaterThan(VIEWPORT.height - 40)
+  expect(launchBox!.height).toBeGreaterThanOrEqual(54)
+  await launch.click()
   await expect(page.locator('.phone-call')).toBeVisible()
 
   await expectPinnedBar(page, '2-wheel-spin')

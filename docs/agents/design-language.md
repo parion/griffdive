@@ -89,6 +89,28 @@ merge with them.
   controls are visibly absent for squadmates rather than disabled chrome. A non-host sees "Stand by"
   and the host's name on the call, but still swears their own pacts and banks their own loot.
 
+#### Setup — Hellpod Bays (`DivePhaseLobby`)
+
+The room's setup is the one screen that stands outside the dive shells: no `DiveTopBar`,
+`SquadDock`, `PhoneTopBar` or phone action bar, since there is no crusade to report on yet. It is a
+single responsive page (container queries on `.hangar`) for phone and desktop alike:
+
+- A slim **hangar bar**: back to the Bridge, the title, the room code (tap copies the invite) and
+  the session menu.
+- **Four bays in one row at every width**, each a lit well with an SVG hellpod standing over
+  hazard-striped doors. A seated pod shows the diver's initial in its window (gold for you, teal
+  well lamp for the squad); an open bay is a dashed ghost pod. Every bay is a big click target:
+  an open bay copies the invite, your own pod opens Warbonds, and the host's tap on a squadmate
+  opens **Make host / Kick diver**. On launch the pods drop through the doors (`podDrop`).
+- The host gets **`CrusadeSetup`** (shared with the Bridge's setup dialog): *Where to fight* —
+  `FrontPlanPicker` with the live **Major Order** as the featured, pre-selected card (its fronts as
+  equal tiles on narrow widths, perks and countdown), *Lock a faction* and *Roll each op* as quieter
+  alternatives — then *Starting difficulty* (three compact number cards) and, on 5/7, the
+  SEAF/Penance pair. Squadmates see a **Stand by** card with a Declare warbonds CTA instead of
+  disabled controls (the host's picks are local until launch).
+- One pinned **launch bar**: a one-line summary and the hold-to-launch CTA (full width on phones).
+  There is no pre-launch checklist.
+
 #### Call — `DivePhaseWheel`
 
 One lit call: `WheelOfMisfortune` (a real seeded SVG wheel inside a gold tick bezel; the hub button

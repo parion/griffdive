@@ -1,51 +1,50 @@
 <script setup lang="ts">
+import { useIntervalFn } from '@vueuse/core'
 import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
 import { FRONTS } from '~~/shared/data/fronts'
 import type { FrontId } from '~~/shared/data/fronts'
 import { factionImageUrl } from '~~/shared/data/images'
 import { FRONT_ROLL_RISK, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK } from '~~/shared/engine/config'
-import type { FrontPlan } from '~~/shared/engine/types'
+import type { FrontPlan, MajorOrderSelection } from '~~/shared/engine/types'
+import type { MajorOrderStatus } from '~/composables/useMajorOrder'
 
-// The run's front plan, locked at launch: follow the live Major Order, lock one
-// faction, or roll a fresh front every operation. The live order is fetched
-// here (shared with the parent through useMajorOrder's key) and the parent
-// hands it to START_DIVE.
+// The run's front plan, locked at launch. The live Major Order leads as the
+// featured card — playing the war is the default — with locking one faction
+// or rolling every operation as the quieter alternatives. State lives with the
+// launcher (useFrontPlan); this only renders it.
 const props = withDefaults(defineProps<{
   plan: FrontPlan
   lockedFront: FrontId
+  order: MajorOrderSelection | null
+  status: MajorOrderStatus
+  pending?: boolean
   disabled?: boolean
-}>(), { disabled: false })
+}>(), { pending: false, disabled: false })
 
 const emit = defineEmits<{
   'update:plan': [plan: FrontPlan]
   'update:lockedFront': [front: FrontId]
+  'refresh': []
 }>()
 
-const { order, status, pending, refresh } = useMajorOrder()
-
-// The order can vanish under a selected plan (a refresh that fails, an order
-// that ends): fall back to rolling so the launch never claims an order it lacks.
-watch(order, (next) => {
-  if (!next && props.plan === 'majorOrder') {
-    emit('update:plan', 'rolled')
-  }
-})
+const now = ref(Date.now())
+useIntervalFn(() => {
+  now.value = Date.now()
+}, 30_000)
 
 const orderFronts = computed(() =>
-  (order.value?.fronts ?? []).map(id => FRONTS.find(front => front.id === id)).filter(front => front !== undefined))
+  FRONTS.filter(front => props.order?.fronts.includes(front.id)))
+const countdown = computed(() => orderCountdown(props.order?.expiresAt, now.value))
 
-const orderLine = computed(() => {
-  if (orderFronts.value.length) {
-    return orderFronts.value.map(front => front.displayName).join(' / ')
-  }
-  if (pending.value) {
+const orderMissing = computed(() => {
+  if (props.pending) {
     return 'Checking the live war…'
   }
-  return status.value === 'none'
-    ? 'No active Major Order'
-    : status.value === 'no-front'
-      ? 'The active order targets no front'
-      : 'Failed to retrieve active MO'
+  return props.status === 'none'
+    ? 'No active Major Order right now.'
+    : props.status === 'no-front'
+      ? 'The active order targets no front.'
+      : 'Couldn’t reach the war feed.'
 })
 
 function pick(value: unknown): void {
@@ -57,71 +56,89 @@ function pick(value: unknown): void {
   <div class="fp">
     <RadioGroupRoot
       :model-value="plan"
-      class="fp-grid"
+      class="fp-group"
       aria-label="Front plan"
       :disabled="disabled"
       @update:model-value="pick"
     >
       <RadioGroupItem
         value="majorOrder"
-        class="fp-card cut-sm"
-        :class="{ on: plan === 'majorOrder' }"
+        class="fp-mo cut"
+        :class="{ on: plan === 'majorOrder', live: order }"
         :disabled="disabled || !order"
       >
-        <span class="fp-head">
-          <span class="fp-name">Major Order</span>
+        <span class="fp-top">
+          <span class="fp-radio" />
+          <span class="fp-title">Major Order</span>
           <span
-            v-if="orderFronts.length"
-            class="fp-emblems"
-            aria-hidden="true"
+            v-if="order"
+            class="fp-rec"
+          >Recommended</span>
+        </span>
+        <span
+          v-if="order"
+          class="fp-fronts"
+          :style="{ '--fp-count': orderFronts.length }"
+        >
+          <span
+            v-for="front in orderFronts"
+            :key="front.id"
+            class="fp-chip"
+            :style="{ '--fp-accent': front.accent }"
           >
             <img
-              v-for="front in orderFronts"
-              :key="front.id"
               :src="factionImageUrl(front.id)"
               alt=""
               draggable="false"
             >
+            {{ front.displayName }}
           </span>
         </span>
-        <span class="fp-blurb">{{ orderLine }}</span>
-        <span class="fp-valor">+{{ MAJOR_ORDER_RISK }} Valor / mission · +{{ MAJOR_ORDER_REROLL_BONUS }} reroll / op</span>
+        <span
+          v-else
+          class="fp-missing"
+        >{{ orderMissing }}</span>
+        <span class="fp-perks">
+          <span>+{{ MAJOR_ORDER_RISK }} Valor / mission</span>
+          <span>+{{ MAJOR_ORDER_REROLL_BONUS }} reroll / op</span>
+          <span
+            v-if="countdown"
+            class="fp-ends"
+          >Ends {{ countdown === 'ending' ? 'soon' : `in ${countdown}` }}</span>
+        </span>
       </RadioGroupItem>
 
-      <RadioGroupItem
-        value="locked"
-        class="fp-card cut-sm"
-        :class="{ on: plan === 'locked' }"
-        :disabled="disabled"
-      >
-        <span class="fp-head">
-          <span class="fp-name">Lock a faction</span>
-        </span>
-        <span class="fp-blurb">Same front every operation. No strain.</span>
-        <span class="fp-valor muted">+0 Valor</span>
-      </RadioGroupItem>
-
-      <RadioGroupItem
-        value="rolled"
-        class="fp-card cut-sm"
-        :class="{ on: plan === 'rolled' }"
-        :disabled="disabled"
-      >
-        <span class="fp-head">
-          <span class="fp-name">Roll each operation</span>
-          <IconDice
-            class="fp-dice"
-            aria-hidden="true"
-          />
-        </span>
-        <span class="fp-blurb">A fresh front and strain every operation.</span>
-        <span class="fp-valor">+{{ FRONT_ROLL_RISK }} Valor / mission</span>
-      </RadioGroupItem>
+      <div class="fp-alts">
+        <RadioGroupItem
+          value="locked"
+          class="fp-alt cut-sm"
+          :class="{ on: plan === 'locked' }"
+          :disabled="disabled"
+        >
+          <span class="fp-radio" />
+          <span class="fp-alt-body">
+            <span class="fp-title">Lock a faction</span>
+            <span class="fp-alt-note">Same enemy all run · +0 Valor</span>
+          </span>
+        </RadioGroupItem>
+        <RadioGroupItem
+          value="rolled"
+          class="fp-alt cut-sm"
+          :class="{ on: plan === 'rolled' }"
+          :disabled="disabled"
+        >
+          <span class="fp-radio" />
+          <span class="fp-alt-body">
+            <span class="fp-title">Roll each op</span>
+            <span class="fp-alt-note">Random enemy · +{{ FRONT_ROLL_RISK }} Valor / mission</span>
+          </span>
+        </RadioGroupItem>
+      </div>
     </RadioGroupRoot>
 
     <div
       v-if="plan === 'locked'"
-      class="fp-fronts"
+      class="fp-lock"
       role="group"
       aria-label="Locked faction"
     >
@@ -129,10 +146,11 @@ function pick(value: unknown): void {
         v-for="front in FRONTS"
         :key="front.id"
         type="button"
-        class="fp-front cut-sm"
+        class="fp-faction cut-sm"
         :class="{ on: lockedFront === front.id }"
         :style="{ '--fp-accent': front.accent }"
         :aria-pressed="lockedFront === front.id"
+        :aria-label="front.displayName"
         :disabled="disabled"
         @click="emit('update:lockedFront', front.id)"
       >
@@ -141,108 +159,204 @@ function pick(value: unknown): void {
           alt=""
           draggable="false"
         >
-        <span>{{ front.displayName }}</span>
+        <span aria-hidden="true">{{ front.displayName }}</span>
       </button>
     </div>
-    <MajorOrderCard
-      v-else-if="plan === 'majorOrder' && order"
-      :order="order"
-    />
-    <p
-      v-else-if="status === 'unavailable' && !pending && !disabled"
-      class="fp-retry small muted"
+    <button
+      v-else-if="!order && !pending && status === 'unavailable' && !disabled"
+      class="fp-retry"
+      type="button"
+      @click="emit('refresh')"
     >
-      <span>The war feed is down — retry to follow the order.</span>
-      <button
-        class="fp-refresh"
-        type="button"
-        aria-label="Refresh Major Order"
-        title="Refresh Major Order"
-        @click="refresh()"
-      >
-        <IconRefresh />
-      </button>
-    </p>
+      <IconRefresh aria-hidden="true" />
+      Retry the war feed
+    </button>
   </div>
 </template>
 
 <style scoped>
-.fp { display: grid; gap: 0.5rem; }
-.fp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.5rem; }
+.fp { display: grid; gap: 8px; min-width: 0; container: fp / inline-size; }
+.fp-group { display: grid; gap: 8px; min-width: 0; }
 
-.fp-card {
-  display: grid;
-  align-content: start;
-  gap: 0.25rem;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid var(--line-2);
-  background: var(--panel);
+.fp-mo,
+.fp-alt,
+.fp-faction {
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color var(--dur-fast), background-color var(--dur-fast);
+  transition: border-color var(--dur-fast), background-color var(--dur-fast), opacity var(--dur-fast);
 }
-.fp-card:hover:not(:disabled) { border-color: var(--line-4); }
-.fp-card.on { border-color: var(--gold); background: rgba(255, 214, 66, 0.05); }
-.fp-card:disabled { opacity: 0.5; cursor: not-allowed; }
-.fp-head { display: flex; align-items: center; gap: 0.5rem; min-height: 1.5rem; }
-.fp-name { font-size: 0.82rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-.fp-card.on .fp-name { color: var(--gold); }
-.fp-emblems { display: inline-flex; margin-left: auto; }
-.fp-emblems img {
-  width: 1.5rem;
-  height: 1.5rem;
-  object-fit: contain;
-  filter: drop-shadow(-2px 0 0 var(--panel));
-}
-.fp-emblems img + img { margin-left: -0.5rem; }
-.fp-dice { width: 1rem; height: 1rem; margin-left: auto; color: var(--khaki); }
-.fp-blurb { font-size: 11px; line-height: 1.3; color: var(--khaki); }
-.fp-valor { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: var(--khaki); text-transform: uppercase; }
-.fp-card.on .fp-valor:not(.muted) { color: var(--gold); }
 
-.fp-fronts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
-.fp-front {
+/* The radio well, shared by every plan card. */
+.fp-radio {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--line-5);
+}
+.on .fp-radio { border-color: var(--gold); }
+.on .fp-radio::after { content: ''; width: 9px; height: 9px; background: var(--gold); }
+
+.fp-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.on .fp-title { color: var(--gold); }
+
+/* Featured: the live order ------------------------------------------------ */
+.fp-mo {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-3);
+  background:
+    radial-gradient(420px 160px at 0% 0%, rgba(255, 214, 66, 0.07), transparent 70%),
+    var(--panel);
+}
+.fp-mo:hover:not(:disabled) { border-color: var(--line-5); }
+.fp-mo.on {
+  border-color: var(--gold);
+  background:
+    radial-gradient(420px 180px at 0% 0%, rgba(255, 214, 66, 0.14), transparent 70%),
+    var(--raised);
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+.fp-mo:disabled { cursor: not-allowed; }
+.fp-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.fp-mo .fp-title { font-size: 0.95rem; }
+.fp-rec {
+  margin-left: auto;
+  padding: 2px 7px;
+  border: 1px solid var(--teal);
+  color: var(--teal);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.fp-fronts { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.fp-chip {
+  --fp-accent: var(--gold);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 3px 10px 3px 4px;
+  border: 1px solid color-mix(in srgb, var(--fp-accent) 45%, var(--line-3));
+  background: color-mix(in srgb, var(--fp-accent) 10%, var(--ground));
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.fp-chip img { width: 24px; height: 24px; object-fit: contain; }
+.fp-missing { font-size: 0.8rem; color: var(--muted); }
+
+.fp-perks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--khaki);
+}
+.fp-mo.on .fp-perks { color: var(--gold); }
+.fp-mo .fp-perks .fp-ends { color: var(--muted); }
+.fp-mo:disabled .fp-perks { color: var(--dim); }
+
+/* Alternatives ------------------------------------------------------------ */
+.fp-alts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.fp-alt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-2);
+  background: var(--panel);
+}
+.fp-alt:hover:not(:disabled) { border-color: var(--line-4); }
+.fp-alt.on { border-color: var(--gold); background: var(--raised); }
+.fp-alt-body { display: grid; gap: 3px; min-width: 0; }
+.fp-alt-note { font-size: 11px; line-height: 1.25; color: var(--muted); }
+.fp-alt.on .fp-alt-note { color: var(--khaki); }
+.fp-alt:disabled { opacity: 0.55; cursor: not-allowed; }
+.fp-mo:disabled .fp-title { color: var(--muted); }
+
+/* Locked faction ------------------------------------------------------------ */
+.fp-lock { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.fp-faction {
   --fp-accent: var(--gold);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  min-height: 2.75rem;
-  padding: 0.3rem 0.6rem;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 6px 8px;
   border: 1px solid color-mix(in srgb, var(--fp-accent) 35%, var(--line-3));
   background: var(--ground);
   color: var(--khaki);
-  font: inherit;
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  cursor: pointer;
-  transition: border-color var(--dur-fast), background-color var(--dur-fast), color var(--dur-fast);
 }
-.fp-front img { width: 1.75rem; height: 1.75rem; object-fit: contain; flex-shrink: 0; }
-.fp-front:hover:not(:disabled) { border-color: var(--fp-accent); }
-.fp-front.on {
+.fp-faction img { width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; }
+.fp-faction:hover:not(:disabled) { border-color: var(--fp-accent); }
+.fp-faction.on {
   color: var(--fp-accent);
   border-color: var(--fp-accent);
   background: color-mix(in srgb, var(--fp-accent) 14%, var(--ground));
 }
-.fp-front:disabled { opacity: 0.6; cursor: not-allowed; }
+.fp-faction:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.fp-retry { display: flex; align-items: center; gap: 0.5rem; margin: 0; }
-.fp-refresh {
-  display: inline-grid;
-  place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  padding: 0;
-  flex-shrink: 0;
-  background: none;
+.fp-retry {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
   border: 1px solid var(--line-4);
+  background: none;
   color: var(--khaki);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
 }
-.fp-refresh:hover { border-color: var(--gold); color: var(--gold); }
-.fp-refresh svg { width: 1rem; height: 1rem; }
+.fp-retry:hover { border-color: var(--gold); color: var(--gold); }
+.fp-retry svg { width: 15px; height: 15px; }
+
+@container fp (max-width: 520px) {
+  .fp-fronts { display: grid; grid-template-columns: repeat(var(--fp-count), minmax(0, 1fr)); }
+  .fp-chip {
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    min-width: 0;
+    padding: 8px 4px 6px;
+    font-size: 0.68rem;
+    text-align: center;
+  }
+  .fp-chip img { width: 30px; height: 30px; }
+}
+@container fp (max-width: 420px) {
+  .fp-alts { grid-template-columns: 1fr; }
+  .fp-alt { min-height: 52px; }
+  .fp-faction { flex-direction: column; gap: 4px; font-size: 0.65rem; }
+}
 </style>

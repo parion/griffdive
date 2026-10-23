@@ -21,7 +21,8 @@ app/
                    credits/Kit/Codex/Warbonds/session menu, PhaseTabs — Call/Pacts/Dive/Loot,
                    SquadDock — seats, presence, honors tokens, Steam/invite, DiveMenu —
                    Bridge, tutorial, pin/unpin, new session, leave/end,
-                   DivePhaseLobby/DivePhaseWheel/DivePhaseDiving/DivePhaseRewards/
+                   DivePhaseLobby — the standalone Hellpod Bays setup page (no shell),
+                   DivePhaseWheel/DivePhaseDiving/DivePhaseRewards/
                    DivePhaseForfeit/DivePhaseComplete — one panel per engine phase, each
                    owning its local form state and emitting intents,
                    WheelOfMisfortune — the seeded spinning SVG wheel,
@@ -37,7 +38,8 @@ app/
                    CrusadeLadder — the vertical 3→10 ladder (achieved screen),
                    FieldPromotionGate — the mid-crusade catch-up gate,
                    ForfeitPicker — one diver's dealt forfeit offer,
-                   FrontPlanPicker/MajorOrderCard — the setup's front-plan chooser and MO panel,
+                   CrusadeSetup + FrontPlanPicker — the shared crusade setup (front plan,
+                   start difficulty, mode) used by the Bridge dialog and the lobby,
                    ArmoryDrawer + KitPanel — the Kit drawer and the lean Kit itself,
                    BraschBargains + BargainsDrawer — the per-mission shop in a slide-over,
                    AchievedOverlay — the full-bleed Griffdive achieved takeover,
@@ -79,6 +81,7 @@ app/
                    seated dive),
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
                    useMajorOrder (live war proxy → the setup's Major Order plan; null offline),
+                   useFrontPlan (the launcher's front plan; defaults to a live order),
                    useChangelog (GitHub release deployments + commits → phase-carded changelog
                    entries via utils/changelog.ts, 10-min cache),
                    usePhoneShell (the 1020px breakpoint as JS, so the dive can swap the whole

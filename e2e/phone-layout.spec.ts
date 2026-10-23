@@ -82,3 +82,42 @@ test('phone: the report time cells tap under a finger', async ({ browser }) => {
 
   await context.close()
 })
+
+test('phone: the hangar keeps four bays in a row and the launch in reach', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: SMALL_PHONE,
+    reducedMotion: 'reduce',
+    hasTouch: true,
+    isMobile: true,
+    extraHTTPHeaders: { 'x-forwarded-for': '10.30.0.1' },
+  })
+  const page = await context.newPage()
+  await mockMajorOrder(page)
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Host an online dive' }).click()
+  await expect(page).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
+  await page.getByLabel('Your name').fill('Host')
+  await page.getByRole('button', { name: 'Join the dive' }).click()
+  await dismissWarbondIntro(page)
+
+  // Setup stands alone: no dive header or squad dock until launch.
+  await expect(page.locator('.hangar')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Kit' })).toHaveCount(0)
+
+  const bays = page.locator('.bays .bay')
+  await expect(bays).toHaveCount(4)
+  const tops = await bays.evaluateAll(els => els.map(el => Math.round(el.getBoundingClientRect().top)))
+  expect(new Set(tops).size).toBe(1)
+
+  // The hangar clips at the viewport, so overflow shows as content past the edge.
+  const past = await page.evaluate(() => [...document.querySelectorAll('.hangar *')]
+    .filter(el => el.getBoundingClientRect().right > window.innerWidth + 1).length)
+  expect(past).toBe(0)
+
+  // The live order is the default plan.
+  await expect(page.getByRole('radio', { name: /Major Order/ })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByRole('button', { name: /^Launch crusade/ })).toBeInViewport()
+
+  await context.close()
+})

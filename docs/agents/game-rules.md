@@ -178,7 +178,7 @@ plan** decides how free that draw is: a **Major Order** narrows it to the live w
 ### Operation layer — front plan & Major Orders
 
 The host chooses the run's **front plan** at crusade setup, beside the variant and mode (the
-Bridge's setup dialog for solo, the lobby for online rooms), and it **locks at launch** for the
+Bridge's setup dialog for solo, the Hellpod Bays lobby for online rooms), and it **locks at launch** for the
 whole crusade — there is no mid-run change, so the call is visible before the first dive and the
 wheel screen carries no picker. `settings.front` records the plan; `START_DIVE{settings, majorOrder}`
 carries the pin the plan needs:
@@ -204,11 +204,15 @@ following the war does not forfeit Valor potential; a manual lock is a preferenc
 no carrot, so only playing the actual war objective pays. A multi-front order still randomizes
 within its fronts every operation; a single-front order (or a lock) refuses the front reroll.
 
+**Playing the war is the default:** whenever a live order is known, setup opens on the `majorOrder`
+plan (featured first, tagged Recommended) until the host picks another; with no order it opens on
+`rolled`.
+
 **The pin is a run-long commitment:** completing an operation clears only the drawn front, so every
 later operation redraws within the pin and, when the order is live, banks the reroll bonus and
 carries the risk again. A failure restart keeps the pin with the locked front, like the front
-itself. The engine is pure and has no clock, so nothing expires an order — `MajorOrderCard` flags
-an elapsed `expiresAt` as "ending", and the squad keeps playing the order it signed up for. On the
+itself. The engine is pure and has no clock, so nothing expires an order — the setup's countdown reads an
+elapsed `expiresAt` as "ends soon", and the squad keeps playing the order it signed up for. On the
 call screen a pinned run shows a one-line pin before the first spin ("Major Order pinned" or
 "Faction locked" with the front(s)); a rolled run shows the drawn front after the spin, as before.
 Playing toward an MO stays an **opt-in carrot, never a tax**. Tiers and rewards are untouched —
@@ -218,17 +222,17 @@ the `majorOrder` plan with the live order (the same `START_DIVE` pin the setup s
 can drop straight onto the war front.
 
 The MO's front(s) and display metadata (`title`, `planets` — index, name, front and current
-liberation % — and `expiresAt`) live on `state.majorOrder`; the metadata is pass-through for the
-in-game-style panel (`MajorOrderCard`) and syncs with the snapshot. The card renders the pinned
-front(s) by name and the planets, but **not** the `title`: the in-game order text is long and says
-nothing about the match, so Griffdive omits it (the title still rides the wheel's tooltip). **The
+liberation % — and `expiresAt`) live on `state.majorOrder`; the metadata is pass-through (the
+Bridge's MO band renders the planets) and syncs with the snapshot. The setup shows the order's
+front(s) and countdown, but **not** the `title`: the in-game order text is long and says nothing
+about the match, so Griffdive omits it. **The
 engine is pure** — it consumes a front list it was handed and never knows about HTTP. **The live
 API (Phase B) only fills the host's choice:** a cached server proxy
 (`server/api/war/major-order.get.ts` → `server/utils/major-order.ts`) normalizes the community war
 API — `api.helldivers2.dev/api/v1/assignments` joined to
 `helldiverstrainingmanual.com/api/v1/war/campaign` for planet→faction and liberation — into a
 `MajorOrderSelection` the setup's `FrontPlanPicker` offers as the Major Order plan (`useMajorOrder`,
-refetched on mount); with the plan selected the picker shows the full `MajorOrderCard`. Offline/static
+refetched on mount; `useFrontPlan` owns the default). Offline/static
 builds, a failed fetch, or the `GRIFFDIVE_DISABLE_MO_API=1` kill switch disable that plan (an order
 that vanishes under the selection falls back to `rolled`), leaving the lock and roll plans. The proxy caches for 10 minutes, retries once with a 6s
 timeout, and serves its last good order (stale) when a refresh fails — it never caches a failure. It

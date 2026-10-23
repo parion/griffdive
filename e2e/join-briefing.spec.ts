@@ -64,7 +64,7 @@ test('squadmates read one briefing page; the host keeps the tutorial', async ({ 
 
   await join.click()
   await expectJoinerLanded(joiner)
-  await expect(host.locator('.dock .seat').filter({ hasText: 'Duo' })).toBeVisible()
+  await expect(host.locator('.bays .bay').filter({ hasText: 'Duo' })).toBeVisible()
 
   // The session menu replays the briefing for a squadmate, never the host's tutorial.
   await joiner.getByRole('button', { name: 'Session menu' }).click()
@@ -91,5 +91,5 @@ test('squadmates read one briefing page; the host keeps the tutorial', async ({ 
   await expect(veteran.getByLabel('The squad').getByText('Duo', { exact: true })).toBeVisible()
   await veteran.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(veteran)
-  await expect(host.locator('.dock .seat').filter({ hasText: 'Veteran' })).toBeVisible()
+  await expect(host.locator('.bays .bay').filter({ hasText: 'Veteran' })).toBeVisible()
 })

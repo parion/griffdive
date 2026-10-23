@@ -146,8 +146,10 @@ test('a live Major Order chosen at setup pins the front for the run', async ({ p
   // The front plan is part of the crusade setup, not the call screen.
   await page.getByRole('button', { name: /^Variant and warbonds/ }).click()
   const setup = page.getByRole('dialog', { name: 'Variant & warbonds' })
-  await setup.getByRole('radio', { name: /Major Order/ }).click()
-  await expect(setup.getByText('Marfark')).toBeVisible()
+  // A live order is the default plan, featured with its fronts.
+  const orderPlan = setup.getByRole('radio', { name: /Major Order/ })
+  await expect(orderPlan).toHaveAttribute('aria-checked', 'true')
+  await expect(orderPlan).toContainText('Automatons')
   await setup.getByRole('button', { name: /^Close/ }).first().click()
   // Its name contains "warbonds": let it close before the dive's intro check.
   await expect(setup).toBeHidden()
