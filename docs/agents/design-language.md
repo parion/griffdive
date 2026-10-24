@@ -165,7 +165,9 @@ everyone else's start shut. Hosts call **Extracted** or **Mission failed**; squa
 waiting gate. Beside the column, every diver gets the **`KitDock`**: the Kit docked in
 `DiveFrame`'s `aside` slot, at the right edge where the Kit drawer slides in, but non-modal so the
 field screen stays live. It is open by default; its Hide control (and the header's Kit tile, while
-docked) folds it to a slim KIT tab. The report form takes the stage without the dock.
+docked) folds it to a slim KIT tab. The report form takes the stage without the dock. On a phone
+the field kit is the same `KitDock` as a non-modal **sheet** pinned to the bottom of the scroll,
+just above the action bar: a KIT handle that rises into the panel (up to 64dvh) and folds back down.
 
 #### Report — `MissionReport`
 
@@ -226,6 +228,8 @@ only and reads `tierZones` from the engine.
 
 The Kit (`ArmoryDrawer` → `KitPanel`) is reached from the header on desktop and phone; there is no
 persistent rail, except in the field, where `KitDock` docks the same `KitPanel` beside the stage. It keeps the lean diver list, earned-only switch, jump chips and live ban washes.
+On a phone the Kit drawer rises from the bottom of the viewport
+(`AppDrawer` `side="bottom"`: grip, swipe down to close) instead of sliding in from the right.
 Codex and Warbonds remain the shared drawers. Brasch's Bargains remains a slide-over from the credit
 tile, never a phase screen.
 

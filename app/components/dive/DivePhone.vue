@@ -158,7 +158,6 @@ const operationClimbs = computed(() =>
           @fail-directive="emit('failDirective')"
           @reporting="reporting = $event"
           @spin-bonus="emit('spinBonus', $event)"
-          @open-kit="emit('openArmory')"
         />
 
         <OperationCleared

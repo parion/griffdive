@@ -2,11 +2,13 @@
 import type { DiveState } from '~~/shared/engine/types'
 
 // The field's Kit, docked where the Kit drawer slides in but non-modal: the
-// stage beside it stays live while divers check what they carry.
-defineProps<{
+// stage beside it stays live while divers check what they carry. On a phone
+// it is a sheet pinned to the bottom of the scroll that rises over the field.
+withDefaults(defineProps<{
   state: DiveState
   selfId: string | null
-}>()
+  sheet?: boolean
+}>(), { sheet: false })
 
 const open = defineModel<boolean>('open', { required: true })
 </script>
@@ -14,7 +16,7 @@ const open = defineModel<boolean>('open', { required: true })
 <template>
   <aside
     class="kit-dock"
-    :class="{ closed: !open }"
+    :class="{ closed: !open, sheet }"
     aria-label="Field kit"
   >
     <template v-if="open">
@@ -40,7 +42,7 @@ const open = defineModel<boolean>('open', { required: true })
             viewBox="0 0 12 12"
             aria-hidden="true"
           ><path
-            d="M4 2l4 4-4 4"
+            :d="sheet ? 'M2 4l4 4 4-4' : 'M4 2l4 4-4 4'"
             fill="none"
             stroke="currentColor"
             stroke-width="2"
@@ -67,6 +69,23 @@ const open = defineModel<boolean>('open', { required: true })
     >
       <IconKit />
       <span>Kit</span>
+      <small
+        v-if="sheet"
+        class="tab-hint"
+      >What each diver carries</small>
+      <svg
+        v-if="sheet"
+        class="tab-caret"
+        width="12"
+        height="12"
+        viewBox="0 0 12 12"
+        aria-hidden="true"
+      ><path
+        d="M2 8l4-4 4 4"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      /></svg>
     </button>
   </aside>
 </template>
@@ -154,5 +173,42 @@ const open = defineModel<boolean>('open', { required: true })
 
 @keyframes dock-in {
   from { translate: 100% 0; }
+}
+
+.kit-dock.sheet {
+  position: sticky;
+  bottom: 0;
+  width: auto;
+  margin-top: auto;
+  max-height: 64dvh;
+  margin-inline: -12px;
+  border-left: 0;
+  border-top: 1px solid var(--line-3);
+  box-shadow: 0 -18px 40px rgba(0, 0, 0, 0.55);
+  animation-name: sheet-rise;
+}
+.kit-dock.sheet.closed { max-height: none; box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.45); }
+.sheet .dock-head { padding: 12px 14px 2px; }
+.sheet .dock-desc { padding: 0 14px 8px; }
+.sheet .dock-body { padding: 0 14px 16px; }
+.sheet .dock-tab {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 14px;
+}
+.sheet .dock-tab span { writing-mode: horizontal-tb; color: var(--gold); }
+.tab-hint {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: none;
+}
+.tab-caret { margin-left: auto; color: var(--gold); }
+
+@keyframes sheet-rise {
+  from { translate: 0 100%; }
 }
 </style>

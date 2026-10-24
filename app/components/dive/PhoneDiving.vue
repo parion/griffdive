@@ -20,7 +20,6 @@ const emit = defineEmits<{
   failDirective: []
   reporting: [open: boolean]
   spinBonus: [payload: { stars: number, outcome: MissionOutcome }]
-  openKit: []
 }>()
 
 const misfortune = computed(() => activeMisfortune(props.state))
@@ -28,6 +27,7 @@ const strain = computed(() => activeStrain(props.state))
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const directiveFailed = computed(() => props.state.misfortuneFailed)
 const confirmFail = ref(false)
+const kitOpen = ref(false)
 
 const ownPacts = computed(() =>
   (props.self?.pactIds ?? []).map(id => ({ id, failed: props.self?.failedPactIds.includes(id) ?? false })))
@@ -140,12 +140,6 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
       @fail="(diverId, pactId) => emit('fail', diverId, pactId)"
     />
 
-    <KitSnapshot
-      :state="state"
-      :self-id="selfId"
-      @open="emit('openKit')"
-    />
-
     <div
       v-if="isHost"
       class="host-note"
@@ -199,6 +193,13 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         <span class="bar-gate">Waiting on host</span>
       </template>
     </PhoneActionBar>
+
+    <KitDock
+      v-model:open="kitOpen"
+      :state="state"
+      :self-id="selfId"
+      sheet
+    />
   </section>
 
   <MissionReport
@@ -216,7 +217,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 </template>
 
 <style scoped>
-.phone-field { display: flex; flex-direction: column; gap: 11px; min-width: 0; }
+.phone-field { display: flex; flex: 1 0 auto; flex-direction: column; gap: 11px; min-width: 0; }
 .head { display: flex; flex-direction: column; gap: 5px; }
 .kick {
   color: var(--teal);
