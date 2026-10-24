@@ -36,5 +36,4 @@ export interface Warbond {
   displayName: string
   internalName?: string
   imageURL?: string
-  tier?: Tier
 }

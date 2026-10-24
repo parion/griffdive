@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const UPSTREAM_SHA = '23d754d4b25f83d7be5619f2099efe3d3e2bb2e9'
+const UPSTREAM_SHA = 'a9c580acef6ce99a920b9375f1e6252c82e8b1c8'
 const REPORT_ONLY = process.argv.includes('--report')
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -95,7 +95,6 @@ function toWarbond(raw) {
     displayName: raw.displayName,
     internalName: raw.internalName,
     imageURL: raw.imageURL,
-    tier: raw.tier,
   }
 }
 

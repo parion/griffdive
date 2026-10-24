@@ -61,13 +61,13 @@ export interface StartingKit {
 // only kit difference, and it is an explicit mode choice.
 const BASE_KIT = {
   stratagems: [
-    'onetrueflag',
-    'defoliationtool',
+    'cqc1onetrueflag',
+    'cqc9defoliationtool',
     'orbitalemsstrike',
     'orbitalsmokestrike',
     'eaglesmokestrike',
-    'emsmortarsentry',
-    'shieldgeneratorrelay',
+    'am23emsmortarsentry',
+    'fx12shieldgeneratorrelay',
   ],
   primaries: ['r2124constitution'],
   secondaries: [

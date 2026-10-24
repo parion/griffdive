@@ -795,8 +795,10 @@ cache from a bare item list into `{ name, itemIds }` (pre-v16 kits read as "Fall
 normalization deals the mission underway a Brasch's Bargains shelf (`bargainSeed`, a fresh `bargain`
 per diver); `migrateV17toV18` backfills `supportKit` on SEAF runs with the fixed pack they were issued
 (the pack is rolled per diver from then on); `migrateV18toV19` drops the mid-mission draft-skip flag —
-a joiner seated during `diving` now drafts the mission they drop into, so there is nothing to skip.
-The chain's tail also runs the idempotent
+a joiner seated during `diving` now drafts the mission they drop into, so there is nothing to skip;
+`migrateV19toV20` remaps the item ids upstream renamed in the Scope of Authority catalog refresh
+(inventories, caches, bans, bargains and the action log) so held gear survives. The chain's tail
+also runs the idempotent
 `normalizeRoomState` remap unconditionally: session mirrors copy unversioned room state, so a
 legacy variant id or a missing field must be corrected even in a doc stamped with a newer schema.
 Normalization drops

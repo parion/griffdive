@@ -198,6 +198,55 @@ describe('save migration v16 → v17 (Brasch\'s Bargains)', () => {
   })
 })
 
+describe('save migration v19 → v20 (upstream item id corrections)', () => {
+  it('remaps renamed item ids everywhere the state stores them', () => {
+    const state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    const diver = state.divers[0]!
+    const doc: SaveDoc = {
+      ...v1Doc(),
+      schemaVersion: 19,
+      state: {
+        ...state,
+        personalInventories: { p1: ['onetrueflag', 'ma5c', 'r2124constitution'] },
+        legacyCaches: { fallen: { name: 'Fallen diver', itemIds: ['speargun'] } },
+        divers: [{
+          ...diver,
+          bannedItemIds: ['portablehellbomb'],
+          supportKit: ['antitankmines'],
+          forfeitedItemId: 'eaglenapalmstrike',
+          bargain: {
+            excludedIds: ['gp31ultimatum'],
+            boughtItemId: 'fastreconvehicle',
+            boughtKinds: [],
+          },
+        }],
+        actionLog: [{ type: 'FORFEIT_ITEM', playerId: 'p1', itemId: 'onetrueflag' }],
+      },
+    }
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.state.personalInventories.p1).toEqual([
+      'cqc1onetrueflag',
+      'ma5cassaultrifle',
+      'r2124constitution',
+    ])
+    expect(migrated.state.legacyCaches.fallen?.itemIds).toEqual(['s11speargun'])
+    expect(migrated.state.divers[0]).toMatchObject({
+      bannedItemIds: ['b100portablehellbomb'],
+      supportKit: ['md17antitankmines'],
+      forfeitedItemId: 'eaglenapalmairstrike',
+      bargain: {
+        excludedIds: ['gp20ultimatum'],
+        boughtItemId: 'm102gunnerfrv',
+      },
+    })
+    expect(migrated.state.actionLog.at(-1)).toEqual({
+      type: 'FORFEIT_ITEM',
+      playerId: 'p1',
+      itemId: 'cqc1onetrueflag',
+    })
+  })
+})
+
 // v1–v3 wheels carried the front; the legacy shape reads it during migration.
 function legacyWheel(seed: number, misfortuneId: string, front: string): SaveDoc['state']['wheel'] {
   return { seed, misfortuneId, front } as SaveDoc['state']['wheel']

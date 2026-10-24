@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import { ALL_ITEMS, SPECIAL_WARBOND_CODES, WARBONDS } from '~~/shared/data/catalog'
 import { warbondImageUrl } from '~~/shared/data/images'
-import type { RewardTier } from '~~/shared/engine/types'
-import type { Tier, Warbond } from '~~/shared/data/types'
+import type { Warbond } from '~~/shared/data/types'
 
 const { ownedWarbonds, setOwned, toggle } = useOwnedWarbonds()
-
-const TIER_LABEL: Record<Tier, RewardTier> = { c: 'C', b: 'B', a: 'A', s: 'S' }
 
 interface WarbondRow {
   code: string
   displayName: string
   image: string | undefined
-  tier: RewardTier | undefined
   items: number
   special: boolean
 }
@@ -24,7 +20,6 @@ const rows = computed<WarbondRow[]>(() => WARBONDS.map((warbond: Warbond) => ({
   code: warbond.code,
   displayName: warbond.displayName,
   image: warbondImageUrl(warbond),
-  tier: warbond.tier ? TIER_LABEL[warbond.tier] : undefined,
   items: ALL_ITEMS.filter(item => item.warbondCode === warbond.code).length,
   special: SPECIAL_WARBOND_CODES.includes(warbond.code),
 })))
@@ -98,11 +93,6 @@ function isOwned(code: string): boolean {
               >Acquisition</span>
             </span>
           </span>
-          <TierBadge
-            v-if="row.tier"
-            :tier="row.tier"
-            size="sm"
-          />
         </button>
       </li>
     </ul>
@@ -233,8 +223,6 @@ function isOwned(code: string): boolean {
   color: var(--khaki);
   white-space: nowrap;
 }
-
-.warbond :deep(.tier-badge) { position: relative; z-index: 1; flex: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .warbond,

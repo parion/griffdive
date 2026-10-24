@@ -212,8 +212,8 @@ export const RESERVE_STRATAGEMS = [
   'orbitalemsstrike',
   'orbitalsmokestrike',
   'eaglesmokestrike',
-  'emsmortarsentry',
-  'shieldgeneratorrelay',
+  'am23emsmortarsentry',
+  'fx12shieldgeneratorrelay',
 ] as const
 
 // Reward scale-back: difficulty alone buys a base tier — C on diffs 3–5,

@@ -79,12 +79,11 @@ const REGISTRY = [
   { g: 'E', label: 'Griffdivers', c: RED, tint: 'rgba(255,75,62,.09)' },
 ]
 const WARBOND_TILES = [
-  { code: 'mob', name: 'Helldivers Mobilize', items: '33 ITEMS', tier: 'S' as RewardTier | '', focus: false },
-  { code: 'polar', name: 'Polar Patriots', items: '9 ITEMS', tier: 'B' as RewardTier | '', focus: false },
-  { code: 'viper', name: 'Viper Commandos', items: '7 ITEMS', tier: 'B' as RewardTier | '', focus: true },
-  { code: 'store', name: 'Superstore', items: '43 ITEMS', tier: '' as RewardTier | '', focus: false },
+  { code: 'mob', name: 'Helldivers Mobilize', items: '33 ITEMS', focus: false },
+  { code: 'polar', name: 'Polar Patriots', items: '9 ITEMS', focus: false },
+  { code: 'viper', name: 'Viper Commandos', items: '7 ITEMS', focus: true },
+  { code: 'store', name: 'Superstore', items: '43 ITEMS', special: true, focus: false },
 ]
-const warbondTiles = WARBOND_TILES.map(w => ({ ...w, tc: w.tier ? TIER[w.tier] : DIM }))
 
 const fallbackItem = [...ITEMS_BY_ID.values()][0] as Item
 function byId(id: string): Item {
@@ -96,7 +95,7 @@ const TILE_SPECS: TileSpec[] = [
   { id: 'ac8autocannon', t: 'A', cat: 'SUPPORT' },
   { id: 'las99quasarcannon', t: 'S', cat: 'SUPPORT', tag: 'NEW' },
   { id: 'eaglesmokestrike', t: 'C', cat: 'EAGLE', tag: 'RESERVE', reserve: true },
-  { id: 'sh20shieldgeneratorpack', t: 'A', cat: 'BACKPACK', out: true },
+  { id: 'sh32shieldgeneratorpack', t: 'A', cat: 'BACKPACK', out: true },
   { id: 'eagle500kgbomb', t: 'S', cat: 'EAGLE', tag: 'CEILING', lead: true },
 ]
 
@@ -227,7 +226,7 @@ const regAfter = REGISTRY.map((r, i) => ({
   you: i === 4,
 }))
 
-const kitStratagems = ['eaglesmokestrike', 'orbitalemsstrike', 'shieldgeneratorrelay', 'emsmortarsentry'].map((id) => {
+const kitStratagems = ['eaglesmokestrike', 'orbitalemsstrike', 'fx12shieldgeneratorrelay', 'am23emsmortarsentry'].map((id) => {
   const it = byId(id)
   return { id, name: it.displayName, img: itemImageUrl(it) }
 })
@@ -2684,17 +2683,17 @@ onBeforeUnmount(() => {
             style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; height: 124px"
           >
             <button
-              v-for="w in warbondTiles"
+              v-for="w in WARBOND_TILES"
               :key="w.code"
               :class="['wbk', warbonds[w.code] ? 'wb-on' : 'wb-off', w.focus ? 'wb-f' : '']"
               :aria-pressed="warbonds[w.code]"
-              :aria-label="`${w.name}, ${w.items.toLowerCase()}, ${w.tier ? `warbond tier ${w.tier}` : 'acquisition special'}`"
+              :aria-label="`${w.name}, ${w.items.toLowerCase()}${w.special ? ', acquisition special' : ''}`"
               type="button"
               @click="warbonds[w.code] = !warbonds[w.code]"
             >
               <span class="ban">
                 <span
-                  v-if="!w.tier"
+                  v-if="w.special"
                   class="hatch"
                   style="position: absolute; inset: 0; display: grid; place-items: center; border-bottom: 1px dashed #3A3F2E"
                 >
@@ -2723,11 +2722,6 @@ onBeforeUnmount(() => {
                 >{{ w.name }}</span>
                 <span style="display: flex; align-items: center; justify-content: space-between">
                   <span style="font-size: 9px; font-weight: 700; letter-spacing: .12em; color: #9A9B82">{{ w.items }}</span>
-                  <span
-                    class="wbtier"
-                    style="display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 3px; font-size: 10px; font-weight: 700"
-                    :style="{ color: w.tc, border: `1px solid ${w.tc}` }"
-                  >{{ w.tier || '—' }}</span>
                 </span>
               </span>
             </button>
@@ -3176,7 +3170,6 @@ onBeforeUnmount(() => {
 .wb-off:hover .ban, .wb-off:focus-visible .ban, .wb-f.wb-off .ban { filter: grayscale(.1) brightness(.92) blur(0); }
 .wb-on:hover .ban, .wb-on:focus-visible .ban { filter: brightness(1.14); }
 .wb-off .wbname { color: #9A9B82; }
-.wb-off .wbtier { opacity: .55; }
 .wb-f { outline: 2px solid #FFD642; outline-offset: 3px; border-color: #8A8C6E; }
 
 @keyframes riseLoop {

@@ -138,7 +138,7 @@ const skeletonActions: EngineAction[] = [
   { type: 'SET_WARBONDS', playerId: 'p1', warbondCodes: ['warbond3'] },
   { type: 'REPORT_RESULT', outcome: 'success', stars: 5 },
   { type: 'REPORT_RESULT', outcome: 'failure', stars: 2, timePct: 0.5 },
-  { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: 'onetrueflag' },
+  { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: 'cqc1onetrueflag' },
   { type: 'PICK_REWARD', playerId: 'p1', optionId: 'x' },
   { type: 'ADVANCE' },
   { type: 'END_DIVE' },
@@ -160,7 +160,7 @@ describe('reduce (purity + no-op safety)', () => {
     expect(reduce(base, { type: 'ACCEPT_MISFORTUNE', accepted: true })).toBe(base)
     expect(reduce(base, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })).toBe(base)
     expect(reduce(base, { type: 'PICK_REWARD', playerId: 'p1', optionId: 'x' })).toBe(base)
-    expect(reduce(base, { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: 'onetrueflag' })).toBe(base)
+    expect(reduce(base, { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: 'cqc1onetrueflag' })).toBe(base)
     expect(reduce(base, { type: 'ADVANCE' })).toBe(base)
     // No pact locks before the wheel decision.
     const spun = spunState(42)
@@ -1106,7 +1106,7 @@ describe('REPORT_RESULT (failure) → forfeit', () => {
     expect(reduce(state, { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: outside! })).toBe(state)
     expect(reduce(state, { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: startingItemIds(SETTINGS.variant)[0]! })).toBe(state)
     expect(reduce(state, { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: 'ghostgun' })).toBe(state)
-    expect(reduce(state, { type: 'FORFEIT_ITEM', playerId: 'ghost', itemId: 'onetrueflag' })).toBe(state)
+    expect(reduce(state, { type: 'FORFEIT_ITEM', playerId: 'ghost', itemId: 'cqc1onetrueflag' })).toBe(state)
   })
 
   it('waits for every present diver, then removes each pick together', () => {
@@ -1177,7 +1177,7 @@ describe('REPORT_RESULT (failure) → forfeit', () => {
 
   it('cannot forfeit outside the forfeit phase', () => {
     const state = divingState(42)
-    expect(reduce(state, { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: 'onetrueflag' })).toBe(state)
+    expect(reduce(state, { type: 'FORFEIT_ITEM', playerId: 'p1', itemId: 'cqc1onetrueflag' })).toBe(state)
   })
 })
 

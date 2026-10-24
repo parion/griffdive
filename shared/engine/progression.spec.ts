@@ -44,7 +44,7 @@ describe('starting kits', () => {
   it('builds one personal kit per diver — stratagems included, no shared pool', () => {
     const kit = startingItemIds('medium')
     expect(kit).toContain('r2124constitution')
-    expect(kit).toContain('onetrueflag')
+    expect(kit).toContain('cqc1onetrueflag')
     expect(kit.length).toBe(STARTING_KITS.medium.stratagems.length
       + STARTING_KITS.medium.primaries.length
       + STARTING_KITS.medium.secondaries.length
