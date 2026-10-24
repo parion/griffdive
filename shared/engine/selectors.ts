@@ -391,10 +391,6 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   if (state.offerSeed === null || !state.lastReport || state.lastReport.outcome !== 'success') {
     return []
   }
-  // Seated mid-mission: the squad dove without them, so the draft isn't theirs.
-  if (diver.skipsCurrentDraft) {
-    return []
-  }
   const seed = diverOfferSeed(state, diver)
   // The pool is the diver's own: warbonds are personal purchases, so each
   // diver rolls offers against the catalog they can actually use.
@@ -446,7 +442,7 @@ export function earnedItemsOf(state: DiveState, diver: DiverState): Item[] {
 // at-stake gear always owes something; one holding only the surplus owes nothing.
 // S+ has no items, so it stakes as S.
 export function forfeitOptionsFor(state: DiveState, diver: DiverState): Item[] {
-  if (state.lastReport?.outcome !== 'failure' || diver.skipsCurrentDraft) {
+  if (state.lastReport?.outcome !== 'failure') {
     return []
   }
   const kit = earnedItemsOf(state, diver)
@@ -484,7 +480,7 @@ export function forfeitSettled(state: DiveState): boolean {
 export interface DraftSummary {
   options: RewardOption[]
   ceiling: RewardTier | null
-  status: 'choosing' | 'banked' | 'banned' | 'skipped'
+  status: 'choosing' | 'banked' | 'banned'
   bankedOptionId: string | null
   bankedItemId: string | null
   bannedOptionIds: string[]
@@ -500,10 +496,7 @@ export function draftSummaryFor(state: DiveState, diver: DiverState): DraftSumma
       ?? null
   const banned = new Set(diver.rewardBanned ? diver.bannedItemIds : [])
   let status: DraftSummary['status'] = 'choosing'
-  if (diver.skipsCurrentDraft) {
-    status = 'skipped'
-  }
-  else if (diver.rewardBanned) {
+  if (diver.rewardBanned) {
     status = 'banned'
   }
   else if (bankedItemId !== null) {
@@ -927,7 +920,7 @@ export function canFailMisfortune(state: DiveState): boolean {
 
 export function allDiversPicked(state: DiveState): boolean {
   return activeDivers(state).every(
-    diver => diver.pickedOptionId !== null || diver.rewardBanned || diver.skipsCurrentDraft,
+    diver => diver.pickedOptionId !== null || diver.rewardBanned,
   )
 }
 
@@ -940,7 +933,7 @@ export function awaitingDiverIds(state: DiveState): string[] {
   }
   if (state.phase === 'rewards') {
     return activeDivers(state)
-      .filter(diver => diver.pickedOptionId === null && !diver.rewardBanned && !diver.skipsCurrentDraft)
+      .filter(diver => diver.pickedOptionId === null && !diver.rewardBanned)
       .map(diver => diver.id)
   }
   if (state.phase === 'forfeit') {

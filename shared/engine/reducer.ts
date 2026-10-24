@@ -80,7 +80,6 @@ function resetDivers(state: DiveState): DiverState[] {
     failedPactIds: [],
     pickedOptionId: null,
     forfeitedItemId: null,
-    skipsCurrentDraft: false,
     rewardRerollSeed: null,
     rewardBanned: false,
     draftExcludedIds: null,
@@ -531,20 +530,16 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         : divers
       const honorsPatch = revokeHonors ? { bonusSeed: null, bonusWinnerIds: [] } : {}
       if (action.outcome === 'success') {
-        // The sample haul banks as credits into every diver's purse. A diver
-        // seated mid-mission sat out the dive, so the haul isn't theirs.
-        // The deal freezes each diver's exclusions, so the offer every client
-        // derives stays put for the whole draft window.
+        // The sample haul banks as credits into every diver's purse — a
+        // mid-mission joiner dove too. The deal freezes each diver's exclusions,
+        // so the offer every client derives stays put for the whole draft
+        // window.
         const haul = missionHaul(report)
-        const divers = settleHonors(state.divers.map(diver =>
-          diver.skipsCurrentDraft
-            ? diver
-            : {
-                ...diver,
-                credits: diver.credits + haul,
-                draftExcludedIds: [...(state.personalInventories[diver.id] ?? []), ...diver.bannedItemIds],
-              },
-        ))
+        const divers = settleHonors(state.divers.map(diver => ({
+          ...diver,
+          credits: diver.credits + haul,
+          draftExcludedIds: [...(state.personalInventories[diver.id] ?? []), ...diver.bannedItemIds],
+        })))
         return commit(state, {
           phase: 'rewards',
           lastReport: report,
@@ -558,8 +553,8 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         }, action)
       }
       // A failure deals every diver their forfeit offer, rolled like a draft off
-      // the mission's offer seed. With nothing owed (empty kits, or only
-      // mid-mission joiners present) the operation restarts at once.
+      // the mission's offer seed. With nothing owed (empty kits) the operation
+      // restarts at once.
       const failed = commit(state, {
         phase: 'forfeit',
         lastReport: report,
@@ -900,10 +895,9 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       )) {
         return state
       }
-      // Only one diver can win (solo, or a squad where everyone else sat the
-      // draft out): the selection is redundant, so the spin resolves the
-      // ceremony and banks the token immediately.
-      const candidates = activeDivers(state).filter(diver => !diver.skipsCurrentDraft)
+      // Only one diver can win (solo): the selection is redundant, so the spin
+      // resolves the ceremony and banks the token immediately.
+      const candidates = activeDivers(state)
       if (candidates.length === 1) {
         const winner = candidates[0]!
         const divers = state.divers.map(diver =>

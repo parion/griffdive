@@ -118,7 +118,6 @@ export function joinDiver(
     ...(state.settings ? { supportKit } : {}),
     catchUpGranted,
     catchUpOwed: catchUpGranted,
-    skipsCurrentDraft: state.phase === 'diving',
     rewardTokens: 0,
     // Credits are personal and do not survive leaving a dive: a rejoining
     // Helldiver starts their purse empty again.
@@ -195,7 +194,6 @@ function sanitizeDiver(raw: unknown): DiverState | null {
     ...(Array.isArray(diver.supportKit) ? { supportKit: stringArray(diver.supportKit, 50) } : {}),
     catchUpGranted: clampInt(diver.catchUpGranted, 0, CATCHUP_CAP, 0),
     catchUpOwed: clampInt(diver.catchUpOwed, 0, CATCHUP_CAP, 0),
-    skipsCurrentDraft: diver.skipsCurrentDraft === true,
     rewardTokens: clampInt(diver.rewardTokens, 0, REWARD_TOKEN_CAP, 0),
     credits: clampInt(diver.credits, 0, 1_000_000, 0),
     bargain: sanitizeBargain(diver.bargain),
@@ -306,13 +304,11 @@ export function resolveFrontPlan(
 }
 
 // A forked host is the only diver left at the forfeit screen, so nobody may be
-// left to choose: nothing earned beyond the starting kit, a mid-mission seating
-// that dove nothing,
-// or an item already chosen with every other diver gone. The failure would
-// deadlock. Resolve it the way the reducer settles a forfeit: apply the chosen
-// item, or — when the host owed nothing — strip one item from a parked cache
-// (the squad's loss still stands), then restart the operation. Mirrors
-// resetOperation.
+// left to choose: nothing earned beyond the starting kit, or an item already
+// chosen with every other diver gone. The failure would deadlock. Resolve it
+// the way the reducer settles a forfeit: apply the chosen item, or — when the
+// host owed nothing — strip one item from a parked cache (the squad's loss
+// still stands), then restart the operation. Mirrors resetOperation.
 function resolveStrandedForfeit(state: DiveState): DiveState {
   if (state.phase !== 'forfeit') {
     return state
@@ -326,7 +322,7 @@ function resolveStrandedForfeit(state: DiveState): DiveState {
   const starting = new Set(state.settings
     ? startingItemIds(state.settings.variant)
     : [])
-  const owes = !owner.skipsCurrentDraft && kit.some(id => !starting.has(id))
+  const owes = kit.some(id => !starting.has(id))
   if (!chosen && owes) {
     return state
   }
@@ -363,7 +359,6 @@ function resolveStrandedForfeit(state: DiveState): DiveState {
       failedPactIds: [],
       pickedOptionId: null,
       forfeitedItemId: null,
-      skipsCurrentDraft: false,
       rewardRerollSeed: null,
       rewardBanned: false,
       draftExcludedIds: null,

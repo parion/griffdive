@@ -77,7 +77,6 @@ function statusOf(diver: DiverState): string {
     case 'pacts': return diver.pactsLocked ? 'Sworn ✓' : 'Swearing'
     case 'diving': return 'In game'
     case 'rewards':
-      if (diver.skipsCurrentDraft) return 'Sat out'
       if (diver.rewardBanned) return 'Banned'
       if (diver.pickedOptionId) return 'Banked ✓'
       return 'Drafting'

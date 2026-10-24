@@ -312,7 +312,6 @@ describe('misfortuneStrandedDivers', () => {
       warbondCodes: [],
       catchUpGranted: 0,
       catchUpOwed: 0,
-      skipsCurrentDraft: false,
       rewardTokens: 0,
       credits: 0,
       bargain: null,
@@ -365,17 +364,16 @@ describe('awaitingDiverIds', () => {
     expect(awaitingDiverIds(locked)).toEqual(['p2'])
   })
 
-  it('lists the divers with an open reward draft, skipping banned and sat-out drafts', () => {
+  it('lists the divers with an open reward draft, skipping banned and picked drafts', () => {
     const base = pactsWithTwoDivers()
     const host = base.divers[0]!
     const rewards: DiveState = {
       ...base,
       phase: 'rewards',
       divers: [
-        { ...host, pickedOptionId: null, rewardBanned: false, skipsCurrentDraft: false },
-        { ...host, id: 'p2', pickedOptionId: 'x', rewardBanned: false, skipsCurrentDraft: false },
-        { ...host, id: 'p3', pickedOptionId: null, rewardBanned: true, skipsCurrentDraft: false },
-        { ...host, id: 'p4', pickedOptionId: null, rewardBanned: false, skipsCurrentDraft: true },
+        { ...host, pickedOptionId: null, rewardBanned: false },
+        { ...host, id: 'p2', pickedOptionId: 'x', rewardBanned: false },
+        { ...host, id: 'p3', pickedOptionId: null, rewardBanned: true },
       ],
     }
     expect(awaitingDiverIds(rewards)).toEqual(['host'])
