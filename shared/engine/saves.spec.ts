@@ -77,7 +77,6 @@ describe('save migration v7 → v8 (alpha baseline freeze)', () => {
     expect(migrated.state.divers[0]).toMatchObject({
       catchUpGranted: 0,
       catchUpOwed: 0,
-      skipsCurrentDraft: false,
       failedPactIds: [],
       rewardTokens: 0,
       bannedItemIds: [],
@@ -377,6 +376,29 @@ describe('save migration v17 → v18 (rolled SEAF support pack)', () => {
   it('keeps a rolled pack it finds on the diver', () => {
     const seaf = createDiveState({ variant: 'hard', mode: 'seaf' }, 'p1', 'Griffin')
     expect(normalizeRoomState(seaf).divers[0]!.supportKit).toEqual(seaf.divers[0]!.supportKit)
+  })
+})
+
+describe('save migration v18 → v19 (mid-mission joiners draft)', () => {
+  it('drops the retired draft-skip flag from a saved diver', () => {
+    const state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    const doc = v1Doc()
+    doc.schemaVersion = 18
+    doc.state = {
+      ...state,
+      divers: state.divers.map(diver => ({ ...diver, skipsCurrentDraft: true })),
+    } as unknown as SaveDoc['state']
+    const migrated = normalizeSaveDoc(doc)!
+    expect(migrated.state.divers[0]).not.toHaveProperty('skipsCurrentDraft')
+  })
+
+  it('drops the flag from an unversioned room on read', () => {
+    const state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')
+    const room = {
+      ...state,
+      divers: state.divers.map(diver => ({ ...diver, skipsCurrentDraft: true })),
+    } as unknown as DiveState
+    expect(normalizeRoomState(room).divers[0]).not.toHaveProperty('skipsCurrentDraft')
   })
 })
 

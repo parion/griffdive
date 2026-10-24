@@ -63,8 +63,6 @@ function statusLabel(card: typeof cards.value[number]): string {
       return 'Banked'
     case 'banned':
       return 'Banned'
-    case 'skipped':
-      return 'Sat out'
     default:
       return 'Choosing'
   }
@@ -86,7 +84,6 @@ function statusLabel(card: typeof cards.value[number]): string {
         :class="{
           done: card.summary.status === 'banked',
           banned: card.summary.status === 'banned',
-          skipped: card.summary.status === 'skipped',
         }"
         :style="{ '--i': index }"
         :aria-label="`${card.name}: ${statusLabel(card)}${card.bankedItem ? ` ${card.bankedItem.displayName}` : ''}`"
@@ -146,7 +143,7 @@ function statusLabel(card: typeof cards.value[number]): string {
           v-else
           class="card-note"
         >
-          Sat out this mission’s draft.
+          No offer dealt this mission.
         </p>
       </article>
     </div>
@@ -174,7 +171,6 @@ function statusLabel(card: typeof cards.value[number]): string {
   min-width: 0;
   animation: riseIn 0.42s var(--ease-out) calc(var(--i) * 90ms) both;
 }
-.squad-pick.skipped { opacity: 0.6; }
 
 .card-head { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .card-name {

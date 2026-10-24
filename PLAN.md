@@ -642,7 +642,8 @@ reducer tie/empty-award tests and the v14→v15 migration tests.
 Preserve these when touching the related code:
 
 - **Seating window:** a fresh join during `rewards` is rejected cleanly with `dive-locked`.
-- **`skipsCurrentDraft`:** a diver seated during `diving` never blocks the reward draft.
+- **Mid-mission seating:** a diver seated during `diving` drafts that mission's rewards (and banks its
+  credits, stands for its forfeit, and can win its Squad Honors) instead of sitting out.
 - **Field Promotion:** sizing `difficulty − variant start` capped at `CATCHUP_CAP`, base-tier-only
   offers, cache-vs-promotion one-time choice, self-service claims.
 - **Host authority & coercion:** self-service actions coerced to sender; `FAIL_PACT` accepted from

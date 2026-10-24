@@ -321,7 +321,7 @@ the pure `forkCrusade(state, ownerId, name)` in `shared/engine/room.ts`. The rul
   settings) is refused; the client-supplied seed is sanitized (divers defaulted, difficulty and array
   bounds clamped) before storage.
 - **No forfeit deadlock**: a forked host stranded at `forfeit` with nothing to choose — nothing
-  earned beyond the starting kit (or a mid-mission seating), the missing kits parked as caches the offer never draws from —
+  earned beyond the starting kit, the missing kits parked as caches the offer never draws from —
   resolves the failure (one item stripped from a cache when one exists) and restarts the operation.
   A host who had already chosen has that item removed instead.
 
