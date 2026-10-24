@@ -65,11 +65,6 @@ function toggle(code: string, checked: boolean): void {
           >
         </span>
         <span class="wb-name">{{ warbond.displayName }}</span>
-        <span
-          v-if="warbond.tier"
-          class="tb wb-tier"
-          :data-tier="warbond.tier"
-        >{{ warbond.tier }}</span>
       </label>
     </div>
   </div>
@@ -120,5 +115,4 @@ function toggle(code: string, checked: boolean): void {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.wb-tier { font-size: 0.62rem; min-width: 1.15rem; padding: 0.02rem 0.2rem; }
 </style>

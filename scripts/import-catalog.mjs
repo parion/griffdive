@@ -95,7 +95,6 @@ function toWarbond(raw) {
     displayName: raw.displayName,
     internalName: raw.internalName,
     imageURL: raw.imageURL,
-    tier: raw.tier,
   }
 }
 
