@@ -33,7 +33,7 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
    extracts. Objectives complete + squad wipe = failure (extraction rule).
 5. **Report** — squad records outcome: success (stars 1–max, optional time %) or failure (no stars,
    no reward draft — each diver faces a forfeit offer instead). On a full-star clear the report
-   window also spins **bonus honors** — a random end-screen stat the host resolves to a winner, who
+   window also rolls **bonus honors** as the report files — a random end-screen stat the host resolves to a winner, who
    banks a reward token (see Reward tokens & squad honors).
 6. **Rewards** (success only) — the host files the report (stars + time + the samples the squad
    extracted), which banks a credit haul into every diver's purse. Each diver is then dealt N
@@ -621,13 +621,17 @@ four-diver squad every mission, a three- or two-diver squad every other mission,
 every third. Off the cadence or short of full stars, the report card states why instead of offering
 the spin.
 
-When due, the contest is **spun on click** (`SPIN_BONUS{seed, stars?, outcome?}`, host-only) from
-the report form. The form passes the stars/outcome it is about to file because `REPORT_RESULT` has
-not landed yet; a spin from the rewards phase reads the filed report instead. The seed is what
-syncs: `rollBonus` (stream salt 4) derives the same stat on every client. **The pending report must
-still qualify:** if the host files a failure or a lower-star clear after spinning, `REPORT_RESULT`
-strikes the seed and claws back any token the spin auto-banked, so changing the result cannot mint
-honors. **The app never captures the stats**: the host reads HD2's stats screen and names the
+When due, the contest is **spun by filing the report**: there is no spin button. Filing a due
+report sends `SPIN_BONUS{seed, stars?, outcome?}` (host-only) and the report card's slot reel winds
+down onto the seeded stat; once it lands the report files and the rewards screen comes in. The wait
+is presentation only (a guard files anyway if the spin never arrives). The form passes the
+stars/outcome it is about to file because `REPORT_RESULT` has not landed yet; a spin from the
+rewards phase reads the filed report instead. The seed is what syncs: `rollBonus` (stream salt 4)
+derives the same stat on every client. When honors are not due the card replaces the reel with a
+plain message naming the next mission they return (`missionsUntilHonors`) or the full-star
+requirement. **The pending report must still qualify:** if the filed report is a failure or a
+lower-star clear, `REPORT_RESULT` strikes the seed and claws back any token the spin auto-banked, so
+changing the result cannot mint honors. **The app never captures the stats**: the host reads HD2's stats screen and names the
 winner(s) (`AWARD_BONUS{playerIds}`, host-only) from the squad dock. Ties are common, so an award
 names **one or several** divers — every tied diver banks a token. Awarding banks each winner's **one
 flexible reward token** immediately (capped at `REWARD_TOKEN_CAP`, 3); there is no separate claim
@@ -640,8 +644,9 @@ diver's own offer. A reroll must move (a seed that re-derives the same offer is 
 (`BAN_REWARDS`) remains in the engine for older sessions and saves, but the lit-pass UI no longer
 offers it; the redesigned draft spends tokens on rerolls only.
 
-The ceremony is a **soft gate**: `ADVANCE` never waits on it, and an unspun/unawarded contest dies
-with the mission reset. Claimed tokens persist across missions; reroll seeds and the old ban flag
+The ceremony is a **hard gate**: once a contest is spun, `ADVANCE` is refused (`honorsPending`) until
+the host names a winner, and every Next mission / Start operation control locks as *Award Squad
+Honors first*. The stat stays out of the squad dock until the report's reel has landed. Claimed tokens persist across missions; reroll seeds and the old ban flag
 reset with the pacts. Negative targeting (bans) did not violate "guarantee rarity class, never
 specific items" — it narrows a pool, it never names a reward.
 

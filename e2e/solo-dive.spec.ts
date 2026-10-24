@@ -102,10 +102,9 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.getByRole('button', { name: 'Set time remaining to 60 percent' }).click()
   await expect(page.locator('.time-value')).toContainText('60')
 
-  // Honors live in the report window now: spin while the numbers are in hand.
-  await page.getByRole('button', { name: 'Spin the stat' }).click()
-  await expect(page.getByText('GRIFFON banked the token.', { exact: true })).toBeVisible()
-
+  // Honors are due on this mission: there is no spin button, the reel rolls
+  // when the report files and the rewards screen follows it.
+  await expect(page.getByRole('button', { name: 'Spin the stat' })).toHaveCount(0)
   await page.getByRole('button', { name: 'File report' }).click()
 
   await expect(page.getByRole('heading', { name: 'Bank one item' })).toBeVisible()
@@ -145,8 +144,8 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.getByRole('button', { name: 'Extracted' }).click()
 
   // Honors aren't due on mission 2 (the solo cadence is every third mission),
-  // so the report says why instead of offering the spin.
-  await expect(page.getByRole('region', { name: 'Squad Honors' })).toContainText('every 3 missions')
+  // so the card says when the next spin lands instead of showing the reel.
+  await expect(page.getByRole('region', { name: 'Squad Honors' })).toContainText('Next Squad Honors in 2 missions')
   await page.getByRole('button', { name: 'File report' }).click()
 
   // The banked honors token buys a reroll of the whole draft.

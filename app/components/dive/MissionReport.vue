@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   SAMPLE_CREDITS,
-  bonusIntervalFor,
   maxStarsFor,
   sampleReportCeiling,
 } from '~~/shared/engine/config'
@@ -10,11 +9,12 @@ import { missionHaul, optionsForDiver, timeHaulMultiplier } from '~~/shared/engi
 import {
   bonusEligibleFor,
   bonusFor,
-  bonusWinners,
   currentFront,
+  missionsUntilHonors,
   squadSize,
 } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionOutcome, MissionReport, SampleCounts } from '~~/shared/engine/types'
+import { HONORS_DWELL_MS } from '~/utils/motion'
 
 const props = withDefaults(defineProps<{
   state: DiveState
@@ -82,17 +82,15 @@ const honorsEligible = computed(() =>
   ))
 
 const honors = computed(() => bonusFor(props.state))
-const winners = computed(() => bonusWinners(props.state))
-const honorsAwarded = computed(() => props.state.bonusWinnerIds.length > 0)
+const untilHonors = computed(() =>
+  missionsUntilHonors(props.state.missionIndex, squadSize(props.state)))
+// Why the reel is parked, and when it next spins: the cadence is the hard
+// limit, the full-star clear the condition on a due mission.
 const honorsReason = computed(() => {
-  if (props.outcome !== 'success') {
-    return 'No honors on a failed mission.'
+  if (untilHonors.value > 0) {
+    return `Next Squad Honors ${untilHonors.value === 1 ? 'next mission' : `in ${untilHonors.value} missions`}.`
   }
-  if (stars.value < maxStars.value) {
-    return 'Squad Honors need a full-star clear.'
-  }
-  const interval = bonusIntervalFor(squadSize(props.state))
-  return `Honors are due every ${interval} mission${interval === 1 ? '' : 's'} for a squad of ${squadSize(props.state)}.`
+  return 'Squad Honors need a full-star clear.'
 })
 
 const timeCells = Array.from({ length: 20 }, (_, index) => (index + 1) * 5)
@@ -101,16 +99,47 @@ function setTime(value: number): void {
   timePct.value = Math.min(100, Math.max(0, value))
 }
 
-function submit(): void {
+// Filing a due report rolls the honors reel first: the spin goes out, the reel
+// winds down onto the seeded stat, and only then is the report filed and the
+// rewards screen brought in. The wait is presentation, the seed is the rule.
+const filing = ref(false)
+let dwellTimer: ReturnType<typeof setTimeout> | undefined
+let spinGuard: ReturnType<typeof setTimeout> | undefined
+const SPIN_GUARD_MS = 5000
+
+function file(): void {
+  clearTimeout(dwellTimer)
+  clearTimeout(spinGuard)
+  filing.value = false
   emit('submit', report.value)
 }
 
-function spin(): void {
-  if (!honorsEligible.value || honors.value) {
+function submit(): void {
+  if (filing.value) {
     return
   }
+  if (!honorsEligible.value || honors.value) {
+    emit('submit', report.value)
+    return
+  }
+  filing.value = true
   emit('spinBonus', { stars: stars.value, outcome: props.outcome })
+  // A refused or lost spin must not strand the squad on the form.
+  spinGuard = setTimeout(file, SPIN_GUARD_MS)
 }
+
+function reelLanded(): void {
+  if (!filing.value) {
+    return
+  }
+  clearTimeout(spinGuard)
+  dwellTimer = setTimeout(file, HONORS_DWELL_MS)
+}
+
+onBeforeUnmount(() => {
+  clearTimeout(dwellTimer)
+  clearTimeout(spinGuard)
+})
 </script>
 
 <template>
@@ -257,7 +286,7 @@ function spin(): void {
 
       <section
         class="honors-card"
-        :class="{ live: honorsEligible, done: honorsAwarded }"
+        :class="{ live: honorsEligible, rolling: filing }"
         aria-label="Squad Honors"
       >
         <div class="honors-id">
@@ -268,110 +297,22 @@ function spin(): void {
           <span class="honors-copy">
             <span class="disp">Squad Honors</span>
             <span class="tiny">
-              {{ honorsEligible ? 'Spin now so the squad knows what to chase' : honorsReason }}
+              {{ !honorsEligible ? 'Not this mission' : filing ? 'Rolling the stat…' : honors ? 'Stat drawn' : 'The stat rolls when you file' }}
             </span>
           </span>
         </div>
 
-        <button
-          v-if="honorsEligible && !honors"
-          class="honors-spin"
-          type="button"
-          @click="spin"
+        <HonorsReel
+          v-if="honorsEligible"
+          :stat="honors"
+          @landed="reelLanded"
+        />
+        <p
+          v-else
+          class="honors-off"
         >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            aria-hidden="true"
-          >
-            <rect
-              x="3.5"
-              y="3.5"
-              width="17"
-              height="17"
-              rx="4.5"
-            />
-            <g
-              fill="currentColor"
-              stroke="none"
-            >
-              <circle
-                cx="8.3"
-                cy="8.3"
-                r="1.5"
-              />
-              <circle
-                cx="15.7"
-                cy="8.3"
-                r="1.5"
-              />
-              <circle
-                cx="12"
-                cy="12"
-                r="1.5"
-              />
-              <circle
-                cx="8.3"
-                cy="15.7"
-                r="1.5"
-              />
-              <circle
-                cx="15.7"
-                cy="15.7"
-                r="1.5"
-              />
-            </g>
-          </svg>
-          Spin the stat
-        </button>
-
-        <span
-          v-else-if="honors"
-          class="honors-stat"
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            aria-hidden="true"
-          >
-            <path d="M13 2 4 14h6l-1 8 9-12h-6z" />
-          </svg>
-          <b class="disp">{{ honors.label }}</b>
-        </span>
-
-        <span
-          v-if="honors"
-          class="honors-note"
-        >
-          <template v-if="honorsAwarded">
-            {{ winners.length === 1 ? upperName(winners[0]!.name) : `${winners.length} divers tied` }} banked the token.
-          </template>
-          <template v-else-if="squadSize(state) === 1">
-            Token banked.
-          </template>
-          <template v-else>
-            Award the token from the squad bar.
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <path d="M12 4v16M5 13l7 7 7-7" />
-            </svg>
-          </template>
-        </span>
+          {{ honorsReason }}
+        </p>
       </section>
     </template>
 
@@ -398,6 +339,7 @@ function spin(): void {
       <button
         class="back"
         type="button"
+        :disabled="filing"
         @click="emit('cancel')"
       >
         Back to the field
@@ -405,6 +347,7 @@ function spin(): void {
       <button
         class="cta cut cta-sweep"
         type="button"
+        :disabled="filing"
         @click="submit"
       >
         {{ outcome === 'success' ? 'File report' : 'File failure' }}
@@ -427,6 +370,7 @@ function spin(): void {
         <button
           class="bar-alt"
           type="button"
+          :disabled="filing"
           @click="emit('cancel')"
         >
           Back
@@ -436,6 +380,7 @@ function spin(): void {
         <button
           class="bar-cta cta-sweep"
           type="button"
+          :disabled="filing"
           @click="submit"
         >
           <span class="disp">{{ outcome === 'success' ? 'File report' : 'File failure' }}</span>
@@ -607,18 +552,26 @@ function spin(): void {
 .haul-value :deep(.credit-mark) { width: 24px; height: 24px; }
 
 .honors-card {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 16px 22px;
-  padding: 15px 20px;
+  gap: 0 22px;
+  padding: 0;
   background: linear-gradient(90deg, rgba(255, 214, 66, 0.09), var(--panel) 45%);
-  box-shadow: inset 0 0 0 1px var(--line-3);
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
-.honors-card.live { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, var(--line-3)); }
-.honors-card.done { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--teal) 45%, var(--line-3)); }
-.honors-id { display: flex; align-items: center; gap: 12px; }
+/* The frame sits above the flush reel so the card edge stays unbroken. */
+.honors-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 1px var(--line-3);
+  pointer-events: none;
+}
+.honors-card.live::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, var(--line-3)); }
+.honors-card.rolling::after { box-shadow: inset 0 0 0 1px var(--gold), inset 0 0 22px rgba(255, 214, 66, 0.2); }
+.honors-id { display: flex; align-items: center; gap: 12px; padding: 14px 0 14px 20px; }
 .honors-hex {
   display: grid;
   place-items: center;
@@ -633,38 +586,14 @@ function spin(): void {
 }
 .honors-copy { display: flex; flex-direction: column; gap: 2px; }
 .honors-copy .disp { font-size: 18px; }
-.honors-spin {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 46px;
-  padding: 0 16px;
-  border: 0;
-  background: var(--gold);
-  color: var(--on-gold);
-  font: 800 13px var(--font-body);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.honors-stat {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 46px;
-  padding: 0 14px;
-  background: var(--ground);
-  box-shadow: inset 0 0 0 1px var(--gold), 0 0 18px rgba(255, 214, 66, 0.22);
-  color: var(--gold);
-}
-.honors-stat .disp { font-size: 18px; }
-.honors-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-left: auto;
+.honors-off {
+  flex: 1 1 220px;
+  margin: 0;
+  padding: 14px 20px;
   color: var(--khaki);
-  font-size: 13px;
+  font-size: 15px;
+  line-height: 1.4;
+  text-align: right;
 }
 
 .fail-card { max-width: 720px; }
@@ -691,6 +620,8 @@ function spin(): void {
   cursor: pointer;
 }
 .back:hover { color: var(--text); }
+.back:disabled { opacity: 0.4; cursor: not-allowed; text-decoration: none; }
+.cta:disabled { opacity: 0.6; cursor: progress; }
 .cta {
   display: inline-flex;
   align-items: center;
@@ -727,6 +658,7 @@ function spin(): void {
   .stars-card :deep(.star-glyph) { width: 2.5rem; height: 2.5rem; }
   .report-actions { justify-content: stretch; }
   .cta { flex: 1; min-width: 0; }
-  .honors-note { margin-left: 0; }
+  .honors-id { padding-right: 20px; }
+  .honors-off { padding-top: 0; text-align: left; }
 }
 </style>

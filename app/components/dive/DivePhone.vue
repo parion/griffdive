@@ -70,7 +70,8 @@ function openSteamFromSquad(): void {
 
 const bargainsOpen = computed(() => !props.kicked && props.self !== null && !bargainsClosedReason(props.state))
 const lamp = computed(() => (props.self ? bargainLamp(props.state, props.self) : 'off'))
-const honors = computed(() => bonusFor(props.state))
+// Held back while the report's reel is still rolling.
+const honors = computed(() => (props.state.phase !== 'diving' ? bonusFor(props.state) : null))
 const honorsWinners = computed(() => bonusWinners(props.state).map(diver => upperName(diver.name)))
 const honorsAwarded = computed(() => Boolean(props.state.bonusWinnerIds.length))
 

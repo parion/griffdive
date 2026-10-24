@@ -71,3 +71,7 @@ export const DIAL_STEP = 450
 
 /** Wheel rotation (ms): the rotor transition and the result reveal share this clock. */
 export const WHEEL_SPIN_MS = 2800
+
+/** Squad Honors reel (ms): the strip's wind-down onto the seeded stat, then the dwell that lets the squad read it before the report files. */
+export const HONORS_REEL_MS = 2000
+export const HONORS_DWELL_MS = 1100

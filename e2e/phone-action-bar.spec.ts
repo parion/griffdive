@@ -64,10 +64,7 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
   await expect(page.getByRole('heading', { name: 'Mission report' })).toBeVisible()
   await expectPinnedBar(page, '7-report')
 
-  // Honors moved to the report window: spin while the numbers are in hand.
-  await page.getByRole('button', { name: 'Spin the stat' }).click()
-  await expect(page.getByText('HOST banked the token.', { exact: true })).toBeVisible()
-
+  // Filing rolls the honors reel first, then brings in the rewards screen.
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'File report' }).click()
 
   await expect(page.locator('.phone-loot .loot-card').first()).toBeVisible()

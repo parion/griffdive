@@ -2,7 +2,7 @@
 import { baseTierFor, MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
-import { draftSummaryFor } from '~~/shared/engine/selectors'
+import { draftSummaryFor, honorsPending } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 // The operation's last bank: the climb to the next difficulty, then the same
@@ -25,6 +25,8 @@ const nextName = computed(() => difficultyName(nextDifficulty.value))
 const opNumber = computed(() =>
   catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
 const nextOp = computed(() => opNumber.value + 1)
+const honorsLocked = computed(() => honorsPending(props.state))
+const startLabel = computed(() => (honorsLocked.value ? 'Award honors first' : `Start operation ${nextOp.value}`))
 const rungs = computed(() => Array.from({ length: MAX_DIFFICULTY - 2 }, (_, i) => {
   const n = i + 3
   return {
@@ -143,13 +145,17 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
     <PhoneActionBar v-if="phone">
       <template #primary>
         <button
-          v-if="canControl"
+          v-if="canControl && !honorsLocked"
           class="bar-cta cta-sweep"
           type="button"
           @click="emit('start')"
         >
-          <span class="disp">Start operation {{ nextOp }}</span>
+          <span class="disp">{{ startLabel }}</span>
         </button>
+        <span
+          v-else-if="canControl"
+          class="bar-gate"
+        ><span class="bar-gate-word quiet">Award honors first</span></span>
         <span
           v-else
           class="bar-gate"
@@ -163,10 +169,12 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
       <button
         v-if="canControl"
         class="cta cut cta-sweep"
+        :class="{ 'cta-locked': honorsLocked }"
         type="button"
+        :disabled="honorsLocked"
         @click="emit('start')"
       >
-        Start operation {{ nextOp }}
+        {{ startLabel }}
         <svg
           width="22"
           height="14"
@@ -412,6 +420,7 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
   cursor: pointer;
 }
 .cta:hover { filter: brightness(1.06); }
+.cta:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
 .waiting { margin: 0; color: var(--muted); font-size: 14px; text-align: center; }
 
 @media (max-width: 860px) {

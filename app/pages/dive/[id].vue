@@ -104,9 +104,11 @@ watch([phaseKey, squadBanked], () => {
   window.scrollTo({ top: 0 })
 })
 
-// Squad Honors: the contest is spun at the report and awarded from the dock.
-// The shell only reads the derived state; the engine owns eligibility.
-const honors = computed(() => (state.value ? bonusFor(state.value) : null))
+// Squad Honors: the contest is spun when the report files and awarded from the
+// dock. The stat is held back until the report's reel has landed (the phase
+// moves on), so the dock never spoils the roll. The shell only reads the
+// derived state; the engine owns eligibility.
+const honors = computed(() => (state.value && state.value.phase !== 'diving' ? bonusFor(state.value) : null))
 const honorsWinners = computed(() => (state.value ? bonusWinners(state.value).map(diver => upperName(diver.name)) : []))
 const honorsAwarded = computed(() => Boolean(state.value?.bonusWinnerIds.length))
 const sessionMenuOpen = ref(false)
