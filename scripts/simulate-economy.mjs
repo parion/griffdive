@@ -116,7 +116,8 @@ for (const [name, profile] of Object.entries(PROFILES)) {
     }
   }
   const per = tier => (totals[tier] / RUNS).toFixed(1)
-  console.log(`${name.padEnd(7)} full climb 3→10 buys  C ${per('c')}  B ${per('b')}  A ${per('a')}  S ${per('s')}   leftover ${(leftover / RUNS).toFixed(0)}`)
+  const total = TIERS.reduce((sum, tier) => sum + totals[tier], 0) / RUNS
+  console.log(`${name.padEnd(7)} ${total.toFixed(1)} buys / 20 missions (${(total / 8).toFixed(2)} per operation)  C ${per('c')}  B ${per('b')}  A ${per('a')}  S ${per('s')}   leftover ${(leftover / RUNS).toFixed(0)}`)
   console.log('        haul/mission by diff: '
     + Object.entries(diffs).map(([d, s]) => `${d}:${(s.haul / s.missions).toFixed(0)}`).join('  ')
     + '   buys/mission: '

@@ -311,10 +311,10 @@ export const TIME_HAUL_FLOOR = 0.5
 // out-prices an armor passive. Low tiers sit within a mission or two's haul;
 // A and S stay a real saving goal.
 export const CREDIT_PRICE_TIER: Readonly<Record<'c' | 'b' | 'a' | 's', number>> = {
-  c: 20,
-  b: 75,
-  a: 260,
-  s: 600,
+  c: 25,
+  b: 100,
+  a: 400,
+  s: 800,
 }
 
 export const CREDIT_PRICE_TYPE: Readonly<Record<string, number>> = {

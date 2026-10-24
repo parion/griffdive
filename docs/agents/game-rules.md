@@ -564,8 +564,8 @@ items):
     just played and every diver is dealt afresh.
   - **Seating mid-crusade:** the joiner is dealt the current mission's shelf.
 - **Prices:** tier first, then type: `itemPrice = CREDIT_PRICE_TIER[tier] × CREDIT_PRICE_TYPE[category]`.
-  C/B/A/S cost 20/75/260/600, so C/B sit within a mission or two's haul while A and S are saving
-  goals (see the simulation below). Primaries ×1.25, armor passives ×0.75, everything else ×1.
+  C/B/A/S cost 25/100/400/800, so C/B sit within a mission or two's haul while A and S are long
+  saving goals (see the simulation below). Primaries ×1.25, armor passives ×0.75, everything else ×1.
 - **One buy per mission:** `BUY_ITEM` (self-service) deducts the price, banks the item in
   `personalInventories` and records it as `bargain.boughtItemId`. The shelf keeps its layout: the
   bought slot reads `bought` and every other slot `locked` until the next mission (`bargainShelfFor`
@@ -577,13 +577,13 @@ items):
   engine's reason (`canBuyItem`).
 
 **Tuning check:** `node --experimental-strip-types scripts/simulate-economy.mjs` Monte-Carlos a
-full 3→10 climb (20 missions) for four collection profiles against the live `config.ts`, spending
-greedily one buy per mission. Targets: a casual squad (~35% of spawns) lives on C/B gear with the
-odd A; a steady one (~60%) gets mostly B and a few A; an eager collector (~85% plus Sample
-Scanner) buys an A about every other mission at diff 8+ and can *save* ~3 missions for an S; an
-honor-system maxed haul (the 2× report ceiling) reaches S only by saving, never by routine
-spending. Re-run it after touching `SAMPLE_CREDITS`, `TIME_HAUL_FLOOR`, `CREDIT_PRICE_*` or
-`SAMPLE_AVAILABILITY`.
+full 3→10 climb (20 missions, 8 operations) for four collection profiles against the live
+`config.ts`, spending greedily one buy per mission. Targets: a casual squad (~35% of spawns) buys
+about one item per operation (~7 per climb, mostly C/B); a steady one (~60%) ~11; an eager collector
+(~85% plus Sample Scanner) ~15 — near a buy every mission through diff 7 but only every other
+mission at diff 8+, where A gear costs 400; the honor-system maxed haul (the 2× report ceiling) ~17
+and still reaches S only by saving. Re-run it after touching `SAMPLE_CREDITS`, `TIME_HAUL_FLOOR`,
+`CREDIT_PRICE_*` or `SAMPLE_AVAILABILITY`.
 
 ### Mission failure — the forfeit offer
 
