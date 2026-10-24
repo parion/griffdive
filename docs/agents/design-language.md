@@ -98,6 +98,43 @@ merge with them.
   controls are visibly absent for squadmates rather than disabled chrome. A non-host sees "Stand by"
   and the host's name on the call, but still swears their own pacts and banks their own loot.
 
+#### Bridge — the home page (`pages/index.vue` + `components/bridge/`)
+
+The Bridge is the game's front door: a scrolling landing page that sells the mode and gets a squad
+into a dive. `index.vue` owns the data (saves, live rooms, hosting); each section is a `Bridge*`
+component. Top to bottom:
+
+- **Hero** (one viewport tall on desktop): the kicker, the core trade as the headline — **"Risk
+  buys rarity."** — a one-paragraph pitch, chevron anchor links to the four beats, and the
+  **`BridgeDeploy`** drop console: the gold **Host a squad dive** CTA, the six-cell room-code
+  join, the diver name + **Solo drop**, and a quiet footer (Variant & warbonds dialog, Import
+  save). Beside it, **`BridgeWheel`**: the dive's real `WheelOfMisfortune`, spinning itself to a
+  fresh seed every few seconds while in view (paused off-screen or in a hidden tab; one still
+  draw under reduced motion), with a caption card naming the landed directive, its rule and its
+  skulls. The caption holds the previous draw until the wheel lands. The wheel is `inert` and
+  `aria-hidden`; the caption carries the meaning.
+- A **facts strip** (difficulty climb, directive and pact counts, squad size), all read from
+  engine data.
+- **`BridgeRecord`** — the service record, only while live rooms are being checked or something
+  is on record: live rooms (teal edge, squad avatars, Resume / New session), session mirrors and
+  local saves (Open / Host, export, delete), each with its difficulty emblem and a 3→10 ladder.
+- Four **`BridgeBeat`** sections (numbered headline + copy beside a lit visual; the beat fades in
+  and tells its visual it is `lit` once it scrolls into view):
+  1. **Call** — `BridgeDirectives`: every wheel directive as sigil + skulls tiles on two
+     counter-running belts (paused on hover, static under reduced motion; a screen-reader
+     list carries the same content).
+  2. **Pacts** — `BridgePacts`: three real `ConditionCard`s fan in, then two take the SWORN
+     stamp; a tally shows the sworn skulls. Phones swipe the hand.
+  3. **Climb · Loot** — `BridgeOdds`, the one interactive teaching aid: a 3→10 rung radio
+     (difficulty emblems, base tier), a **Skulls taken** range, the shared `ValorRoll` line from
+     `tierZones`, and four example draws at fixed d100 faces wrapped in `RewardReveal` — the
+     same dice land rarer tiers as the rung and skulls rise; S+ shows Liberty's Cross. On
+     arrival the dial walks itself up once; any touch hands it over.
+- **`BridgeMajorOrder`** — the live order (faction emblems, fronts, countdown, up to three
+  planets' liberation, the risk/reroll carrots and **Start campaign**), or a one-line empty state.
+- A closing **"Your squad is waiting."** call whose **Suit up** link returns focus to the drop
+  console, then the fan-project footer.
+
 #### Setup — Hellpod Bays (`DivePhaseLobby`)
 
 The room's setup is the one screen that stands outside the dive shells: no `DiveTopBar`,
