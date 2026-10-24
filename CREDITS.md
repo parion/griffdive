@@ -15,7 +15,8 @@ Griffdive stands on the work of the Helldivers community. Thank you.
 
 - [Nvigneux/Helldivers-2-Stratagems-icons-svg](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg).
 - Bundled in `public/images/svgs/` (imported via the Penitent Crusade asset bundle); resolved to
-  URLs by `shared/data/images.ts`.
+  URLs by `shared/data/images.ts`. The stratagem art has since been replaced with an updated set of
+  `.webp` renders (the directory name is historical); the sample icons remain SVG.
 
 ## Equipment images
 

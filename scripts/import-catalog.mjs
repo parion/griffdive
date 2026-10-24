@@ -83,7 +83,7 @@ function toItem(raw, categoryOverride) {
   }
   if ('antitank' in raw) item.antitank = raw.antitank
   if ('index' in raw) item.index = raw.index
-  if ('imageURL' in raw) item.imageURL = raw.imageURL
+  if ('imageURL' in raw) item.imageURL = raw.imageURL.replace(/\.svg$/, '.webp')
   if ('passive' in raw) item.passive = raw.passive
   Object.assign(item, ITEM_OVERRIDES[item.id])
   return item
