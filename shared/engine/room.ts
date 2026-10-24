@@ -71,7 +71,12 @@ export function seatingBlocked(state: DiveState): string | null {
 
 // Returns null when the squad is full or the dive is past its seating window.
 // Re-joining with a known playerId is idempotent (reconnect path).
-export function joinDiver(state: DiveState, playerId: string, name: string): DiveState | null {
+export function joinDiver(
+  state: DiveState,
+  playerId: string,
+  name: string,
+  declaredWarbonds?: readonly string[],
+): DiveState | null {
   if (state.divers.some(diver => diver.id === playerId)) {
     return state
   }
@@ -86,8 +91,11 @@ export function joinDiver(state: DiveState, playerId: string, name: string): Div
     Object.entries(state.legacyCaches).filter(([id]) => id !== playerId),
   )
   // Seated into a running crusade, a diver is issued the surplus plus a support
-  // pack of their own, rolled against the warbonds seated with (the default set).
-  const warbondCodes = [...ALL_WARBOND_CODES]
+  // pack of their own, rolled against the warbonds they declared on arrival (the
+  // default set when they declared none).
+  const warbondCodes = declaredWarbonds
+    ? [...new Set(declaredWarbonds.filter(code => ALL_WARBOND_CODES.includes(code)))]
+    : [...ALL_WARBOND_CODES]
   const supportKit = state.settings ? rollSupportKit(state.settings, playerId, warbondCodes) : []
   const startingKit = state.settings ? mergeKit(startingItemIds(state.settings.variant), supportKit) : []
   // A cache holds only earned gear: the returning diver is reissued the

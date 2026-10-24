@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { SwitchRoot, SwitchThumb } from 'reka-ui'
-import { itemImageUrl } from '~~/shared/data/images'
 import { misfortuneById } from '~~/shared/data/misfortunes'
 import { sortKitItems } from '~~/shared/data/ordering'
 import { pactName } from '~~/shared/data/pacts'
@@ -20,8 +19,6 @@ const props = withDefaults(defineProps<{
 
 interface TileView {
   item: Item
-  image?: string
-  tier: string
   banSource: ArmoryBan['source'] | null
   banPreview: boolean
   reason: string
@@ -61,8 +58,6 @@ const sections = computed(() => {
         const ban = itemBannedInArmory(props.state, current, item, previewIds)
         return {
           item,
-          image: itemImageUrl(item),
-          tier: `var(--tier-${item.tier})`,
           banSource: ban?.source ?? null,
           banPreview: ban?.preview ?? false,
           reason: ban ? banReason(ban) : '',
@@ -137,85 +132,26 @@ function jumpTo(id: string) {
       </label>
     </div>
 
-    <section
+    <KitSection
       v-for="section in sections"
       :id="sectionDomId(section.id)"
       :key="section.id"
-      class="kit-sec"
-      :class="`art-${section.art}`"
-      :style="{ '--accent': section.accent }"
+      :label="section.label"
+      :accent="section.accent"
+      :art="section.art"
+      :count="section.tiles.length"
+      :empty="section.tiles.length ? '' : (earnedOnly ? 'None earned yet' : 'None')"
     >
-      <header class="kit-sec-head">
-        <span
-          class="kit-sec-mark"
-          aria-hidden="true"
-        />
-        <h3 class="kit-sec-title">
-          {{ section.label }}
-        </h3>
-        <span
-          class="kit-sec-rule"
-          aria-hidden="true"
-        />
-        <span class="kit-sec-n">{{ section.tiles.length }}</span>
-      </header>
-      <p
-        v-if="!section.tiles.length"
-        class="none"
-      >
-        {{ earnedOnly ? 'None earned yet' : 'None' }}
-      </p>
-      <ul
-        v-else
-        class="tiles"
-      >
-        <li
-          v-for="tile in section.tiles"
-          :key="tile.item.id"
-          class="tile"
-          :class="[tile.banSource ? `banned ban-${tile.banSource}` : '', { preview: tile.banPreview }]"
-          :style="{ '--tier': tile.tier }"
-          :title="tile.reason ? `${tile.item.displayName} — ${tile.reason}${tile.banPreview ? ' (if sworn)' : ''}` : tile.item.displayName"
-        >
-          <div class="media">
-            <img
-              v-if="tile.image && section.art === 'icon'"
-              class="glow"
-              :src="tile.image"
-              alt=""
-              loading="lazy"
-              draggable="false"
-              aria-hidden="true"
-            >
-            <img
-              v-if="tile.image"
-              class="art"
-              :src="tile.image"
-              alt=""
-              loading="lazy"
-              draggable="false"
-            >
-            <span
-              v-if="tile.banSource"
-              class="wash"
-              :class="tile.banSource === 'misfortune'
-                ? (tile.banPreview ? 'hazard-soft' : 'hazard')
-                : (tile.banPreview ? 'hazard-soft-red' : 'hazard-red')"
-              aria-hidden="true"
-            />
-            <span
-              class="tier-badge sm"
-              :data-tier="tile.item.tier"
-            >{{ tile.item.tier.toUpperCase() }}</span>
-          </div>
-          <span class="name">{{ tile.item.displayName }}</span>
-          <span
-            v-if="tile.banSource"
-            class="sr-only"
-          >Banned: {{ tile.reason }}{{ tile.banPreview ? ' (if sworn)' : '' }}</span>
-        </li>
-      </ul>
-    </section>
+      <KitTile
+        v-for="tile in section.tiles"
+        :key="tile.item.id"
+        :item="tile.item"
+        :art="section.art"
+        :ban-source="tile.banSource"
+        :ban-preview="tile.banPreview"
+        :reason="tile.reason"
+      />
+    </KitSection>
   </section>
 </template>
 
@@ -311,138 +247,4 @@ function jumpTo(id: string) {
 .jump-chip.empty { color: var(--dim); }
 .jump-chip.empty i { background: var(--line-3); }
 .jump-chip.empty .n { color: var(--dim); }
-
-.none {
-  margin: 0;
-  padding: var(--sp-2) var(--sp-3);
-  color: var(--dim);
-  font-size: var(--fs-sm);
-  border: 1px dashed var(--line-2);
-}
-
-.kit-sec { display: grid; gap: var(--sp-3); scroll-margin-top: 10rem; }
-.kit-sec-head { display: flex; align-items: center; gap: var(--sp-3); }
-.kit-sec-mark {
-  width: 3px;
-  height: 14px;
-  flex-shrink: 0;
-  background: var(--accent);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
-}
-.kit-sec-title {
-  margin: 0;
-  color: var(--text);
-  font: 700 var(--fs-sm) var(--font-body);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-.kit-sec-rule { flex: 1; height: 1px; background: linear-gradient(90deg, var(--line-3), transparent); }
-.kit-sec-n { color: var(--gold); font-size: var(--fs-sm); font-weight: 700; font-variant-numeric: tabular-nums; }
-
-.tiles {
-  display: grid;
-  gap: var(--sp-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.art-gear .tiles { grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); }
-.art-icon .tiles { grid-template-columns: repeat(auto-fill, minmax(5.25rem, 1fr)); }
-
-.tile {
-  --ban: var(--red);
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  background: linear-gradient(180deg, var(--panel), var(--ground));
-  box-shadow: inset 0 0 0 1px var(--line-2), inset 0 -2px 0 var(--tier);
-  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
-  transition: box-shadow var(--dur-fast), transform var(--dur-fast) var(--ease-out);
-}
-.tile:hover {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, var(--line-3)), inset 0 -2px 0 var(--tier);
-  transform: translateY(-2px);
-}
-.tile.ban-misfortune { --ban: var(--gold); }
-.tile.banned { box-shadow: inset 0 0 0 1px var(--ban); }
-.tile.preview { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ban) 55%, transparent); }
-
-.media {
-  position: relative;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-}
-.art-gear .media {
-  aspect-ratio: 16 / 10;
-  background:
-    radial-gradient(ellipse 60% 50% at 50% 55%, rgba(255, 255, 255, 0.07), transparent 70%),
-    radial-gradient(ellipse 80% 70% at 50% 62%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 72%),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 4px),
-    var(--ground);
-  border-bottom: 1px solid var(--line-1);
-}
-.art-icon .media { aspect-ratio: 1; padding: 16% 16% 10%; }
-
-.art {
-  position: relative;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  transition: transform var(--dur-med) var(--ease-out), filter var(--dur-med);
-}
-.art-gear .art {
-  padding: var(--sp-2) var(--sp-3);
-  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.65)) brightness(1.18) contrast(1.08);
-}
-.art-icon .art {
-  width: 100%;
-  height: 100%;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
-}
-.glow {
-  position: absolute;
-  inset: 22% 22% 16%;
-  width: 56%;
-  height: 62%;
-  object-fit: cover;
-  filter: blur(14px) saturate(1.6);
-  opacity: 0.7;
-  pointer-events: none;
-  transition: opacity var(--dur-med);
-}
-.tile:hover .art { transform: scale(1.06); }
-.tile:hover .glow { opacity: 0.9; }
-
-.tile.banned .art { filter: grayscale(1); opacity: 0.4; }
-.tile.preview .art { opacity: 0.3; }
-.tile.banned .glow,
-.tile.preview .glow { display: none; }
-.wash { position: absolute; inset: 0; opacity: 0.26; pointer-events: none; }
-.media .tier-badge {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  background: var(--ground);
-}
-
-.name {
-  display: -webkit-box;
-  margin: var(--sp-1) var(--sp-2) var(--sp-2);
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  font-size: var(--fs-cap);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  line-height: 1.2;
-  overflow-wrap: break-word;
-  hyphens: auto;
-  text-transform: uppercase;
-  color: var(--text);
-}
-.art-icon .name { margin-top: 0; text-align: center; }
-.tile.banned .name { color: var(--muted); }
 </style>

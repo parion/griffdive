@@ -103,9 +103,14 @@ A fixed pack handed to the whole squad overlapped too much to lift anyone, so SE
   roll missed. Counts per kind never change.
 - **Dealt once, stored:** the pack is seeded by the diver's id alone (stream per kind, so retuning
   one count never reshuffles another), rolled when the crusade launches (`START_DIVE`, against the
-  warbonds each diver declared by then) or when a diver is seated mid-crusade (`joinDiver`, the
-  default warbond set), then recorded as `DiverState.supportKit` and merged into the inventory. A
+  warbonds each diver declared by then) or when a diver is seated mid-crusade (`joinDiver`, against
+  the warbonds the joiner's `hello` declared — the default set when it declared none), then recorded as `DiverState.supportKit` and merged into the inventory. A
   later warbond change never reshuffles it; a diver rejoining under the same id draws the same pack.
+- **Launch reveal (presentation):** the setup's Starting Kit lays the surplus out like the Kit
+  drawer (primaries, secondaries and throwables apart) and ends each section in blue "?" boxes — one
+  per item the pack will roll there. After launch (and after seating mid-crusade) each diver's own
+  `KitReveal` stage fills those boxes one by one, then hands off to the wheel. It is never stored or
+  gated on: the pack is already dealt, the stage only stages it, and a plain reload never replays it.
 - **At-stake gear:** the pack is forfeitable like any earned item (see Mission failure), but it is
   support gear, not winnings: it never parks in a legacy cache (`earnedKit` skips `supportKit`) and
   Earned-only views hide it.

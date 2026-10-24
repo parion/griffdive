@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ALL_WARBOND_CODES } from '../data/catalog'
+import { ALL_WARBOND_CODES, ITEMS_BY_ID } from '../data/catalog'
 import { startingItemIds } from './progression'
 import { createLobbyState, forkCrusade, joinDiver, seatingBlocked } from './room'
 import { createDiveState, reduce } from './reducer'
@@ -50,6 +50,17 @@ describe('joinDiver', () => {
     expect(late.supportKit).toHaveLength(11)
     expect(state.personalInventories.late).toEqual([...startingItemIds('suicide'), ...late.supportKit!])
     expect(late.supportKit).not.toEqual(state.divers.find(diver => diver.id === 'p1')!.supportKit)
+  })
+
+  it('rolls a late joiner\'s pack from the warbonds they declared on arrival', () => {
+    let state = createDiveState({ variant: 'suicide', mode: 'seaf' }, 'p1', 'Griffin')
+    state = joinDiver(state, 'late', 'Latecomer', ['warbond3', 'ghostBond'])!
+    const late = state.divers.find(diver => diver.id === 'late')!
+    expect(late.warbondCodes).toEqual(['warbond3'])
+    for (const id of late.supportKit!) {
+      const code = ITEMS_BY_ID.get(id)!.warbondCode
+      expect(code === 'none' || code === 'warbond3').toBe(true)
+    }
   })
 
   it('owes a mid-crusade joiner one catch-up pick per operation behind, capped', () => {

@@ -115,3 +115,40 @@ export function supportRollList(rolls: SupportRolls): string[] {
     .filter(kind => rolls[kind] > 0)
     .map(kind => `${rolls[kind]} ${SUPPORT_ROLL_LABELS[kind][rolls[kind] === 1 ? 0 : 1]}`)
 }
+
+// The Starting Kit groups the issued gear by what a support roll deals: one
+// section per roll kind, so each section can end in the "?" boxes that kind
+// will roll. Stratagems share one section because the pack rolls them as one
+// kind, whatever their category.
+export type StartKind = keyof SupportRolls
+
+export interface StartSectionDef {
+  kind: StartKind
+  label: string
+  accent: string
+  art: KitArt
+}
+
+export const START_SECTIONS: readonly StartSectionDef[] = [
+  { kind: 'primary', label: 'Primary', accent: 'var(--cat-primary)', art: 'gear' },
+  { kind: 'secondary', label: 'Secondary', accent: 'var(--cat-gear)', art: 'gear' },
+  { kind: 'throwable', label: 'Throwables', accent: 'var(--cat-gear)', art: 'gear' },
+  { kind: 'armorPassive', label: 'Armor passives', accent: 'var(--cat-armor)', art: 'icon' },
+  { kind: 'booster', label: 'Boosters', accent: 'var(--cat-booster)', art: 'icon' },
+  { kind: 'stratagem', label: 'Stratagems', accent: 'var(--teal)', art: 'icon' },
+]
+
+export function startKindOf(item: Item): StartKind {
+  if (item.type === 'stratagem') {
+    return 'stratagem'
+  }
+  switch (item.category) {
+    case 'secondary':
+    case 'throwable':
+    case 'armorPassive':
+    case 'booster':
+      return item.category
+    default:
+      return 'primary'
+  }
+}

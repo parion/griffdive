@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { createDiveState, reduce } from '~~/shared/engine/reducer'
 import { joinDiver } from '~~/shared/engine/room'
 import { createSaveDoc } from '~~/shared/engine/saves'
@@ -767,6 +768,24 @@ describe('createRoomFromSave (personal session saves)', () => {
     expect(room?.state.personalInventories.p1).toBeUndefined()
     expect(room?.state.legacyCaches.p1).toEqual({ name: 'Griffin', itemIds: ['uavrecon'] })
     expect(room?.state.wheel?.seed).toBe(42)
+  })
+
+  it('rolls a joiner\'s SEAF pack against the warbonds they declared in the hello', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const state = createDiveState({ variant: 'suicide', mode: 'seaf' }, 'p1', 'Griffin')
+    const { code } = await createRoomFromSave(kv, { ...createSaveDoc(state, 'Session', new Date().toISOString()), ownerId: 'p1' }, 'Griffin')
+
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    await processHello(kv, peers, joiner, { name: 'Two', warbondCodes: ['warbond3', 'ghostBond', 7] })
+    const seated = welcomeOf(joiner).snapshot.divers.find(diver => diver.id === welcomeOf(joiner).selfId)!
+    expect(seated.warbondCodes).toEqual(['warbond3'])
+    expect(seated.supportKit).toHaveLength(11)
+    for (const id of seated.supportKit!) {
+      const code = ITEMS_BY_ID.get(id)!.warbondCode
+      expect(code === 'none' || code === 'warbond3').toBe(true)
+    }
   })
 
   it('recognizes a forked-out diver by a seat their browser remembers', async () => {
