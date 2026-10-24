@@ -680,7 +680,7 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   items) are excluded, so each offer stays full-size.
 - **Settled before diving:** a joiner with a promotion pending (`promotionPending`: picks owed and
   an offer or cache to spend them on) is held at the **Field Promotion gate** — a non-dismissible
-  dialog that opens once the name gate, briefing and Warbonds drawer are done (the offer draws from
+  dialog that opens once the briefing and Warbonds drawer are done (the offer draws from
   the declared warbonds) — and claims picks (`CLAIM_CATCHUP_OPTION`, self-service, one per pick) or
   a cache until it is spent. The gate holds only the joiner's own screen; it never gates squad
   progress through the engine — unlike the reward draft, where `allDiversPicked` blocks `ADVANCE`.

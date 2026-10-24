@@ -28,7 +28,7 @@
   authority, pact lock-in; a squad that all leaves finds its room waiting and RESUME reseats
   everyone; the squad never waits on a diver who left), Codex slide-over (opens over the dive without dropping the session),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
-  non-dismissible name gate, star-rating keyboard navigation), phone host moderation
+  star-rating keyboard navigation), phone host moderation
   (`phone.spec.ts`: a squadmate's hangar bay opens host actions; after launch the 390px Squad button
   opens the squad dialog with inline host actions), phone reward draft
   (`phone-rewards.spec.ts`: a non-host phone diver banks their own pick), phone layout

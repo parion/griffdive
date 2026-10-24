@@ -21,12 +21,12 @@ const mission = computed(() => props.state.missionInOperation)
 const opEnds = computed(() => mission.value >= props.opLength)
 const front = computed(() => currentFront(props.state))
 const hostName = computed(() =>
-  props.state.divers.find(diver => diver.id === props.state.hostId)?.name ?? 'The host')
+  upperName(props.state.divers.find(diver => diver.id === props.state.hostId)?.name) ?? 'The host')
 
 const squadDrafts = computed(() =>
   props.state.divers
     .filter(diver => diver.id !== props.selfId)
-    .map(diver => ({ id: diver.id, name: diver.name, summary: draftSummaryFor(props.state, diver) })))
+    .map(diver => ({ id: diver.id, name: upperName(diver.name), summary: draftSummaryFor(props.state, diver) })))
 
 const nextDrop = computed(() => {
   if (opEnds.value) {

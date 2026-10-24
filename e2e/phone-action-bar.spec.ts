@@ -32,7 +32,8 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
   await page.getByRole('button', { name: 'Host an online dive' }).click()
   await expect(page).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
   await page.getByLabel('Your name').fill('Host')
-  await page.getByRole('button', { name: 'Join the dive' }).click()
+  await page.getByLabel('Your name').press('Enter')
+  await page.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(page)
 
   // Setup stands alone (no dive bars); its launch CTA pins to the bottom edge.
@@ -65,7 +66,7 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
 
   // Honors moved to the report window: spin while the numbers are in hand.
   await page.getByRole('button', { name: 'Spin the stat' }).click()
-  await expect(page.getByText('Host banked the token.', { exact: true })).toBeVisible()
+  await expect(page.getByText('HOST banked the token.', { exact: true })).toBeVisible()
 
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'File report' }).click()
 
@@ -87,7 +88,8 @@ test('phone: a failed mission lands on the pinned remove bar', async ({ browser 
   await page.getByRole('button', { name: 'Host an online dive' }).click()
   await expect(page).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
   await page.getByLabel('Your name').fill('Host')
-  await page.getByRole('button', { name: 'Join the dive' }).click()
+  await page.getByLabel('Your name').press('Enter')
+  await page.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(page)
 
   const primary = page.locator('#phone-bar-primary')

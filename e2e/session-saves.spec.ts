@@ -12,13 +12,15 @@ test('any seated diver forks the crusade into a new session', async ({ browser }
   await pageA.goto('/')
   await pageA.getByRole('button', { name: 'Host an online dive' }).click()
   await pageA.getByLabel('Your name').fill('Host')
-  await pageA.getByRole('button', { name: 'Join the dive' }).click()
+  await pageA.getByLabel('Your name').press('Enter')
+  await pageA.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(pageA)
   await pageA.getByRole('button', { name: 'Launch crusade' }).click()
   await expect(pageA.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
+  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
   await expect(pageB.locator('.dock .seat')).toHaveCount(2)
@@ -41,6 +43,7 @@ test('any seated diver forks the crusade into a new session', async ({ browser }
   // A new diver comes aboard the new session through its invite link.
   await pageC.goto(pageA.url())
   await pageC.getByLabel('Your name').fill('Late')
+  await pageC.getByLabel('Your name').press('Enter')
   await pageC.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageC)
   await expect(pageA.locator('.dock .seat')).toHaveCount(2)
@@ -73,13 +76,14 @@ test('a solo save hosts an online session from the home record', async ({ browse
   // The local owner's name carries into the new online session, so there is
   // no second name gate.
   await expect(page.getByLabel('Your name')).toHaveCount(0)
-  await expect(page.locator('.dock .seat.self')).toContainText('Griffon')
+  await expect(page.locator('.dock .seat.self')).toContainText('GRIFFON')
 
   // A second browser joins the new online session.
   const contextB = await browser.newContext()
   const pageB = await contextB.newPage()
   await pageB.goto(page.url())
   await pageB.getByLabel('Your name').fill('Late')
+  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
   await expect(pageB.locator('.dock .seat')).toHaveCount(2)

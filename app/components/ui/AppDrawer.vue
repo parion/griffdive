@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { DrawerClose, DrawerContent, DrawerDescription, DrawerOverlay, DrawerPortal, DrawerRoot, DrawerTitle } from 'reka-ui'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   open: boolean
   title: string
   description?: string
-}>()
+  side?: 'right' | 'bottom'
+}>(), { side: 'right' })
 
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 </script>
@@ -13,13 +14,21 @@ const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 <template>
   <DrawerRoot
     :open="props.open"
-    swipe-direction="right"
+    :swipe-direction="props.side === 'bottom' ? 'down' : 'right'"
     modal
     @update:open="emit('update:open', $event)"
   >
     <DrawerPortal>
       <DrawerOverlay class="drawer-overlay" />
-      <DrawerContent class="drawer">
+      <DrawerContent
+        class="drawer"
+        :class="`from-${props.side}`"
+      >
+        <span
+          v-if="props.side === 'bottom'"
+          class="drawer-grip"
+          aria-hidden="true"
+        />
         <header class="row spread drawer-head">
           <DrawerTitle
             as="h2"
@@ -81,6 +90,34 @@ const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 }
 @keyframes drawer-slide-out {
   to { translate: 100% 0; }
+}
+
+.drawer.from-bottom {
+  inset: auto 0 0;
+  width: auto;
+  max-height: 88dvh;
+  border-left: 0;
+  border-top: 1px solid var(--line-3);
+  box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.5);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  transform: translateY(var(--drawer-swipe-movement-y, 0px));
+}
+.drawer.from-bottom[data-state='open'] { animation-name: drawer-rise-in; }
+.drawer.from-bottom[data-state='closed'] { animation-name: drawer-rise-out; }
+.drawer-grip {
+  align-self: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 4px;
+  margin-top: 8px;
+  background: var(--line-4);
+}
+
+@keyframes drawer-rise-in {
+  from { translate: 0 100%; }
+}
+@keyframes drawer-rise-out {
+  to { translate: 0 100%; }
 }
 
 .drawer-head {

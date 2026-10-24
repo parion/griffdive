@@ -19,7 +19,7 @@ test('squadmates read one briefing page; the host keeps the tutorial', async ({ 
   await host.goto('/')
   await host.getByRole('button', { name: 'Host an online dive' }).click()
   await expect(host).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
-  await expect(host.getByRole('dialog', { name: 'Griffdive tutorial' })).toBeVisible()
+  await expect(host.getByRole('heading', { name: 'You hold the wheel.' })).toBeVisible()
   await expect(host.getByRole('heading', { name: 'You\'ve been drafted.' })).toBeHidden()
   await dismissBriefing(host)
 
@@ -28,20 +28,21 @@ test('squadmates read one briefing page; the host keeps the tutorial', async ({ 
   const joiner = await namedPage(browser, null)
   await joiner.goto(host.url())
   await expect(joiner.getByRole('heading', { name: 'You\'ve been drafted.' })).toBeVisible()
-  await expect(joiner.getByRole('dialog', { name: 'Griffdive tutorial' })).toBeHidden()
+  await expect(joiner.getByRole('heading', { name: 'You hold the wheel.' })).toBeHidden()
   const callsign = joiner.getByRole('textbox', { name: /^Callsign/ })
   await expect(callsign).toBeFocused()
   await expect(joiner.getByLabel('The squad')).toBeHidden()
 
-  // Joining waits on a callsign.
+  // Joining waits on a callsign: both squad-box actions fade in only once it is filed.
   const join = joiner.getByRole('button', { name: 'Join the dive' })
-  await expect(join).toBeDisabled()
+  await expect(join).toBeHidden()
 
   // Filing the callsign (Enter) stamps the registry and opens the squad card.
   await callsign.fill('Duo')
   await callsign.press('Enter')
-  await expect(joiner.getByLabel('The squad').getByText('Captain', { exact: true })).toBeVisible()
+  await expect(joiner.getByLabel('The squad').getByText('CAPTAIN', { exact: true })).toBeVisible()
   await expect(join).toBeEnabled()
+  await expect(joiner.getByRole('button', { name: 'Set warbonds' })).toBeVisible()
 
   // The surplus kit is laid out beside the Class E copy.
   await expect(joiner.getByRole('group', { name: 'Issued kit · surplus' }).getByRole('img').first()).toBeVisible()
@@ -72,7 +73,7 @@ test('squadmates read one briefing page; the host keeps the tutorial', async ({ 
   await joinerMenu.getByRole('button', { name: /Tutorial \/ field manual/ }).click()
   const manual = joiner.getByRole('dialog', { name: 'Field manual' })
   await expect(manual).toBeVisible()
-  await expect(joiner.getByRole('dialog', { name: 'Griffdive tutorial' })).toBeHidden()
+  await expect(joiner.getByRole('heading', { name: 'You hold the wheel.' })).toBeHidden()
   await manual.getByRole('button', { name: 'Back to the dive' }).click()
   await expect(manual).toBeHidden()
 
@@ -80,7 +81,7 @@ test('squadmates read one briefing page; the host keeps the tutorial', async ({ 
   await host.getByRole('button', { name: 'Session menu' }).click()
   const hostMenu = host.getByRole('dialog', { name: 'Session' })
   await hostMenu.getByRole('button', { name: /Tutorial \/ field manual/ }).click()
-  await expect(host.getByRole('dialog', { name: 'Griffdive tutorial' })).toBeVisible()
+  await expect(host.getByRole('dialog', { name: 'Host tutorial' })).toBeVisible()
   await dismissBriefing(host)
 
   // A diver with a saved name still reads the briefing before their first
@@ -88,7 +89,7 @@ test('squadmates read one briefing page; the host keeps the tutorial', async ({ 
   const veteran = await namedPage(browser, 'Veteran')
   await veteran.goto(host.url())
   await expect(veteran.getByRole('textbox', { name: /^Callsign/ })).toHaveValue('Veteran')
-  await expect(veteran.getByLabel('The squad').getByText('Duo', { exact: true })).toBeVisible()
+  await expect(veteran.getByLabel('The squad').getByText('DUO', { exact: true })).toBeVisible()
   await veteran.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(veteran)
   await expect(host.locator('.bays .bay').filter({ hasText: 'Veteran' })).toBeVisible()

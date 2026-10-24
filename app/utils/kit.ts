@@ -5,23 +5,28 @@ import type { DiveState } from '~~/shared/engine/types'
 
 export type KitSectionId = 'primary' | 'secondary' | 'throwables' | 'armor' | 'boosters' | 'eagle' | 'orbital' | 'supply' | 'defense'
 
+// gear: transparent weapon renders, shown in a lit well. icon: the square
+// in-game icons (stratagems, armor passives, boosters) that carry their own frame.
+export type KitArt = 'gear' | 'icon'
+
 export interface KitSectionDef {
   id: KitSectionId
   label: string
   nav: string
   accent: string
+  art: KitArt
 }
 
 export const KIT_SECTIONS: readonly KitSectionDef[] = [
-  { id: 'primary', label: 'Primary', nav: 'Primary', accent: 'var(--cat-primary)' },
-  { id: 'secondary', label: 'Secondary', nav: 'Secondary', accent: 'var(--cat-gear)' },
-  { id: 'throwables', label: 'Throwables', nav: 'Throwables', accent: 'var(--cat-gear)' },
-  { id: 'armor', label: 'Armor passives', nav: 'Armor', accent: 'var(--cat-armor)' },
-  { id: 'boosters', label: 'Boosters', nav: 'Boosters', accent: 'var(--cat-booster)' },
-  { id: 'eagle', label: 'Eagle stratagems', nav: 'Eagle', accent: 'var(--teal)' },
-  { id: 'orbital', label: 'Orbital stratagems', nav: 'Orbital', accent: 'var(--teal)' },
-  { id: 'supply', label: 'Supply stratagems', nav: 'Supply', accent: 'var(--teal)' },
-  { id: 'defense', label: 'Defense stratagems', nav: 'Defense', accent: 'var(--teal)' },
+  { id: 'primary', label: 'Primary', nav: 'Primary', accent: 'var(--cat-primary)', art: 'gear' },
+  { id: 'secondary', label: 'Secondary', nav: 'Secondary', accent: 'var(--cat-gear)', art: 'gear' },
+  { id: 'throwables', label: 'Throwables', nav: 'Throwables', accent: 'var(--cat-gear)', art: 'gear' },
+  { id: 'armor', label: 'Armor passives', nav: 'Armor', accent: 'var(--cat-armor)', art: 'icon' },
+  { id: 'boosters', label: 'Boosters', nav: 'Boosters', accent: 'var(--cat-booster)', art: 'icon' },
+  { id: 'eagle', label: 'Eagle stratagems', nav: 'Eagle', accent: 'var(--cat-eagle)', art: 'icon' },
+  { id: 'orbital', label: 'Orbital stratagems', nav: 'Orbital', accent: 'var(--red)', art: 'icon' },
+  { id: 'supply', label: 'Supply stratagems', nav: 'Supply', accent: 'var(--cat-supply)', art: 'icon' },
+  { id: 'defense', label: 'Defense stratagems', nav: 'Defense', accent: 'var(--cat-defense)', art: 'icon' },
 ]
 
 export function kitSectionOf(item: Item): KitSectionId {

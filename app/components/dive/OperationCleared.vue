@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ start: [], buy: [itemId: string] }>()
 
 const hostName = computed(() =>
-  props.state.divers.find(diver => diver.id === props.state.hostId)?.name ?? 'the host')
+  upperName(props.state.divers.find(diver => diver.id === props.state.hostId)?.name) ?? 'the host')
 const nextDifficulty = computed(() => Math.min(MAX_DIFFICULTY, props.state.difficulty + 1))
 const nextName = computed(() => difficultyName(nextDifficulty.value))
 const opNumber = computed(() =>
@@ -37,7 +37,7 @@ const rungs = computed(() => Array.from({ length: MAX_DIFFICULTY - 2 }, (_, i) =
 const squadDrafts = computed(() =>
   props.state.divers
     .filter(diver => diver.id !== props.selfId)
-    .map(diver => ({ id: diver.id, name: diver.name, summary: draftSummaryFor(props.state, diver) })))
+    .map(diver => ({ id: diver.id, name: upperName(diver.name), summary: draftSummaryFor(props.state, diver) })))
 
 // Embers are laid out by index, not Math.random: the server render and the
 // client hydrate must agree, and a fixed scatter reads the same every time.

@@ -34,10 +34,10 @@ test('the tutorial opens at dive start once, without chaining the Warbonds panel
   await page.getByRole('button', { name: 'Solo drop' }).click()
 
   // The tutorial's Warbonds step covers ownership, so closing it lands on the dive.
-  const tutorial = page.getByRole('dialog', { name: 'Griffdive tutorial' })
+  const tutorial = page.getByRole('heading', { name: 'You hold the wheel.' })
   const drawer = page.getByRole('dialog', { name: 'Warbonds' })
   await expect(tutorial).toBeVisible()
-  await tutorial.getByRole('button', { name: 'Skip tutorial' }).click()
+  await page.getByRole('button', { name: 'Start the dive' }).click()
   await expect(tutorial).toBeHidden()
   await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeVisible()
   await expect(drawer).toBeHidden()
@@ -53,5 +53,5 @@ test('the tutorial opens at dive start once, without chaining the Warbonds panel
   await page.getByRole('button', { name: 'Session menu' }).click()
   await page.getByRole('dialog', { name: 'Session' })
     .getByRole('button', { name: /Tutorial \/ field manual/ }).click()
-  await expect(tutorial).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Host tutorial' })).toBeVisible()
 })

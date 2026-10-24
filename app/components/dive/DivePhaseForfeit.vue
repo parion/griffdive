@@ -34,7 +34,7 @@ const squad = computed(() => props.state.divers
   .filter(diver => diver.id !== props.selfId)
   .map(diver => ({
     id: diver.id,
-    name: diver.name,
+    name: upperName(diver.name),
     offer: forfeitOptionsFor(props.state, diver),
     removedId: diver.forfeitedItemId ?? null,
   })))

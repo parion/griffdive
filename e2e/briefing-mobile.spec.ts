@@ -1,8 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
-// The first-run tutorial is a fixed, no-scroll overlay. On a phone
-// the desktop layout used to blow the main column past the viewport, pushing
-// the forward CTA off-screen and locking mobile players out.
+// The host tutorial is a full page. On a phone the squad box's two actions
+// must fit the viewport width and the page must never scroll sideways.
 const PHONE = { viewport: { width: 390, height: 844 } }
 
 async function openBriefing(page: Page): Promise<void> {
@@ -10,46 +9,21 @@ async function openBriefing(page: Page): Promise<void> {
   await page.getByLabel('Diver name').fill('Griff')
   await page.getByRole('button', { name: 'Solo drop' }).click()
   await expect(page).toHaveURL(/\/dive\//)
-  await expect(page.getByRole('dialog', { name: 'Griffdive tutorial' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'You hold the wheel.' })).toBeVisible()
 }
 
-test('mobile briefing: the forward CTA is reachable on every beat', async ({ browser }) => {
+test('mobile host tutorial: no sideways scroll, both squad-box actions show', async ({ browser }) => {
   const context = await browser.newContext(PHONE)
   const page = await context.newPage()
   await openBriefing(page)
 
-  // No horizontal overflow: the fixed overlay must fit the viewport.
-  const overflow = await page.evaluate(() => {
-    const brief = document.querySelector('.brief')!
-    return brief.scrollWidth - brief.clientWidth
-  })
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
   expect(overflow).toBeLessThanOrEqual(0)
 
-  for (const title of ['Spin', 'Pact', 'Reward', 'Warbonds']) {
-    const cta = page.locator('.brief-next')
-    await expect(cta).toBeInViewport()
-    await cta.click()
-    await expect(page.locator('.brief-title')).toHaveText(title)
-  }
-
-  const cta = page.locator('.brief-next')
-  await expect(cta).toBeInViewport()
-  await cta.click()
-  await expect(page.locator('.brief-title')).toHaveText('Deploy')
-  await expect(cta).toBeInViewport()
-  await expect(cta).toContainText('Start my dive')
-  await cta.click()
-  await expect(page.getByRole('dialog', { name: 'Griffdive tutorial' })).toBeHidden()
-  await context.close()
-})
-
-test('mobile briefing: skip closes the tutorial onto the dive', async ({ browser }) => {
-  const context = await browser.newContext(PHONE)
-  const page = await context.newPage()
-  await openBriefing(page)
-
-  await page.getByRole('button', { name: 'Skip tutorial' }).click()
-  await expect(page.getByRole('dialog', { name: 'Griffdive tutorial' })).toBeHidden()
-  await expect(page.getByRole('dialog', { name: 'Warbonds' })).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Set warbonds' })).toBeVisible()
+  const start = page.getByRole('button', { name: 'Start the dive' })
+  await expect(start).toBeVisible()
+  await start.click()
+  await expect(page.getByRole('heading', { name: 'You hold the wheel.' })).toBeHidden()
   await context.close()
 })

@@ -6,7 +6,7 @@ import { allDiversPicked, bargainLamp, bargainsClosedReason, bonusFor, bonusWinn
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionOutcome, MissionReport } from '~~/shared/engine/types'
-import { hasDiverName, rememberDiverName, storeSeat } from '~/composables/useGameSocket'
+import { rememberDiverName, storeSeat } from '~/composables/useGameSocket'
 
 const route = useRoute()
 const slotId = computed(() => String(route.params.id))
@@ -41,6 +41,19 @@ watch(phase, () => {
 })
 
 const armoryOpen = ref(false)
+
+// In the field the Kit docks beside the stage instead of opening as a modal,
+// so the header's Kit tile shows or hides the dock there.
+const kitDockOpen = ref(true)
+const kitDocked = computed(() => phase.value === 'diving' && !reporting.value)
+
+function openKit(): void {
+  if (kitDocked.value) {
+    kitDockOpen.value = !kitDockOpen.value
+    return
+  }
+  armoryOpen.value = true
+}
 
 // Brasch's Bargains opens from the desktop header and the phone action bar, and
 // shuts itself when the squad drops into the field.
@@ -94,7 +107,7 @@ watch([phaseKey, squadBanked], () => {
 // Squad Honors: the contest is spun at the report and awarded from the dock.
 // The shell only reads the derived state; the engine owns eligibility.
 const honors = computed(() => (state.value ? bonusFor(state.value) : null))
-const honorsWinners = computed(() => (state.value ? bonusWinners(state.value).map(diver => diver.name) : []))
+const honorsWinners = computed(() => (state.value ? bonusWinners(state.value).map(diver => upperName(diver.name)) : []))
 const honorsAwarded = computed(() => Boolean(state.value?.bonusWinnerIds.length))
 const sessionMenuOpen = ref(false)
 const steamOpen = ref(false)
@@ -133,13 +146,14 @@ watch(ownedWarbonds, (codes) => {
   }
 })
 
-// The tutorial teaches the host's controls, so it is a host's alone: a fresh
-// browser gets it the moment it is first seated as host (right after the name
-// gate). Its Warbonds step already declares ownership, so closing it lands
-// straight on the dive. Squadmates read the join briefing instead, before they
+// The host tutorial teaches the host's controls, so it is a host's alone: a fresh
+// browser gets it as a full page the moment it is first seated as host (right
+// with no gate before it), and its Warbonds button declares ownership, so closing
+// it lands straight on the dive. Squadmates read the join briefing instead, before they
 // are seated, and the Tutorial control replays that for them.
 const briefingOpen = ref(false)
 const joinReviewOpen = ref(false)
+const hostReviewOpen = ref(false)
 
 // Only the dive's founding diver gets it unasked: a squadmate the crown later
 // migrates to (the host stepped away) is mid-dive, and reaches it from the
@@ -171,6 +185,7 @@ watch(self, (diver) => {
 
 function closeBriefing(name: string): void {
   briefingOpen.value = false
+  hostReviewOpen.value = false
   markDiveIntroSeen()
   markWarbondIntroSeen()
   if (name && name !== self.value?.name) {
@@ -181,7 +196,7 @@ function closeBriefing(name: string): void {
 
 function openBriefing(): void {
   if (session.selfIsHost.value) {
-    briefingOpen.value = true
+    hostReviewOpen.value = true
   }
   else {
     joinReviewOpen.value = true
@@ -189,7 +204,7 @@ function openBriefing(): void {
 }
 
 // Before seating, the room is read once to tell the two first visits apart: an
-// empty room is the host's own fresh dive (the name gate, then the tutorial),
+// empty room is the host's own fresh dive (straight to the host tutorial),
 // one that already holds a squad is a join by link (the join briefing). The
 // briefing keeps the read fresh so its roster tracks the squad while it reads.
 const joinPreview = ref<DiveState | null>(null)
@@ -221,9 +236,9 @@ watch(() => session.awaitingJoin.value, (held) => {
   startProbing()
 }, { immediate: true })
 
-// A host who already introduced themselves on an earlier dive needs no gate.
+// A host seats straight away; the host tutorial's registry takes their callsign.
 watch(joinRole, (role) => {
-  if (role === 'host' && session.awaitingJoin.value && hasDiverName()) {
+  if (role === 'host' && session.awaitingJoin.value) {
     session.connect()
   }
 })
@@ -394,6 +409,7 @@ const promotionGateOpen = computed(() =>
   && !!self.value
   && !kicked.value
   && !briefingOpen.value
+  && !hostReviewOpen.value
   && !joinReviewOpen.value
   && !warbondsOpen.value
   && !session.awaitingJoin.value
@@ -586,10 +602,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         :room-code="session.slotName.value"
         @confirm="confirmJoinBriefing"
       />
-      <JoinNameGate
-        v-else-if="joinRole === 'host' && !hasDiverName()"
-        @confirm="confirmJoinName"
-      />
       <p
         v-else
         class="panel page muted"
@@ -597,6 +609,13 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         Loading dive…
       </p>
     </template>
+    <HostBriefing
+      v-else-if="briefingOpen && state"
+      :state="state"
+      :room-code="session.slotName.value"
+      :self-name="self?.name ?? ''"
+      @close="closeBriefing"
+    />
     <p
       v-else-if="session.loadError.value"
       class="panel page"
@@ -717,7 +736,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
           :bargains-closed="bargainsClosed"
           :bargain-lamp="self ? bargainLamp(state, self) : 'off'"
           @open-bargains="bargainsOpen = true"
-          @open-kit="armoryOpen = true"
+          @open-kit="openKit"
           @open-tutorial="openBriefing"
           @open-menu="sessionMenuOpen = true"
         />
@@ -845,6 +864,17 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         </div>
       </Transition>
 
+      <template
+        v-if="kitDocked"
+        #aside
+      >
+        <KitDock
+          v-model:open="kitDockOpen"
+          :state="state"
+          :self-id="selfId"
+        />
+      </template>
+
       <template #dock>
         <div class="dock-stack">
           <Transition name="steam-bar">
@@ -933,15 +963,21 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @buy="buyItem"
     />
 
-    <BriefingOverlay
-      v-if="briefingOpen && state"
-      :state="state"
-      :self="self"
-      :self-id="selfId"
-      :mode="session.mode"
-      :online="session.online.value"
-      @close="closeBriefing"
-    />
+    <AppDialog
+      v-if="state && session.selfIsHost.value"
+      v-model:open="hostReviewOpen"
+      title="Host tutorial"
+      description="What the host does, and where your gear lives."
+      size="lg"
+    >
+      <HostBriefing
+        :state="state"
+        :room-code="session.slotName.value"
+        :self-name="self?.name ?? ''"
+        review
+        @close="closeBriefing"
+      />
+    </AppDialog>
 
     <FieldPromotionGate
       v-if="state && self"

@@ -45,7 +45,7 @@ const rungs = computed(() => Array.from({ length: 8 }, (_, i) => {
 const tags = computed(() => props.state.divers.map((diver, index) => ({
   id: diver.id,
   initial: diver.name.trim().slice(0, 1).toUpperCase(),
-  name: diver.name,
+  name: upperName(diver.name),
   isHost: diver.isHost,
   items: (props.state.personalInventories[diver.id] ?? []).length,
   tokens: diver.rewardTokens,
