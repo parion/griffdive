@@ -304,7 +304,7 @@ const ARMOR_PASSIVES = [
     warbondCode: "warbond26",
     internalName: "truegrit",
     imageURL: "truegrit.webp",
-    tier: "a",
+    tier: "s",
     index: 27,
   },
   {
@@ -317,6 +317,17 @@ const ARMOR_PASSIVES = [
     imageURL: "bluntforcemitigation.webp",
     tier: "b",
     index: 28,
+  },
+  {
+    displayName: "Stationary Shroud",
+    type: "Equipment",
+    category: "armor",
+    tags: ["ArmorPassive"],
+    warbondCode: "warbond28",
+    internalName: "stationaryshroud",
+    imageURL: "stationaryshroud.webp",
+    tier: "b",
+    index: 29,
   },
 ];
 

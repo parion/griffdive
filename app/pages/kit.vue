@@ -96,7 +96,7 @@ const TILE_SPECS: TileSpec[] = [
   { id: 'ac8autocannon', t: 'A', cat: 'SUPPORT' },
   { id: 'las99quasarcannon', t: 'S', cat: 'SUPPORT', tag: 'NEW' },
   { id: 'eaglesmokestrike', t: 'C', cat: 'EAGLE', tag: 'RESERVE', reserve: true },
-  { id: 'sh20shieldgeneratorpack', t: 'A', cat: 'BACKPACK', out: true },
+  { id: 'sh32shieldgeneratorpack', t: 'A', cat: 'BACKPACK', out: true },
   { id: 'eagle500kgbomb', t: 'S', cat: 'EAGLE', tag: 'CEILING', lead: true },
 ]
 
@@ -227,7 +227,7 @@ const regAfter = REGISTRY.map((r, i) => ({
   you: i === 4,
 }))
 
-const kitStratagems = ['eaglesmokestrike', 'orbitalemsstrike', 'shieldgeneratorrelay', 'emsmortarsentry'].map((id) => {
+const kitStratagems = ['eaglesmokestrike', 'orbitalemsstrike', 'fx12shieldgeneratorrelay', 'am23emsmortarsentry'].map((id) => {
   const it = byId(id)
   return { id, name: it.displayName, img: itemImageUrl(it) }
 })

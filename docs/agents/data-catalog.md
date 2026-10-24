@@ -12,14 +12,16 @@
   (MIT) — vendored at `scripts/upstream/` (snapshot commit recorded there), converted to our
   schema by `node scripts/import-catalog.mjs` (re-run after every upstream refresh), attributed in
   `shared/data/` headers and CREDITS. The vendored snapshot spans every released warbond through
-  **Ironclad Democracy** (`warbond27`). A catalog refresh that grows a reward or catch-up pool is
+  **Scope of Authority** (`warbond28`). A catalog refresh that grows a reward or catch-up pool is
   expected to move the seeded golden replay — regenerate goldens (`GRIFFDIVE_UPDATE_GOLDENS=1 pnpm
   test`) instead of treating it as an engine regression.
   The importer regenerates raw JSON, so the committed `shared/data/*.ts` are the output of
   `node scripts/import-catalog.mjs` **followed by `eslint --fix`** (quote/format normalisation).
   Local corrections to a game-truth field (e.g. a wrong `antitank` flag) go in the importer's
   `ITEM_OVERRIDES`, keyed by item id, so a refresh re-applies them instead of reverting the
-  generated data — never hand-edit `shared/data/equipment.ts`.
+  generated data — never hand-edit `shared/data/equipment.ts`. Upstream sometimes corrects an item's
+  `internalName`; because catalog ids are upstream names, such a rename is save-breaking and must
+  ship with a `SAVE_SCHEMA_VERSION` bump plus an id-remap migration in `shared/engine/saves.ts`.
   Stratagem SVGs from [Nvigneux/Helldivers-2-Stratagems-icons-svg](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg);
   equipment images from [helldivers.wiki.gg](https://helldivers.wiki.gg/wiki/Helldivers_2). Stratagem art ships as `.webp`
   in `public/images/svgs/` (directory name historical); the importer rewrites upstream's `.svg`

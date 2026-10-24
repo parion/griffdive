@@ -12,7 +12,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "advancedfiltration",
+      "optionId": "surpluseatallocation",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -27,7 +27,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "surpluseatallocation",
+      "optionId": "advancedfiltration",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -44,7 +44,7 @@
       ],
       "outcome": "success",
       "stars": 3,
-      "optionId": "meltamine",
+      "optionId": "gsh39shield",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -61,7 +61,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "meltamine"
+      "forfeitedItemId": "gsh39shield"
     },
     {
       "mission": 4,
@@ -104,7 +104,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "sh51directionalshield",
+      "optionId": "electricalconduit",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -119,7 +119,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "mg43machinegun",
+      "optionId": "las98lasercannon",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -136,7 +136,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "mg43machinegun"
+      "forfeitedItemId": "las98lasercannon"
     },
     {
       "mission": 9,
@@ -179,7 +179,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "antitankmines",
+      "optionId": "md17antitankmines",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -194,7 +194,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "ar32pacifier",
+      "optionId": "ma5cassaultrifle",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -211,7 +211,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "ar32pacifier"
+      "forfeitedItemId": "ma5cassaultrifle"
     },
     {
       "mission": 14,
@@ -239,7 +239,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "mortarsentry",
+      "optionId": "am12mortarsentry",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -254,7 +254,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "ar11arbitrator",
+      "optionId": "r40sightliner",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -299,7 +299,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "eaglenapalmstrike",
+      "optionId": "eaglenapalmairstrike",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -314,7 +314,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "faf14spear",
+      "optionId": "rl77airburstrocketlauncher",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -331,7 +331,7 @@
       ],
       "outcome": "success",
       "stars": 4,
-      "optionId": "gl21grenadelauncher",
+      "optionId": "apw1antimaterielrifle",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -363,7 +363,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "gl21grenadelauncher"
+      "forfeitedItemId": "apw1antimaterielrifle"
     },
     {
       "mission": 24,
@@ -376,7 +376,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "orbital120mmhebarrage",
+      "optionId": "orbitalwalkingbarrage",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -391,7 +391,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "solosilo",
+      "optionId": "ac8autocannon",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -408,7 +408,7 @@
       ],
       "outcome": "success",
       "stars": 4,
-      "optionId": "r72censor",
+      "optionId": "las16sickle",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -423,7 +423,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 5,
-      "optionId": "wasplauncher",
+      "optionId": "axarc3k9",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -453,7 +453,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "r4hyena",
+      "optionId": "r40khotshot",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -468,7 +468,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "orbital380mmhebarrage",
+      "optionId": "amg43machinegunsentry",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -483,7 +483,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "portablehellbomb",
+      "optionId": "orbitalgasstrike",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -500,7 +500,7 @@
       ],
       "outcome": "success",
       "stars": 5,
-      "optionId": "gr8recoillessrifle",
+      "optionId": "las99quasarcannon",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -519,7 +519,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "wasplauncher"
+      "forfeitedItemId": "axarc3k9"
     },
     {
       "mission": 34,
@@ -532,7 +532,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "exo55breakthroughexosuit",
+      "optionId": "las44nova",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -547,7 +547,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "g48giga",
+      "optionId": "experimentalinfusion",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -562,13 +562,13 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "beltfedgrenadelauncher",
+      "optionId": "bflam80cremator",
       "choiceItemId": null,
       "forfeitedItemId": null
     }
   ],
   "firstOptions": [
-    "advancedfiltration",
+    "surpluseatallocation",
     "cqc5combathatchet",
     "flexiblereinforcementbudget"
   ],
@@ -611,46 +611,46 @@
       "zeroDeaths:terminids:ruptureStrain"
     ],
     "personalInventory": [
+      "ac8autocannon",
       "advancedfiltration",
       "aflam40flamesentry",
-      "antitankmines",
-      "ar11arbitrator",
-      "beltfedgrenadelauncher",
+      "am12mortarsentry",
+      "am23emsmortarsentry",
+      "amg43machinegunsentry",
+      "bflam80cremator",
       "cqc19stunlance",
+      "cqc1onetrueflag",
       "cqc2saber",
       "cqc30stunbaton",
       "cqc42machete",
       "cqc5combathatchet",
       "cqc73entrenchmenttool",
-      "defoliationtool",
-      "eaglenapalmstrike",
+      "cqc9defoliationtool",
+      "eaglenapalmairstrike",
       "eaglesmokestrike",
-      "emsmortarsentry",
-      "exo55breakthroughexosuit",
+      "electricalconduit",
+      "experimentalinfusion",
       "extrapadding",
-      "faf14spear",
+      "fx12shieldgeneratorrelay",
       "g12highexplosivegrenade",
       "g3smokegrenade",
-      "g48giga",
       "g89smokescreen",
-      "gr8recoillessrifle",
       "k2throwingknife",
       "kineticdisplacementmitigation",
+      "las16sickle",
+      "las44nova",
       "las7dagger",
-      "mortarsentry",
-      "onetrueflag",
-      "orbital120mmhebarrage",
-      "orbital380mmhebarrage",
+      "las99quasarcannon",
+      "md17antitankmines",
       "orbitalemsstrike",
+      "orbitalgasstrike",
       "orbitalsmokestrike",
+      "orbitalwalkingbarrage",
       "p2peacemaker",
-      "portablehellbomb",
       "r2124constitution",
-      "r4hyena",
-      "r72censor",
-      "sh51directionalshield",
-      "shieldgeneratorrelay",
-      "solosilo",
+      "r40khotshot",
+      "r40sightliner",
+      "rl77airburstrocketlauncher",
       "surpluseatallocation",
       "tx41sterilizer"
     ],

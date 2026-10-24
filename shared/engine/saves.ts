@@ -118,6 +118,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 18) {
     migrated = migrateV17toV18(migrated)
   }
+  if (migrated.schemaVersion < 19) {
+    migrated = migrateV18toV19(migrated)
+  }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
   // A session mirror can carry a pre-v13 room's settings under the current
@@ -301,8 +304,8 @@ export function normalizeRoomState(state: DiveState): DiveState {
 const LEGACY_SEAF_SUPPORT_IDS: readonly string[] = [
   'sh20ballisticshieldbackpack',
   'orbitalprecisionstrike',
-  'grenadierbattlement',
-  'antitankmines',
+  'egl21grenadierbattlement',
+  'md17antitankmines',
   'eagle110mmrocketpods',
   'orbitalgatlingbarrage',
   'arc3arcthrower',
@@ -328,6 +331,81 @@ function migrateV17toV18(doc: SaveDoc): SaveDoc {
       divers: (doc.state.divers ?? []).map(diver => ({ ...diver, ...legacySupportKit(doc.state.settings, diver) })),
     },
   }
+}
+
+// v19: the upstream catalog corrected a batch of internal item names (adding
+// manufacturer codes and fixing two codes outright). Saves written before the
+// refresh still carry the old ids in inventories, caches, bans, bargains and
+// the action log; remap every occurrence so held gear survives the rename.
+const LEGACY_ITEM_ID_ALIASES: Readonly<Record<string, string>> = {
+  ma5c: 'ma5cassaultrifle',
+  m7s: 'm7ssmg',
+  m90a: 'm90ashotgun',
+  variable: 'vg70variable',
+  las16trident: 'las13trident',
+  hotshotmarksmanrifle: 'r40khotshot',
+  gp31ultimatum: 'gp20ultimatum',
+  boltpistol: 'p40kboltpistol',
+  speargun: 's11speargun',
+  epoch: 'plas45epoch',
+  mls4xcommandorocketlauncher: 'mls4xcommando',
+  solosilo: 'ms11solosilo',
+  onetrueflag: 'cqc1onetrueflag',
+  defoliationtool: 'cqc9defoliationtool',
+  maxigun: 'm1000maxigun',
+  wasplauncher: 'stax3wasplauncher',
+  c4pack: 'bmdc4pack',
+  guarddogflames: 'axflam75hotdog',
+  axtx13guarddogdogbreath: 'axtx13dogbreath',
+  axlas5guarddogrover: 'axlas5rover',
+  ad334guarddog: 'axar23guarddog',
+  guarddogarc: 'axarc3k9',
+  warppack: 'lift182warppack',
+  sh20shieldgeneratorpack: 'sh32shieldgeneratorpack',
+  portablehellbomb: 'b100portablehellbomb',
+  fastreconvehicle: 'm102gunnerfrv',
+  eaglenapalmstrike: 'eaglenapalmairstrike',
+  teslatower: 'aarc3teslatower',
+  mortarsentry: 'am12mortarsentry',
+  emsmortarsentry: 'am23emsmortarsentry',
+  machinegunsentry: 'amg43machinegunsentry',
+  gatlingsentry: 'ag16gatlingsentry',
+  lasersentry: 'alas98lasersentry',
+  autocannonsentry: 'aac8autocannonsentry',
+  rocketsentry: 'amls4xrocketsentry',
+  shieldgeneratorrelay: 'fx12shieldgeneratorrelay',
+  hmgemplacement: 'emg101hmgemplacement',
+  grenadierbattlement: 'egl21grenadierbattlement',
+  antitankmines: 'md17antitankmines',
+  antipersonnelminefield: 'md6antipersonnelminefield',
+  gasmines: 'md8gasmines',
+  incendiarymines: 'md14incendiarymines',
+  breachinghammer: 'cqc20breachinghammer',
+  beltfedgrenadelauncher: 'gl28beltfedgrenadelauncher',
+  bastiontank: 'td220bastion',
+  gasmortarsentry: 'agm17gasmortarsentry',
+  cremator: 'bflam80cremator',
+  supplyfrv: 'm103supplyfrv',
+  meltagun: '40kmeltagun',
+}
+
+function remapLegacyItemIds<T>(value: T): T {
+  if (typeof value === 'string') {
+    return (LEGACY_ITEM_ID_ALIASES[value] ?? value) as T
+  }
+  if (Array.isArray(value)) {
+    return value.map(remapLegacyItemIds) as T
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [key, remapLegacyItemIds(nested)]),
+    ) as T
+  }
+  return value
+}
+
+function migrateV18toV19(doc: SaveDoc): SaveDoc {
+  return { ...doc, state: remapLegacyItemIds(doc.state) }
 }
 
 // A crusade saved before Brasch's Bargains became an always-open shop has no
