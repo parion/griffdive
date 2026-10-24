@@ -7,8 +7,8 @@ export type RewardTier = 'C' | 'B' | 'A' | 'S' | 'S+'
 export type CrusadeVariant = 'medium' | 'hard' | 'suicide'
 
 // The optional mode layered on the hard/suicide starts, mutually exclusive:
-// 'seaf' ships the SEAF Support Package (extra gear + a flat per-mission Valor
-// bump), 'penance' is Super Penance (bare surplus kit + a larger flat Valor
+// 'seaf' ships the SEAF Support Package (a random pack rolled per diver + a flat
+// per-mission Valor bump), 'penance' is Super Penance (bare surplus kit + a larger flat Valor
 // stake). Undefined on the medium start, which offers neither.
 export type CrusadeMode = 'seaf' | 'penance'
 
@@ -62,6 +62,11 @@ export interface DiverState {
   // reads as null. Reset with the pacts every mission.
   forfeitedItemId?: string | null
   warbondCodes: string[]
+  // The SEAF Support Package this diver was dealt at launch or on seating —
+  // random items, already merged into their inventory. Recorded so the pack
+  // reads as support gear (not a won reward) when a cache is parked. Empty when
+  // the run has no package; absent on a state older than the rolled package.
+  supportKit?: string[]
   // Field Promotion bookkeeping for mid-crusade joiners: what they were
   // granted at seating and what is still unclaimed (0 when joined at the
   // start or fully claimed). Catch-up restores altitude, never rarity.

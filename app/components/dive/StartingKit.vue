@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import { itemImageUrl } from '~~/shared/data/images'
-import { SEAF_SUPPORT_KIT, startingItemIds } from '~~/shared/engine/progression'
+import { SEAF_SUPPORT_TIER } from '~~/shared/engine/config'
+import { startingItemIds, supportRollsFor } from '~~/shared/engine/progression'
 import type { CrusadeMode, CrusadeVariant } from '~~/shared/engine/types'
 
-// The kit every diver drops with for the chosen start. SEAF Support gear is
-// edged teal so the mode's extra gear reads at a glance.
+// The surplus kit every diver drops with for the chosen start. SEAF Support is
+// rolled per diver at launch, so it shows as a recipe rather than as items.
 const props = defineProps<{
   variant: CrusadeVariant
   mode?: CrusadeMode
 }>()
 
-const ids = computed(() => startingItemIds(props.variant, props.mode))
+const ids = computed(() => startingItemIds(props.variant))
 const groups = computed(() => kitGroups(ids.value))
-const support = new Set<string>([...SEAF_SUPPORT_KIT.stratagems, ...SEAF_SUPPORT_KIT.boosters])
-const supportCount = computed(() => ids.value.filter(id => support.has(id)).length)
+const rolls = computed(() => supportRollsFor(props.variant, props.mode))
+const recipe = computed(() => (rolls.value ? supportRollList(rolls.value) : []))
 </script>
 
 <template>
@@ -28,8 +29,8 @@ const supportCount = computed(() => ids.value.filter(id => support.has(id)).leng
         <li
           v-for="item in group.items"
           :key="item.id"
-          :class="{ wide: item.category === 'primary' || item.category === 'secondary', seaf: support.has(item.id) }"
-          :title="support.has(item.id) ? `${item.displayName} · SEAF Support` : item.displayName"
+          :class="{ wide: item.category === 'primary' || item.category === 'secondary' }"
+          :title="item.displayName"
         >
           <img
             :src="itemImageUrl(item)"
@@ -40,8 +41,24 @@ const supportCount = computed(() => ids.value.filter(id => support.has(id)).leng
         </li>
       </ul>
     </div>
+    <div
+      v-if="recipe.length"
+      class="kit-g kit-support"
+    >
+      <span class="kit-g-label">SEAF Support · rolled per diver</span>
+      <ul class="kit-recipe">
+        <li
+          v-for="entry in recipe"
+          :key="entry"
+        >
+          {{ entry }}
+        </li>
+      </ul>
+    </div>
     <p class="kit-note">
-      {{ supportCount ? `Surplus kit + ${supportCount} SEAF Support items.` : 'Bare surplus kit.' }}
+      {{ recipe.length
+        ? `Surplus kit + a random ${SEAF_SUPPORT_TIER.toUpperCase()}-tier pack, rolled separately for each diver at launch.`
+        : 'Bare surplus kit.' }}
       Every reward adds to it.
     </p>
   </div>
@@ -69,7 +86,17 @@ const supportCount = computed(() => ids.value.filter(id => support.has(id)).leng
   border: 1px solid var(--line-2);
 }
 .kit-items li.wide { width: 60px; }
-.kit-items li.seaf { border-color: var(--teal); box-shadow: inset 0 -2px 0 var(--teal); }
+.kit-support { flex-basis: 100%; }
+.kit-recipe { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.kit-recipe li {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--raised);
+  border: 1px solid var(--teal);
+  box-shadow: inset 0 -2px 0 var(--teal);
+}
 .kit-items img { width: 28px; height: 28px; object-fit: contain; }
 .kit-items li.wide img { width: 54px; height: 30px; }
 .kit-note { flex-basis: 100%; margin: 0; font-size: 11px; line-height: 1.4; color: var(--muted); }

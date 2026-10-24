@@ -3,7 +3,8 @@ import { ALL_ITEMS, ALL_WARBOND_CODES, ITEMS_BY_ID } from '../data/catalog'
 import type { FrontId } from '../data/fronts'
 import { PACTS } from '../data/pacts'
 import { BONUS_STATS, FRONT_ROLL_RISK, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, PENANCE_VALOR, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor, directiveValorAt, maxStarsFor, seafSupportValorAt } from './config'
-import { SEAF_SUPPORT_KIT, startingItemIds } from './progression'
+import { startingItemIds } from './progression'
+import { rollSupportKit } from './support'
 import { DIVERS_CHOICE_OPTION_ID, bargainKindOf, itemPrice, maxCeiling } from './rewards'
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
@@ -190,14 +191,16 @@ describe('START_DIVE', () => {
 
   it('grants the SEAF Support Package gear and Valor only in the seaf mode', () => {
     const seaf = createDiveState({ variant: 'suicide', mode: 'seaf' }, 'p1', 'Griffin')
-    for (const id of [...SEAF_SUPPORT_KIT.stratagems, ...SEAF_SUPPORT_KIT.boosters]) {
-      expect(seaf.personalInventories.p1).toContain(id)
-    }
+    const pack = requireDiver(seaf).supportKit!
+    expect(pack).toHaveLength(11)
+    expect(pack).toEqual(rollSupportKit({ variant: 'suicide', mode: 'seaf' }, 'p1', requireDiver(seaf).warbondCodes))
+    expect(seaf.personalInventories.p1).toEqual([...startingItemIds('suicide'), ...pack])
     expect(modeValorOf(seaf)).toBe(seafSupportValorAt(7))
     expect(teamRiskOf(seaf)).toBe(seafSupportValorAt(7))
 
     const penance = createDiveState({ variant: 'suicide', mode: 'penance' }, 'p1', 'Griffin')
     expect(penance.personalInventories.p1).toEqual(startingItemIds('suicide'))
+    expect(requireDiver(penance).supportKit).toEqual([])
     expect(modeValorOf(penance)).toBe(PENANCE_VALOR[7])
     expect(teamRiskOf(penance)).toBe(PENANCE_VALOR[7])
   })
@@ -343,9 +346,11 @@ describe('ACCEPT_MISFORTUNE (optional team risk)', () => {
   })
 
   it('accepts a misfortune the squad can field', () => {
-    // Quickplay's extra red stratagems clear the four-airstrike floor.
+    // One more red stratagem than the surplus clears the four-airstrike floor.
+    const fresh = freshState()
     const state: DiveState = {
-      ...createDiveState({ variant: 'suicide', mode: 'seaf' }, 'p1', 'Griffin'),
+      ...fresh,
+      personalInventories: { p1: [...fresh.personalInventories.p1!, 'orbitalprecisionstrike'] },
       difficulty: 6,
       wheel: { seed: 1, misfortuneId: 'oopsAllAirstrikes' },
       phase: 'decision',
@@ -1024,11 +1029,24 @@ describe('REPORT_RESULT (failure) → forfeit', () => {
     expect(requireDiver(state).forfeitedItemId).toBeNull()
   })
 
+  it('rolls every squadmate their own pack from their own warbonds', () => {
+    const lobby = joinDiver(createLobbyState(), 'p1', 'Griffin')!
+    const squad = joinDiver(lobby, 'p2', 'Ash')!
+    const owned = reduce(squad, { type: 'SET_WARBONDS', playerId: 'p2', warbondCodes: ['warbond3'] })
+    const started = reduce(owned, { type: 'START_DIVE', settings: { variant: 'hard', mode: 'seaf' }, seed: 1 })
+    const [first, second] = started.divers
+    expect(first!.supportKit).not.toEqual(second!.supportKit)
+    for (const id of second!.supportKit!) {
+      const code = ITEMS_BY_ID.get(id)!.warbondCode
+      expect(code === 'none' || code === 'warbond3').toBe(true)
+    }
+  })
+
   it('puts the SEAF support pack on the block before any reward is banked', () => {
     const settings = { variant: 'hard' as const, mode: 'seaf' as const }
     const base = reduce(createDiveState(settings, 'p1', 'Griffin'), { type: 'SPIN_WHEEL', seed: 42 })
     const diving: DiveState = { ...base, phase: 'diving' }
-    const support = new Set([...SEAF_SUPPORT_KIT.stratagems, ...SEAF_SUPPORT_KIT.boosters])
+    const support = new Set(requireDiver(base).supportKit)
     const state = reduce(diving, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1 })
     expect(state.phase).toBe('forfeit')
     const offer = forfeitOptionsFor(state, requireDiver(state))

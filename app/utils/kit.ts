@@ -1,5 +1,6 @@
 import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import type { Item, ItemCategory } from '~~/shared/data/types'
+import type { SupportRolls } from '~~/shared/engine/config'
 import { startingItemIds } from '~~/shared/engine/progression'
 import type { DiveState } from '~~/shared/engine/types'
 
@@ -65,13 +66,14 @@ export function ownedKitItems(state: DiveState, diverId: string | null): Item[] 
 }
 
 // Items the diver gained after launch (rewards, purchases, caches): everything
-// outside the variant's starting kit.
+// outside the variant's starting kit and the support pack they were dealt.
 export function earnedKitItems(state: DiveState, diverId: string | null): Item[] {
   const items = ownedKitItems(state, diverId)
   if (!state.settings) {
     return items
   }
-  const starting = new Set(startingItemIds(state.settings.variant, state.settings.mode))
+  const support = state.divers.find(diver => diver.id === diverId)?.supportKit ?? []
+  const starting = new Set([...startingItemIds(state.settings.variant), ...support])
   return items.filter(item => !starting.has(item.id))
 }
 
@@ -95,4 +97,21 @@ export function kitGroups(itemIds: readonly string[]): KitGroup[] {
   return KIT_GROUPS
     .map(group => ({ label: group.label, items: items.filter(item => group.categories.includes(item.category)) }))
     .filter(group => group.items.length > 0)
+}
+
+const SUPPORT_ROLL_LABELS: Readonly<Record<keyof SupportRolls, readonly [string, string]>> = {
+  primary: ['primary', 'primaries'],
+  secondary: ['secondary', 'secondaries'],
+  throwable: ['throwable', 'throwables'],
+  stratagem: ['stratagem', 'stratagems'],
+  armorPassive: ['armor passive', 'armor passives'],
+  booster: ['booster', 'boosters'],
+}
+
+// The SEAF package as a recipe — "2 primaries, 1 secondary, …" — for the screens
+// that describe it before a diver's own pack exists.
+export function supportRollList(rolls: SupportRolls): string[] {
+  return (Object.keys(SUPPORT_ROLL_LABELS) as (keyof SupportRolls)[])
+    .filter(kind => rolls[kind] > 0)
+    .map(kind => `${rolls[kind]} ${SUPPORT_ROLL_LABELS[kind][rolls[kind] === 1 ? 0 : 1]}`)
 }
