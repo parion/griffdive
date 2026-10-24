@@ -21,6 +21,9 @@ export const REVEAL_OPENING = 320
 /** `pin-land` in ValorRoll reaches the strip 540ms in (60% of 900ms). */
 export const PIN_IMPACT = 540
 
+/** Air after the last card lands, so its shockwave clears before company joins. */
+export const REVEAL_SETTLE = 600
+
 export interface RevealCue {
   tier: RewardTier
   start: number
@@ -41,4 +44,14 @@ export function revealTimeline(tiers: readonly RewardTier[]): RevealCue[] {
 /** The Valor pin drops so it strikes the line as its card lands. */
 export function pinDelay(cue: RevealCue): number {
   return Math.max(0, cue.impact - PIN_IMPACT)
+}
+
+/**
+ * Ms from a draft's first frame until its last reveal has landed and settled.
+ * A trailing S+ counts: Liberty's Cross's band unfurls past its own beat.
+ */
+export function revealDuration(tiers: readonly RewardTier[]): number {
+  const cues = revealTimeline(tiers)
+  const last = cues[cues.length - 1]
+  return last ? last.impact + REVEAL_SETTLE : 0
 }

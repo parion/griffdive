@@ -193,7 +193,10 @@ until its suspense beat, when its row folds open and pushes the cards down, then
 crest plays. Hosts set `--cross-gap` to their flex gap so the collapsed row leaves no double gap. Every option's Valor pin is timed
 (`pinDelay`) to strike the line as its card lands; S/S+ pins flare. Pacing lives in
 `REVEAL_BEATS`. A draft that is already resolved on mount shows settled, and nothing gates input —
-cards are pickable from the first frame.
+cards are pickable from the first frame. The squad's drafts (`SquadDraftBoard`) wait for the local
+reveal to land (`revealDuration`): they appear with the settled cabinet, so a teammate banking early
+never pre-empts the fanfare. Banking settles them at once; a reroll replays the hold. A pick is
+local and survives the squad's syncs — only a genuinely new offer (a reroll) clears it.
 
 Once **every** diver has banked (`allDiversPicked`, synced state, so the whole squad sees it), the
 draft hands off to an interstitial; the engine stays in rewards and the host's ADVANCE is the only

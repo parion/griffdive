@@ -80,11 +80,15 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await pageA.getByRole('button', { name: 'File report' }).click()
   await expect(pageB.getByRole('heading', { name: 'Bank one item' })).toBeVisible()
   await expect(pageB.locator('.squad-pick[aria-label*=": Choosing"]')).toHaveCount(1)
+
+  // A pick is local: a teammate banking syncs the room but must not clear it.
+  await pageA.locator('.loot-card').first().click()
+  await expect(pageA.locator('.loot-card.selected')).toHaveCount(1)
   await pageB.locator('.loot-card').first().click()
   await pageB.getByRole('button', { name: /^Bank / }).click()
+  await expect(pageA.locator('.loot-card.selected')).toHaveCount(1)
   await expect(pageA.locator('.squad-pick.done')).toHaveCount(1)
   await expect(pageA.locator('.squad-pick.done .tile.banked img')).toBeVisible()
-  await pageA.locator('.loot-card').first().click()
   await pageA.getByRole('button', { name: /^Bank / }).click()
   await expect(pageA.locator('.squad-pick.done .tile.banked')).toHaveCount(1)
   await expect(pageB.locator('.squad-pick.done .tile.banked')).toHaveCount(1)

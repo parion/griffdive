@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { PIN_IMPACT, REVEAL_OPENING, pinDelay, revealTimeline } from './rewardReveal'
+import {
+  PIN_IMPACT,
+  REVEAL_OPENING,
+  REVEAL_SETTLE,
+  pinDelay,
+  revealDuration,
+  revealTimeline,
+} from './rewardReveal'
 
 describe('reward reveal timeline', () => {
   it('lands cards in the order given, whatever their tier', () => {
@@ -26,5 +33,18 @@ describe('reward reveal timeline', () => {
     for (const cue of revealTimeline(['C', 'A', 'S+'])) {
       expect(pinDelay(cue) + PIN_IMPACT).toBe(cue.impact)
     }
+  })
+
+  it('settles only after the last card has landed', () => {
+    const cues = revealTimeline(['C', 'A', 'S'])
+    expect(revealDuration(['C', 'A', 'S'])).toBe(cues[2]!.impact + REVEAL_SETTLE)
+  })
+
+  it('waits out an S+ finale longer than a plain S', () => {
+    expect(revealDuration(['S+'])).toBeGreaterThan(revealDuration(['S']))
+  })
+
+  it('gives an empty cabinet nothing to wait for', () => {
+    expect(revealDuration([])).toBe(0)
   })
 })
