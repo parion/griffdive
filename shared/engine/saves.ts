@@ -16,7 +16,6 @@ type LegacyDiver = Omit<
   DiverState,
   | 'catchUpGranted'
   | 'catchUpOwed'
-  | 'skipsCurrentDraft'
   | 'failedPactIds'
   | 'rewardTokens'
   | 'bannedItemIds'
@@ -27,7 +26,6 @@ type LegacyDiver = Omit<
   DiverState,
   | 'catchUpGranted'
   | 'catchUpOwed'
-  | 'skipsCurrentDraft'
   | 'failedPactIds'
   | 'rewardTokens'
   | 'bannedItemIds'
@@ -121,6 +119,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 19) {
     migrated = migrateV18toV19(migrated)
   }
+  if (migrated.schemaVersion < 20) {
+    migrated = migrateV19toV20(migrated)
+  }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
   // A session mirror can carry a pre-v13 room's settings under the current
@@ -147,7 +148,6 @@ function migrateV7toV8(doc: SaveDoc): SaveDoc {
           ...legacy,
           catchUpGranted: legacy.catchUpGranted ?? 0,
           catchUpOwed: legacy.catchUpOwed ?? 0,
-          skipsCurrentDraft: legacy.skipsCurrentDraft ?? false,
           // Pre-v8 saves carry no failed-pact marks — an empty list is the
           // truthful default for them.
           failedPactIds: legacy.failedPactIds ?? [],
@@ -285,8 +285,12 @@ export function normalizeRoomState(state: DiveState): DiveState {
       ? state.bonusWinnerIds
       : legacyWinnerIds(state),
     bargainSeed: state.bargainSeed ?? (state.settings ? hashString(state.hostId ?? '') : null),
-    divers: (state.divers ?? []).map((diver) => {
-      const { sampleBank, ...rest } = diver as LegacyPurse & DiverState
+    divers: (state.divers ?? []).map((rawDiver) => {
+      const { sampleBank, ...rest } = rawDiver as LegacyPurse & DiverState
+      // Rooms are unversioned (see the save chain's v18 → v19 step): the
+      // mid-mission draft-skip flag is no longer a rule, so it never survives a
+      // read — the joiner drafts the mission they dropped into like everyone.
+      delete (rest as DiverState & { skipsCurrentDraft?: boolean }).skipsCurrentDraft
       return {
         ...rest,
         credits: rest.credits ?? sampleBank ?? 0,
@@ -333,7 +337,7 @@ function migrateV17toV18(doc: SaveDoc): SaveDoc {
   }
 }
 
-// v19: the upstream catalog corrected a batch of internal item names (adding
+// v20: the upstream catalog corrected a batch of internal item names (adding
 // manufacturer codes and fixing two codes outright). Saves written before the
 // refresh still carry the old ids in inventories, caches, bans, bargains and
 // the action log; remap every occurrence so held gear survives the rename.
@@ -404,7 +408,25 @@ function remapLegacyItemIds<T>(value: T): T {
   return value
 }
 
+// v19: a diver seated mid-mission is a full participant in the mission they
+// drop into — they draft its rewards, bank its credits, stand for its forfeit
+// and can win its honors — so the skip flag is gone. Any save that still
+// carries it simply drafts as everyone else does.
 function migrateV18toV19(doc: SaveDoc): SaveDoc {
+  return {
+    ...doc,
+    state: {
+      ...doc.state,
+      divers: (doc.state.divers ?? []).map((diver) => {
+        const rest = { ...diver } as DiverState & { skipsCurrentDraft?: boolean }
+        delete rest.skipsCurrentDraft
+        return rest
+      }),
+    },
+  }
+}
+
+function migrateV19toV20(doc: SaveDoc): SaveDoc {
   return { ...doc, state: remapLegacyItemIds(doc.state) }
 }
 

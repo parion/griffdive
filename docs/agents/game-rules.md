@@ -558,8 +558,8 @@ option roll:   each option rolls a d100 face on the odds line. Zone width is
 
 Samples recovered on a mission are not a Valor term. They are exchanged for **credits**, the
 currency of **Brasch's Bargains** (marked in the UI by a custom credit glyph, `ui/IconCredit.vue`).
-A successful report banks each diver who dove the mission a credit haul in their personal purse
-(`DiverState.credits`). A mid-mission joiner who `skipsCurrentDraft` earns nothing:
+A successful report banks each diver seated by report time a credit haul in their personal purse
+(`DiverState.credits`) — a mid-mission joiner dove too, so the haul is theirs:
 
 ```text
 haulValue   = common × 1 + rare × 3 + super × 12   (SAMPLE_CREDITS)
@@ -633,10 +633,10 @@ Promotion, a claimed cache, **and the diver's rolled SEAF Support Package** when
 diver owes an item from the pack even before banking a first reward). The surplus starting kit was
 never won, so it is never taken.
 
-- **Who owes:** every present diver who dove the mission and has gear at stake. A diver with
-  only the bare surplus (e.g. a Super Penance failure on the crusade's first mission), a mid-mission joiner
-  (`skipsCurrentDraft`) and a diver who stepped away owe nothing. If no diver owes, the operation
-  restarts immediately.
+- **Who owes:** every present diver who dove the mission and has gear at stake — a mid-mission
+  joiner included. A diver with only the bare surplus (e.g. a Super Penance failure on the crusade's
+  first mission) or a diver who stepped away owes nothing. If no diver owes, the operation restarts
+  immediately.
 - **Offer size:** one item per star the difficulty could have awarded (`maxStarsFor`: 3 at diff 3–4,
   4 at 5–6, 5 at 7+), capped by the earned pool.
 - **The loss keeps the same odds line.** The Forfeit offer is a ceiling-style draw
@@ -755,10 +755,12 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   owed (soft-kick parity: their link still seats them). See Personal session saves for recognition
   across a new session.
 - **Seating window:** fresh joins only seat in `lobby/spin/decision/strain/deal/pacts/diving` — never during
-  `rewards`/`forfeit` (that would grant a draft for a mission the joiner never dove) or
-  `complete`. The server rejects with `dive-locked`. A joiner seated mid-mission
-  (`diving`) gets `skipsCurrentDraft` and sits out that mission's reward draft instead of
-  blocking it; the flag clears on the mission reset.
+  `rewards`/`forfeit` (that would grant a draft for a mission the joiner never dropped into) or
+  `complete`. The server rejects with `dive-locked`. A joiner seated mid-mission (`diving`) is a
+  **full participant** in the mission they drop into: they draft from its filed report, bank its
+  sample haul, stand for its forfeit on a failure and are eligible for Squad Honors. They never swore
+  pacts for it, so only the squad's own directive, strain and Major Order risk lift their offer —
+  they inherit the mission they fight in, never a shortcut past the pacts they did not take.
 - **Stepping away (presence):** a diver who leaves, or whose connection stays down past the
   server's grace window (`AWAY_GRACE_MS`, 30s), is marked `away` (`SET_AWAY{playerId,away}`,
   self-service; also issued by the server). They keep their seat, kit, purse and tokens, and the
@@ -792,9 +794,11 @@ cache from a bare item list into `{ name, itemIds }` (pre-v16 kits read as "Fall
 `migrateV16toV17` renames the purse to credits (`sampleBank` → `credits`), and the tail's
 normalization deals the mission underway a Brasch's Bargains shelf (`bargainSeed`, a fresh `bargain`
 per diver); `migrateV17toV18` backfills `supportKit` on SEAF runs with the fixed pack they were issued
-(the pack is rolled per diver from then on), and `migrateV18toV19` remaps the item ids upstream
-renamed in the Scope of Authority catalog refresh (inventories, caches, bans, bargains and the
-action log) so held gear survives. The chain's tail also runs the idempotent
+(the pack is rolled per diver from then on); `migrateV18toV19` drops the mid-mission draft-skip flag —
+a joiner seated during `diving` now drafts the mission they drop into, so there is nothing to skip;
+`migrateV19toV20` remaps the item ids upstream renamed in the Scope of Authority catalog refresh
+(inventories, caches, bans, bargains and the action log) so held gear survives. The chain's tail
+also runs the idempotent
 `normalizeRoomState` remap unconditionally: session mirrors copy unversioned room state, so a
 legacy variant id or a missing field must be corrected even in a doc stamped with a newer schema.
 Normalization drops

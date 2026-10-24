@@ -116,8 +116,8 @@ function twoDiverState(): DiveState {
   return {
     ...freshState(),
     divers: [
-      { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
-      { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
+      { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
+      { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
     ],
     personalInventories: {
       p1: startingItemIds(SETTINGS.variant),
@@ -881,13 +881,14 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
     expect(state.divers.map(diver => diver.credits)).toEqual([18, 18])
   })
 
-  it('banks nothing on a failed report, and nothing for a diver who sat out', () => {
-    const base = divingState(42)
-    const failed = reduce(base, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1, samples: { common: 40, rare: 0, super: 0 } })
+  it('banks nothing on a failed report', () => {
+    const failed = reduce(divingState(42), {
+      type: 'REPORT_RESULT',
+      outcome: 'failure',
+      stars: 1,
+      samples: { common: 40, rare: 0, super: 0 },
+    })
     expect(requireDiver(failed).credits).toBe(0)
-    const satOut: DiveState = { ...base, divers: base.divers.map(diver => ({ ...diver, skipsCurrentDraft: true })) }
-    const reported = reduce(satOut, { type: 'REPORT_RESULT', outcome: 'success', stars: 3, timePct: 100, samples: { common: 10, rare: 0, super: 0 } })
-    expect(requireDiver(reported).credits).toBe(0)
   })
 
   it('deals every diver a shelf at the crusade start', () => {
@@ -1154,16 +1155,24 @@ describe('REPORT_RESULT (failure) → forfeit', () => {
       .toEqual(forfeitOptionsFor(state, requireDiver(state)).map(item => item.id))
   })
 
-  it('keeps a mid-mission joiner out of the forfeit', () => {
-    const base = failedSquad()
-    const state: DiveState = {
-      ...base,
-      divers: base.divers.map(diver => diver.id === 'p2' ? { ...diver, skipsCurrentDraft: true } : diver),
+  it('deals a mid-mission joiner a forfeit offer from the gear they earned', () => {
+    let state = twoDiverState()
+    state = {
+      ...state,
+      phase: 'diving',
+      wheel: { seed: 9, misfortuneId: 'noBackpacks' },
+      frontId: 'terminids',
     }
-    expect(awaitingDiverIds(state)).toEqual(['p1'])
-    const resolved = surrender(state, 'p1')
-    expect(resolved.phase).toBe('spin')
-    expect(resolved.personalInventories.p2).toHaveLength(state.personalInventories.p2!.length)
+    state = joinDiver(state, 'late', 'Latecomer')!
+    state = withEarnedGear(state, ['late'])
+    const failed = reduce(state, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1 })
+    expect(failed.phase).toBe('forfeit')
+    const late = failed.divers.find(diver => diver.id === 'late')
+    if (!late) {
+      throw new Error('expected the late joiner to be seated')
+    }
+    expect(forfeitOptionsFor(failed, late).length).toBeGreaterThan(0)
+    expect(awaitingDiverIds(failed)).toContain('late')
   })
 
   it('cannot forfeit outside the forfeit phase', () => {
@@ -1184,8 +1193,8 @@ describe('identity actions', () => {
     const withTwo: DiveState = {
       ...freshState(),
       divers: [
-        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
-        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, skipsCurrentDraft: false, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
+        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
+        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
       ],
     }
     const moved = reduce(withTwo, { type: 'TRANSFER_HOST', playerId: 'p2' })
@@ -1443,36 +1452,41 @@ describe('Field Promotion (mid-crusade catch-up)', () => {
     expect(state.legacyCaches.departed?.itemIds).toEqual(['uavrecon'])
   })
 
-  it('a joiner seated mid-mission skips the current draft instead of blocking it', () => {
+  it('a joiner seated mid-mission drafts the mission they dropped into', () => {
     let state = twoDiverState()
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
     state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
     state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'p2', pactIds: [] })
-    // 'late' arrives while the squad is diving — the mission is not theirs.
+    // 'late' drops into the mission while the squad is diving.
     state = { ...state, phase: 'diving' }
     state = joinDiver(state, 'late', 'Latecomer')!
+    state = reduce(state, {
+      type: 'REPORT_RESULT',
+      outcome: 'success',
+      stars: 3,
+      timePct: 100,
+      samples: { common: 10, rare: 0, super: 0 },
+    })
     const late = state.divers.find(diver => diver.id === 'late')
     if (!late) {
       throw new Error('expected the late joiner to be seated')
     }
-    expect(late.skipsCurrentDraft).toBe(true)
-    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
-    expect(diverOptions(state, late)).toEqual([])
-    // Only the divers who dove need to pick; the skip never blocks ADVANCE.
-    for (const diver of [state.divers[0], state.divers[1]]) {
-      const option = diverOptions(state, diver!)[0]
+    // They fought that mission, so they draft it like everyone else — and bank
+    // the same sample haul for it.
+    expect(diverOptions(state, late).length).toBeGreaterThan(0)
+    expect(late.credits).toBe(10)
+    // The draft waits on them too: no pick, no ADVANCE.
+    for (const diver of state.divers) {
+      const option = diverOptions(state, diver)[0]
       if (!option) {
         throw new Error('expected a reward option')
       }
-      state = reduce(state, { type: 'PICK_REWARD', playerId: diver!.id, optionId: option.optionId })
+      state = reduce(state, { type: 'PICK_REWARD', playerId: diver.id, optionId: option.optionId })
     }
     expect(allDiversPicked(state)).toBe(true)
-    const advanced = reduce(state, { type: 'ADVANCE' })
-    expect(advanced.phase).toBe('spin')
-    // The next mission is theirs: the skip clears with the mission reset.
-    expect(advanced.divers.find(diver => diver.id === 'late')?.skipsCurrentDraft).toBe(false)
+    expect(reduce(state, { type: 'ADVANCE' }).phase).toBe('spin')
   })
 })
 
@@ -1741,6 +1755,26 @@ describe('reward tokens + bonus honors', () => {
     expect(awarded.divers.find(diver => diver.id === 'p1')?.rewardTokens).toBe(0)
     // One award per mission.
     expect(reduce(awarded, { type: 'AWARD_BONUS', playerIds: ['p1'] })).toBe(awarded)
+  })
+
+  it('lets a mid-mission joiner win the squad honors', () => {
+    let state = twoDiverState()
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
+    state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+    state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
+    state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+    state = reduce(state, { type: 'SET_PACTS', playerId: 'p2', pactIds: [] })
+    state = { ...state, phase: 'diving' }
+    state = joinDiver(state, 'late', 'Latecomer')!
+    state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+    // Three present divers on the mission: the cadence is due at index 0.
+    expect(bonusEligible(state)).toBe(true)
+    state = reduce(state, { type: 'SPIN_BONUS', seed: 7 })
+    // Three candidates, so the host names the winner — the joiner is one.
+    expect(state.bonusWinnerIds).toEqual([])
+    const awarded = reduce(state, { type: 'AWARD_BONUS', playerIds: ['late'] })
+    expect(awarded.bonusWinnerIds).toEqual(['late'])
+    expect(awarded.divers.find(diver => diver.id === 'late')?.rewardTokens).toBe(1)
   })
 
   it('lets a tie honor every tied diver at once', () => {

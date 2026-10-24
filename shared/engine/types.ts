@@ -72,9 +72,6 @@ export interface DiverState {
   // start or fully claimed). Catch-up restores altitude, never rarity.
   catchUpGranted: number
   catchUpOwed: number
-  // Seated mid-mission (phase 'diving'): the squad already dove the current
-  // mission, so the joiner skips its reward draft instead of blocking on it.
-  skipsCurrentDraft: boolean
   // Bonus-honors reward tokens: banked across the crusade, spent to reroll
   // this diver's offer or to ban offered items from their personal pools.
   rewardTokens: number

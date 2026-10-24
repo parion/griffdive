@@ -596,12 +596,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         :room-code="session.slotName.value"
         @confirm="confirmJoinBriefing"
       />
-      <p
-        v-else
-        class="panel page muted"
-      >
-        Loading dive…
-      </p>
+      <BootScreen v-else />
     </template>
     <HostBriefing
       v-else-if="briefingOpen && state"
@@ -895,12 +890,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         </div>
       </template>
     </DiveFrame>
-    <p
-      v-else
-      class="panel page muted"
-    >
-      Loading dive…
-    </p>
+    <BootScreen v-else />
 
     <DiveMenu
       v-if="state"

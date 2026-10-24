@@ -28,9 +28,6 @@ const emptyHaul = computed(() => {
   if (summary.value?.status === 'banned') {
     return 'Broken pacts cost this draft.'
   }
-  if (summary.value?.status === 'skipped') {
-    return 'You sat this draft out.'
-  }
   return 'Nothing banked this mission.'
 })
 </script>
