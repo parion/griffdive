@@ -58,7 +58,6 @@ const emit = defineEmits<{
 
 const { sidePanel } = useDrawers()
 const phase = computed(() => props.state.phase)
-const reporting = ref(false)
 const squadOpen = ref(false)
 const menuOpen = ref(false)
 
@@ -73,10 +72,6 @@ const honors = computed(() => (props.state.phase !== 'diving' ? bonusFor(props.s
 const honorsWinners = computed(() => bonusWinners(props.state).map(diver => upperName(diver.name)))
 const honorsAwarded = computed(() => Boolean(props.state.bonusWinnerIds.length))
 
-watch(phase, () => {
-  reporting.value = false
-})
-
 // Same regroup beats as the desktop shell, derived from synced state.
 const squadBanked = computed(() => phase.value === 'rewards' && allDiversPicked(props.state))
 const operationClimbs = computed(() =>
@@ -88,8 +83,6 @@ const operationClimbs = computed(() =>
     <template #header>
       <PhoneTopBar
         :state="state"
-        :phase="phase"
-        :reporting="reporting"
         :mode="mode"
         :slot-name="slotName"
         :can-control="canControl"
@@ -155,7 +148,6 @@ const operationClimbs = computed(() =>
           @report="emit('report', $event)"
           @fail="(playerId, pactId) => emit('failPact', playerId, pactId)"
           @fail-directive="emit('failDirective')"
-          @reporting="reporting = $event"
           @spin-bonus="emit('spinBonus', $event)"
         />
 

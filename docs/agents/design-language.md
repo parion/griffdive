@@ -257,7 +257,8 @@ panel's Hide control or Esc folds it, and the rail never moves. State is `useDra
 (`codexOpen` / `warbondsOpen` are flags over it, so the tutorial, lobby and Field Promotion gate
 still just call `openWarbonds()`). Bargains shuts itself when the squad drops into the field.
 On a phone (`sheet`) the rail is a four-up row pinned just above the action bar (`DivePhoneShell`'s
-`dock` slot) and the panel rises over the stage from it (up to 64dvh, Hide folds it down); the
+`dock` slot) and the panel rises over the stage from it (up to 64dvh, Hide or a tap anywhere off the dock folds it down; panels slide in and out
+symmetrically); the
 phone top bar and action bar no longer carry Kit, Codex or credit tiles. Components hosted here
 stay rule-free: they only render engine selectors.
 
@@ -285,8 +286,8 @@ onboarding odds dial remains a teaching aid; the live dive uses `ValorRoll`.
 #### Phone shell
 
 `usePhoneShell` swaps the desktop tree for `DivePhone` (`DivePhoneShell` + `Phone*`). It is a fixed
-column: `PhoneTopBar` (identity, Squad, menu) over `PhaseTabs`, a scrolling stage, and a
-pinned `footer.phone-bar`. The bar never changes shape — its CTA label stays on one line and
+column: `PhoneTopBar` (identity, Squad, menu — no beat tabs, to give the stage the room), a
+scrolling stage, the sidebar's tool rail, and a pinned `footer.phone-bar`. The bar never changes shape — its CTA label stays on one line and
 ellipsizes a long item name: optional detail above, an optional secondary
 on the left and one primary action filling the rest, supplied through `PhoneActionBar`'s deferred
 teleports. Report and forfeit actions use the same bar, and so do the `MissionCleared` and

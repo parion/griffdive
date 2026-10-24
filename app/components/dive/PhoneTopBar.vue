@@ -2,12 +2,10 @@
 import { missionsPerOperation } from '~~/shared/engine/config'
 import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl, factionImageUrl } from '~~/shared/data/images'
-import type { DivePhase, DiveState } from '~~/shared/engine/types'
+import type { DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
-  phase: DivePhase
-  reporting?: boolean
   mode: 'local' | 'room'
   slotName: string
   canControl?: boolean
@@ -101,12 +99,6 @@ const opNumber = computed(() =>
         </svg>
       </button>
     </div>
-
-    <PhaseTabs
-      class="tabs"
-      :phase="phase"
-      :reporting="reporting"
-    />
   </header>
 </template>
 
@@ -116,7 +108,7 @@ const opNumber = computed(() =>
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 10px 0;
+  padding: 8px 10px;
   background: linear-gradient(180deg, #14160f, var(--ground));
   border-bottom: 1px solid var(--line-1);
 }
@@ -163,6 +155,4 @@ const opNumber = computed(() =>
 .squad-lamp { width: 6px; height: 6px; background: var(--teal); }
 .icon-btn { width: 34px; padding: 0; justify-content: center; }
 .icon-btn :deep(svg) { width: 17px; height: 17px; }
-.tabs { padding-bottom: 7px; }
-.tabs :deep(.beats) { width: 100%; }
 </style>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onClickOutside } from '@vueuse/core'
 import { bargainLamp, bargainsClosedReason } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 import type { SidePanel } from '~/composables/useDrawers'
@@ -62,6 +63,14 @@ function toggle(next: SidePanel): void {
   panel.value = panel.value === next ? null : next
 }
 
+// A phone's panel overlays the stage, so a tap anywhere off the dock puts it away.
+const root = useTemplateRef<HTMLElement>('root')
+onClickOutside(root, () => {
+  if (props.sheet) {
+    panel.value = null
+  }
+})
+
 watch(bargainsClosed, (closed) => {
   if (closed && panel.value === 'bargains') {
     panel.value = null
@@ -71,63 +80,66 @@ watch(bargainsClosed, (closed) => {
 
 <template>
   <aside
+    ref="root"
     class="dive-side"
     :class="{ sheet }"
     aria-label="Dive tools"
     @keydown.esc="panel = null"
   >
-    <section
-      v-if="current"
-      class="side-panel"
-    >
-      <header class="side-head">
-        <span
-          class="side-mark"
-          aria-hidden="true"
-        />
-        <h2 class="side-title">
-          {{ current.title }}
-        </h2>
-        <button
-          class="side-hide"
-          type="button"
-          :aria-label="`Hide ${current.title.toLowerCase()}`"
-          @click="panel = null"
-        >
-          Hide
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
+    <Transition name="side-panel">
+      <section
+        v-if="current"
+        class="side-panel"
+      >
+        <header class="side-head">
+          <span
+            class="side-mark"
             aria-hidden="true"
-          ><path
-            :d="sheet ? 'M2 4l4 4 4-4' : 'M4 2l4 4-4 4'"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          /></svg>
-        </button>
-      </header>
-      <p class="side-desc">
-        {{ current.description }}
-      </p>
-      <div class="side-body">
-        <KitPanel
-          v-if="panel === 'kit'"
-          :state="state"
-          :self-id="selfId"
-          :preview-pact-ids="previewPactIds"
-        />
-        <CodexBrowser v-else-if="panel === 'codex'" />
-        <WarbondBrowser v-else-if="panel === 'warbonds'" />
-        <BraschBargains
-          v-else-if="panel === 'bargains'"
-          :state="state"
-          :self="self"
-          @buy="emit('buy', $event)"
-        />
-      </div>
-    </section>
+          />
+          <h2 class="side-title">
+            {{ current.title }}
+          </h2>
+          <button
+            class="side-hide"
+            type="button"
+            :aria-label="`Hide ${current.title.toLowerCase()}`"
+            @click="panel = null"
+          >
+            Hide
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              aria-hidden="true"
+            ><path
+              :d="sheet ? 'M2 4l4 4 4-4' : 'M4 2l4 4-4 4'"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            /></svg>
+          </button>
+        </header>
+        <p class="side-desc">
+          {{ current.description }}
+        </p>
+        <div class="side-body">
+          <KitPanel
+            v-if="panel === 'kit'"
+            :state="state"
+            :self-id="selfId"
+            :preview-pact-ids="previewPactIds"
+          />
+          <CodexBrowser v-else-if="panel === 'codex'" />
+          <WarbondBrowser v-else-if="panel === 'warbonds'" />
+          <BraschBargains
+            v-else-if="panel === 'bargains'"
+            :state="state"
+            :self="self"
+            @buy="emit('buy', $event)"
+          />
+        </div>
+      </section>
+    </Transition>
 
     <nav
       class="side-rail"
@@ -205,8 +217,9 @@ watch(bargainsClosed, (closed) => {
   background: var(--rail);
   border-left: 1px solid var(--line-2);
   box-shadow: -24px 0 60px rgba(0, 0, 0, 0.35);
-  animation: panel-in var(--dur-slow) var(--ease-out);
 }
+.side-panel-enter-active { animation: panel-in var(--dur-slow) var(--ease-out); }
+.side-panel-leave-active { animation: panel-out var(--dur-med) ease-in; }
 .side-head {
   display: flex;
   align-items: center;
@@ -307,6 +320,9 @@ watch(bargainsClosed, (closed) => {
 @keyframes panel-in {
   from { translate: 100% 0; }
 }
+@keyframes panel-out {
+  to { translate: 100% 0; }
+}
 
 /* A phone has no right edge to spare: the rail pins above the action bar and
    the panel rises out of it over the stage. */
@@ -319,8 +335,9 @@ watch(bargainsClosed, (closed) => {
   border-left: 0;
   border-top: 1px solid var(--line-3);
   box-shadow: 0 -18px 40px rgba(0, 0, 0, 0.55);
-  animation-name: sheet-rise;
 }
+.sheet .side-panel-enter-active { animation-name: sheet-rise; }
+.sheet .side-panel-leave-active { animation-name: sheet-fall; }
 .sheet .side-head { padding: 12px 14px 2px; }
 .sheet .side-desc { padding: 0 14px 8px; }
 .sheet .side-body { padding: 0 14px 16px; }
@@ -351,5 +368,8 @@ watch(bargainsClosed, (closed) => {
 
 @keyframes sheet-rise {
   from { translate: 0 100%; }
+}
+@keyframes sheet-fall {
+  to { translate: 0 100%; }
 }
 </style>

@@ -27,10 +27,6 @@
       class="phone-bar"
       aria-label="Dive actions"
     >
-      <span
-        class="bar-notch"
-        aria-hidden="true"
-      />
       <div
         id="phone-bar-detail"
         class="bar-detail"
@@ -83,14 +79,6 @@
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
   background: var(--ground);
   border-top: 1px solid var(--line-2);
-}
-.bar-notch {
-  position: absolute;
-  left: 0;
-  top: -1px;
-  width: 64px;
-  height: 3px;
-  background: var(--gold);
 }
 .bar-detail { min-width: 0; }
 .bar-detail:empty { display: none; }

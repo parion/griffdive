@@ -61,5 +61,13 @@ test('phone: the rail pins above the action bar and the panel rises over the sta
 
   await side.getByRole('button', { name: 'Hide kit' }).click()
   await expect(panel).toBeHidden()
+
+  // A tap anywhere off the dock puts the panel away too, and the beat tabs
+  // no longer take header space.
+  await expect(page.locator('.beats')).toHaveCount(0)
+  await rail.getByRole('button', { name: 'Codex', exact: true }).tap()
+  await expect(side.getByRole('heading', { name: 'Codex', level: 2 })).toBeVisible()
+  await page.locator('.phone-top .diff-copy').tap()
+  await expect(side.getByRole('heading', { level: 2 })).toHaveCount(0)
   await context.close()
 })

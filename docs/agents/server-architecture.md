@@ -18,7 +18,7 @@ app/
                    kit (hidden, unlinked foundations route — see Destroyer Terminal design language)
   components/      dive/ (DiveFrame — the lit-pass shell: header · one scrolling stage ·
                    squad dock, no rails or climb strip, DiveTopBar — identity, PhaseTabs,
-                   credits/Kit/Codex/Warbonds/session menu, PhaseTabs — Call/Pacts/Dive/Loot,
+                   link lamp/session menu, PhaseTabs — Call/Pacts/Dive/Loot (desktop only),
                    SquadDock — seats, presence, honors tokens, Steam/invite, DiveMenu —
                    Bridge, tutorial, pin/unpin, new session, leave/end,
                    DivePhaseLobby — the standalone Hellpod Bays setup page (no shell),
