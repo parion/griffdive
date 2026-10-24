@@ -50,7 +50,10 @@
   new joiner claims a fallen diver's kit, the next takes promotion picks), the Bridge home
   (`bridge.spec.ts`: the odds console's four fixed dice land all C at difficulty 3 with no skulls
   and climb to A/S/S/S+ — Liberty's Cross — at difficulty 10 with every skull; the closing
-  Suit up link returns focus to the drop console). Room creation is
+  Suit up link returns focus to the drop console; a saved run replaces the hero's wheel with the
+  service record; a three-front Major Order docks in the header at 1024px and pins to the bottom
+  at 360px without overflow). Solo drop asks for no name, so specs file one on the host tutorial
+  with the `fileCallsign` helper (`e2e/helpers.ts`). Room creation is
   rate-limited per address (10/min in production) and the whole suite shares one address, as are WebSocket joins (20/min), so the e2e server runs with `ROOM_CREATE_LIMIT=200` and
   `ROOM_JOIN_LIMIT=400` (`playwright.config.ts`) — a capped join looks like a page stuck on
   "Loading dive…", since the client doesn't surface `rate-limited` — still prefer reusing a

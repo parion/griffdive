@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { fileCallsign } from './helpers'
 
 test('the Warbonds drawer toggles ownership and persists it', async ({ page }) => {
   await page.goto('/')
@@ -30,8 +31,8 @@ test('the Warbonds drawer toggles ownership and persists it', async ({ page }) =
 
 test('the tutorial opens at dive start once, without chaining the Warbonds panel', async ({ page }) => {
   await page.goto('/')
-  await page.getByLabel('Diver name').fill('Griffon')
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griffon')
 
   // The tutorial's Warbonds step covers ownership, so closing it lands on the dive.
   const tutorial = page.getByRole('heading', { name: 'You hold the wheel.' })

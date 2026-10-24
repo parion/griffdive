@@ -6,10 +6,14 @@ import type { MajorOrderSelection } from '~~/shared/engine/types'
 import type { MajorOrderStatus } from '~/composables/useMajorOrder'
 
 // The live Major Order: pass-through war metadata (never the engine), with a
-// one-click campaign that pins the run to the order's front.
+// one-click campaign that pins the run to the order's front. The Bridge docks
+// it in the middle of the ship header on desktop and pins it to the bottom
+// edge on phones; it sheds detail by its own width, never the viewport's, so
+// a three-front order still fits beside the brand and the ship nav.
 const props = defineProps<{
   order: MajorOrderSelection | null
   status: MajorOrderStatus
+  pending: boolean
 }>()
 
 const emit = defineEmits<{ start: [] }>()
@@ -23,11 +27,21 @@ onMounted(() => {
 })
 onBeforeUnmount(() => clearInterval(ticker))
 
-const frontNames = computed(() =>
-  (props.order?.fronts ?? [])
-    .map(id => FRONTS.find(front => front.id === id)?.displayName ?? id)
-    .join(' / '))
-const planets = computed(() => (props.order?.planets ?? []).slice(0, 3))
+const frontList = computed(() =>
+  (props.order?.fronts ?? []).map(id => FRONTS.find(front => front.id === id)?.displayName ?? id))
+const frontNames = computed(() => frontList.value.join(' / '))
+// A narrow band names the lead front and counts the rest; the emblems show all.
+const frontShort = computed(() =>
+  frontList.value.length > 1 ? `${frontList.value[0]} +${frontList.value.length - 1}` : frontNames.value)
+// The planet worth naming: an open world on the lead front, else any open one.
+const planet = computed(() => {
+  const planets = props.order?.planets ?? []
+  const lead = props.order?.fronts[0]
+  return planets.find(p => p.front === lead && p.available !== false)
+    ?? planets.find(p => p.available !== false)
+    ?? planets[0]
+    ?? null
+})
 const countdown = computed(() => {
   const expires = props.order?.expiresAt ? Date.parse(props.order.expiresAt) : Number.NaN
   if (!Number.isFinite(expires)) {
@@ -42,24 +56,28 @@ const countdown = computed(() => {
 })
 const emptyCopy = computed(() => {
   switch (props.status) {
-    case 'none': return 'No active Major Order — the wheel picks the front.'
-    case 'no-front': return 'The Major Order has no active front yet — the wheel picks the front.'
-    default: return 'War feed unavailable — the wheel picks the front.'
+    case 'none': return 'No Major Order — the wheel picks the front'
+    case 'no-front': return 'Major Order has no front yet — the wheel picks'
+    default: return 'War feed offline — the wheel picks the front'
   }
 })
 </script>
 
 <template>
-  <section
+  <div
     v-if="order"
-    class="mo-band mo-in"
-    aria-label="Major Order"
+    class="mo"
   >
-    <span
-      class="mo-edge hazard"
-      aria-hidden="true"
-    />
-    <div class="mo-id">
+    <section
+      class="mo-band mo-in"
+      aria-label="Major Order"
+    >
+      <span
+        v-if="planet"
+        class="mo-lib"
+        aria-hidden="true"
+        :style="{ width: `${planet.liberation}%` }"
+      />
       <span
         class="mo-factions"
         aria-hidden="true"
@@ -68,164 +86,239 @@ const emptyCopy = computed(() => {
           v-for="f in order.fronts"
           :key="f"
           :src="factionImageUrl(f)"
-          width="56"
-          height="56"
+          width="30"
+          height="30"
           alt=""
           draggable="false"
         >
       </span>
-      <div class="mo-title">
-        <span class="lbl mo-k"><span
-          class="lamp red pulse"
-          aria-hidden="true"
-        />Live · Major Order</span>
-        <span class="disp mo-name">{{ frontNames }}</span>
-        <span
-          v-if="countdown"
-          class="mo-count"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
+      <span class="mo-title">
+        <span class="mo-k">
+          <span
+            class="lamp red pulse"
             aria-hidden="true"
-          ><circle
-            cx="12"
-            cy="13"
-            r="8"
-          /><path d="M12 9v4l3 2M9 2h6" /></svg>
-          <b>{{ countdown }}</b> remaining
+          />
+          <span>Major Order</span>
+          <template v-if="countdown">
+            <span
+              class="mo-sep"
+              aria-hidden="true"
+            >·</span>
+            <span class="mo-count"><span class="sr-only">Time remaining: </span>{{ countdown }}</span>
+          </template>
         </span>
-      </div>
-    </div>
-
-    <ul
-      v-if="planets.length"
-      class="mo-planets"
-      aria-label="Major Order planets"
-    >
-      <li
-        v-for="planet in planets"
-        :key="planet.index"
+        <span
+          class="mo-name"
+          :title="frontNames"
+        ><span class="mo-name-full">{{ frontNames }}</span><span
+          class="mo-name-short"
+          aria-hidden="true"
+        >{{ frontShort }}</span></span>
+      </span>
+      <span
+        v-if="planet"
         class="mo-planet"
       >
-        <div class="mo-planet-head">
-          <span>{{ planet.name }}</span>
+        <span class="mo-planet-head">
+          <span class="mo-planet-name">{{ planet.name }}</span>
           <span class="mo-pct">{{ planet.liberation.toFixed(1) }}%</span>
-        </div>
-        <div
+        </span>
+        <span
           class="mo-track"
           role="progressbar"
           :aria-label="`${planet.name} liberation`"
           :aria-valuenow="Math.round(planet.liberation)"
           aria-valuemin="0"
           aria-valuemax="100"
-        >
-          <span
-            class="mo-fill"
-            :style="{ width: `${planet.liberation}%` }"
-          />
-        </div>
-      </li>
-    </ul>
-
-    <div class="mo-play">
-      <div class="mo-carrots">
+        ><span
+          class="mo-fill"
+          :style="{ width: `${planet.liberation}%` }"
+        /></span>
+      </span>
+      <span class="mo-carrots">
         <span class="mo-carrot">
           <RiskPips
             :value="MAJOR_ORDER_RISK"
             :max="MAJOR_ORDER_RISK"
             tone="gold"
-          />Better odds
+          />Odds
         </span>
-        <span class="mo-carrot">
-          <span
-            class="hex mo-hex"
-            aria-hidden="true"
-          />+{{ MAJOR_ORDER_REROLL_BONUS }} reroll / op
-        </span>
-      </div>
+        <span class="mo-carrot">+{{ MAJOR_ORDER_REROLL_BONUS }} reroll</span>
+      </span>
       <button
         class="btn primary cut-sm mo-start cta-sweep"
         type="button"
+        aria-label="Start campaign"
         @click="emit('start')"
       >
-        <span class="disp">Start campaign</span>
+        <span class="disp">Start<span class="mo-start-more"> campaign</span></span>
       </button>
-    </div>
-  </section>
-  <section
-    v-else
-    class="mo-band mo-empty"
-    aria-label="Major Order"
+    </section>
+  </div>
+  <div
+    v-else-if="!pending"
+    class="mo mo-quiet"
   >
-    <span class="lbl mo-k">Major Order</span>
-    <span class="muted small">{{ emptyCopy }}</span>
-  </section>
+    <section
+      class="mo-band mo-empty"
+      aria-label="Major Order"
+    >
+      <span class="lamp dim" />
+      <span class="mo-empty-copy">{{ emptyCopy }}</span>
+    </section>
+  </div>
 </template>
 
 <style scoped>
+/* The wrapper is the size container; the band answers to it. */
+.mo {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  container: mo / inline-size;
+}
+
 .mo-band {
   position: relative;
-  display: grid;
-  gap: 18px 28px;
+  display: flex;
   align-items: center;
-  padding: 22px 24px 22px 32px;
-  border: 1px solid var(--line-3);
-  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  width: 100%;
+  max-width: 1100px;
+  min-width: 0;
+  height: 44px;
+  padding: 0 4px 0 12px;
+  border: 1px solid var(--line-2);
+  border-left: 3px solid var(--red);
   background:
-    radial-gradient(60% 120% at 0% 50%, rgba(255, 75, 62, 0.1), transparent 70%),
+    linear-gradient(90deg, rgba(255, 75, 62, 0.1), transparent 40%),
     var(--rail);
+  overflow: hidden;
 }
-.mo-band.mo-in { animation: riseIn 0.55s var(--ease-out) both; }
-@media (min-width: 1020px) {
-  .mo-band.mo-in { grid-template-columns: auto minmax(0, 1fr) auto; }
+.mo-band.mo-in { animation: riseIn 0.45s var(--ease-out) both; }
+/* Liberation reads along the band's bottom edge. */
+.mo-lib {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--red);
+  box-shadow: 0 0 8px rgba(255, 75, 62, 0.6);
 }
-.mo-empty { display: flex; flex-wrap: wrap; gap: 12px; padding-block: 16px; }
-.mo-edge { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; }
-.mo-id { display: flex; align-items: center; gap: 18px; min-width: 0; }
+
 .mo-factions { display: flex; flex-shrink: 0; }
 .mo-factions img {
-  width: 56px;
-  height: 56px;
+  width: 30px;
+  height: 30px;
   object-fit: contain;
-  filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.8));
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.8));
 }
-.mo-factions img + img { margin-left: -18px; }
-.mo-title { display: grid; gap: 4px; min-width: 0; }
-.mo-k { display: inline-flex; align-items: center; gap: 8px; color: var(--gold); }
-.mo-name { font-size: clamp(18px, 1.8vw, 24px); line-height: 1.1; color: var(--text); overflow-wrap: anywhere; }
-.mo-count { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--khaki); }
-.mo-count b { color: var(--text); }
-.mo-planets { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; min-width: 0; }
-.mo-planet { display: grid; gap: 5px; min-width: 0; }
-.mo-planet-head { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.mo-factions img + img { margin-left: -12px; }
+
+.mo-title { display: grid; gap: 1px; flex: 1 1 auto; min-width: 0; }
+.mo-k {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--gold);
+}
+.mo-k .lamp { width: 6px; height: 6px; }
+.mo-sep { color: var(--line-5); }
+.mo-count { color: var(--text); }
+.mo-name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+.mo-planet { display: none; flex: 0 1 170px; min-width: 110px; gap: 4px; }
+.mo-planet-head { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.mo-planet-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--khaki); }
 .mo-pct { color: var(--red); }
-.mo-track { height: 6px; background: var(--line-2); }
-.mo-fill { display: block; height: 6px; background: var(--red); box-shadow: 0 0 10px rgba(255, 75, 62, 0.5); animation: growX 1.1s var(--ease-out) 0.3s both; transform-origin: left center; }
-.mo-play { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.mo-carrots { display: flex; flex-wrap: wrap; gap: 6px; }
+.mo-track { display: block; height: 4px; background: var(--line-2); }
+.mo-fill { display: block; height: 4px; background: var(--red); }
+
+.mo-carrots { display: none; gap: 4px; flex-shrink: 0; }
 .mo-carrot {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 10px;
-  border: 1px solid color-mix(in srgb, var(--gold) 60%, transparent);
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--gold) 50%, transparent);
   color: var(--gold);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   white-space: nowrap;
 }
-.mo-hex { width: 10px; height: 11px; background: var(--gold); }
-.mo-start { height: 46px; padding: 0 22px; }
-.mo-start .disp { font-size: 14px; }
-@media (min-width: 1020px) {
-  .mo-play { flex-direction: column; align-items: stretch; grid-column: 3; }
+.mo-carrot :deep(.pips i) { width: 11px; height: 11px; }
+
+.mo-start { flex-shrink: 0; height: 34px; padding: 0 14px; }
+.mo-start .disp { font-size: 12px; white-space: nowrap; }
+.mo-start-more { display: none; }
+.mo-name-full { display: none; }
+
+/* Detail returns as the band earns room: the planet, the carrots, the full CTA. */
+@container mo (min-width: 440px) {
+  .mo-name-full { display: inline; }
+  .mo-name-short { display: none; }
+}
+@container mo (min-width: 520px) {
+  .mo-start-more { display: inline; }
+}
+@container mo (min-width: 640px) {
+  .mo-planet { display: grid; }
+  .mo-lib { display: none; }
+}
+@container mo (min-width: 1000px) {
+  .mo-carrots { display: flex; }
+}
+
+.mo-empty { gap: 10px; justify-content: center; border-left-color: var(--line-4); background: transparent; }
+.mo-empty-copy {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
+@container mo (max-width: 340px) {
+  .mo-empty { display: none; }
+}
+
+/* Phones: the order leaves the header and pins to the bottom edge. */
+@media (max-width: 860px) {
+  .mo {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line-2);
+    background: color-mix(in srgb, var(--ground) 92%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  .mo-band { height: 52px; max-width: none; }
+  .mo-start { height: 40px; }
+  .mo-quiet { display: none; }
 }
 </style>

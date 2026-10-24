@@ -15,8 +15,8 @@ const sessions = useSessionSaves()
 const recentRooms = useRecentRooms()
 const { push: pushToast } = useToasts()
 const { ownedWarbonds: myWarbonds, setOwned: setMyWarbonds } = useOwnedWarbonds()
+const { openCodex } = useDrawers()
 
-const diverName = ref('Griffin')
 const variant = ref<CrusadeVariant>('medium')
 const mode = ref<CrusadeMode>('seaf')
 const slotList = ref<{ id: string, doc: SaveDoc }[]>([])
@@ -36,10 +36,14 @@ const {
 
 const onlineDives = ref<OnlineDive[]>([])
 const onlineLoading = ref(true)
+const awaitingRooms = ref(false)
+const mounted = ref(false)
 
 onMounted(() => {
   slotList.value = saves.listSaves()
   sessionList.value = sessions.listSessions()
+  awaitingRooms.value = recentRooms.listRooms().length > 0
+  mounted.value = true
   refreshOnlineDives()
 })
 
@@ -83,6 +87,15 @@ const mirroredCodes = computed(() => new Set(sessionByCode.value.keys()))
 const staleSessions = computed(() =>
   sessionList.value.filter(save => !onlineDives.value.some(dive => dive.code === save.roomCode && dive.state)))
 const recordCount = computed(() => onlineDives.value.length + slotList.value.length + staleSessions.value.length)
+// Anything to resume takes the hero's showcase slot from the wheel. Saves live
+// in this browser, so the slot stays empty until mount rather than flashing
+// the wheel at a returning squad.
+const heroSide = computed<'none' | 'record' | 'wheel'>(() => {
+  if (!mounted.value) {
+    return 'none'
+  }
+  return recordCount.value > 0 || (onlineLoading.value && awaitingRooms.value) ? 'record' : 'wheel'
+})
 
 // Continue any save as a brand-new session: the server seats the saver as host
 // where the crusade stopped and parks the missing divers' kits as claimable
@@ -100,7 +113,7 @@ async function hostNewSession(state: DiveState, ownerId: string | null, label: s
     const owner = state.divers.find(diver => diver.id === ownerId)
       ?? state.divers.find(diver => diver.id === state.hostId)
       ?? state.divers[0]
-    const fallback = owner?.name?.trim() || diverName.value.trim() || 'Diver'
+    const fallback = owner?.name?.trim() || 'Diver'
     const name = stored.trim() && stored !== 'Diver' ? stored : fallback
     const save = { ...createSaveDoc(state, label, new Date().toISOString()), ...(ownerId ? { ownerId } : {}) }
     const res = await $fetch<{ code: string, selfId: string | null }>('/api/rooms', {
@@ -146,8 +159,10 @@ const VARIANTS_LABELS: Record<CrusadeVariant, string> = {
   suicide: 'Suicide Mission',
 }
 
+// The callsign is filed on the host tutorial that opens the dive; a returning
+// diver's saved name seats them straight away.
 function createCrusade(plan: FrontPlan): void {
-  const name = diverName.value.trim() || 'Diver'
+  const name = storedDiverName()
   const base: CrusadeSettings = STARTING_KITS[variant.value].startDifficulty >= 5
     ? { variant: variant.value, mode: mode.value }
     : { variant: variant.value }
@@ -199,8 +214,7 @@ function forgetDive(code: string): void {
 
 const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
 const setupLabel = computed(() =>
-  `Variant and warbonds: ${variantLabel.value}, ${FRONT_PLAN_LABELS[frontPlan.value]} front, ${myWarbonds.value.length} warbonds`)
-const setupSummary = computed(() => `${variantLabel.value} · ${myWarbonds.value.length} warbonds`)
+  `Set warbonds and variant: ${variantLabel.value}, ${FRONT_PLAN_LABELS[frontPlan.value]} front, ${myWarbonds.value.length} warbonds`)
 
 // The showcase difficulty for the wheel, directives and pacts: mid-climb, where
 // every condition carries real weight.
@@ -225,6 +239,7 @@ const facts = [
   <main
     id="main-content"
     class="bridge"
+    :class="{ 'has-mo': liveOrder }"
     tabindex="-1"
   >
     <section
@@ -269,22 +284,42 @@ const facts = [
           </a>
         </nav>
         <BridgeDeploy
-          v-model:diver-name="diverName"
           class="hero-deploy rise"
           :hosting="hosting"
           :setup-label="setupLabel"
-          :setup-summary="setupSummary"
           @host="hostOnlineDive"
           @join="code => navigateTo(`/dive/${code}`)"
           @solo="createCrusade(frontPlan)"
+          @codex="openCodex"
           @setup="variantOpen = true"
           @import="onImport"
         />
       </div>
-      <BridgeWheel
-        class="hero-wheel"
-        :difficulty="SHOWCASE_DIFFICULTY"
-      />
+      <div class="hero-side">
+        <BridgeRecord
+          v-if="heroSide === 'record'"
+          class="hero-record"
+          :loading="onlineLoading"
+          :hosting="hosting"
+          :online="onlineDives"
+          :sessions="staleSessions"
+          :slots="slotList"
+          :mirrored-codes="mirroredCodes"
+          @host-live="hostFromLive"
+          @host-session="hostFromSession"
+          @host-local="hostFromLocal"
+          @export-session="sessions.exportSession"
+          @remove-session="removeSession"
+          @export-slot="saves.exportSave"
+          @remove-slot="removeSlot"
+          @forget="forgetDive"
+        />
+        <BridgeWheel
+          v-else-if="heroSide === 'wheel'"
+          class="hero-wheel"
+          :difficulty="SHOWCASE_DIFFICULTY"
+        />
+      </div>
     </section>
 
     <ul
@@ -300,25 +335,6 @@ const facts = [
         <span class="cap">{{ fact.label }}</span>
       </li>
     </ul>
-
-    <BridgeRecord
-      v-if="onlineLoading || recordCount > 0"
-      class="bridge-record"
-      :loading="onlineLoading"
-      :hosting="hosting"
-      :online="onlineDives"
-      :sessions="staleSessions"
-      :slots="slotList"
-      :mirrored-codes="mirroredCodes"
-      @host-live="hostFromLive"
-      @host-session="hostFromSession"
-      @host-local="hostFromLocal"
-      @export-session="sessions.exportSession"
-      @remove-session="removeSession"
-      @export-slot="saves.exportSave"
-      @remove-slot="removeSlot"
-      @forget="forgetDive"
-    />
 
     <BridgeBeat
       id="call"
@@ -390,11 +406,19 @@ const facts = [
       </template>
     </BridgeBeat>
 
-    <BridgeMajorOrder
-      :order="liveOrder"
-      :status="moStatus"
-      @start="createCrusade('majorOrder')"
-    />
+    <ClientOnly>
+      <Teleport
+        to="#header-mid"
+        defer
+      >
+        <BridgeMajorOrder
+          :order="liveOrder"
+          :status="moStatus"
+          :pending="moPending"
+          @start="createCrusade('majorOrder')"
+        />
+      </Teleport>
+    </ClientOnly>
 
     <section
       class="close"
@@ -541,6 +565,11 @@ const facts = [
 .hero-beat:hover { background: var(--gold); color: var(--on-gold); text-decoration: none; }
 .hero-beat:hover .disp { color: var(--on-gold); }
 .hero-deploy { margin-top: 6px; animation-delay: 0.16s; }
+.hero-side { display: grid; min-width: 0; }
+.hero-record {
+  --rec-max: min(720px, calc(100svh - 140px));
+  animation: riseIn 0.5s var(--ease-out) both;
+}
 .hero-wheel { --bw-size: min(600px, 62svh); padding-right: 32px; animation: wheelIn 0.9s var(--ease-out) both; }
 @keyframes wheelIn { from { opacity: 0; transform: scale(0.92) rotate(-8deg); } }
 
@@ -564,7 +593,6 @@ const facts = [
 .fact-n { font-size: clamp(24px, 2.6vw, 36px); line-height: 1; color: var(--gold); }
 .fact .cap { color: var(--khaki); }
 
-.bridge-record { margin-bottom: clamp(24px, 4vw, 48px); }
 .beat-try { color: var(--gold); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; font-size: 12px; }
 
 /* Close ------------------------------------------------------------------ */
@@ -609,8 +637,19 @@ const facts = [
 .foot-link { color: var(--gold); }
 .foot-link:hover { text-decoration: underline; }
 
+/* Phones keep the pinned Major Order bar clear of the footer. */
+@media (max-width: 860px) {
+  .bridge.has-mo { padding-bottom: 84px; }
+}
+
 @media (max-width: 1019px) {
   .hero { min-height: 0; }
-  .hero-wheel { --bw-size: min(460px, 100%); }
+  .hero-record { --rec-max: 560px; }
+  .hero-side { display: grid; min-width: 0; }
+.hero-record {
+  --rec-max: min(720px, calc(100svh - 140px));
+  animation: riseIn 0.5s var(--ease-out) both;
+}
+.hero-wheel { --bw-size: min(460px, 100%); }
 }
 </style>

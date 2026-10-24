@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { dismissWarbondIntro } from './helpers'
+import { dismissWarbondIntro, fileCallsign } from './helpers'
 
 // Tablet guards from the responsive audit. Just above the 1020px breakpoint the
 // three-rail terminal once squeezed the centre phase until the wheel's decision
@@ -40,8 +40,8 @@ test('landscape tablet: the terminal keeps every phase inside the centre column'
 
   await page.goto('/')
   await expectNoHorizontalOverflow(page)
-  await page.getByLabel('Diver name').fill('Griff')
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griff')
   await dismissWarbondIntro(page)
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
@@ -81,8 +81,8 @@ test('portrait tablet: the phone shell widens to the tablet', async ({ browser }
   const page = await context.newPage()
 
   await page.goto('/')
-  await page.getByLabel('Diver name').fill('Griff')
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griff')
   await dismissWarbondIntro(page)
 
   const shell = await page.locator('.phone-shell').boundingBox()

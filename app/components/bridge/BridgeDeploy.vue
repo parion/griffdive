@@ -2,22 +2,22 @@
 import { isRoomCode } from '~~/shared/utils/room-code'
 
 // The drop console: every way onto the Destroyer in one lit panel — host a
-// squad, join one by code, or drop solo with the run's setup one tap away.
+// squad, join one by code, or drop solo. The callsign is filed on the host
+// tutorial that follows, never here. The ship's tools (Codex, warbonds and the
+// run's setup, save import) sit under the panel as quiet icon buttons.
 defineProps<{
   hosting: boolean
   setupLabel: string
-  setupSummary: string
 }>()
 
 const emit = defineEmits<{
   host: []
   join: [code: string]
   solo: []
+  codex: []
   setup: []
   import: [event: Event]
 }>()
-
-const diverName = defineModel<string>('diverName', { required: true })
 
 const joinCode = ref('')
 const codeFocused = ref(false)
@@ -40,129 +40,117 @@ function join(): void {
 </script>
 
 <template>
-  <section
-    id="deploy"
-    class="deploy"
-    aria-label="Deploy"
-    tabindex="-1"
-  >
-    <span
-      class="deploy-edge hazard"
-      aria-hidden="true"
-    />
-    <button
-      class="host-btn cut cta-sweep"
-      type="button"
-      :disabled="hosting"
-      aria-label="Host an online dive"
-      @click="emit('host')"
+  <div class="deploy-wrap">
+    <section
+      id="deploy"
+      class="deploy"
+      aria-label="Deploy"
+      tabindex="-1"
     >
-      <span class="host-copy">
-        <span class="disp host-label">{{ hosting ? 'Opening dive…' : 'Host a squad dive' }}</span>
-        <span class="host-sub">1–4 divers · live-synced · invite only</span>
-      </span>
       <span
-        class="host-chev"
+        class="deploy-edge hazard"
         aria-hidden="true"
+      />
+      <button
+        class="host-btn cut cta-sweep"
+        type="button"
+        :disabled="hosting"
+        aria-label="Host an online dive"
+        @click="emit('host')"
       >
-        <span class="pod-pips"><i class="on" /><i /><i /><i /></span>
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.6"
-        ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-      </span>
-    </button>
+        <span class="host-copy">
+          <span class="disp host-label">{{ hosting ? 'Opening dive…' : 'Host a squad dive' }}</span>
+          <span class="host-sub">1–4 divers · live-synced · invite only</span>
+        </span>
+        <span
+          class="host-chev"
+          aria-hidden="true"
+        >
+          <span class="pod-pips"><i class="on" /><i /><i /><i /></span>
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.6"
+          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </span>
+      </button>
 
-    <div class="deploy-split">
-      <form
-        class="join"
-        @submit.prevent="join"
-      >
-        <div class="row-head">
-          <label
-            for="room-code"
-            class="lbl"
-          >Join a squad</label>
-          <span
-            class="join-count"
-            :class="{ full: codeLen === 6 }"
-            aria-hidden="true"
-          >{{ codeLen }}/6</span>
-        </div>
-        <div class="join-row">
-          <div class="code-wrap">
-            <div
-              class="code-cells"
+      <div class="deploy-split">
+        <form
+          class="join"
+          @submit.prevent="join"
+        >
+          <div class="row-head">
+            <label
+              for="room-code"
+              class="lbl"
+            >Join a squad</label>
+            <span
+              class="join-count"
+              :class="{ full: codeLen === 6 }"
               aria-hidden="true"
-            >
-              <span
-                v-for="(c, i) in codeCells"
-                :key="i"
-                class="code-cell"
-                :class="{ filled: c.ch, active: c.active && codeFocused }"
+            >{{ codeLen }}/6</span>
+          </div>
+          <div class="join-row">
+            <div class="code-wrap">
+              <div
+                class="code-cells"
+                aria-hidden="true"
               >
-                <span class="disp code-ch">{{ c.ch }}</span>
                 <span
-                  v-if="c.active"
-                  class="code-caret"
-                  :class="{ blink: codeFocused }"
-                />
-              </span>
+                  v-for="(c, i) in codeCells"
+                  :key="i"
+                  class="code-cell"
+                  :class="{ filled: c.ch, active: c.active && codeFocused }"
+                >
+                  <span class="disp code-ch">{{ c.ch }}</span>
+                  <span
+                    v-if="c.active"
+                    class="code-caret"
+                    :class="{ blink: codeFocused }"
+                  />
+                </span>
+              </div>
+              <input
+                id="room-code"
+                class="code-in"
+                type="text"
+                :value="joinCode"
+                maxlength="6"
+                autocomplete="off"
+                spellcheck="false"
+                autocapitalize="characters"
+                aria-label="Room code"
+                aria-describedby="room-code-hint"
+                @input="joinCode = cleanCode(($event.target as HTMLInputElement).value)"
+                @focus="codeFocused = true"
+                @blur="codeFocused = false"
+              >
             </div>
-            <input
-              id="room-code"
-              class="code-in"
-              type="text"
-              :value="joinCode"
-              maxlength="6"
-              autocomplete="off"
-              spellcheck="false"
-              autocapitalize="characters"
-              aria-label="Room code"
-              aria-describedby="room-code-hint"
-              @input="joinCode = cleanCode(($event.target as HTMLInputElement).value)"
-              @focus="codeFocused = true"
-              @blur="codeFocused = false"
+            <button
+              class="btn primary cut-sm join-btn"
+              type="submit"
+              :disabled="codeLen < 6"
             >
+              <span class="disp">Join</span>
+            </button>
+          </div>
+          <span
+            id="room-code-hint"
+            class="sr-only"
+          >Six letters or digits from the host's invite</span>
+        </form>
+
+        <div class="solo">
+          <div class="row-head">
+            <span class="lbl">Play solo</span>
+            <span class="cap">Offline · callsign next</span>
           </div>
           <button
-            class="btn primary cut-sm join-btn"
-            type="submit"
-            :disabled="codeLen < 6"
-          >
-            <span class="disp">Join</span>
-          </button>
-        </div>
-        <span
-          id="room-code-hint"
-          class="sr-only"
-        >Six letters or digits from the host's invite</span>
-      </form>
-
-      <div class="solo">
-        <div class="row-head">
-          <label
-            for="diver-name"
-            class="lbl"
-          >Diver name</label>
-          <span class="cap">Solo · offline</span>
-        </div>
-        <div class="solo-row">
-          <input
-            id="diver-name"
-            v-model="diverName"
-            class="nb solo-name"
-            type="text"
-            maxlength="32"
-            autocomplete="nickname"
-            spellcheck="false"
-          >
-          <button
-            class="btn ghost solo-drop"
+            class="btn ghost cut-sm solo-drop"
             type="button"
             @click="emit('solo')"
           >
@@ -175,58 +163,57 @@ function join(): void {
               stroke-width="2"
               aria-hidden="true"
             ><path d="M12 3v11M7 10l5 5 5-5M6 21h12" /></svg>
-            <span>Solo drop</span>
+            <span class="disp">Solo drop</span>
           </button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="deploy-foot">
+    <nav
+      class="tools"
+      aria-label="Ship tools"
+    >
       <button
-        class="setup-btn"
+        class="tool"
+        type="button"
+        aria-haspopup="dialog"
+        @click="emit('codex')"
+      >
+        <IconBook class="tool-icon" />
+        <span>View codex</span>
+      </button>
+      <button
+        class="tool"
         type="button"
         aria-haspopup="dialog"
         :aria-label="setupLabel"
         @click="emit('setup')"
       >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          aria-hidden="true"
-        ><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" /><rect
-          x="14"
-          y="4"
-          width="4"
-          height="4"
-        /><rect
-          x="8"
-          y="10"
-          width="4"
-          height="4"
-        /><rect
-          x="16"
-          y="16"
-          width="4"
-          height="4"
-        /></svg>
-        <span>Variant &amp; warbonds</span>
-        <span class="setup-meta">{{ setupSummary }}</span>
+        <IconWarbond class="tool-icon" />
+        <span>Set warbonds</span>
       </button>
-      <label class="import">
+      <label class="tool">
         <input
           type="file"
           accept="application/json"
           class="file-in"
+          aria-label="Import save"
           @change="emit('import', $event)"
         >
-        <span>Import save</span>
+        <svg
+          class="tool-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        ><path d="M12 15V3M7 8l5-5 5 5M4 15v5h16v-5" /></svg>
+        <span aria-hidden="true">Import save</span>
       </label>
-    </div>
-  </section>
+    </nav>
+  </div>
 </template>
 
 <style scoped>
@@ -275,7 +262,6 @@ function join(): void {
 @container (max-width: 420px) {
   .host-btn { padding: 14px 16px; }
   .pod-pips { display: none; }
-  .setup-meta { display: none; }
 }
 
 .deploy-split { display: grid; gap: 16px; }
@@ -286,8 +272,7 @@ function join(): void {
 .row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .row-head .cap { color: var(--muted); }
 
-.join-row,
-.solo-row { display: flex; gap: 6px; }
+.join-row { display: flex; gap: 6px; }
 .join-count { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--muted); }
 .join-count.full { color: var(--gold); }
 .code-wrap { position: relative; flex-grow: 1; min-width: 0; height: 48px; }
@@ -334,64 +319,47 @@ function join(): void {
 .join-btn { flex-shrink: 0; width: 76px; display: grid; place-items: center; }
 .join-btn .disp { font-size: 14px; }
 
-.solo-name { flex-grow: 1; min-width: 0; height: 48px; }
 .solo-drop {
-  flex-shrink: 0;
+  width: 100%;
   height: 48px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 16px;
+  justify-content: center;
+  gap: 10px;
   border-color: var(--gold);
   color: var(--gold);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
 }
+.solo-drop .disp { font-size: 14px; }
+.solo-drop:hover:not(:disabled) { border-color: var(--gold); background: rgba(255, 214, 66, 0.08); color: var(--gold); }
 
-.deploy-foot {
-  display: flex;
+.deploy-wrap { display: grid; gap: 10px; min-width: 0; }
+
+.tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.tool {
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--line-2);
-}
-.setup-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-grow: 1;
-  min-width: 0;
-  min-height: 32px;
-  padding: 0;
-  border: 0;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px 0 10px;
+  border: 1px solid transparent;
   background: none;
   color: var(--khaki);
+  font: inherit;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   cursor: pointer;
+  transition: color var(--dur-fast), border-color var(--dur-fast), background-color var(--dur-fast);
 }
-.setup-btn:hover { color: var(--gold); }
-.setup-meta {
-  overflow: hidden;
-  color: var(--muted);
-  white-space: nowrap;
-  text-overflow: ellipsis;
+.tool:hover { border-color: var(--line-3); background: var(--rail); color: var(--gold); }
+.tool:focus-within { outline: 2px solid var(--gold); outline-offset: 2px; }
+.tool-icon { width: 18px; height: 18px; flex-shrink: 0; }
+@media (max-width: 480px) {
+  .tools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .tool { flex-direction: column; justify-content: center; gap: 4px; height: 56px; padding: 0 4px; font-size: 10px; letter-spacing: 0.1em; text-align: center; }
 }
-.import {
-  position: relative;
-  flex-shrink: 0;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  cursor: pointer;
-}
-.import:hover { color: var(--gold); }
 .file-in {
   position: absolute;
   width: 1px;
@@ -400,5 +368,4 @@ function join(): void {
   overflow: hidden;
   clip-path: inset(50%);
 }
-.import:focus-within { outline: 2px solid var(--gold); outline-offset: 2px; }
 </style>

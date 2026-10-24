@@ -40,7 +40,11 @@ const { online } = useSessionStore()
         >
           Alpha
         </button>
-        <div class="grow" />
+        <!-- The Bridge docks its live Major Order here. -->
+        <div
+          id="header-mid"
+          class="header-mid"
+        />
         <div
           v-if="online.length"
           class="chan uplink"
@@ -132,6 +136,13 @@ const { online } = useSessionStore()
   font-size: 10px;
   letter-spacing: 0.2em;
   color: var(--khaki);
+}
+
+.header-mid {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
 }
 
 .uplink { height: 32px; }

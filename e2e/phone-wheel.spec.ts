@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { dismissWarbondIntro } from './helpers'
+import { dismissWarbondIntro, fileCallsign } from './helpers'
 
 // The phone call is one flat lit stage: directive and strain first, the wheel
 // below, and the fixed action bar carrying the spin/deal gate.
@@ -8,8 +8,8 @@ test('phone wheel: the call reads top-down and the action bar follows the beat',
   const page = await context.newPage()
 
   await page.goto('/')
-  await page.getByLabel('Diver name').fill('Griff')
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griff')
   await expect(page).toHaveURL(/\/dive\//)
   await dismissWarbondIntro(page)
 

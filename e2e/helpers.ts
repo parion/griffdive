@@ -15,6 +15,23 @@ export async function dismissBriefing(page: Page): Promise<void> {
   }
 }
 
+// The Bridge's Solo drop asks for no name: a fresh browser files its callsign
+// on the host tutorial that opens the dive (a returning one is already named
+// and lands on the wheel). The tutorial stays open for the spec to close.
+export async function fileCallsign(page: Page, name: string): Promise<void> {
+  await expect(page).toHaveURL(/\/dive\//)
+  const tutorial = page.getByRole('heading', { name: 'You hold the wheel.' })
+  const wheel = page.getByRole('button', { name: 'Spin', exact: true })
+  await expect(tutorial.or(wheel).first()).toBeVisible()
+  if (!(await tutorial.isVisible())) {
+    return
+  }
+  const callsign = page.locator('#jb-callsign')
+  await callsign.fill(name)
+  await callsign.press('Enter')
+  await expect(page.getByRole('button', { name: 'Start the dive' })).toBeVisible()
+}
+
 // A fresh browser gets the tutorial at dive start (its Warbonds step replaces
 // the old panel); a browser that saw an earlier primer gets the one-shot
 // Warbonds panel instead. Close whichever shows so the spec reaches the dive.

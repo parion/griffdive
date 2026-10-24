@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { dismissWarbondIntro } from './helpers'
+import { dismissWarbondIntro, fileCallsign } from './helpers'
 
 // Phone layout guards from the mobile checkup. A live Major Order once blew the
 // Bridge out to a ~960px layout viewport, so every phone tap landed on a
@@ -40,8 +40,8 @@ test('phone: the Bridge and the dive never overflow sideways', async ({ browser 
   // Ship nav keeps its labels on phones.
   await expect(page.getByRole('button', { name: 'Codex', exact: true })).toContainText('Codex')
 
-  await page.getByLabel('Diver name').fill('Griff')
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griff')
   await dismissWarbondIntro(page)
   await expectNoHorizontalOverflow(page)
 
@@ -62,8 +62,8 @@ test('phone: the report time cells tap under a finger', async ({ browser }) => {
   const page = await context.newPage()
 
   await page.goto('/')
-  await page.getByLabel('Diver name').fill('Griff')
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griff')
   await dismissWarbondIntro(page)
   await page.getByRole('button', { name: 'Spin the wheel' }).click()
   await page.locator('.directive .skip').click()
