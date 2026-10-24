@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { conditionRiskAt, missionsPerOperation } from '~~/shared/engine/config'
-import { pactName } from '~~/shared/data/pacts'
+import { missionsPerOperation } from '~~/shared/engine/config'
 import { strainImageUrl } from '~~/shared/data/images'
 import { tierZones } from '~~/shared/engine/rewards'
 import {
@@ -36,41 +35,9 @@ const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const directiveFailed = computed(() => props.state.misfortuneFailed)
 const confirmFail = ref(false)
 
-const pactsByDiver = computed(() =>
-  props.state.divers.map(diver => ({
-    id: diver.id,
-    name: diver.name,
-    isHost: diver.id === props.state.hostId,
-    pacts: diver.pactIds.map(id => ({
-      id,
-      name: pactName(id),
-      risk: conditionRiskAt(id, props.state.difficulty),
-      failed: diver.failedPactIds.includes(id),
-    })),
-  })))
-
 const lockedValor = computed(() =>
   teamRiskOf(props.state) + (props.self ? pactRiskOf(props.self, props.state.difficulty) : 0))
 const zones = computed(() => tierZones(props.state.difficulty, lockedValor.value))
-
-const armedPact = ref<string | null>(null)
-
-function canMark(diverId: string): boolean {
-  return props.selfId === diverId || props.isHost
-}
-
-function markPact(diverId: string, pactId: string): void {
-  if (!canMark(diverId)) {
-    return
-  }
-  const key = `${diverId}:${pactId}`
-  if (armedPact.value !== key) {
-    armedPact.value = key
-    return
-  }
-  armedPact.value = null
-  emit('fail', diverId, pactId)
-}
 
 function toggleFail(): void {
   if (!confirmFail.value) {
@@ -181,56 +148,13 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         </div>
       </div>
 
-      <section
+      <PactLedger
         class="sworn"
-        aria-label="Pacts sworn"
-      >
-        <span class="cap sworn-cap">Pacts sworn</span>
-        <template
-          v-for="diver in pactsByDiver"
-          :key="diver.id"
-        >
-          <div
-            v-if="diver.pacts.length === 0"
-            class="sworn-row"
-          >
-            <span class="sworn-name">
-              <b>{{ diver.id === selfId ? 'You' : diver.name }}</b>
-            </span>
-            <span class="no-pacts">No pacts</span>
-          </div>
-          <div
-            v-for="(pact, index) in diver.pacts"
-            :key="pact.id"
-            class="sworn-row"
-            :class="{ failed: pact.failed, cont: index > 0 }"
-          >
-            <span class="sworn-name">
-              <b v-if="index === 0">{{ diver.id === selfId ? 'You' : diver.name }}</b>
-            </span>
-            <RiskPips
-              :value="pact.risk"
-              :max="pact.risk"
-              :tone="pact.risk >= 3 ? 'red' : 'gold'"
-            />
-            <span class="pact-name">{{ pact.name }}</span>
-            <span
-              v-if="pact.failed"
-              class="pact-void"
-            >Broken</span>
-            <button
-              v-else-if="canMark(diver.id)"
-              class="mark-pact"
-              :class="{ armed: armedPact === `${diver.id}:${pact.id}`, own: diver.id === selfId }"
-              type="button"
-              @click="markPact(diver.id, pact.id)"
-            >
-              {{ armedPact === `${diver.id}:${pact.id}` ? 'Confirm?' : 'Mark broken' }}
-            </button>
-            <span v-else />
-          </div>
-        </template>
-      </section>
+        :state="state"
+        :self-id="selfId"
+        :is-host="isHost"
+        @fail="(diverId, pactId) => emit('fail', diverId, pactId)"
+      />
 
       <ValorRoll
         v-if="isHost && misfortune"
@@ -412,8 +336,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 }
 .gain { color: var(--muted); font-size: 12px; }
 .void { color: var(--red); font-size: 12px; }
-.mark,
-.mark-pact {
+.mark {
   min-height: 34px;
   padding: 0 12px;
   border: 0;
@@ -427,11 +350,8 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   transition: background-color var(--dur-fast), box-shadow var(--dur-fast);
 }
 .mark:hover,
-.mark-pact:hover,
-.mark.armed,
-.mark-pact.armed { box-shadow: inset 0 0 0 1px var(--red); background: rgba(255, 75, 62, 0.1); }
-.mark.armed,
-.mark-pact.armed { animation: shake 0.3s ease-out; }
+.mark.armed { box-shadow: inset 0 0 0 1px var(--red); background: rgba(255, 75, 62, 0.1); }
+.mark.armed { animation: shake 0.3s ease-out; }
 
 .strain-line {
   display: flex;
@@ -444,35 +364,6 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 }
 .strain-line img { object-fit: contain; }
 .strain-line span { color: var(--muted); font-size: 12px; }
-
-.sworn {
-  display: flex;
-  flex-direction: column;
-  padding: 18px 18px 8px;
-  background: var(--panel);
-  box-shadow: inset 0 0 0 1px var(--line-2);
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
-  min-width: 0;
-}
-.sworn-cap { padding-bottom: 8px; }
-.sworn-row {
-  display: grid;
-  grid-template-columns: 76px auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  min-height: 56px;
-  border-top: 1px solid var(--line-2);
-}
-.sworn-row.cont { border-top-style: dashed; border-top-color: var(--line-1); }
-.sworn-name b { font-size: 15px; font-weight: 700; }
-.sworn-row :deep(.pips i) { width: 13px; height: 13px; }
-.no-pacts { grid-column: 2 / -1; color: var(--dim); font-size: 13px; }
-.pact-name { color: var(--text); font-size: 15px; min-width: 0; }
-.sworn-row.failed .pact-name { color: var(--muted); text-decoration: line-through; }
-.sworn-row.failed :deep(.pips) { opacity: 0.4; }
-.pact-void { color: var(--red); font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
-.mark-pact:not(.own):not(.armed) { box-shadow: none; color: var(--dim); }
-.mark-pact:not(.own):not(.armed):hover { color: var(--red); }
 
 .outcomes {
   display: flex;
@@ -549,8 +440,6 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   .waiting { flex-direction: column; align-items: stretch; }
 }
 @media (max-width: 520px) {
-  .sworn-row { grid-template-columns: 56px auto minmax(0, 1fr); padding-bottom: 8px; }
-  .sworn-row > :last-child { grid-column: 2 / -1; justify-self: start; }
   .outcomes { flex-direction: column-reverse; }
 }
 </style>

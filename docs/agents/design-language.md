@@ -159,7 +159,9 @@ everywhere.
 
 The field screen is two columns: the teal-lit directive card (HOLDING / BROKEN) and accepted strain
 on the left over the locked odds line, and a **Pacts sworn** ledger on the right — one row per
-pact (diver, lit skulls, name, one-tap "Mark broken", confirm on the second tap). Hosts call **Extracted** or **Mission failed**; squadmates
+pact (diver, lit skulls, name, one-tap "Mark broken", confirm on the second tap). Each row is an
+accordion (`PactLedger`, shared with the phone) that opens on the vow and its accountability line,
+lit by a gold edge; your own pacts start open, everyone else's start shut. Hosts call **Extracted** or **Mission failed**; squadmates
 get their own `KitSnapshot` pane and a waiting gate. The kit is visible by default for non-hosts and
 opens full-height from the header for everyone.
 
