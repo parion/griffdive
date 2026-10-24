@@ -21,7 +21,7 @@ export const stratagems: Item[] = [
     tier: 'c',
     antitank: false,
     index: 0,
-    imageURL: 'tx41sterilizer.svg',
+    imageURL: 'tx41sterilizer.webp',
   },
   {
     id: 'flam40flamethrower',
@@ -37,7 +37,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 1,
-    imageURL: 'flam40flamethrower.svg',
+    imageURL: 'flam40flamethrower.webp',
   },
   {
     id: 'speargun',
@@ -53,7 +53,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: false,
     index: 2,
-    imageURL: 'speargun.svg',
+    imageURL: 'speargun.webp',
   },
   {
     id: 'las98lasercannon',
@@ -69,7 +69,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: true,
     index: 3,
-    imageURL: 'las98lasercannon.svg',
+    imageURL: 'las98lasercannon.webp',
   },
   {
     id: 'm105stalwart',
@@ -85,7 +85,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: false,
     index: 4,
-    imageURL: 'm105stalwart.svg',
+    imageURL: 'm105stalwart.webp',
   },
   {
     id: 'mg43machinegun',
@@ -101,7 +101,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 5,
-    imageURL: 'mg43machinegun.svg',
+    imageURL: 'mg43machinegun.webp',
   },
   {
     id: 'mg206heavymachinegun',
@@ -117,7 +117,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: true,
     index: 6,
-    imageURL: 'mg206heavymachinegun.svg',
+    imageURL: 'mg206heavymachinegun.webp',
   },
   {
     id: 'arc3arcthrower',
@@ -132,7 +132,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 7,
-    imageURL: 'arc3arcthrower.svg',
+    imageURL: 'arc3arcthrower.webp',
   },
   {
     id: 'gl21grenadelauncher',
@@ -148,7 +148,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: false,
     index: 8,
-    imageURL: 'gl21grenadelauncher.svg',
+    imageURL: 'gl21grenadelauncher.webp',
   },
   {
     id: 'gl52deescalator',
@@ -163,7 +163,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 9,
-    imageURL: 'gl52deescalator.svg',
+    imageURL: 'gl52deescalator.webp',
   },
   {
     id: 'apw1antimaterielrifle',
@@ -179,7 +179,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 10,
-    imageURL: 'apw1antimaterielrifle.svg',
+    imageURL: 'apw1antimaterielrifle.webp',
   },
   {
     id: 'rs422railgun',
@@ -194,7 +194,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: true,
     index: 11,
-    imageURL: 'rs422railgun.svg',
+    imageURL: 'rs422railgun.webp',
   },
   {
     id: 'las99quasarcannon',
@@ -209,7 +209,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: true,
     index: 12,
-    imageURL: 'las99quasarcannon.svg',
+    imageURL: 'las99quasarcannon.webp',
   },
   {
     id: 'epoch',
@@ -225,7 +225,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 13,
-    imageURL: 'epoch.svg',
+    imageURL: 'epoch.webp',
   },
   {
     id: 'eat17expendableantitank',
@@ -241,7 +241,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 14,
-    imageURL: 'eat17expendableantitank.svg',
+    imageURL: 'eat17expendableantitank.webp',
   },
   {
     id: 'mls4xcommandorocketlauncher',
@@ -257,7 +257,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 15,
-    imageURL: 'mls4xcommandorocketlauncher.svg',
+    imageURL: 'mls4xcommandorocketlauncher.webp',
   },
   {
     id: 'eat700expendablenapalm',
@@ -273,7 +273,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 16,
-    imageURL: 'eat700expendablenapalm.svg',
+    imageURL: 'eat700expendablenapalm.webp',
   },
   {
     id: 'solosilo',
@@ -289,7 +289,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 17,
-    imageURL: 'solosilo.svg',
+    imageURL: 'solosilo.webp',
   },
   {
     id: 'onetrueflag',
@@ -304,7 +304,7 @@ export const stratagems: Item[] = [
     tier: 'c',
     antitank: false,
     index: 18,
-    imageURL: 'onetrueflag.svg',
+    imageURL: 'onetrueflag.webp',
   },
   {
     id: 'defoliationtool',
@@ -319,7 +319,7 @@ export const stratagems: Item[] = [
     tier: 'c',
     antitank: false,
     index: 19,
-    imageURL: 'defoliationtool.svg',
+    imageURL: 'defoliationtool.webp',
   },
   {
     id: 'maxigun',
@@ -336,7 +336,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: false,
     index: 20,
-    imageURL: 'maxigun.svg',
+    imageURL: 'maxigun.webp',
   },
   {
     id: 'ac8autocannon',
@@ -352,7 +352,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 21,
-    imageURL: 'ac8autocannon.svg',
+    imageURL: 'ac8autocannon.webp',
   },
   {
     id: 'wasplauncher',
@@ -368,7 +368,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 22,
-    imageURL: 'wasplauncher.svg',
+    imageURL: 'wasplauncher.webp',
   },
   {
     id: 'rl77airburstrocketlauncher',
@@ -384,7 +384,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 23,
-    imageURL: 'rl77airburstrocketlauncher.svg',
+    imageURL: 'rl77airburstrocketlauncher.webp',
   },
   {
     id: 'gr8recoillessrifle',
@@ -401,7 +401,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: true,
     index: 24,
-    imageURL: 'gr8recoillessrifle.svg',
+    imageURL: 'gr8recoillessrifle.webp',
   },
   {
     id: 'faf14spear',
@@ -418,7 +418,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: true,
     index: 25,
-    imageURL: 'faf14spear.svg',
+    imageURL: 'faf14spear.webp',
   },
   {
     id: 'c4pack',
@@ -435,7 +435,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: true,
     index: 26,
-    imageURL: 'c4pack.svg',
+    imageURL: 'c4pack.webp',
   },
   {
     id: 'guarddogflames',
@@ -450,7 +450,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 27,
-    imageURL: 'guarddogflames.svg',
+    imageURL: 'guarddogflames.webp',
   },
   {
     id: 'axtx13guarddogdogbreath',
@@ -465,7 +465,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: false,
     index: 28,
-    imageURL: 'axtx13guarddogdogbreath.svg',
+    imageURL: 'axtx13guarddogdogbreath.webp',
   },
   {
     id: 'axlas5guarddogrover',
@@ -481,7 +481,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 29,
-    imageURL: 'axlas5guarddogrover.svg',
+    imageURL: 'axlas5guarddogrover.webp',
   },
   {
     id: 'ad334guarddog',
@@ -497,7 +497,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: false,
     index: 30,
-    imageURL: 'ad334guarddog.svg',
+    imageURL: 'ad334guarddog.webp',
   },
   {
     id: 'guarddogarc',
@@ -512,7 +512,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: false,
     index: 31,
-    imageURL: 'guarddogarc.svg',
+    imageURL: 'guarddogarc.webp',
   },
   {
     id: 'lift850jumppack',
@@ -527,7 +527,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: false,
     index: 32,
-    imageURL: 'lift850jumppack.svg',
+    imageURL: 'lift850jumppack.webp',
   },
   {
     id: 'lift860hoverpack',
@@ -542,7 +542,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 33,
-    imageURL: 'lift860hoverpack.svg',
+    imageURL: 'lift860hoverpack.webp',
   },
   {
     id: 'warppack',
@@ -557,7 +557,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: false,
     index: 34,
-    imageURL: 'warppack.svg',
+    imageURL: 'warppack.webp',
   },
   {
     id: 'b1supplypack',
@@ -571,7 +571,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: false,
     index: 35,
-    imageURL: 'b1supplypack.svg',
+    imageURL: 'b1supplypack.webp',
   },
   {
     id: 'sh51directionalshield',
@@ -585,7 +585,7 @@ export const stratagems: Item[] = [
     tier: 'c',
     antitank: false,
     index: 36,
-    imageURL: 'sh51directionalshield.svg',
+    imageURL: 'sh51directionalshield.webp',
   },
   {
     id: 'sh20shieldgeneratorpack',
@@ -599,7 +599,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: false,
     index: 37,
-    imageURL: 'sh20shieldgeneratorpack.svg',
+    imageURL: 'sh20shieldgeneratorpack.webp',
   },
   {
     id: 'sh20ballisticshieldbackpack',
@@ -613,7 +613,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 38,
-    imageURL: 'sh20ballisticshieldbackpack.svg',
+    imageURL: 'sh20ballisticshieldbackpack.webp',
   },
   {
     id: 'portablehellbomb',
@@ -629,7 +629,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 39,
-    imageURL: 'portablehellbomb.svg',
+    imageURL: 'portablehellbomb.webp',
   },
   {
     id: 'fastreconvehicle',
@@ -645,7 +645,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: false,
     index: 40,
-    imageURL: 'fastreconvehicle.svg',
+    imageURL: 'fastreconvehicle.webp',
   },
   {
     id: 'exo45patriotexosuit',
@@ -662,7 +662,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: true,
     index: 41,
-    imageURL: 'exo45patriotexosuit.svg',
+    imageURL: 'exo45patriotexosuit.webp',
   },
   {
     id: 'exo49emancipatorexosuit',
@@ -679,7 +679,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: true,
     index: 42,
-    imageURL: 'exo49emancipatorexosuit.svg',
+    imageURL: 'exo49emancipatorexosuit.webp',
   },
   {
     id: 'eaglestrafingrun',
@@ -693,7 +693,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: false,
     index: 43,
-    imageURL: 'eaglestrafingrun.svg',
+    imageURL: 'eaglestrafingrun.webp',
   },
   {
     id: 'eagleairstrike',
@@ -707,7 +707,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: true,
     index: 44,
-    imageURL: 'eagleairstrike.svg',
+    imageURL: 'eagleairstrike.webp',
   },
   {
     id: 'eagleclusterbomb',
@@ -721,7 +721,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 45,
-    imageURL: 'eagleclusterbomb.svg',
+    imageURL: 'eagleclusterbomb.webp',
   },
   {
     id: 'eaglenapalmstrike',
@@ -736,7 +736,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 46,
-    imageURL: 'eaglenapalmstrike.svg',
+    imageURL: 'eaglenapalmstrike.webp',
   },
   {
     id: 'eaglesmokestrike',
@@ -751,7 +751,7 @@ export const stratagems: Item[] = [
     tier: 'c',
     antitank: false,
     index: 47,
-    imageURL: 'eaglesmokestrike.svg',
+    imageURL: 'eaglesmokestrike.webp',
   },
   {
     id: 'eagle110mmrocketpods',
@@ -766,7 +766,7 @@ export const stratagems: Item[] = [
     tier: 'c',
     antitank: true,
     index: 48,
-    imageURL: 'eagle110mmrocketpods.svg',
+    imageURL: 'eagle110mmrocketpods.webp',
   },
   {
     id: 'eagle500kgbomb',
@@ -781,7 +781,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: true,
     index: 49,
-    imageURL: 'eagle500kgbomb.svg',
+    imageURL: 'eagle500kgbomb.webp',
   },
   {
     id: 'orbitalprecisionstrike',
@@ -796,7 +796,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: true,
     index: 50,
-    imageURL: 'orbitalprecisionstrike.svg',
+    imageURL: 'orbitalprecisionstrike.webp',
   },
   {
     id: 'orbitalgasstrike',
@@ -811,7 +811,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: false,
     index: 51,
-    imageURL: 'orbitalgasstrike.svg',
+    imageURL: 'orbitalgasstrike.webp',
   },
   {
     id: 'orbitalemsstrike',
@@ -826,7 +826,7 @@ export const stratagems: Item[] = [
     tier: 'c',
     antitank: false,
     index: 52,
-    imageURL: 'orbitalemsstrike.svg',
+    imageURL: 'orbitalemsstrike.webp',
   },
   {
     id: 'orbitalsmokestrike',
@@ -841,7 +841,7 @@ export const stratagems: Item[] = [
     tier: 'c',
     antitank: false,
     index: 53,
-    imageURL: 'orbitalsmokestrike.svg',
+    imageURL: 'orbitalsmokestrike.webp',
   },
   {
     id: 'orbitalairburststrike',
@@ -855,7 +855,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 54,
-    imageURL: 'orbitalairburststrike.svg',
+    imageURL: 'orbitalairburststrike.webp',
   },
   {
     id: 'orbitalrailcannonstrike',
@@ -870,7 +870,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: true,
     index: 55,
-    imageURL: 'orbitalrailcannonstrike.svg',
+    imageURL: 'orbitalrailcannonstrike.webp',
   },
   {
     id: 'orbitallaser',
@@ -886,7 +886,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 56,
-    imageURL: 'orbitallaser.svg',
+    imageURL: 'orbitallaser.webp',
   },
   {
     id: 'orbitalgatlingbarrage',
@@ -901,7 +901,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 57,
-    imageURL: 'orbitalgatlingbarrage.svg',
+    imageURL: 'orbitalgatlingbarrage.webp',
   },
   {
     id: 'orbital120mmhebarrage',
@@ -915,7 +915,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 58,
-    imageURL: 'orbital120mmhebarrage.svg',
+    imageURL: 'orbital120mmhebarrage.webp',
   },
   {
     id: 'orbital380mmhebarrage',
@@ -929,7 +929,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 59,
-    imageURL: 'orbital380mmhebarrage.svg',
+    imageURL: 'orbital380mmhebarrage.webp',
   },
   {
     id: 'orbitalwalkingbarrage',
@@ -943,7 +943,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 60,
-    imageURL: 'orbitalwalkingbarrage.svg',
+    imageURL: 'orbitalwalkingbarrage.webp',
   },
   {
     id: 'orbitalnapalmbarrage',
@@ -958,7 +958,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: false,
     index: 61,
-    imageURL: 'orbitalnapalmbarrage.svg',
+    imageURL: 'orbitalnapalmbarrage.webp',
   },
   {
     id: 'teslatower',
@@ -973,7 +973,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 62,
-    imageURL: 'teslatower.svg',
+    imageURL: 'teslatower.webp',
   },
   {
     id: 'mortarsentry',
@@ -987,7 +987,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 63,
-    imageURL: 'mortarsentry.svg',
+    imageURL: 'mortarsentry.webp',
   },
   {
     id: 'emsmortarsentry',
@@ -1002,7 +1002,7 @@ export const stratagems: Item[] = [
     tier: 'c',
     antitank: false,
     index: 64,
-    imageURL: 'emsmortarsentry.svg',
+    imageURL: 'emsmortarsentry.webp',
   },
   {
     id: 'machinegunsentry',
@@ -1018,7 +1018,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: false,
     index: 65,
-    imageURL: 'machinegunsentry.svg',
+    imageURL: 'machinegunsentry.webp',
   },
   {
     id: 'gatlingsentry',
@@ -1034,7 +1034,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: false,
     index: 66,
-    imageURL: 'gatlingsentry.svg',
+    imageURL: 'gatlingsentry.webp',
   },
   {
     id: 'aflam40flamesentry',
@@ -1049,7 +1049,7 @@ export const stratagems: Item[] = [
     tier: 'c',
     antitank: false,
     index: 67,
-    imageURL: 'aflam40flamesentry.svg',
+    imageURL: 'aflam40flamesentry.webp',
   },
   {
     id: 'lasersentry',
@@ -1064,7 +1064,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: true,
     index: 68,
-    imageURL: 'lasersentry.svg',
+    imageURL: 'lasersentry.webp',
   },
   {
     id: 'autocannonsentry',
@@ -1080,7 +1080,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 69,
-    imageURL: 'autocannonsentry.svg',
+    imageURL: 'autocannonsentry.webp',
   },
   {
     id: 'rocketsentry',
@@ -1096,7 +1096,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 70,
-    imageURL: 'rocketsentry.svg',
+    imageURL: 'rocketsentry.webp',
   },
   {
     id: 'shieldgeneratorrelay',
@@ -1110,7 +1110,7 @@ export const stratagems: Item[] = [
     tier: 'c',
     antitank: false,
     index: 71,
-    imageURL: 'shieldgeneratorrelay.svg',
+    imageURL: 'shieldgeneratorrelay.webp',
   },
   {
     id: 'hmgemplacement',
@@ -1126,7 +1126,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 72,
-    imageURL: 'hmgemplacement.svg',
+    imageURL: 'hmgemplacement.webp',
   },
   {
     id: 'eat12antitankemplacement',
@@ -1142,7 +1142,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: true,
     index: 73,
-    imageURL: 'eat12antitankemplacement.svg',
+    imageURL: 'eat12antitankemplacement.webp',
   },
   {
     id: 'grenadierbattlement',
@@ -1158,7 +1158,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 74,
-    imageURL: 'grenadierbattlement.svg',
+    imageURL: 'grenadierbattlement.webp',
   },
   {
     id: 'antitankmines',
@@ -1173,7 +1173,7 @@ export const stratagems: Item[] = [
     tier: 'c',
     antitank: true,
     index: 75,
-    imageURL: 'antitankmines.svg',
+    imageURL: 'antitankmines.webp',
   },
   {
     id: 'antipersonnelminefield',
@@ -1187,7 +1187,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 76,
-    imageURL: 'antipersonnelminefield.svg',
+    imageURL: 'antipersonnelminefield.webp',
   },
   {
     id: 'gasmines',
@@ -1202,7 +1202,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: false,
     index: 77,
-    imageURL: 'gasmines.svg',
+    imageURL: 'gasmines.webp',
   },
   {
     id: 'incendiarymines',
@@ -1217,7 +1217,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: false,
     index: 78,
-    imageURL: 'incendiarymines.svg',
+    imageURL: 'incendiarymines.webp',
   },
   {
     id: 'breachinghammer',
@@ -1233,7 +1233,7 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: true,
     index: 79,
-    imageURL: 'breachinghammer.svg',
+    imageURL: 'breachinghammer.webp',
   },
   {
     id: 'leveller',
@@ -1250,7 +1250,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 80,
-    imageURL: 'eat411leveller.svg',
+    imageURL: 'eat411leveller.webp',
   },
   {
     id: 'beltfedgrenadelauncher',
@@ -1268,7 +1268,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 81,
-    imageURL: 'beltfedgrenadelauncher.svg',
+    imageURL: 'beltfedgrenadelauncher.webp',
   },
   {
     id: 'bastiontank',
@@ -1282,7 +1282,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: true,
     index: 82,
-    imageURL: 'bastiontank.svg',
+    imageURL: 'bastiontank.webp',
   },
   {
     id: 'gasmortarsentry',
@@ -1297,7 +1297,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: false,
     index: 83,
-    imageURL: 'gasmortarsentry.svg',
+    imageURL: 'gasmortarsentry.webp',
   },
   {
     id: 'cremator',
@@ -1314,7 +1314,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 84,
-    imageURL: 'cremator.svg',
+    imageURL: 'cremator.webp',
   },
   {
     id: 'exo51lumbererexosuit',
@@ -1332,7 +1332,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: true,
     index: 85,
-    imageURL: 'exo51lumbererexosuit.svg',
+    imageURL: 'exo51lumbererexosuit.webp',
   },
   {
     id: 'exo55breakthroughexosuit',
@@ -1349,7 +1349,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: true,
     index: 86,
-    imageURL: 'exo55breakthroughexosuit.svg',
+    imageURL: 'exo55breakthroughexosuit.webp',
   },
   {
     id: 'mgx42bulletstorm',
@@ -1366,7 +1366,7 @@ export const stratagems: Item[] = [
     tier: 'a',
     antitank: false,
     index: 87,
-    imageURL: 'mgx42bulletstorm.svg',
+    imageURL: 'mgx42bulletstorm.webp',
   },
   {
     id: 'supplyfrv',
@@ -1382,7 +1382,7 @@ export const stratagems: Item[] = [
     tier: 's',
     antitank: false,
     index: 88,
-    imageURL: 'supplyfrv.svg',
+    imageURL: 'supplyfrv.webp',
   },
   {
     id: 'meltagun',
@@ -1397,6 +1397,6 @@ export const stratagems: Item[] = [
     tier: 'b',
     antitank: true,
     index: 89,
-    imageURL: 'meltagun.svg',
+    imageURL: 'meltagun.webp',
   },
 ]

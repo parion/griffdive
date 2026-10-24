@@ -21,7 +21,9 @@
   `ITEM_OVERRIDES`, keyed by item id, so a refresh re-applies them instead of reverting the
   generated data — never hand-edit `shared/data/equipment.ts`.
   Stratagem SVGs from [Nvigneux/Helldivers-2-Stratagems-icons-svg](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg);
-  equipment images from [helldivers.wiki.gg](https://helldivers.wiki.gg/wiki/Helldivers_2). Asset
+  equipment images from [helldivers.wiki.gg](https://helldivers.wiki.gg/wiki/Helldivers_2). Stratagem art ships as `.webp`
+  in `public/images/svgs/` (directory name historical); the importer rewrites upstream's `.svg`
+  `imageURL`s to `.webp`. Asset
   licensing: respect upstream terms; hot-link or bundle only what the licenses allow.
 - **Versioning:** `CATALOG_VERSION` bumped whenever items/warbonds change (Helldivers 2 patches add
   warbonds). Saves record catalog + engine versions as diagnostics; the save-schema version drives
