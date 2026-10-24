@@ -1,6 +1,7 @@
+import type { Tier } from '../data/types'
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 27
+export const ENGINE_VERSION = 28
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -85,6 +86,30 @@ export const SEAF_SUPPORT_VALOR: Readonly<Record<number, number>> = {
 export const PENANCE_VALOR: Readonly<Record<number, number>> = {
   5: 2,
   7: 3,
+}
+
+// The SEAF Support Package is rolled per diver at launch (and on seating), so a
+// squad never fields the same pack. Counts are keyed by the start difficulty;
+// every roll draws only items of SEAF_SUPPORT_TIER from the diver's own owned
+// catalog, never repeating an item they already hold. One tier for every slot
+// keeps divers' packs equal in power and differing only in shape.
+export interface SupportRolls {
+  primary: number
+  secondary: number
+  throwable: number
+  stratagem: number
+  armorPassive: number
+  booster: number
+}
+
+export const SEAF_SUPPORT_TIER: Tier = 'b'
+// The surplus kit fields no anti-tank at all, and an unlucky roll left a third
+// of divers at difficulty 5 with none against armor. A pack always holds at
+// least this many anti-tank items (a stratagem slot is re-rolled into one).
+export const SEAF_SUPPORT_ANTITANK_MIN = 1
+export const SEAF_SUPPORT_ROLLS: Readonly<Record<number, SupportRolls>> = {
+  5: { primary: 1, secondary: 1, throwable: 1, stratagem: 2, armorPassive: 1, booster: 0 },
+  7: { primary: 2, secondary: 1, throwable: 1, stratagem: 4, armorPassive: 2, booster: 1 },
 }
 
 export function seafSupportValorAt(difficulty: number): number {
@@ -297,8 +322,8 @@ export const CEILING_PREVIEW_FLOOR = 0.01
 // the difficulty scaling (commons dominate early, supers appear at 6).
 export const SAMPLE_CREDITS: Readonly<Record<'common' | 'rare' | 'super', number>> = {
   common: 1,
-  rare: 5,
-  super: 25,
+  rare: 3,
+  super: 12,
 }
 
 // Team performance is a multiplier on the credit haul, not a Valor bonus:
@@ -311,10 +336,10 @@ export const TIME_HAUL_FLOOR = 0.5
 // out-prices an armor passive. Low tiers sit within a mission or two's haul;
 // A and S stay a real saving goal.
 export const CREDIT_PRICE_TIER: Readonly<Record<'c' | 'b' | 'a' | 's', number>> = {
-  c: 15,
-  b: 45,
-  a: 180,
-  s: 450,
+  c: 25,
+  b: 100,
+  a: 400,
+  s: 800,
 }
 
 export const CREDIT_PRICE_TYPE: Readonly<Record<string, number>> = {

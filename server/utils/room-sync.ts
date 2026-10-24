@@ -365,11 +365,21 @@ function knownIdsOf(raw: unknown): string[] {
     .slice(0, MAX_KNOWN_IDS)
 }
 
+// The warbonds a joiner declared on arrival, so the SEAF pack they are dealt at
+// seating rolls against what they actually own. Absent or malformed means the
+// seated default.
+function warbondCodesOf(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) {
+    return undefined
+  }
+  return raw.filter((code): code is string => typeof code === 'string' && code.length <= 32).slice(0, 100)
+}
+
 export async function processHello(
   kv: RoomKV,
   peers: PeerDirectory,
   peer: PeerLike,
-  payload: { name?: unknown, playerId?: unknown, knownIds?: unknown },
+  payload: { name?: unknown, playerId?: unknown, knownIds?: unknown, warbondCodes?: unknown },
   limits?: RoomLimits,
 ): Promise<void> {
   const requested = peer.context.roomCode ?? ''
@@ -430,7 +440,7 @@ export async function processHello(
         return
       }
       playerId = reclaimId ?? newPlayerId()
-      const joined = joinDiver(room.state, playerId, sanitizeName(payload.name))
+      const joined = joinDiver(room.state, playerId, sanitizeName(payload.name), warbondCodesOf(payload.warbondCodes))
       if (!joined) {
         roomMetrics.recordHello('full')
         sendError(peer, 'room-full', 'Dive squad is full')

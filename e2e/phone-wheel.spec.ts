@@ -16,13 +16,11 @@ test('phone wheel: the call reads top-down and the action bar follows the beat',
   // The legend is gone from the phone wheel.
   await expect(page.locator('.phone-call .legend')).toHaveCount(0)
   await expect(page.locator('.phone-call .risk-legend')).toBeHidden()
-  await expect(page.locator('.beats .beat.current')).toContainText('Call')
 
   // Spin from the wheel hub.
   await page.locator('.hub').click()
   await expect(page.locator('.directive .take')).toBeVisible()
   await expect(page.locator('.strain .take')).toBeVisible()
-  await expect(page.locator('.beats .beat.current')).toContainText('Call')
 
   // The two calls are separate, deliberate taps. A stranded draw disables
   // "Take it", so skip that one; either call leaves the strain open and the

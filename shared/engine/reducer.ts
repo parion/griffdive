@@ -5,6 +5,7 @@ import { STARTING_KITS, earnedKit, mergeKit, startingItemIds } from './progressi
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver, resolveFrontPlan } from './room'
 import { deriveSeed, hashString } from './rng'
+import { rollSupportKit } from './support'
 import { activeDivers, activeMisfortune, allDiversPicked, availableCaches, bonusEligibleFor, canBuyItem, catchUpOptionsFor, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, honorsPending, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, squadSize, strainDecision } from './selectors'
 import { bargainKindOf, itemPrice, missionHaul } from './rewards'
 import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
@@ -43,14 +44,18 @@ function applyStart(
   const { front, majorOrder } = resolveFrontPlan(requested.front, order)
   const settings: CrusadeSettings = front ? { ...requested, front } : requested
   const kit = STARTING_KITS[settings.variant]
+  // Every seated diver rolls their own SEAF Support Package against the
+  // warbonds they have declared by launch.
   const personalInventories: Record<string, string[]> = {}
-  for (const diver of state.divers) {
-    personalInventories[diver.id] = startingItemIds(settings.variant, settings.mode)
-  }
+  const supported = state.divers.map((diver) => {
+    const supportKit = rollSupportKit(settings, diver.id, diver.warbondCodes)
+    personalInventories[diver.id] = mergeKit(startingItemIds(settings.variant), supportKit)
+    return { ...diver, supportKit }
+  })
   // The first mission's Brasch's Bargains deal. A caller that injects no seed
   // still gets a deterministic shelf, keyed to the host.
   const stocked = { ...state, personalInventories }
-  const divers = state.divers.map(diver => ({ ...diver, bargain: dealBargain(stocked, diver, []) }))
+  const divers = supported.map(diver => ({ ...diver, bargain: dealBargain(stocked, diver, []) }))
   return {
     divers,
     bargainSeed: typeof seed === 'number' && Number.isFinite(seed) ? seed : hashString(state.hostId ?? ''),
@@ -167,7 +172,7 @@ function removeDiver(state: DiveState, diverId: string, action: EngineAction): D
     return state
   }
   const earned = state.settings
-    ? earnedKit(state.personalInventories[diver.id] ?? [], state.settings.variant, state.settings.mode)
+    ? earnedKit(state.personalInventories[diver.id] ?? [], state.settings.variant, diver.supportKit)
     : []
   const legacyCaches = earned.length > 0
     ? { ...state.legacyCaches, [diver.id]: { name: diver.name, itemIds: earned } }

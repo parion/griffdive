@@ -163,6 +163,7 @@ const settings = computed<CrusadeSettings>(() => ({
         <StartingKit
           :variant="variant"
           :mode="activeMode"
+          compact
         />
       </section>
 

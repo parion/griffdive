@@ -115,6 +115,9 @@ export function migrateSaveDoc(doc: SaveDoc): SaveDoc {
   if (migrated.schemaVersion < 17) {
     migrated = migrateV16toV17(migrated)
   }
+  if (migrated.schemaVersion < 18) {
+    migrated = migrateV17toV18(migrated)
+  }
   migrated.schemaVersion = SAVE_SCHEMA_VERSION
   migrated.engineVersion = Math.max(migrated.engineVersion, ENGINE_VERSION)
   // A session mirror can carry a pre-v13 room's settings under the current
@@ -286,8 +289,44 @@ export function normalizeRoomState(state: DiveState): DiveState {
         credits: rest.credits ?? sampleBank ?? 0,
         bargain: rest.bargain ?? (state.settings ? legacyBargain(state, rest) : null),
         away: rest.away ?? false,
+        ...legacySupportKit(settings, rest),
       }
     }),
+  }
+}
+
+// Before the support package was rolled per diver, SEAF handed every diver this
+// fixed pack. A run underway keeps it: the backfilled record marks it as support
+// gear, exactly as a rolled pack is.
+const LEGACY_SEAF_SUPPORT_IDS: readonly string[] = [
+  'sh20ballisticshieldbackpack',
+  'orbitalprecisionstrike',
+  'grenadierbattlement',
+  'antitankmines',
+  'eagle110mmrocketpods',
+  'orbitalgatlingbarrage',
+  'arc3arcthrower',
+  'uavrecon',
+  'muscleenhancement',
+]
+
+// A SEAF run from before the rolled package has no record on its divers:
+// backfill the fixed pack it was issued. Only fills an absent field.
+function legacySupportKit(settings: DiveState['settings'], diver: DiverState): Pick<DiverState, 'supportKit'> | Record<string, never> {
+  return diver.supportKit === undefined && settings?.mode === 'seaf'
+    ? { supportKit: [...LEGACY_SEAF_SUPPORT_IDS] }
+    : {}
+}
+
+// v18: the SEAF Support Package is rolled per diver and recorded on the diver
+// (`supportKit`). A run underway keeps the fixed pack it was issued.
+function migrateV17toV18(doc: SaveDoc): SaveDoc {
+  return {
+    ...doc,
+    state: {
+      ...doc.state,
+      divers: (doc.state.divers ?? []).map(diver => ({ ...diver, ...legacySupportKit(doc.state.settings, diver) })),
+    },
   }
 }
 
@@ -315,7 +354,7 @@ function repairKits(
   const legacyCaches: Record<string, LegacyCache> = {}
   for (const [id, raw] of Object.entries(state.legacyCaches ?? {})) {
     const cache = cacheOf(raw)
-    const itemIds = settings ? earnedKit(cache.itemIds, settings.variant, settings.mode) : [...new Set(cache.itemIds)]
+    const itemIds = settings ? earnedKit(cache.itemIds, settings.variant) : [...new Set(cache.itemIds)]
     if (itemIds.length > 0) {
       legacyCaches[id] = { name: cache.name, itemIds }
     }

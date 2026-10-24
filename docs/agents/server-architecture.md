@@ -18,7 +18,7 @@ app/
                    kit (hidden, unlinked foundations route — see Destroyer Terminal design language)
   components/      dive/ (DiveFrame — the lit-pass shell: header · one scrolling stage ·
                    squad dock, no rails or climb strip, DiveTopBar — identity, PhaseTabs,
-                   credits/Kit/Codex/Warbonds/session menu, PhaseTabs — Call/Pacts/Dive/Loot,
+                   link lamp/session menu, PhaseTabs — Call/Pacts/Dive/Loot (desktop only),
                    SquadDock — seats, presence, honors tokens, Steam/invite, DiveMenu —
                    Bridge, tutorial, pin/unpin, new session, leave/end,
                    DivePhaseLobby — the standalone Hellpod Bays setup page (no shell),
@@ -42,8 +42,10 @@ app/
                    crusade setup (front plan, start difficulty, mode, issued kit, skull
                    total via setupRiskOf) used by the Bridge
                    dialog and the lobby,
-                   ArmoryDrawer + KitPanel — the Kit drawer and the lean Kit itself,
-                   BraschBargains + BargainsDrawer — the per-mission shop in a slide-over,
+                   DiveSidebar — the persistent tool rail on every dive shell (Kit, Codex,
+                   Warbonds, Brasch's Bargains share one non-modal panel), hosting KitPanel
+                   (the lean Kit), CodexBrowser, WarbondBrowser and BraschBargains
+                   (the per-mission shop),
                    AchievedOverlay — the full-bleed Griffdive achieved takeover,
                    HostBriefing — the host's tutorial (fork of JoinBriefing),
                    JoinBriefing — the joiner's one-page briefing, also replayed as the
@@ -82,8 +84,9 @@ app/
                    persist),                    useGameSocket (WS, reconnect, stored playerId,
                    per-person session mirror), useSaves, useSessionSaves (personal session
                    mirrors: list/mirror/delete/export),
-                   useDrawers (global Codex/Warbonds slide-over visibility, so the dive can
-                   open the Warbonds panel without unmounting), useWarbondIntro (one-shot
+                   useDrawers (the one open sidebar panel; `codexOpen`/`warbondsOpen` are
+                   flags over it, so the dive can open Warbonds without unmounting — the
+                   global drawers in `app.vue` only render where no sidebar is mounted), useWarbondIntro (one-shot
                    dive-start Warbonds prompt memory), useDiveIntro (one-shot dive-start
                    "How a dive works" primer memory), useOwnedWarbonds (localStorage-backed
                    warbond declaration shared by the Warbonds drawer, the home setup and every
@@ -168,7 +171,7 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 
 | Direction | Message | Payload |
 | --- | --- | --- |
-| C→S | `hello` | `{ name?, playerId?, knownIds? }` — stored playerId reattaches (reconnect); `knownIds` (seats held in other rooms) let a forked-out diver reclaim their cache (see Personal session saves) |
+| C→S | `hello` | `{ name?, playerId?, knownIds?, warbondCodes? }` — stored playerId reattaches (reconnect); `warbondCodes` are the warbonds the browser declared, so a joiner's SEAF pack rolls against them at seating; `knownIds` (seats held in other rooms) let a forked-out diver reclaim their cache (see Personal session saves) |
 | C→S | `action` | `{ action: EngineAction }` (validated server-side) |
 | C→S | `save-dive` | `{ name? }` — any seated diver pins the room past the idle TTL (see Saved dives) |
 | C→S | `unsave-dive` | host-only: returns the room to the ordinary idle TTL |

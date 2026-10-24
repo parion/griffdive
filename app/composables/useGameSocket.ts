@@ -2,6 +2,7 @@ import { useWebSocket } from '@vueuse/core'
 import { VARIANTS } from '~~/shared/engine/progression'
 import type { DiveState, EngineAction } from '~~/shared/engine/types'
 import { hasSeenJoinBriefing } from './useJoinBriefing'
+import { useOwnedWarbonds } from './useOwnedWarbonds'
 import { useRecentRooms } from './useRecentRooms'
 import { useSessionSaves } from './useSessionSaves'
 import { useSessionStore } from '~/stores/session'
@@ -180,6 +181,7 @@ export function useGameSocket(roomCode: string) {
     const message: ClientMessage = {
       type: 'hello',
       name: storedDiverName(),
+      warbondCodes: [...useOwnedWarbonds().ownedWarbonds.value],
       ...(stored ? { playerId: stored } : {}),
       ...(knownIds.length > 0 ? { knownIds } : {}),
     }
