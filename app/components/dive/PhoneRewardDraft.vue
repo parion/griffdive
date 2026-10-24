@@ -15,7 +15,7 @@ import {
 } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, RewardTier } from '~~/shared/engine/types'
 import { categoryLabel } from '~/utils/itemCategory'
-import { pinDelay, revealTimeline } from '~/utils/rewardReveal'
+import { pinDelay, revealDuration, revealTimeline } from '~/utils/rewardReveal'
 
 const props = defineProps<{
   state: DiveState
@@ -34,11 +34,6 @@ const emit = defineEmits<{
 const options = computed(() => (props.self ? diverOptions(props.state, props.self) : []))
 const selectedId = ref<string | null>(null)
 const choiceItemId = ref<string | null>(null)
-
-watch(options, () => {
-  selectedId.value = null
-  choiceItemId.value = null
-})
 
 const rewardPool = computed(() => {
   if (!props.self) {
@@ -70,14 +65,28 @@ const bestTier = computed<RewardTier | null>(() => topTierOf(options.value))
 const cards = computed(() => options.value.filter(option => !option.choice))
 // Remounting on a new offer replays the unfurl after a reroll.
 const offerKey = computed(() => options.value.map(option => option.optionId).join())
+// A sync rebuilds `options` on every squadmate's action, so only a genuinely
+// new offer clears the local pick — a teammate banking must never drop it.
+watch(offerKey, () => {
+  selectedId.value = null
+  choiceItemId.value = null
+})
 const crossOption = computed(() => options.value.find(option => option.choice) ?? null)
+const offerOrder = computed(() =>
+  crossOption.value ? [...cards.value, crossOption.value] : cards.value)
 const cues = computed(() => {
-  const order = crossOption.value ? [...cards.value, crossOption.value] : cards.value
-  const timeline = revealTimeline(order.map(tierOf))
-  return new Map(order.map((option, index) => [option.optionId, timeline[index]!]))
+  const timeline = revealTimeline(offerOrder.value.map(tierOf))
+  return new Map(offerOrder.value.map((option, index) => [option.optionId, timeline[index]!]))
 })
 // A reload onto a resolved draft shows the settled list, no replay.
 const instantReveal = resolved.value
+// Hold the squad's drafts back until the local reveal has landed: a teammate's
+// early bank must never pre-empt the fanfare. Banking settles at once; a
+// reroll replays the hold.
+const squadRevealed = useRevealComplete(
+  () => `${offerKey.value}|${resolved.value ? 1 : 0}`,
+  () => (resolved.value ? 0 : revealDuration(offerOrder.value.map(tierOf))),
+)
 const markers = computed(() =>
   options.value.flatMap(option => typeof option.roll === 'number'
     ? [{
@@ -225,7 +234,7 @@ const pickedName = computed(() =>
     </div>
 
     <div
-      v-if="squadDrafts.length"
+      v-if="squadDrafts.length && squadRevealed"
       class="squad-mini"
     >
       <span class="cap">Squad drafts</span>
@@ -347,7 +356,15 @@ const pickedName = computed(() =>
   text-shadow: 0 0 14px color-mix(in srgb, var(--tier) 40%, transparent);
 }
 .loot-card:not([data-tier='C']) .tier { animation: slamIn 0.45s var(--ease-impact) var(--impact, 0ms) backwards; }
-.squad-mini { display: flex; flex-direction: column; gap: 4px; }
+.squad-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: squad-in 0.4s var(--ease-out) backwards;
+}
+@keyframes squad-in {
+  from { opacity: 0; translate: 0 10px; }
+}
 .draft-row {
   display: flex;
   align-items: center;

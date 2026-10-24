@@ -152,7 +152,8 @@ its lit risk skulls, the vow in quotes, any benched-kit note, the accountability
 inked SWORN stamp. There are no per-card odds words: hovering or picking previews the one odds
 strip under the hand. The CTA is
 "Swear N pacts" (or "Dive with no pacts"), and a locked diver sees the sworn stamp while the rest of
-the squad finishes. There is no Kit rail: the header's **Kit** tile opens the same `ArmoryDrawer`
+the squad finishes. The hand is local: a squad sync leaves your picks alone — only a fresh draw or
+directive clears them. There is no Kit rail: the header's **Kit** tile opens the same `ArmoryDrawer`
 everywhere.
 
 #### Dive — `DivePhaseDiving`
@@ -193,7 +194,10 @@ until its suspense beat, when its row folds open and pushes the cards down, then
 crest plays. Hosts set `--cross-gap` to their flex gap so the collapsed row leaves no double gap. Every option's Valor pin is timed
 (`pinDelay`) to strike the line as its card lands; S/S+ pins flare. Pacing lives in
 `REVEAL_BEATS`. A draft that is already resolved on mount shows settled, and nothing gates input —
-cards are pickable from the first frame.
+cards are pickable from the first frame. The squad's drafts (`SquadDraftBoard`) wait for the local
+reveal to land (`revealDuration`): they appear with the settled cabinet, so a teammate banking early
+never pre-empts the fanfare. Banking settles them at once; a reroll replays the hold. A pick is
+local and survives the squad's syncs — only a genuinely new offer (a reroll) clears it.
 
 Once **every** diver has banked (`allDiversPicked`, synced state, so the whole squad sees it), the
 draft hands off to an interstitial; the engine stays in rewards and the host's ADVANCE is the only
