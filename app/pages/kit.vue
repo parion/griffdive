@@ -4,6 +4,8 @@ import { FRONTS } from '~~/shared/data/fronts'
 import { factionImageUrl, itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
 import { missionsPerOperation } from '~~/shared/engine/config'
+import type { RewardOption } from '~~/shared/engine/rewards'
+import { tierZones } from '~~/shared/engine/rewards'
 import type { RewardTier } from '~~/shared/engine/types'
 
 useHead({ meta: [{ name: 'robots', content: 'noindex,nofollow' }] })
@@ -276,6 +278,27 @@ function commit(): void {
 // Liberty's Cross specimen: bumping the key remounts the band so the unfurl replays.
 const crossRun = ref(0)
 const crossClaimed = ref<string | null>(null)
+
+// Reward reveal specimen: one pull per tier, dealt out of order, each pinned
+// mid-zone on a difficulty 10 line so the whole ladder lands in one replay.
+const lootRun = ref(0)
+const LOOT_DIFFICULTY = 10
+const LOOT_VALOR = 60
+const lootOptions = computed<RewardOption[]>(() => {
+  const zones = tierZones(LOOT_DIFFICULTY, LOOT_VALOR)
+  const rollIn = (tier: RewardTier) => {
+    const zone = zones.find(entry => entry.tier === tier)!
+    return Math.round((zone.start + zone.end) / 2)
+  }
+  const deal: RewardTier[] = ['B', 'S', 'C', 'A', 'S+']
+  return deal.map((tier, index) => ({
+    optionId: `kit-loot-${index}`,
+    item: ALL_ITEMS.find(item => item.tier === (tier === 'S+' ? 's' : tier.toLowerCase()))!,
+    choice: tier === 'S+',
+    roll: rollIn(tier),
+    tier,
+  }))
+})
 
 const toggleA = ref(false)
 const toggleB = ref(true)
@@ -2923,6 +2946,39 @@ onBeforeUnmount(() => {
         :pool="[...ALL_ITEMS]"
         :owned-ids="[]"
         @choose="itemId => crossClaimed = itemId"
+      />
+    </section>
+
+    <section
+      class="sec"
+      aria-label="Reward reveal"
+    >
+      <div class="sh">
+        <span class="disp sn">11b</span><h2 class="lbl">
+          Reward reveal
+        </h2><span class="dash" /><span class="sub">left to right · drama by tier · Cross unfurls last</span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px">
+        <button
+          class="ghost"
+          type="button"
+          style="height: 40px; padding: 0 16px"
+          @click="lootRun++"
+        >
+          Replay reveal
+        </button>
+        <span class="sub">Picking and banking are inert here</span>
+      </div>
+      <RewardDraft
+        :key="lootRun"
+        :options="lootOptions"
+        :picked-id="null"
+        :pool="[...ALL_ITEMS]"
+        :owned-ids="[]"
+        :stars="5"
+        :difficulty="LOOT_DIFFICULTY"
+        :team-risk="LOOT_VALOR"
       />
     </section>
 

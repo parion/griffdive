@@ -3,7 +3,7 @@ import {
   SAMPLE_CREDITS,
   bonusIntervalFor,
   maxStarsFor,
-  sampleAvailability,
+  sampleReportCeiling,
 } from '~~/shared/engine/config'
 import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import { missionHaul, optionsForDiver, timeHaulMultiplier } from '~~/shared/engine/rewards'
@@ -34,7 +34,7 @@ const emit = defineEmits<{
 }>()
 
 const maxStars = computed(() => maxStarsFor(props.state.difficulty))
-const sampleMax = computed(() => sampleAvailability(props.state.difficulty))
+const sampleMax = computed(() => sampleReportCeiling(props.state.difficulty))
 const front = computed(() => currentFront(props.state))
 
 const stars = ref(maxStars.value)

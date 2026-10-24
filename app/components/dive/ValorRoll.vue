@@ -2,11 +2,19 @@
 import type { TierZone } from '~~/shared/engine/rewards'
 import type { RewardTier } from '~~/shared/engine/types'
 
+interface ValorMarker {
+  roll: number
+  tier?: RewardTier
+  key?: string
+  delay?: number
+}
+
 const props = withDefaults(defineProps<{
   zones: TierZone[]
   // The d100 faces that landed. At loot each option has one; on the call/pact
-  // screens there are none and the strip is purely the odds line.
-  markers?: { roll: number, tier?: RewardTier }[]
+  // screens there are none and the strip is purely the odds line. `delay` (ms)
+  // lets the loot screen land each pin with its card.
+  markers?: ValorMarker[]
   // Percentage-point movement from the current baseline (a hovered pact, a
   // picked directive). Gains light a gold chunk; losses mark a red hatch.
   deltas?: Partial<Record<RewardTier, number>>
@@ -100,7 +108,7 @@ function inspect(zone: TierZone): void {
   inspected.value = inspected.value === zone.tier ? null : zone.tier
 }
 
-function markerTone(marker: { roll: number, tier?: RewardTier }): RewardTier {
+function markerTone(marker: ValorMarker): RewardTier {
   return marker.tier ?? 'C'
 }
 </script>
@@ -154,10 +162,10 @@ function markerTone(marker: { roll: number, tier?: RewardTier }): RewardTier {
       >
         <span
           v-for="(marker, index) in markers"
-          :key="`${marker.roll}-${index}`"
+          :key="marker.key ?? `${marker.roll}-${index}`"
           class="pin"
           :data-tier="markerTone(marker)"
-          :style="{ left: `${marker.roll}%`, animationDelay: `${index * 180}ms` }"
+          :style="{ 'left': `${marker.roll}%`, '--pin-delay': `${marker.delay ?? index * 180}ms` }"
         >
           <span class="pin-flag disp">{{ marker.roll }}</span>
           <span class="pin-needle" />
@@ -421,8 +429,11 @@ function markerTone(marker: { roll: number, tier?: RewardTier }): RewardTier {
   flex-direction: column;
   align-items: center;
   transform: translateX(-50%);
-  animation: pin-land 900ms var(--ease-out) both;
+  animation: pin-land 900ms var(--ease-out) var(--pin-delay, 0ms) both;
 }
+/* The rare pins flare as they strike, in step with their card's impact. */
+.pin[data-tier='S'] .pin-flag,
+.pin[data-tier='S+'] .pin-flag { animation: pin-flare 900ms ease-out calc(var(--pin-delay, 0ms) + 540ms) backwards; }
 .pin-flag {
   z-index: 2;
   padding: 4px 7px 3px;
@@ -460,8 +471,14 @@ function markerTone(marker: { roll: number, tier?: RewardTier }): RewardTier {
   100% { opacity: 1; transform: translate(-50%, 0); }
 }
 
+@keyframes pin-flare {
+  0% { scale: 1.5; box-shadow: inset 0 0 0 1px var(--pin), 0 0 34px 6px var(--pin); }
+  100% { scale: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .pin { animation: none; }
+  .pin,
+  .pin-flag { animation: none; }
   .zone-delta { animation: none; }
 }
 </style>

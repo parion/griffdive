@@ -535,6 +535,12 @@ by `KICK_DIVER` who later rejoins starts empty, and so does a new session forked
 no cap. The game's own sample mix (commons dominate early, supers appear at diff 6) does the
 difficulty scaling.
 
+The report form caps each sample canister at `sampleReportCeiling(difficulty)` — twice the map's
+spawn count (`SAMPLE_AVAILABILITY`). The **Sample Scanner** booster has a 15% chance to double every
+sample pickup, so a squad can bring home more than the map spawned; the regular spawn table alone
+would make those hauls unreportable. The filed count remains honor-system: the engine only clamps it
+to a non-negative integer.
+
 **Brasch's Bargains is an always-open shop**, open between missions in every phase from `spin` to
 `rewards`. It closes in the `lobby`, while `diving`, while a failure's `forfeit` settles (a buy would
 reshuffle the forfeit offers, which derive from the live kit) and once the crusade is `complete`
