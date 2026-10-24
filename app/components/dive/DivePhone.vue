@@ -71,7 +71,7 @@ function openSteamFromSquad(): void {
 const bargainsOpen = computed(() => !props.kicked && props.self !== null && !bargainsClosedReason(props.state))
 const lamp = computed(() => (props.self ? bargainLamp(props.state, props.self) : 'off'))
 const honors = computed(() => bonusFor(props.state))
-const honorsWinners = computed(() => bonusWinners(props.state).map(diver => diver.name))
+const honorsWinners = computed(() => bonusWinners(props.state).map(diver => upperName(diver.name)))
 const honorsAwarded = computed(() => Boolean(props.state.bonusWinnerIds.length))
 
 watch(phase, () => {
@@ -158,7 +158,6 @@ const operationClimbs = computed(() =>
           @fail-directive="emit('failDirective')"
           @reporting="reporting = $event"
           @spin-bonus="emit('spinBonus', $event)"
-          @open-kit="emit('openArmory')"
         />
 
         <OperationCleared

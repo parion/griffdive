@@ -63,6 +63,10 @@ primary CTA above the fold on a 1440×900 desktop. A new beat always opens scrol
 Beat swaps never flash the previous screen: local UI (an open report form) stays mounted until
 the engine's phase change unmounts it, rather than closing itself first.
 
+**Diver names display in caps everywhere** — seats, ledgers, drafts, hosts named in copy, toasts.
+State keeps the name as typed; templates pass it through `upperName()` (`app/utils/upperName.ts`),
+and accessible names keep the typed case.
+
 **Display names never split mid-word.** Card names in the display font bind `fitWord(name)`
 (`app/utils/fitWord.ts`, measured Archivo advances) and cap their size at
 `min(<size>, 100cqi / var(--fit-len))` inside an inline-size container, with
@@ -79,8 +83,8 @@ merge with them.
   Warbonds collapse to glyph buttons (keeping their accessible names) so the header stays one row
   down to 980px. Back to the Bridge lives
   in `DiveMenu`, because the global bridge header stands down on `/dive`.
-- **`SquadDock`** anchors the bottom: status lamps and names for every diver (`.seat` cards in
-  mixed case — not the global `.chip` tag utility), open seats, Steam lobby and invite copy, and the
+- **`SquadDock`** anchors the bottom: status lamps and names for every diver (`.seat` cards —
+  not the global `.chip` tag utility), open seats, Steam lobby and invite copy, and the
   squad-honors token picker once a contest is spun. For the host the Steam control toggles a
   **Steam lobby bar** docked just above the squad bar: pin or change the `steam://joinlobby/…`
   link, copy it, jump into the lobby, or remove it — removal closes the bar. A squadmate gets a
@@ -158,11 +162,17 @@ everywhere.
 
 #### Dive — `DivePhaseDiving`
 
-The field screen is two columns: the teal-lit directive card (HOLDING / BROKEN) and accepted strain
-on the left over the locked odds line, and a **Pacts sworn** ledger on the right — one row per
-pact (diver, lit skulls, name, one-tap "Mark broken", confirm on the second tap). Hosts call **Extracted** or **Mission failed**; squadmates
-get their own `KitSnapshot` pane and a waiting gate. The kit is visible by default for non-hosts and
-opens full-height from the header for everyone.
+The field screen is one column: the teal-lit directive card (HOLDING / BROKEN) and accepted strain,
+then a **Pacts sworn** ledger — one row per pact (diver, lit skulls, name, one-tap "Mark broken",
+confirm on the second tap). Each row is an accordion (`PactLedger`, shared with the phone) that
+opens on the vow and its accountability line, lit by a gold edge; your own pacts start open,
+everyone else's start shut. Hosts call **Extracted** or **Mission failed**; squadmates get a
+waiting gate. Beside the column, every diver gets the **`KitDock`**: the Kit docked in
+`DiveFrame`'s `aside` slot, at the right edge where the Kit drawer slides in, but non-modal so the
+field screen stays live. It is open by default; its Hide control (and the header's Kit tile, while
+docked) folds it to a slim KIT tab. The report form takes the stage without the dock. On a phone
+the field kit is the same `KitDock` as a non-modal **sheet** pinned to the bottom of the scroll,
+just above the action bar: a KIT handle that rises into the panel (up to 64dvh) and folds back down.
 
 #### Report — `MissionReport`
 
@@ -225,7 +235,16 @@ only and reads `tierZones` from the engine.
 #### Kit, Codex, Warbonds
 
 The Kit (`ArmoryDrawer` → `KitPanel`) is reached from the header on desktop and phone; there is no
-persistent rail. It keeps the lean diver list, earned-only switch, jump chips and live ban washes.
+persistent rail, except in the field, where `KitDock` docks the same `KitPanel` beside the stage. It keeps the lean diver list (a segmented strip with a gold lamp on the
+selected diver), jump chips (each with its group's accent square) over the earned-only switch, and
+live ban washes. Each `KIT_SECTIONS` group declares its `art`: **gear** groups (weapons,
+throwables) set the transparent renders in a lit 16:10 well, brightened and drop-shadowed over an
+accent spotlight; **icon** groups (armor passives, boosters, stratagems) show the square in-game
+icon full size over a blurred copy of itself, so each frame glows in its own colour. Stratagem
+groups take their in-game frame colours (Eagle/Orbital red, Supply blue, Defense green). Tiles
+carry a tier stripe and lift on hover; banned icons drop their glow.
+On a phone the Kit drawer rises from the bottom of the viewport
+(`AppDrawer` `side="bottom"`: grip, swipe down to close) instead of sliding in from the right.
 Codex and Warbonds remain the shared drawers. Brasch's Bargains remains a slide-over from the credit
 tile, never a phase screen.
 

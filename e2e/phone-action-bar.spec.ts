@@ -65,7 +65,7 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
 
   // Honors moved to the report window: spin while the numbers are in hand.
   await page.getByRole('button', { name: 'Spin the stat' }).click()
-  await expect(page.getByText('Host banked the token.', { exact: true })).toBeVisible()
+  await expect(page.getByText('HOST banked the token.', { exact: true })).toBeVisible()
 
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'File report' }).click()
 

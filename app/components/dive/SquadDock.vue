@@ -167,7 +167,7 @@ function kick(diverId: string): void {
           aria-hidden="true"
         />
         <span class="seat-copy">
-          <b>{{ diver.name }}</b>
+          <b>{{ upperName(diver.name) }}</b>
           <i>{{ statusOf(diver) }}</i>
         </span>
         <button

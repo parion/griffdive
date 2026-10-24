@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { conditionRiskAt, missionsPerOperation } from '~~/shared/engine/config'
-import { pactName } from '~~/shared/data/pacts'
+import { missionsPerOperation } from '~~/shared/engine/config'
 import {
   activeMisfortune,
   activeStrain,
@@ -21,7 +20,6 @@ const emit = defineEmits<{
   failDirective: []
   reporting: [open: boolean]
   spinBonus: [payload: { stars: number, outcome: MissionOutcome }]
-  openKit: []
 }>()
 
 const misfortune = computed(() => activeMisfortune(props.state))
@@ -29,22 +27,10 @@ const strain = computed(() => activeStrain(props.state))
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const directiveFailed = computed(() => props.state.misfortuneFailed)
 const confirmFail = ref(false)
-
-const pactsByDiver = computed(() =>
-  props.state.divers.map(diver => ({
-    id: diver.id,
-    name: diver.name,
-    isHost: diver.id === props.state.hostId,
-    pacts: diver.pactIds.map(id => ({
-      id,
-      name: pactName(id),
-      risk: conditionRiskAt(id, props.state.difficulty),
-      failed: diver.failedPactIds.includes(id),
-    })),
-  })))
+const kitOpen = ref(false)
 
 const ownPacts = computed(() =>
-  pactsByDiver.value.find(entry => entry.id === props.selfId)?.pacts ?? [])
+  (props.self?.pactIds ?? []).map(id => ({ id, failed: props.self?.failedPactIds.includes(id) ?? false })))
 
 const armedPact = ref<string | null>(null)
 
@@ -146,55 +132,12 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
       <span>strain · whole operation</span>
     </div>
 
-    <section class="sworn">
-      <span class="cap">Pacts sworn</span>
-      <div
-        v-for="diver in pactsByDiver"
-        :key="diver.id"
-        class="sworn-row"
-      >
-        <span class="sworn-name">
-          <b>{{ diver.name }}</b>
-          <i v-if="diver.isHost">Host</i>
-        </span>
-        <span
-          v-if="diver.pacts.length === 0"
-          class="none"
-        >No pacts</span>
-        <span
-          v-for="pact in diver.pacts"
-          :key="pact.id"
-          class="pact-chip"
-          :class="{ failed: pact.failed }"
-        >
-          <RiskPips
-            :value="pact.risk"
-            :max="pact.risk"
-            tone="red"
-          />
-          <span>{{ pact.name }}</span>
-          <button
-            v-if="!pact.failed && canMark(diver.id)"
-            class="mark-pact"
-            :class="{ armed: armedPact === `${diver.id}:${pact.id}` }"
-            type="button"
-            @click="markPact(diver.id, pact.id)"
-          >
-            {{ armedPact === `${diver.id}:${pact.id}` ? 'Confirm?' : 'I broke it' }}
-          </button>
-          <span
-            v-else-if="pact.failed"
-            class="void"
-          >Void</span>
-        </span>
-      </div>
-    </section>
-
-    <KitSnapshot
-      v-if="!isHost"
+    <PactLedger
+      class="sworn"
       :state="state"
       :self-id="selfId"
-      @open="emit('openKit')"
+      :is-host="isHost"
+      @fail="(diverId, pactId) => emit('fail', diverId, pactId)"
     />
 
     <div
@@ -239,16 +182,24 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         <button
           v-if="ownPacts.some(pact => !pact.failed)"
           class="bar-alt"
+          :class="{ armed: armedPact !== null }"
           type="button"
           @click="markPact(selfId ?? '', ownPacts.find(pact => !pact.failed)?.id ?? '')"
         >
-          I broke it
+          {{ armedPact ? 'Confirm?' : 'I broke it' }}
         </button>
       </template>
       <template #primary>
         <span class="bar-gate">Waiting on host</span>
       </template>
     </PhoneActionBar>
+
+    <KitDock
+      v-model:open="kitOpen"
+      :state="state"
+      :self-id="selfId"
+      sheet
+    />
   </section>
 
   <MissionReport
@@ -266,7 +217,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 </template>
 
 <style scoped>
-.phone-field { display: flex; flex-direction: column; gap: 11px; min-width: 0; }
+.phone-field { display: flex; flex: 1 0 auto; flex-direction: column; gap: 11px; min-width: 0; }
 .head { display: flex; flex-direction: column; gap: 5px; }
 .kick {
   color: var(--teal);
@@ -308,8 +259,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   color: var(--muted);
   font-size: 10px;
 }
-.mark,
-.mark-pact {
+.mark {
   min-height: 28px;
   padding: 0 7px;
   border: 0;
@@ -320,38 +270,10 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.mark.armed,
-.mark-pact.armed { color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
+.mark.armed { color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
 .strain-line { display: flex; align-items: center; gap: 7px; color: var(--orange); font-size: 11px; }
 .strain-line span { color: var(--muted); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
-.sworn { display: flex; flex-direction: column; gap: 6px; }
-.sworn-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 9px;
-  min-height: 34px;
-  padding: 4px 8px;
-  background: var(--panel);
-  box-shadow: inset 0 0 0 1px var(--line-2);
-}
-.sworn-name { display: flex; align-items: baseline; gap: 5px; min-width: 62px; }
-.sworn-name b { font-size: 11px; }
-.sworn-name i { color: var(--gold); font-size: 8px; font-style: normal; letter-spacing: 0.08em; text-transform: uppercase; }
-.none { color: var(--dim); font-size: 11px; }
-.pact-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 26px;
-  padding: 1px 5px 1px 6px;
-  background: var(--ground);
-  box-shadow: inset 0 0 0 1px var(--line-3);
-  font-size: 10px;
-}
-.pact-chip.failed { opacity: 0.55; }
-.pact-chip :deep(.pips i) { width: 11px; height: 11px; }
-.void { color: var(--red); font-size: 8px; font-weight: 800; text-transform: uppercase; }
+.sworn { --ledger-pad: 12px; }
 .host-note { display: flex; flex-direction: column; gap: 3px; }
 .host-note p { margin: 0; color: var(--muted); font-size: 11px; }
 </style>

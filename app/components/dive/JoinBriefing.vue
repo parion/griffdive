@@ -290,7 +290,7 @@ function submit(): void {
           </h2>
           <p class="jb-lede">
             <template v-if="host">
-              <b class="jb-callsign">{{ host.name }}</b> is leading
+              <b class="jb-callsign">{{ upperName(host.name) }}</b> is leading
             </template>
             <template v-else>
               A host is leading
@@ -432,7 +432,7 @@ function submit(): void {
                     :class="{ host: d.id === state?.hostId, away: d.away }"
                   >
                     <span class="disp jb-seat-l">{{ (d.name[0] ?? '?').toUpperCase() }}</span>
-                    <span class="jb-seat-n jb-callsign">{{ d.name }}</span>
+                    <span class="jb-seat-n jb-callsign">{{ upperName(d.name) }}</span>
                     <span
                       v-if="d.id === state?.hostId"
                       class="jb-seat-tag"

@@ -40,7 +40,7 @@ test('squadmates read one briefing page; the host keeps the tutorial', async ({ 
   // Filing the callsign (Enter) stamps the registry and opens the squad card.
   await callsign.fill('Duo')
   await callsign.press('Enter')
-  await expect(joiner.getByLabel('The squad').getByText('Captain', { exact: true })).toBeVisible()
+  await expect(joiner.getByLabel('The squad').getByText('CAPTAIN', { exact: true })).toBeVisible()
   await expect(join).toBeEnabled()
 
   // The surplus kit is laid out beside the Class E copy.
@@ -88,7 +88,7 @@ test('squadmates read one briefing page; the host keeps the tutorial', async ({ 
   const veteran = await namedPage(browser, 'Veteran')
   await veteran.goto(host.url())
   await expect(veteran.getByRole('textbox', { name: /^Callsign/ })).toHaveValue('Veteran')
-  await expect(veteran.getByLabel('The squad').getByText('Duo', { exact: true })).toBeVisible()
+  await expect(veteran.getByLabel('The squad').getByText('DUO', { exact: true })).toBeVisible()
   await veteran.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(veteran)
   await expect(host.locator('.bays .bay').filter({ hasText: 'Veteran' })).toBeVisible()

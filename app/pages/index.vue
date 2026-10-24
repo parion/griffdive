@@ -919,7 +919,7 @@ const variantLabel = computed(() => VARIANTS_LABELS[variant.value])
               >
                 <template v-if="dive.state">
                   <div class="rc-head">
-                    <span class="rc-name">{{ dive.state.divers[0]?.name ?? 'Crusade' }} · {{ VARIANTS_LABELS[dive.state.settings?.variant ?? 'medium'] }}</span>
+                    <span class="rc-name">{{ upperName(dive.state.divers[0]?.name) ?? 'Crusade' }} · {{ VARIANTS_LABELS[dive.state.settings?.variant ?? 'medium'] }}</span>
                     <span class="rc-live"><span
                       class="pulse rc-dot"
                       aria-hidden="true"

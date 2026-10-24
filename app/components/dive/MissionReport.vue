@@ -352,7 +352,7 @@ function spin(): void {
           class="honors-note"
         >
           <template v-if="honorsAwarded">
-            {{ winners.length === 1 ? winners[0]!.name : `${winners.length} divers tied` }} banked the token.
+            {{ winners.length === 1 ? upperName(winners[0]!.name) : `${winners.length} divers tied` }} banked the token.
           </template>
           <template v-else-if="squadSize(state) === 1">
             Token banked.

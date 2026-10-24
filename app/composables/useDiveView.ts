@@ -55,7 +55,7 @@ export function useDiveView(session: DiveSession): DiveView {
   })
 
   function diverName(id: string | null): string {
-    return state.value?.divers.find(diver => diver.id === id)?.name ?? 'another diver'
+    return upperName(state.value?.divers.find(diver => diver.id === id)?.name) ?? 'another diver'
   }
 
   const nameDraft = ref('')

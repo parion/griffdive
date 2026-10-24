@@ -42,6 +42,19 @@ watch(phase, () => {
 
 const armoryOpen = ref(false)
 
+// In the field the Kit docks beside the stage instead of opening as a modal,
+// so the header's Kit tile shows or hides the dock there.
+const kitDockOpen = ref(true)
+const kitDocked = computed(() => phase.value === 'diving' && !reporting.value)
+
+function openKit(): void {
+  if (kitDocked.value) {
+    kitDockOpen.value = !kitDockOpen.value
+    return
+  }
+  armoryOpen.value = true
+}
+
 // Brasch's Bargains opens from the desktop header and the phone action bar, and
 // shuts itself when the squad drops into the field.
 const bargainsOpen = ref(false)
@@ -94,7 +107,7 @@ watch([phaseKey, squadBanked], () => {
 // Squad Honors: the contest is spun at the report and awarded from the dock.
 // The shell only reads the derived state; the engine owns eligibility.
 const honors = computed(() => (state.value ? bonusFor(state.value) : null))
-const honorsWinners = computed(() => (state.value ? bonusWinners(state.value).map(diver => diver.name) : []))
+const honorsWinners = computed(() => (state.value ? bonusWinners(state.value).map(diver => upperName(diver.name)) : []))
 const honorsAwarded = computed(() => Boolean(state.value?.bonusWinnerIds.length))
 const sessionMenuOpen = ref(false)
 const steamOpen = ref(false)
@@ -717,7 +730,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
           :bargains-closed="bargainsClosed"
           :bargain-lamp="self ? bargainLamp(state, self) : 'off'"
           @open-bargains="bargainsOpen = true"
-          @open-kit="armoryOpen = true"
+          @open-kit="openKit"
           @open-tutorial="openBriefing"
           @open-menu="sessionMenuOpen = true"
         />
@@ -844,6 +857,17 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
           />
         </div>
       </Transition>
+
+      <template
+        v-if="kitDocked"
+        #aside
+      >
+        <KitDock
+          v-model:open="kitDockOpen"
+          :state="state"
+          :self-id="selfId"
+        />
+      </template>
 
       <template #dock>
         <div class="dock-stack">

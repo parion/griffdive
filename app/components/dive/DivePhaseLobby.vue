@@ -45,7 +45,7 @@ let launchTimer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(launchTimer))
 
 const hostName = computed(() =>
-  props.state.divers.find(diver => diver.id === props.state.hostId)?.name ?? 'The host')
+  upperName(props.state.divers.find(diver => diver.id === props.state.hostId)?.name) ?? 'The host')
 
 const selectedVariant = computed(() => VARIANTS.find(entry => entry.id === variant.value) ?? VARIANTS[0]!)
 const startDifficulty = computed(() => STARTING_KITS[variant.value].startDifficulty)
