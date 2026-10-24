@@ -38,7 +38,7 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await expectJoinerLanded(pageB)
 
   await expect(pageB.locator('.dock .seat')).toHaveCount(2)
-  await expect(pageB.locator('.dock .seat.self')).toContainText('Duo')
+  await expect(pageB.locator('.dock .seat.self')).toContainText('DUO')
   // Only the host gets the wheel control.
   await expect(pageB.getByRole('button', { name: 'Spin', exact: true })).toBeDisabled()
   await expect(pageB.getByLabel(/Copy invite link/)).toBeVisible()
@@ -300,7 +300,7 @@ test('when the whole squad leaves, the room waits and RESUME puts everyone back'
   await pageB.getByRole('link', { name: 'RESUME' }).click()
   await expect(pageB.locator('.call')).toBeVisible()
   await expect(pageB.locator('.dock .seat')).toHaveCount(2)
-  await expect(pageB.locator('.dock .seat.away')).toContainText('Host')
+  await expect(pageB.locator('.dock .seat.away')).toContainText('HOST')
   await expect(pageB.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled()
 
   await pageA.getByRole('link', { name: 'RESUME' }).click()

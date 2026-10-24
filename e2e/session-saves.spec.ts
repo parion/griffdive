@@ -73,7 +73,7 @@ test('a solo save hosts an online session from the home record', async ({ browse
   // The local owner's name carries into the new online session, so there is
   // no second name gate.
   await expect(page.getByLabel('Your name')).toHaveCount(0)
-  await expect(page.locator('.dock .seat.self')).toContainText('Griffon')
+  await expect(page.locator('.dock .seat.self')).toContainText('GRIFFON')
 
   // A second browser joins the new online session.
   const contextB = await browser.newContext()

@@ -33,7 +33,7 @@ const strain = computed(() => currentStrain(props.state))
 const decision = computed(() => misfortuneDecision(props.state))
 const strainCall = computed(() => strainDecision(props.state))
 const hostName = computed(() =>
-  props.state.divers.find(diver => diver.id === props.state.hostId)?.name ?? 'The host')
+  upperName(props.state.divers.find(diver => diver.id === props.state.hostId)?.name) ?? 'The host')
 
 const directiveRisk = computed(() =>
   misfortune.value ? conditionRiskAt(misfortune.value.id, props.state.difficulty) : 0)
@@ -46,7 +46,7 @@ const stranded = computed(() => misfortuneStrandedDivers(props.state))
 const acceptBlocked = computed(() => stranded.value.length > 0)
 const strandedReason = computed(() =>
   stranded.value.length
-    ? `${stranded.value.map(diver => diver.name).join(', ')} can’t field this rule.`
+    ? `${stranded.value.map(diver => upperName(diver.name)).join(', ')} can’t field this rule.`
     : '')
 
 const callValor = computed(() => teamRiskOf(props.state))

@@ -18,7 +18,7 @@ const emit = defineEmits<{ fail: [playerId: string, pactId: string] }>()
 const pactsByDiver = computed(() =>
   props.state.divers.map(diver => ({
     id: diver.id,
-    name: diver.id === props.selfId ? 'You' : diver.name,
+    name: diver.id === props.selfId ? 'You' : upperName(diver.name),
     pacts: diver.pactIds.map((id) => {
       const pact = pactById(id)
       return {

@@ -50,7 +50,7 @@ const squad = computed(() => props.state.divers
     else if (owesForfeit(props.state, diver)) {
       status = diver.away ? 'Away' : 'Choosing'
     }
-    return { id: diver.id, name: diver.name, status, done: chosen !== null && chosen !== undefined }
+    return { id: diver.id, name: upperName(diver.name), status, done: chosen !== null && chosen !== undefined }
   }))
 const waitingOn = computed(() => awaitingDiverIds(props.state).filter(id => id !== props.selfId))
 

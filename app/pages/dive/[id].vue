@@ -107,7 +107,7 @@ watch([phaseKey, squadBanked], () => {
 // Squad Honors: the contest is spun at the report and awarded from the dock.
 // The shell only reads the derived state; the engine owns eligibility.
 const honors = computed(() => (state.value ? bonusFor(state.value) : null))
-const honorsWinners = computed(() => (state.value ? bonusWinners(state.value).map(diver => diver.name) : []))
+const honorsWinners = computed(() => (state.value ? bonusWinners(state.value).map(diver => upperName(diver.name)) : []))
 const honorsAwarded = computed(() => Boolean(state.value?.bonusWinnerIds.length))
 const sessionMenuOpen = ref(false)
 const steamOpen = ref(false)

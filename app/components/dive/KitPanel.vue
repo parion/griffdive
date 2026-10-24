@@ -105,7 +105,7 @@ function jumpTo(id: string) {
           class="diver-lamp"
           aria-hidden="true"
         />
-        <span class="diver-name">{{ entry.name }}</span>
+        <span class="diver-name">{{ upperName(entry.name) }}</span>
       </button>
     </div>
 

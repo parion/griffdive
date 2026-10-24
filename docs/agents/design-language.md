@@ -63,6 +63,10 @@ primary CTA above the fold on a 1440×900 desktop. A new beat always opens scrol
 Beat swaps never flash the previous screen: local UI (an open report form) stays mounted until
 the engine's phase change unmounts it, rather than closing itself first.
 
+**Diver names display in caps everywhere** — seats, ledgers, drafts, hosts named in copy, toasts.
+State keeps the name as typed; templates pass it through `upperName()` (`app/utils/upperName.ts`),
+and accessible names keep the typed case.
+
 **Display names never split mid-word.** Card names in the display font bind `fitWord(name)`
 (`app/utils/fitWord.ts`, measured Archivo advances) and cap their size at
 `min(<size>, 100cqi / var(--fit-len))` inside an inline-size container, with
@@ -79,8 +83,8 @@ merge with them.
   Warbonds collapse to glyph buttons (keeping their accessible names) so the header stays one row
   down to 980px. Back to the Bridge lives
   in `DiveMenu`, because the global bridge header stands down on `/dive`.
-- **`SquadDock`** anchors the bottom: status lamps and names for every diver (`.seat` cards in
-  mixed case — not the global `.chip` tag utility), open seats, Steam lobby and invite copy, and the
+- **`SquadDock`** anchors the bottom: status lamps and names for every diver (`.seat` cards —
+  not the global `.chip` tag utility), open seats, Steam lobby and invite copy, and the
   squad-honors token picker once a contest is spun. For the host the Steam control toggles a
   **Steam lobby bar** docked just above the squad bar: pin or change the `steam://joinlobby/…`
   link, copy it, jump into the lobby, or remove it — removal closes the bar. A squadmate gets a

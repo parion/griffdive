@@ -163,7 +163,7 @@ function tileLabel(item: Item): string {
               <div class="kit-portrait">
                 <IconSalute class="kit-salute" />
                 <span class="kit-ribbon">
-                  <span class="kit-name">{{ cache.name }}</span>
+                  <span class="kit-name">{{ upperName(cache.name) }}</span>
                 </span>
               </div>
               <ul

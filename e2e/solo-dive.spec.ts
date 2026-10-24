@@ -104,7 +104,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
 
   // Honors live in the report window now: spin while the numbers are in hand.
   await page.getByRole('button', { name: 'Spin the stat' }).click()
-  await expect(page.getByText('Griffon banked the token.', { exact: true })).toBeVisible()
+  await expect(page.getByText('GRIFFON banked the token.', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: 'File report' }).click()
 

@@ -52,7 +52,7 @@ const ownedIds = computed(() => props.state.personalInventories[props.selfId ?? 
 const squadDrafts = computed(() =>
   props.state.divers
     .filter(diver => diver.id !== props.selfId)
-    .map(diver => ({ id: diver.id, name: diver.name, summary: draftSummaryFor(props.state, diver) })),
+    .map(diver => ({ id: diver.id, name: upperName(diver.name), summary: draftSummaryFor(props.state, diver) })),
 )
 
 const canReroll = computed(() =>

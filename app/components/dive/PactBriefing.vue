@@ -242,7 +242,7 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
         >
           <div class="squad-row-head">
             <span class="cut-sm disp avatar">{{ initial(diver.name) }}</span>
-            <span class="squad-name">{{ diver.name }}</span>
+            <span class="squad-name">{{ upperName(diver.name) }}</span>
             <span class="squad-valor">
               <span class="lbl">Valor</span>
               <span class="disp valor-num">{{ pactRiskOf(diver, difficulty) }}</span>
