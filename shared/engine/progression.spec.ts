@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SEAF_SUPPORT_KIT, STARTING_KITS, VARIANTS, assertKitsValid, startingItemIds } from './progression'
+import { STARTING_KITS, VARIANTS, assertKitsValid, earnedKit, startingItemIds, supportRollsFor } from './progression'
 
 describe('variants', () => {
   it('matches the AGENTS.md start difficulties (three, squad-size-free)', () => {
@@ -20,16 +20,25 @@ describe('starting kits', () => {
     const bare = startingItemIds('medium')
     expect(startingItemIds('hard')).toEqual(bare)
     expect(startingItemIds('suicide')).toEqual(bare)
-    expect(startingItemIds('suicide', 'penance')).toEqual(bare)
   })
 
-  it('appends the SEAF Support Package only for the seaf mode', () => {
-    const seaf = startingItemIds('hard', 'seaf')
-    expect(seaf.length).toBeGreaterThan(startingItemIds('hard').length)
-    for (const id of [...SEAF_SUPPORT_KIT.stratagems, ...SEAF_SUPPORT_KIT.boosters]) {
-      expect(seaf).toContain(id)
-      expect(startingItemIds('hard', 'penance')).not.toContain(id)
-    }
+  it('rolls the SEAF Support Package only for the seaf mode, by start difficulty', () => {
+    expect(supportRollsFor('medium', 'seaf')).toBeNull()
+    expect(supportRollsFor('hard')).toBeNull()
+    expect(supportRollsFor('hard', 'penance')).toBeNull()
+    expect(supportRollsFor('hard', 'seaf')).toEqual({
+      primary: 1, secondary: 1, throwable: 1, stratagem: 2, armorPassive: 1, booster: 0,
+    })
+    expect(supportRollsFor('suicide', 'seaf')).toEqual({
+      primary: 2, secondary: 1, throwable: 1, stratagem: 4, armorPassive: 2, booster: 1,
+    })
+  })
+
+  it('keeps the dealt support pack out of a parked cache', () => {
+    const base = startingItemIds('hard')
+    const items = [...base, 'uavrecon', 'orbitallaser']
+    expect(earnedKit(items, 'hard')).toEqual(['uavrecon', 'orbitallaser'])
+    expect(earnedKit(items, 'hard', ['uavrecon'])).toEqual(['orbitallaser'])
   })
 
   it('builds one personal kit per diver — stratagems included, no shared pool', () => {

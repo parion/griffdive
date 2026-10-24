@@ -67,9 +67,10 @@ The two modes are **mutually exclusive**, chosen at launch and locked for the ru
 (`CrusadeSettings.mode`). They are the only kit difference between starts — every difficulty fields
 the same surplus `BASE_KIT`:
 
-- **SEAF Support Package** (`mode: 'seaf'`, the default) — the assisted ride. Adds
-  `SEAF_SUPPORT_KIT` (extra stratagems + boosters) to every diver's inventory and a small flat
-  per-mission Valor bump (`SEAF_SUPPORT_VALOR`: +1 at diff 5, +2 at diff 7).
+- **SEAF Support Package** (`mode: 'seaf'`, the default) — the assisted ride. Rolls each diver
+  their **own** pack on top of the surplus (`SEAF_SUPPORT_ROLLS`, keyed by start difficulty) and
+  adds a small flat per-mission Valor bump (`SEAF_SUPPORT_VALOR`: +1 at diff 5, +2 at diff 7).
+  See SEAF Support Package — the rolled pack.
 - **Super Penance** (`mode: 'penance'`) — the hellish task, for the wicked. No support gear (bare
   surplus kit) and a larger flat per-mission Valor stake (`PENANCE_VALOR`: +2 at diff 5, +3 at
   diff 7). Marked in the launch UI by a Hades-style flame animation.
@@ -80,7 +81,44 @@ default every progression warbond). The acquisition specials — the Super Citiz
 (`warbond0`) and the Superstore (`warbond1`) — sort last and are declared unowned; the Pre-Order
 Bonus is dropped entirely (unobtainable, no reward-pool bearing — its contents were armor, which
 the catalog no longer carries). Reward offers roll against the diver's own catalog — a diver is never
-offered items from warbonds they don't own. Starting kits are not warbond-filtered.
+offered items from warbonds they don't own. The surplus kit is not warbond-filtered; the SEAF pack is (below).
+
+### SEAF Support Package — the rolled pack
+
+A fixed pack handed to the whole squad overlapped too much to lift anyone, so SEAF rolls a pack
+**per diver** (`rollSupportKit` in `shared/engine/support.ts`):
+
+| Start | Primary | Secondary | Throwable | Stratagem | Armor passive | Booster |
+| --- | --- | --- | --- | --- | --- | --- |
+| Hard (5) | 1 | 1 | 1 | 2 | 1 | 0 |
+| Suicide Mission (7) | 2 | 1 | 1 | 4 | 2 | 1 |
+
+- **One tier:** every slot draws only `SEAF_SUPPORT_TIER` (B) items, so divers' packs differ in
+  shape, never in power. B is one rung above the diff-5 base tier (C) and the diff-7 base tier.
+- **Personal pool:** items come from the diver's own declared warbonds (plus `warbondCode ===
+  'none'`), never repeat an item they hold (the surplus included) and never repeat within the pack.
+  A kind whose pool runs dry deals what it has.
+- **Anti-tank floor:** the surplus kit fields no anti-tank, so a pack always holds at least
+  `SEAF_SUPPORT_ANTITANK_MIN` (1) anti-tank item — a dealt stratagem is re-rolled into one when the
+  roll missed. Counts per kind never change.
+- **Dealt once, stored:** the pack is seeded by the diver's id alone (stream per kind, so retuning
+  one count never reshuffles another), rolled when the crusade launches (`START_DIVE`, against the
+  warbonds each diver declared by then) or when a diver is seated mid-crusade (`joinDiver`, against
+  the warbonds the joiner's `hello` declared — the default set when it declared none), then recorded as `DiverState.supportKit` and merged into the inventory. A
+  later warbond change never reshuffles it; a diver rejoining under the same id draws the same pack.
+- **Launch reveal (presentation):** the setup's Starting Kit lays the surplus out like the Kit
+  drawer (primaries, secondaries and throwables apart) and ends each section in blue "?" boxes — one
+  per item the pack will roll there. After launch (and after seating mid-crusade) each diver's own
+  `KitReveal` modal over the wheel fills those boxes one by one and stays up until the diver closes it. It is never stored or
+  gated on: the pack is already dealt, the stage only stages it, and a plain reload never replays it.
+- **At-stake gear:** the pack is forfeitable like any earned item (see Mission failure), but it is
+  support gear, not winnings: it never parks in a legacy cache (`earnedKit` skips `supportKit`) and
+  Earned-only views hide it.
+- **Known trade-off:** a rolled pack no longer guarantees four red (Eagle/orbital) stratagems, so
+  *Oops, All Airstrikes* is often unfieldable for a SEAF squad (it needs every diver stocked) — the
+  squad declines or rerolls, as with any unfieldable rule.
+- Runs begun before the rolled pack keep the fixed pack they were issued (`migrateV17toV18`
+  backfills it into `supportKit`).
 
 ### Team layer — misfortunes / squad directives (Wheel of Adversity)
 
@@ -591,7 +629,7 @@ A failed mission costs every diver one item, and the diver never picks freely (t
 formality: surrender the scrap). Instead the engine **deals each diver a forfeit offer** and they
 choose the one item they lose. Only **earned gear** is ever at stake: the pool is the diver's kit
 beyond the variant's bare surplus (`earnedItemsOf` — drafted rewards, Bargains buys, a Field
-Promotion, a claimed cache, **and the SEAF Support Package** when that mode is chosen, so a SEAF
+Promotion, a claimed cache, **and the diver's rolled SEAF Support Package** when that mode is chosen, so a SEAF
 diver owes an item from the pack even before banking a first reward). The surplus starting kit was
 never won, so it is never taken.
 
@@ -663,7 +701,7 @@ specific items" — it narrows a pool, it never names a reward.
 
 - **Personal:** primaries, secondaries, throwables, boosters, armor **passives**, and
   **stratagems** — each diver owns and rewards their own. Every diver starts with the full
-  starting kit (stratagems included); stratagem rewards go to the diver who rolled them. There is
+  starting kit (stratagems included) plus their own rolled SEAF pack in that mode; stratagem rewards go to the diver who rolled them. There is
   no shared pool — a deliberate deviation from Penitent Crusade's sharing rule.
 - **Armor = passives, not pieces.** The catalog carries only armor passives (no pieces, no
   rating/speed/stamina). Any armor piece (any weight or rating) is freely wearable as long as its
@@ -676,7 +714,8 @@ specific items" — it narrows a pool, it never names a reward.
 
 ### Mid-crusade joining — Field Promotion & legacy caches
 
-Divers drop in and out. A diver seated mid-crusade starts on the variant's surplus kit — which is
+Divers drop in and out. A diver seated mid-crusade starts on the variant's surplus kit (plus a
+rolled pack of their own in SEAF mode) — which is
 useless at altitude — so the engine grants a **Field Promotion**: a one-time catch-up that restores
 *altitude, never rarity*.
 
@@ -752,7 +791,8 @@ presence (`away: false` on every diver); `migrateV14toV15` widens the single hon
 cache from a bare item list into `{ name, itemIds }` (pre-v16 kits read as "Fallen diver");
 `migrateV16toV17` renames the purse to credits (`sampleBank` → `credits`), and the tail's
 normalization deals the mission underway a Brasch's Bargains shelf (`bargainSeed`, a fresh `bargain`
-per diver). The chain's tail also runs the idempotent
+per diver); `migrateV17toV18` backfills `supportKit` on SEAF runs with the fixed pack they were issued
+(the pack is rolled per diver from then on). The chain's tail also runs the idempotent
 `normalizeRoomState` remap unconditionally: session mirrors copy unversioned room state, so a
 legacy variant id or a missing field must be corrected even in a doc stamped with a newer schema.
 Normalization drops

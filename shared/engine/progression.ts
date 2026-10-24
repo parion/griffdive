@@ -1,4 +1,6 @@
 import { ITEMS_BY_ID } from '../data/catalog'
+import { SEAF_SUPPORT_ROLLS } from './config'
+import type { SupportRolls } from './config'
 import type { CrusadeMode, CrusadeVariant } from './types'
 
 export const DIFFICULTY_NAMES: Readonly<Record<number, string>> = {
@@ -55,8 +57,8 @@ export interface StartingKit {
 
 // Starting kits mirror Penitent Crusade's surplus loadouts (upstream
 // getStartingItems.js), expressed as catalog ids. Every starting difficulty
-// fields the same surplus kit; the SEAF Support Package (below) is the only
-// kit difference, and it is an explicit mode choice.
+// fields the same surplus kit; the SEAF Support Package (support.ts) is the
+// only kit difference, and it is an explicit mode choice.
 const BASE_KIT = {
   stratagems: [
     'onetrueflag',
@@ -87,28 +89,12 @@ export const STARTING_KITS: Readonly<Record<CrusadeVariant, StartingKit>> = {
   suicide: { ...BASE_KIT, startDifficulty: 7 },
 }
 
-// The SEAF Support Package: the assisted ride's extra gear, granted only when
-// the squad picks mode 'seaf'. Super Penance grants none of it.
-export const SEAF_SUPPORT_KIT: Pick<StartingKit, 'stratagems' | 'boosters'> = {
-  stratagems: [
-    'sh20ballisticshieldbackpack',
-    'orbitalprecisionstrike',
-    'grenadierbattlement',
-    'antitankmines',
-    'eagle110mmrocketpods',
-    'orbitalgatlingbarrage',
-    'arc3arcthrower',
-  ],
-  boosters: ['uavrecon', 'muscleenhancement'],
-}
-
-// The full starting kit every diver owns personally — stratagems included
-// (no shared pool: earned stratagems belong to the diver who rolled them).
-// Only the SEAF mode appends the support package; 'penance' (and no mode) get
-// the bare surplus.
-export function startingItemIds(variant: CrusadeVariant, mode?: CrusadeMode): string[] {
+// The full surplus kit every diver owns personally — stratagems included
+// (no shared pool: earned stratagems belong to the diver who rolled them). The
+// SEAF Support Package is not part of it: that pack is rolled per diver (see
+// support.ts) and rides on top as gear the diver has at stake.
+export function startingItemIds(variant: CrusadeVariant): string[] {
   const kit = STARTING_KITS[variant]
-  const support = mode === 'seaf' ? SEAF_SUPPORT_KIT : null
   return [
     ...kit.stratagems,
     ...kit.primaries,
@@ -116,9 +102,16 @@ export function startingItemIds(variant: CrusadeVariant, mode?: CrusadeMode): st
     ...kit.throwables,
     ...kit.armorPassives,
     ...kit.boosters,
-    ...(support?.stratagems ?? []),
-    ...(support?.boosters ?? []),
   ]
+}
+
+// What the SEAF mode rolls each diver at this start, or null when the run has
+// no support package (medium, Super Penance, or a start with no roll table).
+export function supportRollsFor(variant: CrusadeVariant, mode?: CrusadeMode): SupportRolls | null {
+  if (mode !== 'seaf') {
+    return null
+  }
+  return SEAF_SUPPORT_ROLLS[STARTING_KITS[variant].startDifficulty] ?? null
 }
 
 // Completed operations behind the squad: each op bumps difficulty by one, so
@@ -127,11 +120,12 @@ export function catchUpOpsBehind(difficulty: number, variant: CrusadeVariant): n
   return Math.max(0, difficulty - STARTING_KITS[variant].startDifficulty)
 }
 
-// The gear a diver actually won: their kit beyond the starting surplus, each
-// item once. This is all a legacy cache ever holds — every joiner is already
-// issued the starting kit, so parking it would only stack duplicates.
-export function earnedKit(itemIds: readonly string[], variant: CrusadeVariant, mode?: CrusadeMode): string[] {
-  const starting = new Set(startingItemIds(variant, mode))
+// The gear a diver actually won: their kit beyond the starting surplus and the
+// support pack they were dealt, each item once. This is all a legacy cache ever
+// holds — every joiner is already issued a kit of their own, so parking it would
+// only stack duplicates.
+export function earnedKit(itemIds: readonly string[], variant: CrusadeVariant, supportKit: readonly string[] = []): string[] {
+  const starting = new Set([...startingItemIds(variant), ...supportKit])
   return [...new Set(itemIds)].filter(id => !starting.has(id))
 }
 
@@ -142,12 +136,9 @@ export function mergeKit(base: readonly string[], extra: readonly string[]): str
 
 export function assertKitsValid(): void {
   for (const variant of Object.keys(STARTING_KITS) as CrusadeVariant[]) {
-    for (const mode of [undefined, 'seaf'] as (CrusadeMode | undefined)[]) {
-      const label = `${variant}${mode ? `+${mode}` : ''}`
-      for (const id of startingItemIds(variant, mode)) {
-        if (!ITEMS_BY_ID.has(id)) {
-          throw new Error(`Starting kit "${label}" references unknown item "${id}"`)
-        }
+    for (const id of startingItemIds(variant)) {
+      if (!ITEMS_BY_ID.has(id)) {
+        throw new Error(`Starting kit "${variant}" references unknown item "${id}"`)
       }
     }
   }

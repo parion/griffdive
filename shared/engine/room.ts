@@ -15,6 +15,7 @@ import {
   missionsPerOperation,
 } from './config'
 import { VARIANTS, catchUpOpsBehind, earnedKit, mergeKit, startingItemIds } from './progression'
+import { rollSupportKit } from './support'
 import type { BargainDeal, BargainSlotKind, DivePhase, DiveState, DiverState, FrontPlan, LegacyCache, MajorOrderSelection, WheelResult } from './types'
 
 // A freshly created room: no settings, no divers. The first joiner becomes
@@ -70,7 +71,12 @@ export function seatingBlocked(state: DiveState): string | null {
 
 // Returns null when the squad is full or the dive is past its seating window.
 // Re-joining with a known playerId is idempotent (reconnect path).
-export function joinDiver(state: DiveState, playerId: string, name: string): DiveState | null {
+export function joinDiver(
+  state: DiveState,
+  playerId: string,
+  name: string,
+  declaredWarbonds?: readonly string[],
+): DiveState | null {
   if (state.divers.some(diver => diver.id === playerId)) {
     return state
   }
@@ -84,7 +90,14 @@ export function joinDiver(state: DiveState, playerId: string, name: string): Div
   const legacyCaches = Object.fromEntries(
     Object.entries(state.legacyCaches).filter(([id]) => id !== playerId),
   )
-  const startingKit = state.settings ? startingItemIds(state.settings.variant, state.settings.mode) : []
+  // Seated into a running crusade, a diver is issued the surplus plus a support
+  // pack of their own, rolled against the warbonds they declared on arrival (the
+  // default set when they declared none).
+  const warbondCodes = declaredWarbonds
+    ? [...new Set(declaredWarbonds.filter(code => ALL_WARBOND_CODES.includes(code)))]
+    : [...ALL_WARBOND_CODES]
+  const supportKit = state.settings ? rollSupportKit(state.settings, playerId, warbondCodes) : []
+  const startingKit = state.settings ? mergeKit(startingItemIds(state.settings.variant), supportKit) : []
   // A cache holds only earned gear: the returning diver is reissued the
   // starting kit and gets their winnings back on top, with no promotion owed.
   const inventory = restoredCache ? mergeKit(startingKit, restoredCache.itemIds) : startingKit
@@ -101,7 +114,8 @@ export function joinDiver(state: DiveState, playerId: string, name: string): Div
     pickedOptionId: null,
     // Warbonds are personal purchases — every diver declares their own set
     // (self-service SET_WARBONDS); the app defaults to all.
-    warbondCodes: [...ALL_WARBOND_CODES],
+    warbondCodes,
+    ...(state.settings ? { supportKit } : {}),
     catchUpGranted,
     catchUpOwed: catchUpGranted,
     skipsCurrentDraft: state.phase === 'diving',
@@ -178,6 +192,7 @@ function sanitizeDiver(raw: unknown): DiverState | null {
     pickedOptionId: typeof diver.pickedOptionId === 'string' ? diver.pickedOptionId : null,
     forfeitedItemId: typeof diver.forfeitedItemId === 'string' ? diver.forfeitedItemId : null,
     warbondCodes: stringArray(diver.warbondCodes),
+    ...(Array.isArray(diver.supportKit) ? { supportKit: stringArray(diver.supportKit, 50) } : {}),
     catchUpGranted: clampInt(diver.catchUpGranted, 0, CATCHUP_CAP, 0),
     catchUpOwed: clampInt(diver.catchUpOwed, 0, CATCHUP_CAP, 0),
     skipsCurrentDraft: diver.skipsCurrentDraft === true,
@@ -309,7 +324,7 @@ function resolveStrandedForfeit(state: DiveState): DiveState {
   const kit = state.personalInventories[owner.id] ?? []
   const chosen = owner.forfeitedItemId ?? null
   const starting = new Set(state.settings
-    ? startingItemIds(state.settings.variant, state.settings.mode)
+    ? startingItemIds(state.settings.variant)
     : [])
   const owes = !owner.skipsCurrentDraft && kit.some(id => !starting.has(id))
   if (!chosen && owes) {
@@ -414,7 +429,7 @@ export function forkCrusade(
   // nothing worth claiming.
   const legacyCaches: Record<string, LegacyCache> = {}
   for (const diver of divers) {
-    const earned = earnedKit(stringArray(state.personalInventories?.[diver.id], 1000), variant, mode)
+    const earned = earnedKit(stringArray(state.personalInventories?.[diver.id], 1000), variant, diver.supportKit)
     if (diver.id !== owner.id && earned.length > 0) {
       legacyCaches[diver.id] = { name: diver.name, itemIds: earned }
     }

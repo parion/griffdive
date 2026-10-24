@@ -676,7 +676,7 @@ export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOp
   // Bans are personal and crusade-long, so a promotion never re-offers a
   // banned item either.
   const exclude = new Set([
-    ...startingItemIds(state.settings.variant, state.settings.mode),
+    ...startingItemIds(state.settings.variant),
     ...diver.bannedItemIds,
     ...(state.personalInventories[diver.id] ?? []),
   ])

@@ -356,6 +356,30 @@ describe('save migration v15 → v16 (named legacy caches)', () => {
   })
 })
 
+describe('save migration v17 → v18 (rolled SEAF support pack)', () => {
+  it('backfills the fixed pack a SEAF run was issued, and only for SEAF runs', () => {
+    const seaf = createDiveState({ variant: 'hard', mode: 'seaf' }, 'p1', 'Griffin')
+    const legacy = (state: DiveState): SaveDoc => {
+      const doc = v1Doc()
+      doc.schemaVersion = 17
+      doc.state = { ...state, divers: state.divers.map(({ supportKit: _, ...diver }) => diver as DiveState['divers'][number]) }
+      return doc
+    }
+    const migrated = normalizeSaveDoc(legacy(seaf))!
+    expect(migrated.state.divers[0]!.supportKit).toContain('uavrecon')
+    expect(migrated.state.divers[0]!.supportKit).toHaveLength(9)
+    expect(normalizeRoomState(migrated.state)).toEqual(migrated.state)
+
+    const penance = normalizeSaveDoc(legacy(createDiveState({ variant: 'hard', mode: 'penance' }, 'p1', 'Griffin')))!
+    expect(penance.state.divers[0]!.supportKit).toBeUndefined()
+  })
+
+  it('keeps a rolled pack it finds on the diver', () => {
+    const seaf = createDiveState({ variant: 'hard', mode: 'seaf' }, 'p1', 'Griffin')
+    expect(normalizeRoomState(seaf).divers[0]!.supportKit).toEqual(seaf.divers[0]!.supportKit)
+  })
+})
+
 describe('room state normalization (unversioned storage)', () => {
   it('repairs kits stacked by the old cache claims', () => {
     const state = createDiveState({ variant: 'medium' }, 'p1', 'Griffin')

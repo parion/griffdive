@@ -164,7 +164,7 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 
 | Direction | Message | Payload |
 | --- | --- | --- |
-| C→S | `hello` | `{ name?, playerId?, knownIds? }` — stored playerId reattaches (reconnect); `knownIds` (seats held in other rooms) let a forked-out diver reclaim their cache (see Personal session saves) |
+| C→S | `hello` | `{ name?, playerId?, knownIds?, warbondCodes? }` — stored playerId reattaches (reconnect); `warbondCodes` are the warbonds the browser declared, so a joiner's SEAF pack rolls against them at seating; `knownIds` (seats held in other rooms) let a forked-out diver reclaim their cache (see Personal session saves) |
 | C→S | `action` | `{ action: EngineAction }` (validated server-side) |
 | C→S | `save-dive` | `{ name? }` — any seated diver pins the room past the idle TTL (see Saved dives) |
 | C→S | `unsave-dive` | host-only: returns the room to the ordinary idle TTL |

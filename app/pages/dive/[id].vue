@@ -36,6 +36,9 @@ const {
 
 const dispatch = (action: EngineAction) => session.dispatch(action)
 
+// The SEAF pack lands in the Starting Kit's "?" boxes in a modal over the wheel.
+const kitReveal = useKitReveal(state, self, session.awaitingJoin, session.mode === 'local')
+
 watch(phase, () => {
   reporting.value = false
 })
@@ -392,8 +395,19 @@ const promotionGateOpen = computed(() =>
   && !hostReviewOpen.value
   && !joinReviewOpen.value
   && !warbondsOpen.value
+  && !kitReveal.active.value
   && !session.awaitingJoin.value
   && promotionPending(state.value, self.value))
+
+// Held behind the host tutorial and the Warbonds drawer so one modal shows at a time.
+const kitRevealOpen = computed({
+  get: () => kitReveal.active.value && !briefingOpen.value && !warbondsOpen.value && !session.awaitingJoin.value,
+  set: (open) => {
+    if (!open) {
+      kitReveal.dismiss()
+    }
+  },
+})
 
 function claimCatchUpOption(optionId: string): void {
   if (selfId.value) {
@@ -935,6 +949,15 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         @close="closeBriefing"
       />
     </AppDialog>
+
+    <KitReveal
+      v-if="state?.settings && self?.supportKit?.length && state.phase !== 'lobby'"
+      :open="kitRevealOpen"
+      :variant="state.settings.variant"
+      :mode="state.settings.mode"
+      :support="self.supportKit"
+      @update:open="kitRevealOpen = $event"
+    />
 
     <FieldPromotionGate
       v-if="state && self"

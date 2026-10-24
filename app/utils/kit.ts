@@ -1,5 +1,6 @@
 import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import type { Item, ItemCategory } from '~~/shared/data/types'
+import type { SupportRolls } from '~~/shared/engine/config'
 import { startingItemIds } from '~~/shared/engine/progression'
 import type { DiveState } from '~~/shared/engine/types'
 
@@ -65,13 +66,14 @@ export function ownedKitItems(state: DiveState, diverId: string | null): Item[] 
 }
 
 // Items the diver gained after launch (rewards, purchases, caches): everything
-// outside the variant's starting kit.
+// outside the variant's starting kit and the support pack they were dealt.
 export function earnedKitItems(state: DiveState, diverId: string | null): Item[] {
   const items = ownedKitItems(state, diverId)
   if (!state.settings) {
     return items
   }
-  const starting = new Set(startingItemIds(state.settings.variant, state.settings.mode))
+  const support = state.divers.find(diver => diver.id === diverId)?.supportKit ?? []
+  const starting = new Set([...startingItemIds(state.settings.variant), ...support])
   return items.filter(item => !starting.has(item.id))
 }
 
@@ -95,4 +97,58 @@ export function kitGroups(itemIds: readonly string[]): KitGroup[] {
   return KIT_GROUPS
     .map(group => ({ label: group.label, items: items.filter(item => group.categories.includes(item.category)) }))
     .filter(group => group.items.length > 0)
+}
+
+const SUPPORT_ROLL_LABELS: Readonly<Record<keyof SupportRolls, readonly [string, string]>> = {
+  primary: ['primary', 'primaries'],
+  secondary: ['secondary', 'secondaries'],
+  throwable: ['throwable', 'throwables'],
+  stratagem: ['stratagem', 'stratagems'],
+  armorPassive: ['armor passive', 'armor passives'],
+  booster: ['booster', 'boosters'],
+}
+
+// The SEAF package as a recipe — "2 primaries, 1 secondary, …" — for the screens
+// that describe it before a diver's own pack exists.
+export function supportRollList(rolls: SupportRolls): string[] {
+  return (Object.keys(SUPPORT_ROLL_LABELS) as (keyof SupportRolls)[])
+    .filter(kind => rolls[kind] > 0)
+    .map(kind => `${rolls[kind]} ${SUPPORT_ROLL_LABELS[kind][rolls[kind] === 1 ? 0 : 1]}`)
+}
+
+// The Starting Kit groups the issued gear by what a support roll deals: one
+// section per roll kind, so each section can end in the "?" boxes that kind
+// will roll. Stratagems share one section because the pack rolls them as one
+// kind, whatever their category.
+export type StartKind = keyof SupportRolls
+
+export interface StartSectionDef {
+  kind: StartKind
+  label: string
+  accent: string
+  art: KitArt
+}
+
+export const START_SECTIONS: readonly StartSectionDef[] = [
+  { kind: 'primary', label: 'Primary', accent: 'var(--cat-primary)', art: 'gear' },
+  { kind: 'secondary', label: 'Secondary', accent: 'var(--cat-gear)', art: 'gear' },
+  { kind: 'throwable', label: 'Throwables', accent: 'var(--cat-gear)', art: 'gear' },
+  { kind: 'armorPassive', label: 'Armor passives', accent: 'var(--cat-armor)', art: 'icon' },
+  { kind: 'booster', label: 'Boosters', accent: 'var(--cat-booster)', art: 'icon' },
+  { kind: 'stratagem', label: 'Stratagems', accent: 'var(--teal)', art: 'icon' },
+]
+
+export function startKindOf(item: Item): StartKind {
+  if (item.type === 'stratagem') {
+    return 'stratagem'
+  }
+  switch (item.category) {
+    case 'secondary':
+    case 'throwable':
+    case 'armorPassive':
+    case 'booster':
+      return item.category
+    default:
+      return 'primary'
+  }
 }

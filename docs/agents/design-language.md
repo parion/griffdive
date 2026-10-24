@@ -114,8 +114,14 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
   equal tiles on narrow widths, perks and countdown); on wide containers it is one big button in
   the left column with *Lock a faction* and *Roll each op* stacked on the right — then *Starting
   difficulty* (three number cards, each with its **Base tier**) and, on 5/7, the SEAF/Penance pair,
-  then the **Starting kit** (`StartingKit`: the issued gear grouped by kind, SEAF Support items
-  edged teal). Squadmates see a **Stand by** card with a Declare warbonds CTA instead of disabled
+  then the **Starting kit** (`StartingKit`: the Kit drawer's grammar — `KitSection` headers over
+  `KitTile`s, with primaries, secondaries and throwables in their own sections — and, in SEAF mode,
+  blue "?" tiles ending each section, one per item the pack rolls there). On launch each diver gets
+  **`KitReveal`**, an `AppDialog` over the wheel page (`useKitReveal` arms it) where the "?" tiles
+  flip to the rolled items one by one (`.tile.fresh` landing flash, scrolled into view). It stays up
+  until the diver presses "To the wheel" (Skip while dealing), clicks out or hits Escape; it waits
+  behind the host tutorial, the Warbonds drawer and the Field Promotion gate so one modal shows at a
+  time. Reduced motion shows the finished kit at once. Squadmates see a **Stand by** card with a Declare warbonds CTA instead of disabled
   controls (the host's picks are local until launch). Diver names are all caps.
 - **Risk never shows as a Valor number.** Each plan and mode carries its per-mission risk as
   `RiskPips` skulls (`frontPlanRisk` / `modeValorAt` from the engine). `SetupRisk` totals them

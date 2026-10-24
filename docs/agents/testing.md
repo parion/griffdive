@@ -43,7 +43,9 @@
   named host skips every gate and gets the tutorial, a squadmate reads the one-page briefing — callsign
   focused on load, Enter files it and opens the squad card, issued kit, Codex drawer, the dial's
   scroll-in sweep — lands with no tutorial or Warbonds panel, and replays it as the
-  Field manual; the spec uses one room because creation is rate-limited per IP), personal session saves
+  Field manual; the spec uses one room because creation is rate-limited per IP), the SEAF launch
+  reveal (`kit-reveal.spec.ts`: the setup kit's "?" boxes, a solo and an online launch dealing the
+  pack in a modal over the wheel that stays until dismissed, a late joiner's own deal, no replay on reload), personal session saves
   (`session-saves.spec.ts`: a seated diver forks the live room into a new session, a solo save hosts
   an online session from the home record), the Field Promotion gate (`field-promotion.spec.ts`: a
   forked session seeded through `POST /api/rooms` — a forked-out diver reclaims their own kit, a

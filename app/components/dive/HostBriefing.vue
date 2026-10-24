@@ -3,7 +3,7 @@ import { useIntersectionObserver } from '@vueuse/core'
 import { WARBONDS } from '~~/shared/data/catalog'
 import { difficultyImageUrl, itemImageUrl } from '~~/shared/data/images'
 import { MAX_DIFFICULTY, MAX_NAME_LENGTH, MIN_DIFFICULTY, SQUAD_SIZE_MAX, VALOR_METER_MAX } from '~~/shared/engine/config'
-import { difficultyName, startingItemIds } from '~~/shared/engine/progression'
+import { difficultyName, startingItemIds, supportRollsFor } from '~~/shared/engine/progression'
 import { tierZones } from '~~/shared/engine/rewards'
 import type { DivePhase, DiveState, RewardTier } from '~~/shared/engine/types'
 import { storedDiverName } from '~/composables/useGameSocket'
@@ -133,7 +133,12 @@ const status = computed(() => PHASE_STATUS[props.state.phase])
 // ---- 01 · the kit a Class E diver is issued --------------------------------
 // The lobby has no settings yet, so it shows the bare surplus every start shares.
 const kitMode = computed(() => props.state.settings?.mode)
-const kitIds = computed(() => startingItemIds(props.state.settings?.variant ?? 'medium', kitMode.value))
+const kitIds = computed(() => startingItemIds(props.state.settings?.variant ?? 'medium'))
+const supportRecipe = computed(() => {
+  const settings = props.state.settings
+  const rolls = settings ? supportRollsFor(settings.variant, settings.mode) : null
+  return rolls ? supportRollList(rolls).join(', ') : ''
+})
 const kitCount = computed(() => kitIds.value.length)
 const kitGroupList = computed(() => kitGroups(kitIds.value))
 const heroIcons = computed(() =>
@@ -545,7 +550,7 @@ function submit(): void {
             </div>
             <span class="jb-kit-note">
               {{ kitMode === 'seaf'
-                ? 'Includes the SEAF Support Package you launched with.'
+                ? `Plus the SEAF Support Package you launched with: a random B-tier pack rolled for each diver (${supportRecipe}).`
                 : state?.settings
                   ? 'The bare surplus — this crusade runs without the SEAF Support Package.'
                   : 'Your launch can add the SEAF Support Package on top.' }}
