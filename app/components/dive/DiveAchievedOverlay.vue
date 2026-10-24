@@ -82,7 +82,7 @@ function exportCrusade(): void {
         class="ach-brand"
         aria-label="Griffdive bridge"
       >
-        <BrandMark :size="26" />
+        <AppBrandMark :size="26" />
         <span class="disp ach-brand-word">Griffdive</span>
       </NuxtLink>
       <span class="ach-div" />
@@ -174,7 +174,7 @@ function exportCrusade(): void {
           >
             <span class="ach-flag-pole" />
             <span class="ach-flag-cloth">
-              <BrandMark :size="18" />
+              <AppBrandMark :size="18" />
             </span>
             <span class="ach-flag-foot" />
           </div>

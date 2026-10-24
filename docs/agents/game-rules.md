@@ -503,7 +503,7 @@ option roll:   each option rolls a d100 face on the odds line. Zone width is
   `S_PLUS_OVERFLOW_CAP`). A zero-Valor dive always rolls its base tier. Samples are a separate
   currency and never nudge Valor: chosen risk alone moves the odds line, so skill and loot never carry a
   run (they fund Brasch's Bargains instead).
-- **Valor is surfaced as a roll, not a number.** `app/components/dive/ValorRoll.vue` draws the
+- **Valor is surfaced as a roll, not a number.** `app/components/valor/ValorRoll.vue` draws the
   odds line as tier zones whose widths are the cumulative reach chances; a marker pin sits at each
   rolled option's d100 face. Hovering or focusing a pact previews the percentage-point movement each
   zone gains or loses. No screen shows a numeric Valor total and no rule is gated on the gauge.
@@ -557,7 +557,7 @@ option roll:   each option rolls a d100 face on the odds line. Zone width is
 ### Brasch's Bargains — credits
 
 Samples recovered on a mission are not a Valor term. They are exchanged for **credits**, the
-currency of **Brasch's Bargains** (marked in the UI by a custom credit glyph, `ui/IconCredit.vue`).
+currency of **Brasch's Bargains** (marked in the UI by a custom credit glyph, `icon/IconCredit.vue`).
 A successful report banks each diver seated by report time a credit haul in their personal purse
 (`DiverState.credits`) — a mid-mission joiner dove too, so the haul is theirs:
 

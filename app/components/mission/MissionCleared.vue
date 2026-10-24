@@ -75,7 +75,7 @@ const ctaLabel = computed(() => {
     </header>
 
     <div class="mc-grid">
-      <BankedHaul
+      <MissionBankedHaul
         :state="state"
         :self="self"
         :phone="phone"

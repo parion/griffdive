@@ -79,7 +79,7 @@ const operationClimbs = computed(() =>
 </script>
 
 <template>
-  <DivePhoneShell>
+  <PhoneShell>
     <template #header>
       <PhoneTopBar
         :state="state"
@@ -215,7 +215,7 @@ const operationClimbs = computed(() =>
         @buy="emit('buy', $event)"
       />
     </template>
-  </DivePhoneShell>
+  </PhoneShell>
 
   <AppDialog
     v-model:open="squadOpen"

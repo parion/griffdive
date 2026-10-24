@@ -590,15 +590,15 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
 <template>
   <div class="dive-page">
     <template v-if="session.awaitingJoin.value">
-      <JoinBriefing
+      <BriefingJoin
         v-if="joinRole === 'joiner'"
         :state="joinPreview"
         :room-code="session.slotName.value"
         @confirm="confirmJoinBriefing"
       />
-      <BootScreen v-else />
+      <AppBootScreen v-else />
     </template>
-    <HostBriefing
+    <BriefingHost
       v-else-if="briefingOpen && state"
       :state="state"
       :room-code="session.slotName.value"
@@ -636,7 +636,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       </div>
     </section>
 
-    <AchievedOverlay
+    <DiveAchievedOverlay
       v-else-if="state && state.phase === 'complete' && state.achieved"
       :state="state"
       :crusade-label="crusadeLabel"
@@ -890,7 +890,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         </div>
       </template>
     </DiveFrame>
-    <BootScreen v-else />
+    <AppBootScreen v-else />
 
     <DiveMenu
       v-if="state"
@@ -931,7 +931,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       description="What the host does, and where your gear lives."
       size="lg"
     >
-      <HostBriefing
+      <BriefingHost
         :state="state"
         :room-code="session.slotName.value"
         :self-name="self?.name ?? ''"
@@ -966,7 +966,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       description="What a squadmate does, and where your gear lives."
       size="lg"
     >
-      <JoinBriefing
+      <BriefingJoin
         :state="state"
         :room-code="session.slotName.value"
         :self-name="self?.name ?? ''"

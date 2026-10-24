@@ -72,7 +72,7 @@ onBeforeUnmount(clearTimers)
       ref="body"
       class="reveal"
     >
-      <StartingKit
+      <KitStarting
         :variant="variant"
         :mode="mode"
         :support="support"

@@ -243,7 +243,7 @@ function submit(): void {
           class="jb-brand"
           aria-label="Griffdive bridge"
         >
-          <BrandMark :size="24" />
+          <AppBrandMark :size="24" />
           <span class="disp">Griffdive</span>
         </NuxtLink>
         <span class="chip jb-form-no">Form 5-H · Command</span>

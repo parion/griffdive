@@ -27,7 +27,7 @@ const { online } = useSessionStore()
           class="brand"
           aria-label="Griffdive bridge"
         >
-          <BrandMark :size="26" />
+          <AppBrandMark :size="26" />
           <span class="brand-word disp">Griffdive</span>
         </NuxtLink>
         <button
@@ -83,7 +83,7 @@ const { online } = useSessionStore()
         </nav>
       </header>
       <NuxtPage />
-      <ChangelogModal
+      <AppChangelogModal
         :open="changelogOpen"
         @close="changelogOpen = false"
       />
@@ -97,7 +97,7 @@ const { online } = useSessionStore()
           @update:open="warbondsOpen = $event"
         />
       </template>
-      <ToastStack />
+      <AppToastStack />
     </div>
   </MotionConfig>
 </template>

@@ -231,7 +231,7 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
       v-if="canControl"
       class="wheel-wrap"
     >
-      <WheelOfMisfortune
+      <WheelOfAdversity
         :difficulty="state.difficulty"
         :seed="state.wheel?.seed ?? null"
         :can-control="canControl"

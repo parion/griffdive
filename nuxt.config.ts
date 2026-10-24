@@ -2,9 +2,6 @@
 export default defineNuxtConfig({
   modules: ['@nuxt/eslint', '@nuxt/fonts', '@pinia/nuxt', 'motion-v/nuxt', '@vite-pwa/nuxt'],
   ssr: false,
-  components: [
-    { path: '~/components', pathPrefix: false },
-  ],
   devtools: { enabled: true },
   app: {
     head: {

@@ -208,7 +208,7 @@ function pickSkulls(event: Event): void {
                 loading="lazy"
                 draggable="false"
               >
-              <TierBadge
+              <ItemTierBadge
                 class="draw-tier"
                 :tier="card.tier"
               />

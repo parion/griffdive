@@ -160,7 +160,7 @@ const settings = computed<CrusadeSettings>(() => ({
         >
           Starting kit
         </h2>
-        <StartingKit
+        <KitStarting
           :variant="variant"
           :mode="activeMode"
           compact
@@ -172,7 +172,7 @@ const settings = computed<CrusadeSettings>(() => ({
         class="block risk"
         aria-label="Setup risk"
       >
-        <SetupRisk :settings="settings" />
+        <RiskSetup :settings="settings" />
       </section>
     </div>
   </div>

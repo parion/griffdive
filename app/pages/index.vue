@@ -424,7 +424,7 @@ const facts = [
       class="close"
       aria-labelledby="close-h"
     >
-      <BrandMark
+      <AppBrandMark
         :size="64"
         class="close-mark"
       />

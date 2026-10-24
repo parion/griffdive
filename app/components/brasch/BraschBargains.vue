@@ -75,7 +75,7 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
       >
         <header class="bb-card-head">
           <span class="lbl">{{ slotLabel(slot.kind) }}</span>
-          <TierBadge
+          <ItemTierBadge
             v-if="slot.item"
             :tier="tierOf(slot.item)"
             size="sm"

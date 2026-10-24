@@ -112,7 +112,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
 <template>
   <section class="call">
     <div class="wheel-side">
-      <WheelOfMisfortune
+      <WheelOfAdversity
         :difficulty="state.difficulty"
         :seed="state.wheel?.seed ?? null"
         :can-control="canControl"

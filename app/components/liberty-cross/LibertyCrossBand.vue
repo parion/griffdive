@@ -160,7 +160,7 @@ function onChoose(itemId: string): void {
       </section>
     </div>
 
-    <DiversChoicePicker
+    <RewardDiversChoicePicker
       :open="open"
       :pool="pool"
       :owned-ids="ownedIds"

@@ -166,7 +166,7 @@ onBeforeUnmount(() => {
           aria-label="Mission stars"
         >
           <span class="cap">Mission stars</span>
-          <StarRating
+          <AppStarRating
             v-model="stars"
             :length="maxStars"
             size="lg"
@@ -196,7 +196,7 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="samples">
-            <SampleCanister
+            <MissionSampleCanister
               v-for="row in sampleRows"
               :key="row.key"
               v-model="samples[row.key]"

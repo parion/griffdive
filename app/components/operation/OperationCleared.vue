@@ -116,7 +116,7 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
     </ol>
 
     <div class="regroup">
-      <BankedHaul
+      <MissionBankedHaul
         class="haul-card"
         :state="state"
         :self="self"
