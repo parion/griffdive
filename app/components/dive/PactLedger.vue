@@ -99,7 +99,7 @@ function markPact(diverId: string, pactId: string): void {
               />
               <span class="pact-name">{{ pact.name }}</span>
               <svg
-                class="caret"
+                class="row-chev"
                 width="12"
                 height="12"
                 viewBox="0 0 12 12"
@@ -207,13 +207,13 @@ function markPact(diverId: string, pactId: string): void {
 .trigger:hover { background: var(--raised); }
 .trigger :deep(.pips i) { width: 13px; height: 13px; }
 .pact-name { flex: 1; min-width: 0; font-size: 15px; }
-.caret {
+.row-chev {
   flex-shrink: 0;
   color: var(--dim);
   transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast);
 }
-.trigger:hover .caret { color: var(--khaki); }
-.trigger[data-state='open'] .caret { transform: rotate(180deg); color: var(--gold); }
+.trigger:hover .row-chev { color: var(--khaki); }
+.trigger[data-state='open'] .row-chev { transform: rotate(180deg); color: var(--gold); }
 
 .row.failed .pact-name { color: var(--muted); text-decoration: line-through; }
 .row.failed :deep(.pips) { opacity: 0.4; }
