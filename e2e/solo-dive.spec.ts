@@ -75,15 +75,15 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.getByRole('button', { name: /^Swear 1 pact/ }).click()
 
   await expect(page.getByRole('heading', { name: 'Hold the line' })).toBeVisible()
-  // In the field the Kit docks beside the stage, non-modal; the header's Kit
-  // tile folds it to a tab and back.
-  const dock = page.getByRole('complementary', { name: 'Field kit' })
-  await expect(dock.getByRole('region', { name: 'Kit' })).toBeVisible()
+  // The tool sidebar opens the Kit beside the stage for the field, non-modal;
+  // its tab folds it away and back.
+  const side = page.getByRole('complementary', { name: 'Dive tools' })
+  await expect(side.getByRole('region', { name: 'Kit' })).toBeVisible()
   await expect(page.getByRole('dialog', { name: 'Kit' })).toBeHidden()
-  await page.getByRole('button', { name: 'Kit', exact: true }).click()
-  await expect(dock.getByRole('button', { name: 'Show kit' })).toBeVisible()
-  await dock.getByRole('button', { name: 'Show kit' }).click()
-  await expect(dock.getByRole('region', { name: 'Kit' })).toBeVisible()
+  await side.getByRole('button', { name: 'Kit', exact: true }).click()
+  await expect(side.getByRole('region', { name: 'Kit' })).toBeHidden()
+  await side.getByRole('button', { name: 'Kit', exact: true }).click()
+  await expect(side.getByRole('region', { name: 'Kit' })).toBeVisible()
   // Brasch's Bargains shuts while the squad is in the field.
   await expect(page.getByRole('button', { name: /Brasch's Bargains.*Closed during the mission/ })).toBeDisabled()
 
@@ -119,13 +119,13 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('article', { name: 'Your haul' }).locator('img')).toBeVisible()
   await expect(page.locator('.mc .bb-card')).toHaveCount(4)
 
-  // Brasch's Bargains opens from the header between missions: one slot each
+  // Brasch's Bargains opens from the sidebar between missions: one slot each
   // for primary, secondary, throwable and armor passive at Medium.
-  await page.getByRole('button', { name: /Brasch's Bargains, 9 credits/ }).click()
-  const bargains = page.getByRole('dialog', { name: 'Brasch\'s Bargains' })
+  await side.getByRole('button', { name: /Brasch's Bargains, 9 credits/ }).click()
+  const bargains = side.getByRole('region', { name: 'Brasch\'s Bargains' })
   await expect(bargains.locator('.bb-card')).toHaveCount(4)
   await expect(bargains.getByRole('button', { name: /^Buy/ }).first()).toBeDisabled()
-  await bargains.getByRole('button', { name: /^Close/ }).click()
+  await side.getByRole('button', { name: /^Hide/ }).click()
   await expect(bargains).toBeHidden()
 
   await page.getByRole('button', { name: /Next mission/ }).click()
