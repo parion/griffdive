@@ -60,7 +60,7 @@ export function rememberDiverName(name: string): void {
 
 // A saved name worth keeping — the bare 'Diver' placeholder doesn't count as
 // having introduced yourself.
-export function hasDiverName(): boolean {
+function hasDiverName(): boolean {
   if (!import.meta.client) {
     return false
   }

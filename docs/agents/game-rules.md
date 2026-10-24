@@ -537,7 +537,7 @@ option roll:   each option rolls a d100 face on the odds line. Zone width is
   movement while previewing a pact), a non-zero chance below 0.5% reads `<1%`, and a 0% zone is
   silent. The join briefing's onboarding dial reads the same zone chances (`tierZones`) as
   the live roll line, so onboarding and the draft can never disagree.
-- **Option count** comes from stars (mission performance), lookup table `starsToOptions`:
+- **Option count** comes from stars (mission performance), lookup table `STARS_TO_OPTIONS`:
   `[1,1,2,3,4,4]` (index = stars), capped at 4. Stars themselves are
   difficulty-capped per the game (wiki.gg/Missions): max 3 at diffs 3–4, 4 at 5–6, 5 at 7+; a
   completed mission never awards 0 and a failed mission awards none (`maxStarsFor` in

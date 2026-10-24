@@ -10,7 +10,7 @@ export default defineNuxtConfig({
       meta: [
         {
           name: 'description',
-          content: 'A Helldivers 2 squad roguelike: climb the difficulty ladder, spin the Wheel of Misfortune, and let chosen risk buy rarer rewards.',
+          content: 'A Helldivers 2 squad roguelike: climb the difficulty ladder, spin the Wheel of Adversity, and let chosen risk buy rarer rewards.',
         },
         { name: 'theme-color', content: '#131511' },
         { name: 'mobile-web-app-capable', content: 'yes' },
@@ -20,7 +20,7 @@ export default defineNuxtConfig({
         { property: 'og:title', content: 'Griffdive' },
         {
           property: 'og:description',
-          content: 'A Helldivers 2 squad roguelike: climb the difficulty ladder, spin the Wheel of Misfortune, and let chosen risk buy rarer rewards.',
+          content: 'A Helldivers 2 squad roguelike: climb the difficulty ladder, spin the Wheel of Adversity, and let chosen risk buy rarer rewards.',
         },
         { property: 'og:type', content: 'website' },
       ],
@@ -75,7 +75,7 @@ export default defineNuxtConfig({
     manifest: {
       name: 'Griffdive',
       short_name: 'Griffdive',
-      description: 'A Helldivers 2 squad roguelike: climb the difficulty ladder, spin the Wheel of Misfortune, and let chosen risk buy rarer rewards.',
+      description: 'A Helldivers 2 squad roguelike: climb the difficulty ladder, spin the Wheel of Adversity, and let chosen risk buy rarer rewards.',
       lang: 'en',
       display: 'standalone',
       orientation: 'portrait',

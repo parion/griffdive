@@ -89,7 +89,6 @@ app/
                    desktop tree for the phone shell)
   stores/          session.ts (Pinia: selfId, snapshot, online)
   utils/           seed.ts (client seed generation), kit.ts (Kit categories + owned-item list),
-                   valor.ts (Valor source split + colours shared by the rail tab and meter),
                    brandMark.ts (the logo's only geometry — AppBrandMark.vue and icon.svg both
                    derive from it), changelog.ts (pure GitHub deployment/commit → release-card
                    shaping behind useChangelog, unit-tested)

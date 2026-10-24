@@ -5,7 +5,7 @@
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core) and Phase 2 (realtime squads) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (460 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (510 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection — verified by a live two-peer smoke test and the Playwright E2E suite (solo flow,
@@ -65,6 +65,47 @@ Mission (7); the hard/suicide starts choose one of two mutually exclusive modes 
 larger flat Valor stake, marked by a Hades-style flame) (see Starting variants).
 **Alpha has landed:** the save schema is frozen at v13 and the migration chain is open (see Save
 model). See [Roadmap](#roadmap).
+
+## Beta-readiness review (2026-10-24)
+
+Pre-beta pass: dependencies upgraded, component tree reorganised to Nuxt's default naming, dead
+code removed, docs audited against the code. Gate: lint, typecheck, 510 unit tests and 45 e2e
+specs green on the upgraded stack.
+
+**Spec relevance.** Every identifier and path the `docs/agents/` files cite was checked against the
+tree; stale ones were fixed (`starsToOptions` → `STARS_TO_OPTIONS`, retired components, the old
+`ui/`/`dive/` paths). The design-language layouts (lit-stage shell, Bridge, phone and tablet shells,
+Hellpod Bays, ValorRoll) are still current and are pinned by the `phone-*`, `tablet-layout`,
+`bridge` and `dive-sidebar` e2e specs. Retired and already marked so: the ceiling-first draft, the
+Ban UI, the lobby/matchmaking. Not re-verified visually: pixel-level fidelity of each section.
+
+**Game design (from `scripts/simulate-economy.mjs`, 4000 runs).**
+- Brasch's Bargains pace well through B/A tier: a steady squad buys ~11 items over 20 missions
+  (1.4 per operation), an eager one ~16. Buys per mission drop to 0.1-0.6 at difficulty 8-10 (cause not
+  investigated).
+- **S-tier at 800 credits is effectively unreachable** (0.0-0.2 buys per 20 missions even for a
+  maxed squad that banks ~255 credits per late mission). Either lower the S price/stock it
+  deliberately, or accept it as an aspirational sink and say so in the shop copy.
+- **Difficulty 3 is a dead shop** for casual and steady squads (haul 4-8 credits vs a 25-credit C
+  price): the first operation has no Bargains. Consider a floor on early hauls.
+- Open balance/design items still on the board in `PLAN.md`: N25 (pacts are strictly "take
+  everything"), N39 (reroll-token sources), N13 (`fragileLiberty` early lock-out, blocked on DEC-6).
+
+**Technical performance (production build).**
+- Client JS 1.09 MB raw / 333 kB gzip over 21 chunks (largest 64 kB gzip); CSS 333 kB / 61 kB gzip.
+  Build 8.4 s; unit suite 0.6 s; e2e 45 specs in ~32 s.
+- Shipped weight was dominated by 44 MB of unreferenced `public/images/gauntletSpecialists` art
+  (Specialists are Phase 5). Removed: `public/images` fell from 75 MB to 31 MB (production `.output` is now 38 MB), and the image/PWA
+  cache story is unchanged (catalog art is still cached on demand, never precached).
+- Not measured here: runtime frame rate on low-end phones, WebSocket load beyond the unit
+  fakes, and Lighthouse. Do these on the staging deploy before the beta announcement.
+- Open infra items before a public beta: N41 (rate limits trust a spoofable `X-Forwarded-For`)
+  and N42 (per-IP session caps, faster lobby reaping, save TTL).
+
+**Dependencies.** All at latest except TypeScript, held at 6.x: `vue-tsc` cannot load the TS 7
+native port yet. `@vueuse/core` 15 replaced the websocket heartbeat `interval` with a `scheduler`
+(`useGameSocket`). The regenerated PWA icons from `@vite-pwa/assets-generator` 2 were not adopted
+(encoder churn only).
 
 ## Roadmap
 
