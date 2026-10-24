@@ -258,7 +258,7 @@ panel's Hide control or Esc folds it, and the rail never moves. State is `useDra
 still just call `openWarbonds()`). Bargains shuts itself when the squad drops into the field.
 On a phone (`sheet`) the rail is a four-up row pinned just above the action bar (`DivePhoneShell`'s
 `dock` slot) and the panel rises over the stage from it (up to 64dvh, Hide or a tap anywhere off the dock folds it down; panels slide in and out
-symmetrically); the
+symmetrically, tucked behind the rail and the action bar, never over them); the
 phone top bar and action bar no longer carry Kit, Codex or credit tiles. Components hosted here
 stay rule-free: they only render engine selectors.
 

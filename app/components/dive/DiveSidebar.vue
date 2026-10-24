@@ -325,8 +325,10 @@ watch(bargainsClosed, (closed) => {
 }
 
 /* A phone has no right edge to spare: the rail pins above the action bar and
-   the panel rises out of it over the stage. */
-.dive-side.sheet { display: block; }
+   the panel rises out of it over the stage. The aside makes no stacking
+   context of its own, so the panel paints under the rail and the shell's
+   action bar (later in the tree) and slides in and out from behind them. */
+.dive-side.sheet { display: block; z-index: auto; }
 .sheet .side-panel {
   position: absolute;
   inset: auto 0 100%;
@@ -342,6 +344,7 @@ watch(bargainsClosed, (closed) => {
 .sheet .side-desc { padding: 0 14px 8px; }
 .sheet .side-body { padding: 0 14px 16px; }
 .sheet .side-rail {
+  position: relative;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
