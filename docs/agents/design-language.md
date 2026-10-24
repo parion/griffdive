@@ -182,6 +182,18 @@ filing, so the squad knows what to chase; the card states why a turn is ineligib
 must still qualify or the engine strikes the spin and claws back an auto-banked solo token. Phone
 reports pin **File report / File failure** in the fixed action bar.
 
+#### Mission failed — `DivePhaseForfeit`
+
+Deliberately bare, in the loot draft's grammar. A red kicker, the title and one line of copy sit over
+`ForfeitPicker`: the diver's offer as the same tier-edged art cards as `RewardDraft` (letterboxed
+4:3 well, tier letter, `fitWord` name, category line; a 104px thumb row on phones), staggered in.
+Marking a card lights its edge red; one plain click button under the cards — **Remove <item>**, in
+the pinned phone bar on phones — removes it (no hold-to-confirm, no container). The removed card
+keeps its red edge with a **Confiscated** stamp while the rest fade, like a banked reward. Squadmates'
+forfeits sit below in `SquadForfeitBoard`, the `SquadDraftBoard` grammar: name, status, and each diver's dealt items as icon tiles with the removed one struck red and the rest faded. A short note says who is still choosing. SEAF Support Package
+items count as at-stake gear, so a SEAF diver always has a pack item to surrender. The `.sur-tile`
+class is the e2e hook.
+
 #### Loot — `RewardDraft`
 
 The draft is "Bank one item": one card per option. **The item art is the
