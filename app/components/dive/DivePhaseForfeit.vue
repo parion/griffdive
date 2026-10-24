@@ -2,7 +2,7 @@
 import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { missionsPerOperation } from '~~/shared/engine/config'
 import { difficultyName } from '~~/shared/engine/progression'
-import { awaitingDiverIds, forfeitOptionsFor, owesForfeit } from '~~/shared/engine/selectors'
+import { awaitingDiverIds, forfeitOptionsFor } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -29,20 +29,15 @@ const surrendered = computed(() => {
 })
 const owes = computed(() => props.self !== null && offer.value.length > 0)
 
-// The rest of the squad: what each diver still owes, or has already chosen.
+// The rest of the squad: each diver's public offer and what they removed.
 const squad = computed(() => props.state.divers
   .filter(diver => diver.id !== props.selfId)
-  .map((diver) => {
-    const chosen = diver.forfeitedItemId ? ITEMS_BY_ID.get(diver.forfeitedItemId) : null
-    let status = 'Nothing to remove'
-    if (chosen) {
-      status = chosen.displayName
-    }
-    else if (owesForfeit(props.state, diver)) {
-      status = diver.away ? 'Away' : 'Choosing'
-    }
-    return { id: diver.id, name: diver.name, status, done: chosen !== null && chosen !== undefined }
-  }))
+  .map(diver => ({
+    id: diver.id,
+    name: diver.name,
+    offer: forfeitOptionsFor(props.state, diver),
+    removedId: diver.forfeitedItemId ?? null,
+  })))
 const waitingOn = computed(() => awaitingDiverIds(props.state).filter(id => id !== props.selfId))
 
 const selected = ref<string | null>(null)
@@ -116,20 +111,10 @@ const status = computed(() => {
       />
     </template>
 
-    <ul
+    <SquadForfeitBoard
       v-if="squad.length > 0"
-      class="ff-squad"
-      aria-label="Squad forfeits"
-    >
-      <li
-        v-for="diver in squad"
-        :key="diver.id"
-        :class="{ done: diver.done }"
-      >
-        <span class="ff-squad-name">{{ diver.name }}</span>
-        <span class="ff-squad-status">{{ diver.status }}</span>
-      </li>
-    </ul>
+      :divers="squad"
+    />
 
     <div
       v-if="!phone"
@@ -211,32 +196,6 @@ const status = computed(() => {
 }
 .ff-sub { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
 .ff-note { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
-
-.ff-squad {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-  gap: var(--sp-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.ff-squad li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-4);
-  padding: var(--sp-2) var(--sp-4);
-  background: var(--panel);
-  border: 1px solid var(--line-2);
-  font-size: var(--fs-cap);
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.ff-squad li.done { border-color: color-mix(in srgb, var(--red) 55%, transparent); }
-.ff-squad-name { color: var(--text); }
-.ff-squad-status { color: var(--muted); text-align: right; }
-.ff-squad li.done .ff-squad-status { color: var(--red); }
 
 .ff-actions {
   display: flex;

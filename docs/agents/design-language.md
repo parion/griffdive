@@ -179,7 +179,7 @@ Deliberately bare, in the loot draft's grammar. A red kicker, the title and one 
 Marking a card lights its edge red; one plain click button under the cards — **Remove <item>**, in
 the pinned phone bar on phones — removes it (no hold-to-confirm, no container). The removed card
 keeps its red edge with a **Confiscated** stamp while the rest fade, like a banked reward. Squadmates'
-statuses are a quiet grid below, and a short note says who is still choosing. SEAF Support Package
+forfeits sit below in `SquadForfeitBoard`, the `SquadDraftBoard` grammar: name, status, and each diver's dealt items as icon tiles with the removed one struck red and the rest faded. A short note says who is still choosing. SEAF Support Package
 items count as at-stake gear, so a SEAF diver always has a pack item to surrender. The `.sur-tile`
 class is the e2e hook.
 
