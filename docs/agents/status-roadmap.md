@@ -20,9 +20,10 @@ worker with an offline shell + on-demand catalog art), the operation-long **fact
 scanlines and a signature motion set). **The Lit pass then flattened the dive:** one header, one
 lit stage and one squad dock replace the climb strip and both rails. The four beats (Call · Pacts ·
 Dive · Loot) are the only navigation; hosts own the wheel/report chrome, while squadmates see
-their own kit and self-service pacts without host clutter. The Bridge home fits one desktop view
-(hero + climb ladder · 6-step mission loop · odds ladder · deploy rail with code-cell join and the
-service record · a full-width Major Order band and footer), the wheel is a real spinning SVG wheel,
+their own kit and self-service pacts without host clutter. The Bridge home is a scrolling landing page
+(hero with the drop console beside the service record — or, with nothing to resume, the
+self-spinning wheel · four "how it plays" beats with live engine-backed visuals · a closing call;
+the live Major Order docks in the header, or pins to the bottom on phones), the wheel is a real spinning SVG wheel,
 the Kit (UI name of the Armory) opens from the header and marks directive/pact bans per tile from
 engine selectors, and an interactive six-beat Griffdiver Briefing onboards first-time divers.
 Reward drafts now roll **one d100 per option** on the shared `ValorRoll` line (no ceiling-first

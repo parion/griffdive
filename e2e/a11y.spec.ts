@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { dismissWarbondIntro, lockMisfortune } from './helpers'
+import { dismissWarbondIntro, fileCallsign, lockMisfortune } from './helpers'
 
 test('the skip link moves focus to the main landmark', async ({ page }) => {
   await page.goto('/')
@@ -33,8 +33,8 @@ test('the changelog dialog traps focus, closes on Escape, and restores focus', a
 
 test('the star rating is a keyboard-navigable radio group', async ({ page }) => {
   await page.goto('/')
-  await page.getByLabel('Diver name').fill('Griffon')
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griffon')
   await dismissWarbondIntro(page)
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await lockMisfortune(page)

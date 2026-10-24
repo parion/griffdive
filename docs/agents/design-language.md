@@ -96,6 +96,62 @@ merge with them.
   controls are visibly absent for squadmates rather than disabled chrome. A non-host sees "Stand by"
   and the host's name on the call, but still swears their own pacts and banks their own loot.
 
+#### Bridge — the home page (`pages/index.vue` + `components/bridge/`)
+
+The Bridge is the game's front door: a scrolling landing page that sells the mode and gets a squad
+into a dive. `index.vue` owns the data (saves, live rooms, hosting); each section is a `Bridge*`
+component. Top to bottom:
+
+- **Hero** (one viewport tall on desktop): the kicker, the core trade as the headline — **"Risk
+  buys rarity."** — a one-paragraph pitch, chevron anchor links to the four beats, and the
+  **`BridgeDeploy`** drop console: the gold **Host a squad dive** CTA over two matching halves,
+  **Join a squad** (six-cell room code + Join) and **Play solo** (one full-width **Solo drop**
+  button — no name field: a fresh browser files its callsign on the host tutorial that opens the
+  dive, and a returning one reuses its saved name). Under the console, outside its box, three
+  quiet icon buttons: **View codex**, **Set warbonds** (the Variant & warbonds dialog: variant,
+  front plan, owned warbonds) and **Import save** (stacked icon-over-label in three columns on
+  phones). Beside the copy sits the hero's showcase slot, decided on mount (it stays empty until
+  then, so a returning squad never sees the wheel flash):
+  - **`BridgeRecord`** whenever there is anything to resume (or live rooms are still being
+    checked): the service record as a gold-topped panel whose card list scrolls in place
+    (`--rec-max`, about a viewport tall). Each card is a row — difficulty emblem; tags (live room
+    code, saved, achieved, squad avatars), the crusade's name in caps (a solo save is named after
+    its diver as they are now), difficulty, op and mission, and a 3→10 ladder; then the actions:
+    the primary (Resume / Open / Host) full width over the secondary and the export/delete icons.
+    Live rooms carry a teal edge. A narrow record moves the actions under the card.
+  - Otherwise **`BridgeWheel`**: the dive's real `WheelOfMisfortune`, spinning itself to a fresh
+    seed every few seconds while in view (paused off-screen or in a hidden tab; one still draw
+    under reduced motion), with a caption card naming the landed directive, its rule and its
+    skulls. The caption holds the previous draw until the wheel lands. The wheel is `inert` and
+    `aria-hidden`; the caption carries the meaning.
+- A **facts strip** (difficulty climb, directive and pact counts, squad size), all read from
+  engine data.
+- Four **`BridgeBeat`** sections (numbered headline + copy beside a lit visual; the beat fades in
+  and tells its visual it is `lit` once it scrolls into view):
+  1. **Call** — `BridgeDirectives`: every wheel directive as sigil + skulls tiles on two
+     counter-running belts (paused on hover, static under reduced motion; a screen-reader
+     list carries the same content).
+  2. **Pacts** — `BridgePacts`: three real `ConditionCard`s fan in, then two take the SWORN
+     stamp; a tally shows the sworn skulls. Phones swipe the hand.
+  3. **Climb · Loot** — `BridgeOdds`, the one interactive teaching aid: a 3→10 rung radio
+     (difficulty emblems, base tier), a **Skulls taken** range, the shared `ValorRoll` line from
+     `tierZones`, and four example draws at fixed d100 faces wrapped in `RewardReveal` — the
+     same dice land rarer tiers as the rung and skulls rise; S+ shows Liberty's Cross. On
+     arrival the dial walks itself up once; any touch hands it over.
+- **`BridgeMajorOrder`** — the live order lives in the ship header, not the page: the Bridge
+  teleports it (client-only) into `#header-mid` in `app.vue`, centred between the brand and the
+  ship nav. It is a 44px band — red edge, the order's faction emblems, a "Major Order · 4D 13H"
+  kicker over the front names, and **Start campaign** — that sheds detail by its own container
+  width, never the viewport: below 440px the names collapse to the lead front plus a count
+  ("Terminids +2"), below 520px the CTA reads "Start", from 640px the lead planet's liberation
+  shows as a labelled bar (otherwise a thin red line along the band's foot), and from 1000px the
+  risk/reroll carrots join. At 860px and below it leaves the header and pins to the bottom edge
+  as a fixed bar (safe-area aware); the page pads its foot to clear it. With no order the header
+  shows a quiet one-line state on desktop and nothing on phones. The worst case — a three-front
+  order beside a full service record — fits without overflow from 360px to 1920px.
+- A closing **"Your squad is waiting."** call whose **Suit up** link returns focus to the drop
+  console, then the fan-project footer.
+
 #### Setup — Hellpod Bays (`DivePhaseLobby`)
 
 The room's setup is the one screen that stands outside the dive shells: no `DiveTopBar`,

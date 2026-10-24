@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test'
-import { dismissWarbondIntro } from './helpers'
+import { dismissWarbondIntro, fileCallsign } from './helpers'
 
 test('desktop: one persistent sidebar hosts Kit, Codex, Warbonds and Bargains', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
-  await page.getByLabel('Diver name').fill('Griffon')
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griffon')
   await dismissWarbondIntro(page)
 
   const side = page.getByRole('complementary', { name: 'Dive tools' })
@@ -39,8 +39,8 @@ test('phone: the rail pins above the action bar and the panel rises over the sta
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce', hasTouch: true, isMobile: true })
   const page = await context.newPage()
   await page.goto('/')
-  await page.getByLabel('Diver name').fill('Griffon')
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griffon')
   await dismissWarbondIntro(page)
 
   const side = page.getByRole('complementary', { name: 'Dive tools' })

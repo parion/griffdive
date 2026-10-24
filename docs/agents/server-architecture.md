@@ -56,6 +56,13 @@ app/
                    DivePhoneShell; every phase fills its info / secondary / primary zones
                    through PhoneActionBar's deferred Teleports; the Squad sheet lives in
                    DivePhone), CrusadeSetup, WarbondPicker),
+                   bridge/ (the Bridge home's sections: BridgeDeploy — host / join /
+                   solo console, BridgeWheel — the self-spinning showcase wheel,
+                   BridgeRecord — the service record (the hero's slot when a run is
+                   saved), BridgeBeat — a numbered
+                   "how it plays" beat, BridgeDirectives/BridgePacts/BridgeOdds — the
+                   beat visuals, BridgeMajorOrder — the live Major Order, teleported into app.vue's
+                   #header-mid or pinned to the bottom on phones),
                    ui/ (BrandMark — the Griffdive mark, a griffin diving through the Wheel's
                    rim, rendered from utils/brandMark.ts; ItemCard, TierBadge, RiskPips — risk
                    dots, with a rolling back-and-forth state while a wheel draw reels,

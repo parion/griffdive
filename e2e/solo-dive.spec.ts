@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test'
-import { dismissWarbondIntro, lockMisfortune } from './helpers'
+import { dismissWarbondIntro, fileCallsign, lockMisfortune } from './helpers'
 
 test('call: the CTA, odds line and front pin hold one layout across the draw', async ({ page }) => {
   await page.goto('/')
-  await page.getByLabel('Diver name').fill('Griffon')
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griffon')
   await dismissWarbondIntro(page)
 
   const call = page.locator('.call')
@@ -40,8 +40,8 @@ test('call: the CTA, odds line and front pin hold one layout across the draw', a
 
 test('solo dive flow: spin → pacts → report → rewards → advance', async ({ page }) => {
   await page.goto('/')
-  await page.getByLabel('Diver name').fill('Griffon')
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griffon')
 
   await expect(page).toHaveURL(/\/dive\/[0-9a-f-]{36}/)
   await dismissWarbondIntro(page)
@@ -186,10 +186,9 @@ test('a live Major Order chosen at setup pins the front for the run', async ({ p
   }))
 
   await page.goto('/')
-  await page.getByLabel('Diver name').fill('Griffon')
 
   // The front plan is part of the crusade setup, not the call screen.
-  await page.getByRole('button', { name: /^Variant and warbonds/ }).click()
+  await page.getByRole('button', { name: /^Set warbonds/ }).click()
   const setup = page.getByRole('dialog', { name: 'Variant & warbonds' })
   // A live order is the default plan, featured with its fronts.
   const orderPlan = setup.getByRole('radio', { name: /Major Order/ })
@@ -201,6 +200,7 @@ test('a live Major Order chosen at setup pins the front for the run', async ({ p
   // Its name contains "warbonds": let it close before the dive's intro check.
   await expect(setup).toBeHidden()
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griffon')
   await dismissWarbondIntro(page)
 
   await expect(page.locator('.front-pin')).toContainText('Major Order pinned')
@@ -230,9 +230,9 @@ test('the Bridge campaign CTA seeds a dive with the live order already pinned', 
 
   await page.goto('/')
   await expect(page.locator('.mo-band.mo-in')).toBeVisible()
-  await page.getByLabel('Diver name').fill('Griffon')
   // The band's CTA starts the campaign with the order already committed.
   await page.locator('.mo-start').click()
+  await fileCallsign(page, 'Griffon')
 
   await expect(page).toHaveURL(/\/dive\/[0-9a-f-]{36}/)
   await dismissWarbondIntro(page)
@@ -253,9 +253,8 @@ test('a faction locked at setup pins the front without a Major Order tag', async
   }))
 
   await page.goto('/')
-  await page.getByLabel('Diver name').fill('Griffon')
 
-  await page.getByRole('button', { name: /^Variant and warbonds/ }).click()
+  await page.getByRole('button', { name: /^Set warbonds/ }).click()
   const setup = page.getByRole('dialog', { name: 'Variant & warbonds' })
   // With no order running, the Major Order plan can't be chosen.
   await expect(setup.getByText('No active Major Order')).toBeVisible()
@@ -267,6 +266,7 @@ test('a faction locked at setup pins the front without a Major Order tag', async
   // Its name contains "warbonds": let it close before the dive's intro check.
   await expect(setup).toBeHidden()
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griffon')
   await dismissWarbondIntro(page)
 
   await expect(page.locator('.front-pin')).toContainText('Faction locked')
@@ -278,8 +278,8 @@ test('a faction locked at setup pins the front without a Major Order tag', async
 
 test('a failed mission labels the operation failed and removes an earned item', async ({ page }) => {
   await page.goto('/')
-  await page.getByLabel('Diver name').fill('Griffon')
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griffon')
   await dismissWarbondIntro(page)
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { dismissWarbondIntro, expectJoinerLanded } from './helpers'
+import { dismissWarbondIntro, expectJoinerLanded, fileCallsign } from './helpers'
 
 test('any seated diver forks the crusade into a new session', async ({ browser }) => {
   const contextA = await browser.newContext()
@@ -59,8 +59,8 @@ test('a solo save hosts an online session from the home record', async ({ browse
   const page = await context.newPage()
 
   await page.goto('/')
-  await page.getByLabel('Diver name').fill('Griffon')
   await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griffon')
   await dismissWarbondIntro(page)
   await expect(page).toHaveURL(/\/dive\/[0-9a-f-]{36}/)
 
