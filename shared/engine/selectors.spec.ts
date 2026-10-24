@@ -326,7 +326,7 @@ describe('misfortuneStrandedDivers', () => {
       difficulty: 6,
       wheel: { seed: 1, misfortuneId: 'oopsAllAirstrikes' },
       divers: [...state.divers, guest],
-      personalInventories: { ...state.personalInventories, guest: startingItemIds('suicide', 'seaf') },
+      personalInventories: { ...state.personalInventories, guest: [...startingItemIds('suicide'), 'orbitalprecisionstrike', 'orbitalgatlingbarrage'] },
     }
     // The guest can field the rule; the host cannot, so the accept still fails.
     expect(misfortuneStrandedDivers(wheeled).map(diver => diver.id)).toEqual(['host'])

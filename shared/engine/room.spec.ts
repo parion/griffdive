@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ALL_WARBOND_CODES } from '../data/catalog'
+import { ALL_WARBOND_CODES, ITEMS_BY_ID } from '../data/catalog'
 import { startingItemIds } from './progression'
 import { createLobbyState, forkCrusade, joinDiver, seatingBlocked } from './room'
 import { createDiveState, reduce } from './reducer'
@@ -43,6 +43,26 @@ describe('joinDiver', () => {
     expect(state.personalInventories.late).toEqual(startingItemIds('medium'))
   })
 
+  it('rolls a late joiner of a SEAF run their own support pack', () => {
+    let state = createDiveState({ variant: 'suicide', mode: 'seaf' }, 'p1', 'Griffin')
+    state = joinDiver(state, 'late', 'Latecomer')!
+    const late = state.divers.find(diver => diver.id === 'late')!
+    expect(late.supportKit).toHaveLength(11)
+    expect(state.personalInventories.late).toEqual([...startingItemIds('suicide'), ...late.supportKit!])
+    expect(late.supportKit).not.toEqual(state.divers.find(diver => diver.id === 'p1')!.supportKit)
+  })
+
+  it('rolls a late joiner\'s pack from the warbonds they declared on arrival', () => {
+    let state = createDiveState({ variant: 'suicide', mode: 'seaf' }, 'p1', 'Griffin')
+    state = joinDiver(state, 'late', 'Latecomer', ['warbond3', 'ghostBond'])!
+    const late = state.divers.find(diver => diver.id === 'late')!
+    expect(late.warbondCodes).toEqual(['warbond3'])
+    for (const id of late.supportKit!) {
+      const code = ITEMS_BY_ID.get(id)!.warbondCode
+      expect(code === 'none' || code === 'warbond3').toBe(true)
+    }
+  })
+
   it('owes a mid-crusade joiner one catch-up pick per operation behind, capped', () => {
     // Standard starts at 3; driving the difficulty to 7 leaves 4 ops behind,
     // which is exactly the catch-up cap.
@@ -62,6 +82,18 @@ describe('joinDiver', () => {
     expect(state.divers.find(diver => diver.id === 'ontime')?.catchUpOwed).toBe(0)
     const lobby = joinDiver(createLobbyState(), 'p1', 'Griffin')!
     expect(lobby.divers[0]?.catchUpOwed).toBe(0)
+  })
+
+  it('parks only earned gear — never the support pack — and re-deals the same pack on rejoin', () => {
+    let state = joinDiver(joinDiver(createLobbyState(), 'p1', 'Griffin')!, 'p2', 'Two')!
+    state = reduce(state, { type: 'START_DIVE', settings: { variant: 'hard', mode: 'seaf' } })
+    const pack = state.divers.find(diver => diver.id === 'p1')!.supportKit!
+    state = { ...state, personalInventories: { ...state.personalInventories, p1: [...state.personalInventories.p1!, 'orbitallaser'] } }
+    state = reduce(state, { type: 'LEAVE_DIVE', playerId: 'p1' })
+    expect(state.legacyCaches.p1).toEqual({ name: 'Griffin', itemIds: ['orbitallaser'] })
+    const rejoined = joinDiver(state, 'p1', 'Griffin')!
+    expect(rejoined.divers.find(diver => diver.id === 'p1')!.supportKit).toEqual(pack)
+    expect(rejoined.personalInventories.p1).toEqual([...startingItemIds('hard'), ...pack, 'orbitallaser'])
   })
 
   it('restores a departed diver\u2019s parked cache when they rejoin', () => {

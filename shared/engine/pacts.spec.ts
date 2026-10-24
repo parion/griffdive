@@ -129,10 +129,9 @@ describe('reserve and loadout legality', () => {
 
   it('flags a misfortune the base kit cannot field (Oops, All Airstrikes)', () => {
     // The standard kit fields three airstrikes (Eagle Smoke + two orbitals);
-    // the rule needs four. A kit with enough red stratagems (Quickplay's
-    // extras) clears it.
+    // the rule needs four. A kit holding one more red stratagem clears it.
     expect(hasLegalLoadout('oopsAllAirstrikes', [], baseKit)).toBe(false)
-    expect(hasLegalLoadout('oopsAllAirstrikes', [], startingItemIds('suicide', 'seaf'))).toBe(true)
+    expect(hasLegalLoadout('oopsAllAirstrikes', [], [...baseKit, 'orbitalprecisionstrike'])).toBe(true)
   })
 
   it('limits Oops, All Airstrikes to stratagems — weapons, armor and boosters stay legal', () => {
