@@ -59,12 +59,14 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await pageA.getByRole('button', { name: 'Deal the pacts' }).click()
   await expect(pageB.getByRole('heading', { name: 'Swear your pacts' })).toBeVisible()
 
-  // Both swear a pact — the dive only starts once the whole squad is in.
-  await pageB.locator('.condition').first().click()
+  // Both swear a pact — the dive only starts once the whole squad is in. A hand
+  // is local: a teammate locking in syncs the room but must not clear yours.
+  await pageA.locator('.condition:not([disabled])').first().click()
+  await expect(pageA.locator('.condition[aria-pressed="true"]')).toHaveCount(1)
+  await pageB.locator('.condition:not([disabled])').first().click()
   await pageB.getByRole('button', { name: /^Swear 1 pact/ }).click()
   await expect(pageB.locator('.locked-row')).toBeVisible()
-
-  await pageA.locator('.condition').first().click()
+  await expect(pageA.locator('.condition[aria-pressed="true"]')).toHaveCount(1)
   await pageA.getByRole('button', { name: /^Swear 1 pact/ }).click()
 
   await expect(pageB.getByRole('heading', { name: 'Hold the line' })).toBeVisible()

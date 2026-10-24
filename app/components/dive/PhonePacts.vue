@@ -22,8 +22,11 @@ const emit = defineEmits<{
 const selection = ref<string[]>([])
 const hoveredId = ref<string | null>(null)
 
+// A new draw or directive invalidates the hand. Watch the sources themselves:
+// an array literal is a fresh object on every squad sync, which would wipe the
+// hand whenever a teammate locked in.
 watch(
-  () => [props.state.wheel?.seed, props.state.misfortuneAccepted],
+  [() => props.state.wheel?.seed, () => props.state.misfortuneAccepted],
   () => {
     selection.value = []
   },

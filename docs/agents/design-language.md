@@ -152,7 +152,8 @@ its lit risk skulls, the vow in quotes, any benched-kit note, the accountability
 inked SWORN stamp. There are no per-card odds words: hovering or picking previews the one odds
 strip under the hand. The CTA is
 "Swear N pacts" (or "Dive with no pacts"), and a locked diver sees the sworn stamp while the rest of
-the squad finishes. There is no Kit rail: the header's **Kit** tile opens the same `ArmoryDrawer`
+the squad finishes. The hand is local: a squad sync leaves your picks alone — only a fresh draw or
+directive clears them. There is no Kit rail: the header's **Kit** tile opens the same `ArmoryDrawer`
 everywhere.
 
 #### Dive — `DivePhaseDiving`
