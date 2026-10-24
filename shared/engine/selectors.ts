@@ -421,13 +421,14 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   )
 }
 
-// What a diver has earned this crusade: their kit beyond the variant's
-// starting gear (drafted rewards, Brasch's Bargains buys, a Field Promotion or a
-// claimed cache). Failure only ever takes from this — the surplus kit every
-// diver starts with was never won, so it is never at stake.
+// What a diver has at stake in a failure: their kit beyond the variant's bare
+// surplus (drafted rewards, Brasch's Bargains buys, a Field Promotion, a claimed
+// cache) plus the SEAF Support Package. The surplus every diver starts with was
+// never won, so it is never taken; the support pack is an assist the squad
+// opted into, so it is, even before a first reward is banked.
 export function earnedItemsOf(state: DiveState, diver: DiverState): Item[] {
   const starting = new Set(state.settings
-    ? startingItemIds(state.settings.variant, state.settings.mode)
+    ? startingItemIds(state.settings.variant)
     : [])
   return (state.personalInventories[diver.id] ?? [])
     .filter(id => !starting.has(id))
@@ -442,7 +443,7 @@ export function earnedItemsOf(state: DiveState, diver: DiverState): Item[] {
 // stake, as it raises the tier on offer) and led by the best item that ceiling
 // reaches. Armor passives and stratagems are all fair game. A pool with nothing
 // under the ceiling falls back to everything earned, so a diver holding any
-// earned gear always owes something; one who has earned nothing owes nothing.
+// at-stake gear always owes something; one holding only the surplus owes nothing.
 // S+ has no items, so it stakes as S.
 export function forfeitOptionsFor(state: DiveState, diver: DiverState): Item[] {
   if (state.lastReport?.outcome !== 'failure' || diver.skipsCurrentDraft) {

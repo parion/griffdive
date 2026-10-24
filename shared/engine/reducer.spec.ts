@@ -1024,6 +1024,20 @@ describe('REPORT_RESULT (failure) → forfeit', () => {
     expect(requireDiver(state).forfeitedItemId).toBeNull()
   })
 
+  it('puts the SEAF support pack on the block before any reward is banked', () => {
+    const settings = { variant: 'hard' as const, mode: 'seaf' as const }
+    const base = reduce(createDiveState(settings, 'p1', 'Griffin'), { type: 'SPIN_WHEEL', seed: 42 })
+    const diving: DiveState = { ...base, phase: 'diving' }
+    const support = new Set([...SEAF_SUPPORT_KIT.stratagems, ...SEAF_SUPPORT_KIT.boosters])
+    const state = reduce(diving, { type: 'REPORT_RESULT', outcome: 'failure', stars: 1 })
+    expect(state.phase).toBe('forfeit')
+    const offer = forfeitOptionsFor(state, requireDiver(state))
+    expect(offer.length).toBeGreaterThan(0)
+    for (const item of offer) {
+      expect(support.has(item.id)).toBe(true)
+    }
+  })
+
   it('never puts the starting kit on the block', () => {
     const state = failedState()
     const starting = new Set(startingItemIds(SETTINGS.variant))

@@ -303,15 +303,10 @@ test('a failed mission labels the operation failed and removes an earned item', 
   await page.getByRole('button', { name: 'File failure' }).click()
 
   await expect(page.getByRole('heading', { name: 'Mission failed' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Choose an item to remove' })).toBeVisible()
 
-  // Pick one item from the dealt offer, then hold to confirm — once every diver
+  // Pick one item from the dealt offer, then remove it — once every diver
   // has chosen the forfeit restarts the operation at mission 1.
   await page.locator('.sur-tile:not([disabled])').first().click()
-  const remove = page.getByRole('button', { name: /Remove the selected item/ })
-  await remove.hover()
-  await page.mouse.down()
-  await page.waitForTimeout(900)
-  await page.mouse.up()
+  await page.getByRole('button', { name: /^Remove / }).click()
   await expect(page.getByRole('img', { name: /Operation mission 1 of 2/i })).toBeVisible()
 })

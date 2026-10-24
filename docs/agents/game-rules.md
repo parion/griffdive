@@ -581,11 +581,13 @@ items):
 A failed mission costs every diver one item, and the diver never picks freely (that made the loss a
 formality: surrender the scrap). Instead the engine **deals each diver a forfeit offer** and they
 choose the one item they lose. Only **earned gear** is ever at stake: the pool is the diver's kit
-beyond the variant's starting kit (`earnedItemsOf` — drafted rewards, Bargains buys, a Field
-Promotion or a claimed cache). The surplus starting kit was never won, so it is never taken.
+beyond the variant's bare surplus (`earnedItemsOf` — drafted rewards, Bargains buys, a Field
+Promotion, a claimed cache, **and the SEAF Support Package** when that mode is chosen, so a SEAF
+diver owes an item from the pack even before banking a first reward). The surplus starting kit was
+never won, so it is never taken.
 
-- **Who owes:** every present diver who dove the mission and has earned something. A diver with
-  only the starting kit (e.g. a failure on the crusade's first mission), a mid-mission joiner
+- **Who owes:** every present diver who dove the mission and has gear at stake. A diver with
+  only the bare surplus (e.g. a Super Penance failure on the crusade's first mission), a mid-mission joiner
   (`skipsCurrentDraft`) and a diver who stepped away owe nothing. If no diver owes, the operation
   restarts immediately.
 - **Offer size:** one item per star the difficulty could have awarded (`maxStarsFor`: 3 at diff 3–4,

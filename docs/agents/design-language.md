@@ -173,13 +173,15 @@ reports pin **File report / File failure** in the fixed action bar.
 
 #### Mission failed — `DivePhaseForfeit`
 
-The failure beat speaks the loot draft's grammar in red. `ForfeitPicker` deals the diver's offer as
-the same tier-edged art cards as `RewardDraft` (letterboxed 4:3 well, tier letter, `fitWord` name,
-category line; a 104px thumb row on phones), staggered in with `riseIn`. Marking a card lights its
-edge red and greys the art; the held Remove confirm stamps **Confiscated** on it and fades the rest.
-Below the cards sit the squad's forfeit status, the pinned Remove bar (the shared `PhoneActionBar`
-on phones) and the aftermath tiles (restart, difficulty held, front held). The screen is capped at
-the loot width (1000px). The `.sur-tile` class is the e2e hook.
+Deliberately bare, in the loot draft's grammar. A red kicker, the title and one line of copy sit over
+`ForfeitPicker`: the diver's offer as the same tier-edged art cards as `RewardDraft` (letterboxed
+4:3 well, tier letter, `fitWord` name, category line; a 104px thumb row on phones), staggered in.
+Marking a card lights its edge red; one plain click button under the cards — **Remove <item>**, in
+the pinned phone bar on phones — removes it (no hold-to-confirm, no container). The removed card
+keeps its red edge with a **Confiscated** stamp while the rest fade, like a banked reward. Squadmates'
+statuses are a quiet grid below, and a short note says who is still choosing. SEAF Support Package
+items count as at-stake gear, so a SEAF diver always has a pack item to surrender. The `.sur-tile`
+class is the e2e hook.
 
 #### Loot — `RewardDraft`
 

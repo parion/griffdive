@@ -120,9 +120,9 @@ test('phone: a failed mission lands on the pinned remove bar', async ({ browser 
   await expect(page.getByRole('heading', { name: 'Mission failed' }).first()).toBeVisible()
   await expectPinnedBar(page, '11-forfeit')
 
-  // Picking an item arms the hold-to-confirm remove.
+  // Picking an item arms the remove.
   await page.locator('.sur-tile').first().click()
-  await expect(page.locator('#phone-bar-primary').getByRole('button', { name: /Remove/ })).toBeEnabled()
+  await expect(page.locator('#phone-bar-primary').getByRole('button', { name: /^Remove / })).toBeEnabled()
   await expectPinnedBar(page, '12-forfeit-armed')
 
   await context.close()
