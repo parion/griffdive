@@ -42,17 +42,17 @@ describe('haulValue / timeHaulMultiplier / missionHaul', () => {
     expect(missionHaul(null)).toBe(0)
     expect(missionHaul({ outcome: 'success', stars: 3, timePct: 100, samples: { common: 18, rare: 0, super: 0 } })).toBe(18)
     expect(missionHaul({ outcome: 'success', stars: 3, timePct: 0, samples: { common: 18, rare: 0, super: 0 } })).toBe(9)
-    expect(missionHaul({ outcome: 'success', stars: 3, timePct: 50, samples: { common: 0, rare: 2, super: 0 } })).toBe(7)
+    expect(missionHaul({ outcome: 'success', stars: 3, timePct: 50, samples: { common: 0, rare: 2, super: 0 } })).toBe(4)
     expect(missionHaul({ outcome: 'success', stars: 3, timePct: 100 })).toBe(0)
   })
 })
 
 describe('itemPrice', () => {
   it('is tier first, then type', () => {
-    expect(CREDIT_PRICE_TIER.c).toBe(15)
-    expect(CREDIT_PRICE_TIER.s).toBe(450)
-    expect(itemPrice(makeItem('c', 'armorPassive'))).toBe(Math.round(15 * (CREDIT_PRICE_TYPE.armorPassive ?? 1)))
-    expect(itemPrice(makeItem('c', 'primary'))).toBe(Math.round(15 * 1.25))
+    expect(CREDIT_PRICE_TIER.c).toBe(25)
+    expect(CREDIT_PRICE_TIER.s).toBe(800)
+    expect(itemPrice(makeItem('c', 'armorPassive'))).toBe(Math.round(25 * (CREDIT_PRICE_TYPE.armorPassive ?? 1)))
+    expect(itemPrice(makeItem('c', 'primary'))).toBe(Math.round(25 * 1.25))
     // A primary always out-prices an armor passive at the same tier.
     expect(itemPrice(makeItem('s', 'primary'))).toBeGreaterThan(itemPrice(makeItem('s', 'armorPassive')))
     // Unknown categories fall back to the default multiplier.

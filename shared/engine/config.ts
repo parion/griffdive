@@ -297,8 +297,8 @@ export const CEILING_PREVIEW_FLOOR = 0.01
 // the difficulty scaling (commons dominate early, supers appear at 6).
 export const SAMPLE_CREDITS: Readonly<Record<'common' | 'rare' | 'super', number>> = {
   common: 1,
-  rare: 5,
-  super: 25,
+  rare: 3,
+  super: 12,
 }
 
 // Team performance is a multiplier on the credit haul, not a Valor bonus:
@@ -311,10 +311,10 @@ export const TIME_HAUL_FLOOR = 0.5
 // out-prices an armor passive. Low tiers sit within a mission or two's haul;
 // A and S stay a real saving goal.
 export const CREDIT_PRICE_TIER: Readonly<Record<'c' | 'b' | 'a' | 's', number>> = {
-  c: 15,
-  b: 45,
-  a: 180,
-  s: 450,
+  c: 25,
+  b: 100,
+  a: 400,
+  s: 800,
 }
 
 export const CREDIT_PRICE_TYPE: Readonly<Record<string, number>> = {
