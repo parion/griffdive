@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
-import { allDiversPicked, bonusFor, bonusWinners, bargainLamp, bargainsClosedReason } from '~~/shared/engine/selectors'
+import { allDiversPicked, bonusFor, bonusWinners } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionOutcome, MissionReport } from '~~/shared/engine/types'
 import type { SteamLobbyInfo } from '~~/shared/types/messages'
 
@@ -21,6 +21,7 @@ const props = defineProps<{
   canFork: boolean
   lastError: string | null
   steam: SteamLobbyInfo | null
+  pactPreviewIds?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -45,8 +46,6 @@ const emit = defineEmits<{
   transferHost: [diverId: string]
   copyInvite: []
   openSteam: []
-  openArmory: []
-  openBargains: []
   openTutorial: []
   leave: []
   end: []
@@ -57,6 +56,7 @@ const emit = defineEmits<{
   dismissError: []
 }>()
 
+const { sidePanel } = useDrawers()
 const phase = computed(() => props.state.phase)
 const reporting = ref(false)
 const squadOpen = ref(false)
@@ -68,8 +68,6 @@ function openSteamFromSquad(): void {
   nextTick(() => emit('openSteam'))
 }
 
-const bargainsOpen = computed(() => !props.kicked && props.self !== null && !bargainsClosedReason(props.state))
-const lamp = computed(() => (props.self ? bargainLamp(props.state, props.self) : 'off'))
 // Held back while the report's reel is still rolling.
 const honors = computed(() => (props.state.phase !== 'diving' ? bonusFor(props.state) : null))
 const honorsWinners = computed(() => bonusWinners(props.state).map(diver => upperName(diver.name)))
@@ -97,7 +95,6 @@ const operationClimbs = computed(() =>
         :can-control="canControl"
         :is-host="isHost"
         @open-squad="squadOpen = true"
-        @open-armory="emit('openArmory')"
         @open-menu="menuOpen = true"
       />
     </template>
@@ -135,6 +132,7 @@ const operationClimbs = computed(() =>
           @decide-strain="emit('decideStrain', $event)"
           @deal="emit('deal')"
           @reroll="emit('reroll', $event)"
+          @open-kit="sidePanel = 'kit'"
         />
 
         <PhonePacts
@@ -215,24 +213,15 @@ const operationClimbs = computed(() =>
       </template>
     </div>
 
-    <template #lead>
-      <button
-        v-if="bargainsOpen"
-        class="bar-bargains"
-        type="button"
-        aria-haspopup="dialog"
-        :aria-label="`Brasch's Bargains, ${self?.credits ?? 0} credits${lamp === 'off' ? '' : lamp === 'restocked' ? ', restocked' : ', something affordable in stock'}`"
-        @click="emit('openBargains')"
-      >
-        <span
-          v-if="lamp !== 'off'"
-          class="lamp gold bb-lamp"
-          :class="{ pulse: lamp === 'restocked' }"
-          aria-hidden="true"
-        />
-        <IconCredit class="bb-mark" />
-        <span class="bb-bal">{{ self?.credits ?? 0 }}</span>
-      </button>
+    <template #dock>
+      <DiveSidebar
+        :state="state"
+        :self-id="selfId"
+        :self="self"
+        :preview-pact-ids="pactPreviewIds"
+        sheet
+        @buy="emit('buy', $event)"
+      />
     </template>
   </DivePhoneShell>
 
@@ -292,35 +281,6 @@ const operationClimbs = computed(() =>
   overflow-y: auto;
   padding: 12px 12px 0;
 }
-.bar-bargains {
-  position: relative;
-  flex: 0 0 52px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  min-height: 56px;
-  padding: 0;
-  border: 1px solid var(--line-3);
-  background: var(--panel);
-  color: var(--gold);
-  font-family: inherit;
-  cursor: pointer;
-}
-.bar-bargains:active { background: var(--raised); }
-.bb-mark { width: 20px; height: 20px; }
-.bb-bal {
-  max-width: 48px;
-  overflow: hidden;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  color: var(--text);
-}
-.bb-lamp { position: absolute; top: 5px; right: 5px; }
 .phone-banner {
   margin: 0;
   display: flex;

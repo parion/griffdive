@@ -2,7 +2,7 @@
 import { useIntervalFn } from '@vueuse/core'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { createSaveDoc } from '~~/shared/engine/saves'
-import { allDiversPicked, bargainLamp, bargainsClosedReason, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending } from '~~/shared/engine/selectors'
+import { allDiversPicked, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionOutcome, MissionReport } from '~~/shared/engine/types'
@@ -40,34 +40,8 @@ watch(phase, () => {
   reporting.value = false
 })
 
-const armoryOpen = ref(false)
-
-// In the field the Kit docks beside the stage instead of opening as a modal,
-// so the header's Kit tile shows or hides the dock there.
-const kitDockOpen = ref(true)
-const kitDocked = computed(() => phase.value === 'diving' && !reporting.value)
-
-function openKit(): void {
-  if (kitDocked.value) {
-    kitDockOpen.value = !kitDockOpen.value
-    return
-  }
-  armoryOpen.value = true
-}
-
-// Brasch's Bargains opens from the desktop header and the phone action bar, and
-// shuts itself when the squad drops into the field.
-const bargainsOpen = ref(false)
-const bargainsClosed = computed(() => (state.value ? bargainsClosedReason(state.value) : null))
-watch(bargainsClosed, (closed) => {
-  if (closed) {
-    bargainsOpen.value = false
-  }
-})
-
-// The shell is now one stage and one dock: the Kit is a drawer for every
-// diver, not a permanent rail. The old Valor readout is gone; the odds strip
-// inside each phase carries the same information without a numeric total.
+// The old Valor readout is gone; the odds strip inside each phase carries the
+// same information without a numeric total.
 const variantName = computed(() =>
   VARIANTS.find(variant => variant.id === state.value?.settings?.variant)?.name ?? 'Crusade')
 const crusadeLabel = computed(() => `${diverName(selfId.value)} · ${variantName.value}`)
@@ -81,6 +55,10 @@ const pactPreviewIds = computed(() =>
 // The report form and the in-field screen share one beat tab; the shell swaps
 // its label to REPORT while the form is open.
 const reporting = ref(false)
+
+// The sidebar opens the Kit by itself for the field beat; the report form
+// takes the stage without it.
+const fieldKit = computed(() => phase.value === 'diving' && !reporting.value)
 
 // Once the whole squad has banked, everyone regroups on an interstitial instead
 // of idling on the draft: a mission-cleared beat mid-operation, the climb at
@@ -689,6 +667,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       :can-fork="canFork"
       :last-error="session.lastError.value?.message ?? null"
       :steam="session.steam.value"
+      :pact-preview-ids="pactPreviewIds"
       @spin="spin"
       @decide="decideMisfortune"
       @decide-strain="decideStrain"
@@ -710,8 +689,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @transfer-host="transferHost"
       @copy-invite="copyInvite"
       @open-steam="openSteam"
-      @open-armory="armoryOpen = true"
-      @open-bargains="bargainsOpen = true"
       @open-tutorial="openBriefing"
       @leave="leaveDive"
       @end="endDive"
@@ -734,11 +711,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
           :saved="Boolean(session.saved.value)"
           :can-control="canControl"
           :is-host="session.selfIsHost.value"
-          :credits="self?.credits ?? 0"
-          :bargains-closed="bargainsClosed"
-          :bargain-lamp="self ? bargainLamp(state, self) : 'off'"
-          @open-bargains="bargainsOpen = true"
-          @open-kit="openKit"
           @open-tutorial="openBriefing"
           @open-menu="sessionMenuOpen = true"
         />
@@ -866,14 +838,14 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         </div>
       </Transition>
 
-      <template
-        v-if="kitDocked"
-        #aside
-      >
-        <KitDock
-          v-model:open="kitDockOpen"
+      <template #aside>
+        <DiveSidebar
           :state="state"
           :self-id="selfId"
+          :self="self"
+          :preview-pact-ids="pactPreviewIds"
+          :field-kit="fieldKit"
+          @buy="buyItem"
         />
       </template>
 
@@ -916,15 +888,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       Loading dive…
     </p>
 
-    <!-- The Kit is a drawer for every diver now; the old desktop rail is gone. -->
-    <ArmoryDrawer
-      v-if="state"
-      v-model:open="armoryOpen"
-      :state="state"
-      :self-id="selfId"
-      :preview-pact-ids="pactPreviewIds"
-    />
-
     <DiveMenu
       v-if="state"
       v-model:open="sessionMenuOpen"
@@ -956,14 +919,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         @set-steam="session.setSteam"
       />
     </AppDialog>
-
-    <BargainsDrawer
-      v-if="state"
-      v-model:open="bargainsOpen"
-      :state="state"
-      :self="self"
-      @buy="buyItem"
-    />
 
     <AppDialog
       v-if="state && session.selfIsHost.value"

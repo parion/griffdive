@@ -27,7 +27,6 @@ const strain = computed(() => activeStrain(props.state))
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const directiveFailed = computed(() => props.state.misfortuneFailed)
 const confirmFail = ref(false)
-const kitOpen = ref(false)
 
 const ownPacts = computed(() =>
   (props.self?.pactIds ?? []).map(id => ({ id, failed: props.self?.failedPactIds.includes(id) ?? false })))
@@ -193,13 +192,6 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         <span class="bar-gate">Waiting on host</span>
       </template>
     </PhoneActionBar>
-
-    <KitDock
-      v-model:open="kitOpen"
-      :state="state"
-      :self-id="selfId"
-      sheet
-    />
   </section>
 
   <MissionReport

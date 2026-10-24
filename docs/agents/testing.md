@@ -26,7 +26,7 @@
   production build (`pnpm build` + Nitro server, port 3173, WebSocket included). Specs: solo dive
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host
   authority, pact lock-in; a squad that all leaves finds its room waiting and RESUME reseats
-  everyone; the squad never waits on a diver who left), Codex slide-over (opens over the dive without dropping the session),
+  everyone; the squad never waits on a diver who left), Codex in the dive sidebar (opens beside the dive without dropping the session), sidebar panels (desktop rail, phone bottom dock),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
   star-rating keyboard navigation), phone host moderation
   (`phone.spec.ts`: a squadmate's hangar bay opens host actions; after launch the 390px Squad button

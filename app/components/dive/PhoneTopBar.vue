@@ -16,12 +16,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   openSquad: []
-  openArmory: []
-  openCodex: []
   openMenu: []
 }>()
 
-const { codexOpen } = useDrawers()
 const diffName = computed(() => difficultyName(props.state.difficulty))
 const front = computed(() => props.state.frontId ? factionImageUrl(props.state.frontId) : null)
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
@@ -72,56 +69,6 @@ const opNumber = computed(() =>
           aria-hidden="true"
         />
         Squad
-      </button>
-      <button
-        class="kit-btn"
-        type="button"
-        aria-label="Kit"
-        @click="emit('openArmory')"
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          aria-hidden="true"
-        >
-          <rect
-            x="3.5"
-            y="3.5"
-            width="7"
-            height="7"
-          />
-          <rect
-            x="13.5"
-            y="3.5"
-            width="7"
-            height="7"
-          />
-          <rect
-            x="3.5"
-            y="13.5"
-            width="7"
-            height="7"
-          />
-          <rect
-            x="13.5"
-            y="13.5"
-            width="7"
-            height="7"
-          />
-        </svg>
-        Kit
-      </button>
-      <button
-        class="icon-btn"
-        type="button"
-        aria-label="Codex"
-        @click="codexOpen = true"
-      >
-        <IconBook />
       </button>
       <button
         class="icon-btn"
@@ -198,7 +145,6 @@ const opNumber = computed(() =>
 .front { width: 18px; height: 18px; object-fit: contain; }
 .grow { flex: 1; }
 .squad-btn,
-.kit-btn,
 .icon-btn {
   display: inline-flex;
   align-items: center;

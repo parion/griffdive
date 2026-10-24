@@ -77,11 +77,9 @@ merge with them.
 - **`DiveTopBar`** carries the identity block (the in-game difficulty emblem shown as-is — never
   boxed in a hex or tinted — then the gold number, difficulty name,
   op number and mission pips, front emblem), the four **`PhaseTabs`** beats (Call · Pacts · Dive ·
-  Loot, current beat filled gold, finished beats checked), and the action tiles — Brasch's Bargains
-  (credit glyph + balance, disabled with its reason mid-mission, gold lamp when something is
-  affordable), Kit, Codex, Warbonds, connection lamp and the session menu. Under 1240px Codex and
-  Warbonds collapse to glyph buttons (keeping their accessible names) so the header stays one row
-  down to 980px. Back to the Bridge lives
+  Loot, current beat filled gold, finished beats checked), the connection lamp and the session
+  menu. Kit, Codex, Warbonds and Brasch's Bargains no longer live up here: they are the
+  **`DiveSidebar`** rail (see *Kit, Codex, Warbonds* below). Back to the Bridge lives
   in `DiveMenu`, because the global bridge header stands down on `/dive`.
 - **`SquadDock`** anchors the bottom: status lamps and names for every diver (`.seat` cards —
   not the global `.chip` tag utility), open seats, Steam lobby and invite copy, and the
@@ -157,8 +155,8 @@ inked SWORN stamp. There are no per-card odds words: hovering or picking preview
 strip under the hand. The CTA is
 "Swear N pacts" (or "Dive with no pacts"), and a locked diver sees the sworn stamp while the rest of
 the squad finishes. The hand is local: a squad sync leaves your picks alone — only a fresh draw or
-directive clears them. There is no Kit rail: the header's **Kit** tile opens the same `ArmoryDrawer`
-everywhere.
+directive clears them. The **Kit** tab of the `DiveSidebar` shows the Kit everywhere, greying
+the items the unsworn pick would ban.
 
 #### Dive — `DivePhaseDiving`
 
@@ -167,12 +165,10 @@ then a **Pacts sworn** ledger — one row per pact (diver, lit skulls, name, one
 confirm on the second tap). Each row is an accordion (`PactLedger`, shared with the phone) that
 opens on the vow and its accountability line, lit by a gold edge; your own pacts start open,
 everyone else's start shut. Hosts call **Extracted** or **Mission failed**; squadmates get a
-waiting gate. Beside the column, every diver gets the **`KitDock`**: the Kit docked in
-`DiveFrame`'s `aside` slot, at the right edge where the Kit drawer slides in, but non-modal so the
-field screen stays live. It is open by default; its Hide control (and the header's Kit tile, while
-docked) folds it to a slim KIT tab. The report form takes the stage without the dock. On a phone
-the field kit is the same `KitDock` as a non-modal **sheet** pinned to the bottom of the scroll,
-just above the action bar: a KIT handle that rises into the panel (up to 64dvh) and folds back down.
+waiting gate. Beside the column the `DiveSidebar` opens its **Kit** panel for every diver on
+desktop (`fieldKit`), non-modal so the field screen stays live; the Hide control or the KIT tab
+folds it away. It closes again when the beat ends (or the report form opens) unless the diver
+picked a panel of their own meanwhile. On a phone the panel never opens by itself.
 
 #### Report — `MissionReport`
 
@@ -251,8 +247,21 @@ only and reads `tierZones` from the engine.
 
 #### Kit, Codex, Warbonds
 
-The Kit (`ArmoryDrawer` → `KitPanel`) is reached from the header on desktop and phone; there is no
-persistent rail, except in the field, where `KitDock` docks the same `KitPanel` beside the stage. It keeps the lean diver list (a segmented strip with a gold lamp on the
+**`DiveSidebar`** is the one home for the dive's slide-overs: **Kit, Codex, Warbonds and Brasch's
+Bargains**, on every dive shell (the lobby and the briefings stand outside it and keep the global
+Codex/Warbonds drawers). On desktop it is `DiveFrame`'s `aside`: a permanent 52px rail of vertical
+tabs at the right edge (glyph, vertical label, and for Bargains the credit balance with its gold
+lamp, disabled with its reason mid-mission), and a non-modal panel that opens to the rail's left at
+`clamp(340px, 32vw, 34rem)`. One panel at a time; the active tab is gold-edged, a second click, the
+panel's Hide control or Esc folds it, and the rail never moves. State is `useDrawers().sidePanel`
+(`codexOpen` / `warbondsOpen` are flags over it, so the tutorial, lobby and Field Promotion gate
+still just call `openWarbonds()`). Bargains shuts itself when the squad drops into the field.
+On a phone (`sheet`) the rail is a four-up row pinned just above the action bar (`DivePhoneShell`'s
+`dock` slot) and the panel rises over the stage from it (up to 64dvh, Hide folds it down); the
+phone top bar and action bar no longer carry Kit, Codex or credit tiles. Components hosted here
+stay rule-free: they only render engine selectors.
+
+The Kit (`KitPanel`) keeps the lean diver list (a segmented strip with a gold lamp on the
 selected diver), jump chips (each with its group's accent square) over the earned-only switch, and
 live ban washes. Each `KIT_SECTIONS` group declares its `art`: **gear** groups (weapons,
 throwables) set the transparent renders in a lit 16:10 well, brightened and drop-shadowed over an
@@ -260,10 +269,6 @@ accent spotlight; **icon** groups (armor passives, boosters, stratagems) show th
 icon full size over a blurred copy of itself, so each frame glows in its own colour. Stratagem
 groups take their in-game frame colours (Eagle/Orbital red, Supply blue, Defense green). Tiles
 carry a tier stripe and lift on hover; banned icons drop their glow.
-On a phone the Kit drawer rises from the bottom of the viewport
-(`AppDrawer` `side="bottom"`: grip, swipe down to close) instead of sliding in from the right.
-Codex and Warbonds remain the shared drawers. Brasch's Bargains remains a slide-over from the credit
-tile, never a phase screen.
 
 #### Join briefing and host tutorial
 
@@ -280,7 +285,7 @@ onboarding odds dial remains a teaching aid; the live dive uses `ValorRoll`.
 #### Phone shell
 
 `usePhoneShell` swaps the desktop tree for `DivePhone` (`DivePhoneShell` + `Phone*`). It is a fixed
-column: `PhoneTopBar` (identity, Squad, Kit, Codex, menu) over `PhaseTabs`, a scrolling stage, and a
+column: `PhoneTopBar` (identity, Squad, menu) over `PhaseTabs`, a scrolling stage, and a
 pinned `footer.phone-bar`. The bar never changes shape — its CTA label stays on one line and
 ellipsizes a long item name: optional detail above, an optional secondary
 on the left and one primary action filling the rest, supplied through `PhoneActionBar`'s deferred
