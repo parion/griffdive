@@ -460,11 +460,12 @@ const kickerText = computed(() => {
       <button
         v-else-if="ready && canControl"
         class="cta cut cta-sweep"
+        :class="{ 'cta-locked': advanceLocked }"
         type="button"
         :disabled="advanceLocked"
         @click="emit('advance')"
       >
-        {{ advanceLocked ? 'Award Squad Honors first' : advanceLabel }}
+        {{ advanceLocked ? 'Award honors first' : advanceLabel }}
         <svg
           width="22"
           height="14"

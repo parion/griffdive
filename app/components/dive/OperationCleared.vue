@@ -26,7 +26,7 @@ const opNumber = computed(() =>
   catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
 const nextOp = computed(() => opNumber.value + 1)
 const honorsLocked = computed(() => honorsPending(props.state))
-const startLabel = computed(() => (honorsLocked.value ? 'Award Squad Honors first' : `Start operation ${nextOp.value}`))
+const startLabel = computed(() => (honorsLocked.value ? 'Award honors first' : `Start operation ${nextOp.value}`))
 const rungs = computed(() => Array.from({ length: MAX_DIFFICULTY - 2 }, (_, i) => {
   const n = i + 3
   return {
@@ -145,14 +145,17 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
     <PhoneActionBar v-if="phone">
       <template #primary>
         <button
-          v-if="canControl"
+          v-if="canControl && !honorsLocked"
           class="bar-cta cta-sweep"
           type="button"
-          :disabled="honorsLocked"
           @click="emit('start')"
         >
           <span class="disp">{{ startLabel }}</span>
         </button>
+        <span
+          v-else-if="canControl"
+          class="bar-gate"
+        ><span class="bar-gate-word quiet">Award honors first</span></span>
         <span
           v-else
           class="bar-gate"
@@ -166,6 +169,7 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
       <button
         v-if="canControl"
         class="cta cut cta-sweep"
+        :class="{ 'cta-locked': honorsLocked }"
         type="button"
         :disabled="honorsLocked"
         @click="emit('start')"

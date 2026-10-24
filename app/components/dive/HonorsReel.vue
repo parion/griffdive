@@ -28,7 +28,7 @@ const STAT_ICONS: Readonly<Record<string, string>> = {
 // The strip is the stat pool repeated so it can wind down onto the winner
 // from well above it.
 const COPIES = 4
-const ROW_H = 44
+const ROW_H = 36
 const rows = Array.from({ length: COPIES }, () => BONUS_STATS).flat()
 
 function offsetFor(row: number): number {
@@ -83,7 +83,7 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 <template>
   <div
-    class="reel ticks"
+    class="reel"
     :class="{ landed, spinning }"
     :style="{ '--row-h': `${ROW_H}px` }"
   >
@@ -112,6 +112,15 @@ onBeforeUnmount(() => clearTimeout(timer))
             stroke-linejoin="round"
           ><path :d="STAT_ICONS[entry.id] ?? ''" /></svg>
           <span class="disp label">{{ entry.label }}</span>
+          <svg
+            class="dir"
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+          ><path
+            fill="currentColor"
+            :d="entry.direction === 'most' ? 'M12 5l7 13H5z' : 'M12 19L5 6h14z'"
+          /></svg>
         </div>
       </div>
     </div>
@@ -138,10 +147,11 @@ onBeforeUnmount(() => clearTimeout(timer))
 .reel {
   position: relative;
   overflow: hidden;
-  width: min(100%, 360px);
+  flex: 1 1 340px;
+  min-width: 0;
   height: calc(var(--row-h) * 3);
-  background: var(--ground);
-  box-shadow: inset 0 0 0 1px var(--line-4);
+  background: rgba(0, 0, 0, 0.32);
+  box-shadow: inset 1px 0 0 var(--line-3);
 }
 .view {
   position: absolute;
@@ -159,23 +169,24 @@ onBeforeUnmount(() => clearTimeout(timer))
   align-items: center;
   gap: 12px;
   height: var(--row-h);
-  padding: 0 34px 0 30px;
+  padding: 0 36px 0 40px;
   color: var(--khaki);
   opacity: 0.5;
 }
 .row.win { color: var(--gold); opacity: 1; }
 .row svg { flex: none; }
+.row .dir { margin-left: auto; opacity: 0.7; }
 .label {
   min-width: 0;
   overflow: hidden;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .band {
   position: absolute;
-  left: 8px;
-  right: 8px;
+  left: 0;
+  right: 0;
   top: var(--row-h);
   height: var(--row-h);
   border-top: 1px solid var(--line-4);
@@ -192,6 +203,15 @@ onBeforeUnmount(() => clearTimeout(timer))
   height: 16px;
   background: var(--gold);
 }
-.tri.left { left: 8px; clip-path: polygon(0 0, 100% 50%, 0 100%); }
-.tri.right { right: 8px; clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+.tri.left { left: 10px; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.tri.right { right: 10px; clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+
+@media (max-width: 800px) {
+  .label { font-size: 0.95rem; }
+  .row { padding: 0 30px 0 34px; }
+  .reel {
+    flex-basis: 100%;
+    box-shadow: inset 0 1px 0 var(--line-3);
+  }
+}
 </style>

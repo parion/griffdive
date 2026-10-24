@@ -38,7 +38,7 @@ const nextDrop = computed(() => {
 const honorsLocked = computed(() => honorsPending(props.state))
 const ctaLabel = computed(() => {
   if (honorsLocked.value) {
-    return 'Award Squad Honors first'
+    return 'Award honors first'
   }
   return opEnds.value ? 'Complete operation' : 'Next mission'
 })
@@ -99,14 +99,17 @@ const ctaLabel = computed(() => {
     <PhoneActionBar v-if="phone">
       <template #primary>
         <button
-          v-if="canControl"
+          v-if="canControl && !honorsLocked"
           class="bar-cta cta-sweep"
           type="button"
-          :disabled="honorsLocked"
           @click="emit('advance')"
         >
           <span class="disp">{{ ctaLabel }}</span>
         </button>
+        <span
+          v-else-if="canControl"
+          class="bar-gate"
+        ><span class="bar-gate-word quiet">Award honors first</span></span>
         <span
           v-else
           class="bar-gate"
@@ -120,6 +123,7 @@ const ctaLabel = computed(() => {
       <button
         v-if="canControl"
         class="cta cut cta-sweep"
+        :class="{ 'cta-locked': honorsLocked }"
         type="button"
         :disabled="honorsLocked"
         @click="emit('advance')"

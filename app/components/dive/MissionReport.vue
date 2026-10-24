@@ -552,19 +552,26 @@ onBeforeUnmount(() => {
 .haul-value :deep(.credit-mark) { width: 24px; height: 24px; }
 
 .honors-card {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px 22px;
-  padding: 15px 20px;
+  gap: 0 22px;
+  padding: 0;
   background: linear-gradient(90deg, rgba(255, 214, 66, 0.09), var(--panel) 45%);
-  box-shadow: inset 0 0 0 1px var(--line-3);
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
-.honors-card.live { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, var(--line-3)); }
-.honors-card.rolling { box-shadow: inset 0 0 0 1px var(--gold), 0 0 22px rgba(255, 214, 66, 0.2); }
-.honors-id { display: flex; align-items: center; gap: 12px; }
+/* The frame sits above the flush reel so the card edge stays unbroken. */
+.honors-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 1px var(--line-3);
+  pointer-events: none;
+}
+.honors-card.live::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, var(--line-3)); }
+.honors-card.rolling::after { box-shadow: inset 0 0 0 1px var(--gold), inset 0 0 22px rgba(255, 214, 66, 0.2); }
+.honors-id { display: flex; align-items: center; gap: 12px; padding: 14px 0 14px 20px; }
 .honors-hex {
   display: grid;
   place-items: center;
@@ -582,6 +589,7 @@ onBeforeUnmount(() => {
 .honors-off {
   flex: 1 1 220px;
   margin: 0;
+  padding: 14px 20px;
   color: var(--khaki);
   font-size: 15px;
   line-height: 1.4;
@@ -650,6 +658,7 @@ onBeforeUnmount(() => {
   .stars-card :deep(.star-glyph) { width: 2.5rem; height: 2.5rem; }
   .report-actions { justify-content: stretch; }
   .cta { flex: 1; min-width: 0; }
-  .honors-off { text-align: left; }
+  .honors-id { padding-right: 20px; }
+  .honors-off { padding-top: 0; text-align: left; }
 }
 </style>

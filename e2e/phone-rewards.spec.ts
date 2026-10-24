@@ -50,7 +50,7 @@ test('phone draft: a non-host diver can bank their reward', async ({ browser }) 
   await pageA.getByRole('button', { name: /^Bank / }).click()
 
   // The squad cannot move on until the host names the Squad Honors winner.
-  const locked = pageA.getByRole('button', { name: 'Award Squad Honors first' })
+  const locked = pageA.getByRole('button', { name: 'Award honors first' })
   await expect(locked).toBeDisabled()
   await pageA.getByRole('button', { name: 'Award Squad Honors token to Duo' }).click()
   await pageA.getByRole('button', { name: 'Award', exact: true }).click()
