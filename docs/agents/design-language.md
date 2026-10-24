@@ -157,13 +157,15 @@ everywhere.
 
 #### Dive — `DivePhaseDiving`
 
-The field screen is two columns: the teal-lit directive card (HOLDING / BROKEN) and accepted strain
-on the left over the locked odds line, and a **Pacts sworn** ledger on the right — one row per
-pact (diver, lit skulls, name, one-tap "Mark broken", confirm on the second tap). Each row is an
-accordion (`PactLedger`, shared with the phone) that opens on the vow and its accountability line,
-lit by a gold edge; your own pacts start open, everyone else's start shut. Hosts call **Extracted** or **Mission failed**; squadmates
-get their own `KitSnapshot` pane and a waiting gate. The kit is visible by default for non-hosts and
-opens full-height from the header for everyone.
+The field screen is one column: the teal-lit directive card (HOLDING / BROKEN) and accepted strain,
+then a **Pacts sworn** ledger — one row per pact (diver, lit skulls, name, one-tap "Mark broken",
+confirm on the second tap). Each row is an accordion (`PactLedger`, shared with the phone) that
+opens on the vow and its accountability line, lit by a gold edge; your own pacts start open,
+everyone else's start shut. Hosts call **Extracted** or **Mission failed**; squadmates get a
+waiting gate. Beside the column, every diver gets the **`KitDock`**: the Kit docked in
+`DiveFrame`'s `aside` slot, at the right edge where the Kit drawer slides in, but non-modal so the
+field screen stays live. It is open by default; its Hide control (and the header's Kit tile, while
+docked) folds it to a slim KIT tab. The report form takes the stage without the dock.
 
 #### Report — `MissionReport`
 
@@ -223,7 +225,7 @@ only and reads `tierZones` from the engine.
 #### Kit, Codex, Warbonds
 
 The Kit (`ArmoryDrawer` → `KitPanel`) is reached from the header on desktop and phone; there is no
-persistent rail. It keeps the lean diver list, earned-only switch, jump chips and live ban washes.
+persistent rail, except in the field, where `KitDock` docks the same `KitPanel` beside the stage. It keeps the lean diver list, earned-only switch, jump chips and live ban washes.
 Codex and Warbonds remain the shared drawers. Brasch's Bargains remains a slide-over from the credit
 tile, never a phase screen.
 

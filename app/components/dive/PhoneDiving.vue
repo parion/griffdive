@@ -141,7 +141,6 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
     />
 
     <KitSnapshot
-      v-if="!isHost"
       :state="state"
       :self-id="selfId"
       @open="emit('openKit')"

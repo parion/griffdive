@@ -24,7 +24,6 @@ const emit = defineEmits<{
   failDirective: []
   reporting: [open: boolean]
   spinBonus: [payload: { stars: number, outcome: MissionOutcome }]
-  openKit: []
 }>()
 
 const misfortune = computed(() => activeMisfortune(props.state))
@@ -82,10 +81,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
       </p>
     </header>
 
-    <div
-      class="field-grid"
-      :class="isHost ? 'host' : 'diver'"
-    >
+    <div class="field-grid">
       <div class="field-main">
         <article
           class="directive-card"
@@ -200,25 +196,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         class="waiting"
       >
         <span class="cap">Host reports after extraction</span>
-        <button
-          class="ghost-cta"
-          type="button"
-          @click="emit('openKit')"
-        >
-          Open full kit
-        </button>
       </div>
-
-      <aside
-        v-if="!isHost"
-        class="kit-pane"
-      >
-        <KitSnapshot
-          :state="state"
-          :self-id="selfId"
-          @open="emit('openKit')"
-        />
-      </aside>
     </div>
   </section>
 
@@ -241,7 +219,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   flex-direction: column;
   gap: 22px;
   width: 100%;
-  max-width: 1000px;
+  max-width: 680px;
   margin: 0 auto;
 }
 .field-head { display: flex; flex-direction: column; gap: 8px; }
@@ -266,28 +244,11 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 .field-sub { margin: 0; color: var(--muted); font-size: 14px; }
 
 .field-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 22px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
-.field-grid.host {
-  grid-template-areas:
-    'main sworn'
-    'roll actions';
-}
-.field-grid.diver {
-  grid-template-areas:
-    'main kit'
-    'sworn kit'
-    'actions kit';
-}
-.field-main { grid-area: main; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.sworn { grid-area: sworn; align-self: stretch; }
-.field-roll { grid-area: roll; align-self: end; }
-.outcomes,
-.waiting { grid-area: actions; align-self: end; }
-.kit-pane { grid-area: kit; }
+.field-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 
 .directive-card {
   container-type: inline-size;
@@ -405,39 +366,10 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 }
 .cta:hover { filter: brightness(1.06); }
 
-.waiting {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-}
-.ghost-cta {
-  min-height: 48px;
-  padding: 0 18px;
-  border: 0;
-  background: var(--panel);
-  box-shadow: inset 0 0 0 1px var(--line-3);
-  color: var(--text);
-  font: 700 12px var(--font-body);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.kit-pane {
-  padding: 16px;
-  background: var(--rail);
-  box-shadow: inset 0 0 0 1px var(--line-2);
-  align-self: start;
-}
+.waiting { display: flex; align-items: center; min-height: 48px; }
 
 @media (max-width: 860px) {
-  .field-grid.host,
-  .field-grid.diver {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: 'main' 'sworn' 'roll' 'actions' 'kit';
-  }
   .field-title { font-size: 38px; }
-  .waiting { flex-direction: column; align-items: stretch; }
 }
 @media (max-width: 520px) {
   .outcomes { flex-direction: column-reverse; }

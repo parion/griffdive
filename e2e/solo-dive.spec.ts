@@ -74,14 +74,16 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   expect(await strip.getAttribute('aria-label')).not.toBe(before)
   await page.getByRole('button', { name: /^Swear 1 pact/ }).click()
 
-  // The kit stays one tap away in the header.
-  await page.getByRole('button', { name: 'Kit' }).click()
-  const kit = page.getByRole('dialog', { name: 'Kit' })
-  await expect(kit).toBeVisible()
-  await kit.getByRole('button', { name: /Close/ }).first().click()
-  await expect(kit).toBeHidden()
-
   await expect(page.getByRole('heading', { name: 'Hold the line' })).toBeVisible()
+  // In the field the Kit docks beside the stage, non-modal; the header's Kit
+  // tile folds it to a tab and back.
+  const dock = page.getByRole('complementary', { name: 'Field kit' })
+  await expect(dock.getByRole('region', { name: 'Kit' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Kit' })).toBeHidden()
+  await page.getByRole('button', { name: 'Kit', exact: true }).click()
+  await expect(dock.getByRole('button', { name: 'Show kit' })).toBeVisible()
+  await dock.getByRole('button', { name: 'Show kit' }).click()
+  await expect(dock.getByRole('region', { name: 'Kit' })).toBeVisible()
   // Brasch's Bargains shuts while the squad is in the field.
   await expect(page.getByRole('button', { name: /Brasch's Bargains.*Closed during the mission/ })).toBeDisabled()
 

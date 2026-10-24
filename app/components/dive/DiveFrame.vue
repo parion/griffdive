@@ -1,25 +1,29 @@
 <script setup lang="ts">
 // The lit-pass dive shell: flat header, one stage, one squad dock. No rails,
-// no persistent ladder. Each phase is a single lit object on the stage.
+// no persistent ladder. Each phase is a single lit object on the stage. The
+// aside slot docks a non-modal panel beside the stage (the field's Kit).
 </script>
 
 <template>
   <div class="shell">
     <slot name="header" />
 
-    <main
-      id="main-content"
-      class="stage grid-bg"
-      tabindex="-1"
-    >
-      <div
-        class="stage-glow"
-        aria-hidden="true"
-      />
-      <div class="stage-inner">
-        <slot />
-      </div>
-    </main>
+    <div class="deck">
+      <main
+        id="main-content"
+        class="stage grid-bg"
+        tabindex="-1"
+      >
+        <div
+          class="stage-glow"
+          aria-hidden="true"
+        />
+        <div class="stage-inner">
+          <slot />
+        </div>
+      </main>
+      <slot name="aside" />
+    </div>
 
     <slot name="dock" />
   </div>
@@ -33,8 +37,14 @@
   overflow: hidden;
   background: var(--ground);
 }
+.deck {
+  display: flex;
+  min-height: 0;
+}
 .stage {
   position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
