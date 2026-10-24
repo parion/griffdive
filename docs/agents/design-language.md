@@ -227,7 +227,14 @@ only and reads `tierZones` from the engine.
 #### Kit, Codex, Warbonds
 
 The Kit (`ArmoryDrawer` → `KitPanel`) is reached from the header on desktop and phone; there is no
-persistent rail, except in the field, where `KitDock` docks the same `KitPanel` beside the stage. It keeps the lean diver list, earned-only switch, jump chips and live ban washes.
+persistent rail, except in the field, where `KitDock` docks the same `KitPanel` beside the stage. It keeps the lean diver list (a segmented strip with a gold lamp on the
+selected diver), jump chips (each with its group's accent square) over the earned-only switch, and
+live ban washes. Each `KIT_SECTIONS` group declares its `art`: **gear** groups (weapons,
+throwables) set the transparent renders in a lit 16:10 well, brightened and drop-shadowed over an
+accent spotlight; **icon** groups (armor passives, boosters, stratagems) show the square in-game
+icon full size over a blurred copy of itself, so each frame glows in its own colour. Stratagem
+groups take their in-game frame colours (Eagle/Orbital red, Supply blue, Defense green). Tiles
+carry a tier stripe and lift on hover; banned icons drop their glow.
 On a phone the Kit drawer rises from the bottom of the viewport
 (`AppDrawer` `side="bottom"`: grip, swipe down to close) instead of sliding in from the right.
 Codex and Warbonds remain the shared drawers. Brasch's Bargains remains a slide-over from the credit

@@ -21,6 +21,7 @@ const { isPhone } = usePhoneShell()
     @update:open="$emit('update:open', $event)"
   >
     <KitPanel
+      style="--kit-surface: var(--bg-raised)"
       :state="state"
       :self-id="selfId"
       :preview-pact-ids="previewPactIds"
