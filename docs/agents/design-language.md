@@ -119,9 +119,11 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
   then the **Starting kit** (`StartingKit`: the Kit drawer's grammar — `KitSection` headers over
   `KitTile`s, with primaries, secondaries and throwables in their own sections — and, in SEAF mode,
   blue "?" tiles ending each section, one per item the pack rolls there). On launch each diver gets
-  **`KitReveal`**, a full-page stage (`useKitReveal` arms it) where the "?" tiles flip to the rolled
-  items one by one (`.tile.fresh` landing flash, scrolled into view), then "To the wheel" — or
-  Skip. Reduced motion shows the finished kit and still auto-advances. Squadmates see a **Stand by** card with a Declare warbonds CTA instead of disabled
+  **`KitReveal`**, an `AppDialog` over the wheel page (`useKitReveal` arms it) where the "?" tiles
+  flip to the rolled items one by one (`.tile.fresh` landing flash, scrolled into view). It stays up
+  until the diver presses "To the wheel" (Skip while dealing), clicks out or hits Escape; it waits
+  behind the host tutorial, the Warbonds drawer and the Field Promotion gate so one modal shows at a
+  time. Reduced motion shows the finished kit at once. Squadmates see a **Stand by** card with a Declare warbonds CTA instead of disabled
   controls (the host's picks are local until launch). Diver names are all caps.
 - **Risk never shows as a Valor number.** Each plan and mode carries its per-mission risk as
   `RiskPips` skulls (`frontPlanRisk` / `modeValorAt` from the engine). `SetupRisk` totals them

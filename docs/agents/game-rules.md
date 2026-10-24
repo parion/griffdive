@@ -109,7 +109,7 @@ A fixed pack handed to the whole squad overlapped too much to lift anyone, so SE
 - **Launch reveal (presentation):** the setup's Starting Kit lays the surplus out like the Kit
   drawer (primaries, secondaries and throwables apart) and ends each section in blue "?" boxes — one
   per item the pack will roll there. After launch (and after seating mid-crusade) each diver's own
-  `KitReveal` stage fills those boxes one by one, then hands off to the wheel. It is never stored or
+  `KitReveal` modal over the wheel fills those boxes one by one and stays up until the diver closes it. It is never stored or
   gated on: the pack is already dealt, the stage only stages it, and a plain reload never replays it.
 - **At-stake gear:** the pack is forfeitable like any earned item (see Mission failure), but it is
   support gear, not winnings: it never parks in a legacy cache (`earnedKit` skips `supportKit`) and
