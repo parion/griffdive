@@ -142,8 +142,7 @@ const heroIcons = computed(() =>
 // ---- 02 · the mission loop, split by who acts ------------------------------
 type Who = 'host' | 'you' | 'all'
 const LOOP: readonly { who: Who, beat: string, text: string }[] = [
-  { who: 'host', beat: 'Raise', text: `Share the invite link or Steam lobby code. The squad seats itself — up to ${SQUAD_SIZE_MAX} divers, you included.` },
-  { who: 'host', beat: 'Launch', text: 'Pick the front, the starting rung and the kit rules, then hold to launch the crusade.' },
+  { who: 'host', beat: 'Launch', text: 'Gather your squad with the invite link. Pick your front, make your choices and launch.' },
   { who: 'host', beat: 'Spin', text: 'Spin the Wheel of Adversity — one Squad Directive the whole squad plays under.' },
   { who: 'host', beat: 'Squad call', text: 'Take or skip the directive. Call it on voice; it is everyone\'s risk.' },
   { who: 'all', beat: 'Pacts & dive', text: 'Everyone swears their own pacts, then plays the mission in Helldivers 2.' },
