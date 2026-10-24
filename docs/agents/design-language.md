@@ -190,7 +190,8 @@ card**: a 4:3 well (a square thumb on phones) letterboxes the whole catalog imag
 stamped with its **rolled tier** only; the d100 faces live on the odds line above, one pin per option. The old ceiling-climb intro,
 `CeilingTrack`, ban flow and settlement screen are retired. Picking a card selects it; the CTA banks
 it; a resolved draft waits on the squad. The **`SquadDraftBoard`** shows each squadmate's offered
-tiles and status, and the reroll control spends a banked honors token. An S+ roll is **Liberty's Cross**, shown
+tiles and status — the phone reward draft renders the same board (compact, one column), never a
+status-only summary — and the reroll control spends a banked honors token. An S+ roll is **Liberty's Cross**, shown
 not as a card but as the full-width **`LibertyCrossBand`** above the cards (crest, lore line, "Claim
 any item" opening the codex picker). Naming an item selects the Cross and the CTA banks it; the
 band's claim button then shows the chosen name with "Change pick".
