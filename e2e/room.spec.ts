@@ -34,6 +34,7 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await expect(pageB.getByLabel('Your name')).toBeVisible()
   await expect(pageB.locator('.dock .seat')).toHaveCount(0)
   await pageB.getByLabel('Your name').fill('Duo')
+  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
 
@@ -118,6 +119,7 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Sidekick')
+  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
   await expect(pageB.locator('.dock .seat')).toHaveCount(2)
@@ -163,6 +165,7 @@ test('the Codex slide-over keeps the host seated', async ({ browser }) => {
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
+  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
   await expect(pageB.locator('.dock .seat')).toHaveCount(2)
@@ -233,6 +236,7 @@ test('the host manages the Steam lobby from a dock bar', async ({ browser }) => 
   // A squadmate gets a direct Join Lobby link instead of the host's control.
   await pageB.goto(page.url())
   await pageB.getByLabel('Your name').fill('Duo')
+  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
   const joinerLink = pageB.getByRole('link', { name: 'Join Game' })
@@ -277,6 +281,7 @@ async function squadAtTheWheel(browser: Browser) {
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
+  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
   await expect(pageB.locator('.dock .seat')).toHaveCount(2)

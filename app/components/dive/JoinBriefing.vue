@@ -146,6 +146,8 @@ const kitMode = computed(() => props.state?.settings?.mode)
 const kitIds = computed(() => startingItemIds(props.state?.settings?.variant ?? 'medium', kitMode.value))
 const kitCount = computed(() => kitIds.value.length)
 const kitGroupList = computed(() => kitGroups(kitIds.value))
+const heroIcons = computed(() =>
+  kitGroupList.value.flatMap(group => group.items).filter(item => item.category !== 'primary' && item.category !== 'secondary').slice(0, 6))
 
 // ---- 02 · the mission loop, split by who acts ------------------------------
 type Who = 'host' | 'you' | 'all'
@@ -298,6 +300,23 @@ function submit(): void {
             a squad up the Helldivers 2 difficulty ladder. Griffdive keeps the rules and the host runs
             the table — your part is small, and all of it is on this page.
           </p>
+          <ul
+            v-if="heroIcons.length"
+            class="jb-reel"
+            aria-hidden="true"
+          >
+            <li
+              v-for="(item, i) in heroIcons"
+              :key="item.id"
+              :style="{ '--i': i }"
+            >
+              <img
+                :src="itemImageUrl(item)"
+                alt=""
+                draggable="false"
+              >
+            </li>
+          </ul>
         </div>
 
         <div class="jb-hero-side">
@@ -470,6 +489,34 @@ function submit(): void {
                   catch-up gear the moment you land.
                 </p>
               </aside>
+              <div class="jb-acts">
+                <button
+                  class="btn ghost jb-acts-wb"
+                  type="button"
+                  aria-haspopup="dialog"
+                  @click="openWarbonds"
+                >
+                  <IconWarbond class="jb-acts-i" />
+                  <span class="disp">Set warbonds</span>
+                </button>
+                <button
+                  class="btn primary cut jb-cta"
+                  :class="{ 'cta-sweep': review || canJoin }"
+                  type="submit"
+                  :disabled="!review && !canJoin"
+                >
+                  <span class="disp">{{ review ? 'Back to the dive' : 'Join the dive' }}</span>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.4"
+                    aria-hidden="true"
+                  ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -886,23 +933,6 @@ function submit(): void {
           to="/"
           class="jb-exit small"
         >Back to base</NuxtLink>
-        <button
-          class="btn primary cut jb-cta"
-          :class="{ 'cta-sweep': review || canJoin }"
-          type="submit"
-          :disabled="!review && !canJoin"
-        >
-          <span class="disp">{{ review ? 'Back to the dive' : 'Join the dive' }}</span>
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.4"
-            aria-hidden="true"
-          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-        </button>
       </footer>
     </form>
   </component>
@@ -976,6 +1006,17 @@ function submit(): void {
 }
 .jb-squad-clip { min-height: 0; overflow: hidden; }
 .jb-squad-wrap.open { grid-template-rows: 1fr; visibility: visible; opacity: 1; transform: none; transition-delay: 0s; }
+/* Both actions fade in a beat after the card unfolds, so the squad reads
+   first and the way forward arrives second. */
+.jb-acts { display: flex; gap: 10px; padding-top: 10px; opacity: 0; transform: translateY(6px); transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out); }
+.jb-squad-wrap.open .jb-acts { opacity: 1; transform: none; transition-delay: var(--dur-slow); }
+.jb-acts .btn { min-height: 50px; gap: 10px; justify-content: center; }
+.jb-acts-wb { flex: 0 1 auto; padding: 0 16px; }
+.jb-acts-i { width: 20px; height: 20px; }
+.jb-cta { flex: 1 1 auto; min-height: 50px; padding: 0 22px; font-size: 15px; }
+@container jb (max-width: 420px) {
+  .jb-acts { flex-direction: column-reverse; }
+}
 .jb-title { margin: 0; font-size: clamp(38px, 7vw, 76px); color: var(--text); }
 .jb-title.sm { font-size: clamp(26px, 4vw, 40px); }
 .jb-drafted {
@@ -983,6 +1024,20 @@ function submit(): void {
   display: inline-block;
   animation: slam 0.5s var(--ease-impact) 0.25s both;
 }
+.jb-reel { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.jb-reel li {
+  width: clamp(52px, 11cqw, 72px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, var(--raised), var(--panel));
+  border: 1px solid var(--line-3);
+  border-bottom: 2px solid var(--gold);
+  animation: jb-reel-in var(--dur-slow) var(--ease-out) both;
+  animation-delay: calc(var(--i) * 70ms + 200ms);
+}
+.jb-reel img { width: 80%; height: 80%; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55)); }
+@keyframes jb-reel-in { from { opacity: 0; transform: translateY(8px) scale(0.92); } }
 .jb-lede { margin: 0; max-width: 46ch; color: var(--khaki); font-size: clamp(15px, 1.4vw, 18px); line-height: 1.5; }
 .jb-lede b { color: var(--text); }
 
@@ -1059,16 +1114,16 @@ function submit(): void {
 .jb-kit-g { display: flex; flex-direction: column; gap: 6px; }
 .jb-kit-items { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
 .jb-kit-items li {
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 64px;
   display: grid;
   place-items: center;
   background: var(--raised);
   border: 1px solid var(--line-2);
 }
-.jb-kit-items li.wide { width: 76px; }
-.jb-kit-items img { width: 34px; height: 34px; object-fit: contain; }
-.jb-kit-items li.wide img { width: 68px; height: 40px; }
+.jb-kit-items li.wide { width: 120px; }
+.jb-kit-items img { width: 52px; height: 52px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5)); }
+.jb-kit-items li.wide img { width: 108px; height: 52px; }
 .jb-kit-note { font-size: 12px; line-height: 1.45; color: var(--muted); }
 
 /* Registry — the callsign field lives on the form itself. A dotted rule is its
@@ -1426,28 +1481,21 @@ function submit(): void {
 .jb-wb-bar i { flex: 1; background: var(--line-2); }
 .jb-wb-bar i.on { background: var(--gold); }
 
-/* ---- Sticky go bar ---------------------------------------------------- */
+/* ---- Closing bar ---------------------------------------------------- */
 .jb-go {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
   display: flex;
   align-items: center;
   gap: 14px;
   margin: 0 calc(-1 * var(--pad-page));
   padding: 12px var(--pad-page) max(12px, env(safe-area-inset-bottom));
-  background: rgba(11, 12, 9, 0.94);
-  backdrop-filter: blur(6px);
-  border-top: 1px solid var(--gold);
+  border-top: 1px solid var(--line-3);
 }
 .review .jb-go { margin: 0; padding: 12px 0 0; background: var(--panel); backdrop-filter: none; border-top-color: var(--line-3); }
 .jb-go-who { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .jb-go-who .disp { font-size: 17px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jb-go-need { appearance: none; padding: 0; border: 0; background: none; text-align: left; font-size: 17px; color: var(--dim); cursor: pointer; text-decoration: underline dashed var(--line-5) 1px; text-underline-offset: 4px; }
 .jb-exit { color: var(--muted); white-space: nowrap; }
-.jb-cta { min-height: 50px; padding: 0 22px; font-size: 15px; gap: 10px; }
 @container jb (max-width: 480px) {
   .jb-exit { display: none; }
-  .jb-cta { flex: 1 1 auto; }
 }
 </style>

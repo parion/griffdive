@@ -16,6 +16,7 @@ test('phone host moderation: open the squad, hand over or kick', async ({ browse
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
+  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
 

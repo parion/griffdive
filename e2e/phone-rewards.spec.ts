@@ -20,6 +20,7 @@ test('phone draft: a non-host diver can bank their reward', async ({ browser }) 
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
+  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
 

@@ -133,13 +133,14 @@ watch(ownedWarbonds, (codes) => {
   }
 })
 
-// The tutorial teaches the host's controls, so it is a host's alone: a fresh
-// browser gets it the moment it is first seated as host (right after the name
-// gate). Its Warbonds step already declares ownership, so closing it lands
-// straight on the dive. Squadmates read the join briefing instead, before they
+// The host tutorial teaches the host's controls, so it is a host's alone: a fresh
+// browser gets it as a full page the moment it is first seated as host (right
+// after the name gate), and its Warbonds button declares ownership, so closing
+// it lands straight on the dive. Squadmates read the join briefing instead, before they
 // are seated, and the Tutorial control replays that for them.
 const briefingOpen = ref(false)
 const joinReviewOpen = ref(false)
+const hostReviewOpen = ref(false)
 
 // Only the dive's founding diver gets it unasked: a squadmate the crown later
 // migrates to (the host stepped away) is mid-dive, and reaches it from the
@@ -171,6 +172,7 @@ watch(self, (diver) => {
 
 function closeBriefing(name: string): void {
   briefingOpen.value = false
+  hostReviewOpen.value = false
   markDiveIntroSeen()
   markWarbondIntroSeen()
   if (name && name !== self.value?.name) {
@@ -181,7 +183,7 @@ function closeBriefing(name: string): void {
 
 function openBriefing(): void {
   if (session.selfIsHost.value) {
-    briefingOpen.value = true
+    hostReviewOpen.value = true
   }
   else {
     joinReviewOpen.value = true
@@ -394,6 +396,7 @@ const promotionGateOpen = computed(() =>
   && !!self.value
   && !kicked.value
   && !briefingOpen.value
+  && !hostReviewOpen.value
   && !joinReviewOpen.value
   && !warbondsOpen.value
   && !session.awaitingJoin.value
@@ -597,6 +600,13 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         Loading dive…
       </p>
     </template>
+    <HostBriefing
+      v-else-if="briefingOpen && state"
+      :state="state"
+      :room-code="session.slotName.value"
+      :self-name="self?.name ?? ''"
+      @close="closeBriefing"
+    />
     <p
       v-else-if="session.loadError.value"
       class="panel page"
@@ -933,15 +943,21 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @buy="buyItem"
     />
 
-    <BriefingOverlay
-      v-if="briefingOpen && state"
-      :state="state"
-      :self="self"
-      :self-id="selfId"
-      :mode="session.mode"
-      :online="session.online.value"
-      @close="closeBriefing"
-    />
+    <AppDialog
+      v-if="state && session.selfIsHost.value"
+      v-model:open="hostReviewOpen"
+      title="Host tutorial"
+      description="What the host does, and where your gear lives."
+      size="lg"
+    >
+      <HostBriefing
+        :state="state"
+        :room-code="session.slotName.value"
+        :self-name="self?.name ?? ''"
+        review
+        @close="closeBriefing"
+      />
+    </AppDialog>
 
     <FieldPromotionGate
       v-if="state && self"

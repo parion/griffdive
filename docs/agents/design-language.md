@@ -227,10 +227,15 @@ tile, never a phase screen.
 
 #### Join briefing and host tutorial
 
-`JoinBriefing` is still the joiner's one-page "You've been drafted." registry, and `BriefingOverlay`
-is still the host's replayable Griffdive tutorial. Their deck-plan illustration now depicts the lit
-stage or the phone shell, not three rails. The onboarding odds dial remains a teaching aid; the live
-dive uses `ValorRoll`.
+`JoinBriefing` is the joiner's one-page "You've been drafted." registry; `HostBriefing` is its fork for
+the host ("You hold the wheel."): same registry, kit and risk dial, but the mission loop is the host's
+duties (raise, launch, spin, call, report) plus a "Keep the table" strip. The host sees it as a full page
+on first seating and as a `Host tutorial` dialog (`review`) from the session menu. In both, the squad
+box unfolds and then fades in two actions beneath it — a secondary **Set warbonds** and the primary
+**Join the dive** / **Start the dive** (the only CTA; the footer is identity + Back to base). Neither
+action exists until the callsign is filed. The hero carries a reel of the high-res item renders and the
+issued kit shows them at 52px. The deck-plan illustration depicts the lit stage or the phone shell. The
+onboarding odds dial remains a teaching aid; the live dive uses `ValorRoll`.
 
 #### Phone shell
 
