@@ -46,7 +46,6 @@ test('phone: the Bridge and the dive never overflow sideways', async ({ browser 
   await expectNoHorizontalOverflow(page)
 
   // Before the draw the pinned CTA is the live spin, not a dead deal gate.
-  await expect(page.locator('.beats .beat.current')).toContainText('Call')
   const spin = page.getByRole('button', { name: 'Spin the wheel' })
   await expect(spin).toBeInViewport()
   await spin.click()

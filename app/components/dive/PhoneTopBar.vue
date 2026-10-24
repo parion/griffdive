@@ -2,12 +2,10 @@
 import { missionsPerOperation } from '~~/shared/engine/config'
 import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl, factionImageUrl } from '~~/shared/data/images'
-import type { DivePhase, DiveState } from '~~/shared/engine/types'
+import type { DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
-  phase: DivePhase
-  reporting?: boolean
   mode: 'local' | 'room'
   slotName: string
   canControl?: boolean
@@ -16,12 +14,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   openSquad: []
-  openArmory: []
-  openCodex: []
   openMenu: []
 }>()
 
-const { codexOpen } = useDrawers()
 const diffName = computed(() => difficultyName(props.state.difficulty))
 const front = computed(() => props.state.frontId ? factionImageUrl(props.state.frontId) : null)
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
@@ -74,56 +69,6 @@ const opNumber = computed(() =>
         Squad
       </button>
       <button
-        class="kit-btn"
-        type="button"
-        aria-label="Kit"
-        @click="emit('openArmory')"
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          aria-hidden="true"
-        >
-          <rect
-            x="3.5"
-            y="3.5"
-            width="7"
-            height="7"
-          />
-          <rect
-            x="13.5"
-            y="3.5"
-            width="7"
-            height="7"
-          />
-          <rect
-            x="3.5"
-            y="13.5"
-            width="7"
-            height="7"
-          />
-          <rect
-            x="13.5"
-            y="13.5"
-            width="7"
-            height="7"
-          />
-        </svg>
-        Kit
-      </button>
-      <button
-        class="icon-btn"
-        type="button"
-        aria-label="Codex"
-        @click="codexOpen = true"
-      >
-        <IconBook />
-      </button>
-      <button
         class="icon-btn"
         type="button"
         aria-label="Dive menu"
@@ -154,12 +99,6 @@ const opNumber = computed(() =>
         </svg>
       </button>
     </div>
-
-    <PhaseTabs
-      class="tabs"
-      :phase="phase"
-      :reporting="reporting"
-    />
   </header>
 </template>
 
@@ -169,7 +108,7 @@ const opNumber = computed(() =>
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 10px 0;
+  padding: 8px 10px;
   background: linear-gradient(180deg, #14160f, var(--ground));
   border-bottom: 1px solid var(--line-1);
 }
@@ -198,7 +137,6 @@ const opNumber = computed(() =>
 .front { width: 18px; height: 18px; object-fit: contain; }
 .grow { flex: 1; }
 .squad-btn,
-.kit-btn,
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -217,6 +155,4 @@ const opNumber = computed(() =>
 .squad-lamp { width: 6px; height: 6px; background: var(--teal); }
 .icon-btn { width: 34px; padding: 0; justify-content: center; }
 .icon-btn :deep(svg) { width: 17px; height: 17px; }
-.tabs { padding-bottom: 7px; }
-.tabs :deep(.beats) { width: 100%; }
 </style>

@@ -179,15 +179,15 @@ test('the Codex slide-over keeps the host seated', async ({ browser }) => {
   await expectJoinerLanded(pageB)
   await expect(pageB.locator('.dock .seat')).toHaveCount(2)
 
-  // Opening the Codex overlays the session — the socket stays mounted, so the
-  // host is never migrated away.
-  await pageA.getByRole('button', { name: 'Codex', exact: true }).click()
-  const drawer = pageA.getByRole('dialog', { name: 'Codex' })
-  await expect(drawer).toBeVisible()
-  await expect(drawer.getByText('S Tier')).toBeVisible()
+  // Opening the Codex docks it in the sidebar beside the session — the socket
+  // stays mounted, so the host is never migrated away.
+  const side = pageA.getByRole('complementary', { name: 'Dive tools' })
+  await side.getByRole('button', { name: 'Codex', exact: true }).click()
+  await expect(side.getByRole('heading', { name: 'Codex' })).toBeVisible()
+  await expect(side.getByText('S Tier')).toBeVisible()
 
   await pageA.keyboard.press('Escape')
-  await expect(drawer).toBeHidden()
+  await expect(side.getByRole('heading', { name: 'Codex' })).toBeHidden()
 
   // Still host, still connected, still seated with the peer.
   await expect(pageA.locator('.dock .seat')).toHaveCount(2)

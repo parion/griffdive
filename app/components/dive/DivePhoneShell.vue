@@ -3,8 +3,8 @@
 // (header · crusade · squad) frame a scrolling body, and the action bar pins to
 // the bottom on every screen — info on top, secondary + primary action below.
 // Phases fill the bar through `PhoneActionBar`; the sheet slot (host
-// moderation) overlays it. The `lead` slot is shell-owned, not a phase's: a
-// compact tile ahead of the actions (Brasch's Bargains).
+// moderation) overlays it. The `dock` slot is shell-owned, not a phase's: the
+// tool rail (Kit, Codex, Warbonds, Bargains) pinned just above the bar.
 </script>
 
 <template>
@@ -21,20 +21,17 @@
       <slot />
     </main>
 
+    <slot name="dock" />
+
     <footer
       class="phone-bar"
       aria-label="Dive actions"
     >
-      <span
-        class="bar-notch"
-        aria-hidden="true"
-      />
       <div
         id="phone-bar-detail"
         class="bar-detail"
       />
       <div class="bar-actions">
-        <slot name="lead" />
         <div
           id="phone-bar-secondary"
           class="bar-secondary"
@@ -82,14 +79,6 @@
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
   background: var(--ground);
   border-top: 1px solid var(--line-2);
-}
-.bar-notch {
-  position: absolute;
-  left: 0;
-  top: -1px;
-  width: 64px;
-  height: 3px;
-  background: var(--gold);
 }
 .bar-detail { min-width: 0; }
 .bar-detail:empty { display: none; }

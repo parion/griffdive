@@ -7,7 +7,7 @@ const route = useRoute()
 const onDive = computed(() => route.path.startsWith('/dive'))
 
 const changelogOpen = ref(false)
-const { codexOpen, warbondsOpen } = useDrawers()
+const { codexOpen, warbondsOpen, sidebarHosted } = useDrawers()
 const { online } = useSessionStore()
 </script>
 
@@ -83,14 +83,16 @@ const { online } = useSessionStore()
         :open="changelogOpen"
         @close="changelogOpen = false"
       />
-      <CodexDrawer
-        :open="codexOpen"
-        @update:open="codexOpen = $event"
-      />
-      <WarbondDrawer
-        :open="warbondsOpen"
-        @update:open="warbondsOpen = $event"
-      />
+      <template v-if="!sidebarHosted">
+        <CodexDrawer
+          :open="codexOpen"
+          @update:open="codexOpen = $event"
+        />
+        <WarbondDrawer
+          :open="warbondsOpen"
+          @update:open="warbondsOpen = $event"
+        />
+      </template>
       <ToastStack />
     </div>
   </MotionConfig>
