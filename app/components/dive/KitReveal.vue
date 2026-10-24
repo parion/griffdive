@@ -10,7 +10,6 @@ const props = defineProps<{
   variant: CrusadeVariant
   mode?: CrusadeMode
   support: readonly string[]
-  name: string
 }>()
 
 const open = defineModel<boolean>('open', { required: true })
@@ -64,25 +63,22 @@ onBeforeUnmount(clearTimers)
 <template>
   <AppDialog
     v-model:open="open"
-    title="Resupply inbound"
-    description="Your SEAF Support Package, rolled for this crusade."
-    size="xl"
+    title="SEAF Support Package Inbound"
+    description="We got your back... this time Griffdiver."
+    size="lg"
     :show-close="false"
   >
     <div
       ref="body"
       class="reveal"
     >
-      <p class="reveal-sub">
-        <span class="who">{{ upperName(name) }}</span>
-        <span class="count"><b>{{ shown }}</b> / {{ total }} dispatched</span>
-      </p>
       <StartingKit
         :variant="variant"
         :mode="mode"
         :support="support"
         :shown="shown"
         compact
+        support-only
       />
     </div>
     <p
@@ -106,18 +102,5 @@ onBeforeUnmount(clearTimers)
 </template>
 
 <style scoped>
-.reveal { display: grid; gap: var(--sp-3); }
-.reveal-sub {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--sp-3);
-  margin: 0;
-  color: var(--khaki);
-  font-size: var(--fs-sm);
-  letter-spacing: 0.08em;
-}
-.who { font-weight: 700; color: var(--gold); }
-.count { font-variant-numeric: tabular-nums; }
-.count b { color: var(--text); }
+.reveal { display: grid; }
 </style>

@@ -18,7 +18,9 @@ const props = withDefaults(defineProps<{
   support?: readonly string[] | null
   shown?: number
   compact?: boolean
-}>(), { mode: undefined, support: null, shown: undefined, compact: false })
+  // Show only the pack's own slots, leaving the surplus out.
+  supportOnly?: boolean
+}>(), { mode: undefined, support: null, shown: undefined, compact: false, supportOnly: false })
 
 interface Slot {
   key: string
@@ -39,7 +41,9 @@ const dealt = computed(() => (props.support ?? [])
 const sections = computed(() => {
   let order = 0
   return START_SECTIONS.map((def) => {
-    const owned = sortKitItems(base.value.filter(item => startKindOf(item) === def.kind))
+    const owned = props.supportOnly
+      ? []
+      : sortKitItems(base.value.filter(item => startKindOf(item) === def.kind))
     const rolled = props.support
       ? dealt.value.filter(item => startKindOf(item) === def.kind)
       : []
@@ -64,7 +68,7 @@ const hasRoll = computed(() => rolls.value !== null)
 <template>
   <div
     class="kit"
-    :class="{ compact }"
+    :class="{ compact, 'support-only': supportOnly }"
   >
     <KitSection
       v-for="section in sections"
@@ -90,7 +94,10 @@ const hasRoll = computed(() => rolls.value !== null)
         :tier-label="tierLabel"
       />
     </KitSection>
-    <p class="kit-note">
+    <p
+      v-if="!supportOnly"
+      class="kit-note"
+    >
       <template v-if="hasRoll">
         <span
           class="kit-key"
@@ -116,6 +123,15 @@ const hasRoll = computed(() => rolls.value !== null)
   background: var(--panel);
 }
 .kit.compact { gap: var(--sp-4); }
+/* The pack alone is a handful of tiles: let the sections sit side by side and
+   drop the surplus panel's frame. */
+.kit.support-only {
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  align-items: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
 .kit-note {
   margin: 0;
   font-size: 11px;

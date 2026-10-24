@@ -1001,7 +1001,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       :variant="state.settings.variant"
       :mode="state.settings.mode"
       :support="self.supportKit"
-      :name="self.name"
       @update:open="kitRevealOpen = $event"
     />
 
