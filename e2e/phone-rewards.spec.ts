@@ -48,7 +48,13 @@ test('phone draft: a non-host diver can bank their reward', async ({ browser }) 
   await expect(pageB.locator('#phone-bar-primary')).toContainText('Banked')
   await pageA.locator('.loot-card').first().click()
   await pageA.getByRole('button', { name: /^Bank / }).click()
-  await expect(pageA.getByRole('button', { name: /Next mission/ })).toBeVisible()
+
+  // The squad cannot move on until the host names the Squad Honors winner.
+  const locked = pageA.getByRole('button', { name: 'Award Squad Honors first' })
+  await expect(locked).toBeDisabled()
+  await pageA.getByRole('button', { name: 'Award Squad Honors token to Duo' }).click()
+  await pageA.getByRole('button', { name: 'Award', exact: true }).click()
+  await expect(pageA.getByRole('button', { name: /Next mission/ })).toBeEnabled()
 
   await contextA.close()
   await contextB.close()
