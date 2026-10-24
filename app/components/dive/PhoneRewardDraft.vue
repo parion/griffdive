@@ -235,17 +235,12 @@ const pickedName = computed(() =>
 
     <div
       v-if="squadDrafts.length && squadRevealed"
-      class="squad-mini"
+      class="squad-row"
     >
-      <span class="cap">Squad drafts</span>
-      <div
-        v-for="draft in squadDrafts"
-        :key="draft.id"
-        class="draft-row"
-      >
-        <b>{{ draft.name }}</b>
-        <span>{{ draft.summary.status === 'banked' ? 'Banked ✓' : draft.summary.status === 'skipped' ? 'Sat out' : 'Picking…' }}</span>
-      </div>
+      <SquadDraftBoard
+        :drafts="squadDrafts"
+        compact
+      />
     </div>
 
     <PhoneActionBar>
@@ -356,26 +351,11 @@ const pickedName = computed(() =>
   text-shadow: 0 0 14px color-mix(in srgb, var(--tier) 40%, transparent);
 }
 .loot-card:not([data-tier='C']) .tier { animation: slamIn 0.45s var(--ease-impact) var(--impact, 0ms) backwards; }
-.squad-mini {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.squad-row {
+  padding-top: 2px;
   animation: squad-in 0.4s var(--ease-out) backwards;
 }
 @keyframes squad-in {
   from { opacity: 0; translate: 0 10px; }
 }
-.draft-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 28px;
-  padding: 0 8px;
-  background: var(--panel);
-  box-shadow: inset 0 0 0 1px var(--line-2);
-  font-size: 11px;
-}
-.draft-row b { font-weight: 700; }
-.draft-row span { color: var(--muted); font-size: 10px; }
 </style>
