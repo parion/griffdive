@@ -1,13 +1,9 @@
 <script setup lang="ts">
-import { conditionRiskAt, directiveValorAt, STRAIN_RISK } from '~~/shared/engine/config'
-import { frontById } from '~~/shared/engine/wheel'
+import { conditionRiskAt, directiveValorAt } from '~~/shared/engine/config'
 import { tierZones } from '~~/shared/engine/rewards'
 import {
   canRerollWheel,
-  currentFront,
   currentMisfortune,
-  currentStrain,
-  majorOrderPlanetsForFront,
   misfortuneDecision,
   misfortuneStrandedDivers,
   strainDecision,
@@ -31,17 +27,9 @@ const emit = defineEmits<{
 }>()
 
 const misfortune = computed(() => currentMisfortune(props.state))
-const strain = computed(() => currentStrain(props.state))
-const front = computed(() => currentFront(props.state))
 // Only the host's phone shows the wheel; squadmates have no spin to wait out.
 const drawing = useSpinReveal(() => props.state.wheel?.seed)
 const held = computed(() => drawing.value && props.canControl)
-const pinnedFronts = computed(() =>
-  (props.state.majorOrder?.fronts ?? [])
-    .map(id => frontById(id))
-    .filter((entry): entry is NonNullable<typeof entry> => entry !== null))
-const frontPlanetsLabel = computed(() =>
-  majorOrderPlanetsForFront(props.state).map(planet => planet.name).join(' / '))
 const decision = computed(() => misfortuneDecision(props.state))
 const strainCall = computed(() => strainDecision(props.state))
 const hostName = computed(() =>
@@ -49,8 +37,6 @@ const hostName = computed(() =>
 
 const directiveRisk = computed(() =>
   misfortune.value ? conditionRiskAt(misfortune.value.id, props.state.difficulty) : 0)
-const strainRisk = computed(() =>
-  strain.value ? STRAIN_RISK[strain.value.id] ?? 0 : 0)
 const stranded = computed(() => misfortuneStrandedDivers(props.state))
 const acceptBlocked = computed(() => stranded.value.length > 0)
 const strandedReason = computed(() =>
@@ -88,13 +74,23 @@ const deltas = computed<Partial<Record<RewardTier, number>>>(() => {
   return result
 })
 const rollNote = computed(() => {
-  if (!misfortune.value) {
-    return ''
+  if (!misfortune.value || held.value) {
+    return 'Base odds'
+  }
+  if (!decision.value.decided) {
+    return `If taken · ${misfortune.value.name}`
   }
   return props.state.misfortuneAccepted
-    ? `Accepted · ${misfortune.value.name}`
-    : `If accepted · ${misfortune.value.name}`
+    ? `${misfortune.value.name}'s share`
+    : 'Skipped · base odds'
 })
+
+// Pre-spin the odds line still shows the current team Valor; once the directive
+// lands it previews the movement taking it would buy.
+const showingPreview = computed(() => Boolean(props.state.wheel && misfortune.value && !held.value))
+const rollZones = computed(() => (showingPreview.value ? previewZones.value : zones.value))
+const rollDeltas = computed<Partial<Record<RewardTier, number>>>(() =>
+  showingPreview.value ? deltas.value : {})
 
 const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'))
 </script>
@@ -114,7 +110,22 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
     </header>
 
     <div
-      v-if="state.wheel && misfortune && !held"
+      v-if="!state.wheel || held"
+      class="directive empty"
+    >
+      <div class="dc-top">
+        <span class="cap">{{ held ? 'Drawing' : 'Directive' }}</span>
+      </div>
+      <h2 class="disp dc-name empty-title">
+        {{ held ? 'The wheel turns…' : 'Awaiting the draw' }}
+      </h2>
+      <p class="dc-rule">
+        The wheel draws this mission’s directive. Every rule is on it at every difficulty.
+      </p>
+    </div>
+
+    <div
+      v-else-if="misfortune"
       class="directive"
       :class="{ accepted: state.misfortuneAccepted }"
     >
@@ -156,11 +167,42 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         </button>
       </div>
       <div
-        v-else
-        class="dc-verdict"
+        v-else-if="decision.decided"
+        class="dc-verdict pick-toggle"
         :class="state.misfortuneAccepted ? 'taken' : 'skipped'"
+        role="group"
+        aria-label="Directive call"
       >
-        {{ state.misfortuneAccepted ? 'Taken' : 'Skipped' }}
+        <template v-if="canControl">
+          <button
+            class="pick-choice"
+            type="button"
+            :class="{ on: state.misfortuneAccepted }"
+            :aria-pressed="state.misfortuneAccepted"
+            @click="emit('decide', true)"
+          >
+            Taken
+          </button>
+          <button
+            class="pick-choice"
+            type="button"
+            :class="{ on: !state.misfortuneAccepted }"
+            :aria-pressed="!state.misfortuneAccepted"
+            @click="emit('decide', false)"
+          >
+            Skipped
+          </button>
+        </template>
+        <span
+          v-else
+          class="pick-static"
+        >{{ state.misfortuneAccepted ? 'Taken' : 'Skipped' }}</span>
+      </div>
+      <div
+        v-else
+        class="dc-waiting"
+      >
+        Waiting on the host…
       </div>
       <p
         v-if="acceptBlocked && !decision.decided"
@@ -170,57 +212,17 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
       </p>
     </div>
 
-    <div
-      v-if="strain && state.wheel && !held"
-      class="strain"
-      :class="{ accepted: state.strainAccepted }"
-    >
-      <div class="dc-top">
-        <span class="cap">Strain · whole operation</span>
-        <RiskPips
-          :value="strainRisk"
-          :max="strainRisk"
-          tone="orange"
-        />
-      </div>
-      <h2
-        class="disp strain-name"
-        :style="fitWord(strain.name)"
-      >
-        {{ strain.name }}
-      </h2>
-      <div
-        v-if="!strainCall.decided && canControl"
-        class="dc-actions"
-      >
-        <button
-          class="take"
-          type="button"
-          @click="emit('decideStrain', true)"
-        >
-          Take
-        </button>
-        <button
-          class="skip"
-          type="button"
-          @click="emit('decideStrain', false)"
-        >
-          Skip
-        </button>
-      </div>
-      <div
-        v-else
-        class="dc-verdict"
-        :class="state.strainAccepted ? 'taken' : 'skipped'"
-      >
-        {{ state.strainAccepted ? 'Taken' : 'Skipped' }}
-      </div>
-    </div>
+    <FrontBrief
+      :state="state"
+      :can-control="canControl"
+      :drawing="held"
+      compact
+      @decide-strain="emit('decideStrain', $event)"
+    />
 
     <ValorRoll
-      v-if="state.wheel && misfortune && !held"
-      :zones="previewZones"
-      :deltas="deltas"
+      :zones="rollZones"
+      :deltas="rollDeltas"
       :note="rollNote"
       compact
     />
@@ -235,21 +237,6 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         :can-control="canControl"
         @spin="emit('spin')"
       />
-      <div
-        v-if="front && !held"
-        class="front-pin"
-      >
-        Front locked · <b>{{ front.displayName }}</b><span
-          v-if="frontPlanetsLabel"
-          class="front-planet"
-        > · {{ frontPlanetsLabel }}</span>
-      </div>
-      <div
-        v-else-if="state.majorOrder"
-        class="front-pin"
-      >
-        {{ state.majorOrder.live ? 'Major Order' : 'Faction locked' }} · <b>{{ pinnedFronts.map(entry => entry.displayName).join(' · ') }}</b>
-      </div>
     </div>
 
     <template v-if="!canControl">
@@ -326,8 +313,7 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
 .call-title { font-size: 34px; }
 .call-sub { margin: 0; color: var(--muted); font-size: 12px; }
 
-.directive,
-.strain {
+.directive {
   container-type: inline-size;
   display: flex;
   flex-direction: column;
@@ -339,17 +325,17 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, var(--line-3));
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
-.strain {
-  background:
-    radial-gradient(ellipse 80% 80% at 20% 0%, rgba(255, 159, 67, 0.1), transparent 70%),
-    var(--panel);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--orange) 45%, var(--line-3));
-}
 .directive.accepted { box-shadow: inset 0 0 0 2px var(--gold); }
-.strain.accepted { box-shadow: inset 0 0 0 2px var(--orange); }
+.directive.empty {
+  justify-content: center;
+  min-height: 142px;
+  background:
+    repeating-linear-gradient(-45deg, rgba(255, 214, 66, 0.025) 0 10px, transparent 10px 20px),
+    var(--panel);
+}
+.empty-title { font-size: 26px; line-height: 0.98; }
 .dc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .dc-name { font-size: min(30px, 100cqi / var(--fit-len, 1)); color: var(--gold); }
-.strain-name { font-size: min(22px, 100cqi / var(--fit-len, 1)); color: var(--orange); }
 .dc-rule { margin: 0; color: var(--khaki); font-size: 12px; }
 .dc-actions { display: flex; gap: 7px; }
 .take,
@@ -364,26 +350,54 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
 .take { background: var(--gold); color: var(--on-gold); }
 .take:disabled { opacity: 0.4; }
 .skip { background: var(--rail); color: var(--khaki); box-shadow: inset 0 0 0 1px var(--line-4); }
-.dc-verdict {
-  min-height: 28px;
+.pick-toggle {
   display: flex;
+  gap: 3px;
+  padding: 3px;
+  background: var(--rail);
+  box-shadow: inset 0 0 0 1px var(--line-3);
+}
+.pick-choice,
+.pick-static {
+  display: flex;
+  flex: 1;
   align-items: center;
-  padding: 0 8px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  font: 800 11px var(--font-body);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-.dc-verdict.taken { background: var(--gold); color: var(--on-gold); }
-.dc-verdict.skipped { background: var(--rail); color: var(--muted); }
+.pick-choice {
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.pick-choice:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+  color: var(--text);
+}
+.pick-toggle.taken .pick-choice.on {
+  background: var(--gold);
+  color: var(--on-gold);
+  box-shadow: inset 0 -2px 0 rgba(110, 80, 0, 0.28);
+}
+.pick-toggle.skipped .pick-choice.on {
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--line-4);
+}
+.pick-toggle.taken .pick-static { background: var(--gold); color: var(--on-gold); }
+.pick-toggle.skipped .pick-static { background: var(--raised); color: var(--muted); }
 .dc-block { margin: 0; color: var(--red); font-size: 10px; }
+.dc-waiting { color: var(--dim); font-size: 11px; }
 
 .wheel-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .phone-call :deep(.risk-legend) { display: none; }
 .wheel-wrap :deep(.wheel) { max-width: 360px; }
-.front-pin { color: var(--muted); font-size: 11px; }
-.front-pin b { color: var(--red); }
-.front-planet { color: var(--gold); font-weight: 700; }
 .wait-note { display: flex; flex-direction: column; gap: 4px; }
 .wait-note p { margin: 0; color: var(--muted); font-size: 12px; }
 </style>

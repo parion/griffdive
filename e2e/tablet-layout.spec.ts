@@ -45,7 +45,7 @@ test('landscape tablet: the terminal keeps every phase inside the centre column'
   await dismissWarbondIntro(page)
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
-  // The cards stack under the wheel here; the drawn directive scrolls into view.
+  // The drawn directive's call stays in view beside the wheel here.
   await expect(page.locator('.directive-card').getByRole('button', { name: 'Take it' })).toBeInViewport()
   await expectCentreFits(page)
   await expectNoVerticalOverflow(page)

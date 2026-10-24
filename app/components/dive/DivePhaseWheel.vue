@@ -1,14 +1,10 @@
 <script setup lang="ts">
-import { conditionRiskAt, directiveValorAt, STRAIN_RISK } from '~~/shared/engine/config'
-import { strainImageUrl } from '~~/shared/data/images'
-import { frontById } from '~~/shared/engine/wheel'
+import { conditionRiskAt, directiveValorAt } from '~~/shared/engine/config'
 import { tierZones } from '~~/shared/engine/rewards'
 import {
   canRerollWheel,
-  currentFront,
   currentMisfortune,
   currentStrain,
-  majorOrderPlanetsForFront,
   misfortuneDecision,
   misfortuneStrandedDivers,
   strainDecision,
@@ -33,17 +29,7 @@ const emit = defineEmits<{
 
 const misfortune = computed(() => currentMisfortune(props.state))
 const drawing = useSpinReveal(() => props.state.wheel?.seed)
-const front = computed(() => currentFront(props.state))
-// A pinned Major Order shows before the first spin, when the wheel has not
-// derived a front yet.
-const pinnedFronts = computed(() =>
-  (props.state.majorOrder?.fronts ?? [])
-    .map(id => frontById(id))
-    .filter((entry): entry is NonNullable<typeof entry> => entry !== null))
-const frontPlanetsLabel = computed(() =>
-  majorOrderPlanetsForFront(props.state).map(planet => planet.name).join(' / '))
 const strain = computed(() => currentStrain(props.state))
-const strainImage = computed(() => (strain.value ? strainImageUrl(strain.value.id) : undefined))
 const decision = computed(() => misfortuneDecision(props.state))
 const strainCall = computed(() => strainDecision(props.state))
 const hostName = computed(() =>
@@ -55,8 +41,6 @@ const directiveShare = computed(() =>
   misfortune.value
     ? directiveValorAt(misfortune.value.id, props.state.difficulty, props.state.divers.length)
     : 0)
-const strainRisk = computed(() =>
-  strain.value ? STRAIN_RISK[strain.value.id] ?? 0 : 0)
 
 const stranded = computed(() => misfortuneStrandedDivers(props.state))
 const acceptBlocked = computed(() => stranded.value.length > 0)
@@ -100,13 +84,13 @@ const rerollFront = computed(() => canRerollWheel(props.state, 'front'))
 const rerollStrain = computed(() => canRerollWheel(props.state, 'strain'))
 
 const cardNote = computed(() => {
-  if (!misfortune.value) {
-    return ''
+  if (drawing.value || !misfortune.value) {
+    return 'Base odds'
   }
-  if (props.state.misfortuneAccepted) {
-    return `${misfortune.value.name}'s share`
+  if (!decision.value.decided) {
+    return `If taken · ${misfortune.value.name}`
   }
-  return `If accepted · ${misfortune.value.name}`
+  return props.state.misfortuneAccepted ? `${misfortune.value.name}'s share` : 'Skipped · base odds'
 })
 
 function take(): void {
@@ -116,12 +100,6 @@ function take(): void {
 }
 function skip(): void {
   emit('decide', false)
-}
-function takeStrain(): void {
-  emit('decideStrain', true)
-}
-function skipStrain(): void {
-  emit('decideStrain', false)
 }
 function deal(): void {
   emit('deal')
@@ -140,27 +118,6 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
         :can-control="canControl"
         @spin="emit('spin')"
       />
-
-      <div
-        v-if="front && !drawing"
-        class="front-pin"
-      >
-        <span class="cap">Front locked</span>
-        <b>{{ front.displayName }}</b>
-        <span
-          v-if="frontPlanetsLabel"
-          class="front-planet"
-        >· {{ frontPlanetsLabel }}</span>
-        <span v-if="strain && state.strainAccepted">· {{ strain.name }}</span>
-      </div>
-      <div
-        v-else-if="state.majorOrder"
-        class="front-pin"
-      >
-        <span class="cap">{{ state.majorOrder.live ? 'Major Order pinned' : 'Faction locked' }}</span>
-        <b>{{ pinnedFronts.map(entry => entry.displayName).join(' · ') }}</b>
-        <span v-if="strain && state.strainAccepted">· {{ strain.name }}</span>
-      </div>
     </div>
 
     <div class="decision-side">
@@ -233,18 +190,35 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
           </div>
           <div
             v-else-if="decision.decided"
-            class="dc-verdict stamp-in"
+            class="dc-verdict pick-toggle stamp-in"
             :class="state.misfortuneAccepted ? 'taken' : 'skipped'"
+            role="group"
+            aria-label="Directive call"
           >
-            {{ state.misfortuneAccepted ? 'Taken' : 'Skipped' }}
-            <button
-              v-if="canControl && state.phase === 'decision'"
-              class="switch"
-              type="button"
-              @click="emit('decide', !state.misfortuneAccepted)"
-            >
-              Switch
-            </button>
+            <template v-if="canControl">
+              <button
+                class="pick-choice"
+                type="button"
+                :class="{ on: state.misfortuneAccepted }"
+                :aria-pressed="state.misfortuneAccepted"
+                @click="take"
+              >
+                Taken
+              </button>
+              <button
+                class="pick-choice"
+                type="button"
+                :class="{ on: !state.misfortuneAccepted }"
+                :aria-pressed="!state.misfortuneAccepted"
+                @click="skip"
+              >
+                Skipped
+              </button>
+            </template>
+            <span
+              v-else
+              class="pick-static"
+            >{{ state.misfortuneAccepted ? 'Taken' : 'Skipped' }}</span>
           </div>
           <div
             v-else
@@ -260,84 +234,12 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
           </p>
         </article>
 
-        <article
-          v-if="strain"
-          class="strain-card rise"
-          :class="{ accepted: state.strainAccepted, decided: strainCall.decided }"
-        >
-          <span class="strain-icon">
-            <img
-              v-if="strainImage"
-              :src="strainImage"
-              alt=""
-              draggable="false"
-            >
-            <svg
-              v-else
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            ><path d="m12 2.8 2.7 6.1 6.5.6-4.9 4.3 1.5 6.4L12 16.9l-5.8 3.3 1.5-6.4-4.9-4.3 6.5-.6z" /></svg>
-          </span>
-          <span class="strain-copy">
-            <span class="cap strain-cap">
-              Strain · whole operation
-              <RiskPips
-                :value="strainRisk"
-                :max="strainRisk"
-                tone="orange"
-              />
-            </span>
-            <b
-              class="disp strain-name"
-              :style="fitWord(strain.name)"
-            >{{ strain.name }}</b>
-            <span class="strain-blurb">{{ strain.blurb }}</span>
-          </span>
-          <span
-            v-if="!strainCall.decided && canControl"
-            class="strain-actions"
-          >
-            <button
-              class="take mini"
-              type="button"
-              @click="takeStrain"
-            >
-              Take
-            </button>
-            <button
-              class="skip mini"
-              type="button"
-              @click="skipStrain"
-            >
-              Skip
-            </button>
-          </span>
-          <span
-            v-else-if="strainCall.decided"
-            class="strain-verdict stamp-in"
-            :class="state.strainAccepted ? 'taken' : 'skipped'"
-          >
-            {{ state.strainAccepted ? 'Taken' : 'Skipped' }}
-            <button
-              v-if="canControl && state.phase === 'strain'"
-              class="switch"
-              type="button"
-              @click="emit('decideStrain', !state.strainAccepted)"
-            >
-              Switch
-            </button>
-          </span>
-          <span
-            v-else
-            class="dc-waiting"
-          >Waiting…</span>
-        </article>
+        <FrontBrief
+          :state="state"
+          :can-control="canControl"
+          :drawing="drawing"
+          @decide-strain="emit('decideStrain', $event)"
+        />
 
         <ValorRoll
           :zones="previewZones"
@@ -413,19 +315,52 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
         </p>
       </template>
 
-      <div
-        v-else
-        class="empty-call"
-      >
-        <span class="cap">{{ drawing ? 'Drawing' : 'No directive yet' }}</span>
-        <p class="disp empty-title">
-          {{ drawing ? 'The wheel turns…' : canControl ? 'Hit the hub to spin' : 'Waiting on the spin' }}
-        </p>
-        <p class="empty-copy">
-          The wheel draws this mission’s directive. Every rule is on it at every difficulty —
-          altitude only changes what the risk buys.
-        </p>
-      </div>
+      <template v-else>
+        <article class="directive-card empty-call">
+          <div class="dc-top">
+            <span class="cap">{{ drawing ? 'Drawing' : 'Directive' }}</span>
+          </div>
+          <p class="disp empty-title">
+            {{ drawing ? 'The wheel turns…' : canControl ? 'Awaiting the draw' : 'Waiting on the spin' }}
+          </p>
+          <p class="empty-copy">
+            The wheel draws this mission’s directive. Every rule is on it at every difficulty —
+            altitude only changes what the risk buys.
+          </p>
+        </article>
+
+        <FrontBrief
+          :state="state"
+          :can-control="canControl"
+          :drawing="drawing"
+          @decide-strain="emit('decideStrain', $event)"
+        />
+
+        <ValorRoll
+          :zones="zones"
+          note="Base odds"
+          compact
+        />
+
+        <div
+          v-if="canControl"
+          class="deal-row"
+        >
+          <button
+            class="cta cut"
+            :class="{ 'live': !drawing, 'cta-sweep': !drawing }"
+            type="button"
+            :disabled="drawing"
+            @click="emit('spin')"
+          >
+            {{ drawing ? 'The wheel turns…' : 'Spin the wheel' }}
+            <IconRefresh
+              class="cta-icon"
+              aria-hidden="true"
+            />
+          </button>
+        </div>
+      </template>
     </div>
   </section>
 </template>
@@ -435,7 +370,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 470px);
   gap: clamp(24px, 4vw, 64px);
-  align-items: center;
+  align-items: start;
   width: 100%;
   max-width: 1180px;
   margin: 0 auto;
@@ -469,21 +404,9 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
   min-width: 0;
 }
-.front-pin { width: min(100%, 420px); }
-.front-pin {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 8px;
-  min-height: 30px;
-  color: var(--khaki);
-  font-size: 12px;
-}
-.front-pin b { color: var(--red); }
-.front-planet { color: var(--gold); font-weight: 700; }
 .decision-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 
 .directive-card {
@@ -546,75 +469,52 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   box-shadow: inset 0 0 0 1px var(--line-4);
 }
 .skip:hover { color: var(--text); box-shadow: inset 0 0 0 1px var(--line-5); }
-.dc-verdict,
-.strain-verdict {
+.stamp-in { animation: stampFlat 0.32s var(--ease-out) both; }
+/* The post-pick call is a real two-way toggle, not a footnote. */
+.pick-toggle {
   display: flex;
+  gap: 3px;
+  padding: 3px;
+  background: var(--rail);
+  box-shadow: inset 0 0 0 1px var(--line-3);
+}
+.pick-choice,
+.pick-static {
+  display: flex;
+  flex: 1;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 34px;
-  padding: 0 10px;
-  font-size: 11px;
-  font-weight: 800;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  font: 800 12px var(--font-body);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-.dc-verdict.taken,
-.strain-verdict.taken { color: var(--on-gold); background: var(--gold); }
-.dc-verdict.skipped,
-.strain-verdict.skipped { color: var(--muted); background: var(--rail); box-shadow: inset 0 0 0 1px var(--line-3); }
-.stamp-in { animation: stampFlat 0.32s var(--ease-out) both; }
-.switch {
-  min-height: 24px;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: 700 9px var(--font-body);
-  letter-spacing: 0.1em;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.pick-choice {
+  background: transparent;
+  color: var(--muted);
   cursor: pointer;
+  transition: background-color var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast);
 }
+.pick-choice:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+  color: var(--text);
+}
+.pick-toggle.taken .pick-choice.on {
+  background: var(--gold);
+  color: var(--on-gold);
+  box-shadow: inset 0 -2px 0 rgba(110, 80, 0, 0.28);
+}
+.pick-toggle.skipped .pick-choice.on {
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--line-4);
+}
+.pick-toggle.taken .pick-static { background: var(--gold); color: var(--on-gold); }
+.pick-toggle.skipped .pick-static { background: var(--raised); color: var(--muted); }
 .dc-waiting { color: var(--dim); font-size: 12px; }
 .dc-block { margin: 0; color: var(--red); font-size: 12px; }
-
-.strain-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 10px 10px 14px;
-  background: linear-gradient(90deg, rgba(255, 159, 67, 0.08), var(--panel) 55%);
-  box-shadow: inset 0 0 0 1px var(--line-3);
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
-  animation-delay: 80ms;
-}
-.strain-card.accepted { box-shadow: inset 0 0 0 1px var(--orange), 0 0 18px rgba(255, 159, 67, 0.1); }
-.strain-icon {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  color: var(--red);
-}
-.strain-icon img { width: 100%; height: 100%; object-fit: contain; }
-.strain-copy { container-type: inline-size; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.strain-cap { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
-.strain-cap :deep(.pips i) { width: 12px; height: 12px; }
-.strain-name { font-size: min(18px, 100cqi / var(--fit-len, 1)); line-height: 1.05; color: var(--text); }
-.strain-blurb {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.35;
-}
-.strain-actions { display: flex; gap: 4px; }
-.take.mini,
-.skip.mini { flex: none; min-height: 38px; padding: 0 12px; font-size: 11px; }
-.strain-verdict { min-height: 30px; font-size: 10px; }
 
 .deal-row { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
 .cta {
@@ -669,18 +569,15 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
 .reroll:hover:not(:disabled) { color: var(--gold); text-decoration-color: currentColor; }
 .reroll:disabled { opacity: 0.35; cursor: not-allowed; text-decoration: none; }
 .waiting { color: var(--muted); font-size: 13px; text-align: center; }
+/* The pre-spin card reserves the settled directive card's footprint, so the
+   odds strip and CTA don't jump when the directive lands. */
 .empty-call {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 22px 24px;
-  background:
-    repeating-linear-gradient(-45deg, rgba(255, 214, 66, 0.025) 0 10px, transparent 10px 20px),
-    var(--panel);
-  box-shadow: inset 0 0 0 1px var(--line-2);
+  justify-content: center;
+  min-height: 202px;
 }
-.empty-title { font-size: 28px; color: var(--gold); }
-.empty-copy { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.empty-title { margin: 0; color: var(--gold); font-size: 28px; line-height: 0.98; }
+.empty-copy { margin: 0; max-width: 44ch; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.cta-icon { width: 20px; height: 20px; }
 
 /* Short desktops: shed the explainer line before the CTA leaves the fold. */
 @media (min-width: 901px) and (max-height: 860px) {

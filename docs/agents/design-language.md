@@ -127,16 +127,23 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
 #### Call — `DivePhaseWheel`
 
 One lit call: `WheelOfMisfortune` (a real seeded SVG wheel inside a gold tick bezel; the hub button
-is the only spin control) fills the left column at stage height (`--wheel-size`). The landed wedge
-lights gold and juts past the rim; labels on the wheel's left half flip to read upright; the hub
-shows the drawn rule's skulls and "Risk N" — never "+N". There is no risk legend. The heading and
-the drawn **Squad Directive** sit in the right column and, on the operation's first mission, the **strain** card.
-The strain is a compact row (emblem, name, blurb, small take/skip). Both use the same take/skip
-grammar; a stranded rule disables "Take it" with the reason. The
-`ValorRoll` strip under them previews the percentage-point movement of hovering or picking a rule.
-The host's **Deal the pacts** CTA waits until both calls are decided. The front plan (Major Order /
-locked faction / rolled) is chosen at setup with `FrontPlanPicker`, never here; a pinned run shows
-its one-line pin on the stage before the first spin as well as after it. Rerolls sit under the deal CTA as quiet secondary controls.
+and the primary **Spin the wheel** CTA both spin it) fills the left column at stage height
+(`--wheel-size`). The landed wedge lights gold and juts past the rim; labels on the wheel's left
+half flip to read upright; the hub shows the drawn rule's skulls and "Risk N" — never "+N". There
+is no risk legend. The right column keeps one order before and after the draw: the **Squad
+Directive** (or its pre-spin placeholder), a **front card** carrying the faction emblem, front name
+and its Major Order planet(s), the **strain** as its own section inside that same card, the
+`ValorRoll` strip, then the primary CTA. Both calls use the same take/skip grammar; a stranded rule
+disables "Take it" with the reason, and either call can be flipped with a large two-way
+**Taken / Skipped** toggle until the first pact locks (the strain only on the operation's first
+mission). The pre-spin strip is the current team odds ("Base odds"); after the draw it previews the
+movement accepting the directive would buy. Gains are labelled `B +18`; a tier that shrinks reads
+its settled odds instead of a red negative, and the bar marks gains with one clean gold chunk at
+the tier's leading edge rather than painting every boundary a different color. The host's CTA is
+**Spin the wheel** before the draw and **Deal the pacts** (disabled until both calls are decided)
+after it. The front plan (Major Order / locked faction / rolled) is chosen at setup with
+`FrontPlanPicker`, never here; a pinned run shows its front card under the directive before the
+first spin as well as after it. Rerolls sit under the deal CTA as quiet secondary controls.
 
 #### Pacts — `PactScreen`
 
@@ -203,10 +210,13 @@ headline takes one pass of light — all stilled by reduced motion.
 #### ValorRoll — the one odds primitive
 
 `app/components/dive/ValorRoll.vue` draws the Valor odds line: tier zones whose widths are
-cumulative reach chances, a ruler, zone labels with odds (or percentage-point deltas), and pins at
-each rolled face. It is used on the call, pacts, dive (locked) and loot (pins) screens, so the same
-visual grammar explains every roll. Zones under 0.5% read `<1%`; 0% zones are silent. It is
-presentation only and reads `tierZones` from the engine.
+cumulative reach chances, a ruler, zone labels with odds (or percentage-point gains), and pins at
+each rolled face. The call, pacts, dive (locked) and loot (pins) screens all use it, so the same
+visual grammar explains every roll. Zones under 0.5% read `<1%`; 0% zones are silent. When a
+preview improves the line, each growing tier is labelled `+N` and lights one clean gold chunk at
+its leading edge; a shrinking tier keeps its settled odds label and no red block, since the bar
+already shows the narrower zone. The signed movement stays in the zone tooltip. It is presentation
+only and reads `tierZones` from the engine.
 
 #### Kit, Codex, Warbonds
 
@@ -231,9 +241,10 @@ ellipsizes a long item name: optional detail above, an optional secondary
 on the left and one primary action filling the rest, supplied through `PhoneActionBar`'s deferred
 teleports. Report and forfeit actions use the same bar, and so do the `MissionCleared` and
 `OperationCleared` interstitials (their `phone` variants put the host's CTA in the bar). The squad sheet is a dialog with inline
-moderation; the wheel call is a flat top-down stage (directive, strain, wheel), not a bottom sheet.
-Short phones keep the call's take/skip buttons reachable by scrolling, and tap targets stay at least
-24px. No page-level horizontal overflow is allowed; long live text needs `min-width: 0`.
+moderation; the wheel call is a flat top-down stage (directive, front-and-strain card, odds, wheel),
+not a bottom sheet. Short phones keep the call's take/skip buttons reachable by scrolling, and tap
+targets stay at least 24px. No page-level horizontal overflow is allowed; long live text needs
+`min-width: 0`.
 
 Portrait tablets share the phone shell, growing its column to `min(100vw, 720px)`. Landscape tablets
 use the desktop shell until the structural breakpoint.
