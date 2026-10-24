@@ -171,6 +171,16 @@ filing, so the squad knows what to chase; the card states why a turn is ineligib
 must still qualify or the engine strikes the spin and claws back an auto-banked solo token. Phone
 reports pin **File report / File failure** in the fixed action bar.
 
+#### Mission failed — `DivePhaseForfeit`
+
+The failure beat speaks the loot draft's grammar in red. `ForfeitPicker` deals the diver's offer as
+the same tier-edged art cards as `RewardDraft` (letterboxed 4:3 well, tier letter, `fitWord` name,
+category line; a 104px thumb row on phones), staggered in with `riseIn`. Marking a card lights its
+edge red and greys the art; the held Remove confirm stamps **Confiscated** on it and fades the rest.
+Below the cards sit the squad's forfeit status, the pinned Remove bar (the shared `PhoneActionBar`
+on phones) and the aftermath tiles (restart, difficulty held, front held). The screen is capped at
+the loot width (1000px). The `.sur-tile` class is the e2e hook.
+
 #### Loot — `RewardDraft`
 
 The draft is "Bank one item": one card per option. **The item art is the

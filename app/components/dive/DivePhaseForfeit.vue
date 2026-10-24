@@ -122,6 +122,9 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
         >
           <span class="flicker">Mission failed</span>
         </h1>
+        <p class="ff-sub">
+          No reward draft. Every diver gives up one earned item, then the operation restarts.
+        </p>
       </div>
     </header>
 
@@ -440,6 +443,9 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
 .forfeit {
   position: relative;
   display: flex;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
   flex-direction: column;
   gap: var(--gap-panel);
   min-width: 0;
@@ -510,6 +516,7 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
   white-space: nowrap;
 }
 
+.ff-sub { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
 .ff-notice {
   flex: 0 1 310px;
   min-width: 0;
@@ -763,6 +770,7 @@ onBeforeUnmount(() => clearTimeout(holdTimer))
 .ff-squad {
   position: relative;
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: var(--sp-2);
   margin: 0;
   padding: 0;
