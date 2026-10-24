@@ -45,9 +45,9 @@ app/
                    ArmoryDrawer + KitPanel — the Kit drawer and the lean Kit itself,
                    BraschBargains + BargainsDrawer — the per-mission shop in a slide-over,
                    AchievedOverlay — the full-bleed Griffdive achieved takeover,
-                   BriefingOverlay — the host's replayable Griffdive tutorial,
+                   HostBriefing — the host's tutorial (fork of JoinBriefing),
                    JoinBriefing — the joiner's one-page briefing, also replayed as the
-                   squadmate's Field manual, JoinNameGate — the host's name gate,
+                   squadmate's Field manual
                    DivePhone + DivePhoneShell/PhoneTopBar/PhoneWheel/PhonePacts/
                    PhoneDiving/PhoneRewardDraft/PhoneActionBar — the fixed phone shell,
                    its per-phase layouts and the pinned bottom action bar (the frame lives in
@@ -224,9 +224,9 @@ A browser with no stored seat in a room is held before its first `hello` (`await
 through `GET /api/rooms/:code` to tell the two first visits apart — the same test `joinDiver` uses
 to crown a host:
 
-- **Empty room** → the host's own fresh dive. A named host connects straight away; an unnamed one
-  gets `JoinNameGate`. Either way the founding diver's first seat opens the host tutorial
-  (`BriefingOverlay`).
+- **Empty room** → the host's own fresh dive. The host connects straight away with no intermediate
+  gate; the founding diver's first seat opens the host tutorial
+  (`HostBriefing`, a full page).
 - **Room with a squad** → a join by link. `JoinBriefing` renders as a full page from the pre-join
   snapshot (re-read every 10s so its roster stays live; `seatingBlocked` disables the join and says
   why). Confirming stores the name, marks the briefing and the one-shot Warbonds prompt seen, and

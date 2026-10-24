@@ -52,23 +52,3 @@ test('the star rating is a keyboard-navigable radio group', async ({ page }) => 
   await expect(page.getByRole('radio', { name: '2 stars' })).toHaveAttribute('aria-checked', 'true')
   await expect(threeStars).toHaveAttribute('aria-checked', 'false')
 })
-
-test('the join name gate cannot be dismissed', async ({ browser }) => {
-  const context = await browser.newContext()
-  const page = await context.newPage()
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Host an online dive' }).click()
-  await expect(page).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
-
-  const dialog = page.getByRole('dialog', { name: 'Identify yourself, diver' })
-  await expect(dialog).toBeVisible()
-  await expect(dialog.getByLabel('Your name')).toBeFocused()
-
-  await page.keyboard.press('Escape')
-  await expect(dialog).toBeVisible()
-
-  await page.mouse.click(4, 4)
-  await expect(dialog).toBeVisible()
-
-  await context.close()
-})
