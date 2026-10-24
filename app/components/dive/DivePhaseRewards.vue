@@ -6,6 +6,7 @@ import {
   canRerollRewards,
   diverOptions,
   draftSummaryFor,
+  honorsPending,
   pactRiskOf,
   rewardPoolFor,
   teamRiskOf,
@@ -78,6 +79,7 @@ const pactRisk = computed(() => (props.self ? pactRiskOf(props.self, props.state
     :ready="ready"
     :can-control="canControl"
     :advance-label="advanceLabel"
+    :advance-locked="honorsPending(state)"
     @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
     @reroll="emit('reroll')"
     @advance="emit('advance')"

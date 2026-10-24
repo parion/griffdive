@@ -44,6 +44,8 @@ const props = withDefaults(defineProps<{
   picksTotal?: number
   baseTier?: RewardTier | null
   advanceLabel?: string
+  // Squad Honors still need a winner: the host cannot move the squad on.
+  advanceLocked?: boolean
 }>(), {
   optionsLost: 0,
   squadDrafts: () => [],
@@ -69,6 +71,7 @@ const props = withDefaults(defineProps<{
   picksTotal: 0,
   baseTier: null,
   advanceLabel: 'Next mission',
+  advanceLocked: false,
 })
 
 const emit = defineEmits<{
@@ -458,9 +461,10 @@ const kickerText = computed(() => {
         v-else-if="ready && canControl"
         class="cta cut cta-sweep"
         type="button"
+        :disabled="advanceLocked"
         @click="emit('advance')"
       >
-        {{ advanceLabel }}
+        {{ advanceLocked ? 'Award Squad Honors first' : advanceLabel }}
         <svg
           width="22"
           height="14"

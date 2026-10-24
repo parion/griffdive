@@ -5,7 +5,7 @@ import { STARTING_KITS, earnedKit, mergeKit, startingItemIds } from './progressi
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver, resolveFrontPlan } from './room'
 import { deriveSeed, hashString } from './rng'
-import { activeDivers, activeMisfortune, allDiversPicked, availableCaches, bonusEligibleFor, canBuyItem, catchUpOptionsFor, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, squadSize, strainDecision } from './selectors'
+import { activeDivers, activeMisfortune, allDiversPicked, availableCaches, bonusEligibleFor, canBuyItem, catchUpOptionsFor, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, honorsPending, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, squadSize, strainDecision } from './selectors'
 import { bargainKindOf, itemPrice, missionHaul } from './rewards'
 import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 
@@ -674,7 +674,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
     }
 
     case 'ADVANCE': {
-      if (state.phase !== 'rewards' || !allDiversPicked(state)) {
+      if (state.phase !== 'rewards' || !allDiversPicked(state) || honorsPending(state)) {
         return state
       }
       const missionIndex = state.missionIndex + 1

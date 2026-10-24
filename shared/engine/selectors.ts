@@ -721,6 +721,22 @@ export function bonusEligible(state: DiveState): boolean {
   )
 }
 
+// A spun contest nobody has been named for yet. The squad cannot move on until
+// the host names a winner: ADVANCE refuses while this holds, and the Next
+// controls read it to explain why they are locked.
+export function honorsPending(state: DiveState): boolean {
+  return state.phase === 'rewards'
+    && state.bonusSeed !== null
+    && state.bonusWinnerIds.length === 0
+}
+
+// Missions until the cadence next puts honors on the table: 0 when the current
+// mission is due. The report card names it when the spin is unavailable.
+export function missionsUntilHonors(missionIndex: number, squadSizeValue: number): number {
+  const interval = bonusIntervalFor(squadSizeValue)
+  return (interval - (missionIndex % interval)) % interval
+}
+
 // Why this mission has no honors, for the UI — null when it does (or when the
 // draft hasn't been reported yet).
 export function bonusIneligibilityReason(state: DiveState): string | null {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { currentFront, draftSummaryFor } from '~~/shared/engine/selectors'
+import { currentFront, draftSummaryFor, honorsPending } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 // The beat between two missions of one operation: the whole squad has banked,
@@ -35,7 +35,13 @@ const nextDrop = computed(() => {
   const where = front.value ? ` · ${front.value.displayName} front` : ''
   return `Next drop: mission ${mission.value + 1} of ${props.opLength}${where}`
 })
-const ctaLabel = computed(() => (opEnds.value ? 'Complete operation' : 'Next mission'))
+const honorsLocked = computed(() => honorsPending(props.state))
+const ctaLabel = computed(() => {
+  if (honorsLocked.value) {
+    return 'Award Squad Honors first'
+  }
+  return opEnds.value ? 'Complete operation' : 'Next mission'
+})
 </script>
 
 <template>
@@ -96,6 +102,7 @@ const ctaLabel = computed(() => (opEnds.value ? 'Complete operation' : 'Next mis
           v-if="canControl"
           class="bar-cta cta-sweep"
           type="button"
+          :disabled="honorsLocked"
           @click="emit('advance')"
         >
           <span class="disp">{{ ctaLabel }}</span>
@@ -114,6 +121,7 @@ const ctaLabel = computed(() => (opEnds.value ? 'Complete operation' : 'Next mis
         v-if="canControl"
         class="cta cut cta-sweep"
         type="button"
+        :disabled="honorsLocked"
         @click="emit('advance')"
       >
         {{ ctaLabel }}
@@ -257,6 +265,7 @@ const ctaLabel = computed(() => (opEnds.value ? 'Complete operation' : 'Next mis
   cursor: pointer;
 }
 .cta:hover { filter: brightness(1.06); }
+.cta:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
 .waiting { margin: 0; color: var(--muted); font-size: 14px; text-align: center; }
 
 @media (max-width: 860px) {

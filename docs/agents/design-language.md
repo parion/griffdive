@@ -177,9 +177,13 @@ just above the action bar: a KIT handle that rises into the panel (up to 64dvh) 
 #### Report — `MissionReport`
 
 The report window is a two-column lit form on desktop and one column on phones: mission stars,
-credit haul (sample tubes + time cells), and the **Squad Honors** card. Honors are spun here, before
-filing, so the squad knows what to chase; the card states why a turn is ineligible. The filed report
-must still qualify or the engine strikes the spin and claws back an auto-banked solo token. Phone
+credit haul (sample tubes + time cells), and the **Squad Honors** card. Honors are rolled by filing:
+no spin button — the card carries the **`HonorsReel`** slot reel on its right, which winds down onto
+the seeded stat after **File report** is pressed (`HONORS_REEL_MS`, then a `HONORS_DWELL_MS` beat) before
+the rewards screen is brought in. When honors are not due the reel is replaced by a plain message
+naming the next mission they return. The filed report must still qualify or the engine strikes the
+spin and claws back an auto-banked solo token. Every Next mission / Start operation control locks
+until the host awards the honors. Phone
 reports pin **File report / File failure** in the fixed action bar.
 
 #### Loot — `RewardDraft`

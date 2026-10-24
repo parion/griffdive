@@ -8,7 +8,7 @@ import { DIVERS_CHOICE_OPTION_ID, bargainKindOf, itemPrice, maxCeiling } from '.
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { activeMisfortune, allDiversPicked, availableCaches, awaitingDiverIds, bargainShelfFor, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, setupRiskOf, pactRiskOf, promotionPending, rewardPoolFor, squadSize, teamRiskOf } from './selectors'
+import { activeMisfortune, allDiversPicked, availableCaches, awaitingDiverIds, bargainShelfFor, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, honorsPending, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, setupRiskOf, pactRiskOf, promotionPending, rewardPoolFor, squadSize, teamRiskOf } from './selectors'
 import { deriveFront, deriveStrain } from './wheel'
 import type { DiveState, DiverState, EngineAction } from './types'
 
@@ -1867,6 +1867,17 @@ describe('reward tokens + bonus honors', () => {
       optionIds: [DIVERS_CHOICE_OPTION_ID],
     })).toBe(state)
     expect(state.divers[0]?.rewardTokens).toBe(before)
+  })
+
+  it('holds the squad on the rewards screen until the honors winner is named', () => {
+    let state = twoDiverRewards()
+    state = reduce(state, { type: 'SPIN_BONUS', seed: 7 })
+    expect(allDiversPicked(state)).toBe(true)
+    expect(honorsPending(state)).toBe(true)
+    expect(reduce(state, { type: 'ADVANCE' })).toBe(state)
+    const awarded = reduce(state, { type: 'AWARD_BONUS', playerIds: ['p2'] })
+    expect(honorsPending(awarded)).toBe(false)
+    expect(reduce(awarded, { type: 'ADVANCE' }).phase).toBe('spin')
   })
 
   it('resets the bonus ceremony and the ban flag on advance', () => {

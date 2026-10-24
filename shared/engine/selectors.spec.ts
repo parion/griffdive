@@ -3,7 +3,7 @@ import { ITEMS_BY_ID, WARBONDS } from '../data/catalog'
 import { MAX_DIFFICULTY, MIN_DIFFICULTY, STRAIN_RISK, conditionRiskAt, directiveValorAt, directiveWeightFor } from './config'
 import { itemPrice, oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { actingDiverIds, activeMisfortune, activeStrain, armoryRules, awaitingDiverIds, bargainLamp, bargainShelfFor, bargainSlotKinds, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, majorOrderPlanetsForFront, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
+import { actingDiverIds, activeMisfortune, activeStrain, armoryRules, awaitingDiverIds, bargainLamp, bargainShelfFor, bargainSlotKinds, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, majorOrderPlanetsForFront, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, missionsUntilHonors, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
 import { isPactSelectable, rollPactOffer } from './pacts'
 import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -483,5 +483,22 @@ describe('majorOrderPlanetsForFront', () => {
       .toEqual(['Esker'])
     expect(majorOrderPlanetsForFront({ ...state, frontId: null })).toEqual([])
     expect(majorOrderPlanetsForFront({ ...state, majorOrder: null })).toEqual([])
+  })
+})
+
+describe('missionsUntilHonors', () => {
+  it.each([
+    // Solo: due every third mission (index 0, 3, 6…).
+    [0, 1, 0],
+    [1, 1, 2],
+    [2, 1, 1],
+    [3, 1, 0],
+    // Pair: every other mission.
+    [1, 2, 1],
+    [2, 2, 0],
+    // A full squad is due every mission.
+    [5, 4, 0],
+  ])('mission index %i, squad of %i → %i missions out', (missionIndex, size, expected) => {
+    expect(missionsUntilHonors(missionIndex, size)).toBe(expected)
   })
 })

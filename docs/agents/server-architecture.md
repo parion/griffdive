@@ -30,7 +30,7 @@ app/
                    ValorRoll — the shared d100 odds line (zones, deltas, roll pins),
                    PactScreen — the self-service pacts hand,
                    KitSnapshot — the compact kit strip for non-hosts in the field,
-                   MissionReport + SampleCanister — stars, haul, time cells, honors,
+                   MissionReport + SampleCanister + HonorsReel — stars, haul, time cells, honors reel,
                    RewardDraft + SquadDraftBoard + DiversChoicePicker + LibertyCrossBand/
                    LibertyCrossEmblem — one rolled card per option, the squad's picks,
                    the Cross picker and its crest,
