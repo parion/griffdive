@@ -51,6 +51,13 @@ set; extracted references are git-ignored and presentation-only. Nothing here to
   `prefers-reduced-motion`. **Forward actions sweep:** actionable controls that move the squad on
   carry `.cta-sweep` only while live (disabled controls never sweep). The wheel, the odds strip and
   the loot pins keep their state in the engine; motion only reveals it.
+- **The boot frame**: `app/spa-loading-template.html` is the pre-app splash for the SSR-off shell.
+  It is self-contained on purpose — inline CSS, the vendored Archivo face and the brand-mark paths —
+  so the first paint needs no app CSS or JS. A live wheel dial (rotating tick ring, gold arc, radar
+  sweep) frames the griffin above the wordmark and the `CLIMB 3 → 10 · RISK BUYS RARITY` rule; the
+  chrome reads `SES GRIFFDIVE · DESTROYER TERMINAL`, and the boot rail signs off `Protocol 1017`.
+  It mirrors the terminal palette, honors reduced motion, and exposes one status line to assistive
+  tech.
 
 #### Desktop shell — one lit stage
 
