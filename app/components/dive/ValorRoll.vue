@@ -16,7 +16,7 @@ const props = withDefaults(defineProps<{
   // lets the loot screen land each pin with its card.
   markers?: ValorMarker[]
   // Percentage-point movement from the current baseline (a hovered pact, a
-  // picked directive). Gains light a gold chunk; losses mark a red hatch.
+  // picked directive). Gains light a gold chunk; losses stay in the tooltip.
   deltas?: Partial<Record<RewardTier, number>>
   label?: string
   note?: string
@@ -40,51 +40,64 @@ function pct(value: number): string {
   return `${Math.round(value)}%`
 }
 
+// The ladder's overall direction: a positive weighted movement means the
+// preview buys better odds, a negative one means it gives odds back.
+const lineDirection = computed(() =>
+  props.zones.reduce(
+    (sum, zone, index) => sum + (props.deltas[zone.tier] ?? 0) * index,
+    0,
+  ))
+const lineImproves = computed(() => lineDirection.value >= 0)
+
 function zoneLabel(zone: TierZone): string {
   const delta = props.deltas[zone.tier] ?? 0
-  // Only a gain is worth calling out. A shrinking tier reads as the plain
-  // preview odds; a red "−22" made the whole line feel like a penalty.
-  if (delta >= 0.5) {
+  // Only a gain is worth calling out, and only while the line is improving.
+  // A shrinking tier reads as the plain preview odds; a red "−22" made the
+  // whole line feel like a penalty.
+  if (lineImproves.value && delta >= 0.5) {
     return `${zone.tier} +${Math.round(delta)}`
   }
   return `${zone.tier} ${pct(zone.chance * 100)}`
 }
 
 interface DeltaChunk {
-  kind: 'gain' | 'loss'
-  left: string
-  width: string
+  left: number
+  width: number
 }
 
-// The bar-level echo of the label delta: a tier that grows lights the chunk it
-// gained on its leading edge, a tier that shrinks marks the chunk it lost at
-// its trailing edge. Widths are the movement itself, so two adjacent chunks
-// meet exactly on the boundary that moved.
+// A gain is one clean gold strip at the tier's leading edge: the ground the
+// line bought. Losses are left to the label and the settled zone width — a
+// second red block at every boundary turned the strip into a color chart.
 const chunks = computed<Partial<Record<RewardTier, DeltaChunk>>>(() => {
   const result: Partial<Record<RewardTier, DeltaChunk>> = {}
-  // The ladder's overall direction decides which edge each chunk belongs to:
-  // with more Valor, higher tiers take ground on their leading edge and lower
-  // tiers give it up on their trailing edge; less Valor mirrors both.
-  const direction = props.zones.reduce(
-    (sum, zone, index) => sum + (props.deltas[zone.tier] ?? 0) * index,
-    0,
-  )
+  if (!lineImproves.value) {
+    return result
+  }
   for (const zone of props.zones) {
     const delta = props.deltas[zone.tier] ?? 0
     const width = zone.end - zone.start
-    if (Math.abs(delta) < 0.5 || width <= 0.01) {
+    if (delta < 0.5 || width <= 0.01) {
       continue
     }
-    const chunk = Math.min(Math.abs(delta), width)
-    const leading = (delta > 0) === (direction >= 0)
+    const chunk = Math.min(delta, width)
     result[zone.tier] = {
-      kind: delta > 0 ? 'gain' : 'loss',
-      left: leading ? '0%' : `${((width - chunk) / width) * 100}%`,
-      width: `${(chunk / width) * 100}%`,
+      left: 0,
+      width: (chunk / width) * 100,
     }
   }
   return result
 })
+
+// A gaining tier's label rides the chunk that bought it, so the `+N` and the
+// gold strip are read together. Everything else stays centred in its zone.
+function labelPosition(zone: TierZone): number {
+  const chunk = chunks.value[zone.tier]
+  if (!chunk) {
+    return zone.start + (zone.end - zone.start) / 2
+  }
+  const center = zone.start + ((chunk.left + chunk.width / 2) / 100) * (zone.end - zone.start)
+  return Math.min(96, Math.max(4, center))
+}
 
 function tooltip(zone: TierZone): string {
   const delta = props.deltas[zone.tier] ?? 0
@@ -186,7 +199,7 @@ function markerTone(marker: ValorMarker): RewardTier {
           v-for="zone in zones"
           :key="zone.tier"
           class="zone"
-          :class="{ gain: isGain(zone), loss: isLoss(zone), silent: zone.chance === 0 }"
+          :class="{ silent: zone.chance === 0 }"
           :data-tier="zone.tier"
           type="button"
           :style="{ left: `${zone.start}%`, width: `${Math.max(0.5, zone.end - zone.start)}%` }"
@@ -198,8 +211,7 @@ function markerTone(marker: ValorMarker): RewardTier {
           <span
             v-if="chunks[zone.tier]"
             class="zone-delta"
-            :class="chunks[zone.tier]?.kind"
-            :style="{ left: chunks[zone.tier]?.left, width: chunks[zone.tier]?.width }"
+            :style="{ left: `${chunks[zone.tier]?.left}%`, width: `${chunks[zone.tier]?.width}%` }"
             aria-hidden="true"
           />
           <span
@@ -219,7 +231,7 @@ function markerTone(marker: ValorMarker): RewardTier {
           class="zone-label"
           :class="{ gain: isGain(zone), loss: isLoss(zone), silent: zone.chance === 0 }"
           :data-tier="zone.tier"
-          :style="{ left: `${zone.start + (zone.end - zone.start) / 2}%` }"
+          :style="{ left: `${labelPosition(zone)}%` }"
         >
           <span
             v-if="showLabel(zone)"
@@ -325,39 +337,24 @@ function markerTone(marker: ValorMarker): RewardTier {
 .zone[data-tier='A'] { background: color-mix(in srgb, var(--tier-a) 20%, transparent); }
 .zone[data-tier='S'] { background: color-mix(in srgb, var(--tier-s) 22%, transparent); }
 .zone[data-tier='S+'] { background: color-mix(in srgb, var(--tier-splus) 30%, transparent); }
-.zone.gain {
-  background: color-mix(in srgb, var(--zone) 40%, transparent);
-  box-shadow: inset 0 2px 0 var(--zone), inset -1px 0 0 var(--ground);
-}
-.zone.loss {
-  background: color-mix(in srgb, var(--zone) 10%, transparent);
-  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--zone) 55%, transparent), inset -1px 0 0 var(--ground);
-}
 .zone.silent { background: transparent; box-shadow: inset -1px 0 0 var(--line-1); }
 .zone:hover, .zone:focus-visible { filter: brightness(1.35); }
 
-/* The delta chunk is the movement itself, drawn over the final zone: gold
-   where the tier gained ground, a red hatch where it gave ground away. */
+/* The gain chunk is one clean gold strip at the tier's leading edge: the
+   ground the preview bought, with a bright new boundary and a soft tail. */
 .zone-delta {
   position: absolute;
   top: 0;
   bottom: 0;
   z-index: 2;
   pointer-events: none;
+  background: color-mix(in srgb, var(--gold-bright) 13%, transparent);
+  box-shadow:
+    inset 2px 0 0 var(--gold-bright),
+    inset 0 1px 0 color-mix(in srgb, var(--gold-bright) 60%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--gold-bright) 60%, transparent);
   animation: delta-in var(--dur-med) var(--ease-out) both;
-}
-.zone-delta.gain {
-  background:
-    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.22) 0 2px, transparent 2px 6px),
-    color-mix(in srgb, var(--gold-bright) 34%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold-bright) 65%, transparent);
   transform-origin: left center;
-}
-.zone-delta.loss {
-  background:
-    repeating-linear-gradient(-45deg, color-mix(in srgb, var(--red) 45%, transparent) 0 2px, transparent 2px 7px);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 55%, transparent);
-  transform-origin: right center;
 }
 @keyframes delta-in {
   from { opacity: 0; transform: scaleX(0.4); }

@@ -32,9 +32,9 @@ test('call: the CTA, odds line and front pin hold one layout across the draw', a
   const verdict = card.locator('.dc-verdict')
   await expect(verdict).toBeVisible()
   const taken = await verdict.evaluate(el => el.classList.contains('taken'))
-  await verdict.getByRole('button', { name: /^Switch to/ }).click()
+  await verdict.getByRole('button', { name: taken ? 'Skipped' : 'Taken' }).click()
   await expect(verdict).toHaveClass(taken ? /skipped/ : /taken/)
-  await verdict.getByRole('button', { name: /^Switch to/ }).click()
+  await verdict.getByRole('button', { name: taken ? 'Taken' : 'Skipped' }).click()
   await expect(verdict).toHaveClass(taken ? /taken/ : /skipped/)
 })
 
