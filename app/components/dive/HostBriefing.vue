@@ -34,7 +34,9 @@ function later(ms: number, run: () => void): void {
 onBeforeUnmount(() => timers.forEach(clearTimeout))
 
 const saved = storedDiverName()
-const name = ref(props.selfName || (saved === 'Diver' ? '' : saved))
+// A host seats under the placeholder name before the registry names them.
+const placeholder = (value: string): string => (value === 'Diver' ? '' : value)
+const name = ref(placeholder(props.selfName) || placeholder(saved))
 const callsign = computed(() => name.value.trim())
 
 // ---- Registry: the callsign is the page's first and only required input ----

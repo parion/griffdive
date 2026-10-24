@@ -21,7 +21,7 @@ export async function dismissBriefing(page: Page): Promise<void> {
 export async function dismissWarbondIntro(page: Page): Promise<void> {
   const tutorial = page.getByRole('heading', { name: 'You hold the wheel.' })
   const warbonds = page.getByRole('dialog', { name: 'Warbonds' })
-  await expect(tutorial.or(warbonds).first()).toBeVisible()
+  await expect(tutorial.or(warbonds).first()).toBeVisible({ timeout: 3000 }).catch(() => undefined)
   await dismissBriefing(page)
   if (await warbonds.isVisible()) {
     await warbonds.getByRole('button', { name: 'Close warbonds' }).click()

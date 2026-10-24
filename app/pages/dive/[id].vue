@@ -6,7 +6,7 @@ import { allDiversPicked, bargainLamp, bargainsClosedReason, bonusFor, bonusWinn
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionOutcome, MissionReport } from '~~/shared/engine/types'
-import { hasDiverName, rememberDiverName, storeSeat } from '~/composables/useGameSocket'
+import { rememberDiverName, storeSeat } from '~/composables/useGameSocket'
 
 const route = useRoute()
 const slotId = computed(() => String(route.params.id))
@@ -135,7 +135,7 @@ watch(ownedWarbonds, (codes) => {
 
 // The host tutorial teaches the host's controls, so it is a host's alone: a fresh
 // browser gets it as a full page the moment it is first seated as host (right
-// after the name gate), and its Warbonds button declares ownership, so closing
+// with no gate before it), and its Warbonds button declares ownership, so closing
 // it lands straight on the dive. Squadmates read the join briefing instead, before they
 // are seated, and the Tutorial control replays that for them.
 const briefingOpen = ref(false)
@@ -191,7 +191,7 @@ function openBriefing(): void {
 }
 
 // Before seating, the room is read once to tell the two first visits apart: an
-// empty room is the host's own fresh dive (the name gate, then the tutorial),
+// empty room is the host's own fresh dive (straight to the host tutorial),
 // one that already holds a squad is a join by link (the join briefing). The
 // briefing keeps the read fresh so its roster tracks the squad while it reads.
 const joinPreview = ref<DiveState | null>(null)
@@ -223,9 +223,9 @@ watch(() => session.awaitingJoin.value, (held) => {
   startProbing()
 }, { immediate: true })
 
-// A host who already introduced themselves on an earlier dive needs no gate.
+// A host seats straight away; the host tutorial's registry takes their callsign.
 watch(joinRole, (role) => {
-  if (role === 'host' && session.awaitingJoin.value && hasDiverName()) {
+  if (role === 'host' && session.awaitingJoin.value) {
     session.connect()
   }
 })
@@ -588,10 +588,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         :state="joinPreview"
         :room-code="session.slotName.value"
         @confirm="confirmJoinBriefing"
-      />
-      <JoinNameGate
-        v-else-if="joinRole === 'host' && !hasDiverName()"
-        @confirm="confirmJoinName"
       />
       <p
         v-else
