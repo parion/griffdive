@@ -17,6 +17,7 @@ no-account path; the board is for public voting and a visible roadmap.
 | Runtime | Fider's official `getfider/fider:stable` image, one 256 MB Fly machine |
 | Database | Fly Postgres, one shared-cpu-1x machine |
 | Storage | Postgres (`BLOB_STORAGE=sql`) — no volume, uploads survive redeploys |
+| Email | Resend over SMTP, sending as `noreply@griffdive.com` (verified domain) |
 | TLS | Fly terminates it (`SSL_AUTO=false`); `fly certs` for the custom domain |
 | Idle | Suspends when nobody is reading; first request after idle is slower |
 | Analytics | `GOOGLE_ANALYTICS` deliberately unset (it would set `_ga` cookies) |
@@ -43,10 +44,10 @@ fly postgres attach griffdive-feedback-db --app griffdive-feedback
 fly secrets set --app griffdive-feedback \
   JWT_SECRET="$(openssl rand -hex 32)" \
   EMAIL_NOREPLY='noreply@griffdive.com' \
-  EMAIL_SMTP_HOST='smtp.example.com' \
+  EMAIL_SMTP_HOST='smtp.resend.com' \
   EMAIL_SMTP_PORT='587' \
-  EMAIL_SMTP_USERNAME='…' \
-  EMAIL_SMTP_PASSWORD='…'
+  EMAIL_SMTP_USERNAME='resend' \
+  EMAIL_SMTP_PASSWORD='<Resend API key, sending access only>'
 
 # 3. Ship it (`--ha=false`: one machine, not Fly's default pair)
 fly deploy --config deploy/fider/fly.toml --ha=false

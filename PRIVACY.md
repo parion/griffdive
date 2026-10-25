@@ -97,7 +97,7 @@ There is no consent-based processing, so there is nothing to opt into or withdra
   protection, aggregate metrics to keep the single server healthy.
 
 No special-category data, no profiling, no automated decision-making, and no selling or sharing with
-third parties beyond the hosting provider.
+third parties beyond the hosting provider and the feedback board's email sender.
 
 ## Feedback
 
@@ -108,7 +108,8 @@ There are two separate paths, deliberately:
 - **The public board** at `feedback.griffdive.com` is a self-hosted Fider instance on its own Fly app
   and Postgres database. The app never contacts it; you only reach it by clicking a link. Posting or
   voting there requires an emailed sign-in link (or an OAuth provider, if enabled), so Fider stores
-  that address. Nothing from the game is sent with you — not your room code, diver name, kit or
+  that address, and **Resend** delivers the sign-in and notification emails, so it sees the address
+  and the message. Nothing from the game is sent with you — not your room code, diver name, kit or
   saves — and the board carries its own privacy page.
 
 Notes filed in the app are not published on the board. If one is worth a public thread, an operator
@@ -119,7 +120,8 @@ reposts it by hand.
 The server runs on **Fly.io** (region `ams`, Amsterdam), which also stores room state and feedback
 notes on its volume and provides the metrics and log store. The feedback board is a second Fly app
 in the same region with its own Postgres database. Fly.io is a sub-processor for that hosting; its
-data processing agreement covers it. Nothing is served from anywhere else.
+data processing agreement covers it. **Resend** is the board's only other sub-processor: it sends
+the board's emails and never receives anything from the game. Nothing is served from anywhere else.
 
 ## Contact and changes
 

@@ -56,13 +56,13 @@ const SECTIONS: Section[] = [
     h: 'Feedback',
     list: [
       'In the app, Send feedback writes the note to this server only. No account, no email required, no third-party request.',
-      'The public board at feedback.griffdive.com is a separate self-hosted service. Posting or voting there needs an emailed sign-in link or OAuth, and nothing from your dive is sent with you.',
+      'The public board at feedback.griffdive.com is a separate self-hosted service. Posting or voting there needs an emailed sign-in link or OAuth, and nothing from your dive is sent with you. Its emails are delivered by Resend, which sees the address and the message.',
       'Notes filed in the app are never published on the board.',
     ],
   },
   {
     h: 'Where it runs',
-    p: 'The server runs on Fly.io (region ams, Amsterdam), which also stores room state and feedback notes and provides the metrics and log store, as a sub-processor. The feedback board is a second Fly app in the same region with its own Postgres database. Processing is the dive you asked for, feedback you choose to file, and keeping the server usable (rate limiting, aggregate metrics). No profiling, no automated decisions, nothing sold.',
+    p: 'The server runs on Fly.io (region ams, Amsterdam), which also stores room state and feedback notes and provides the metrics and log store, as a sub-processor. The feedback board is a second Fly app in the same region with its own Postgres database; Resend sends its emails and is its only other sub-processor. Processing is the dive you asked for, feedback you choose to file, and keeping the server usable (rate limiting, aggregate metrics). No profiling, no automated decisions, nothing sold.',
   },
 ]
 </script>
