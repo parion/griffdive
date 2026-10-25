@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ChangelogEntry, ChangelogState } from '~/utils/changelog'
+import { channelFor, CURRENT_RELEASE } from '~/utils/release'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: [] }>()
@@ -32,10 +33,37 @@ watch(() => props.open, (open) => {
   <AppDialog
     :open="props.open"
     title="Changelog"
-    description="Notable changes from recent releases."
+    :description="`${CURRENT_RELEASE.name} — release notes and recent deployments.`"
     size="md"
     @update:open="value => { if (!value) emit('close') }"
   >
+    <section
+      class="release"
+      aria-labelledby="release-name"
+    >
+      <h3
+        id="release-name"
+        class="row release-head"
+      >
+        <span class="chip release-tag">{{ CURRENT_RELEASE.label }}</span>
+        <span class="release-name">{{ CURRENT_RELEASE.name }}</span>
+      </h3>
+      <p class="release-summary">
+        {{ CURRENT_RELEASE.summary }}
+      </p>
+      <ul
+        v-if="CURRENT_RELEASE.highlights.length"
+        class="release-highlights"
+      >
+        <li
+          v-for="highlight in CURRENT_RELEASE.highlights"
+          :key="highlight"
+        >
+          {{ highlight }}
+        </li>
+      </ul>
+    </section>
+
     <p
       v-if="status === 'loading'"
       class="muted small"
@@ -79,6 +107,10 @@ watch(() => props.open, (open) => {
               :data-state="entry.state"
             />
             <span class="phase-name">{{ ENTRY_LABELS[entry.state] }}</span>
+            <span
+              class="chip channel-tag"
+              :data-channel="channelFor(entry.createdAt).id"
+            >{{ channelFor(entry.createdAt).label }}</span>
             <a
               v-if="entry.state === 'pending'"
               class="sha"
@@ -128,6 +160,52 @@ watch(() => props.open, (open) => {
 </template>
 
 <style scoped>
+.release {
+  margin-bottom: 1.4rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line-2);
+  border-left: 3px solid var(--gold);
+  background: color-mix(in srgb, var(--gold) 6%, transparent);
+}
+
+.release-head {
+  margin: 0 0 0.5rem;
+  gap: 0.6rem;
+}
+
+.release-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.release-tag,
+.channel-tag {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--khaki);
+}
+
+.release-tag { color: var(--gold); }
+
+.channel-tag[data-channel='beta'] { color: var(--gold); }
+
+.release-summary {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.release-highlights {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
 .entries {
   list-style: none;
   margin: 0;

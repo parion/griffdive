@@ -67,7 +67,7 @@ app/
                    AppTooltip, AppToastStack, AppHoldButton — press-and-hold confirm,
                    AppStarRating, AppBrandMark — the griffin mark rendered from
                    utils/brandMark.ts, AppBootScreen, AppChangelogModal — GitHub release log
-                   shown from the alpha header chip, shaped by utils/changelog.ts),
+                   shown from the release chip in the header (Beta), which also carries the channel description from utils/release.ts, shaped by utils/changelog.ts),
   composables/     useDiveSession (unified local/room driver), useDiveView (session-derived
                    shell state: self/phase/canControl/name draft), useDiveEngine (local reducer +
                    persist),                    useGameSocket (WS, reconnect, stored playerId,
@@ -91,7 +91,10 @@ app/
   utils/           seed.ts (client seed generation), kit.ts (Kit categories + owned-item list),
                    brandMark.ts (the logo's only geometry — AppBrandMark.vue and icon.svg both
                    derive from it), changelog.ts (pure GitHub deployment/commit → release-card
-                   shaping behind useChangelog, unit-tested)
+                   shaping behind useChangelog, unit-tested), release.ts (the release channel —
+                   Beta now, Alpha before: chip label, dialog description and highlights, and the
+                   date-based channel tag on each deployment card; promote the next channel by
+                   adding one entry at the top)
   assets/css/      main.css — global HD2 theme (two-font system, see Conventions)
 server/
   routes/ws.ts     defineWebSocketHandler — single endpoint, ?room={code}

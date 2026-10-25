@@ -63,6 +63,7 @@ all crusade), so the five squad-size/kit variants collapsed into Medium (3), Har
 Mission (7); the hard/suicide starts choose one of two mutually exclusive modes — the assisted
 **SEAF Support Package** (a random B-tier pack rolled per diver + a small flat Valor bump) or **Super Penance** (bare kit + a
 larger flat Valor stake, marked by a Hades-style flame) (see Starting variants).
+**Beta (2026-10-25):** the header chip and changelog dialog now read the release channel from `app/utils/release.ts`. The save policy below is unchanged.
 **Alpha has landed:** the save schema is frozen at v13 and the migration chain is open (see Save
 model). See [Roadmap](#roadmap).
 
