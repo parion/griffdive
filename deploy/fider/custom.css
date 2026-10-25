@@ -1,0 +1,231 @@
+/* Griffdive "Destroyer Terminal" skin for Fider.
+ *
+ * Paste into Admin → Site Settings → Advanced → Custom CSS. This file is the
+ * source of truth; the admin field is a copy. Values mirror the tokens in
+ * app/assets/css/main.css — change them there first.
+ *
+ * Fider themes through body[data-theme=light|dark], which sets both the
+ * --colors-* palette and hardcoded-hex utility classes. Every rule below is
+ * prefixed `html body` (one extra element) so it outranks either theme
+ * without !important, and the board stays dark whichever theme a visitor
+ * picks: Griffdive has no light mode.
+ *
+ * Fider's CSP is `font-src 'self' data:`, so the Griffdive faces cannot be
+ * fetched from griffdive.com. The stacks name them first and fall back to
+ * system UI fonts until they are embedded here as data: URIs.
+ */
+
+html body,
+html body[data-theme] {
+  --gd-ground: #0b0c09;
+  --gd-rail: #0e100b;
+  --gd-panel: #13150f;
+  --gd-raised: #1a1d15;
+  --gd-line-1: #23261c;
+  --gd-line-2: #2c3022;
+  --gd-line-4: #454a36;
+  --gd-text: #eceada;
+  --gd-khaki: #b8b08d;
+  --gd-muted: #9a9b82;
+  --gd-dim: #85876f;
+  --gd-gold: #ffd642;
+  --gd-gold-bright: #ffe88a;
+  --gd-red: #ff4b3e;
+  --gd-teal: #4ad7c8;
+  --gd-font-body: 'Chakra Petch', ui-sans-serif, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --gd-font-display: 'Archivo', 'Arial Black', ui-sans-serif, system-ui, sans-serif;
+
+  /* Fider reads white as "surface" (cards, inputs, text on primary buttons)
+     and gray-100 as the page, so the gray ramp runs dark → light. */
+  --colors-white: var(--gd-panel);
+  --colors-black: var(--gd-text);
+  --colors-gray-50: var(--gd-rail);
+  --colors-gray-100: var(--gd-ground);
+  --colors-gray-200: var(--gd-line-1);
+  --colors-gray-300: var(--gd-line-2);
+  --colors-gray-400: var(--gd-line-4);
+  --colors-gray-500: var(--gd-dim);
+  --colors-gray-600: var(--gd-muted);
+  --colors-gray-700: var(--gd-khaki);
+  --colors-gray-800: var(--gd-text);
+  --colors-gray-900: var(--gd-text);
+
+  --primary-color: var(--gd-gold);
+  --primary-color-dark: var(--gd-gold-bright);
+  --primary-color-light: rgba(255, 214, 66, 0.16);
+  --colors-primary-base: var(--gd-gold);
+  --colors-primary-dark: var(--gd-gold-bright);
+  --colors-primary-light: rgba(255, 214, 66, 0.16);
+
+  /* Light blues are Fider's "selected" fills (votes, hovers): gold tint, the
+     app's action colour. Deeper blues are info/links: teal. */
+  --colors-blue-50: rgba(255, 214, 66, 0.08);
+  --colors-blue-100: rgba(255, 214, 66, 0.12);
+  --colors-blue-200: rgba(255, 214, 66, 0.2);
+  --colors-blue-300: #1c5650;
+  --colors-blue-400: #2a8077;
+  --colors-blue-500: #38ada1;
+  --colors-blue-600: var(--gd-teal);
+  --colors-blue-700: #7fe4d9;
+  --colors-blue-800: #b3efe8;
+  --colors-blue-900: #dff9f6;
+
+  --colors-red-50: #2a110e;
+  --colors-red-100: #2a110e;
+  --colors-red-200: #4a1a15;
+  --colors-red-300: #7a2219;
+  --colors-red-400: #b8332a;
+  --colors-red-500: #e8443a;
+  --colors-red-600: var(--gd-red);
+  --colors-red-700: #ff7a70;
+  --colors-red-800: #ffa9a2;
+  --colors-red-900: #ffd4d0;
+
+  --colors-yellow-50: #2a2008;
+  --colors-yellow-100: #2a2008;
+  --colors-yellow-200: #4a380c;
+  --colors-yellow-300: #7a5c12;
+  --colors-yellow-400: #b8891c;
+  --colors-yellow-500: #e6b52e;
+  --colors-yellow-600: var(--gd-gold);
+  --colors-yellow-700: var(--gd-gold-bright);
+  --colors-yellow-800: var(--gd-gold-bright);
+  --colors-yellow-900: #fff4c9;
+
+  background-color: var(--gd-ground);
+  color: var(--gd-text);
+}
+
+/* The theme blocks bake hex into these utilities instead of reading the
+   palette; point them back at it. */
+html body[data-theme] .bg-white { background-color: var(--colors-white); }
+html body[data-theme] .bg-gray-50 { background-color: var(--colors-gray-50); }
+html body[data-theme] .bg-gray-100,
+html body[data-theme] .hover\:bg-gray-100:hover { background-color: var(--colors-gray-100); }
+html body[data-theme] .bg-gray-200,
+html body[data-theme] .hover\:bg-gray-200:hover { background-color: var(--colors-gray-200); }
+html body[data-theme] .bg-blue-50 { background-color: var(--colors-blue-50); }
+html body[data-theme] .bg-blue-100 { background-color: var(--colors-blue-100); }
+html body[data-theme] .hover\:bg-blue-200:hover { background-color: var(--colors-blue-200); }
+html body[data-theme] .bg-red-100 { background-color: var(--colors-red-100); }
+html body[data-theme] .bg-yellow-50 { background-color: var(--colors-yellow-50); }
+html body[data-theme] .bg-yellow-100 { background-color: var(--colors-yellow-100); }
+html body[data-theme] .bg-primary-base { background-color: var(--colors-primary-base); }
+html body[data-theme] .bg-primary-dark { background-color: var(--colors-primary-dark); }
+html body[data-theme] .bg-primary-light { background-color: var(--colors-primary-light); }
+
+html body[data-theme] .text-white { color: var(--colors-white); }
+html body[data-theme] .text-gray-400 { color: var(--colors-gray-400); }
+html body[data-theme] .text-gray-500 { color: var(--colors-gray-500); }
+html body[data-theme] .text-gray-600 { color: var(--colors-gray-600); }
+html body[data-theme] .text-gray-700 { color: var(--colors-gray-700); }
+html body[data-theme] .text-gray-800 { color: var(--colors-gray-800); }
+html body[data-theme] .text-gray-900 { color: var(--colors-gray-900); }
+html body[data-theme] .text-blue-200 { color: var(--colors-blue-700); }
+html body[data-theme] .text-blue-600 { color: var(--colors-blue-600); }
+html body[data-theme] .text-blue-700 { color: var(--colors-blue-700); }
+html body[data-theme] .text-blue-800 { color: var(--colors-blue-800); }
+html body[data-theme] .text-red-500 { color: var(--colors-red-500); }
+html body[data-theme] .text-red-600 { color: var(--colors-red-600); }
+html body[data-theme] .text-red-700 { color: var(--colors-red-700); }
+html body[data-theme] .text-red-800 { color: var(--colors-red-800); }
+html body[data-theme] .text-yellow-500 { color: var(--colors-yellow-500); }
+html body[data-theme] .text-yellow-800 { color: var(--colors-yellow-800); }
+html body[data-theme] .text-primary-base { color: var(--colors-primary-base); }
+
+html body[data-theme] .border-gray-200 { border-color: var(--colors-gray-200); }
+html body[data-theme] .border-gray-400 { border-color: var(--colors-gray-400); }
+html body[data-theme] .border-gray-700 { border-color: var(--colors-gray-700); }
+html body[data-theme] .border-blue-200 { border-color: var(--colors-blue-200); }
+html body[data-theme] .border-blue-400 { border-color: var(--colors-blue-400); }
+html body[data-theme] .border-blue-500 { border-color: var(--colors-blue-500); }
+html body[data-theme] .border-red-300 { border-color: var(--colors-red-300); }
+html body[data-theme] .border-yellow-400 { border-color: var(--colors-yellow-400); }
+html body[data-theme] .border-yellow-500 { border-color: var(--colors-yellow-500); }
+html body[data-theme] .border-primary-base { border-color: var(--colors-primary-base); }
+
+/* Type: Chakra Petch everywhere (Fider names Inter on ~800 rules, so this
+   has to be broad), Archivo Extended for the big headings only. */
+html body,
+html body *:not(code, pre, kbd, samp, code *, pre *) {
+  font-family: var(--gd-font-body);
+}
+
+html body .text-display,
+html body .c-markdown h1,
+html body h1.text-header {
+  font-family: var(--gd-font-display);
+  font-stretch: 125%;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  color: var(--gd-text);
+}
+
+html body .text-header,
+html body .text-title {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Square terminal geometry. Round things that are round on purpose
+   (avatars, toggles, spinners) keep their curves. Page styles are scoped by
+   id (`#p-home …`), which no class selector can outrank, hence !important. */
+html body *:not(.c-avatar, .c-avatar *, .c-toggle, .c-toggle *, .c-radiobutton, .c-radiobutton *, .c-loader, .c-loader *) {
+  border-radius: 0 !important;
+}
+
+html body .c-button {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+html body .c-button--primary {
+  color: #141410;
+}
+
+html body .c-button--primary:hover {
+  box-shadow: 0 0 0 1px var(--gd-gold), 0 0 18px rgba(255, 214, 66, 0.25);
+}
+
+html body a:not(.c-button):hover {
+  color: var(--gd-gold);
+}
+
+html body .c-markdown a {
+  color: var(--gd-teal);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Fider's focus glow is a hardcoded blue rgba with !important. */
+html body *:focus:not(.no-focus),
+html body .c-input:focus,
+html body .c-textarea:focus,
+html body .c-select:focus {
+  border-color: var(--gd-gold) !important;
+  box-shadow: 0 0 0 2px rgba(255, 214, 66, 0.35) !important;
+}
+
+html body *:focus-visible {
+  outline: 2px solid var(--gd-gold);
+  outline-offset: 2px;
+}
+
+html body .c-vote-counter__button--voted {
+  color: var(--gd-gold);
+  border-color: var(--gd-gold);
+  box-shadow: inset 0 2px 0 var(--gd-gold);
+}
+
+html body ::selection {
+  background: rgba(255, 214, 66, 0.3);
+  color: var(--gd-text);
+}
+
+/* Empty-state illustrations are inline SVG with baked-in purple and white. */
+html body .text-center > svg {
+  filter: grayscale(1) sepia(0.4) brightness(0.55);
+}

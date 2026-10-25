@@ -81,7 +81,9 @@ The sheet's "File report" path keeps working either way.
 3. **Email**: send a test sign-in link before announcing the board.
 4. Keep `GOOGLE_ANALYTICS` unset. If you ever set it, Fider ships GA4 and its
    `_ga` cookies, and the board needs a cookie notice.
-5. Optional: enable GitHub OAuth (a diver-friendly alternative to email links).
+5. **Site settings → Advanced → Custom CSS**: paste [`custom.css`](./custom.css),
+   the Destroyer Terminal skin. Edit the file, then re-paste; the admin field is a copy.
+6. Optional: enable GitHub OAuth (a diver-friendly alternative to email links).
    Configure it in the admin area, not in `fly.toml`.
 
 ## Operations
