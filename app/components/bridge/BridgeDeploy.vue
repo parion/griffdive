@@ -3,8 +3,9 @@ import { isRoomCode } from '~~/shared/utils/room-code'
 
 // The drop console: every way onto the Destroyer in one lit panel — host a
 // squad, join one by code, or drop solo. The callsign is filed on the host
-// tutorial that follows, never here. The ship's tools (Codex, warbonds and the
-// run's setup, save import) sit under the panel as quiet icon buttons.
+// tutorial that follows, never here. The ship's tools (save import, support and
+// the repo) sit under the panel as quiet icon buttons; the run's setup hangs off
+// the solo half.
 defineProps<{
   hosting: boolean
   setupLabel: string
@@ -14,7 +15,6 @@ const emit = defineEmits<{
   host: []
   join: [code: string]
   solo: []
-  codex: []
   setup: []
   import: [event: Event]
 }>()
@@ -147,7 +147,15 @@ function join(): void {
         <div class="solo">
           <div class="row-head">
             <span class="lbl">Play solo</span>
-            <span class="cap">Offline · callsign next</span>
+            <button
+              class="setup-link"
+              type="button"
+              aria-haspopup="dialog"
+              :aria-label="setupLabel"
+              @click="emit('setup')"
+            >
+              Run setup
+            </button>
           </div>
           <button
             class="btn ghost cut-sm solo-drop"
@@ -173,25 +181,25 @@ function join(): void {
       class="tools"
       aria-label="Ship tools"
     >
-      <button
+      <a
         class="tool"
-        type="button"
-        aria-haspopup="dialog"
-        @click="emit('codex')"
+        href="https://ko-fi.com/griffdive"
+        target="_blank"
+        rel="noopener noreferrer"
       >
-        <IconBook class="tool-icon" />
-        <span>View codex</span>
-      </button>
-      <button
+        <IconKofi class="tool-icon" />
+        <span>Support on Ko-fi</span>
+      </a>
+      <a
         class="tool"
-        type="button"
-        aria-haspopup="dialog"
-        :aria-label="setupLabel"
-        @click="emit('setup')"
+        href="https://github.com/parion/griffdive"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Star Griffdive on GitHub"
       >
-        <IconWarbond class="tool-icon" />
-        <span>Set warbonds</span>
-      </button>
+        <IconStar class="tool-icon star" />
+        <span aria-hidden="true">Star on GitHub</span>
+      </a>
       <label class="tool">
         <input
           type="file"
@@ -271,6 +279,19 @@ function join(): void {
 }
 .row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .row-head .cap { color: var(--muted); }
+.setup-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--khaki);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.setup-link:hover { color: var(--gold); }
 
 .join-row { display: flex; gap: 6px; }
 .join-count { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--muted); }
@@ -353,6 +374,8 @@ function join(): void {
   cursor: pointer;
   transition: color var(--dur-fast), border-color var(--dur-fast), background-color var(--dur-fast);
 }
+.tool { text-decoration: none; }
+.tool-icon.star { color: var(--gold); }
 .tool:hover { border-color: var(--line-3); background: var(--rail); color: var(--gold); }
 .tool:focus-within { outline: 2px solid var(--gold); outline-offset: 2px; }
 .tool-icon { width: 18px; height: 18px; flex-shrink: 0; }
