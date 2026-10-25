@@ -37,7 +37,7 @@ never logged, and never exported to metrics. Action floods are limited per seat 
 - No cookies and no cookie-like tracking. Nothing follows you across sites.
 - No analytics, no telemetry beacons, no advertising, no fingerprinting, no third-party scripts.
 - No accounts, no email addresses, no passwords in the game. The separate feedback board
-  (`feedback.griffdive.app`) asks for an email or an OAuth sign-in only if you choose to post or
+  (`feedback.griffdive.com`) asks for an email or an OAuth sign-in only if you choose to post or
   vote there, and it is never contacted by the app.
 - No third-party requests from your browser: fonts, icons and game art are all served by Griffdive
   itself, so visiting it does not tell Google Fonts, a CDN or an image host that you exist. The
@@ -105,7 +105,7 @@ There are two separate paths, deliberately:
 
 - **In the app** (*Send feedback*): the note goes to this server and is described above. No account,
   no email required, no third-party request. It lives in the same Fly app as the dives.
-- **The public board** at `feedback.griffdive.app` is a self-hosted Fider instance on its own Fly app
+- **The public board** at `feedback.griffdive.com` is a self-hosted Fider instance on its own Fly app
   and Postgres database. The app never contacts it; you only reach it by clicking a link. Posting or
   voting there requires an emailed sign-in link (or an OAuth provider, if enabled), so Fider stores
   that address. Nothing from the game is sent with you — not your room code, diver name, kit or

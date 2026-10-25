@@ -1,7 +1,7 @@
 # Fider — public feedback board
 
 A separate, self-hosted [Fider](https://fider.io) instance at
-`feedback.griffdive.app`, linked from the in-app feedback sheet. It is a
+`feedback.griffdive.com`, linked from the in-app feedback sheet. It is a
 *second service*: the game app never loads a script, font or image from it, and
 the board is only contacted when a diver chooses to click through.
 
@@ -42,7 +42,7 @@ fly postgres attach griffdive-feedback-db --app griffdive-feedback
 # 2. Secrets (never in fly.toml)
 fly secrets set --app griffdive-feedback \
   JWT_SECRET="$(openssl rand -hex 32)" \
-  EMAIL_NOREPLY='noreply@griffdive.app' \
+  EMAIL_NOREPLY='noreply@griffdive.com' \
   EMAIL_SMTP_HOST='smtp.example.com' \
   EMAIL_SMTP_PORT='587' \
   EMAIL_SMTP_USERNAME='…' \
@@ -52,8 +52,9 @@ fly secrets set --app griffdive-feedback \
 fly deploy --config deploy/fider/fly.toml --ha=false
 
 # 4. Custom domain + certificate
-fly certs add feedback.griffdive.app --app griffdive-feedback
-# then point a CNAME for `feedback` at griffdive-feedback.fly.dev
+fly certs add feedback.griffdive.com --app griffdive-feedback
+# then add the A + AAAA records it prints (`fly certs setup feedback.griffdive.com
+# --app griffdive-feedback` repeats them); on Cloudflare keep them DNS-only
 ```
 
 `DATABASE_URL` is set by `fly postgres attach`. `BASE_URL` lives in
@@ -64,7 +65,7 @@ Finally, turn the link on in the game app (a plain env var, not a secret — pub
 runtime config is serialised into the SPA shell):
 
 ```sh
-fly secrets set --app griffdive NUXT_PUBLIC_FEEDBACK_BOARD_URL='https://feedback.griffdive.app'
+fly secrets set --app griffdive NUXT_PUBLIC_FEEDBACK_BOARD_URL='https://feedback.griffdive.com'
 ```
 
 Leave it unset (or empty) to hide every board link while the instance is down.
@@ -75,7 +76,7 @@ The sheet's "File report" path keeps working either way.
 1. Open the site and create the board (name, description, admin account).
 2. **Site settings → Legal**: enable the privacy policy and terms pages. Paste a
    short notice that this is a separate service which stores the email or OAuth
-   identity used to sign in. Link back to `https://griffdive.app/privacy`.
+   identity used to sign in. Link back to `https://griffdive.com/privacy`.
 3. **Email**: send a test sign-in link before announcing the board.
 4. Keep `GOOGLE_ANALYTICS` unset. If you ever set it, Fider ships GA4 and its
    `_ga` cookies, and the board needs a cookie notice.

@@ -17,7 +17,7 @@ primary_region = 'ams'
 [env]
   # Must be the exact public origin: Fider builds every emailed sign-in link
   # from it. Change it (and the certificate) when moving to another domain.
-  BASE_URL = 'https://feedback.griffdive.app'
+  BASE_URL = 'https://feedback.griffdive.com'
   # Postgres keeps logos/uploads too; no volume, no lost files on redeploy.
   BLOB_STORAGE = 'sql'
   # Fly scrapes this on the private metrics port, exactly like the game app.

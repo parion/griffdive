@@ -56,7 +56,7 @@ const SECTIONS: Section[] = [
     h: 'Feedback',
     list: [
       'In the app, Send feedback writes the note to this server only. No account, no email required, no third-party request.',
-      'The public board at feedback.griffdive.app is a separate self-hosted service. Posting or voting there needs an emailed sign-in link or OAuth, and nothing from your dive is sent with you.',
+      'The public board at feedback.griffdive.com is a separate self-hosted service. Posting or voting there needs an emailed sign-in link or OAuth, and nothing from your dive is sent with you.',
       'Notes filed in the app are never published on the board.',
     ],
   },
