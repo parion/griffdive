@@ -100,7 +100,8 @@ app/
 server/
   routes/ws.ts     defineWebSocketHandler — single endpoint, ?room={code}
   utils/           room-sync.ts (hello/action/close core; KV + peers injected; TTL sweep +
-                   room-cap backstop), room-storage.ts (useStorage('rooms') adapter),
+                   room-cap backstop; seat fingerprints and kick bars), room-storage.ts
+                   (useStorage('rooms') adapter),
                    feedback.ts (feedback validation, inbox read/write, retention),
                    feedback-storage.ts (useStorage('feedback') adapter),
                    peers.ts (process-wide peer directory shared by the WS route and metrics),
@@ -151,12 +152,14 @@ Host-authoritative, room-per-dive. Nitro WebSocket via `nitro.experimental.webso
 `nuxt.config.ts`; single endpoint `/ws?room={code}`.
 Room state lives in `useStorage('rooms')` — Nitro `fs-lite` writing to `./.data/rooms` (the
 `griffdive_data` Fly volume in production), a fake in-memory KV in tests — as
-`StoredRoom { code, state, updatedAt, saved? }`, pruned on access after an idle TTL — 12h for an
+`StoredRoom { code, state, updatedAt, saved?, steam?, ipSalt?, seatIps?, bans? }`, pruned on access after an idle TTL — 12h for an
 unlaunched lobby (`ROOM_TTL_MS`), 30 days once the crusade has launched (`CRUSADE_TTL_MS`), never
 while `saved` pins it (see Saved dives). Stored states are normalized on read: rooms carry no
 schema version, so `loadRoom` applies the idempotent subset of the save migrations
 (`normalizeRoomState` in `shared/engine/saves.ts` — pre-v13 variant ids, fields added after the
-room was written) before serving or reducing it, since rooms survive deploys on the Fly volume.
+room was written) before serving or reducing it, since rooms survive deploys on the Fly volume. The
+same read sanitizes the moderation metadata (`bans`, `seatIps`, `ipSalt`), so a malformed record
+never breaks a join.
 Storage is read-modify-write, so `room-sync.ts` serializes every
 mutation of a room behind an in-process per-room lock (`withRoomLock`): the process is
 single-threaded but `await` interleaves handlers, and without the lock a joiner's `SET_WARBONDS`
@@ -175,7 +178,7 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 | C→S | `ping` | heartbeat — answered with `pong` |
 | S→C | `welcome` | `{ selfId, hostId, roomCode, snapshot, online, saved, steam }` |
 | S→C | `state` | `{ snapshot, applied (EngineAction \| null), online, saved, steam }` — after each applied change; also an `applied: null` presence refresh the moment a seated diver's last connection drops; `online` = diver ids with live connections |
-| S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `dive-locked`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message`, `rate-limited` |
+| S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `dive-locked`, `kicked`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message`, `rate-limited` |
 
 REST fallbacks: `POST /api/rooms` → `{ code, selfId }` (an optional `{ save, name }` body seeds the
 room from a personal session save; `selfId` is the seeded owner seat, `null` for a fresh lobby);
@@ -205,7 +208,9 @@ anything else, so one bad message never stops the process-wide server. Joins are
 client address (20/min → `rate-limited`, `ROOM_JOIN_LIMIT` overrides it for the e2e server; keyed on `Fly-Client-IP`, then `X-Forwarded-For`, then the
 socket — behind Fly's proxy the socket address is the proxy's), actions per diver (120/10s, silently dropped), and room creation
 per address (10/min → 429; `ROOM_CREATE_LIMIT` overrides it, which only the e2e server does) with a `MAX_ROOMS` cap (503). `server/plugins/room-sweeper.ts` reaps idle
-rooms every 15 min so the `MAX_ROOMS` backstop rarely matters.
+rooms every 15 min so the `MAX_ROOMS` backstop rarely matters. The same address also feeds the
+per-room seat fingerprints and kick bars (see `KICK_DIVER`): only the keyed hash is stored, and
+only for a seated or removed seat — never logged, exported or attached to a metric label.
 
 Canonical engine actions (the reducer union; keep names stable):
 
@@ -234,8 +239,16 @@ for `AWAY_GRACE_MS` is marked away (`SET_AWAY`, issued by the server; also re-ch
 Reconnect = re-`hello` with stored playerId → server replays snapshot.
 `KICK_DIVER` (host, any phase, lobby included) removes a diver who left or is blocking the
 squad: their pending pact lock or reward pick stops gating progress, their personal inventory
-leaves with them, and the host can never be kicked. It is a soft kick — the removed client
-shows a removal notice, but their invite link still seats them again as a fresh diver.
+leaves with them, and the host can never be kicked. It is a bar for the rest of the dive, not a
+soft kick: the room record keeps the removed seat's id and a **keyed fingerprint of the client
+address** (`StoredRoom.bans`), so the invite link no longer reseats them. A hello presenting that
+id — including through `knownIds` as a cache reclaim — or an anonymous fresh join from that network
+is refused with `kicked`. Known seats are exempt: a squadmate behind the same address (a
+household) keeps reconnecting to their own seat. Fingerprints are HMACs under a per-room salt
+(`StoredRoom.ipSalt`), never raw addresses, never sent to clients or metrics, and not comparable
+across rooms; the raw address stays transient for rate limiting. The bar list is bounded at
+`MAX_ROOM_BANS` (100). A different network (VPN, mobile data) is out of reach — this is host
+moderation, not an account ban.
 
 ### First visit — host gate vs. join briefing
 

@@ -23,6 +23,7 @@ export type HelloResult
     | 'locked'
     | 'bad_code'
     | 'rate_limited'
+    | 'removed'
 
 export type FeedbackRejection = 'rate_limited' | 'invalid' | 'too_large' | 'malformed'
 

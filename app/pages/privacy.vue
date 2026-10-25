@@ -13,14 +13,15 @@ const SECTIONS: Section[] = [
     list: [
       'On this device (browser storage): save slots and session mirrors, the 12 most recent room codes (forgotten after 30 days), the seat id for each room you joined, your diver name, your warbond declarations, and intro flags. Clearing site data deletes all of it.',
       'On the server, only when you host or join a dive: the room code, the squad\'s names and kits, the crusade\'s progress, a saved dive\'s name, and the Steam lobby link if the host pastes one.',
+      'While you are seated: a keyed, per-room fingerprint (HMAC) of the network address you joined from. If the host removes you, your seat id and that fingerprint stay with the room as a bar so the invite link cannot reseat you. The raw address is never written, and the fingerprint cannot be compared across rooms.',
       'If you file feedback in the app: the note, its category, an optional reply-to, the screen and engine build, and a short reference id. No IP address, diver name or room code.',
-      'In memory only: your IP address, used to rate-limit abuse. It is never written to disk, logged or exported to metrics.',
+      'In memory only: your raw IP address, used to rate-limit abuse. It is never written to disk, logged or exported to metrics.',
     ],
   },
   {
     h: 'What it never does',
     list: [
-      'No cookies, no analytics, no ads, no trackers, no fingerprinting.',
+      'No cookies, no analytics, no ads, no trackers, no browser fingerprinting.',
       'No accounts and no email addresses in the game. The separate feedback board asks for one only if you choose to post there.',
       'No third-party requests: fonts, icons and game art are all served by Griffdive. The feedback board is a separate site you reach by clicking through.',
       'No personal data in operational metrics or logs — the dashboard counters are aggregate only.',
@@ -31,6 +32,7 @@ const SECTIONS: Section[] = [
     list: [
       'Anyone with the room code (or the invite link) can join that dive: the code is the access control.',
       'Names, kits and the host\'s Steam link are visible to everyone seated in the room.',
+      'A kick bar is private: the removed browser (or a fresh browser on the same network) gets a refusal, while the squad only sees that the seat is gone.',
     ],
   },
   {
@@ -39,6 +41,7 @@ const SECTIONS: Section[] = [
       'Rooms that were never launched: pruned 12 hours after the last activity.',
       'Crusades: pruned 30 days after the last activity.',
       'Saved dives: kept until the host unpins them (past 500 saves, the oldest age out).',
+      'Seat fingerprints and kick bars: with the room (12 hours unlaunched, 30 days in progress, or while pinned).',
       'Feedback notes: 180 days, or the 500 newest notes, whichever bites first.',
       'Metrics and logs: Fly.io\'s retention. Nothing is archived or sold.',
     ],
@@ -62,7 +65,7 @@ const SECTIONS: Section[] = [
   },
   {
     h: 'Where it runs',
-    p: 'The server runs on Fly.io (region ams, Amsterdam), which also stores room state and feedback notes and provides the metrics and log store, as a sub-processor. The feedback board is a second Fly app in the same region with its own Postgres database; Resend sends its emails and is its only other sub-processor. Processing is the dive you asked for, feedback you choose to file, and keeping the server usable (rate limiting, aggregate metrics). No profiling, no automated decisions, nothing sold.',
+    p: 'The server runs on Fly.io (region ams, Amsterdam), which also stores room state and feedback notes and provides the metrics and log store, as a sub-processor. The feedback board is a second Fly app in the same region with its own Postgres database; Resend sends its emails and is its only other sub-processor. Processing is the dive you asked for, feedback you choose to file, and keeping the server usable and moderated (rate limiting, per-room keyed address fingerprints, aggregate metrics). No profiling, no automated decisions, nothing sold.',
   },
 ]
 </script>
