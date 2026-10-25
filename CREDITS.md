@@ -41,7 +41,8 @@ Griffdive stands on the work of the Helldivers community. Thank you.
 ## Fonts
 
 - Body/UI typeface: [Chakra Petch](https://fonts.google.com/specimen/Chakra+Petch) by Cadson Demak —
-  SIL Open Font License 1.1. Free stand-in for Helldivers 2's FS Sinclair (Monotype).
+  SIL Open Font License 1.1. Free stand-in for Helldivers 2's FS Sinclair (Monotype). Its 400 and
+  600 latin subsets are also embedded in `deploy/fider/custom.css` for the feedback board.
 - Display typeface: [Archivo](https://fonts.google.com/specimen/Archivo) by Omnibus-Type —
   SIL Open Font License 1.1 (bundled with the font file in `public/fonts/`). Free stand-in for
   Helldivers 2's Swiss 721, used with `font-stretch: 125%` (Archivo's width axis reaches 125%,
