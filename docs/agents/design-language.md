@@ -57,7 +57,7 @@ set; extracted references are git-ignored and presentation-only. Nothing here to
   screen-level wait (the dive page's missing-state and awaiting-state fallbacks, including the
   host's first "You hold the wheel." frame), so the app has one loading language rather than plain
   text panels. A live wheel dial (rotating tick ring, gold arc, radar sweep) frames the griffin
-  above the wordmark and the `CLIMB 3 → 10 · RISK BUYS RARITY` rule; the chrome reads
+  above the wordmark and the `CLIMB 3 → 10 · FREEDOM IS EARNED` rule; the chrome reads
   `SES GRIFFDIVE · DESTROYER TERMINAL`, and the boot rail signs off `Protocol 1017`. A CRT static
   layer is an inline SVG-noise tile (no image request) that sits over the whole frame. Both twins
   mirror the terminal palette, honor reduced motion, and expose one status line to assistive tech.
@@ -127,8 +127,11 @@ component. Top to bottom:
   Reduced motion: no drift, no trailing, no rings; the light and reticle still follow the
   pointer. The field is `aria-hidden` and ignores pointers.
 
-- **Hero** (one viewport tall on desktop): the kicker, the core trade as the headline — **"Risk
-  buys rarity."** — a one-paragraph pitch, chevron anchor links to the four beats, and the
+- **Hero** (one viewport tall on desktop): the kicker, the crusade's creed as the headline —
+  **"Freedom is earned."**, typeset as a three-line stack with `FREEDOM` and gold `EARNED.` in the
+  display face and a small tracked `IS` centred between rules that run the width of the headline
+  (the connector is never a display word) — a one-paragraph pitch, chevron anchor links to the
+  four beats, and the
   **`BridgeDeploy`** drop console: the gold **Host a squad dive** CTA over two matching halves,
   **Join a squad** (six-cell room code + Join) and **Play solo** (one full-width **Solo drop**
   button — no name field: a fresh browser files its callsign on the host tutorial that opens the

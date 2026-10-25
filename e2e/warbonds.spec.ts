@@ -1,32 +1,36 @@
 import { expect, test } from '@playwright/test'
-import { fileCallsign } from './helpers'
+import { dismissWarbondIntro, fileCallsign } from './helpers'
 
-test('the Warbonds drawer toggles ownership and persists it', async ({ page }) => {
+test('the Warbonds panel toggles ownership and persists it', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
+  await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griffon')
+  await dismissWarbondIntro(page)
 
-  await page.getByRole('button', { name: 'Warbonds', exact: true }).click()
-  const drawer = page.getByRole('dialog', { name: 'Warbonds' })
-  await expect(drawer).toBeVisible()
+  const side = page.getByRole('complementary', { name: 'Dive tools' })
+  const toggle = side.getByRole('navigation', { name: 'Tools' }).getByRole('button', { name: 'Warbonds', exact: true })
+  await toggle.click()
+  await expect(side.getByRole('heading', { name: 'Warbonds', level: 2 })).toBeVisible()
 
-  const row = drawer.getByRole('button', { name: /Helldivers Mobilize/ })
+  const row = side.getByRole('button', { name: /Helldivers Mobilize/ })
   await expect(row).toHaveAttribute('aria-pressed', 'true')
   // Acquisition specials sort last and start unowned; the pre-order bonus is gone.
-  await expect(drawer.getByRole('button', { name: /Super Citizen/ })).toHaveAttribute('aria-pressed', 'false')
-  await expect(drawer.getByRole('button', { name: /Superstore/ })).toHaveAttribute('aria-pressed', 'false')
-  await expect(drawer.getByRole('button', { name: /Pre-Order/ })).toHaveCount(0)
+  await expect(side.getByRole('button', { name: /Super Citizen/ })).toHaveAttribute('aria-pressed', 'false')
+  await expect(side.getByRole('button', { name: /Superstore/ })).toHaveAttribute('aria-pressed', 'false')
+  await expect(side.getByRole('button', { name: /Pre-Order/ })).toHaveCount(0)
   await row.click()
   await expect(row).toHaveAttribute('aria-pressed', 'false')
 
-  await drawer.getByRole('button', { name: 'Close warbonds' }).click()
-  await expect(drawer).toBeHidden()
+  await toggle.click()
+  await expect(side.getByRole('heading', { level: 2 })).toHaveCount(0)
 
-  // The declared set survives a reload (localStorage-backed).
-  await page.reload()
-  await page.getByRole('button', { name: 'Warbonds', exact: true }).click()
-  await expect(
-    page.getByRole('dialog', { name: 'Warbonds' })
-      .getByRole('button', { name: /Helldivers Mobilize/ }),
-  ).toHaveAttribute('aria-pressed', 'false')
+  // The declared set survives a fresh dive (localStorage-backed).
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Solo drop' }).click()
+  await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeVisible()
+  await toggle.click()
+  await expect(side.getByRole('button', { name: /Helldivers Mobilize/ })).toHaveAttribute('aria-pressed', 'false')
 })
 
 test('the tutorial opens at dive start once, without chaining the Warbonds panel', async ({ page }) => {

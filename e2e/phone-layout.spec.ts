@@ -38,7 +38,7 @@ test('phone: the Bridge and the dive never overflow sideways', async ({ browser 
   await expect(page.locator('.mo-band.mo-in')).toBeVisible()
   await expectNoHorizontalOverflow(page)
   // Ship nav keeps its labels on phones.
-  await expect(page.getByRole('button', { name: 'Codex', exact: true })).toContainText('Codex')
+  await expect(page.getByRole('link', { name: 'Ko-fi', exact: true })).toContainText('Ko-fi')
 
   await page.getByRole('button', { name: 'Solo drop' }).click()
   await fileCallsign(page, 'Griff')
