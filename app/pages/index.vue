@@ -15,6 +15,7 @@ const sessions = useSessionSaves()
 const recentRooms = useRecentRooms()
 const { push: pushToast } = useToasts()
 const { ownedWarbonds: myWarbonds, setOwned: setMyWarbonds } = useOwnedWarbonds()
+const { openCodex } = useDrawers()
 const { openFeedback, hasBoard, boardUrl } = useFeedback()
 
 const variant = ref<CrusadeVariant>('medium')
@@ -293,6 +294,7 @@ const facts = [
           @host="hostOnlineDive"
           @join="code => navigateTo(`/dive/${code}`)"
           @solo="createCrusade(frontPlan)"
+          @codex="openCodex"
           @setup="variantOpen = true"
           @import="onImport"
         />

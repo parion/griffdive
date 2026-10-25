@@ -115,12 +115,11 @@ component. Top to bottom:
 - **Hero** (one viewport tall on desktop): the kicker, the core trade as the headline — **"Risk
   buys rarity."** — a one-paragraph pitch, chevron anchor links to the four beats, and the
   **`BridgeDeploy`** drop console: the gold **Host a squad dive** CTA over two matching halves,
-  **Join a squad** (six-cell room code + Join) and **Play solo** (a **Run setup** link opens the Variant & warbonds dialog: variant,
-  front plan, owned warbonds; then one full-width **Solo drop**
+  **Join a squad** (six-cell room code + Join) and **Play solo** (one full-width **Solo drop**
   button — no name field: a fresh browser files its callsign on the host tutorial that opens the
   dive, and a returning one reuses its saved name). Under the console, outside its box, three
-  quiet buttons: **Support on Ko-fi**, **Star on GitHub** (gold star; both external) and
-  **Import save** (stacked icon-over-label in three columns on
+  quiet icon buttons: **View codex**, **Set warbonds** (the Variant & warbonds dialog: variant,
+  front plan, owned warbonds) and **Import save** (stacked icon-over-label in three columns on
   phones). Beside the copy sits the hero's showcase slot, decided on mount (it stays empty until
   then, so a returning squad never sees the wheel flash):
   - **`BridgeRecord`** whenever there is anything to resume (or live rooms are still being

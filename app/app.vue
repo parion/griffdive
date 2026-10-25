@@ -61,26 +61,25 @@ const { online } = useSessionStore()
           class="ship-nav"
           aria-label="Ship"
         >
-          <button
-            type="button"
+          <a
             class="icon-btn navb"
-            aria-haspopup="dialog"
-            :aria-expanded="codexOpen"
-            @click="codexOpen = true"
+            href="https://ko-fi.com/griffdive"
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            <IconBook class="nav-icon" />
-            <span>Codex</span>
-          </button>
-          <button
-            type="button"
+            <IconKofi class="nav-icon" />
+            <span>Ko-fi</span>
+          </a>
+          <a
             class="icon-btn navb"
-            aria-haspopup="dialog"
-            :aria-expanded="warbondsOpen"
-            @click="warbondsOpen = true"
+            href="https://github.com/parion/griffdive"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Star Griffdive on GitHub"
           >
-            <IconWarbond class="nav-icon" />
-            <span>Warbonds</span>
-          </button>
+            <IconStar class="nav-icon star" />
+            <span>Star repo</span>
+          </a>
         </nav>
       </header>
       <NuxtPage />
@@ -166,7 +165,9 @@ const { online } = useSessionStore()
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
+.navb:hover { text-decoration: none; }
 .nav-icon { width: 20px; height: 20px; }
+.nav-icon.star { color: var(--gold); }
 
 @media (max-width: 720px) {
   .term-header { padding: 0 12px; gap: 10px; }
