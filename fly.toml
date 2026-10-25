@@ -11,6 +11,8 @@ primary_region = 'ams'
 [env]
   HOST = '0.0.0.0'
   PORT = '8080'
+  # Set once the public Fider board is deployed (see deploy/fider/README.md):
+  # NUXT_PUBLIC_FEEDBACK_BOARD_URL = 'https://feedback.griffdive.app'
 
 [http_service]
   internal_port = 8080
@@ -27,8 +29,9 @@ primary_region = 'ams'
   port = 9091
   path = "/metrics"
 
-# Room state + saved dives live on this volume (Nitro `fs-lite` writes to
-# `.data/rooms` under the app's /app workdir), so sessions survive deploys.
+# Room state, saved dives and the feedback inbox live on this volume (Nitro
+# `fs-lite` writes to `.data/rooms` and `.data/feedback` under the app's /app
+# workdir), so sessions and notes survive deploys.
 # Create it once before the first deploy that declares the mount:
 #   fly volumes create griffdive_data --region ams --size 1
 [[mounts]]

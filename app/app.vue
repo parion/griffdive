@@ -97,6 +97,7 @@ const { online } = useSessionStore()
           @update:open="warbondsOpen = $event"
         />
       </template>
+      <FeedbackSheet />
       <ToastStack />
     </div>
   </MotionConfig>

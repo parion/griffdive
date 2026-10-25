@@ -5,7 +5,7 @@ cookies, no analytics and no advertising. This page is a plain-language descript
 the code stores, where, for how long, and how to get rid of it. It is mirrored in the app at
 [`/privacy`](./app/pages/privacy.vue).
 
-_Last updated: 13 October 2026._
+_Last updated: 25 October 2026._
 
 ## What is stored
 
@@ -25,6 +25,8 @@ Clearing site data in your browser deletes all of it.
 - If any diver pins the dive as saved: the save's name and who pinned it.
 - If the host pastes a Steam lobby link: that link, so the squad can jump into the in-game lobby.
 - If a diver continues a save as a new session: the uploaded save, which seats that diver as host.
+- If you file feedback in the app: the note, its category, an optional reply-to, the screen and
+  engine build you were on, and a short reference id. No IP address, no diver name, no room code.
 
 **Transiently, in memory only:** your IP address, used to rate-limit abuse (at most 10 room
 creations per minute and 20 join attempts per minute per address). It is never written to disk,
@@ -34,9 +36,12 @@ never logged, and never exported to metrics. Action floods are limited per seat 
 
 - No cookies and no cookie-like tracking. Nothing follows you across sites.
 - No analytics, no telemetry beacons, no advertising, no fingerprinting, no third-party scripts.
-- No accounts, no email addresses, no passwords.
+- No accounts, no email addresses, no passwords in the game. The separate feedback board
+  (`feedback.griffdive.app`) asks for an email or an OAuth sign-in only if you choose to post or
+  vote there, and it is never contacted by the app.
 - No third-party requests from your browser: fonts, icons and game art are all served by Griffdive
-  itself, so visiting it does not tell Google Fonts, a CDN or an image host that you exist.
+  itself, so visiting it does not tell Google Fonts, a CDN or an image host that you exist. The
+  feedback board is a separate site reached only by clicking through to it.
 - No personal data in operational metrics or logs. The Grafana dashboard's counters are aggregate
   (for example "missions started", "join attempts by result", "rooms by phase") and carry no names,
   ids, room codes or IP addresses. Server logs contain errors and counts only.
@@ -50,6 +55,7 @@ never logged, and never exported to metrics. Action floods are limited per seat 
 | Rooms that were never launched | Pruned 12 hours after the last activity |
 | Crusades in progress | Pruned 30 days after the last activity |
 | Pinned (saved) dives | Kept until the host unpins them; past 500 saved dives the oldest are unpinned and age out |
+| Feedback notes | 180 days, or the 500 newest notes, whichever bites first |
 | Aggregate metrics | Fly.io's managed Prometheus retention |
 | Logs | Fly.io's log retention |
 
@@ -61,6 +67,8 @@ Nothing is archived or sold. A room that a squad leaves is simply left to age ou
   the only access control, so treat it like a password for the squad.
 - Divers' names, their kit and the host's Steam lobby link are visible to everyone seated in the
   room. Don't type a name you don't want strangers with the link to see.
+- Feedback notes are readable by the operators — that is what they are for. They never enter
+  metrics or logs, and only the category is counted.
 - Griffdive operators can reach the room state on the server (for example to debug or operate the
   service). No one reads it routinely.
 
@@ -73,6 +81,8 @@ Nothing is archived or sold. A room that a squad leaves is simply left to age ou
   timers above. Because there are no accounts, we cannot locate "your" data without the room code —
   that is the trade-off of account-free play. If you have a room code and want the room deleted,
   open an issue and include the code.
+- **Remove a feedback note:** quote the reference shown when you filed it. The note text itself is
+  the only other handle, so include enough of it to identify the entry.
 - **Access, rectification, erasure, restriction, objection:** the same route applies — the room code
   is the only handle we can act on. You can also lodge a complaint with your local data protection
   supervisory authority.
@@ -82,18 +92,34 @@ Nothing is archived or sold. A room that a squad leaves is simply left to age ou
 There is no consent-based processing, so there is nothing to opt into or withdraw:
 
 - **Running the dive you asked for** (performance of the service you requested): room state, seat
-  identity, saved dives, the Steam link.
+  identity, saved dives, the Steam link, and feedback you choose to file.
 - **Legitimate interest in a usable service**: transient IP addresses for rate limiting and abuse
   protection, aggregate metrics to keep the single server healthy.
 
 No special-category data, no profiling, no automated decision-making, and no selling or sharing with
 third parties beyond the hosting provider.
 
+## Feedback
+
+There are two separate paths, deliberately:
+
+- **In the app** (*Send feedback*): the note goes to this server and is described above. No account,
+  no email required, no third-party request. It lives in the same Fly app as the dives.
+- **The public board** at `feedback.griffdive.app` is a self-hosted Fider instance on its own Fly app
+  and Postgres database. The app never contacts it; you only reach it by clicking a link. Posting or
+  voting there requires an emailed sign-in link (or an OAuth provider, if enabled), so Fider stores
+  that address. Nothing from the game is sent with you — not your room code, diver name, kit or
+  saves — and the board carries its own privacy page.
+
+Notes filed in the app are not published on the board. If one is worth a public thread, an operator
+reposts it by hand.
+
 ## Where it runs
 
-The server runs on **Fly.io** (region `ams`, Amsterdam), which also stores room state on its volume
-and provides the metrics and log store. Fly.io is a sub-processor for that hosting; its data
-processing agreement covers it. Nothing is served from anywhere else.
+The server runs on **Fly.io** (region `ams`, Amsterdam), which also stores room state and feedback
+notes on its volume and provides the metrics and log store. The feedback board is a second Fly app
+in the same region with its own Postgres database. Fly.io is a sub-processor for that hosting; its
+data processing agreement covers it. Nothing is served from anywhere else.
 
 ## Contact and changes
 

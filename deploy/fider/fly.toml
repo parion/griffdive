@@ -1,0 +1,49 @@
+# A second, deliberately separate Fly app for the public feedback board.
+#
+# Fider is stateless: uploads live in Postgres (`BLOB_STORAGE`), so there is no
+# volume to mount and the machine may suspend when nobody is reading.
+#
+#   fly deploy --config deploy/fider/fly.toml
+#
+# Secrets (DATABASE_URL, JWT_SECRET, EMAIL_*) are set once with `fly secrets set`
+# and never live in this file. See the README next to it.
+
+app = 'griffdive-feedback'
+primary_region = 'ams'
+
+[build]
+  image = 'getfider/fider:stable'
+
+[env]
+  # Must be the exact public origin: Fider builds every emailed sign-in link
+  # from it. Change it (and the certificate) when moving to another domain.
+  BASE_URL = 'https://feedback.griffdive.app'
+  # Postgres keeps logos/uploads too; no volume, no lost files on redeploy.
+  BLOB_STORAGE = 'sql'
+  # Fly scrapes this on the private metrics port, exactly like the game app.
+  METRICS_ENABLED = 'true'
+  METRICS_PORT = '4000'
+  # Fly terminates TLS; Fider must not try to fetch its own certificate.
+  SSL_AUTO = 'false'
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'suspend'
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = '15s'
+    interval = '30s'
+    timeout = '5s'
+    method = 'GET'
+    path = '/'
+
+[metrics]
+  port = 4000
+  path = '/metrics'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'

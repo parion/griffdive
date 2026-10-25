@@ -23,7 +23,7 @@ export default defineConfig({
     // The suite creates and joins more rooms a minute from one address than any squad.
     // The live war is off: a running Major Order is the default front plan and
     // would drop the strain call. Specs that need an order mock the endpoint.
-    env: { PORT: '3173', ROOM_CREATE_LIMIT: '200', ROOM_JOIN_LIMIT: '400', GRIFFDIVE_DISABLE_MO_API: '1' },
+    env: { PORT: '3173', ROOM_CREATE_LIMIT: '200', ROOM_JOIN_LIMIT: '400', GRIFFDIVE_DISABLE_MO_API: '1', FEEDBACK_LIMIT: '50', NUXT_PUBLIC_FEEDBACK_BOARD_URL: 'https://feedback.griffdive.test' },
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

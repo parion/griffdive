@@ -33,6 +33,7 @@ be reviewed without Grafana access.
 | `griffdive_directive_decisions_total{decision,condition,difficulty}`, `griffdive_directive_refusals_total`, `griffdive_strain_decisions_total`, `griffdive_major_order_total{kind}` (front plan at launch: `live`/`manual`/`rolled`), `griffdive_wheel_rerolls_total{kind}`, `griffdive_pacts_picked_total{condition}`, `griffdive_pacts_failed_total{condition}`, `griffdive_directives_failed_total{condition}`, `griffdive_ceiling_total{tier}`, `griffdive_valor_at_report`, `griffdive_pact_picks` | Risk & balance: is chosen risk real, which rules land or misfire, what loot tiers the economy actually rolls |
 | `griffdive_rewards_picked_total`, `griffdive_purchases_total`, `griffdive_forfeits_total` (tier + category), `griffdive_samples_haul{rarity}`, `griffdive_report_time_pct`, `griffdive_mission_stars{difficulty}`, `griffdive_reward_rerolls_total`, `griffdive_reward_bans_total`, `griffdive_honors_spun_total`, `griffdive_honors_awarded_total`, `griffdive_warbond_edits_total` | Economy & outcomes: loot by tier, shelf affordability, forfeit cost, sample hauls, tokens and honors usage |
 | `griffdive_phase_dwell_seconds{phase}`, `griffdive_squad_size`, `griffdive_build_info{engine,image}` | Friction and identity: how long rooms spend in each phase (lobby dwell = onboarding), squad sizes at mission start, which build is live |
+| `griffdive_feedback_total{category}`, `griffdive_feedback_rejected_total{reason}` | The feedback inbox: what kind of notes arrive, and how many submissions the limiter or validation refused (never the text) |
 
 Gameplay counters are derived at the action seam in `server/utils/room-sync.ts` from the
 `(before, after, action)` triple the reducer produced — the observability layer reads engine
@@ -40,6 +41,22 @@ selectors, it never re-derives rules. Label cardinality is bounded by design (co
 item tiers/categories, difficulties); never label by room code, player id or IP. Known blind spots:
 solo play started from the Bridge runs entirely in the browser (`useDiveEngine` + localStorage) and
 is invisible, and `REPORT_RESULT` is honor-system — treat outcomes as directional.
+
+**Feedback inbox.** `POST /api/feedback` writes a single JSON array to
+`useStorage('feedback')` (`./.data/feedback/inbox`, same `griffdive_data` volume as rooms), capped
+at the 500 newest notes and pruned past 180 days. `pnpm feedback:export` prints it newest-first;
+against production, pull it off the volume and pipe it in:
+
+```sh
+fly ssh console --app griffdive -C 'cat /app/.data/feedback/inbox' | pnpm feedback:export -
+```
+
+The in-app sheet is the no-account path. The **public board** is a separate Fly app running
+[self-hosted Fider](../deploy/fider/README.md) (`griffdive-feedback`, region `ams`, its own Postgres
+and certificate). It is never contacted by the game app: the only coupling is the
+`NUXT_PUBLIC_FEEDBACK_BOARD_URL` public runtime config, which adds the click-through link and is
+empty until the board ships. Fider requires an email or OAuth sign-in to post, which is exactly why
+it cannot be embedded — see `PRIVACY.md` → Feedback.
 
 CI/CD: `.github/workflows/ci.yml` runs lint/typecheck/unit tests + the Playwright E2E suite on
 every PR and push to `main`; pushes never deploy to production. **Staging:** after CI and E2E pass,

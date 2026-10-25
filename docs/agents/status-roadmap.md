@@ -100,6 +100,9 @@ Each phase lands shippable. Update the relevant `docs/agents/` files (commands, 
   decisions, the reward economy and the no-accounts retention proxies — with the Grafana overview
   versioned in-repo (`grafana/griffdive-overview.json`; `pnpm dashboard:preview` renders a
   mock-series layout preview). See [Deployment](./deployment.md) → Monitoring.
+  **Feedback shipped:** a no-account in-app note (`POST /api/feedback`, bounded inbox on the volume,
+  aggregate-only metrics, reference id for deletion) plus an optional self-hosted Fider board as a
+  separate Fly app (`deploy/fider/`). See [Deployment](./deployment.md) → Feedback inbox.
   Remaining: the final polish pass. *Done
   when: production URL serves a full multiplayer dive.*
 - **Phase 5 — Post-v1 backlog.** Specialists (PC parity), tier-maker custom rarity tables, heat

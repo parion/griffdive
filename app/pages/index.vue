@@ -16,6 +16,7 @@ const recentRooms = useRecentRooms()
 const { push: pushToast } = useToasts()
 const { ownedWarbonds: myWarbonds, setOwned: setMyWarbonds } = useOwnedWarbonds()
 const { openCodex } = useDrawers()
+const { openFeedback, hasBoard, boardUrl } = useFeedback()
 
 const variant = ref<CrusadeVariant>('medium')
 const mode = ref<CrusadeMode>('seaf')
@@ -456,6 +457,18 @@ const facts = [
 
     <footer class="bridge-foot">
       <span>FAN PROJECT · NOT AFFILIATED WITH ARROWHEAD GAME STUDIOS OR SONY ·
+        <button
+          type="button"
+          class="foot-link foot-btn"
+          @click="openFeedback"
+        >FEEDBACK</button> ·
+        <a
+          v-if="hasBoard"
+          class="foot-link"
+          :href="boardUrl"
+          target="_blank"
+          rel="noopener"
+        >BOARD</a> ·
         <NuxtLink
           class="foot-link"
           to="/privacy"
@@ -636,6 +649,14 @@ const facts = [
 .foot-marks i:nth-child(3) { width: 2px; background: var(--line-5); }
 .foot-link { color: var(--gold); }
 .foot-link:hover { text-decoration: underline; }
+.foot-btn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
 
 /* Phones keep the pinned Major Order bar clear of the footer. */
 @media (max-width: 860px) {
