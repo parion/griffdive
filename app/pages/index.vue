@@ -265,8 +265,11 @@ const facts = [
         <h1
           id="hero-h"
           class="disp hero-title slam"
+          aria-label="Freedom is earned."
         >
-          Freedom is <span class="gold">earned.</span>
+          <span>Freedom</span>
+          <span class="hero-title-is">is</span>
+          <span class="gold">earned.</span>
         </h1>
         <p class="hero-lede rise">
           Griffdive wraps your Helldivers 2 missions in a roguelike crusade. Start on
@@ -548,10 +551,32 @@ const facts = [
 .hero-k { display: inline-flex; align-items: center; gap: 12px; color: var(--gold); }
 .hero-k-bar { width: 44px; height: 6px; }
 .hero-title {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   margin: 0;
   font-size: clamp(44px, 6.4vw, 96px);
   line-height: 0.92;
   color: var(--text);
+}
+.hero-title-is {
+  display: flex;
+  align-items: center;
+  gap: 0.9em;
+  margin-block: 0.3em 0.26em;
+  font-family: var(--font-body);
+  font-size: clamp(11px, 1.15vw, 14px);
+  font-weight: 600;
+  letter-spacing: 0.44em;
+  line-height: 1;
+  color: var(--khaki);
+}
+.hero-title-is::before,
+.hero-title-is::after {
+  content: '';
+  width: clamp(18px, 2.2vw, 32px);
+  height: 2px;
+  background: var(--line-4);
 }
 .hero-lede {
   max-width: 36rem;
