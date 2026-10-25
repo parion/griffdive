@@ -84,13 +84,13 @@ Ban UI, the lobby/matchmaking. Not re-verified visually: pixel-level fidelity of
   (1.4 per operation), an eager one ~16. Buys per mission drop to 0.1-0.6 at difficulty 8-10 (cause not
   investigated).
 - **Addressed after this review:** S-tier at 800 credits was effectively unreachable, and difficulty 3
-  had a dead shop (haul 4-8 vs a 25-credit floor). Prices now ride one curve, 25/65/170/450, and the
+  had a dead shop (haul 4-8 vs a 25-credit floor). Prices now ride one curve, 35/100/280/450, and the
   shop stays shut until the first operation completes, so early credits accumulate instead of
-  stranding. A steady squad (60% of samples filed) buys an S about once per 6.7 missions in
+  stranding. A steady squad (60% of samples filed) buys an S about once per 6.6 missions in
   the S band (difficulty 8+) when it saves for one; a diver who always spends on the priciest
   affordable item almost never reaches S (~1 per 590 missions), so the SAVER policy in
-  `scripts/simulate-economy.mjs` is the number to watch. Overall buys rose (steady ~14 per 20
-  missions, up from ~11), so watch whether the shop now crowds out the reward draft in playtests.
+  `scripts/simulate-economy.mjs` is the number to watch. Overall buys rose (steady ~11 per 20
+  missions, level with the old curve).
 - Open balance/design items still on the board in `PLAN.md`: N25 (pacts are strictly "take
   everything"), N39 (reroll-token sources), N13 (`fragileLiberty` early lock-out, blocked on DEC-6).
 

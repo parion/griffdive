@@ -74,7 +74,7 @@ IDs are stable and append-only; do not renumber.
 | N42 | Session-abuse bounds: per-IP caps, fast lobby reaping, save TTL | Infra/Security | M | Todo | new |
 | N43 | Starting variants: three difficulties + SEAF/Penance modes | Rules | L | Done | new |
 | N44 | Squad honors allow ties (multiple winners) | Rules/UX | S | Done | new |
-| N45 | Brasch's Bargains: price curve 25/65/170/450 + shut until the first operation completes | Balance/Rules | S | Done | beta review |
+| N45 | Brasch's Bargains: price curve 35/100/280/450 + shut until the first operation completes | Balance/Rules | S | Done | beta review |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 

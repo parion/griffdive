@@ -606,8 +606,8 @@ items):
     just played and every diver is dealt afresh.
   - **Seating mid-crusade:** the joiner is dealt the current mission's shelf.
 - **Prices:** tier first, then type: `itemPrice = CREDIT_PRICE_TIER[tier] × CREDIT_PRICE_TYPE[category]`.
-  C/B/A/S cost 25/65/170/450 — one curve at roughly 2.6× per tier — so C/B sit within a mission or
-  two's haul, A is a short save, and S (stocked from difficulty 8) lands about once per 6–7
+  C/B/A/S cost 35/100/280/450 — roughly 2.8× per tier through A, then a flatter step to S so the top
+  stays in reach — so C/B sit within a mission or two's haul, A is a short save, and S (stocked from difficulty 8) lands about once per 6–7
   missions for a squad filing a modest share of the map's samples (`scripts/simulate-economy.mjs`;
   `SAVER=1` models a diver who skips small buys to afford a nearby S). Primaries ×1.25, armor passives ×0.75, everything else ×1.
 - **One buy per mission:** `BUY_ITEM` (self-service) deducts the price, banks the item in
