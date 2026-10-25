@@ -584,10 +584,17 @@ const facts = [
 }
 .hero-title-is::before {
   background: linear-gradient(90deg, var(--tier-c) 0 34%, var(--tier-b) 34% 67%, var(--tier-a) 67%);
+  transform-origin: right center;
 }
 .hero-title-is::after {
   background: linear-gradient(90deg, var(--tier-s) 0 50%, var(--tier-splus) 50%);
+  transform-origin: left center;
 }
+.hero-title-is::before,
+.hero-title-is::after {
+  animation: tierWipe 0.55s var(--ease-out) 0.5s both;
+}
+@keyframes tierWipe { from { transform: scaleX(0); } to { transform: none; } }
 .hero-lede {
   max-width: 36rem;
   margin: 0;
