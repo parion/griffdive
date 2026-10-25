@@ -251,7 +251,7 @@ const facts = [
       aria-labelledby="hero-h"
     >
       <div
-        class="hero-bg grid-bg"
+        class="hero-bg"
         aria-hidden="true"
       />
       <div class="hero-copy">
@@ -509,6 +509,8 @@ const facts = [
 
 <style scoped>
 .bridge {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 1440px;
   margin-inline: auto;

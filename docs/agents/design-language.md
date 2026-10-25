@@ -110,7 +110,14 @@ merge with them.
 
 The Bridge is the game's front door: a scrolling landing page that sells the mode and gets a squad
 into a dive. `index.vue` owns the data (saves, live rooms, hosting); each section is a `Bridge*`
-component. Top to bottom:
+component. Behind all of it, `BridgeGrid` (mounted by `app.vue` only on `/`) is the page's fixed
+deck: a near-black 48px survey grid with a faint major line every four cells, drifting one 192px
+sector toward the bottom-right every two minutes (transform only, seamless loop). A masked lens
+follows a mouse or pen, keeping its lit grid locked to the base field by counter-translating a
+viewport-sized child, so pointer tracking moves only two compositor transforms — the base grid is
+never repainted. The lens brightens the lines and nodes in warm gold and trails the pointer
+slightly; it never appears for touch input, on leaving the window, or while the tab is hidden.
+Reduced motion stops the drift and the trail. Top to bottom:
 
 - **Hero** (one viewport tall on desktop): the kicker, the core trade as the headline — **"Risk
   buys rarity."** — a one-paragraph pitch, chevron anchor links to the four beats, and the

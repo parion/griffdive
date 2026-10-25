@@ -6,6 +6,7 @@ const route = useRoute()
 // The dive renders its own terminal header (crusade, room code, copy, nav), so
 // the global bridge header stands down there.
 const onDive = computed(() => route.path.startsWith('/dive'))
+const onBridge = computed(() => route.path === '/')
 
 const changelogOpen = ref(false)
 const { codexOpen, warbondsOpen, sidebarHosted } = useDrawers()
@@ -15,6 +16,7 @@ const { online } = useSessionStore()
 <template>
   <MotionConfig reduced-motion="user">
     <div class="app-shell">
+      <BridgeGrid v-if="onBridge" />
       <a
         href="#main-content"
         class="skip-link"
