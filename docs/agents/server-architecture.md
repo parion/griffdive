@@ -16,69 +16,59 @@ app/
                    room flow — thin orchestrator: session driver + action handlers; the
                    lit-stage shell and per-phase UI live in components/dive/), codex,
                    kit (hidden, unlinked foundations route — see Destroyer Terminal design language)
-  components/      dive/ (DiveFrame — the lit-pass shell: header · one scrolling stage ·
-                   squad dock, no rails or climb strip, DiveTopBar — identity, PhaseTabs,
-                   link lamp/session menu, PhaseTabs — Call/Pacts/Dive/Loot (desktop only),
-                   SquadDock — seats, presence, honors tokens, Steam/invite, DiveMenu —
-                   Bridge, tutorial, pin/unpin, new session, leave/end,
-                   DivePhaseLobby — the standalone Hellpod Bays setup page (no shell),
-                   DivePhaseWheel/DivePhaseDiving/DivePhaseRewards/
-                   DivePhaseForfeit/DivePhaseComplete — one panel per engine phase, each
-                   owning its local form state and emitting intents,
-                   WheelOfMisfortune — the seeded spinning SVG wheel,
-                   ConditionCard/ConditionSigil — directive and pact cards,
-                   ValorRoll — the shared d100 odds line (zones, deltas, roll pins),
-                   PactScreen — the self-service pacts hand,
-                   KitSnapshot — the compact kit strip for non-hosts in the field,
-                   MissionReport + SampleCanister + HonorsReel — stars, haul, time cells, honors reel,
-                   RewardDraft + SquadDraftBoard + DiversChoicePicker + LibertyCrossBand/
-                   LibertyCrossEmblem — one rolled card per option, the squad's picks,
-                   the Cross picker and its crest,
-                   OperationCleared — the climb screen after the last mission,
-                   CrusadeLadder — the vertical 3→10 ladder (achieved screen),
-                   FieldPromotionGate — the mid-crusade catch-up gate,
-                   ForfeitPicker — one diver's dealt forfeit offer,
-                   CrusadeSetup + FrontPlanPicker + StartingKit + SetupRisk — the shared
-                   crusade setup (front plan, start difficulty, mode, issued kit, skull
-                   total via setupRiskOf) used by the Bridge
-                   dialog and the lobby,
-                   DiveSidebar — the persistent tool rail on every dive shell (Kit, Codex,
-                   Warbonds, Brasch's Bargains share one non-modal panel), hosting KitPanel
-                   (the lean Kit), CodexBrowser, WarbondBrowser and BraschBargains
-                   (the per-mission shop),
-                   AchievedOverlay — the full-bleed Griffdive achieved takeover,
-                   HostBriefing — the host's tutorial (fork of JoinBriefing),
-                   JoinBriefing — the joiner's one-page briefing, also replayed as the
-                   squadmate's Field manual
-                   DivePhone + DivePhoneShell/PhoneTopBar/PhoneWheel/PhonePacts/
-                   PhoneDiving/PhoneRewardDraft/PhoneActionBar — the fixed phone shell,
-                   its per-phase layouts and the pinned bottom action bar (the frame lives in
-                   DivePhoneShell; every phase fills its info / secondary / primary zones
-                   through PhoneActionBar's deferred Teleports; the Squad sheet lives in
-                   DivePhone), CrusadeSetup, WarbondPicker),
-                   bridge/ (the Bridge home's sections: BridgeDeploy — host / join /
-                   solo console, BridgeWheel — the self-spinning showcase wheel,
-                   BridgeRecord — the service record (the hero's slot when a run is
-                   saved), BridgeBeat — a numbered
-                   "how it plays" beat, BridgeDirectives/BridgePacts/BridgeOdds — the
-                   beat visuals, BridgeMajorOrder — the live Major Order, teleported into app.vue's
-                   #header-mid or pinned to the bottom on phones),
-                   ui/ (BrandMark — the Griffdive mark, a griffin diving through the Wheel's
-                   rim, rendered from utils/brandMark.ts; ItemCard, TierBadge, RiskPips — risk
-                   dots, with a rolling back-and-forth state while a wheel draw reels,
-                   SampleCanister — the report's tinted sample tubes (press and drag sets
-                   the value; the tube's liquid level is the indicator and its editable
-                   number the keyboard path), the report's time cells — tap targets that
-                   set the extraction percentage, HoldButton — the press-and-hold confirm,
-                   ChangelogModal — GitHub release log shown from the alpha header chip: one phase
-                   card per deployment (on main / awaiting approval / deploying / live) with its
-                   commits grouped by conventional type (utils/changelog.ts shapes it), AppDrawer —
-                   the themed right-hand Reka
-                    Drawer shell (keeps the dive session mounted), CodexDrawer/WarbondDrawer —
-                    its two slide-overs, IconBook/IconWarbond — the nav leading icons,
-                   AppDialog/AppTabs/AppTooltip —
-                   the themed Reka primitives every modal, tab strip and icon-only control builds
-                   on),
+  components/      one folder per domain; the folder path is the component-name prefix
+                   (Nuxt's default naming — `kit/KitPanel.vue` registers `KitPanel`,
+                   `app/AppDialog.vue` registers `AppDialog`), see AGENTS.md conventions.
+                   dive/ (the lit-pass shell and per-phase panels: DiveFrame — header · one
+                   scrolling stage · squad dock, DiveTopBar + DivePhaseTabs — identity and the
+                   Call/Pacts/Dive/Loot beats, DiveMenu — Bridge, tutorial, pin, new session,
+                   leave/end, DiveSidebar — the persistent tool rail (Kit, Codex, Warbonds and
+                   Brasch's Bargains share one non-modal panel), DivePhaseLobby — the
+                   standalone Hellpod Bays setup page, DivePhaseWheel/Diving/Rewards/Forfeit/
+                   Complete — one panel per engine phase, each owning its local form state and
+                   emitting intents, DiveAchievedOverlay — the full-bleed achieved takeover,
+                   DivePhone — the phone-shell orchestrator),
+                   phone/ (PhoneShell — the fixed frame, PhoneTopBar/PhoneWheel/PhonePacts/
+                   PhoneDiving/PhoneRewardDraft — per-phase layouts, PhoneActionBar — the pinned
+                   bottom bar every phase fills through deferred Teleports),
+                   bridge/ (the Bridge home's sections: BridgeDeploy — host / join / solo
+                   console, BridgeWheel — the self-spinning showcase wheel, BridgeRecord — the
+                   service record, BridgeBeat — a numbered "how it plays" beat,
+                   BridgeDirectives/BridgePacts/BridgeOdds — the beat visuals, BridgeMajorOrder
+                   — the live Major Order, teleported into app.vue's #header-mid or pinned to
+                   the bottom on phones),
+                   briefing/ (BriefingJoin — the joiner's one-page briefing, also replayed as
+                   the squadmate's Field manual; BriefingHost — the host's tutorial fork),
+                   wheel/ (WheelOfAdversity — the seeded spinning SVG wheel),
+                   condition/ (ConditionCard/ConditionSigil — directive and pact cards),
+                   pact/ (PactScreen — the self-service pacts hand, PactLedger),
+                   valor/ (ValorRoll — the shared d100 odds line, ValorFigure),
+                   risk/ (RiskPips — risk dots, rolling while a wheel draw reels; RiskSetup —
+                   the setup skull total via setupRiskOf),
+                   front/ (FrontBrief, FrontPlanPicker — the Major Order / faction front),
+                   crusade/ (CrusadeSetup — the shared crusade setup used by the Bridge dialog
+                   and the lobby, CrusadeLadder — the 3→10 ladder, CrusadeStrip),
+                   kit/ (KitPanel — the lean Kit, KitStarting — the issued starting kit,
+                   KitSection/KitTile/KitSnapshot/KitReveal),
+                   mission/ (MissionReport — stars, haul, time cells, honors; MissionCleared,
+                   MissionBankedHaul, MissionSampleCanister — the report's tinted sample tubes),
+                   operation/ (OperationCleared — the climb screen after the last mission),
+                   honors/ (HonorsReel), reward/ (RewardDraft, RewardReveal,
+                   RewardDiversChoicePicker), liberty-cross/ (LibertyCrossBand/Emblem),
+                   squad/ (SquadDock — seats, presence, honors tokens, Steam/invite;
+                   SquadDraftBoard, SquadForfeitBoard), forfeit/ (ForfeitPicker),
+                   field-promotion/ (FieldPromotionGate — the mid-crusade catch-up gate),
+                   brasch/ (BraschBargains — the per-mission shop), credit/ (CreditAmount),
+                   feedback/ (FeedbackSheet — the no-account feedback form, see Feedback inbox),
+                   steam/ (SteamLobbyBar/Box), codex/ (CodexBrowser, CodexDrawer), warbond/
+                   (WarbondBrowser, WarbondDrawer, WarbondPicker), item/ (ItemCard,
+                   ItemTierBadge), icon/ (Icon* glyphs),
+                   app/ (themed Reka primitives and app chrome: AppDialog, AppDrawer — the
+                   right-hand slide-over shell that keeps the dive mounted,
+                   AppTooltip, AppToastStack, AppHoldButton — press-and-hold confirm,
+                   AppStarRating, AppBrandMark — the griffin mark rendered from
+                   utils/brandMark.ts, AppBootScreen, AppChangelogModal — GitHub release log
+                   shown from the release chip in the header (Beta), which also carries the channel description from utils/release.ts, shaped by utils/changelog.ts),
   composables/     useDiveSession (unified local/room driver), useDiveView (session-derived
                    shell state: self/phase/canControl/name draft), useDiveEngine (local reducer +
                    persist),                    useGameSocket (WS, reconnect, stored playerId,
@@ -100,10 +90,12 @@ app/
                    desktop tree for the phone shell)
   stores/          session.ts (Pinia: selfId, snapshot, online)
   utils/           seed.ts (client seed generation), kit.ts (Kit categories + owned-item list),
-                   valor.ts (Valor source split + colours shared by the rail tab and meter),
-                   brandMark.ts (the logo's only geometry — BrandMark.vue and icon.svg both
+                   brandMark.ts (the logo's only geometry — AppBrandMark.vue and icon.svg both
                    derive from it), changelog.ts (pure GitHub deployment/commit → release-card
-                   shaping behind useChangelog, unit-tested)
+                   shaping behind useChangelog, unit-tested), release.ts (the release channel —
+                   Beta now, Alpha before: chip label, dialog description and highlights, and the
+                   date-based channel tag on each deployment card; promote the next channel by
+                   adding one entry at the top)
   assets/css/      main.css — global HD2 theme (two-font system, see Conventions)
 server/
   routes/ws.ts     defineWebSocketHandler — single endpoint, ?room={code}
@@ -240,8 +232,8 @@ to crown a host:
 
 - **Empty room** → the host's own fresh dive. The host connects straight away with no intermediate
   gate; the founding diver's first seat opens the host tutorial
-  (`HostBriefing`, a full page).
-- **Room with a squad** → a join by link. `JoinBriefing` renders as a full page from the pre-join
+  (`BriefingHost`, a full page).
+- **Room with a squad** → a join by link. `BriefingJoin` renders as a full page from the pre-join
   snapshot (re-read every 10s so its roster stays live; `seatingBlocked` disables the join and says
   why). Confirming stores the name, marks the briefing and the one-shot Warbonds prompt seen, and
   opens the socket. Squadmates never get the host tutorial unasked — not even when hostship later

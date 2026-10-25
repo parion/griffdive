@@ -74,7 +74,7 @@ const online = computed(() => props.status === 'connected')
       >
     </div>
 
-    <PhaseTabs
+    <DivePhaseTabs
       class="beats"
       :phase="phase"
       :reporting="reporting"

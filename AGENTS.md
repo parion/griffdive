@@ -75,18 +75,22 @@ Update this table the moment a command lands.
   magic.
 - **Naming:** components `PascalCase.vue` grouped by domain folder; composables `useThing`;
   engine modules lowercase noun/verb; types/interfaces `PascalCase`; catalog ids `camelCase`
-  (upstream parity). Components register under their bare file name (`pathPrefix: false` in
-  `nuxt.config.ts`) — templates use bare PascalCase (`<DivePhaseWheel>`), never the folder-prefixed
-  alias.
+  (upstream parity). Components follow Nuxt's default naming (`pathPrefix` left on): the folder path
+  plus the file name make the registered name, with the overlap deduped — `components/kit/KitPanel.vue`
+  is `<KitPanel>`, `components/app/AppDialog.vue` is `<AppDialog>`. **Every file name carries its
+  folder's prefix** (`briefing/BriefingHost.vue`, never `briefing/Host.vue`) so the name is greppable
+  and the file never lies about its tag. A new component goes in its domain folder, or starts a new
+  one named for the prefix (`liberty-cross/` → `LibertyCross*`). Shared Reka wrappers live in
+  `app/` (`App*`), glyphs in `icon/` (`Icon*`). See
+  [Nuxt component names](https://nuxt.com/docs/4.x/directory-structure/app/components#component-names).
 - **Components are dumb about rules.** They take state + emit intents. No tier math, no risk math,
   no progression logic in `app/components/**` — call engine selectors instead.
 - **Accessibility layer.** Reka UI is the primitive layer: import components explicitly from
-  `reka-ui` (never rely on auto-imports). Repeated chrome gets a themed `App*` wrapper in `ui/` —
+  `reka-ui` (never rely on auto-imports). Repeated chrome gets a themed `App*` wrapper in `app/` —
   `AppDialog` (modals: `v-model:open`, required `title`, optional `description`/`size`
-  (`sm`–`xl`)/`dismissible`/`showClose`/`hideTitle` (title kept for assistive tech, header row dropped), `#title`/`#description`/`#actions` (header, right)/`#footer` slots), `AppTabs` (segmented tab
-  strips: `v-model`, `tabs`, `label`), and `AppTooltip` (`content`, `disabled`; carries its own
-  provider). Do not hand-roll dialogs, focus traps, scroll locks or tab strips. One-off controls
-  use the Reka primitive directly (`RadioGroup` in `StarRating`/`CrusadeSetup`, `Checkbox` in
+  (`sm`–`xl`)/`dismissible`/`showClose`/`hideTitle` (title kept for assistive tech, header row dropped), `#title`/`#description`/`#actions` (header, right)/`#footer` slots) and `AppTooltip` (`content`, `disabled`; carries its own
+  provider). Do not hand-roll dialogs, focus traps, scroll locks or tab strips (reach for Reka's `Tabs` directly and wrap it in `app/` once a second use appears). One-off controls
+  use the Reka primitive directly (`RadioGroup` in `AppStarRating`/`CrusadeSetup`, `Checkbox` in
   `ConditionCard`) so the semantics live with the component. The global foundation lives in
   `main.css` (`:focus-visible` ring, `.sr-only`, `.skip-link`) and `app.vue` (skip link →
   `#main-content`, carried by every page `<main>` with `tabindex="-1"`). `.sr-only` pins itself with
@@ -111,7 +115,7 @@ Update this table the moment a command lands.
   and duration tokens live in `main.css` (`--ease-out`, `--ease-snap`, `--dur-*`). Reduced motion
   is mandatory: `<MotionConfig reduced-motion="user">` in `app/app.vue` for motion-v, the
   `@media (prefers-reduced-motion: reduce)` guard in `main.css` for CSS, and an explicit
-  `matchMedia` check inside any JS-driven effect (e.g. `ReelText`). E2E runs with
+  `matchMedia` check inside any JS-driven effect (e.g. `HonorsReel`). E2E runs with
   `reducedMotion: 'reduce'` so flows assert settled state, not timing.
 - **Comments:** code is self-documenting; comment only *why*, never *what*. No comment noise.
 - **Commits:** conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`).
@@ -131,7 +135,7 @@ Update this table the moment a command lands.
   (server metrics registry; the official continuation of `prom-client`). `@vite-pwa/nuxt` +
   `@vite-pwa/assets-generator` (Phase 4; the installable PWA manifest, Workbox service worker and
   the icon/head-link generator, the latter a build-time dev dep). `reka-ui` (Phase 4; the Vue port
-  of Radix primitives — the accessible Toast in `ui/ToastStack.vue`; headless, import components
+  of Radix primitives — the accessible Toast in `app/AppToastStack.vue`; headless, import components
   explicitly).
   `@nuxt/test-utils` remains optional until a Nuxt-runtime test actually needs it.
 

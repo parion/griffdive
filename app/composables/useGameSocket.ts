@@ -1,4 +1,4 @@
-import { useWebSocket } from '@vueuse/core'
+import { useIntervalFn, useWebSocket } from '@vueuse/core'
 import { VARIANTS } from '~~/shared/engine/progression'
 import type { DiveState, EngineAction } from '~~/shared/engine/types'
 import { hasSeenJoinBriefing } from './useJoinBriefing'
@@ -60,7 +60,7 @@ export function rememberDiverName(name: string): void {
 
 // A saved name worth keeping — the bare 'Diver' placeholder doesn't count as
 // having introduced yourself.
-export function hasDiverName(): boolean {
+function hasDiverName(): boolean {
   if (!import.meta.client) {
     return false
   }
@@ -104,7 +104,7 @@ export function useGameSocket(roomCode: string) {
       },
     },
     heartbeat: {
-      interval: 25_000,
+      scheduler: cb => useIntervalFn(cb, 25_000, { immediate: false }),
       message: 'ping',
       responseMessage: 'pong',
       pongTimeout: 10_000,

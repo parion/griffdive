@@ -49,10 +49,13 @@ describe('haulValue / timeHaulMultiplier / missionHaul', () => {
 
 describe('itemPrice', () => {
   it('is tier first, then type', () => {
-    expect(CREDIT_PRICE_TIER.c).toBe(25)
-    expect(CREDIT_PRICE_TIER.s).toBe(800)
-    expect(itemPrice(makeItem('c', 'armorPassive'))).toBe(Math.round(25 * (CREDIT_PRICE_TYPE.armorPassive ?? 1)))
-    expect(itemPrice(makeItem('c', 'primary'))).toBe(Math.round(25 * 1.25))
+    expect(CREDIT_PRICE_TIER.c).toBe(35)
+    expect(CREDIT_PRICE_TIER.s).toBe(450)
+    // The tiers climb ~2.8x each through A, then flatten into S; S is a
+    // one-in-six-or-seven-missions treat, not a long saving goal.
+    expect(CREDIT_PRICE_TIER.s).toBeGreaterThan(CREDIT_PRICE_TIER.a)
+    expect(itemPrice(makeItem('c', 'armorPassive'))).toBe(Math.round(35 * (CREDIT_PRICE_TYPE.armorPassive ?? 1)))
+    expect(itemPrice(makeItem('c', 'primary'))).toBe(Math.round(35 * 1.25))
     // A primary always out-prices an armor passive at the same tier.
     expect(itemPrice(makeItem('s', 'primary'))).toBeGreaterThan(itemPrice(makeItem('s', 'armorPassive')))
     // Unknown categories fall back to the default multiplier.

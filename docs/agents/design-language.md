@@ -53,7 +53,7 @@ set; extracted references are git-ignored and presentation-only. Nothing here to
   the loot pins keep their state in the engine; motion only reveals it.
 - **The boot frame**: `app/spa-loading-template.html` is the pre-app splash for the SSR-off shell.
   It is self-contained on purpose — inline CSS, the vendored Archivo face and the brand-mark paths —
-  so the first paint needs no app CSS or JS. `BootScreen.vue` is its in-app twin for every
+  so the first paint needs no app CSS or JS. `AppBootScreen.vue` is its in-app twin for every
   screen-level wait (the dive page's missing-state and awaiting-state fallbacks, including the
   host's first "You hold the wheel." frame), so the app has one loading language rather than plain
   text panels. A live wheel dial (rotating tick ring, gold arc, radar sweep) frames the griffin
@@ -129,7 +129,7 @@ component. Top to bottom:
     its diver as they are now), difficulty, op and mission, and a 3→10 ladder; then the actions:
     the primary (Resume / Open / Host) full width over the secondary and the export/delete icons.
     Live rooms carry a teal edge. A narrow record moves the actions under the card.
-  - Otherwise **`BridgeWheel`**: the dive's real `WheelOfMisfortune`, spinning itself to a fresh
+  - Otherwise **`BridgeWheel`**: the dive's real `WheelOfAdversity`, spinning itself to a fresh
     seed every few seconds while in view (paused off-screen or in a hidden tab; one still draw
     under reduced motion), with a caption card naming the landed directive, its rule and its
     skulls. The caption holds the previous draw until the wheel lands. The wheel is `inert` and
@@ -180,7 +180,7 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
   equal tiles on narrow widths, perks and countdown); on wide containers it is one big button in
   the left column with *Lock a faction* and *Roll each op* stacked on the right — then *Starting
   difficulty* (three number cards, each with its **Base tier**) and, on 5/7, the SEAF/Penance pair,
-  then the **Starting kit** (`StartingKit`: the Kit drawer's grammar — `KitSection` headers over
+  then the **Starting kit** (`KitStarting`: the Kit drawer's grammar — `KitSection` headers over
   `KitTile`s, with primaries, secondaries and throwables in their own sections — and, in SEAF mode,
   blue "?" tiles ending each section, one per item the pack rolls there). On launch each diver gets
   **`KitReveal`**, an `AppDialog` over the wheel page (`useKitReveal` arms it) where the "?" tiles
@@ -190,17 +190,17 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
   time. Reduced motion shows the finished kit at once. Squadmates see a **Stand by** card with a Declare warbonds CTA instead of disabled
   controls (the host's picks are local until launch). Diver names are all caps.
 - **Risk never shows as a Valor number.** Each plan and mode carries its per-mission risk as
-  `RiskPips` skulls (`frontPlanRisk` / `modeValorAt` from the engine). `SetupRisk` totals them
+  `RiskPips` skulls (`frontPlanRisk` / `modeValorAt` from the engine). `RiskSetup` totals them
   (`setupRiskOf`, out of 5) and states the game's core trade beside the total — **"More skulls,
   higher-tier rewards"** with a C→S tier ladder that brightens as it climbs — rather than an odds
   table: setup teaches the rule the whole run plays by.
-- One pinned **launch bar**: the compact `SetupRisk` (one row on desktop, two on phones) beside the
+- One pinned **launch bar**: the compact `RiskSetup` (one row on desktop, two on phones) beside the
   hold-to-launch CTA (stacked and full width on phones); the Bridge dialog shows the same total
   inline. There is no pre-launch checklist.
 
 #### Call — `DivePhaseWheel`
 
-One lit call: `WheelOfMisfortune` (a real seeded SVG wheel inside a gold tick bezel; the hub button
+One lit call: `WheelOfAdversity` (a real seeded SVG wheel inside a gold tick bezel; the hub button
 and the primary **Spin the wheel** CTA both spin it) fills the left column at stage height
 (`--wheel-size`). The landed wedge lights gold and juts past the rim; labels on the wheel's left
 half flip to read upright; the hub shows the drawn rule's skulls and "Risk N" — never "+N". There
@@ -299,7 +299,7 @@ draft hands off to an interstitial; the engine stays in rewards and the host's A
 way on. Mid-operation that is **`MissionCleared`** ("Regroup"): a mission track (secured drops lit
 teal, the next one breathing gold), the diver's banked haul as a hero card with the credits it
 earned, the squad's picks (`SquadDraftBoard`), and **Brasch's Bargains inline** so divers shop
-while they wait. Both beats share **`BankedHaul`** (the haul hero card). At the operation's end, **`OperationCleared`** carries the climb
+while they wait. Both beats share **`MissionBankedHaul`** (the haul hero card). At the operation's end, **`OperationCleared`** carries the climb
 to the next difficulty — the next in-game difficulty emblem slams in over rays, above a 3–10
 chevron ladder underlined in each rung's base tier — then regroups like the mission beat: the haul, the squad's picks and Brasch's shelf as a **last
 call** (the shelf restocks at the new altitude only when the next operation starts). Its backdrop
@@ -308,7 +308,7 @@ headline takes one pass of light — all stilled by reduced motion.
 
 #### ValorRoll — the one odds primitive
 
-`app/components/dive/ValorRoll.vue` draws the Valor odds line: tier zones whose widths are
+`app/components/valor/ValorRoll.vue` draws the Valor odds line: tier zones whose widths are
 cumulative reach chances, a ruler, zone labels with odds (or percentage-point gains), and pins at
 each rolled face. The call, pacts, dive (locked) and loot (pins) screens all use it, so the same
 visual grammar explains every roll. Zones under 0.5% read `<1%`; 0% zones are silent. When a
@@ -328,7 +328,7 @@ lamp, disabled with its reason mid-mission), and a non-modal panel that opens to
 panel's Hide control or Esc folds it, and the rail never moves. State is `useDrawers().sidePanel`
 (`codexOpen` / `warbondsOpen` are flags over it, so the tutorial, lobby and Field Promotion gate
 still just call `openWarbonds()`). Bargains shuts itself when the squad drops into the field.
-On a phone (`sheet`) the rail is a four-up row pinned just above the action bar (`DivePhoneShell`'s
+On a phone (`sheet`) the rail is a four-up row pinned just above the action bar (`PhoneShell`'s
 `dock` slot) and the panel rises over the stage from it (up to 64dvh, Hide or a tap anywhere off the dock folds it down; panels slide in and out
 symmetrically, tucked behind the rail and the action bar, never over them); the
 phone top bar and action bar no longer carry Kit, Codex or credit tiles. Components hosted here
@@ -345,7 +345,7 @@ carry a tier stripe and lift on hover; banned icons drop their glow.
 
 #### Join briefing and host tutorial
 
-`JoinBriefing` is the joiner's one-page "You've been drafted." registry; `HostBriefing` is its fork for
+`BriefingJoin` is the joiner's one-page "You've been drafted." registry; `BriefingHost` is its fork for
 the host ("You hold the wheel."): same registry, kit and risk dial, but the mission loop is the host's
 duties (raise, launch, spin, call, report) plus a "Keep the table" strip. The host sees it as a full page
 on first seating and as a `Host tutorial` dialog (`review`) from the session menu. In both, the squad
@@ -357,7 +357,7 @@ onboarding odds dial remains a teaching aid; the live dive uses `ValorRoll`.
 
 #### Phone shell
 
-`usePhoneShell` swaps the desktop tree for `DivePhone` (`DivePhoneShell` + `Phone*`). It is a fixed
+`usePhoneShell` swaps the desktop tree for `DivePhone` (`PhoneShell` + `Phone*`). It is a fixed
 column: `PhoneTopBar` (identity, Squad, menu — no beat tabs, to give the stage the room), a
 scrolling stage, the sidebar's tool rail, and a pinned `footer.phone-bar`. The bar never changes shape — its CTA label stays on one line and
 ellipsizes a long item name: optional detail above, an optional secondary

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { ITEMS_BY_ID, WARBONDS } from '../data/catalog'
-import { MAX_DIFFICULTY, MIN_DIFFICULTY, STRAIN_RISK, conditionRiskAt, directiveValorAt, directiveWeightFor } from './config'
+import { MAX_DIFFICULTY, MIN_DIFFICULTY, STRAIN_RISK, missionsPerOperation, conditionRiskAt, directiveValorAt, directiveWeightFor } from './config'
 import { itemPrice, oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { actingDiverIds, activeMisfortune, activeStrain, armoryRules, awaitingDiverIds, bargainLamp, bargainShelfFor, bargainSlotKinds, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, majorOrderPlanetsForFront, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, missionsUntilHonors, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
+import { actingDiverIds, activeMisfortune, activeStrain, armoryRules, awaitingDiverIds, bargainLamp, bargainsClosedReason, bargainShelfFor, bargainSlotKinds, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, majorOrderPlanetsForFront, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, missionsUntilHonors, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
 import { isPactSelectable, rollPactOffer } from './pacts'
 import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -244,8 +244,21 @@ describe('bargainShelfFor / canBuyItem (Brasch\'s Bargains)', () => {
     }
   })
 
-  it('opens between missions and closes in the field', () => {
+  it('stays shut until the squad has completed an operation', () => {
     const state = started()
+    const diver = { ...host(state), credits: 100_000 }
+    const itemId = bargainShelfFor(state, diver)[0]!.item!.id
+    expect(bargainsClosedReason(state)).toBe('Opens after your first operation')
+    expect(canBuyItem(state, diver, itemId)).toEqual({ allowed: false, reason: 'Opens after your first operation' })
+    expect(bargainsClosedReason({ ...state, difficulty: state.difficulty + 1 })).toBeNull()
+    // The operation's clearing screen is its last call at the shop.
+    const lastMission = { ...state, missionInOperation: missionsPerOperation(state.difficulty) }
+    expect(bargainsClosedReason({ ...lastMission, phase: 'rewards' })).toBeNull()
+    expect(bargainsClosedReason({ ...lastMission, phase: 'pacts' })).toBe('Opens after your first operation')
+  })
+
+  it('opens between missions and closes in the field', () => {
+    const state = { ...started(), difficulty: 4 }
     const diver = { ...host(state), credits: 100_000 }
     const itemId = bargainShelfFor(state, diver)[0]!.item!.id
     expect(canBuyItem(state, diver, itemId)).toEqual({ allowed: true, reason: null })
@@ -257,7 +270,7 @@ describe('bargainShelfFor / canBuyItem (Brasch\'s Bargains)', () => {
   })
 
   it('refuses when broke, off the shelf, or after this mission\'s buy', () => {
-    const state = started()
+    const state = { ...started(), difficulty: 4 }
     const diver = host(state)
     const item = bargainShelfFor(state, diver)[0]!.item!
     const price = itemPrice(item)
@@ -281,7 +294,7 @@ describe('bargainLamp', () => {
 
   it('lights solid between missions and pulses only for a new operation\'s restock', () => {
     const rich = { ...diver, credits: 100_000 }
-    expect(bargainLamp(state, rich)).toBe('ready')
+    expect(bargainLamp(state, rich)).toBe('off')
     expect(bargainLamp({ ...state, missionInOperation: 2, difficulty: 4 }, rich)).toBe('ready')
     expect(bargainLamp({ ...state, difficulty: 4 }, rich)).toBe('restocked')
     const shopped = { ...rich, bargain: { ...rich.bargain!, boughtKinds: ['primary' as const] } }

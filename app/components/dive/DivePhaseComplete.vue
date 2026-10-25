@@ -33,7 +33,7 @@ const records = computed(() => [
       class="mark-row"
       v-bind="riseIn(0)"
     >
-      <BrandMark
+      <AppBrandMark
         :size="60"
         class="mark"
       />

@@ -410,7 +410,7 @@ function launch(): void {
         class="launch-notch"
         aria-hidden="true"
       />
-      <SetupRisk
+      <RiskSetup
         v-if="canControl"
         class="launch-risk"
         :settings="settings"
@@ -423,7 +423,7 @@ function launch(): void {
         <span class="lbl">Waiting on the host</span>
         <span class="launch-line">{{ hostName }} launches the crusade</span>
       </div>
-      <HoldButton
+      <AppHoldButton
         v-if="canControl"
         class="launch-btn"
         :class="{ 'cta-sweep': !launched }"

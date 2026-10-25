@@ -114,7 +114,7 @@ const EXCLUDED_WARBOND_CODES = new Set(['warbond2'])
 // so a catalog refresh re-applies them instead of reverting the generated data.
 // Upstream's `antitank` flag is a game-truth claim, not an opaque tag: it feeds
 // the Anti-Tank Abstinent pact ban (shared/engine/pacts.ts) and the AT badge
-// (app/components/ui/ItemCard.vue). Keyed by item id.
+// (app/components/item/ItemCard.vue). Keyed by item id.
 const ITEM_OVERRIDES = {
   // The Eruptor is an explosive primary with limited armour penetration, not an
   // anti-tank weapon — it must not read as AT.

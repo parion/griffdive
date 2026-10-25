@@ -71,7 +71,7 @@ onBeforeUnmount(() => clearTimeout(timer))
       aria-hidden="true"
       inert
     >
-      <WheelOfMisfortune
+      <WheelOfAdversity
         :difficulty="difficulty"
         :seed="seed"
       />

@@ -11,6 +11,7 @@ import {
   BARGAIN_SLOTS,
   BARGAIN_STREAM,
   FRONT_ROLL_RISK,
+  missionsPerOperation,
   MAJOR_ORDER_RISK,
   OPTIONS_LOST_PER_FAILED_DIRECTIVE,
   FORFEIT_STREAM,
@@ -584,10 +585,11 @@ export function bargainShelfFor(state: DiveState, diver: DiverState): BargainShe
   })
 }
 
-// Brasch's Bargains is open between missions. It closes while the squad is in
-// the field, while a failure's forfeit is being settled (a buy would reshuffle
-// the forfeit offers, which derive from the live kit) and once the crusade is
-// over.
+// Brasch's Bargains is open between missions once the squad has completed an
+// operation (credits bank from the first mission, so the first purchase is a
+// real saving). It closes while the squad is in the field, while a failure's
+// forfeit is being settled (a buy would reshuffle the forfeit offers, which
+// derive from the live kit) and once the crusade is over.
 const BARGAIN_CLOSED_REASON: Partial<Record<DivePhase, string>> = {
   lobby: 'Opens when the crusade launches',
   diving: 'Closed during the mission',
@@ -595,8 +597,26 @@ const BARGAIN_CLOSED_REASON: Partial<Record<DivePhase, string>> = {
   complete: 'The crusade is over',
 }
 
+// The squad has finished at least one operation: the climb has moved past the
+// variant's start, or the current mission is the clearing one (its rewards
+// screen is the operation's last call at the shop).
+function operationCompleted(state: DiveState): boolean {
+  if (!state.settings) {
+    return false
+  }
+  return catchUpOpsBehind(state.difficulty, state.settings.variant) > 0
+    || (state.phase === 'rewards' && state.missionInOperation >= missionsPerOperation(state.difficulty))
+}
+
 export function bargainsClosedReason(state: DiveState): string | null {
-  return BARGAIN_CLOSED_REASON[state.phase] ?? null
+  const byPhase = BARGAIN_CLOSED_REASON[state.phase]
+  if (byPhase) {
+    return byPhase
+  }
+  if (state.settings && !operationCompleted(state)) {
+    return 'Opens after your first operation'
+  }
+  return null
 }
 
 // Whether a diver can buy an item from their Brasch's Bargains shelf: the shop

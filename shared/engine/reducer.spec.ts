@@ -9,7 +9,7 @@ import { DIVERS_CHOICE_OPTION_ID, bargainKindOf, itemPrice, maxCeiling } from '.
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { activeMisfortune, allDiversPicked, availableCaches, awaitingDiverIds, bargainShelfFor, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, honorsPending, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, setupRiskOf, pactRiskOf, promotionPending, rewardPoolFor, squadSize, teamRiskOf } from './selectors'
+import { activeMisfortune, allDiversPicked, availableCaches, awaitingDiverIds, bargainShelfFor, bargainSlotKinds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, honorsPending, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, setupRiskOf, pactRiskOf, promotionPending, rewardPoolFor, squadSize, teamRiskOf } from './selectors'
 import { deriveFront, deriveStrain } from './wheel'
 import type { DiveState, DiverState, EngineAction } from './types'
 
@@ -868,6 +868,9 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
   const rich = (state: DiveState, credits = 100_000): DiveState =>
     ({ ...state, divers: state.divers.map(diver => ({ ...diver, credits })) })
 
+  // Bargains stays shut until the squad has completed an operation.
+  const opened = (state: DiveState): DiveState => ({ ...state, difficulty: state.difficulty + 1 })
+
   it('banks the sample haul as credits into every diver on a successful report', () => {
     let state = twoDiverState()
     state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
@@ -899,7 +902,7 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
   })
 
   it('buys one item per mission, then offers nothing else', () => {
-    let state = rich(freshState(), 500)
+    let state = rich(opened(freshState()), 500)
     const shelf = bargainShelfFor(state, requireDiver(state))
     const affordable = shelf.find(slot => slot.item && itemPrice(slot.item) <= 500)!.item!
     state = reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: affordable.id })
@@ -915,8 +918,11 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
     expect(reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: other.id })).toBe(state)
   })
 
-  it('refuses a buy in the field, without funds, or off the shelf', () => {
-    const state = freshState()
+  it('refuses a buy before the first operation, in the field, without funds, or off the shelf', () => {
+    const early = rich(freshState())
+    const earlyItem = bargainShelfFor(early, requireDiver(early))[0]!.item!
+    expect(reduce(early, { type: 'BUY_ITEM', playerId: 'p1', itemId: earlyItem.id })).toBe(early)
+    const state = opened(freshState())
     const item = bargainShelfFor(state, requireDiver(state))[0]!.item!
     expect(reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: item.id })).toBe(state)
     const diving = rich(divingState(42))
@@ -938,7 +944,7 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
       state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
       return reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: diverOptions(state, requireDiver(state))[0]!.optionId })
     }
-    let state = rich(freshState())
+    let state = rich(opened(freshState()))
     const primary = bargainShelfFor(state, requireDiver(state)).find(slot => slot.kind === 'primary')!.item!
     state = reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: primary.id })
 
@@ -961,14 +967,14 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
     // A new operation brings every kind back.
     state = playMission(state, 43)
     state = reduce(state, { type: 'ADVANCE' })
-    expect(state.difficulty).toBe(4)
+    expect(state.difficulty).toBe(opened(freshState()).difficulty + 1)
     expect(requireDiver(state).bargain?.boughtKinds).toEqual([])
-    expect(bargainShelfFor(state, requireDiver(state)).map(slot => slot.kind)).toEqual(['primary', 'secondary', 'throwable', 'armorPassive'])
+    expect(bargainShelfFor(state, requireDiver(state)).map(slot => slot.kind)).toEqual(bargainSlotKinds(state.difficulty))
     expect(requireDiver(state).bargain?.excludedIds).toContain(primary.id)
   })
 
   it('restocks on a failure restart but keeps the operation\'s bought kinds', () => {
-    let state = rich(freshState())
+    let state = rich(opened(freshState()))
     const primary = bargainShelfFor(state, requireDiver(state)).find(slot => slot.kind === 'primary')!.item!
     state = reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: primary.id })
     const seed = state.bargainSeed
@@ -1619,12 +1625,12 @@ describe('reward tokens + bonus honors', () => {
     )
     const picked = pickFirst(state)
     expect(diverOptions(picked, requireDiver(picked))).toEqual(dealt)
-    const flush = { ...picked, divers: picked.divers.map(diver => ({ ...diver, credits: 100_000 })) }
+    const flush = { ...picked, difficulty: picked.difficulty + 1, divers: picked.divers.map(diver => ({ ...diver, credits: 100_000 })) }
     const stocked = bargainShelfFor(flush, requireDiver(flush))[0]?.item
     expect(stocked).toBeDefined()
     const bought = reduce(flush, { type: 'BUY_ITEM', playerId: 'p1', itemId: stocked!.id })
     expect(bought).not.toBe(flush)
-    expect(diverOptions(bought, requireDiver(bought))).toEqual(dealt)
+    expect(diverOptions(bought, requireDiver(bought))).toEqual(diverOptions(flush, requireDiver(flush)))
     expect(reduce(bought, { type: 'ADVANCE' }).divers[0]?.draftExcludedIds).toBeNull()
   })
 

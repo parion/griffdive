@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useSessionStore } from '~/stores/session'
+import { CURRENT_RELEASE } from '~/utils/release'
 
 const route = useRoute()
 // The dive renders its own terminal header (crusade, room code, copy, nav), so
@@ -27,18 +28,18 @@ const { online } = useSessionStore()
           class="brand"
           aria-label="Griffdive bridge"
         >
-          <BrandMark :size="26" />
+          <AppBrandMark :size="26" />
           <span class="brand-word disp">Griffdive</span>
         </NuxtLink>
         <button
           type="button"
-          class="chip alpha-chip"
-          title="Alpha — click for the changelog"
+          class="chip release-chip"
+          :title="`${CURRENT_RELEASE.label} — click for the release notes`"
           aria-haspopup="dialog"
           :aria-expanded="changelogOpen"
           @click="changelogOpen = true"
         >
-          Alpha
+          {{ CURRENT_RELEASE.label }}
         </button>
         <!-- The Bridge docks its live Major Order here. -->
         <div
@@ -83,7 +84,7 @@ const { online } = useSessionStore()
         </nav>
       </header>
       <NuxtPage />
-      <ChangelogModal
+      <AppChangelogModal
         :open="changelogOpen"
         @close="changelogOpen = false"
       />
@@ -98,7 +99,7 @@ const { online } = useSessionStore()
         />
       </template>
       <FeedbackSheet />
-      <ToastStack />
+      <AppToastStack />
     </div>
   </MotionConfig>
 </template>
@@ -135,7 +136,7 @@ const { online } = useSessionStore()
   letter-spacing: 0.06em;
 }
 
-.alpha-chip {
+.release-chip {
   font-size: 10px;
   letter-spacing: 0.2em;
   color: var(--khaki);
@@ -170,7 +171,7 @@ const { online } = useSessionStore()
 @media (max-width: 720px) {
   .term-header { padding: 0 12px; gap: 10px; }
   .brand-word { font-size: 14px; letter-spacing: 0.04em; }
-  .alpha-chip { display: none; }
+  .release-chip { display: none; }
   .uplink { display: none; }
   /* Labels stay on phones — playtesters never found Codex/Warbonds behind bare
      icons. Icon and label sit side by side to fit beside the brand. */

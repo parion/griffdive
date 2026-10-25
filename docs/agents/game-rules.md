@@ -503,7 +503,7 @@ option roll:   each option rolls a d100 face on the odds line. Zone width is
   `S_PLUS_OVERFLOW_CAP`). A zero-Valor dive always rolls its base tier. Samples are a separate
   currency and never nudge Valor: chosen risk alone moves the odds line, so skill and loot never carry a
   run (they fund Brasch's Bargains instead).
-- **Valor is surfaced as a roll, not a number.** `app/components/dive/ValorRoll.vue` draws the
+- **Valor is surfaced as a roll, not a number.** `app/components/valor/ValorRoll.vue` draws the
   odds line as tier zones whose widths are the cumulative reach chances; a marker pin sits at each
   rolled option's d100 face. Hovering or focusing a pact previews the percentage-point movement each
   zone gains or loses. No screen shows a numeric Valor total and no rule is gated on the gauge.
@@ -537,7 +537,7 @@ option roll:   each option rolls a d100 face on the odds line. Zone width is
   movement while previewing a pact), a non-zero chance below 0.5% reads `<1%`, and a 0% zone is
   silent. The join briefing's onboarding dial reads the same zone chances (`tierZones`) as
   the live roll line, so onboarding and the draft can never disagree.
-- **Option count** comes from stars (mission performance), lookup table `starsToOptions`:
+- **Option count** comes from stars (mission performance), lookup table `STARS_TO_OPTIONS`:
   `[1,1,2,3,4,4]` (index = stars), capped at 4. Stars themselves are
   difficulty-capped per the game (wiki.gg/Missions): max 3 at diffs 3–4, 4 at 5–6, 5 at 7+; a
   completed mission never awards 0 and a failed mission awards none (`maxStarsFor` in
@@ -557,7 +557,7 @@ option roll:   each option rolls a d100 face on the odds line. Zone width is
 ### Brasch's Bargains — credits
 
 Samples recovered on a mission are not a Valor term. They are exchanged for **credits**, the
-currency of **Brasch's Bargains** (marked in the UI by a custom credit glyph, `ui/IconCredit.vue`).
+currency of **Brasch's Bargains** (marked in the UI by a custom credit glyph, `icon/IconCredit.vue`).
 A successful report banks each diver seated by report time a credit haul in their personal purse
 (`DiverState.credits`) — a mid-mission joiner dove too, so the haul is theirs:
 
@@ -579,8 +579,12 @@ sample pickup, so a squad can bring home more than the map spawned; the regular 
 would make those hauls unreportable. The filed count remains honor-system: the engine only clamps it
 to a non-negative integer.
 
-**Brasch's Bargains is an always-open shop**, open between missions in every phase from `spin` to
-`rewards`. It closes in the `lobby`, while `diving`, while a failure's `forfeit` settles (a buy would
+**Brasch's Bargains opens once the squad has completed an operation**, then stays open between
+missions in every phase from `spin` to `rewards`. Credits bank from the first mission, so the first
+purchase is a real saving. Until then it is shut (`'Opens after your first operation'`); the
+clearing mission's `rewards` screen counts as complete, since that screen is the operation's last
+call at the shop (`operationCompleted`: the difficulty is past the variant's start, or the last
+mission of the operation is in `rewards`). It also closes in the `lobby`, while `diving`, while a failure's `forfeit` settles (a buy would
 reshuffle the forfeit offers, which derive from the live kit) and once the crusade is `complete`
 (`bargainsClosedReason`). It is the one deliberate exception to design principle 4 (it names
 items):
@@ -602,8 +606,10 @@ items):
     just played and every diver is dealt afresh.
   - **Seating mid-crusade:** the joiner is dealt the current mission's shelf.
 - **Prices:** tier first, then type: `itemPrice = CREDIT_PRICE_TIER[tier] × CREDIT_PRICE_TYPE[category]`.
-  C/B/A/S cost 25/100/400/800, so C/B sit within a mission or two's haul while A and S are long
-  saving goals (see the simulation below). Primaries ×1.25, armor passives ×0.75, everything else ×1.
+  C/B/A/S cost 35/100/280/450 — roughly 2.8× per tier through A, then a flatter step to S so the top
+  stays in reach — so C/B sit within a mission or two's haul, A is a short save, and S (stocked from difficulty 8) lands about once per 6–7
+  missions for a squad filing a modest share of the map's samples (`scripts/simulate-economy.mjs`;
+  `SAVER=1` models a diver who skips small buys to afford a nearby S). Primaries ×1.25, armor passives ×0.75, everything else ×1.
 - **One buy per mission:** `BUY_ITEM` (self-service) deducts the price, banks the item in
   `personalInventories` and records it as `bargain.boughtItemId`. The shelf keeps its layout: the
   bought slot reads `bought` and every other slot `locked` until the next mission (`bargainShelfFor`

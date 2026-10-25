@@ -267,7 +267,7 @@ const facts = [
         </h1>
         <p class="hero-lede rise">
           Griffdive wraps your Helldivers 2 missions in a roguelike crusade. Start on
-          Medium with surplus gear, spin the <b>Wheel of Misfortune</b> before every
+          Medium with surplus gear, spin the <b>Wheel of Adversity</b> before every
           drop, swear <b>pacts</b> for rarer loot and climb all the way to
           <b>Super Helldive</b>.
         </p>
@@ -344,7 +344,7 @@ const facts = [
       title="The wheel picks your fight."
     >
       <p>
-        Before every mission the host spins the <b>Wheel of Misfortune</b>. It lands one
+        Before every mission the host spins the <b>Wheel of Adversity</b>. It lands one
         <b>Squad Directive</b> — no stratagems, melee only, zero deaths — that the whole
         squad carries into the drop.
       </p>
@@ -425,7 +425,7 @@ const facts = [
       class="close"
       aria-labelledby="close-h"
     >
-      <BrandMark
+      <AppBrandMark
         :size="64"
         class="close-mark"
       />

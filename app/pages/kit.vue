@@ -1140,7 +1140,7 @@ onBeforeUnmount(() => {
           </div><span class="cap"><b>Star radio</b> · {{ stars }}/5</span>
         </div>
         <div class="cell">
-          <SampleCanister
+          <MissionSampleCanister
             v-model="samples"
             :max="40"
             tone="common"

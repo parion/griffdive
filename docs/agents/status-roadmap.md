@@ -5,7 +5,7 @@
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core) and Phase 2 (realtime squads) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (460 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (510 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection — verified by a live two-peer smoke test and the Playwright E2E suite (solo flow,
@@ -52,9 +52,9 @@ Requisition currency:** a successful report banks a sample haul (time remaining 
 every diver's purse, and once their draft resolves a per-diver rotating **Requisition stock** — its
 tiers drawn from the difficulty band — lets them buy named items, priced by tier then type. The
 team-performance Valor term is gone; chosen risk is the only thing that moves the odds line.
-**Brasch's Bargains became an always-open shop paid in credits:** samples now bank as credits, and
+**Brasch's Bargains became a shop paid in credits:** samples now bank as credits, and
 the shop opens from the dive header (phone: a credit tile on the action bar) in every phase but the
-mission itself. Every mission restocks one random slot per primary, secondary, throwable and armor
+mission itself, once the first operation is complete. Every mission restocks one random slot per primary, secondary, throwable and armor
 passive (base tier up to one above), plus a stratagem slot per star past the third. A diver buys at
 most one item per mission, and a bought kind isn't stocked again until the next operation (see
 Brasch's Bargains — credits).
@@ -63,8 +63,53 @@ all crusade), so the five squad-size/kit variants collapsed into Medium (3), Har
 Mission (7); the hard/suicide starts choose one of two mutually exclusive modes — the assisted
 **SEAF Support Package** (a random B-tier pack rolled per diver + a small flat Valor bump) or **Super Penance** (bare kit + a
 larger flat Valor stake, marked by a Hades-style flame) (see Starting variants).
+**Beta (2026-10-25):** the header chip and changelog dialog now read the release channel from `app/utils/release.ts`. The save policy below is unchanged.
 **Alpha has landed:** the save schema is frozen at v13 and the migration chain is open (see Save
 model). See [Roadmap](#roadmap).
+
+## Beta-readiness review (2026-10-24)
+
+Pre-beta pass: dependencies upgraded, component tree reorganised to Nuxt's default naming, dead
+code removed, docs audited against the code. Gate: lint, typecheck, 510 unit tests and 45 e2e
+specs green on the upgraded stack.
+
+**Spec relevance.** Every identifier and path the `docs/agents/` files cite was checked against the
+tree; stale ones were fixed (`starsToOptions` → `STARS_TO_OPTIONS`, retired components, the old
+`ui/`/`dive/` paths). The design-language layouts (lit-stage shell, Bridge, phone and tablet shells,
+Hellpod Bays, ValorRoll) are still current and are pinned by the `phone-*`, `tablet-layout`,
+`bridge` and `dive-sidebar` e2e specs. Retired and already marked so: the ceiling-first draft, the
+Ban UI, the lobby/matchmaking. Not re-verified visually: pixel-level fidelity of each section.
+
+**Game design (from `scripts/simulate-economy.mjs`, 4000 runs).**
+- Brasch's Bargains pace well through B/A tier: a steady squad buys ~11 items over 20 missions
+  (1.4 per operation), an eager one ~16. Buys per mission drop to 0.1-0.6 at difficulty 8-10 (cause not
+  investigated).
+- **Addressed after this review:** S-tier at 800 credits was effectively unreachable, and difficulty 3
+  had a dead shop (haul 4-8 vs a 25-credit floor). Prices now ride one curve, 35/100/280/450, and the
+  shop stays shut until the first operation completes, so early credits accumulate instead of
+  stranding. A steady squad (60% of samples filed) buys an S about once per 6.6 missions in
+  the S band (difficulty 8+) when it saves for one; a diver who always spends on the priciest
+  affordable item almost never reaches S (~1 per 590 missions), so the SAVER policy in
+  `scripts/simulate-economy.mjs` is the number to watch. Overall buys rose (steady ~11 per 20
+  missions, level with the old curve).
+- Open balance/design items still on the board in `PLAN.md`: N25 (pacts are strictly "take
+  everything"), N39 (reroll-token sources), N13 (`fragileLiberty` early lock-out, blocked on DEC-6).
+
+**Technical performance (production build).**
+- Client JS 1.09 MB raw / 333 kB gzip over 21 chunks (largest 64 kB gzip); CSS 333 kB / 61 kB gzip.
+  Build 8.4 s; unit suite 0.6 s; e2e 45 specs in ~32 s.
+- Shipped weight was dominated by 44 MB of unreferenced `public/images/gauntletSpecialists` art
+  (Specialists are Phase 5). Removed: `public/images` fell from 75 MB to 31 MB (production `.output` is now 38 MB), and the image/PWA
+  cache story is unchanged (catalog art is still cached on demand, never precached).
+- Not measured here: runtime frame rate on low-end phones, WebSocket load beyond the unit
+  fakes, and Lighthouse. Do these on the staging deploy before the beta announcement.
+- Open infra items before a public beta: N41 (rate limits trust a spoofable `X-Forwarded-For`)
+  and N42 (per-IP session caps, faster lobby reaping, save TTL).
+
+**Dependencies.** All at latest except TypeScript, held at 6.x: `vue-tsc` cannot load the TS 7
+native port yet. `@vueuse/core` 15 replaced the websocket heartbeat `interval` with a `scheduler`
+(`useGameSocket`). The regenerated PWA icons from `@vite-pwa/assets-generator` 2 were not adopted
+(encoder churn only).
 
 ## Roadmap
 
