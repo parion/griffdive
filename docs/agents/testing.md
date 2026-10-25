@@ -17,7 +17,11 @@
   they were simply regenerated.
 - **Server tests** (Vitest, fake KV + fake peers in `server/utils/room-sync.spec.ts`): room
   join/spin/pick flows, host authority + coercion, host migration, reattachment, room-full,
-  TTL pruning, metrics gauges/counters (`metrics.spec.ts`). (`@nuxt/test-utils` +
+  TTL pruning, metrics gauges/counters (`metrics.spec.ts`). The feedback inbox
+  (`feedback.spec.ts`) is tested at its seams: message/category normalization, control-character
+  and length caps, the context allowlist (unknown paths and phases are dropped), honeypot
+  detection, reference formatting, retention/cap pruning and serialized concurrent writes.
+  (`@nuxt/test-utils` +
   Playwright browser flows land in Phase 3+.)
 - **Client util tests** (Vitest, `app/utils/*.spec.ts`): the brand mark ↔ `icon.svg` invariant
   (`brandMark.spec.ts`) and the changelog's release boundaries, deployment phases (waiting vs
@@ -62,5 +66,8 @@
   room inside a spec over creating another. The e2e server also sets `GRIFFDIVE_DISABLE_MO_API=1`:
   a live order would become the default front plan and drop the strain call, so specs that need an
   order mock `/api/war/major-order` per page, PWA affordances
-  (manifest content type + icons served, SW reachable, shell head links). Chromium only;
+  (manifest content type + icons served, SW reachable, shell head links), and the feedback sheet
+  (`feedback.spec.ts`: the Bridge footer files a note with no account and returns a 10-character
+  reference, the board link is a click-through, Escape restores focus and keeps the draft).
+  Chromium only;
   `pnpm exec playwright install chromium` after a fresh clone.

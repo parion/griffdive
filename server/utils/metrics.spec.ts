@@ -256,4 +256,21 @@ describe('room-metrics', () => {
     expect(text).toContain('griffdive_crusades_achieved_total 1')
     expect(text).toMatch(/griffdive_missions_started_total\{difficulty="4"\} 1/)
   })
+
+  it('counts filed feedback by category and refusals by reason', async () => {
+    const metrics = createRoomMetrics()
+    metrics.recordFeedback('bug')
+    metrics.recordFeedback('idea')
+    metrics.recordFeedback('bug')
+    metrics.recordFeedbackRejected('rate_limited')
+    metrics.recordFeedbackRejected('invalid')
+
+    const text = await metrics.registry.metrics()
+    expect(text).toMatch(/griffdive_feedback_total\{category="bug"\} 2/)
+    expect(text).toMatch(/griffdive_feedback_total\{category="idea"\} 1/)
+    expect(text).toMatch(/griffdive_feedback_rejected_total\{reason="rate_limited"\} 1/)
+    expect(text).toMatch(/griffdive_feedback_rejected_total\{reason="invalid"\} 1/)
+    // Aggregate only: no message content can reach a label.
+    expect(text).not.toContain('stuttered')
+  })
 })

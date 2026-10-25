@@ -35,6 +35,13 @@ export default defineNuxtConfig({
     },
   },
   css: ['~/assets/css/main.css'],
+  runtimeConfig: {
+    public: {
+      // Set NUXT_PUBLIC_FEEDBACK_BOARD_URL once the self-hosted Fider board is
+      // live. Empty hides every link to it, so the app never points at a 404.
+      feedbackBoardUrl: '',
+    },
+  },
   routeRules: {
     // The SPA shell is rendered per request and references content-hashed
     // assets, so it must never be cached: a deploy is then picked up on the
@@ -53,6 +60,9 @@ export default defineNuxtConfig({
     // Fly volume is mounted); `fs-lite` uses only node:fs — no runtime dep.
     storage: {
       rooms: { driver: 'fs-lite', base: './.data/rooms' },
+      // One JSON inbox (`inbox`) next to the rooms, so a deploy keeps notes and
+      // the export script can read it straight off the mounted volume.
+      feedback: { driver: 'fs-lite', base: './.data/feedback' },
     },
     experimental: {
       websocket: true,

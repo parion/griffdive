@@ -1,0 +1,48 @@
+# Local Fider, for wiring the board before it has a Fly app.
+#
+#   docker compose -f deploy/fider/docker-compose.yml up
+#   open http://localhost:3000
+#
+# The first visit creates the site and the admin account. Email is mandatory in
+# Fider (sign-in is an emailed link), so even this smoke test needs a sender:
+# point EMAIL_SMTP_* at a local catcher such as Mailpit, or at your real SMTP.
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fider
+      POSTGRES_PASSWORD: fider
+      POSTGRES_DB: fider
+    volumes:
+      - fider_pg:/var/lib/postgresql/data
+
+  app:
+    image: getfider/fider:stable
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - '3000:3000'
+    environment:
+      BASE_URL: http://localhost:3000
+      DATABASE_URL: postgres://fider:fider@db:5432/fider?sslmode=disable
+      JWT_SECRET: local-dev-only-change-me
+      EMAIL_NOREPLY: noreply@localhost
+      EMAIL: smtp
+      EMAIL_SMTP_HOST: mailpit
+      EMAIL_SMTP_PORT: 1025
+      # Keep the local board close to production: no GA, metrics on 4000.
+      METRICS_ENABLED: 'true'
+      METRICS_PORT: '4000'
+
+  # Catches the sign-in mails locally so the board can be exercised with no
+  # provider account; the inbox is http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '8025:8025'
+
+volumes:
+  fider_pg:
