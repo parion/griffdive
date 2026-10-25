@@ -33,6 +33,21 @@
         "current": { "selected": true, "text": "All", "value": "$__all" },
         "options": [],
         "hide": 0
+      },
+      {
+        "name": "app",
+        "label": "App",
+        "type": "query",
+        "description": "Scopes every panel to one Fly app. Staging, production and PR review apps all scrape into the same organization Prometheus, so without this the panels show their series together.",
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "query": "label_values(griffdive_online_players, app)",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "options": [],
+        "hide": 0
       }
     ]
   },
@@ -43,8 +58,8 @@
         "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
         "enable": true,
         "iconColor": "orange",
-        "expr": "changes(process_start_time_seconds[5m]) > 0",
-        "target": { "expr": "changes(process_start_time_seconds[5m]) > 0", "refId": "Anno" }
+        "expr": "changes(process_start_time_seconds{app=~\"$app\"}[5m]) > 0",
+        "target": { "expr": "changes(process_start_time_seconds{app=~\"$app\"}[5m]) > 0", "refId": "Anno" }
       }
     ]
   },
@@ -57,7 +72,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 5, "w": 4, "x": 0, "y": 0 },
       "targets": [
-        { "refId": "A", "expr": "griffdive_online_players", "instant": true, "range": false, "legendFormat": "players" }
+        { "refId": "A", "expr": "griffdive_online_players{app=~\"$app\"}", "instant": true, "range": false, "legendFormat": "players" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -76,7 +91,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 5, "w": 4, "x": 4, "y": 0 },
       "targets": [
-        { "refId": "A", "expr": "griffdive_active_rooms", "instant": true, "range": false, "legendFormat": "rooms" }
+        { "refId": "A", "expr": "griffdive_active_rooms{app=~\"$app\"}", "instant": true, "range": false, "legendFormat": "rooms" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -95,7 +110,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 5, "w": 4, "x": 8, "y": 0 },
       "targets": [
-        { "refId": "A", "expr": "sum(increase(griffdive_dives_started_total[$__range]))", "instant": true, "range": false, "legendFormat": "crusades" }
+        { "refId": "A", "expr": "sum(increase(griffdive_dives_started_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "crusades" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
@@ -108,7 +123,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 5, "w": 4, "x": 12, "y": 0 },
       "targets": [
-        { "refId": "A", "expr": "sum(increase(griffdive_missions_started_total[$__range]))", "instant": true, "range": false, "legendFormat": "missions" }
+        { "refId": "A", "expr": "sum(increase(griffdive_missions_started_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "missions" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
@@ -123,7 +138,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum(increase(griffdive_reports_total{outcome=\"success\"}[$__range])) / clamp_min(sum(increase(griffdive_reports_total[$__range])), 1)",
+          "expr": "100 * sum(increase(griffdive_reports_total{outcome=\"success\",app=~\"$app\"}[$__range])) / clamp_min(sum(increase(griffdive_reports_total{app=~\"$app\"}[$__range])), 1)",
           "instant": true,
           "range": false,
           "legendFormat": "success"
@@ -148,7 +163,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 5, "w": 4, "x": 20, "y": 0 },
       "targets": [
-        { "refId": "A", "expr": "griffdive_saved_dives", "instant": true, "range": false, "legendFormat": "saved" }
+        { "refId": "A", "expr": "griffdive_saved_dives{app=~\"$app\"}", "instant": true, "range": false, "legendFormat": "saved" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -181,7 +196,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (route) (rate(griffdive_http_requests_total[$__rate_interval])) * 60",
+          "expr": "sum by (route) (rate(griffdive_http_requests_total{app=~\"$app\"}[$__rate_interval])) * 60",
           "legendFormat": "{{route}}"
         }
       ],
@@ -207,7 +222,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (source) (increase(griffdive_rooms_created_total[$__rate_interval]))",
+          "expr": "sum by (source) (increase(griffdive_rooms_created_total{app=~\"$app\"}[$__rate_interval]))",
           "legendFormat": "{{source}}"
         }
       ],
@@ -233,7 +248,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (result) (increase(griffdive_ws_hello_total[$__rate_interval]))",
+          "expr": "sum by (result) (increase(griffdive_ws_hello_total{app=~\"$app\"}[$__rate_interval]))",
           "legendFormat": "{{result}}"
         }
       ],
@@ -259,7 +274,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (result) (increase(griffdive_room_lookups_total[$__rate_interval]))",
+          "expr": "sum by (result) (increase(griffdive_room_lookups_total{app=~\"$app\"}[$__rate_interval]))",
           "legendFormat": "{{result}}"
         }
       ],
@@ -290,7 +305,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (reason) (increase(griffdive_room_create_rejected_total[$__rate_interval]))",
+          "expr": "sum by (reason) (increase(griffdive_room_create_rejected_total{app=~\"$app\"}[$__rate_interval]))",
           "legendFormat": "{{reason}}"
         }
       ],
@@ -316,7 +331,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (route, status) (increase(griffdive_http_requests_total{status=~\"4xx|5xx\"}[$__rate_interval]))",
+          "expr": "sum by (route, status) (increase(griffdive_http_requests_total{status=~\"4xx|5xx\",app=~\"$app\"}[$__rate_interval]))",
           "legendFormat": "{{route}} {{status}}"
         }
       ],
@@ -349,8 +364,8 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
       "interval": "15s",
       "targets": [
-        { "refId": "A", "expr": "griffdive_online_players", "legendFormat": "Online players" },
-        { "refId": "B", "expr": "griffdive_active_rooms", "legendFormat": "Active rooms" }
+        { "refId": "A", "expr": "griffdive_online_players{app=~\"$app\"}", "legendFormat": "Online players" },
+        { "refId": "B", "expr": "griffdive_active_rooms{app=~\"$app\"}", "legendFormat": "Active rooms" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -381,7 +396,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
       "interval": "2m",
       "targets": [
-        { "refId": "A", "expr": "griffdive_rooms_by_phase", "legendFormat": "{{phase}}" }
+        { "refId": "A", "expr": "griffdive_rooms_by_phase{app=~\"$app\"}", "legendFormat": "{{phase}}" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -403,7 +418,7 @@
       "gridPos": { "h": 7, "w": 8, "x": 0, "y": 28 },
       "interval": "2m",
       "targets": [
-        { "refId": "A", "expr": "griffdive_room_difficulty", "legendFormat": "d{{difficulty}}" }
+        { "refId": "A", "expr": "griffdive_room_difficulty{app=~\"$app\"}", "legendFormat": "d{{difficulty}}" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -427,17 +442,17 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(griffdive_missions_started_total{difficulty=~\"$difficulty\"}[$__rate_interval])) * 3600",
+          "expr": "sum(rate(griffdive_missions_started_total{difficulty=~\"$difficulty\",app=~\"$app\"}[$__rate_interval])) * 3600",
           "legendFormat": "missions started / h"
         },
         {
           "refId": "B",
-          "expr": "sum(rate(griffdive_reports_total{outcome=\"success\",difficulty=~\"$difficulty\"}[$__rate_interval])) * 3600",
+          "expr": "sum(rate(griffdive_reports_total{outcome=\"success\",difficulty=~\"$difficulty\",app=~\"$app\"}[$__rate_interval])) * 3600",
           "legendFormat": "successes / h"
         },
         {
           "refId": "C",
-          "expr": "sum(rate(griffdive_reports_total{outcome=\"failure\",difficulty=~\"$difficulty\"}[$__rate_interval])) * 3600",
+          "expr": "sum(rate(griffdive_reports_total{outcome=\"failure\",difficulty=~\"$difficulty\",app=~\"$app\"}[$__rate_interval])) * 3600",
           "legendFormat": "failures / h"
         }
       ],
@@ -478,12 +493,12 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
       "targets": [
-        { "refId": "A", "expr": "sum(increase(griffdive_rooms_created_total[$__range]))", "instant": true, "range": false, "legendFormat": "Rooms created" },
-        { "refId": "B", "expr": "sum(increase(griffdive_ws_hello_total{result=~\"new|rejoin|reclaim\"}[$__range]))", "instant": true, "range": false, "legendFormat": "Arrivals seated" },
-        { "refId": "C", "expr": "sum(increase(griffdive_missions_started_total[$__range]))", "instant": true, "range": false, "legendFormat": "Missions started" },
-        { "refId": "D", "expr": "sum(increase(griffdive_reports_total[$__range]))", "instant": true, "range": false, "legendFormat": "Missions reported" },
-        { "refId": "E", "expr": "sum(increase(griffdive_operations_completed_total[$__range]))", "instant": true, "range": false, "legendFormat": "Operations completed" },
-        { "refId": "F", "expr": "sum(increase(griffdive_crusades_achieved_total[$__range]))", "instant": true, "range": false, "legendFormat": "Crusades achieved" }
+        { "refId": "A", "expr": "sum(increase(griffdive_rooms_created_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "Rooms created" },
+        { "refId": "B", "expr": "sum(increase(griffdive_ws_hello_total{result=~\"new|rejoin|reclaim\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "Arrivals seated" },
+        { "refId": "C", "expr": "sum(increase(griffdive_missions_started_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "Missions started" },
+        { "refId": "D", "expr": "sum(increase(griffdive_reports_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "Missions reported" },
+        { "refId": "E", "expr": "sum(increase(griffdive_operations_completed_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "Operations completed" },
+        { "refId": "F", "expr": "sum(increase(griffdive_crusades_achieved_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "Crusades achieved" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -514,7 +529,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum by (le, phase) (rate(griffdive_phase_dwell_seconds_bucket[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le, phase) (rate(griffdive_phase_dwell_seconds_bucket{app=~\"$app\"}[$__rate_interval])))",
           "legendFormat": "{{phase}} p95"
         }
       ],
@@ -547,9 +562,9 @@
       "gridPos": { "h": 7, "w": 8, "x": 0, "y": 45 },
       "interval": "1m",
       "targets": [
-        { "refId": "A", "expr": "sum(rate(griffdive_valor_at_report_sum[$__rate_interval])) / clamp_min(sum(rate(griffdive_valor_at_report_count[$__rate_interval])), 0.0001)", "legendFormat": "average" },
-        { "refId": "B", "expr": "histogram_quantile(0.5, sum by (le) (rate(griffdive_valor_at_report_bucket[$__rate_interval])))", "legendFormat": "median" },
-        { "refId": "C", "expr": "histogram_quantile(0.9, sum by (le) (rate(griffdive_valor_at_report_bucket[$__rate_interval])))", "legendFormat": "p90" }
+        { "refId": "A", "expr": "sum(rate(griffdive_valor_at_report_sum{app=~\"$app\"}[$__rate_interval])) / clamp_min(sum(rate(griffdive_valor_at_report_count{app=~\"$app\"}[$__rate_interval])), 0.0001)", "legendFormat": "average" },
+        { "refId": "B", "expr": "histogram_quantile(0.5, sum by (le) (rate(griffdive_valor_at_report_bucket{app=~\"$app\"}[$__rate_interval])))", "legendFormat": "median" },
+        { "refId": "C", "expr": "histogram_quantile(0.9, sum by (le) (rate(griffdive_valor_at_report_bucket{app=~\"$app\"}[$__rate_interval])))", "legendFormat": "p90" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -572,7 +587,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum(rate(griffdive_valor_at_report_bucket{le=\"0\"}[$__rate_interval])) / clamp_min(sum(rate(griffdive_valor_at_report_count[$__rate_interval])), 0.0001)",
+          "expr": "100 * sum(rate(griffdive_valor_at_report_bucket{le=\"0\",app=~\"$app\"}[$__rate_interval])) / clamp_min(sum(rate(griffdive_valor_at_report_count{app=~\"$app\"}[$__rate_interval])), 0.0001)",
           "instant": true,
           "range": false,
           "legendFormat": "zero valor"
@@ -598,7 +613,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 6, "x": 12, "y": 45 },
       "targets": [
-        { "refId": "A", "expr": "sum by (tier) (increase(griffdive_ceiling_total[$__range]))", "instant": true, "range": false, "legendFormat": "{{tier}}" }
+        { "refId": "A", "expr": "sum by (tier) (increase(griffdive_ceiling_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "{{tier}}" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": {
@@ -617,10 +632,10 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 6, "x": 18, "y": 45 },
       "targets": [
-        { "refId": "A", "expr": "sum(increase(griffdive_pact_picks_bucket{le=\"0\"}[$__range]))", "instant": true, "range": false, "legendFormat": "0 pacts" },
-        { "refId": "B", "expr": "sum(increase(griffdive_pact_picks_bucket{le=\"1\"}[$__range])) - sum(increase(griffdive_pact_picks_bucket{le=\"0\"}[$__range]))", "instant": true, "range": false, "legendFormat": "1 pact" },
-        { "refId": "C", "expr": "sum(increase(griffdive_pact_picks_bucket{le=\"2\"}[$__range])) - sum(increase(griffdive_pact_picks_bucket{le=\"1\"}[$__range]))", "instant": true, "range": false, "legendFormat": "2 pacts" },
-        { "refId": "D", "expr": "sum(increase(griffdive_pact_picks_count[$__range])) - sum(increase(griffdive_pact_picks_bucket{le=\"2\"}[$__range]))", "instant": true, "range": false, "legendFormat": "3 pacts" }
+        { "refId": "A", "expr": "sum(increase(griffdive_pact_picks_bucket{le=\"0\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "0 pacts" },
+        { "refId": "B", "expr": "sum(increase(griffdive_pact_picks_bucket{le=\"1\",app=~\"$app\"}[$__range])) - sum(increase(griffdive_pact_picks_bucket{le=\"0\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "1 pact" },
+        { "refId": "C", "expr": "sum(increase(griffdive_pact_picks_bucket{le=\"2\",app=~\"$app\"}[$__range])) - sum(increase(griffdive_pact_picks_bucket{le=\"1\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "2 pacts" },
+        { "refId": "D", "expr": "sum(increase(griffdive_pact_picks_count{app=~\"$app\"}[$__range])) - sum(increase(griffdive_pact_picks_bucket{le=\"2\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "3 pacts" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": {
@@ -642,7 +657,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (decision) (increase(griffdive_directive_decisions_total[$__rate_interval]))",
+          "expr": "sum by (decision) (increase(griffdive_directive_decisions_total{app=~\"$app\"}[$__rate_interval]))",
           "legendFormat": "{{decision}}"
         }
       ],
@@ -676,7 +691,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum by (difficulty) (increase(griffdive_directive_decisions_total{decision=\"accepted\"}[$__range])) / clamp_min(sum by (difficulty) (increase(griffdive_directive_decisions_total[$__range])), 1)",
+          "expr": "100 * sum by (difficulty) (increase(griffdive_directive_decisions_total{decision=\"accepted\",app=~\"$app\"}[$__range])) / clamp_min(sum by (difficulty) (increase(griffdive_directive_decisions_total{app=~\"$app\"}[$__range])), 1)",
           "instant": true,
           "range": false,
           "legendFormat": "d{{difficulty}}"
@@ -711,7 +726,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(12, 100 * sum by (condition) (increase(griffdive_directive_decisions_total{decision=\"accepted\"}[$__range])) / clamp_min(sum by (condition) (increase(griffdive_directive_decisions_total[$__range])), 1))",
+          "expr": "topk(12, 100 * sum by (condition) (increase(griffdive_directive_decisions_total{decision=\"accepted\",app=~\"$app\"}[$__range])) / clamp_min(sum by (condition) (increase(griffdive_directive_decisions_total{app=~\"$app\"}[$__range])), 1))",
           "instant": true,
           "range": false,
           "legendFormat": "{{condition}}"
@@ -744,7 +759,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 60 },
       "targets": [
-        { "refId": "A", "expr": "topk(12, sum by (condition) (increase(griffdive_pacts_picked_total[$__range])))", "instant": true, "range": false, "legendFormat": "{{condition}}" }
+        { "refId": "A", "expr": "topk(12, sum by (condition) (increase(griffdive_pacts_picked_total{app=~\"$app\"}[$__range])))", "instant": true, "range": false, "legendFormat": "{{condition}}" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": {
@@ -763,9 +778,9 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 12, "x": 0, "y": 68 },
       "targets": [
-        { "refId": "A", "expr": "topk(8, sum by (condition) (increase(griffdive_pacts_failed_total[$__range])))", "instant": true, "range": false, "legendFormat": "pact broken · {{condition}}" },
-        { "refId": "B", "expr": "topk(8, sum by (condition) (increase(griffdive_directives_failed_total[$__range])))", "instant": true, "range": false, "legendFormat": "directive broken · {{condition}}" },
-        { "refId": "C", "expr": "topk(8, sum by (condition) (increase(griffdive_directive_refusals_total[$__range])))", "instant": true, "range": false, "legendFormat": "accept refused · {{condition}}" }
+        { "refId": "A", "expr": "topk(8, sum by (condition) (increase(griffdive_pacts_failed_total{app=~\"$app\"}[$__range])))", "instant": true, "range": false, "legendFormat": "pact broken · {{condition}}" },
+        { "refId": "B", "expr": "topk(8, sum by (condition) (increase(griffdive_directives_failed_total{app=~\"$app\"}[$__range])))", "instant": true, "range": false, "legendFormat": "directive broken · {{condition}}" },
+        { "refId": "C", "expr": "topk(8, sum by (condition) (increase(griffdive_directive_refusals_total{app=~\"$app\"}[$__range])))", "instant": true, "range": false, "legendFormat": "accept refused · {{condition}}" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -794,7 +809,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (decision) (increase(griffdive_strain_decisions_total[$__rate_interval]))",
+          "expr": "sum by (decision) (increase(griffdive_strain_decisions_total{app=~\"$app\"}[$__rate_interval]))",
           "legendFormat": "{{decision}}"
         }
       ],
@@ -817,7 +832,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 6, "x": 18, "y": 68 },
       "targets": [
-        { "refId": "A", "expr": "sum by (kind) (increase(griffdive_major_order_total[$__range]))", "instant": true, "range": false, "legendFormat": "{{kind}}" }
+        { "refId": "A", "expr": "sum by (kind) (increase(griffdive_major_order_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "{{kind}}" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": {
@@ -848,7 +863,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum by (difficulty) (rate(griffdive_reports_total{outcome=\"success\",difficulty=~\"$difficulty\"}[$__rate_interval])) / clamp_min(sum by (difficulty) (rate(griffdive_reports_total{difficulty=~\"$difficulty\"}[$__rate_interval])), 0.0001)",
+          "expr": "100 * sum by (difficulty) (rate(griffdive_reports_total{outcome=\"success\",difficulty=~\"$difficulty\",app=~\"$app\"}[$__rate_interval])) / clamp_min(sum by (difficulty) (rate(griffdive_reports_total{difficulty=~\"$difficulty\",app=~\"$app\"}[$__rate_interval])), 0.0001)",
           "legendFormat": "d{{difficulty}}"
         }
       ],
@@ -876,7 +891,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (difficulty) (rate(griffdive_mission_stars_sum{difficulty=~\"$difficulty\"}[$__rate_interval])) / clamp_min(sum by (difficulty) (rate(griffdive_mission_stars_count{difficulty=~\"$difficulty\"}[$__rate_interval])), 0.0001)",
+          "expr": "sum by (difficulty) (rate(griffdive_mission_stars_sum{difficulty=~\"$difficulty\",app=~\"$app\"}[$__rate_interval])) / clamp_min(sum by (difficulty) (rate(griffdive_mission_stars_count{difficulty=~\"$difficulty\",app=~\"$app\"}[$__rate_interval])), 0.0001)",
           "legendFormat": "d{{difficulty}}"
         }
       ],
@@ -901,8 +916,8 @@
       "gridPos": { "h": 7, "w": 8, "x": 16, "y": 76 },
       "interval": "1m",
       "targets": [
-        { "refId": "A", "expr": "sum(rate(griffdive_report_time_pct_sum[$__rate_interval])) / clamp_min(sum(rate(griffdive_report_time_pct_count[$__rate_interval])), 0.0001)", "legendFormat": "average %" },
-        { "refId": "B", "expr": "histogram_quantile(0.5, sum by (le) (rate(griffdive_report_time_pct_bucket[$__rate_interval])))", "legendFormat": "median %" }
+        { "refId": "A", "expr": "sum(rate(griffdive_report_time_pct_sum{app=~\"$app\"}[$__rate_interval])) / clamp_min(sum(rate(griffdive_report_time_pct_count{app=~\"$app\"}[$__rate_interval])), 0.0001)", "legendFormat": "average %" },
+        { "refId": "B", "expr": "histogram_quantile(0.5, sum by (le) (rate(griffdive_report_time_pct_bucket{app=~\"$app\"}[$__rate_interval])))", "legendFormat": "median %" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -928,7 +943,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (rarity) (rate(griffdive_samples_haul_sum[$__rate_interval])) / clamp_min(sum by (rarity) (rate(griffdive_samples_haul_count[$__rate_interval])), 0.0001)",
+          "expr": "sum by (rarity) (rate(griffdive_samples_haul_sum{app=~\"$app\"}[$__rate_interval])) / clamp_min(sum by (rarity) (rate(griffdive_samples_haul_count{app=~\"$app\"}[$__rate_interval])), 0.0001)",
           "legendFormat": "{{rarity}}"
         }
       ],
@@ -952,7 +967,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 8, "x": 8, "y": 83 },
       "targets": [
-        { "refId": "A", "expr": "sum by (tier) (increase(griffdive_rewards_picked_total[$__range]))", "instant": true, "range": false, "legendFormat": "{{tier}}" }
+        { "refId": "A", "expr": "sum by (tier) (increase(griffdive_rewards_picked_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "{{tier}}" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": {
@@ -971,7 +986,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 8, "x": 16, "y": 83 },
       "targets": [
-        { "refId": "A", "expr": "sum by (tier) (increase(griffdive_purchases_total[$__range]))", "instant": true, "range": false, "legendFormat": "{{tier}}" }
+        { "refId": "A", "expr": "sum by (tier) (increase(griffdive_purchases_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "{{tier}}" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": {
@@ -990,7 +1005,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 6, "x": 0, "y": 90 },
       "targets": [
-        { "refId": "A", "expr": "sum by (tier) (increase(griffdive_forfeits_total[$__range]))", "instant": true, "range": false, "legendFormat": "{{tier}}" }
+        { "refId": "A", "expr": "sum by (tier) (increase(griffdive_forfeits_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "{{tier}}" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": {
@@ -1009,8 +1024,8 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 6, "x": 6, "y": 90 },
       "targets": [
-        { "refId": "A", "expr": "sum(increase(griffdive_honors_spun_total[$__range]))", "instant": true, "range": false, "legendFormat": "spun" },
-        { "refId": "B", "expr": "sum(increase(griffdive_honors_awarded_total[$__range]))", "instant": true, "range": false, "legendFormat": "awarded" }
+        { "refId": "A", "expr": "sum(increase(griffdive_honors_spun_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "spun" },
+        { "refId": "B", "expr": "sum(increase(griffdive_honors_awarded_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "awarded" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
@@ -1023,8 +1038,8 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 6, "x": 12, "y": 90 },
       "targets": [
-        { "refId": "A", "expr": "sum(increase(griffdive_reward_rerolls_total[$__range]))", "instant": true, "range": false, "legendFormat": "reroll" },
-        { "refId": "B", "expr": "sum(increase(griffdive_reward_bans_total[$__range]))", "instant": true, "range": false, "legendFormat": "ban" }
+        { "refId": "A", "expr": "sum(increase(griffdive_reward_rerolls_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "reroll" },
+        { "refId": "B", "expr": "sum(increase(griffdive_reward_bans_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "ban" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
@@ -1037,7 +1052,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 6, "x": 18, "y": 90 },
       "targets": [
-        { "refId": "A", "expr": "sum by (kind) (increase(griffdive_wheel_rerolls_total[$__range]))", "instant": true, "range": false, "legendFormat": "{{kind}}" }
+        { "refId": "A", "expr": "sum by (kind) (increase(griffdive_wheel_rerolls_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "{{kind}}" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": {
@@ -1065,10 +1080,10 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 8, "x": 0, "y": 98 },
       "targets": [
-        { "refId": "A", "expr": "sum(increase(griffdive_rejoins_total{gap=\"<1h\"}[$__range]))", "instant": true, "range": false, "legendFormat": "back within an hour" },
-        { "refId": "B", "expr": "sum(increase(griffdive_rejoins_total{gap=\"1-6h\"}[$__range]))", "instant": true, "range": false, "legendFormat": "1–6h" },
-        { "refId": "C", "expr": "sum(increase(griffdive_rejoins_total{gap=\"6-24h\"}[$__range]))", "instant": true, "range": false, "legendFormat": "6–24h" },
-        { "refId": "D", "expr": "sum(increase(griffdive_rejoins_total{gap=\">1d\"}[$__range]))", "instant": true, "range": false, "legendFormat": "next day or later" }
+        { "refId": "A", "expr": "sum(increase(griffdive_rejoins_total{gap=\"<1h\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "back within an hour" },
+        { "refId": "B", "expr": "sum(increase(griffdive_rejoins_total{gap=\"1-6h\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "1–6h" },
+        { "refId": "C", "expr": "sum(increase(griffdive_rejoins_total{gap=\"6-24h\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "6–24h" },
+        { "refId": "D", "expr": "sum(increase(griffdive_rejoins_total{gap=\">1d\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "next day or later" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": {
@@ -1090,7 +1105,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (kind) (increase(griffdive_divers_joined_total[$__rate_interval]))",
+          "expr": "sum by (kind) (increase(griffdive_divers_joined_total{app=~\"$app\"}[$__rate_interval]))",
           "legendFormat": "{{kind}}"
         }
       ],
@@ -1114,8 +1129,8 @@
       "gridPos": { "h": 7, "w": 8, "x": 16, "y": 98 },
       "interval": "1m",
       "targets": [
-        { "refId": "A", "expr": "sum by (kind) (increase(griffdive_divers_departed_total[$__rate_interval]))", "legendFormat": "departed · {{kind}}" },
-        { "refId": "B", "expr": "sum by (reason) (increase(griffdive_host_transfers_total[$__rate_interval]))", "legendFormat": "host moved · {{reason}}" }
+        { "refId": "A", "expr": "sum by (kind) (increase(griffdive_divers_departed_total{app=~\"$app\"}[$__rate_interval]))", "legendFormat": "departed · {{kind}}" },
+        { "refId": "B", "expr": "sum by (reason) (increase(griffdive_host_transfers_total{app=~\"$app\"}[$__rate_interval]))", "legendFormat": "host moved · {{reason}}" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -1136,10 +1151,10 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 8, "x": 0, "y": 105 },
       "targets": [
-        { "refId": "A", "expr": "sum(increase(griffdive_squad_size_bucket{le=\"1\"}[$__range]))", "instant": true, "range": false, "legendFormat": "solo" },
-        { "refId": "B", "expr": "sum(increase(griffdive_squad_size_bucket{le=\"2\"}[$__range])) - sum(increase(griffdive_squad_size_bucket{le=\"1\"}[$__range]))", "instant": true, "range": false, "legendFormat": "duo" },
-        { "refId": "C", "expr": "sum(increase(griffdive_squad_size_bucket{le=\"3\"}[$__range])) - sum(increase(griffdive_squad_size_bucket{le=\"2\"}[$__range]))", "instant": true, "range": false, "legendFormat": "trio" },
-        { "refId": "D", "expr": "sum(increase(griffdive_squad_size_count[$__range])) - sum(increase(griffdive_squad_size_bucket{le=\"3\"}[$__range]))", "instant": true, "range": false, "legendFormat": "full squad of four" }
+        { "refId": "A", "expr": "sum(increase(griffdive_squad_size_bucket{le=\"1\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "solo" },
+        { "refId": "B", "expr": "sum(increase(griffdive_squad_size_bucket{le=\"2\",app=~\"$app\"}[$__range])) - sum(increase(griffdive_squad_size_bucket{le=\"1\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "duo" },
+        { "refId": "C", "expr": "sum(increase(griffdive_squad_size_bucket{le=\"3\",app=~\"$app\"}[$__range])) - sum(increase(griffdive_squad_size_bucket{le=\"2\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "trio" },
+        { "refId": "D", "expr": "sum(increase(griffdive_squad_size_count{app=~\"$app\"}[$__range])) - sum(increase(griffdive_squad_size_bucket{le=\"3\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "full squad of four" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": {
@@ -1161,7 +1176,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (direction) (increase(griffdive_presence_changes_total[$__rate_interval]))",
+          "expr": "sum by (direction) (increase(griffdive_presence_changes_total{app=~\"$app\"}[$__rate_interval]))",
           "legendFormat": "{{direction}}"
         }
       ],
@@ -1184,7 +1199,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 4, "x": 16, "y": 105 },
       "targets": [
-        { "refId": "A", "expr": "sum(increase(griffdive_rooms_swept_total[$__range]))", "instant": true, "range": false, "legendFormat": "swept" }
+        { "refId": "A", "expr": "sum(increase(griffdive_rooms_swept_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "swept" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
@@ -1197,7 +1212,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 4, "x": 20, "y": 105 },
       "targets": [
-        { "refId": "A", "expr": "sum(increase(griffdive_warbond_edits_total[$__range]))", "instant": true, "range": false, "legendFormat": "edits" }
+        { "refId": "A", "expr": "sum(increase(griffdive_warbond_edits_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "edits" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
@@ -1220,7 +1235,7 @@
       "gridPos": { "h": 7, "w": 6, "x": 0, "y": 113 },
       "interval": "1m",
       "targets": [
-        { "refId": "A", "expr": "rate(process_cpu_seconds_total[$__rate_interval]) * 100", "legendFormat": "CPU %" }
+        { "refId": "A", "expr": "rate(process_cpu_seconds_total{app=~\"$app\"}[$__rate_interval]) * 100", "legendFormat": "CPU %" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -1242,7 +1257,7 @@
       "gridPos": { "h": 7, "w": 6, "x": 6, "y": 113 },
       "interval": "1m",
       "targets": [
-        { "refId": "A", "expr": "process_resident_memory_bytes", "legendFormat": "RSS" }
+        { "refId": "A", "expr": "process_resident_memory_bytes{app=~\"$app\"}", "legendFormat": "RSS" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -1264,7 +1279,7 @@
       "gridPos": { "h": 7, "w": 6, "x": 12, "y": 113 },
       "interval": "1m",
       "targets": [
-        { "refId": "A", "expr": "nodejs_eventloop_lag_p99_seconds", "legendFormat": "p99" }
+        { "refId": "A", "expr": "nodejs_eventloop_lag_p99_seconds{app=~\"$app\"}", "legendFormat": "p99" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -1285,7 +1300,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 6, "x": 18, "y": 113 },
       "targets": [
-        { "refId": "A", "expr": "griffdive_build_info", "instant": true, "range": false, "format": "table" }
+        { "refId": "A", "expr": "griffdive_build_info{app=~\"$app\"}", "instant": true, "range": false, "format": "table" }
       ],
       "fieldConfig": {
         "defaults": { "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false } },
@@ -1314,7 +1329,7 @@
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 4, "x": 0, "y": 121 },
       "targets": [
-        { "refId": "A", "expr": "sum(increase(griffdive_feedback_total[$__range]))", "instant": true, "range": false, "legendFormat": "filed" }
+        { "refId": "A", "expr": "sum(increase(griffdive_feedback_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "filed" }
       ],
       "fieldConfig": {
         "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "palette-classic" } },
@@ -1331,7 +1346,7 @@
       "gridPos": { "h": 7, "w": 10, "x": 4, "y": 121 },
       "interval": "1m",
       "targets": [
-        { "refId": "A", "expr": "sum by (category) (increase(griffdive_feedback_total[$__rate_interval]))", "legendFormat": "{{category}}" }
+        { "refId": "A", "expr": "sum by (category) (increase(griffdive_feedback_total{app=~\"$app\"}[$__rate_interval]))", "legendFormat": "{{category}}" }
       ],
       "fieldConfig": {
         "defaults": {
@@ -1353,7 +1368,7 @@
       "gridPos": { "h": 7, "w": 10, "x": 14, "y": 121 },
       "interval": "1m",
       "targets": [
-        { "refId": "A", "expr": "sum by (reason) (increase(griffdive_feedback_rejected_total[$__rate_interval]))", "legendFormat": "{{reason}}" }
+        { "refId": "A", "expr": "sum by (reason) (increase(griffdive_feedback_rejected_total{app=~\"$app\"}[$__rate_interval]))", "legendFormat": "{{reason}}" }
       ],
       "fieldConfig": {
         "defaults": {

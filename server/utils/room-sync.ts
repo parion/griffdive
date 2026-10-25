@@ -86,11 +86,27 @@ export interface RoomKV {
   getKeys(): Promise<string[]>
 }
 
+export interface PeerContext {
+  roomCode?: string
+  playerId?: string
+  clientIp?: string
+  // Set the moment the socket is gone. A hello can still be queued on the room
+  // lock when that happens; without this flag it would seat a diver nobody can
+  // reach and leave an unremovable peer in the directory.
+  closed?: boolean
+  // Last inbound frame. The client heartbeats every 25s, so silence past
+  // PEER_SILENCE_MS means the connection is gone even without a close event.
+  lastSeenAt?: number
+}
+
 export interface PeerLike {
   id: string
-  context: { roomCode?: string, playerId?: string, clientIp?: string }
+  context: PeerContext
   remoteAddress?: string
   send(text: string): void
+  // The transport's own close, so reaping a silent peer goes through the normal
+  // close path (crossws peers have it; test doubles may not).
+  close?(): void
 }
 
 // Live connections are process memory; room state lives in storage. crossws
@@ -101,6 +117,7 @@ export interface PeerDirectory {
   remove(peer: PeerLike): void
   list(roomCode: string): PeerLike[]
   rooms(): string[]
+  all(): PeerLike[]
 }
 
 export function createPeerDirectory(): PeerDirectory {
@@ -115,8 +132,13 @@ export function createPeerDirectory(): PeerDirectory {
       set.add(peer)
     },
     remove(peer) {
-      for (const set of byRoom.values()) {
+      // Drop the room key with its last peer: the directory outlives every room
+      // the process has served, and an empty set would keep a dead code alive.
+      for (const [roomCode, set] of byRoom) {
         set.delete(peer)
+        if (set.size === 0) {
+          byRoom.delete(roomCode)
+        }
       }
     },
     list(roomCode) {
@@ -124,6 +146,15 @@ export function createPeerDirectory(): PeerDirectory {
     },
     rooms() {
       return [...byRoom.keys()]
+    },
+    all() {
+      const unique = new Set<PeerLike>()
+      for (const set of byRoom.values()) {
+        for (const peer of set) {
+          unique.add(peer)
+        }
+      }
+      return [...unique]
     },
   }
 }
@@ -269,7 +300,7 @@ function sendError(peer: PeerLike, code: string, message: string): void {
   peer.send(JSON.stringify({ type: 'error', code, message } satisfies ServerMessage))
 }
 
-function onlineIds(peers: PeerDirectory, roomCode: string, state: DiveState): string[] {
+export function onlineDiverIds(peers: PeerDirectory, roomCode: string, state: DiveState): string[] {
   const connected = new Set(
     peers
       .list(roomCode)
@@ -292,7 +323,7 @@ function broadcastState(
     type: 'state',
     snapshot: state,
     applied,
-    online: onlineIds(peers, roomCode, state),
+    online: onlineDiverIds(peers, roomCode, state),
     saved,
     steam,
   } satisfies ServerMessage)
@@ -411,6 +442,14 @@ export async function processHello(
       return
     }
 
+    // A socket that closed while this hello waited on the lock must not seat
+    // anyone: processClose already ran (and bailed, because no seat was
+    // assigned yet), so seating here would leave a peer nobody can reach —
+    // counted online forever, never marked away, never migrated.
+    if (peer.context.closed) {
+      return
+    }
+
     const storedId = typeof payload.playerId === 'string' ? payload.playerId : null
     const known = storedId ? room.state.divers.find(diver => diver.id === storedId) : undefined
     const hostOnline = isOnline(peers, requested, room.state.hostId)
@@ -501,7 +540,7 @@ export async function processHello(
       hostId: room.state.hostId,
       roomCode: requested,
       snapshot: room.state,
-      online: onlineIds(peers, requested, room.state),
+      online: onlineDiverIds(peers, requested, room.state),
       saved: room.saved ?? null,
       steam: room.steam ?? null,
     } satisfies ServerMessage))
@@ -752,6 +791,12 @@ export async function processSetSteam(
 }
 
 export async function processClose(kv: RoomKV, peers: PeerDirectory, peer: PeerLike): Promise<void> {
+  // Idempotent: the presence sweeper reaps silent peers through this path and
+  // the transport's own close event may follow it.
+  if (peer.context.closed) {
+    return
+  }
+  peer.context.closed = true
   const roomCode = peer.context.roomCode
   const playerId = peer.context.playerId
   peers.remove(peer)
@@ -821,4 +866,51 @@ function scheduleAway(kv: RoomKV, peers: PeerDirectory, roomCode: string, player
   }, AWAY_GRACE_MS)
   // Never hold the process open for a presence check.
   timer.unref?.()
+}
+
+// The client heartbeats every 25s; a hidden tab is throttled to roughly one
+// timer a minute, so five silent minutes mean the connection is gone. Dead
+// sockets never send a close (sleeping phone, Wi-Fi handover, frozen tab), and
+// a socket can also drop while its hello is queued — both used to leave a peer
+// that stayed online forever.
+export const PEER_SILENCE_MS = 5 * 60 * 1000
+
+// Reaping goes through processClose so away marking, host migration and the
+// presence refresh all take the one path the transport's own close takes.
+export async function reapSilentPeers(
+  kv: RoomKV,
+  peers: PeerDirectory,
+  now: number = Date.now(),
+  graceMs: number = PEER_SILENCE_MS,
+): Promise<number> {
+  let reaped = 0
+  for (const peer of peers.all()) {
+    const seen = peer.context.lastSeenAt
+    // A peer that has not been stamped yet (a test double, a transport without
+    // an open hook) starts its silence window now instead of being cut off.
+    if (typeof seen !== 'number') {
+      peer.context.lastSeenAt = now
+      continue
+    }
+    if (now - seen < graceMs) {
+      continue
+    }
+    try {
+      await processClose(kv, peers, peer)
+    }
+    catch {
+      // The directory entry is already gone, so presence converges either way;
+      // one unreadable room must not stop the rest of the sweep.
+      continue
+    }
+    try {
+      peer.close?.()
+    }
+    catch {
+      // The directory entry is already gone; a transport that cannot close its
+      // own socket is logged by the sweeper, never fatal.
+    }
+    reaped += 1
+  }
+  return reaped
 }

@@ -6,7 +6,7 @@ import type { CrusadeVariant, DiveState } from '~~/shared/engine/types'
 import type { DiveSaveInfo } from '~~/shared/types/messages'
 import type { SaveDoc, SessionSave } from '~~/shared/types/save'
 
-export interface OnlineDive { code: string, state: DiveState | null, saved: DiveSaveInfo | null }
+export interface OnlineDive { code: string, state: DiveState | null, saved: DiveSaveInfo | null, online: string[] }
 
 // The service record: every crusade this browser can pick back up — live rooms,
 // session mirrors whose room is gone, and local solo saves. It takes the hero's
@@ -57,6 +57,15 @@ function ladderCells(difficulty: number): ('cleared' | 'current' | 'locked')[] {
     return n === difficulty ? 'current' : 'locked'
   })
 }
+// "Live" is presence, not persistence: a room record outlives its squad by up
+// to 30 days, so the label follows the connected-seat list from the server.
+// A pinned room already carries its own SAVED chip.
+function presenceLabel(dive: OnlineDive): string {
+  if (dive.online.length === 0) {
+    return 'Idle room'
+  }
+  return dive.online.length === 1 ? 'Live · 1 diver' : `Live · ${dive.online.length} divers`
+}
 </script>
 
 <template>
@@ -92,7 +101,8 @@ function ladderCells(difficulty: number): ('cleared' | 'current' | 'locked')[] {
       <li
         v-for="dive in online"
         :key="dive.code"
-        class="record-card live"
+        class="record-card"
+        :class="{ live: dive.online.length > 0 }"
       >
         <template v-if="dive.state">
           <img
@@ -104,10 +114,20 @@ function ladderCells(difficulty: number): ('cleared' | 'current' | 'locked')[] {
           >
           <div class="rc-main">
             <div class="rc-tags">
-              <span class="rc-live"><span
-                class="pulse rc-dot"
-                aria-hidden="true"
-              />Live room {{ dive.code }}</span>
+              <span
+                class="rc-live"
+                :class="{ idle: dive.online.length === 0 }"
+                :title="dive.online.length > 0
+                  ? `${dive.online.length} diver(s) connected right now`
+                  : 'No divers connected — the room is still kept on the server'"
+              >
+                <span
+                  v-if="dive.online.length > 0"
+                  class="pulse rc-dot"
+                  aria-hidden="true"
+                />
+                <span>{{ presenceLabel(dive) }} {{ dive.code }}</span>
+              </span>
               <span
                 v-if="dive.saved"
                 class="chip gold"
@@ -405,6 +425,11 @@ function ladderCells(difficulty: number): ('cleared' | 'current' | 'locked')[] {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+.rc-live.idle {
+  border-color: var(--line-3);
+  background: transparent;
+  color: var(--muted);
 }
 .rc-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); }
 .rc-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }

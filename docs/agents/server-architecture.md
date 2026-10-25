@@ -178,10 +178,25 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 | S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `dive-locked`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message`, `rate-limited` |
 
 REST fallbacks: `POST /api/rooms` → `{ code, selfId }` (an optional `{ save, name }` body seeds the
-room from a personal session save; `selfId` is the seeded owner seat, `null` for a fresh lobby); `GET /api/rooms/:code` → `{ code, state }` (404).
+room from a personal session save; `selfId` is the seeded owner seat, `null` for a fresh lobby);
+`GET /api/rooms/:code` → `{ code, state, saved, online }` (404). `online` is the same seated-id list
+a `welcome` carries, so a REST caller cannot mistake a kept room record for a live squad.
 Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`,
-`SET_NAME`) are
-coerced to the sender — a client can never act as another diver.
+`SET_NAME`) are coerced to the sender — a client can never act as another diver.
+
+**Presence and liveness.** Presence is process memory, never storage: the peer directory
+(`server/utils/peers.ts`) holds one entry per live socket, and `online` in every `welcome`/`state` is
+derived from it. A socket that vanishes without a close frame — a sleeping phone, a Wi-Fi handover, a
+frozen background tab — would otherwise stay online forever, so the WS route stamps `lastSeenAt` on
+every inbound frame (the client heartbeats every 25 s) and `server/plugins/peer-sweeper.ts` calls
+`reapSilentPeers` once a minute: after five silent minutes the peer goes through the ordinary
+`processClose` path (away marking, host migration, presence refresh) and its socket is closed. The
+same sweep is the backstop for a socket that closes while its `hello` is still queued on the room
+lock: `processClose` flags `peer.context.closed` first, and `processHello` refuses to seat a closed
+socket — without that, the peer was added after the close and could never be removed, keeping a
+diver "online" and their squad waiting on them forever. Reaped peers are counted in
+`griffdive_presence_reaped_total`. A browser that comes back to a reaped socket reopens from
+`visibilitychange` (`useGameSocket`), because the retry budget alone gives up after a few seconds.
 
 **Transport hardening:** the server whitelists `action.type` against the reducer union and guards
 `reduce`, so an unknown or malformed action is rejected (`bad-action`) instead of persisting
@@ -269,6 +284,11 @@ reducer.
   reattach; a fresh or identity-less joiner seats as a mid-crusade joiner and chooses between a
   parked **legacy cache** and their **Field Promotion** at the Field Promotion gate (see Mid-crusade joining) — "pick up
   previous equipment or roll".
+- **The home list is a cache, not an index of live rooms.** `griffdive:rooms:v1` keeps the 12 most
+  recent rooms for 30 days (`MAX_RECENT_ROOMS`, `RECENT_ROOM_MAX_AGE_MS` in `useRecentRooms`). The
+  card's live/idle label comes from the REST `online` list — a room record outlives its squad by up
+  to 30 days — and finished crusades (and empty lobbies) are dropped from the list, since RESUME has
+  nothing to open. The personal session mirror is the card that can still host them as a new session.
 - **Durability is the storage driver's.** Saved dives live in the same `useStorage('rooms')`
   namespace, which Nitro's `fs-lite` driver writes to `./.data/rooms` (`nuxt.config.ts`) — the
   `griffdive_data` Fly volume in production — so saves and live rooms survive deploys. Tests use a

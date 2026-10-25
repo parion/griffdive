@@ -98,6 +98,7 @@ describe('room-metrics', () => {
     metrics.recordPresence('returned')
     metrics.recordHostTransfer('disconnect')
     metrics.recordRoomsSwept(3)
+    metrics.recordPeersReaped(2)
 
     const text = await metrics.registry.metrics()
     expect(text).toMatch(/griffdive_rooms_created_total\{source="fresh"\} 1/)
@@ -114,6 +115,7 @@ describe('room-metrics', () => {
     expect(text).toMatch(/griffdive_presence_changes_total\{direction="away"\} 1/)
     expect(text).toMatch(/griffdive_host_transfers_total\{reason="disconnect"\} 1/)
     expect(text).toContain('griffdive_rooms_swept_total 3')
+    expect(text).toContain('griffdive_presence_reaped_total 2')
   })
 
   it('census gauges preset every phase and difficulty', async () => {

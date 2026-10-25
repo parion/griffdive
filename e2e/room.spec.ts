@@ -306,10 +306,12 @@ test('when the whole squad leaves, the room waits and RESUME puts everyone back'
   await expect(pageA.locator('.dock .seat').filter({ hasText: 'Duo' })).toContainText('Away')
   await leaveDive(pageA)
 
-  // The room is still live on both Bridges — nothing was reset.
+  // The room is still listed on both Bridges — nothing was reset — but its card
+  // says "Idle room" now: the record outlives the squad, so the label follows
+  // the live connection list rather than the fact that the room exists.
   for (const page of [pageA, pageB]) {
     await page.reload()
-    await expect(page.getByText(`LIVE ROOM ${code}`)).toBeVisible()
+    await expect(page.getByText(`Idle room ${code}`)).toBeVisible()
   }
 
   // The guest is back first and takes the helm; the host is still away.

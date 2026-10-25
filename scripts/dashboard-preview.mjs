@@ -198,6 +198,7 @@ const html = `<!doctype html>
   <span class="chip">Last 6 hours</span>
   <span class="chip">Refresh ${escapeHtml(dash.refresh)}</span>
   <span class="chip">Difficulty: All</span>
+  <span class="chip">App: ${escapeHtml(dash.templating.list.find(variable => variable.name === 'app')?.current?.text ?? 'All')}</span>
   <span class="chip">${dash.panels.filter(panel => panel.type !== 'row').length} panels</span>
   <span class="warn">preview — layout &amp; queries from the json; series are illustrative</span>
 </div>
