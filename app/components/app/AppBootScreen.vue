@@ -162,7 +162,7 @@ withDefaults(defineProps<{ status?: string }>(), { status: 'Establishing uplink'
         <p class="boot__tagline">
           <span>CLIMB <b>3 → 10</b></span>
           <i />
-          <span>RISK BUYS <b class="gold">RARITY</b></span>
+          <span>FREEDOM IS <b class="gold">EARNED</b></span>
         </p>
       </div>
     </div>

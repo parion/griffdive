@@ -266,7 +266,7 @@ const facts = [
           id="hero-h"
           class="disp hero-title slam"
         >
-          Risk buys <span class="gold">rarity.</span>
+          Freedom is <span class="gold">earned.</span>
         </h1>
         <p class="hero-lede rise">
           Griffdive wraps your Helldivers 2 missions in a roguelike crusade. Start on
