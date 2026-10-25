@@ -114,8 +114,9 @@ component. Top to bottom:
 
 - **Hero** (one viewport tall on desktop): the kicker, the crusade's creed as the headline —
   **"Freedom is earned."**, typeset as a three-line stack with `FREEDOM` and gold `EARNED.` in the
-  display face and a small tracked `IS` on its own line between hairlines (the connector is never
-  a display word) — a one-paragraph pitch, chevron anchor links to the four beats, and the
+  display face and a small tracked `IS` centred between rules that run the width of the headline
+  (the connector is never a display word) — a one-paragraph pitch, chevron anchor links to the
+  four beats, and the
   **`BridgeDeploy`** drop console: the gold **Host a squad dive** CTA over two matching halves,
   **Join a squad** (six-cell room code + Join) and **Play solo** (one full-width **Solo drop**
   button — no name field: a fresh browser files its callsign on the host tutorial that opens the

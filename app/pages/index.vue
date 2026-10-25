@@ -554,6 +554,8 @@ const facts = [
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  width: fit-content;
+  max-width: 100%;
   margin: 0;
   font-size: clamp(44px, 6.4vw, 96px);
   line-height: 0.92;
@@ -562,21 +564,23 @@ const facts = [
 .hero-title-is {
   display: flex;
   align-items: center;
-  gap: 0.9em;
-  margin-block: 0.3em 0.26em;
+  justify-content: center;
+  gap: clamp(12px, 1.4vw, 20px);
+  width: 100%;
+  margin-block: 0.34em 0.3em;
   font-family: var(--font-body);
-  font-size: clamp(11px, 1.15vw, 14px);
-  font-weight: 600;
-  letter-spacing: 0.44em;
+  font-size: clamp(14px, 1.5vw, 20px);
+  font-weight: 700;
+  letter-spacing: 0.4em;
   line-height: 1;
-  color: var(--khaki);
+  color: var(--text);
 }
 .hero-title-is::before,
 .hero-title-is::after {
   content: '';
-  width: clamp(18px, 2.2vw, 32px);
+  flex: 1 1 0;
   height: 2px;
-  background: var(--line-4);
+  background: var(--line-5);
 }
 .hero-lede {
   max-width: 36rem;
