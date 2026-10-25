@@ -33,12 +33,14 @@ primary_region = 'ams'
   auto_start_machines = true
   min_machines_running = 0
 
+  # `/` redirects (307) to the signup/sign-in page, which Fly counts as a
+  # failed check; `/_health` answers 200 once Postgres is reachable.
   [[http_service.checks]]
     grace_period = '15s'
     interval = '30s'
     timeout = '5s'
     method = 'GET'
-    path = '/'
+    path = '/_health'
 
 [metrics]
   port = 4000

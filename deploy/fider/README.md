@@ -48,8 +48,8 @@ fly secrets set --app griffdive-feedback \
   EMAIL_SMTP_USERNAME='…' \
   EMAIL_SMTP_PASSWORD='…'
 
-# 3. Ship it
-fly deploy --config deploy/fider/fly.toml
+# 3. Ship it (`--ha=false`: one machine, not Fly's default pair)
+fly deploy --config deploy/fider/fly.toml --ha=false
 
 # 4. Custom domain + certificate
 fly certs add feedback.griffdive.app --app griffdive-feedback
