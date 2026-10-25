@@ -54,8 +54,9 @@ fly ssh console --app griffdive -C 'cat /app/.data/feedback/inbox' | pnpm feedba
 The in-app sheet is the no-account path. The **public board** is a separate Fly app running
 [self-hosted Fider](../deploy/fider/README.md) (`griffdive-feedback`, region `ams`, its own Postgres
 and certificate). It is never contacted by the game app: the only coupling is the
-`NUXT_PUBLIC_FEEDBACK_BOARD_URL` public runtime config, which adds the click-through link and is
-empty until the board ships. Fider requires an email or OAuth sign-in to post, which is exactly why
+`NUXT_PUBLIC_FEEDBACK_BOARD_URL` public runtime config, which adds the click-through link. The
+board lives at `https://feedback.griffdive.com` (sign-in email via Resend); staging sets the URL in
+`fly.staging.toml`, production leaves it unset until a release sets it with `fly secrets set`. Fider requires an email or OAuth sign-in to post, which is exactly why
 it cannot be embedded — see `PRIVACY.md` → Feedback.
 
 CI/CD: `.github/workflows/ci.yml` runs lint/typecheck/unit tests + the Playwright E2E suite on
