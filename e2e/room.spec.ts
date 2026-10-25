@@ -148,6 +148,11 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   // The removed diver sees a removal notice…
   await expect(pageB.getByText('You were removed from this dive by the host.')).toBeVisible()
 
+  // …and the link no longer reseats them: a reload is refused.
+  await pageB.reload()
+  await expect(pageB.getByRole('heading', { name: 'Removed from this dive' })).toBeVisible()
+  await expect(pageB.getByText('You were removed from this dive by the host.')).toBeVisible()
+
   // …and the dive no longer waits on them: the host locks pacts alone.
   await pageA.locator('.condition').first().click()
   await pageA.getByRole('button', { name: /^Swear 1 pact/ }).click()

@@ -226,7 +226,7 @@
       "id": 9,
       "type": "timeseries",
       "title": "Join attempts by result",
-      "description": "Every WebSocket hello. room_not_found is a dead or expired invite link; locked means the share link was opened while the squad was in rewards/forfeit; bad_code and rate_limited are protocol noise or probes.",
+      "description": "Every WebSocket hello. room_not_found is a dead or expired invite link; locked means the share link was opened while the squad was in rewards/forfeit; removed means a kicked diver tried the invite link again; bad_code and rate_limited are protocol noise or probes.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 8, "x": 16, "y": 6 },
       "interval": "1m",

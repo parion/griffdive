@@ -758,7 +758,9 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   merged onto their starting kit, *instead of* the promotion picks — claiming after rolling options
   is refused, so the two never stack. The same diver rejoining under a playerId that matches a
   cache reclaims it automatically — reissued the starting kit plus their earned gear, no promotion
-  owed (soft-kick parity: their link still seats them). See Personal session saves for recognition
+  owed. That is the **voluntary-leave** path: a kicked diver is barred from reseating the same
+  dive (seat id and keyed network fingerprint, see `KICK_DIVER` in the architecture docs), so their
+  cached kit stays on offer to whoever else claims it. See Personal session saves for recognition
   across a new session.
 - **Seating window:** fresh joins only seat in `lobby/spin/decision/strain/deal/pacts/diving` — never during
   `rewards`/`forfeit` (that would grant a draft for a mission the joiner never dropped into) or
@@ -778,7 +780,8 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   diver when the host steps away, and whoever comes back to a room whose host is offline takes it.
 - **A room is never abandoned:** the last seated diver cannot `LEAVE_DIVE` or be kicked, so a
   crusade is never reset — it waits for whoever comes back to it. Benching a diver for good is the
-  host's `KICK_DIVER` (their earned gear parks as a legacy cache).
+  host's `KICK_DIVER`: their earned gear parks as a legacy cache and the removed seat is barred
+  from that room (`kicked` on any later join attempt).
 
 ### Save model
 

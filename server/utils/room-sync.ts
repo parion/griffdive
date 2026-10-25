@@ -1,3 +1,4 @@
+import { createHmac, randomBytes } from 'node:crypto'
 import { customAlphabet, nanoid } from 'nanoid'
 import { SQUAD_SIZE_MAX, MAX_NAME_LENGTH } from '~~/shared/engine/config'
 import { createLobbyState, forkCrusade, joinDiver, seatingBlocked } from '~~/shared/engine/room'
@@ -46,6 +47,19 @@ export const MAX_SAVED_DIVES = 500
 
 export const SAVE_NAME_MAX_LENGTH = 60
 
+// A kick bars the removed seat for the rest of the dive. Only a host can add a
+// bar, and a crusade's churn is tiny; the cap is just a bound on room size.
+export const MAX_ROOM_BANS = 100
+
+// A host kick removes the seat from the engine and bars it from reseating in
+// this room: the diver id blocks the same browser, the keyed address hash
+// blocks a browser that cleared its storage. The raw address is never stored.
+export interface RoomBan {
+  playerId: string
+  ip: string | null
+  at: number
+}
+
 export class RoomLimitError extends Error {}
 
 export class InvalidSaveError extends Error {}
@@ -68,6 +82,14 @@ export interface StoredRoom {
   // The host-pasted Steam lobby deep link, relayed to every seated diver.
   // Cosmetic room metadata — never touches DiveState or the idle TTL.
   steam?: SteamLobbyInfo | null
+  // Keyed address fingerprints for the seated divers, so a kick can bar the
+  // network a diver arrived from. Salted per room: hashes never correlate
+  // across dives, and the raw address never reaches storage.
+  ipSalt?: string
+  seatIps?: Record<string, string>
+  // Seats the host removed. A hello presenting one of these ids, or arriving
+  // from one of these networks while taking a fresh seat, is refused.
+  bans?: RoomBan[]
 }
 
 // One room's scrape-time shape for the metrics census: no state, no payloads.
@@ -165,6 +187,75 @@ function isStoredRoom(raw: unknown): raw is StoredRoom {
       || (typeof room.steam === 'object' && typeof room.steam.link === 'string'))
 }
 
+function isRoomBan(raw: unknown): raw is RoomBan {
+  if (!raw || typeof raw !== 'object') {
+    return false
+  }
+  const ban = raw as Partial<RoomBan>
+  return typeof ban.playerId === 'string'
+    && ban.playerId.length > 0
+    && (ban.ip === null || typeof ban.ip === 'string')
+    && typeof ban.at === 'number'
+}
+
+function roomBansOf(room: StoredRoom): RoomBan[] {
+  return Array.isArray(room.bans)
+    ? room.bans.filter(isRoomBan).slice(-MAX_ROOM_BANS)
+    : []
+}
+
+function seatIpsOf(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return {}
+  }
+  return Object.fromEntries(
+    Object.entries(raw as Record<string, unknown>)
+      .filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+  )
+}
+
+function clientAddress(peer: PeerLike): string | null {
+  return peer.context.clientIp ?? peer.remoteAddress ?? null
+}
+
+function addressFingerprint(salt: string, address: string): string {
+  return createHmac('sha256', salt).update(address).digest('base64url')
+}
+
+// Checks never mint a salt: without one the room has no address bars yet.
+function existingFingerprint(room: StoredRoom, peer: PeerLike): string | null {
+  const address = clientAddress(peer)
+  return room.ipSalt && address ? addressFingerprint(room.ipSalt, address) : null
+}
+
+// Minting is for seating: the salt persists with the room so a kick later
+// still matches the address the diver arrived from.
+function recordFingerprint(room: StoredRoom, peer: PeerLike): string | null {
+  const address = clientAddress(peer)
+  if (!address) {
+    return null
+  }
+  room.ipSalt ??= randomBytes(16).toString('base64url')
+  return addressFingerprint(room.ipSalt, address)
+}
+
+function seatBanReason(
+  room: StoredRoom,
+  presentedIds: (string | null)[],
+  fingerprint: string | null,
+): 'id' | 'ip' | null {
+  const presented = new Set(presentedIds.filter((id): id is string => !!id))
+  for (const ban of roomBansOf(room)) {
+    if (presented.has(ban.playerId)) {
+      return 'id'
+    }
+    if (fingerprint && ban.ip === fingerprint) {
+      return 'ip'
+    }
+  }
+  return null
+}
+
 export async function createRoom(
   kv: RoomKV,
   maxRooms: number = MAX_ROOMS,
@@ -254,6 +345,11 @@ export async function loadRoom(kv: RoomKV, code: string): Promise<StoredRoom | n
   // by earlier builds are normalized on read. The normalized copy is what
   // callers reduce and broadcast; the next saveRoom persists it.
   raw.state = normalizeRoomState(raw.state)
+  raw.bans = roomBansOf(raw)
+  raw.seatIps = seatIpsOf(raw.seatIps)
+  if (typeof raw.ipSalt !== 'string' || raw.ipSalt.length === 0) {
+    raw.ipSalt = undefined
+  }
   return raw
 }
 
@@ -412,7 +508,21 @@ export async function processHello(
     }
 
     const storedId = typeof payload.playerId === 'string' ? payload.playerId : null
+    const knownIds = knownIdsOf(payload.knownIds)
     const known = storedId ? room.state.divers.find(diver => diver.id === storedId) : undefined
+    // A kick is a bar for the rest of the dive. Known seats are the reconnect
+    // path and may share a network with a removed seat (a household), so only
+    // fresh seating — including a cache reclaim — is checked.
+    if (!known) {
+      const reason = seatBanReason(room, [storedId, ...knownIds], existingFingerprint(room, peer))
+      if (reason) {
+        roomMetrics.recordHello('removed')
+        sendError(peer, 'kicked', reason === 'ip'
+          ? 'A diver on this network was removed from this dive by the host.'
+          : 'You were removed from this dive by the host.')
+        return
+      }
+    }
     const hostOnline = isOnline(peers, requested, room.state.hostId)
     // A stored id whose seat is gone but whose gear sits in legacyCaches is the
     // same diver rejoining: reuse the id so joinDiver reclaims the cache. A
@@ -420,7 +530,7 @@ export async function processHello(
     // also offers every seat it remembers from other rooms.
     const reclaimId = known
       ? null
-      : [storedId, ...knownIdsOf(payload.knownIds)].find(id => !!id && !!room.state.legacyCaches[id]) ?? null
+      : [storedId, ...knownIds].find(id => !!id && !!room.state.legacyCaches[id]) ?? null
     const reclaiming = reclaimId !== null
     let playerId: string
     let changed = false
@@ -484,6 +594,23 @@ export async function processHello(
     peer.context.playerId = playerId
     peers.add(requested, peer)
 
+    // Keep a keyed fingerprint of the seat's network for a later kick, and
+    // drop fingerprints whose seats have gone. This is metadata, never state.
+    const fingerprint = recordFingerprint(room, peer)
+    const seated = new Set(room.state.divers.map(diver => diver.id))
+    const seatIps = Object.fromEntries(
+      Object.entries(room.seatIps ?? {}).filter(([id]) => seated.has(id)),
+    )
+    let seatsChanged = Object.keys(seatIps).length !== Object.keys(room.seatIps ?? {}).length
+    if (fingerprint && seatIps[playerId] !== fingerprint) {
+      seatIps[playerId] = fingerprint
+      seatsChanged = true
+    }
+    if (seatsChanged) {
+      room.seatIps = seatIps
+      changed = true
+    }
+
     // Divers who dropped while the server was down never sent a close: give
     // them the same grace, then stop waiting on them.
     for (const diver of room.state.divers) {
@@ -532,6 +659,58 @@ function enforceSelf(action: EngineAction, playerId: string): EngineAction {
     return { ...action, playerId }
   }
   return action
+}
+
+// Old rooms (and a kick landing before the seat's next hello) have no stored
+// fingerprint; the removed diver's live socket still knows the address.
+function liveFingerprint(
+  room: StoredRoom,
+  peers: PeerDirectory,
+  roomCode: string,
+  playerId: string,
+): string | null {
+  for (const peer of peers.list(roomCode)) {
+    if (peer.context.playerId === playerId) {
+      const fingerprint = recordFingerprint(room, peer)
+      if (fingerprint) {
+        return fingerprint
+      }
+    }
+  }
+  return null
+}
+
+// A kick leaves a bar behind; a voluntary leave does not. The removed seat's
+// keyed address fingerprint moves into the bar so clearing site data does not
+// buy a way back in from the same network.
+function updateSeatPolicy(
+  room: StoredRoom,
+  peers: PeerDirectory,
+  roomCode: string,
+  action: EngineAction,
+  before: DiveState,
+): void {
+  if (action.type !== 'KICK_DIVER' && action.type !== 'LEAVE_DIVE') {
+    return
+  }
+  if (action.type === 'KICK_DIVER') {
+    const removed = before.divers.find(diver => diver.id === action.playerId)
+    if (!removed) {
+      return
+    }
+    const fingerprint = room.seatIps?.[removed.id]
+      ?? liveFingerprint(room, peers, roomCode, removed.id)
+    const bans = roomBansOf(room)
+    if (!bans.some(ban => ban.playerId === removed.id)) {
+      room.bans = [...bans, { playerId: removed.id, ip: fingerprint ?? null, at: Date.now() }]
+        .slice(-MAX_ROOM_BANS)
+    }
+  }
+  if (room.seatIps && action.playerId in room.seatIps) {
+    room.seatIps = Object.fromEntries(
+      Object.entries(room.seatIps).filter(([id]) => id !== action.playerId),
+    )
+  }
 }
 
 export async function processAction(
@@ -612,6 +791,7 @@ export async function processAction(
 
     const before = room.state
     room.state = next
+    updateSeatPolicy(room, peers, roomCode, enforced, before)
     await saveRoom(kv, room)
     roomMetrics.recordAction(before, next, enforced)
     if (enforced.type === 'START_DIVE') {

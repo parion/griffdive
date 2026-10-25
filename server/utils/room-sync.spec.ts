@@ -295,6 +295,156 @@ describe('room-sync', () => {
     expect(sent(joiner).some(m => m.type === 'error' && m.code === 'not-in-room')).toBe(true)
   })
 
+  it('bars a kicked diver from reseating in the same dive', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    host.context.clientIp = '203.0.113.10'
+    await processHello(kv, peers, host, { name: 'Host' })
+    const hostId = welcomeOf(host).selfId
+
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    joiner.context.clientIp = '203.0.113.20'
+    await processHello(kv, peers, joiner, { name: 'B' })
+    const joinerId = welcomeOf(joiner).selfId
+
+    await processAction(kv, peers, host, { action: { type: 'KICK_DIVER', playerId: joinerId } })
+
+    // Site data cleared and a new network: the removed seat id is still barred.
+    const stored = fakePeer('ws-c')
+    stored.context.roomCode = code
+    stored.context.clientIp = '198.51.100.9'
+    await processHello(kv, peers, stored, { playerId: joinerId, name: 'B' })
+    const refusal = sent(stored).find(message => message.type === 'error')
+    expect(refusal?.type === 'error' && refusal.code).toBe('kicked')
+    expect(sent(stored).some(message => message.type === 'welcome')).toBe(false)
+
+    // The remembered seat is barred even when offered only as a cache reclaim.
+    const remembered = fakePeer('ws-d')
+    remembered.context.roomCode = code
+    remembered.context.clientIp = '198.51.100.9'
+    await processHello(kv, peers, remembered, { name: 'B', knownIds: [joinerId] })
+    expect(sent(remembered).some(message => message.type === 'error' && message.code === 'kicked')).toBe(true)
+
+    // A cleaned browser on the same network cannot take a fresh seat either.
+    const fresh = fakePeer('ws-e')
+    fresh.context.roomCode = code
+    fresh.context.clientIp = '203.0.113.20'
+    await processHello(kv, peers, fresh, { name: 'Stranger' })
+    expect(sent(fresh).some(message => message.type === 'error' && message.code === 'kicked')).toBe(true)
+
+    // A squadmate behind the same network keeps their own seat on reconnect.
+    const hostAgain = fakePeer('ws-a2')
+    hostAgain.context.roomCode = code
+    hostAgain.context.clientIp = '203.0.113.20'
+    await processHello(kv, peers, hostAgain, { playerId: hostId, name: 'Host' })
+    expect(welcomeOf(hostAgain).selfId).toBe(hostId)
+
+    // An unrelated network can still join.
+    const friend = fakePeer('ws-f')
+    friend.context.roomCode = code
+    friend.context.clientIp = '198.51.100.10'
+    await processHello(kv, peers, friend, { name: 'Friend' })
+    expect(welcomeOf(friend).selfId).toBeTruthy()
+
+    // The room holds a per-room fingerprint, never the address itself.
+    const room = await kv.getItem(code) as StoredRoom
+    expect(JSON.stringify(room)).not.toContain('203.0.113.20')
+    expect(room.bans?.[0]?.playerId).toBe(joinerId)
+    expect(room.bans?.[0]?.ip).toBeTruthy()
+    expect(room.seatIps?.[joinerId]).toBeUndefined()
+    expect(room.state.divers).toHaveLength(2)
+  })
+
+  it('does not bar a diver who leaves on their own', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    host.context.clientIp = '203.0.113.10'
+    await processHello(kv, peers, host, { name: 'Host' })
+
+    const guest = fakePeer('ws-b')
+    guest.context.roomCode = code
+    guest.context.clientIp = '203.0.113.20'
+    await processHello(kv, peers, guest, { name: 'Guest' })
+    const guestId = welcomeOf(guest).selfId
+
+    await processAction(kv, peers, guest, { action: { type: 'LEAVE_DIVE', playerId: guestId } })
+    expect((await kv.getItem(code) as StoredRoom).bans).toEqual([])
+
+    const back = fakePeer('ws-c')
+    back.context.roomCode = code
+    back.context.clientIp = '203.0.113.20'
+    await processHello(kv, peers, back, { playerId: guestId, name: 'Guest' })
+    expect(sent(back).some(message => message.type === 'error' && message.code === 'kicked')).toBe(false)
+    expect(welcomeOf(back).selfId).toBeTruthy()
+  })
+
+  it('bars the network of a kick that lands on a pre-fingerprint room', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    host.context.clientIp = '203.0.113.10'
+    await processHello(kv, peers, host, { name: 'Host' })
+
+    const guest = fakePeer('ws-b')
+    guest.context.roomCode = code
+    guest.context.clientIp = '203.0.113.20'
+    await processHello(kv, peers, guest, { name: 'Guest' })
+    const guestId = welcomeOf(guest).selfId
+
+    // A room written before this feature has no fingerprint map.
+    const legacy = await kv.getItem(code) as StoredRoom
+    delete legacy.ipSalt
+    delete legacy.seatIps
+    await kv.setItem(code, legacy)
+
+    await processAction(kv, peers, host, { action: { type: 'KICK_DIVER', playerId: guestId } })
+    const room = await kv.getItem(code) as StoredRoom
+    expect(room.bans?.[0]?.playerId).toBe(guestId)
+    expect(room.bans?.[0]?.ip).toBeTruthy()
+
+    const fresh = fakePeer('ws-c')
+    fresh.context.roomCode = code
+    fresh.context.clientIp = '203.0.113.20'
+    await processHello(kv, peers, fresh, { name: 'Stranger' })
+    expect(sent(fresh).some(message => message.type === 'error' && message.code === 'kicked')).toBe(true)
+  })
+
+  it('scopes address fingerprints to the room', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const first = await createRoom(kv)
+    const second = await createRoom(kv)
+    const arrivals: FakePeer[] = []
+
+    for (const code of [first, second]) {
+      const peer = fakePeer(`ws-${code}`)
+      peer.context.roomCode = code
+      peer.context.clientIp = '203.0.113.20'
+      await processHello(kv, peers, peer, { name: 'Same network' })
+      arrivals.push(peer)
+    }
+
+    const firstRoom = await kv.getItem(first) as StoredRoom
+    const secondRoom = await kv.getItem(second) as StoredRoom
+    const firstId = welcomeOf(arrivals[0]!).selfId
+    const secondId = welcomeOf(arrivals[1]!).selfId
+    expect(firstRoom.seatIps?.[firstId]).toBeTruthy()
+    expect(secondRoom.seatIps?.[secondId]).toBeTruthy()
+    expect(firstRoom.seatIps?.[firstId]).not.toBe(secondRoom.seatIps?.[secondId])
+  })
+
   it('coerces LEAVE_DIVE to the sender and parks their cache', async () => {
     const kv = fakeKV()
     const peers = createPeerDirectory()
@@ -922,6 +1072,27 @@ describe('rooms written by earlier builds (unversioned storage)', () => {
     const welcome = welcomeOf(host)
     expect(welcome.snapshot.settings).toMatchObject({ variant: 'medium' })
     expect(welcome.snapshot.personalInventories[welcome.selfId!]).toBeDefined()
+  })
+
+  it('sanitizes malformed moderation metadata instead of failing the join', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+    const raw = await kv.getItem(code) as StoredRoom
+    raw.bans = [null, { playerId: 7 }, { playerId: 'x', ip: 'hash', at: 1 }] as unknown as StoredRoom['bans']
+    raw.seatIps = { p1: 7, p2: 'hash' } as unknown as StoredRoom['seatIps']
+    raw.ipSalt = 42 as unknown as string
+    await kv.setItem(code, raw)
+
+    const room = await loadRoom(kv, code)
+    expect(room?.bans).toEqual([{ playerId: 'x', ip: 'hash', at: 1 }])
+    expect(room?.seatIps).toEqual({ p2: 'hash' })
+    expect(room?.ipSalt).toBeUndefined()
+
+    const joiner = fakePeer('ws-a')
+    joiner.context.roomCode = code
+    await processHello(kv, peers, joiner, { name: 'Griffin' })
+    expect(welcomeOf(joiner).selfId).toBeTruthy()
   })
 })
 

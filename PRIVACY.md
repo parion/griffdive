@@ -22,20 +22,26 @@ Clearing site data in your browser deletes all of it.
 
 - The room code, the seated divers' names (as typed, at most 32 characters), their inventories, and
   the crusade's progress and audit log.
+- While a diver is seated: a keyed fingerprint (HMAC) of the network address the dive was joined
+  from, scoped to that room. If the host removes a diver, the removed seat's id and fingerprint
+  stay with the room as a bar so the invite link cannot seat them again. The raw address is never
+  written, the fingerprint cannot be compared across rooms, and it never reaches logs or metrics.
 - If any diver pins the dive as saved: the save's name and who pinned it.
 - If the host pastes a Steam lobby link: that link, so the squad can jump into the in-game lobby.
 - If a diver continues a save as a new session: the uploaded save, which seats that diver as host.
 - If you file feedback in the app: the note, its category, an optional reply-to, the screen and
   engine build you were on, and a short reference id. No IP address, no diver name, no room code.
 
-**Transiently, in memory only:** your IP address, used to rate-limit abuse (at most 10 room
+**Transiently, in memory only:** your raw IP address, used to rate-limit abuse (at most 10 room
 creations per minute and 20 join attempts per minute per address). It is never written to disk,
 never logged, and never exported to metrics. Action floods are limited per seat id, not per IP.
+The only address-derived data on disk is the keyed per-room fingerprint above.
 
 ## What is never collected
 
 - No cookies and no cookie-like tracking. Nothing follows you across sites.
-- No analytics, no telemetry beacons, no advertising, no fingerprinting, no third-party scripts.
+- No analytics, no telemetry beacons, no advertising, no browser fingerprinting, no third-party
+  scripts.
 - No accounts, no email addresses, no passwords in the game. The separate feedback board
   (`feedback.griffdive.com`) asks for an email or an OAuth sign-in only if you choose to post or
   vote there, and it is never contacted by the app.
@@ -55,6 +61,7 @@ never logged, and never exported to metrics. Action floods are limited per seat 
 | Rooms that were never launched | Pruned 12 hours after the last activity |
 | Crusades in progress | Pruned 30 days after the last activity |
 | Pinned (saved) dives | Kept until the host unpins them; past 500 saved dives the oldest are unpinned and age out |
+| Seat fingerprints and kick bars | With the room: 12 hours (unlaunched), 30 days (in progress), or while pinned |
 | Feedback notes | 180 days, or the 500 newest notes, whichever bites first |
 | Aggregate metrics | Fly.io's managed Prometheus retention |
 | Logs | Fly.io's log retention |
@@ -67,6 +74,8 @@ Nothing is archived or sold. A room that a squad leaves is simply left to age ou
   the only access control, so treat it like a password for the squad.
 - Divers' names, their kit and the host's Steam lobby link are visible to everyone seated in the
   room. Don't type a name you don't want strangers with the link to see.
+- A kick bar is private to the server. The removed browser (or a fresh browser on the same network)
+  sees a refusal; other divers only see that the seat is gone.
 - Feedback notes are readable by the operators — that is what they are for. They never enter
   metrics or logs, and only the category is counted.
 - Griffdive operators can reach the room state on the server (for example to debug or operate the
@@ -93,8 +102,9 @@ There is no consent-based processing, so there is nothing to opt into or withdra
 
 - **Running the dive you asked for** (performance of the service you requested): room state, seat
   identity, saved dives, the Steam link, and feedback you choose to file.
-- **Legitimate interest in a usable service**: transient IP addresses for rate limiting and abuse
-  protection, aggregate metrics to keep the single server healthy.
+- **Legitimate interest in a usable service**: transient IP addresses for rate limiting,
+  per-room keyed fingerprints for host moderation (keeping a removed diver out of that dive), and
+  aggregate metrics to keep the single server healthy.
 
 No special-category data, no profiling, no automated decision-making, and no selling or sharing with
 third parties beyond the hosting provider and the feedback board's email sender.

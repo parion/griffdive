@@ -97,7 +97,7 @@ const operationClimbs = computed(() =>
         v-if="kicked"
         class="phone-banner kicked"
       >
-        You were removed from this dive by the host.
+        You were removed from this dive by the host. This dive will not seat you again.
       </p>
 
       <p

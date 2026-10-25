@@ -36,6 +36,11 @@ const {
 
 const dispatch = (action: EngineAction) => session.dispatch(action)
 
+// A removed diver's hello is refused, so no snapshot arrives: the server's
+// refusal message is the whole screen.
+const removed = computed(() =>
+  session.mode === 'room' && session.lastError.value?.code === 'kicked')
+
 // The SEAF pack lands in the Starting Kit's "?" boxes in a modal over the wheel.
 const kitReveal = useKitReveal(state, self, session.awaitingJoin, session.mode === 'local')
 
@@ -560,6 +565,7 @@ function openSteam(): void {
 // Host moderation.
 function kick(diverId: string): void {
   dispatch({ type: 'KICK_DIVER', playerId: diverId })
+  pushToast('Diver removed — this dive will not seat them again')
 }
 
 function transferHost(diverId: string): void {
@@ -605,6 +611,22 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       :self-name="self?.name ?? ''"
       @close="closeBriefing"
     />
+    <section
+      v-else-if="removed"
+      class="panel page"
+    >
+      <h2>Removed from this dive</h2>
+      <p>{{ session.lastError.value?.message }}</p>
+      <p class="muted small">
+        The host's removal stands for this dive. Joining a different dive is unaffected.
+      </p>
+      <NuxtLink
+        class="btn"
+        to="/"
+      >
+        Back to base
+      </NuxtLink>
+    </section>
     <p
       v-else-if="session.loadError.value"
       class="panel page"
@@ -729,7 +751,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         v-if="kicked"
         class="panel kicked"
       >
-        You were removed from this dive by the host.
+        You were removed from this dive by the host. This dive will not seat you again.
         <NuxtLink to="/">Back to base</NuxtLink>
       </p>
 
