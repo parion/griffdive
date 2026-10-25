@@ -13,6 +13,7 @@ const SECTIONS: Section[] = [
     list: [
       'On this device (browser storage): save slots and session mirrors, recent room codes, the seat id for each room you joined, your diver name, your warbond declarations, and intro flags. Clearing site data deletes all of it.',
       'On the server, only when you host or join a dive: the room code, the squad\'s names and kits, the crusade\'s progress, a saved dive\'s name, and the Steam lobby link if the host pastes one.',
+      'If you file feedback in the app: the note, its category, an optional reply-to, the screen and engine build, and a short reference id. No IP address, diver name or room code.',
       'In memory only: your IP address, used to rate-limit abuse. It is never written to disk, logged or exported to metrics.',
     ],
   },
@@ -20,8 +21,8 @@ const SECTIONS: Section[] = [
     h: 'What it never does',
     list: [
       'No cookies, no analytics, no ads, no trackers, no fingerprinting.',
-      'No accounts and no email addresses.',
-      'No third-party requests: fonts, icons and game art are all served by Griffdive.',
+      'No accounts and no email addresses in the game. The separate feedback board asks for one only if you choose to post there.',
+      'No third-party requests: fonts, icons and game art are all served by Griffdive. The feedback board is a separate site you reach by clicking through.',
       'No personal data in operational metrics or logs — the dashboard counters are aggregate only.',
     ],
   },
@@ -38,6 +39,7 @@ const SECTIONS: Section[] = [
       'Rooms that were never launched: pruned 12 hours after the last activity.',
       'Crusades: pruned 30 days after the last activity.',
       'Saved dives: kept until the host unpins them (past 500 saves, the oldest age out).',
+      'Feedback notes: 180 days, or the 500 newest notes, whichever bites first.',
       'Metrics and logs: Fly.io\'s retention. Nothing is archived or sold.',
     ],
   },
@@ -47,11 +49,20 @@ const SECTIONS: Section[] = [
       'Play without a server: the offline build and local save slots never contact the server.',
       'Clear site data in your browser to remove everything on this device.',
       'For server data, unpin the dive and let it age out. There are no accounts, so the room code is the only handle we can act on.',
+      'For a feedback note, quote the reference shown when you filed it.',
+    ],
+  },
+  {
+    h: 'Feedback',
+    list: [
+      'In the app, Send feedback writes the note to this server only. No account, no email required, no third-party request.',
+      'The public board at feedback.griffdive.com is a separate self-hosted service. Posting or voting there needs an emailed sign-in link or OAuth, and nothing from your dive is sent with you. Its emails are delivered by Resend, which sees the address and the message.',
+      'Notes filed in the app are never published on the board.',
     ],
   },
   {
     h: 'Where it runs',
-    p: 'The server runs on Fly.io (region ams, Amsterdam), which also stores room state and provides the metrics and log store, as a sub-processor. Processing is the dive you asked for plus keeping the server usable (rate limiting, aggregate metrics). No profiling, no automated decisions, nothing sold.',
+    p: 'The server runs on Fly.io (region ams, Amsterdam), which also stores room state and feedback notes and provides the metrics and log store, as a sub-processor. The feedback board is a second Fly app in the same region with its own Postgres database; Resend sends its emails and is its only other sub-processor. Processing is the dive you asked for, feedback you choose to file, and keeping the server usable (rate limiting, aggregate metrics). No profiling, no automated decisions, nothing sold.',
   },
 ]
 </script>

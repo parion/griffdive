@@ -11,6 +11,9 @@ primary_region = 'ams'
 [env]
   HOST = '0.0.0.0'
   PORT = '8080'
+  # Public runtime config (serialised into the SPA shell), so not a secret.
+  # Staging shares the production board; unset it to hide every board link.
+  NUXT_PUBLIC_FEEDBACK_BOARD_URL = 'https://feedback.griffdive.com'
 
 [http_service]
   internal_port = 8080

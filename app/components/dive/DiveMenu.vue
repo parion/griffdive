@@ -18,6 +18,8 @@ withDefaults(defineProps<{
 
 const open = defineModel<boolean>('open', { default: false })
 
+const { openFeedback } = useFeedback()
+
 const emit = defineEmits<{
   openTutorial: []
   saveDive: []
@@ -96,6 +98,15 @@ function run(action: () => void): void {
       >
         <span>Start a new session</span>
         <span class="hint">Keep this one intact</span>
+      </button>
+
+      <button
+        class="menu-row"
+        type="button"
+        @click="run(openFeedback)"
+      >
+        <span>Send feedback</span>
+        <span class="hint">Bug, idea, balance</span>
       </button>
 
       <button

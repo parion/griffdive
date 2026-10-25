@@ -59,6 +59,7 @@ app/
                    SquadDraftBoard, SquadForfeitBoard), forfeit/ (ForfeitPicker),
                    field-promotion/ (FieldPromotionGate — the mid-crusade catch-up gate),
                    brasch/ (BraschBargains — the per-mission shop), credit/ (CreditAmount),
+                   feedback/ (FeedbackSheet — the no-account feedback form, see Feedback inbox),
                    steam/ (SteamLobbyBar/Box), codex/ (CodexBrowser, CodexDrawer), warbond/
                    (WarbondBrowser, WarbondDrawer, WarbondPicker), item/ (ItemCard,
                    ItemTierBadge), icon/ (Icon* glyphs),
@@ -100,6 +101,8 @@ server/
   routes/ws.ts     defineWebSocketHandler — single endpoint, ?room={code}
   utils/           room-sync.ts (hello/action/close core; KV + peers injected; TTL sweep +
                    room-cap backstop), room-storage.ts (useStorage('rooms') adapter),
+                   feedback.ts (feedback validation, inbox read/write, retention),
+                   feedback-storage.ts (useStorage('feedback') adapter),
                    peers.ts (process-wide peer directory shared by the WS route and metrics),
                    rate-limit.ts (in-memory sliding-window limiter for joins/actions),
                    metrics.ts (Prometheus registry: presence gauges + dive counter),
@@ -108,7 +111,9 @@ server/
   plugins/         metrics.ts (binds the gauges, serves /metrics on internal :9091),
                    room-sweeper.ts (reaps idle rooms every 15 min)
   api/             rooms/index.post.ts (create; an optional save body seeds a new session), rooms/[code].get.ts (snapshot),
-                   war/major-order.get.ts (cached live MO proxy)
+                   war/major-order.get.ts (cached live MO proxy),
+                   feedback/index.post.ts (the no-account feedback inbox)
+deploy/fider/      separate Fly app + Postgres for the public board (see Deployment)
 shared/
   engine/          config.ts, types.ts, reducer.ts, rng.ts, wheel.ts, pacts.ts,
                    rewards.ts, progression.ts, selectors.ts, saves.ts, room.ts
@@ -320,6 +325,35 @@ Entry points: the Bridge Service record (**HOST** on any save, **NEW SESSION** o
 a mirror) and the dive header's **New session** control for any seated diver (room mode, never in
 lobby/complete), with a confirm dialog. The server-side pin (Saved dives) still exists and remains
 the resume-the-same-room anchor; session saves are what make the crusade portable between squads.
+
+### Feedback inbox
+
+`POST /api/feedback` is the only free-text path into the server. It exists because the rest of the
+app is account-free: a diver can say a mission read wrong without creating an identity, and the
+operator still gets enough context to reproduce it.
+
+- **Shape**: `{ category, message, contact?, context? }` plus a hidden `website` honeypot. `category`
+  is one of `bug | idea | balance | other` (unknown values fold to `other`); `message` is 3–2000
+  characters; `contact` is an optional 200-character reply-to. `context` is allowlisted server-side
+  — engine build, one of `/`, `/dive`, `/codex`, `/kit`, `/privacy`, an integer difficulty and a
+  `DIVE_PHASES` value. Raw paths, query strings and anything else are dropped, so a room code cannot
+  arrive through the context by accident.
+- **Privacy**: the note never includes an IP, diver name or room code; the IP is used only by the
+  in-memory limiter and never stored, logged or labelled. Metrics count the category and refusal
+  reason only (`griffdive_feedback_total`, `griffdive_feedback_rejected_total`) — never text.
+- **Storage**: one JSON array in `useStorage('feedback')` (`fs-lite` at `./.data/feedback/inbox`, the
+  same Fly volume as rooms), capped at the 500 newest notes and pruned past 180 days
+  (`FEEDBACK_INBOX_CAP`, `FEEDBACK_RETENTION_MS`). Writes are serialized in-process
+  (`saveFeedback`), because the inbox is read-modify-write on one key — the room lock in
+  `room-sync.ts` solves the same interleaving problem per room.
+- **Receipt**: the response is a 10-character reference (`FeedbackReceipt.id`) shown to the diver.
+  With no accounts it is the only handle that can locate a note for deletion, so the sheet keeps it
+  on screen until reopened.
+- **Honeypot**: a filled `website` returns a plausible reference and stores nothing, so a script has
+  no signal to tune against.
+- **Public board**: the self-hosted Fider instance is a *separate* service (`deploy/fider/`), linked
+  only through `NUXT_PUBLIC_FEEDBACK_BOARD_URL`. Notes are never relayed to it — promotion to a
+  public thread is a manual operator action.
 
 ### Steam lobby codes
 

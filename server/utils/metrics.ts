@@ -5,6 +5,7 @@ import { activeDivers, diverOptions, diverRolledCeiling, diverValor, squadSize }
 import { topTierOf } from '~~/shared/engine/rewards'
 import { DIVE_PHASES } from '~~/shared/engine/types'
 import type { DivePhase, DiveState, EngineAction } from '~~/shared/engine/types'
+import type { FeedbackCategory } from '~~/shared/types/feedback'
 import type { PeerDirectory, RoomCensusEntry } from './room-sync'
 
 // Live signals the gauges snapshot at scrape time. Injected by the metrics
@@ -23,6 +24,8 @@ export type HelloResult
     | 'bad_code'
     | 'rate_limited'
 
+export type FeedbackRejection = 'rate_limited' | 'invalid' | 'too_large' | 'malformed'
+
 export interface RoomMetrics {
   registry: Registry
   bind(source: RoomMetricsSource): void
@@ -40,6 +43,10 @@ export interface RoomMetrics {
   recordHostTransfer(reason: 'disconnect' | 'offline_host'): void
   recordDiveStarted(): void
   recordRoomsSwept(count: number): void
+
+  // Feedback inbox (aggregate only: category and refusal reason, never text).
+  recordFeedback(category: FeedbackCategory): void
+  recordFeedbackRejected(reason: FeedbackRejection): void
 
   // Gameplay, derived at the action seam.
   recordAction(before: DiveState, after: DiveState, action: EngineAction): void
@@ -223,6 +230,22 @@ export function createRoomMetrics(): RoomMetrics {
   const roomsSwept = new Counter({
     name: 'griffdive_rooms_swept_total',
     help: 'Rooms reaped by the idle-TTL sweeper (their squad never saved them)',
+    registers: [registry],
+  })
+
+  // -- feedback inbox -------------------------------------------------------
+
+  const feedback = new Counter({
+    name: 'griffdive_feedback_total',
+    help: 'Feedback notes stored, by category (never by content)',
+    labelNames: ['category'],
+    registers: [registry],
+  })
+
+  const feedbackRejected = new Counter({
+    name: 'griffdive_feedback_rejected_total',
+    help: 'Feedback submissions refused, by reason',
+    labelNames: ['reason'],
     registers: [registry],
   })
 
@@ -773,6 +796,12 @@ export function createRoomMetrics(): RoomMetrics {
       if (count > 0) {
         roomsSwept.inc(count)
       }
+    },
+    recordFeedback(category) {
+      feedback.inc({ category })
+    },
+    recordFeedbackRejected(reason) {
+      feedbackRejected.inc({ reason })
     },
     recordDirectiveRefused(condition, difficulty) {
       directiveRefusals.inc({ condition, difficulty: String(difficulty) })
