@@ -119,14 +119,10 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('article', { name: 'Your haul' }).locator('img')).toBeVisible()
   await expect(page.locator('.mc .bb-card')).toHaveCount(4)
 
-  // Brasch's Bargains opens from the sidebar between missions: one slot each
-  // for primary, secondary, throwable and armor passive at Medium.
-  await side.getByRole('button', { name: /Brasch's Bargains, 9 credits/ }).click()
-  const bargains = side.getByRole('region', { name: 'Brasch\'s Bargains' })
-  await expect(bargains.locator('.bb-card')).toHaveCount(4)
-  await expect(bargains.getByRole('button', { name: /^Buy/ }).first()).toBeDisabled()
-  await side.getByRole('button', { name: /^Hide/ }).click()
-  await expect(bargains).toBeHidden()
+  // Brasch's Bargains stays shut until the first operation is complete; the
+  // shelf is only a tease, and credits keep banking toward the first buy.
+  await expect(page.locator('.mc .bb-closed')).toContainText('Opens after your first operation')
+  await expect(side.getByRole('button', { name: /Brasch's Bargains, 9 credits — Opens after your first operation/ })).toBeDisabled()
 
   await page.getByRole('button', { name: /Next mission/ }).click()
   // Medium runs 2-mission operations. The tracker advances to the second
@@ -161,6 +157,14 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // The climb regroups too: the operation's last haul and a last call at Brasch.
   await expect(page.getByRole('article', { name: 'Your haul' }).locator('img')).toBeVisible()
   await expect(page.locator('.cleared .bb-card')).toHaveCount(4)
+  // The operation is complete, so the shop opens: one slot each for primary,
+  // secondary, throwable and armor passive at Medium.
+  await expect(page.locator('.cleared .bb-closed')).toHaveCount(0)
+  await side.getByRole('button', { name: /^Brasch's Bargains, \d+ credits/ }).click()
+  const bargains = side.getByRole('region', { name: 'Brasch\'s Bargains' })
+  await expect(bargains.locator('.bb-card')).toHaveCount(4)
+  await side.getByRole('button', { name: /^Hide/ }).click()
+  await expect(bargains).toBeHidden()
   await page.getByRole('button', { name: /Start operation 2/ }).click()
   await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeVisible()
 })

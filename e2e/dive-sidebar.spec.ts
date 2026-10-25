@@ -29,10 +29,8 @@ test('desktop: one persistent sidebar hosts Kit, Codex, Warbonds and Bargains', 
   await rail.getByRole('button', { name: 'Warbonds', exact: true }).click()
   await expect(side.getByRole('heading', { level: 2 })).toHaveCount(0)
 
-  await rail.getByRole('button', { name: /Brasch's Bargains/ }).click()
-  await expect(side.getByRole('region', { name: 'Brasch\'s Bargains' })).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(side.getByRole('heading', { level: 2 })).toHaveCount(0)
+  // The shop is shut until the first operation is complete.
+  await expect(rail.getByRole('button', { name: /Brasch's Bargains.*Opens after your first operation/ })).toBeDisabled()
 })
 
 test('phone: the rail pins above the action bar and the panel rises over the stage', async ({ browser }) => {

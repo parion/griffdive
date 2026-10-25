@@ -579,8 +579,12 @@ sample pickup, so a squad can bring home more than the map spawned; the regular 
 would make those hauls unreportable. The filed count remains honor-system: the engine only clamps it
 to a non-negative integer.
 
-**Brasch's Bargains is an always-open shop**, open between missions in every phase from `spin` to
-`rewards`. It closes in the `lobby`, while `diving`, while a failure's `forfeit` settles (a buy would
+**Brasch's Bargains opens once the squad has completed an operation**, then stays open between
+missions in every phase from `spin` to `rewards`. Credits bank from the first mission, so the first
+purchase is a real saving. Until then it is shut (`'Opens after your first operation'`); the
+clearing mission's `rewards` screen counts as complete, since that screen is the operation's last
+call at the shop (`operationCompleted`: the difficulty is past the variant's start, or the last
+mission of the operation is in `rewards`). It also closes in the `lobby`, while `diving`, while a failure's `forfeit` settles (a buy would
 reshuffle the forfeit offers, which derive from the live kit) and once the crusade is `complete`
 (`bargainsClosedReason`). It is the one deliberate exception to design principle 4 (it names
 items):
@@ -602,8 +606,10 @@ items):
     just played and every diver is dealt afresh.
   - **Seating mid-crusade:** the joiner is dealt the current mission's shelf.
 - **Prices:** tier first, then type: `itemPrice = CREDIT_PRICE_TIER[tier] × CREDIT_PRICE_TYPE[category]`.
-  C/B/A/S cost 25/100/400/800, so C/B sit within a mission or two's haul while A and S are long
-  saving goals (see the simulation below). Primaries ×1.25, armor passives ×0.75, everything else ×1.
+  C/B/A/S cost 25/65/170/450 — one curve at roughly 2.6× per tier — so C/B sit within a mission or
+  two's haul, A is a short save, and S (stocked from difficulty 8) lands about once per 6–7
+  missions for a squad filing a modest share of the map's samples (`scripts/simulate-economy.mjs`;
+  `SAVER=1` models a diver who skips small buys to afford a nearby S). Primaries ×1.25, armor passives ×0.75, everything else ×1.
 - **One buy per mission:** `BUY_ITEM` (self-service) deducts the price, banks the item in
   `personalInventories` and records it as `bargain.boughtItemId`. The shelf keeps its layout: the
   bought slot reads `bought` and every other slot `locked` until the next mission (`bargainShelfFor`

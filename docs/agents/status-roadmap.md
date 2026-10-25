@@ -52,9 +52,9 @@ Requisition currency:** a successful report banks a sample haul (time remaining 
 every diver's purse, and once their draft resolves a per-diver rotating **Requisition stock** — its
 tiers drawn from the difficulty band — lets them buy named items, priced by tier then type. The
 team-performance Valor term is gone; chosen risk is the only thing that moves the odds line.
-**Brasch's Bargains became an always-open shop paid in credits:** samples now bank as credits, and
+**Brasch's Bargains became a shop paid in credits:** samples now bank as credits, and
 the shop opens from the dive header (phone: a credit tile on the action bar) in every phase but the
-mission itself. Every mission restocks one random slot per primary, secondary, throwable and armor
+mission itself, once the first operation is complete. Every mission restocks one random slot per primary, secondary, throwable and armor
 passive (base tier up to one above), plus a stratagem slot per star past the third. A diver buys at
 most one item per mission, and a bought kind isn't stocked again until the next operation (see
 Brasch's Bargains — credits).
@@ -83,11 +83,14 @@ Ban UI, the lobby/matchmaking. Not re-verified visually: pixel-level fidelity of
 - Brasch's Bargains pace well through B/A tier: a steady squad buys ~11 items over 20 missions
   (1.4 per operation), an eager one ~16. Buys per mission drop to 0.1-0.6 at difficulty 8-10 (cause not
   investigated).
-- **S-tier at 800 credits is effectively unreachable** (0.0-0.2 buys per 20 missions even for a
-  maxed squad that banks ~255 credits per late mission). Either lower the S price/stock it
-  deliberately, or accept it as an aspirational sink and say so in the shop copy.
-- **Difficulty 3 is a dead shop** for casual and steady squads (haul 4-8 credits vs a 25-credit C
-  price): the first operation has no Bargains. Consider a floor on early hauls.
+- **Addressed after this review:** S-tier at 800 credits was effectively unreachable, and difficulty 3
+  had a dead shop (haul 4-8 vs a 25-credit floor). Prices now ride one curve, 25/65/170/450, and the
+  shop stays shut until the first operation completes, so early credits accumulate instead of
+  stranding. A steady squad (60% of samples filed) buys an S about once per 6.7 missions in
+  the S band (difficulty 8+) when it saves for one; a diver who always spends on the priciest
+  affordable item almost never reaches S (~1 per 590 missions), so the SAVER policy in
+  `scripts/simulate-economy.mjs` is the number to watch. Overall buys rose (steady ~14 per 20
+  missions, up from ~11), so watch whether the shop now crowds out the reward draft in playtests.
 - Open balance/design items still on the board in `PLAN.md`: N25 (pacts are strictly "take
   everything"), N39 (reroll-token sources), N13 (`fragileLiberty` early lock-out, blocked on DEC-6).
 

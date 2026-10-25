@@ -63,7 +63,7 @@ app/
                    (WarbondBrowser, WarbondDrawer, WarbondPicker), item/ (ItemCard,
                    ItemTierBadge), icon/ (Icon* glyphs),
                    app/ (themed Reka primitives and app chrome: AppDialog, AppDrawer — the
-                   right-hand slide-over shell that keeps the dive mounted, AppTabs,
+                   right-hand slide-over shell that keeps the dive mounted,
                    AppTooltip, AppToastStack, AppHoldButton — press-and-hold confirm,
                    AppStarRating, AppBrandMark — the griffin mark rendered from
                    utils/brandMark.ts, AppBootScreen, AppChangelogModal — GitHub release log

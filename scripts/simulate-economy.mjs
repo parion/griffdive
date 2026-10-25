@@ -19,6 +19,8 @@ import {
 } from '../shared/engine/config.ts'
 
 const RUNS = Number(process.argv[2] ?? 4000)
+// SAVER=1: a diver who sees an S on the shelf within two missions' haul skips smaller buys to afford it.
+const SAVER = process.env.SAVER === '1'
 const TIERS = ['c', 'b', 'a', 's']
 const SLOT_KINDS = ['primary', 'secondary', 'throwable', 'armorPassive']
 
@@ -81,10 +83,11 @@ function climb(profile) {
       purse += haul
       stats.haul += haul
       stats.missions++
-      const options = shelf(difficulty)
-        .filter(slot => !held.has(slot.kind) && slot.cost <= purse)
-        .sort((a, b) => b.cost - a.cost)
-      const pick = options[0]
+      const stock = shelf(difficulty).filter(slot => !held.has(slot.kind))
+      const options = stock.filter(slot => slot.cost <= purse).sort((a, b) => b.cost - a.cost)
+      const saving = SAVER && !options.some(slot => slot.tier === 's')
+        && stock.some(slot => slot.tier === 's' && slot.cost <= purse + 2 * haul)
+      const pick = saving ? undefined : options[0]
       if (pick) {
         purse -= pick.cost
         held.add(pick.kind)
@@ -102,6 +105,8 @@ for (const [name, profile] of Object.entries(PROFILES)) {
   const totals = { c: 0, b: 0, a: 0, s: 0 }
   const diffs = {}
   let leftover = 0
+  let sBuys = 0
+  let sMissions = 0
   for (let i = 0; i < RUNS; i++) {
     const run = climb(profile)
     leftover += run.purse
@@ -109,6 +114,10 @@ for (const [name, profile] of Object.entries(PROFILES)) {
       totals[tier] += run.bought[tier]
     }
     for (const [difficulty, stats] of Object.entries(run.perDiff)) {
+      if (Number(difficulty) >= 8) {
+        sBuys += stats.bought.s
+        sMissions += stats.missions
+      }
       const acc = (diffs[difficulty] ??= { haul: 0, missions: 0, bought: 0 })
       acc.haul += stats.haul
       acc.missions += stats.missions
@@ -118,6 +127,7 @@ for (const [name, profile] of Object.entries(PROFILES)) {
   const per = tier => (totals[tier] / RUNS).toFixed(1)
   const total = TIERS.reduce((sum, tier) => sum + totals[tier], 0) / RUNS
   console.log(`${name.padEnd(7)} ${total.toFixed(1)} buys / 20 missions (${(total / 8).toFixed(2)} per operation)  C ${per('c')}  B ${per('b')}  A ${per('a')}  S ${per('s')}   leftover ${(leftover / RUNS).toFixed(0)}`)
+  console.log(`        S band (diff 8+): one S buy per ${sBuys ? (sMissions / sBuys).toFixed(1) : 'never'} missions`)
   console.log('        haul/mission by diff: '
     + Object.entries(diffs).map(([d, s]) => `${d}:${(s.haul / s.missions).toFixed(0)}`).join('  ')
     + '   buys/mission: '
