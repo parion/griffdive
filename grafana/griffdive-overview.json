@@ -14,7 +14,7 @@
   "tags": ["griffdive"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "editable": true,
   "refresh": "30s",
   "graphTooltip": 1,
@@ -45,8 +45,8 @@
         "multi": true,
         "includeAll": true,
         "allValue": ".*",
-        "current": { "selected": true, "text": "All", "value": "$__all" },
-        "options": [],
+        "current": { "selected": true, "text": "griffdive", "value": "griffdive" },
+        "options": [{ "selected": true, "text": "griffdive", "value": "griffdive" }],
         "hide": 0
       }
     ]
@@ -189,14 +189,14 @@
       "id": 7,
       "type": "timeseries",
       "title": "Cold HTTP hits by route",
-      "description": "Server-reached requests only: client-side navigation and the PWA service worker are invisible, so read it as arrivals, not page views.",
+      "description": "Server-reached requests only: client-side navigation and the PWA service worker are invisible, so read it as arrivals, not page views. Static assets are excluded — they dominate the counts without saying anyone arrived.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 7, "w": 8, "x": 0, "y": 6 },
       "interval": "1m",
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (route) (rate(griffdive_http_requests_total{app=~\"$app\"}[$__rate_interval])) * 60",
+          "expr": "sum by (route) (rate(griffdive_http_requests_total{app=~\"$app\",route!=\"assets\"}[$__rate_interval])) * 60",
           "legendFormat": "{{route}}"
         }
       ],
@@ -1149,7 +1149,7 @@
       "title": "Squad size at mission start · range",
       "description": "Present divers when a mission opened, in exact counts. The design's squad-size rules should be tuned to whatever this bar chart says.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 105 },
+      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 105 },
       "targets": [
         { "refId": "A", "expr": "sum(increase(griffdive_squad_size_bucket{le=\"1\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "solo" },
         { "refId": "B", "expr": "sum(increase(griffdive_squad_size_bucket{le=\"2\",app=~\"$app\"}[$__range])) - sum(increase(griffdive_squad_size_bucket{le=\"1\",app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "duo" },
@@ -1171,7 +1171,7 @@
       "title": "Stepping away vs coming back",
       "description": "The 30-second grace window in action: divers who dropped mid-crusade and divers whose seats woke back up.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 105 },
+      "gridPos": { "h": 7, "w": 6, "x": 6, "y": 105 },
       "interval": "1m",
       "targets": [
         {
@@ -1194,28 +1194,47 @@
     {
       "id": 45,
       "type": "stat",
-      "title": "Rooms swept by TTL · range",
-      "description": "Idle rooms the sweeper reaped because nobody saved them. A high number with recent activity means the TTLs are too short for real play rhythms.",
+      "title": "Sweeper reaps · range",
+      "description": "Rooms aged out by TTL, plus silent sockets dropped by the presence sweeper. A high room count with recent activity means the TTLs are too short; reaped peers are ghosts that would otherwise stay online.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "gridPos": { "h": 7, "w": 4, "x": 16, "y": 105 },
+      "gridPos": { "h": 7, "w": 6, "x": 12, "y": 105 },
       "targets": [
-        { "refId": "A", "expr": "sum(increase(griffdive_rooms_swept_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "swept" }
+        { "refId": "A", "expr": "sum(increase(griffdive_rooms_swept_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "rooms" },
+        { "refId": "B", "expr": "sum(increase(griffdive_presence_reaped_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "silent peers" }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
     },
     {
-      "id": 46,
-      "type": "stat",
-      "title": "Warbond edits · range",
-      "description": "Explicit warbond declarations. The default is everyone-owns-everything, so only edits carry signal about real purchases.",
+      "id": 111,
+      "type": "timeseries",
+      "title": "Session length — p50 / p90",
+      "description": "How long a room stayed active from creation to its last event, measured when it ages out. Lobbies are mostly abandoned sessions; crusades are the long-running ones. Aggregate only — no room code, diver id or address.",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "gridPos": { "h": 7, "w": 4, "x": 20, "y": 105 },
+      "gridPos": { "h": 7, "w": 6, "x": 18, "y": 105 },
+      "interval": "2m",
       "targets": [
-        { "refId": "A", "expr": "sum(increase(griffdive_warbond_edits_total{app=~\"$app\"}[$__range]))", "instant": true, "range": false, "legendFormat": "edits" }
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by (le, kind) (rate(griffdive_session_duration_seconds_bucket{app=~\"$app\"}[$__rate_interval])))",
+          "legendFormat": "{{kind}} p50"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.9, sum by (le, kind) (rate(griffdive_session_duration_seconds_bucket{app=~\"$app\"}[$__rate_interval])))",
+          "legendFormat": "{{kind}} p90"
+        }
       ],
-      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "palette-classic" } }, "overrides": [] },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "textMode": "auto" }
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true, "calcs": [] }, "tooltip": { "mode": "multi", "sort": "desc" } }
     },
 
     {

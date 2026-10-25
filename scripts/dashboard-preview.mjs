@@ -68,11 +68,14 @@ function horizontalBars(random, labels) {
 function statBody(random, panel, labels) {
   const unit = panel.fieldConfig?.defaults?.unit
   const percent = unit === 'percent' || unit === 'percentunit'
-  const value = percent ? `${(random() * 90).toFixed(0)}%` : `${Math.round(random() * 40)}`
-  return `<div class="stat">
-    <span class="stat-value">${value}</span>
-    <span class="stat-label">${escapeHtml(labels[0] ?? 'value')}</span>
-  </div>`
+  const values = (labels.length > 0 ? labels : ['value']).map(() => {
+    return percent ? `${(random() * 90).toFixed(0)}%` : `${Math.round(random() * 40)}`
+  })
+  return `<div class="stats">${values.map((value, index) => `
+    <div class="stat">
+      <span class="stat-value">${value}</span>
+      <span class="stat-label">${escapeHtml(labels[index] ?? 'value')}</span>
+    </div>`).join('')}</div>`
 }
 
 function tableBody() {
@@ -180,6 +183,7 @@ const html = `<!doctype html>
   .hbar-label { width: 42%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .hbar-track { flex: 1; height: 9px; background: #1f2328; border-radius: 2px; overflow: hidden; }
   .hbar-fill { display: block; height: 100%; }
+  .stats { flex: 1; display: flex; gap: 10px; }
   .stat { flex: 1; display: flex; flex-direction: column; justify-content: center; }
   .stat-value { font-size: 34px; font-weight: 600; color: #e8e9ea; }
   .stat-label { color: #9fa3a8; font-size: 10px; }

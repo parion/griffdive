@@ -17,7 +17,7 @@
   they were simply regenerated.
 - **Server tests** (Vitest, fake KV + fake peers in `server/utils/room-sync.spec.ts`): room
   join/spin/pick flows, host authority + coercion, host migration, reattachment, room-full,
-  TTL pruning, metrics gauges/counters (`metrics.spec.ts`). The feedback inbox
+  TTL pruning, metrics gauges/counters and session length (`metrics.spec.ts`). The feedback inbox
   (`feedback.spec.ts`) is tested at its seams: message/category normalization, control-character
   and length caps, the context allowlist (unknown paths and phases are dropped), honeypot
   detection, reference formatting, retention/cap pruning and serialized concurrent writes.

@@ -13,18 +13,21 @@ peer directory.
 
 Monitoring: `server/plugins/metrics.ts` exposes a Prometheus registry (`@prometheus-io/client`)
 on internal port 9091 (`METRICS_PORT` to override) — default Node metrics plus the Griffdive
-families below. `fly.toml`'s `[metrics]` has Fly scrape it every 15s into the managed Grafana at
-fly-metrics.net; the port is never registered in `[http_service]`, so it is unreachable from the
-public internet. The dashboard lives in-repo at `grafana/griffdive-overview.json` (import it in the
-Grafana UI; it prompts for the Prometheus datasource) and `pnpm dashboard:preview` renders
-`grafana/dashboard-preview.html` + `.png` — a mock-series layout preview so a dashboard change can
-be reviewed without Grafana access.
+families below. `[metrics]` in `fly.toml`, `fly.staging.toml` and `fly.review.toml` has Fly scrape it
+every 15s into the managed Grafana at fly-metrics.net; the port is never registered in
+`[http_service]`, so it is unreachable from the public internet. Staging and review apps only emit
+while their machine is awake (both idle-stop). The dashboard lives in-repo at
+`grafana/griffdive-overview.json` and is **imported by hand** (Grafana UI → Dashboards → Import; it
+prompts for the Prometheus datasource). There is no provisioning or CI push, so re-import the JSON
+after editing it. `pnpm dashboard:preview` renders `grafana/dashboard-preview.html` + `.png` — a
+mock-series layout preview so a dashboard change can be reviewed without Grafana access.
 
-Every panel query is scoped by an **`app` template variable** (`app=~"$app"`, default *All*). Staging,
-production and PR review apps all scrape into the same organization Prometheus, so without the
-variable a panel shows their series together — staging could look busy because production was. Pick
-the app in the variable (or in Explore: `count by (app) (griffdive_online_players)`). The orange
-vertical annotation marks a **process restart** (`changes(process_start_time_seconds[5m])`): a
+Every panel query is scoped by an **`app` template variable** (`app=~"$app"`, default
+**`griffdive`** — production). Staging, production and PR review apps all scrape into the same
+organization Prometheus, so without the variable a panel shows their series together — staging
+could look busy because production was. Pick *All* only when comparing environments, or another app
+for that environment (in Explore: `count by (app) (griffdive_online_players)`). The orange
+vertical annotation marks a **process restart** (`changes(process_start_time_seconds{app=~"$app"}[5m])`): a
 deploy on production, and on staging mostly an idle-stop cold start (`fly.staging.toml` keeps
 `min_machines_running = 0`). Counters reset with the process, so query them with `increase()`/`rate()`.
 
@@ -35,7 +38,7 @@ deploy on production, and on staging mostly an idle-stop cold start (`fly.stagin
 | `griffdive_online_players`, `griffdive_active_rooms` (gauges, scrape-time) | Presence now — seated divers with a live (non-silent) connection, rooms with at least one |
 | `griffdive_rooms_by_phase{phase}`, `griffdive_room_difficulty{difficulty}`, `griffdive_saved_dives` (gauges, 2-minute census) | Where stored rooms sit: stuck phases, ladder distribution, pin pressure against the save cap |
 | `griffdive_rooms_created_total{source}`, `griffdive_room_create_rejected_total{reason}`, `griffdive_room_lookups_total{result}`, `griffdive_http_requests_total{route,status}` | Arrival: fresh vs resumed rooms, dead invite links, growth limits, cold hits (PWA/browser navigation never reaches the server) |
-| `griffdive_ws_hello_total{result}`, `griffdive_rejoins_total{gap}`, `griffdive_divers_joined_total{kind}`, `griffdive_divers_departed_total{kind}`, `griffdive_presence_changes_total{direction}`, `griffdive_presence_reaped_total`, `griffdive_host_transfers_total{reason}`, `griffdive_rooms_swept_total` | Seating and retention: join failures, returning divers by silence gap (the no-accounts retention proxy), squad churn, host fragility, silent sockets reaped by the presence sweeper, TTL reaps |
+| `griffdive_ws_hello_total{result}`, `griffdive_rejoins_total{gap}`, `griffdive_divers_joined_total{kind}`, `griffdive_divers_departed_total{kind}`, `griffdive_presence_changes_total{direction}`, `griffdive_presence_reaped_total`, `griffdive_host_transfers_total{reason}`, `griffdive_rooms_swept_total`, `griffdive_session_duration_seconds{kind}` | Seating and retention: join failures, returning divers by silence gap (the no-accounts retention proxy), squad churn, host fragility, silent sockets reaped by the presence sweeper, TTL reaps, and how long rooms actually stay active (`lobby` vs `crusade`, observed when the room ages out) |
 | `griffdive_dives_started_total`, `griffdive_missions_started_total{difficulty}`, `griffdive_operation_restarts_total{difficulty}`, `griffdive_operations_completed_total{difficulty}`, `griffdive_crusades_achieved_total`, `griffdive_crusades_ended_total`, `griffdive_reports_total{outcome,difficulty}` | The play funnel: crusades launched → missions begun → operations climbed → achieved, plus restarts and honor-system outcomes |
 | `griffdive_directive_decisions_total{decision,condition,difficulty}`, `griffdive_directive_refusals_total`, `griffdive_strain_decisions_total`, `griffdive_major_order_total{kind}` (front plan at launch: `live`/`manual`/`rolled`), `griffdive_wheel_rerolls_total{kind}`, `griffdive_pacts_picked_total{condition}`, `griffdive_pacts_failed_total{condition}`, `griffdive_directives_failed_total{condition}`, `griffdive_ceiling_total{tier}`, `griffdive_valor_at_report`, `griffdive_pact_picks` | Risk & balance: is chosen risk real, which rules land or misfire, what loot tiers the economy actually rolls |
 | `griffdive_rewards_picked_total`, `griffdive_purchases_total`, `griffdive_forfeits_total` (tier + category), `griffdive_samples_haul{rarity}`, `griffdive_report_time_pct`, `griffdive_mission_stars{difficulty}`, `griffdive_reward_rerolls_total`, `griffdive_reward_bans_total`, `griffdive_honors_spun_total`, `griffdive_honors_awarded_total`, `griffdive_warbond_edits_total` | Economy & outcomes: loot by tier, shelf affordability, forfeit cost, sample hauls, tokens and honors usage |

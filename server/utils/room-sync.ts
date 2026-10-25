@@ -10,6 +10,7 @@ import type { DiveSaveInfo, ServerMessage, SteamLobbyInfo } from '~~/shared/type
 import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH, isRoomCode } from '~~/shared/utils/room-code'
 import { normalizeSteamLobbyLink } from '~~/shared/utils/steam-lobby'
 import { roomMetrics } from './metrics'
+import { isPeerSilent, PEER_SILENCE_MS } from './peer-presence'
 import type { RateLimiter } from './rate-limit'
 
 const newRoomCode = customAlphabet(ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH)
@@ -33,6 +34,19 @@ function roomExpired(room: StoredRoom, now: number): boolean {
   }
   const ttl = room.state.phase === 'lobby' ? ROOM_TTL_MS : CRUSADE_TTL_MS
   return now - room.updatedAt > ttl
+}
+
+// The active span, not the idle tail: `updatedAt` is the last event, so a room
+// that sat untouched until its TTL does not inflate the session-length metric.
+// Rooms written before `createdAt` existed are skipped rather than counted as
+// zero-length sessions.
+function recordSessionEnded(room: StoredRoom): void {
+  const createdAt = room.createdAt
+  if (typeof createdAt !== 'number' || !Number.isFinite(createdAt)) {
+    return
+  }
+  const seconds = Math.max(0, (room.updatedAt - createdAt) / 1000)
+  roomMetrics.recordSessionEnded(room.state.phase === 'lobby' ? 'lobby' : 'crusade', seconds)
 }
 
 // A backstop against unbounded room growth on the single 256 MB machine, in
@@ -75,6 +89,9 @@ export interface RoomLimits {
 export interface StoredRoom {
   code: string
   state: DiveState
+  // When the room opened. Used only for the aggregate session-length metric;
+  // absent on rooms written before the field existed.
+  createdAt?: number
   updatedAt: number
   // Set when any seated diver pins the dive: the room skips the idle TTL until
   // unpinned. Null/absent means an ordinary transient room.
@@ -212,6 +229,7 @@ function isStoredRoom(raw: unknown): raw is StoredRoom {
     && !!room.state
     && typeof room.state === 'object'
     && typeof room.updatedAt === 'number'
+    && (room.createdAt == null || Number.isFinite(room.createdAt))
     && (room.saved == null
       || (typeof room.saved === 'object' && typeof room.saved.savedAt === 'number'))
     && (room.steam == null
@@ -300,7 +318,8 @@ export async function createRoom(
     code = newRoomCode()
   }
   const state = seed ?? createLobbyState()
-  await kv.setItem(code, { code, state, updatedAt: Date.now() } satisfies StoredRoom)
+  const now = Date.now()
+  await kv.setItem(code, { code, state, createdAt: now, updatedAt: now } satisfies StoredRoom)
   // Seed the dwell clock at creation so lobby time is measured from here, not
   // from the first state change.
   roomMetrics.trackRoom(code, state.phase)
@@ -338,6 +357,7 @@ export async function sweepRooms(kv: RoomKV, now: number = Date.now()): Promise<
     // Saved dives are pinned: the squad is coming back, however long that takes.
     if (isStoredRoom(raw) && roomExpired(raw, now)) {
       await kv.removeItem(code)
+      recordSessionEnded(raw)
       removed += 1
     }
   }
@@ -370,6 +390,7 @@ export async function loadRoom(kv: RoomKV, code: string): Promise<StoredRoom | n
   }
   if (roomExpired(raw, Date.now())) {
     await kv.removeItem(code)
+    recordSessionEnded(raw)
     return null
   }
   // Rooms survive deploys on disk without a schema version, so states written
@@ -1048,13 +1069,6 @@ function scheduleAway(kv: RoomKV, peers: PeerDirectory, roomCode: string, player
   timer.unref?.()
 }
 
-// The client heartbeats every 25s; a hidden tab is throttled to roughly one
-// timer a minute, so five silent minutes mean the connection is gone. Dead
-// sockets never send a close (sleeping phone, Wi-Fi handover, frozen tab), and
-// a socket can also drop while its hello is queued — both used to leave a peer
-// that stayed online forever.
-export const PEER_SILENCE_MS = 5 * 60 * 1000
-
 // Reaping goes through processClose so away marking, host migration and the
 // presence refresh all take the one path the transport's own close takes.
 export async function reapSilentPeers(
@@ -1072,7 +1086,7 @@ export async function reapSilentPeers(
       peer.context.lastSeenAt = now
       continue
     }
-    if (now - seen < graceMs) {
+    if (!isPeerSilent(seen, now, graceMs)) {
       continue
     }
     try {

@@ -105,8 +105,9 @@ server/
                    feedback.ts (feedback validation, inbox read/write, retention),
                    feedback-storage.ts (useStorage('feedback') adapter),
                    peers.ts (process-wide peer directory shared by the WS route and metrics),
+                   peer-presence.ts (shared silence threshold for the reaper and gauges),
                    rate-limit.ts (in-memory sliding-window limiter for joins/actions),
-                   metrics.ts (Prometheus registry: presence gauges + dive counter),
+                   metrics.ts (Prometheus registry: presence gauges, session length + gameplay counters),
                    major-order.ts (live war API → MajorOrderSelection; pure normalizer +
                    best-effort fetch)
   plugins/         metrics.ts (binds the gauges, serves /metrics on internal :9091),
@@ -152,9 +153,11 @@ Host-authoritative, room-per-dive. Nitro WebSocket via `nitro.experimental.webso
 `nuxt.config.ts`; single endpoint `/ws?room={code}`.
 Room state lives in `useStorage('rooms')` — Nitro `fs-lite` writing to `./.data/rooms` (the
 `griffdive_data` Fly volume in production), a fake in-memory KV in tests — as
-`StoredRoom { code, state, updatedAt, saved?, steam?, ipSalt?, seatIps?, bans? }`, pruned on access after an idle TTL — 12h for an
+`StoredRoom { code, state, createdAt?, updatedAt, saved?, steam?, ipSalt?, seatIps?, bans? }`, pruned on access after an idle TTL — 12h for an
 unlaunched lobby (`ROOM_TTL_MS`), 30 days once the crusade has launched (`CRUSADE_TTL_MS`), never
-while `saved` pins it (see Saved dives). Stored states are normalized on read: rooms carry no
+while `saved` pins it (see Saved dives). `createdAt` (absent on records written before it existed)
+feeds the aggregate session-length histogram when a room ages out: the observation is
+`updatedAt - createdAt`, so the idle tail before pruning does not inflate it. Stored states are normalized on read: rooms carry no
 schema version, so `loadRoom` applies the idempotent subset of the save migrations
 (`normalizeRoomState` in `shared/engine/saves.ts` — pre-v13 variant ids, fields added after the
 room was written) before serving or reducing it, since rooms survive deploys on the Fly volume. The
@@ -198,7 +201,8 @@ same sweep is the backstop for a socket that closes while its `hello` is still q
 lock: `processClose` flags `peer.context.closed` first, and `processHello` refuses to seat a closed
 socket — without that, the peer was added after the close and could never be removed, keeping a
 diver "online" and their squad waiting on them forever. Reaped peers are counted in
-`griffdive_presence_reaped_total`. A browser that comes back to a reaped socket reopens from
+`griffdive_presence_reaped_total`. The scrape-time presence gauges use the same silence threshold,
+so a silent socket stops counting before the sweep removes it. A browser that comes back to a reaped socket reopens from
 `visibilitychange` (`useGameSocket`), because the retry budget alone gives up after a few seconds.
 
 **Transport hardening:** the server whitelists `action.type` against the reducer union and guards
