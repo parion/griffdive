@@ -18,6 +18,12 @@ primary_region = 'ams'
   min_machines_running = 0
   processes = ['app']
 
+# Scraped by Fly into the same organization Prometheus as production, labelled
+# with this review app's own app name. The port stays off [http_service].
+[metrics]
+  port = 9091
+  path = "/metrics"
+
 # Single instance, same as prod. No volume is mounted here on purpose: PR apps
 # would collide on a shared volume, so room state is ephemeral on the container
 # filesystem (prod persists on `griffdive_data`).

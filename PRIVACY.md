@@ -22,6 +22,9 @@ Clearing site data in your browser deletes all of it.
 
 - The room code, the seated divers' names (as typed, at most 32 characters), their inventories, and
   the crusade's progress and audit log.
+- When the room was created and last active. These timestamps drive idle-room cleanup and the
+  aggregate session-length metric; they are never attached to a name, seat id or room code in
+  metrics.
 - While a diver is seated: a keyed fingerprint (HMAC) of the network address the dive was joined
   from, scoped to that room. If the host removes a diver, the removed seat's id and fingerprint
   stay with the room as a bar so the invite link cannot seat them again. The raw address is never
@@ -49,8 +52,8 @@ The only address-derived data on disk is the keyed per-room fingerprint above.
   itself, so visiting it does not tell Google Fonts, a CDN or an image host that you exist. The
   feedback board is a separate site reached only by clicking through to it.
 - No personal data in operational metrics or logs. The Grafana dashboard's counters are aggregate
-  (for example "missions started", "join attempts by result", "rooms by phase") and carry no names,
-  ids, room codes or IP addresses. Server logs contain errors and counts only.
+  (for example "missions started", "join attempts by result", "rooms by phase", "session lengths")
+  and carry no names, ids, room codes or IP addresses. Server logs contain errors and counts only.
 - The server fetches the community war API to show the live Major Order; that request carries no
   user data.
 

@@ -4,8 +4,9 @@ import { createDiveState, reduce } from '~~/shared/engine/reducer'
 import { joinDiver } from '~~/shared/engine/room'
 import { createSaveDoc } from '~~/shared/engine/saves'
 import { pactOfferFor } from '~~/shared/engine/selectors'
-import { CRUSADE_TTL_MS, InvalidSaveError, PEER_SILENCE_MS, ROOM_TTL_MS, RoomLimitError, censusRooms, createPeerDirectory, createRoom, createRoomFromSave, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, reapSilentPeers, sweepRooms } from './room-sync'
+import { CRUSADE_TTL_MS, InvalidSaveError, ROOM_TTL_MS, RoomLimitError, censusRooms, createPeerDirectory, createRoom, createRoomFromSave, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, reapSilentPeers, sweepRooms } from './room-sync'
 import type { PeerLike, RoomKV, StoredRoom } from './room-sync'
+import { PEER_SILENCE_MS } from './peer-presence'
 import { roomMetrics } from './metrics'
 import { createRateLimiter } from './rate-limit'
 import type { ServerMessage } from '~~/shared/types/messages'
@@ -1216,6 +1217,23 @@ describe('room-sync observability', () => {
     expect(seriesValue(after, 'griffdive_squad_size_count') - seriesValue(before, 'griffdive_squad_size_count')).toBe(1)
     // The one write path observed the lobby → spin transition.
     expect(seriesValue(after, 'griffdive_phase_dwell_seconds_count{phase="lobby"}') - seriesValue(before, 'griffdive_phase_dwell_seconds_count{phase="lobby"}')).toBe(1)
+  })
+
+  it('records the active session length when a room ages out', async () => {
+    const kv = fakeKV()
+    const code = await createRoom(kv)
+    const raw = await kv.getItem(code) as StoredRoom
+    const expiredAt = Date.now() - ROOM_TTL_MS - 1
+    raw.createdAt = expiredAt - 5400 * 1000
+    raw.updatedAt = expiredAt
+    await kv.setItem(code, raw)
+
+    const before = await roomMetrics.registry.metrics()
+    expect(await sweepRooms(kv)).toBe(1)
+    const after = await roomMetrics.registry.metrics()
+
+    expect(seriesValue(after, 'griffdive_session_duration_seconds_count{kind="lobby"}') - seriesValue(before, 'griffdive_session_duration_seconds_count{kind="lobby"}')).toBe(1)
+    expect(seriesValue(after, 'griffdive_session_duration_seconds_sum{kind="lobby"}') - seriesValue(before, 'griffdive_session_duration_seconds_sum{kind="lobby"}')).toBe(5400)
   })
 
   it('censuses stored rooms without their state payloads', async () => {

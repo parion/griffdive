@@ -4,6 +4,7 @@ import { createLobbyState, joinDiver } from '~~/shared/engine/room'
 import { diverOptions, forfeitOptionsFor, pactOfferFor } from '~~/shared/engine/selectors'
 import type { DiveState, EngineAction } from '~~/shared/engine/types'
 import { createRoomMetrics, gapBucket, routeKey, statusClass } from './metrics'
+import { PEER_SILENCE_MS } from './peer-presence'
 import { createPeerDirectory } from './room-sync'
 import type { PeerLike } from './room-sync'
 
@@ -32,6 +33,10 @@ describe('room-metrics', () => {
     peers.add('AB3C45', fakePeer('ws-2', 'p1')) // same diver, second tab
     peers.add('AB3C45', fakePeer('ws-3')) // connected, not yet seated
     peers.add('XY8Z90', fakePeer('ws-4', 'p2'))
+    // A silent socket stops counting before the sweeper removes it.
+    const ghost = fakePeer('ws-5', 'p3')
+    ghost.context.lastSeenAt = Date.now() - PEER_SILENCE_MS - 1
+    peers.add('ZZ9Y88', ghost)
 
     const metrics = createRoomMetrics()
     metrics.bind({ peers })
@@ -99,6 +104,8 @@ describe('room-metrics', () => {
     metrics.recordHostTransfer('disconnect')
     metrics.recordRoomsSwept(3)
     metrics.recordPeersReaped(2)
+    metrics.recordSessionEnded('lobby', 15 * 60)
+    metrics.recordSessionEnded('crusade', 2 * 24 * 3600)
 
     const text = await metrics.registry.metrics()
     expect(text).toMatch(/griffdive_rooms_created_total\{source="fresh"\} 1/)
@@ -116,6 +123,9 @@ describe('room-metrics', () => {
     expect(text).toMatch(/griffdive_host_transfers_total\{reason="disconnect"\} 1/)
     expect(text).toContain('griffdive_rooms_swept_total 3')
     expect(text).toContain('griffdive_presence_reaped_total 2')
+    expect(text).toContain('griffdive_session_duration_seconds_count{kind="lobby"} 1')
+    expect(text).toContain('griffdive_session_duration_seconds_sum{kind="lobby"} 900')
+    expect(text).toContain('griffdive_session_duration_seconds_count{kind="crusade"} 1')
   })
 
   it('census gauges preset every phase and difficulty', async () => {

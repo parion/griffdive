@@ -6,6 +6,7 @@ import { topTierOf } from '~~/shared/engine/rewards'
 import { DIVE_PHASES } from '~~/shared/engine/types'
 import type { DivePhase, DiveState, EngineAction } from '~~/shared/engine/types'
 import type { FeedbackCategory } from '~~/shared/types/feedback'
+import { isPeerSilent } from './peer-presence'
 import type { PeerDirectory, RoomCensusEntry } from './room-sync'
 
 // Live signals the gauges snapshot at scrape time. Injected by the metrics
@@ -45,6 +46,7 @@ export interface RoomMetrics {
   recordDiveStarted(): void
   recordRoomsSwept(count: number): void
   recordPeersReaped(count: number): void
+  recordSessionEnded(kind: 'lobby' | 'crusade', seconds: number): void
 
   // Feedback inbox (aggregate only: category and refusal reason, never text).
   recordFeedback(category: FeedbackCategory): void
@@ -74,6 +76,22 @@ const SQUAD_SIZE_BUCKETS = [1, 2, 3, 4]
 const SAMPLE_BUCKETS = [0, 1, 2, 3, 5, 8, 12, 18, 25, 35, 50, 75, 100]
 const TIME_PCT_BUCKETS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 const STAR_BUCKETS = [1, 2, 3, 4, 5]
+const SESSION_SECONDS_BUCKETS = [
+  60,
+  5 * 60,
+  15 * 60,
+  30 * 60,
+  60 * 60,
+  2 * 3600,
+  4 * 3600,
+  8 * 3600,
+  12 * 3600,
+  24 * 3600,
+  2 * 24 * 3600,
+  7 * 24 * 3600,
+  14 * 24 * 3600,
+  30 * 24 * 3600,
+]
 
 // The census map is best-effort bookkeeping, not state: bound it so a flood of
 // short-lived rooms can never grow the process.
@@ -238,6 +256,14 @@ export function createRoomMetrics(): RoomMetrics {
   const peersReaped = new Counter({
     name: 'griffdive_presence_reaped_total',
     help: 'Silent connections dropped by the presence sweeper (they would otherwise count as online)',
+    registers: [registry],
+  })
+
+  const sessionDuration = new Histogram({
+    name: 'griffdive_session_duration_seconds',
+    help: 'How long a room stayed active from creation to its last event, observed when it ages out',
+    labelNames: ['kind'],
+    buckets: SESSION_SECONDS_BUCKETS,
     registers: [registry],
   })
 
@@ -574,22 +600,25 @@ export function createRoomMetrics(): RoomMetrics {
   // -- presence --------------------------------------------------------------
 
   // PlayerIds are unique per room, so a Set across rooms counts distinct
-  // divers. Pre-hello sockets are not divers.
+  // divers. Pre-hello sockets are not divers, and a silent socket stops
+  // counting at the same threshold the sweeper uses even before it is reaped.
   function presence(): { players: number, rooms: number } {
     const directory = source?.peers
     if (!directory) {
       return { players: 0, rooms: 0 }
     }
+    const now = Date.now()
     const players = new Set<string>()
     let rooms = 0
     for (const roomCode of directory.rooms()) {
       let seated = false
       for (const peer of directory.list(roomCode)) {
         const playerId = peer.context.playerId
-        if (typeof playerId === 'string') {
-          players.add(playerId)
-          seated = true
+        if (typeof playerId !== 'string' || isPeerSilent(peer.context.lastSeenAt, now)) {
+          continue
         }
+        players.add(playerId)
+        seated = true
       }
       if (seated) {
         rooms += 1
@@ -808,6 +837,11 @@ export function createRoomMetrics(): RoomMetrics {
     recordPeersReaped(count) {
       if (count > 0) {
         peersReaped.inc(count)
+      }
+    },
+    recordSessionEnded(kind, seconds) {
+      if (Number.isFinite(seconds) && seconds >= 0) {
+        sessionDuration.observe({ kind }, seconds)
       }
     },
     recordFeedback(category) {
