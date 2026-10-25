@@ -4,7 +4,7 @@ import { createDiveState, reduce } from '~~/shared/engine/reducer'
 import { joinDiver } from '~~/shared/engine/room'
 import { createSaveDoc } from '~~/shared/engine/saves'
 import { pactOfferFor } from '~~/shared/engine/selectors'
-import { CRUSADE_TTL_MS, InvalidSaveError, ROOM_TTL_MS, RoomLimitError, censusRooms, createPeerDirectory, createRoom, createRoomFromSave, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, sweepRooms } from './room-sync'
+import { CRUSADE_TTL_MS, InvalidSaveError, PEER_SILENCE_MS, ROOM_TTL_MS, RoomLimitError, censusRooms, createPeerDirectory, createRoom, createRoomFromSave, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, reapSilentPeers, sweepRooms } from './room-sync'
 import type { PeerLike, RoomKV, StoredRoom } from './room-sync'
 import { roomMetrics } from './metrics'
 import { createRateLimiter } from './rate-limit'
@@ -445,6 +445,61 @@ describe('room-sync', () => {
     const reWelcome = welcomeOf(reborn)
     expect(reWelcome.selfId).toBe(hostId)
     expect(reWelcome.snapshot.divers).toHaveLength(2)
+  })
+
+  it('does not seat a peer that closed while its hello waited for the room lock', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const ghost = fakePeer('ws-ghost')
+    ghost.context.roomCode = code
+
+    // The socket drops before the queued hello reaches the room.
+    const hello = processHello(kv, peers, ghost, { name: 'Ghost' })
+    const closing = processClose(kv, peers, ghost)
+    await Promise.all([hello, closing])
+
+    // Nothing was seated, nothing was told it had a seat, and the directory
+    // forgot the room with its only peer.
+    expect(peers.all()).toHaveLength(0)
+    expect(peers.rooms()).toEqual([])
+    expect(sent(ghost)).toHaveLength(0)
+    expect((await loadRoom(kv, code))?.state.divers).toHaveLength(0)
+  })
+
+  it('reaps peers that stopped talking so their squad stops waiting', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    const hostId = welcomeOf(host).selfId
+    host.context.lastSeenAt = Date.now() - PEER_SILENCE_MS - 1
+
+    expect(await reapSilentPeers(kv, peers)).toBe(1)
+    expect(peers.all()).toHaveLength(0)
+
+    // The seat stayed, but it is no longer "online": away marking now lands
+    // instead of short-circuiting on a peer that could never answer.
+    await markAwayIfOffline(kv, peers, code, hostId)
+    expect((await loadRoom(kv, code))?.state.divers.find(diver => diver.id === hostId)?.away).toBe(true)
+  })
+
+  it('keeps quiet peers that are still inside the silence window', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    host.context.lastSeenAt = Date.now() - 1000
+
+    expect(await reapSilentPeers(kv, peers)).toBe(0)
+    expect(peers.list(code)).toHaveLength(1)
   })
 
   it('refreshes presence as soon as a diver disconnects', async () => {

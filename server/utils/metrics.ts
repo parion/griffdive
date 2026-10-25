@@ -43,6 +43,7 @@ export interface RoomMetrics {
   recordHostTransfer(reason: 'disconnect' | 'offline_host'): void
   recordDiveStarted(): void
   recordRoomsSwept(count: number): void
+  recordPeersReaped(count: number): void
 
   // Feedback inbox (aggregate only: category and refusal reason, never text).
   recordFeedback(category: FeedbackCategory): void
@@ -230,6 +231,12 @@ export function createRoomMetrics(): RoomMetrics {
   const roomsSwept = new Counter({
     name: 'griffdive_rooms_swept_total',
     help: 'Rooms reaped by the idle-TTL sweeper (their squad never saved them)',
+    registers: [registry],
+  })
+
+  const peersReaped = new Counter({
+    name: 'griffdive_presence_reaped_total',
+    help: 'Silent connections dropped by the presence sweeper (they would otherwise count as online)',
     registers: [registry],
   })
 
@@ -795,6 +802,11 @@ export function createRoomMetrics(): RoomMetrics {
     recordRoomsSwept(count) {
       if (count > 0) {
         roomsSwept.inc(count)
+      }
+    },
+    recordPeersReaped(count) {
+      if (count > 0) {
+        peersReaped.inc(count)
       }
     },
     recordFeedback(category) {

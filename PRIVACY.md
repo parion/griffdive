@@ -13,7 +13,7 @@ _Last updated: 25 October 2026._
 online dive:
 
 - Save slots and personal session mirrors (crusade state, inventories, names).
-- Recent room codes, and the seat id for each room you have joined (so a refresh keeps your seat).
+- Recent room codes (the 12 most recent, forgotten after 30 days), and the seat id for each room you have joined (so a refresh keeps your seat).
 - Your diver name, your warbond declarations, and "you have seen the intro" flags.
 
 Clearing site data in your browser deletes all of it.

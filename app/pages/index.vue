@@ -56,8 +56,8 @@ async function refreshOnlineDives(): Promise<void> {
   }
   const results = await Promise.all(rooms.map(async ({ code }): Promise<OnlineDive | null> => {
     try {
-      const res = await $fetch<{ code: string, state: DiveState, saved: DiveSaveInfo | null }>(`/api/rooms/${code}`)
-      return { code, state: res.state, saved: res.saved }
+      const res = await $fetch<{ code: string, state: DiveState, saved: DiveSaveInfo | null, online: string[] }>(`/api/rooms/${code}`)
+      return { code, state: res.state, saved: res.saved, online: res.online ?? [] }
     }
     catch (error) {
       const err = error as { status?: number, statusCode?: number }
@@ -66,12 +66,15 @@ async function refreshOnlineDives(): Promise<void> {
         recentRooms.forgetRoom(code)
         return null
       }
-      return { code, state: null, saved: null }
+      return { code, state: null, saved: null, online: [] }
     }
   }))
   onlineDives.value = results.filter((entry): entry is OnlineDive => {
-    // An unlaunched lobby nobody ever joined has nothing to resume.
-    if (entry?.state && entry.state.phase === 'lobby' && entry.state.divers.length === 0) {
+    // An unlaunched lobby nobody ever joined, or a crusade that is already
+    // achieved, has nothing to resume: the room record is still on the server
+    // but the card would only open a dead end. A personal session mirror can
+    // still host that crusade as a new session.
+    if (entry?.state && (entry.state.phase === 'complete' || (entry.state.phase === 'lobby' && entry.state.divers.length === 0))) {
       recentRooms.forgetRoom(entry.code)
       return false
     }

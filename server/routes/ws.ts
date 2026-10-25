@@ -30,7 +30,18 @@ export default defineWebSocketHandler({
     }
   },
 
+  open(peer) {
+    // Start the silence clock at connect, before the first frame: a hello can
+    // wait on the room lock, and the sweeper measures from here.
+    const like = asPeerLike(peer)
+    like.context.lastSeenAt = Date.now()
+  },
+
   async message(peer, message) {
+    // Every inbound frame — heartbeat included — is proof the connection is
+    // alive. The sweeper reaps peers that stay silent past PEER_SILENCE_MS.
+    const like = asPeerLike(peer)
+    like.context.lastSeenAt = Date.now()
     if (message.text() === 'ping') {
       peer.send('pong')
       return
@@ -40,10 +51,9 @@ export default defineWebSocketHandler({
       payload = JSON.parse(message.text())
     }
     catch {
-      asPeerLike(peer).send(JSON.stringify({ type: 'error', code: 'bad-message', message: 'Malformed message' }))
+      like.send(JSON.stringify({ type: 'error', code: 'bad-message', message: 'Malformed message' }))
       return
     }
-    const like = asPeerLike(peer)
     const kv = roomKV()
     try {
       if (payload.type === 'hello') {

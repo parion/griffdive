@@ -222,7 +222,20 @@ export function useGameSocket(roomCode: string) {
     }
   })
 
+  // The server reaps sockets that stop heartbeating (a sleeping phone, a frozen
+  // tab), and the retry budget below gives up after a few seconds. Coming back
+  // to the page should reopen the dive instead of leaving a dead board on screen.
+  function reopenIfDead(): void {
+    if (document.visibilityState === 'visible' && connectionFailed.value) {
+      connectionFailed.value = false
+      open()
+    }
+  }
+
   onMounted(() => {
+    if (import.meta.client) {
+      document.addEventListener('visibilitychange', reopenIfDead)
+    }
     if (!awaitingJoin.value) {
       connect()
     }
@@ -231,6 +244,9 @@ export function useGameSocket(roomCode: string) {
     // Flush the pending mirror before the socket closes so the last snapshot
     // (a just-banked reward, a just-reported mission) survives the navigation.
     mirrorSnapshot()
+    if (import.meta.client) {
+      document.removeEventListener('visibilitychange', reopenIfDead)
+    }
     close()
   })
 
