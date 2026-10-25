@@ -11,6 +11,16 @@ Griffdive stands on the work of the Helldivers community. Thank you.
 - Converted to the Griffdive schema by `scripts/import-catalog.mjs` into `shared/data/`.
   Regenerate with: `node scripts/import-catalog.mjs`.
 
+## Live war data (Major Orders)
+
+- Major Order, planet ownership and warp links: [api.helldivers2.dev](https://api.helldivers2.dev)
+  (`/api/v1/assignments`, `/api/v1/planets`) — a community-run, unofficial, unauthenticated API.
+- Planet → faction and liberation percentage:
+  [helldiverstrainingmanual.com](https://helldiverstrainingmanual.com) (`/api/v1/war/campaign`).
+- Both feed `server/utils/major-order.ts`, fetched server-side and cached; when they fail or an
+  order doesn't decode, setup falls back to the manual front picker. Griffdive is not affiliated
+  with either project.
+
 ## Stratagem icons
 
 - [Nvigneux/Helldivers-2-Stratagems-icons-svg](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg).
