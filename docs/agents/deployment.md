@@ -77,7 +77,10 @@ every push to `main` runs the `deploy-staging` job, which deploys `fly.staging.t
 the staging app) and smoke-checks `/`. Merges accumulate there until a release. One-time setup:
 `fly apps create griffdive-staging`, `fly volumes create griffdive_staging_data --app
 griffdive-staging --region ams --size 1`, `fly tokens create deploy --app griffdive-staging`, and
-the `staging` environment in GitHub. **Releases are batched and started by hand:**
+the `staging` environment in GitHub. Staging is also the only deployed host that serves the design
+sheet at `/kit`: the Nitro gate allows a `FLY_APP_NAME` ending in `-staging` (and a dev server) and
+404s it everywhere else, while the Bridge footer links it only on that host
+(`shared/kit-access.ts`). **Releases are batched and started by hand:**
 when the accumulated merges are ready, run *CI/CD → Run workflow* from `main`
 (`workflow_dispatch`), which re-verifies the batch and then hands to the `deploy` job. That job
 targets the `production` GitHub environment, which is configured with a required reviewer, so the
