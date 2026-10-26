@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ChangelogEntry, ChangelogState } from '~/utils/changelog'
+import type { ChangelogEntry, ChangelogState } from '~~/shared/utils/changelog'
 import { channelFor, CURRENT_RELEASE } from '~/utils/release'
 
 const props = defineProps<{ open: boolean }>()

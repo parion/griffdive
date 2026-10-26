@@ -68,7 +68,7 @@ app/
                    AppTooltip, AppToastStack, AppHoldButton — press-and-hold confirm,
                    AppStarRating, AppBrandMark — the griffin mark rendered from
                    utils/brandMark.ts, AppBootScreen, AppChangelogModal — GitHub release log
-                   shown from the release chip in the header (Beta), which also carries the channel description from utils/release.ts, shaped by utils/changelog.ts),
+                   shown from the release chip in the header (Beta), which also carries the channel description from utils/release.ts, shaped by shared/utils/changelog.ts),
   composables/     useDiveSession (unified local/room driver), useDiveView (session-derived
                    shell state: self/phase/canControl/name draft), useDiveEngine (local reducer +
                    persist),                    useGameSocket (WS, reconnect, stored playerId,
@@ -84,15 +84,14 @@ app/
                    useRecentRooms (visited room codes; feeds the home "Continue" online list),
                    useMajorOrder (live war proxy → the setup's Major Order plan; null offline),
                    useFrontPlan (the launcher's front plan; defaults to a live order),
-                   useChangelog (GitHub release deployments + commits → phase-carded changelog
-                   entries via utils/changelog.ts, 10-min cache),
+                   useChangelog (phase-carded changelog entries from the `/api/changelog`
+                   proxy, 10-min cache; the browser never calls GitHub),
                    usePhoneShell (the 1020px breakpoint as JS, so the dive can swap the whole
                    desktop tree for the phone shell)
   stores/          session.ts (Pinia: selfId, snapshot, online)
   utils/           seed.ts (client seed generation), kit.ts (Kit categories + owned-item list),
                    brandMark.ts (the logo's only geometry — AppBrandMark.vue and icon.svg both
-                   derive from it), changelog.ts (pure GitHub deployment/commit → release-card
-                   shaping behind useChangelog, unit-tested), release.ts (the release channel —
+                   derive from it), release.ts (the release channel —
                    Beta now, Alpha before: chip label, dialog description and highlights, and the
                    date-based channel tag on each deployment card; promote the next channel by
                    adding one entry at the top)
@@ -109,11 +108,15 @@ server/
                    rate-limit.ts (in-memory sliding-window limiter for joins/actions),
                    metrics.ts (Prometheus registry: presence gauges, session length + gameplay counters),
                    major-order.ts (live war API → MajorOrderSelection; pure normalizer +
-                   best-effort fetch)
+                   best-effort fetch),
+                   changelog.ts (GitHub production deployments + commits → changelog entries;
+                   optional NUXT_GITHUB_TOKEN lifts the 60/hr unauthenticated limit)
   plugins/         metrics.ts (binds the gauges, serves /metrics on internal :9091),
                    room-sweeper.ts (reaps idle rooms every 15 min)
   api/             rooms/index.post.ts (create; an optional save body seeds a new session), rooms/[code].get.ts (snapshot),
                    war/major-order.get.ts (cached live MO proxy),
+                   changelog.get.ts (10-min shared cache of the GitHub release log; serves
+                   the last good log when GitHub fails, 503 only on a cold miss),
                    feedback/index.post.ts (the no-account feedback inbox)
 deploy/fider/      separate Fly app + Postgres for the public board (see Deployment)
 shared/
@@ -121,7 +124,8 @@ shared/
                    rewards.ts, progression.ts, selectors.ts, saves.ts, room.ts
   types/           save.ts (SaveDoc + SessionSave + SAVE_SCHEMA_VERSION), messages.ts (WS contracts,
                    host-only action list)
-  utils/           room-code.ts (room-code alphabet + validator)
+  utils/           room-code.ts (room-code alphabet + validator), changelog.ts (pure GitHub
+                   deployment/commit → release-card shaping behind /api/changelog, unit-tested)
   data/            items (equipment.ts, stratagems.ts), warbonds.ts, fronts.ts,
                    conditions.ts (the unified team + personal condition catalogue;
                    misfortunes.ts / pacts.ts are its scope views), strains.ts,
