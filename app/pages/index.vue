@@ -252,12 +252,13 @@ const facts = [
     :class="{ 'has-mo': liveOrder }"
     tabindex="-1"
   >
+    <BridgeField />
     <section
       class="hero"
       aria-labelledby="hero-h"
     >
       <div
-        class="hero-bg grid-bg"
+        class="hero-bg"
         aria-hidden="true"
       />
       <div class="hero-copy">
@@ -528,6 +529,8 @@ const facts = [
   margin-inline: auto;
   padding: 0 var(--pad-page);
   overflow-x: clip;
+  /* Seats the fixed field and the hero haze above the body's ground. */
+  isolation: isolate;
 }
 .bridge:focus { outline: none; }
 .gold { color: var(--gold); }
@@ -549,14 +552,8 @@ const facts = [
   position: absolute;
   inset: 0 calc(var(--pad-page) * -1);
   z-index: -1;
-  background-color: transparent;
-  mask-image: radial-gradient(80% 70% at 70% 45%, #000, transparent 75%);
-}
-.hero-bg::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(40% 50% at 74% 46%, rgba(255, 214, 66, 0.1), transparent 70%);
+  pointer-events: none;
+  background: radial-gradient(40% 50% at 74% 46%, rgba(255, 214, 66, 0.07), transparent 70%);
 }
 .hero-copy { display: grid; gap: 18px; min-width: 0; }
 .hero-k { display: inline-flex; align-items: center; gap: 12px; color: var(--gold); }
