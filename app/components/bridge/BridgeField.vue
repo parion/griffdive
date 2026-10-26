@@ -10,15 +10,20 @@ import { useEventListener, usePreferredReducedMotion } from '@vueuse/core'
 // pointers.
 const CELL = 44
 const MAJOR = CELL * 4
-const DRIFT_MS = 60_000
+// Fast enough that thin lines glide rather than visibly ticking pixel to
+// pixel — a crawl of a few px/s reads as shimmer, not motion.
+const DRIFT_MS = 12_000
 const SPOT = 560
 const HAZE = 960
-const FOLLOW_MS = 85
+const FOLLOW_MS = 60
 const FADE_MS = 220
 const ENERGY_MS = 520
 const LOCK_IDLE_MS = 1600
 const TAP_HOLD_MS = 900
 const RING = 260
+const FRAME_PAD = 7
+// The squad-moving controls: live forward actions and primary buttons.
+const PRIMARY = '.cta-sweep:not(:disabled), .btn.primary:not(:disabled)'
 // Map sectors skip I and O so a readout never looks like a digit.
 const SECTORS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
 
@@ -34,10 +39,14 @@ const lock = ref<HTMLElement | null>(null)
 const lockBox = ref<HTMLElement | null>(null)
 const lineX = ref<HTMLElement | null>(null)
 const lineY = ref<HTMLElement | null>(null)
+const beamX = ref<HTMLElement | null>(null)
+const beamY = ref<HTMLElement | null>(null)
 const rings = ref<HTMLElement[]>([])
+const corners = ref<HTMLElement[]>([])
 
 const sector = ref('')
 const locked = ref(false)
+const armed = ref(false)
 
 const fieldVars = {
   '--bf-cell': `${CELL}px`,
@@ -151,10 +160,12 @@ function lockOn(x: number, y: number): void {
     lockCol = col
     lockRow = row
     const at = `translate3d(${col * CELL}px, ${row * CELL}px, 0)`
-    if (lock.value && lineX.value && lineY.value) {
+    if (lock.value && lineX.value && lineY.value && beamX.value && beamY.value) {
       lock.value.style.transform = at
       lineX.value.style.transform = at
       lineY.value.style.transform = at
+      beamX.value.style.transform = `translate3d(0, ${row * CELL}px, 0)`
+      beamY.value.style.transform = `translate3d(${col * CELL}px, 0, 0)`
     }
     const loops = Math.floor(travel / MAJOR) * (MAJOR / CELL)
     sector.value = `${SECTORS[mod(col - loops, SECTORS.length)]}·${String(mod(row - loops, 100)).padStart(2, '0')}`
@@ -166,10 +177,56 @@ function lockOn(x: number, y: number): void {
     )
   }
   locked.value = true
+  holdLock()
+}
+
+// A lock on a primary action never times out; anywhere else it fades once
+// the pointer rests.
+function holdLock(): void {
   clearTimeout(lockTimer)
-  lockTimer = setTimeout(() => {
-    locked.value = false
-  }, LOCK_IDLE_MS)
+  if (!armedEl) {
+    lockTimer = setTimeout(() => {
+      locked.value = false
+    }, LOCK_IDLE_MS)
+  }
+}
+
+let armedEl: Element | null = null
+
+function frameCorners(el: Element): string[] {
+  const { left, top, right, bottom } = el.getBoundingClientRect()
+  return [
+    [left - FRAME_PAD, top - FRAME_PAD],
+    [right + FRAME_PAD, top - FRAME_PAD],
+    [right + FRAME_PAD, bottom + FRAME_PAD],
+    [left - FRAME_PAD, bottom + FRAME_PAD],
+  ].map(([x, y]) => `translate3d(${x}px, ${y}px, 0)`)
+}
+
+// Hovering a primary action arms the reticle: its row and column light up
+// across the field and its brackets fly out from the pointer to frame the
+// button.
+function arm(el: Element | null): void {
+  if (el === armedEl) {
+    return
+  }
+  armedEl = el
+  armed.value = el !== null
+  holdLock()
+  if (!el) {
+    return
+  }
+  const to = frameCorners(el)
+  const from = `translate3d(${target.x}px, ${target.y}px, 0)`
+  corners.value.forEach((corner, i) => {
+    corner.style.transform = to[i]!
+    if (reduced.value !== 'reduce') {
+      corner.animate(
+        [{ transform: from, opacity: 0 }, { transform: to[i]!, opacity: 1 }],
+        { duration: 300, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+      )
+    }
+  })
 }
 
 function wake(x: number, y: number): void {
@@ -185,6 +242,8 @@ function wake(x: number, y: number): void {
 }
 
 function sleep(): void {
+  armedEl = null
+  armed.value = false
   awake = false
   locked.value = false
   clearTimeout(lockTimer)
@@ -210,6 +269,21 @@ useEventListener(window, 'pointermove', (event: PointerEvent) => {
 
 useEventListener(window, 'pointerdown', (event: PointerEvent) => {
   lastPointer = event.pointerType
+}, { passive: true })
+
+useEventListener(document, 'pointerover', (event: PointerEvent) => {
+  if (event.pointerType !== 'touch') {
+    arm(event.target instanceof Element ? event.target.closest(PRIMARY) : null)
+  }
+}, { passive: true })
+
+useEventListener(window, 'scroll', () => {
+  if (armedEl) {
+    const to = frameCorners(armedEl)
+    corners.value.forEach((corner, i) => {
+      corner.style.transform = to[i]!
+    })
+  }
 }, { passive: true })
 
 useEventListener(document, 'mouseout', (event: MouseEvent) => {
@@ -266,7 +340,7 @@ onBeforeUnmount(() => {
 <template>
   <div
     class="bf"
-    :class="{ 'is-locked': locked }"
+    :class="{ 'is-locked': locked, 'is-armed': armed }"
     :style="fieldVars"
     aria-hidden="true"
   >
@@ -297,6 +371,14 @@ onBeforeUnmount(() => {
       class="bf-drift bf-marks"
     >
       <i
+        ref="beamX"
+        class="bf-beam bf-beam-x"
+      />
+      <i
+        ref="beamY"
+        class="bf-beam bf-beam-y"
+      />
+      <i
         ref="lineX"
         class="bf-line bf-line-x"
       />
@@ -322,6 +404,22 @@ onBeforeUnmount(() => {
       class="bf-ring"
     />
     <div class="bf-vignette" />
+    <!-- The frame rides above the page so it can bracket a button inside an
+         opaque panel or the header. -->
+    <Teleport to="body">
+      <div
+        class="bf-frame"
+        :class="{ 'is-armed': armed }"
+        aria-hidden="true"
+      >
+        <i
+          v-for="n in 4"
+          :key="n"
+          ref="corners"
+          class="bf-corner"
+        />
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -415,11 +513,11 @@ onBeforeUnmount(() => {
   left: 0;
   opacity: 0;
   transition:
-    transform 170ms var(--ease-snap),
+    transform 60ms var(--ease-out),
     opacity var(--dur-slow) var(--ease-out);
 }
 .is-locked .bf-lock { opacity: 1; }
-.is-locked .bf-line { opacity: 1; transition-duration: 170ms, var(--dur-fast); }
+.is-locked .bf-line { opacity: 1; transition-duration: 60ms, var(--dur-fast); }
 .bf-line-x {
   width: 120vmax;
   height: 1px;
@@ -432,6 +530,50 @@ onBeforeUnmount(() => {
   margin-top: -60vmax;
   background: linear-gradient(180deg, transparent, rgba(255, 214, 66, 0.2) 50%, transparent);
 }
+/* Armed: the node's row lights left to right and its column top to bottom —
+   a steady line drawn behind a bright head, both on the same curve so the
+   head always sits at the line's leading edge. Each beam spans the whole
+   drifting layer, so it crosses the viewport from wherever the node is. */
+.bf-beam {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  transition:
+    transform 60ms var(--ease-out),
+    opacity var(--dur-med) var(--ease-out);
+}
+.is-armed .bf-beam { opacity: 1; }
+.bf-beam-x { width: 100%; height: 1px; }
+.bf-beam-y { width: 1px; height: 100%; }
+.bf-beam::before,
+.bf-beam::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.bf-beam::before {
+  background: rgba(255, 214, 66, 0.34);
+  box-shadow: 0 0 6px rgba(255, 214, 66, 0.4);
+}
+.bf-beam::after { opacity: 0; }
+.bf-beam-x::before { transform-origin: left; }
+.bf-beam-y::before { transform-origin: top; }
+.bf-beam-x::after { background: linear-gradient(90deg, transparent calc(100% - 280px), var(--gold-bright)); }
+.bf-beam-y::after { background: linear-gradient(180deg, transparent calc(100% - 280px), var(--gold-bright)); }
+.is-armed .bf-beam-x::before { animation: bf-draw-x 620ms var(--ease-out) both; }
+.is-armed .bf-beam-y::before { animation: bf-draw-y 620ms var(--ease-out) both; }
+.is-armed .bf-beam-x::after { animation: bf-head-x 620ms var(--ease-out) both, bf-head-fade 620ms linear both; }
+.is-armed .bf-beam-y::after { animation: bf-head-y 620ms var(--ease-out) both, bf-head-fade 620ms linear both; }
+@keyframes bf-draw-x { from { transform: scaleX(0); } }
+@keyframes bf-draw-y { from { transform: scaleY(0); } }
+@keyframes bf-head-x { from { transform: translateX(-100%); } }
+@keyframes bf-head-y { from { transform: translateY(-100%); } }
+@keyframes bf-head-fade {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 .bf-lock-box {
   position: absolute;
   top: -11px;
@@ -474,6 +616,31 @@ onBeforeUnmount(() => {
   box-shadow: inset 0 0 36px rgba(255, 214, 66, 0.1), 0 0 18px rgba(255, 214, 66, 0.08);
   opacity: 0;
 }
+
+.bf-frame {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+.bf-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border: 0 solid var(--gold);
+  opacity: 0;
+  filter: drop-shadow(0 0 4px rgba(255, 214, 66, 0.55));
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.bf-corner:nth-child(1) { border-width: 2px 0 0 2px; }
+.bf-corner:nth-child(2) { margin-left: -12px; border-width: 2px 2px 0 0; }
+.bf-corner:nth-child(3) { margin: -12px 0 0 -12px; border-width: 0 2px 2px 0; }
+.bf-corner:nth-child(4) { margin-top: -12px; border-width: 0 0 2px 2px; }
+.is-armed .bf-corner { opacity: 1; }
 
 .bf-vignette {
   position: absolute;

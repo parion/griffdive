@@ -115,17 +115,22 @@ component. Top to bottom:
 - **`BridgeField`** — the page's backdrop, fixed behind every section (`.bridge` is
   `isolation: isolate` so the field and the hero haze paint above the body's ground). A tactical
   grid fainter than the dive's `.grid-bg` — 44px cells, a major line and node dot every fourth —
-  drifts one major cell toward the bottom right per minute on a loop. A mouse lights the grid
-  around the cursor: a gold-lit copy of the grid shows through a soft radial window that trails
-  the pointer and brightens with speed, over a warm haze. A reticle locks onto the nearest node
-  with a sector readout (`K·07`) and two hairlines along its row and column, then fades after a
-  moment of stillness. A click drops a beacon: two rings ripple out from the point. On touch, a
+  drifts one major cell toward the bottom right every 12 seconds on a loop (fast enough that the
+  hairlines glide; a crawl of a few px/s reads as shimmer). A mouse lights the grid around the
+  cursor: a gold-lit copy of the grid shows through a soft radial window that trails the pointer
+  and brightens with speed, over a warm haze. A reticle locks onto the nearest node (a 60ms glide
+  between nodes) with a sector readout (`K·07`) and two hairlines along its row and column, then
+  fades after a moment of stillness. Hovering a primary action (enabled `.cta-sweep` or
+  `.btn.primary`) arms it: the node's row lights left to right and its column top to bottom across
+  the whole field, a bright head on each leading edge, and the reticle's brackets fly out from the
+  pointer to frame the button. The frame is teleported to `body` at the header's z-index so it
+  shows around buttons inside opaque panels and the header. The lock holds while armed. A click drops a beacon: two rings ripple out from the point. On touch, a
   tap lights the grid and pings it briefly; scrolling never does. Performance contract: the drift
   is a WAAPI transform loop on the compositor (three synced copies: base grid, lit tile, reticle
   layer), the lit tile only shifts within one grid period so it never repaints, and the rAF loop
   runs only while the light is still settling — an idle Bridge costs no main-thread frames.
-  Reduced motion: no drift, no trailing, no rings; the light and reticle still follow the
-  pointer. The field is `aria-hidden` and ignores pointers.
+  Reduced motion: no drift, no trailing, no rings, no beam sweep or bracket flight (an armed
+  reticle appears lit at once); the light and reticle still follow the pointer. The field is `aria-hidden` and ignores pointers.
 
 - **Hero** (one viewport tall on desktop): the kicker, the crusade's creed as the headline —
   **"Freedom is earned."**, typeset as a three-line stack with `FREEDOM` and gold `EARNED.` in the
