@@ -154,7 +154,6 @@ const online = computed(() => props.status === 'connected')
   color: var(--gold);
   font-size: 22px;
   line-height: 1;
-  text-shadow: 0 0 14px rgba(255, 214, 66, 0.35);
 }
 .diff-copy {
   display: flex;

@@ -554,7 +554,6 @@ withDefaults(defineProps<{ status?: string }>(), { status: 'Establishing uplink'
   letter-spacing: 0.15em;
   line-height: 0.9;
   text-indent: 0.15em;
-  text-shadow: 0 0 40px rgba(236, 234, 218, 0.1);
   animation: boot-word-in 0.8s 0.16s var(--ease-out) both;
 }
 

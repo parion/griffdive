@@ -206,7 +206,6 @@ const title = computed(() => {
   color: var(--mystery);
   font: 800 2rem / 1 var(--font-display);
   font-stretch: 125%;
-  text-shadow: 0 0 14px color-mix(in srgb, var(--mystery) 70%, transparent);
   animation: qPulse 2.4s ease-in-out infinite;
 }
 .art-icon .qmark { font-size: 1.6rem; }

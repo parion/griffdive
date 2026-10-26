@@ -283,9 +283,8 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   font-size: min(clamp(32px, 3.6vw, 48px), 100cqi / var(--fit-len, 1));
   line-height: 0.95;
   color: var(--gold);
-  text-shadow: 0 0 26px rgba(255, 214, 66, 0.25);
 }
-.broken .directive-name { color: var(--red); text-decoration: line-through; text-decoration-thickness: 3px; text-shadow: none; }
+.broken .directive-name { color: var(--red); text-decoration: line-through; text-decoration-thickness: 3px; }
 .directive-rule { margin: 0; color: var(--khaki); font-size: 15px; }
 .directive-foot {
   display: flex;
