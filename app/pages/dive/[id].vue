@@ -606,7 +606,14 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
 
 <template>
   <div class="dive-page">
-    <DiveRestartBanner v-if="restartBanner" />
+    <AppBanner
+      v-if="restartBanner"
+      floating
+      live
+      title="Griffdive is doing a quick restart."
+    >
+      Your dive is saved and picks up right where it left off — hang tight.
+    </AppBanner>
     <template v-if="session.awaitingJoin.value">
       <BriefingJoin
         v-if="joinRole === 'joiner'"
@@ -759,27 +766,36 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         />
       </template>
 
-      <p
+      <AppBanner
         v-if="kicked"
-        class="panel kicked"
+        tone="error"
       >
         You were removed from this dive by the host. This dive will not seat you again.
-        <NuxtLink to="/">Back to base</NuxtLink>
-      </p>
+        <template #actions>
+          <NuxtLink
+            class="btn tiny ghost"
+            to="/"
+          >
+            Back to base
+          </NuxtLink>
+        </template>
+      </AppBanner>
 
-      <p
+      <AppBanner
         v-if="session.lastError.value"
-        class="panel error-banner"
+        tone="error"
       >
         {{ session.lastError.value.message }}
-        <button
-          class="btn tiny ghost"
-          type="button"
-          @click="session.dismissError()"
-        >
-          Dismiss
-        </button>
-      </p>
+        <template #actions>
+          <button
+            class="btn tiny ghost"
+            type="button"
+            @click="session.dismissError()"
+          >
+            Dismiss
+          </button>
+        </template>
+      </AppBanner>
 
       <Transition
         v-if="!kicked"
@@ -1053,16 +1069,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
   opacity: 0;
   translate: 0 10px;
 }
-
-.error-banner {
-  border-color: var(--red);
-  color: var(--red);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.kicked { border-color: var(--red); }
 
 /* Everything below the squad list is bottom-anchored in the left rail. */
 .rail-lower {

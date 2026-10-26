@@ -421,13 +421,12 @@ function submit(): void {
             </p>
           </div>
 
-          <p
+          <AppBanner
             v-if="blocked"
-            class="jb-note warn"
-            role="status"
+            tone="warn"
           >
             {{ blocked }}. Keep this page open and try again in a moment.
-          </p>
+          </AppBanner>
 
           <div
             class="jb-squad-wrap"
@@ -486,13 +485,12 @@ function submit(): void {
                     <span class="disp jb-alt-n">{{ difficulty }} · {{ difficultyName(difficulty) }}</span>
                   </span>
                 </div>
-                <p
+                <AppBanner
                   v-if="promoted && !review"
-                  class="jb-note"
+                  title="Field Promotion waiting."
                 >
-                  <b>Field Promotion waiting.</b> The squad has already climbed, so you'll be offered
-                  catch-up gear the moment you land.
-                </p>
+                  The squad has already climbed, so you'll be offered catch-up gear the moment you land.
+                </AppBanner>
               </aside>
               <div class="jb-acts">
                 <button
@@ -1082,9 +1080,6 @@ function submit(): void {
 .jb-alt img { width: 34px; height: 34px; }
 .jb-alt > span { display: flex; flex-direction: column; gap: 3px; }
 .jb-alt-n { font-size: 15px; color: var(--text); }
-.jb-note { margin: 0; padding: 8px 10px; font-size: 13px; line-height: 1.4; color: var(--khaki); background: color-mix(in srgb, var(--teal) 7%, transparent); border-left: 2px solid var(--teal); }
-.jb-note b { color: var(--teal); }
-.jb-note.warn { color: var(--orange); background: color-mix(in srgb, var(--orange) 8%, transparent); border-left-color: var(--orange); }
 
 /* ---- Sections --------------------------------------------------------- */
 .rise { animation-delay: calc(var(--d, 0) * 90ms); }

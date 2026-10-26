@@ -220,13 +220,12 @@ function another(): void {
         <span class="mono">{{ context.version }}</span>
       </p>
 
-      <p
+      <AppBanner
         v-if="error"
-        class="fb-error"
-        role="alert"
+        tone="error"
       >
         {{ error }}
-      </p>
+      </AppBanner>
 
       <p class="fb-privacy">
         Stored on Griffdive's server for up to 180 days. No IP address, no account.
@@ -333,7 +332,6 @@ textarea { resize: vertical; min-height: 6rem; }
 }
 .fb-context { color: var(--dim); }
 .fb-privacy { font-size: 0.72rem; }
-.fb-error { margin: 0; color: var(--red); font-size: 0.85rem; }
 
 .trap {
   position: absolute;

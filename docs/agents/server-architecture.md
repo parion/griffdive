@@ -224,7 +224,7 @@ Nitro's own shutdown destroys the upgraded sockets: it sets `peers.draining`, se
 `restarting` and closes it with `1012` (Service Restart). While draining, `processClose` only
 drops the peer from the directory — no away timer, no host migration — so the room record stays
 exactly as it was and the crown does not land on whoever closed last. A client that saw
-`restarting` (or a `1012` close) shows `DiveRestartBanner` instead of the "Connection lost" toast,
+`restarting` (or a `1012` close) shows a floating, live `AppBanner` instead of the "Connection lost" toast,
 then "Back online" once the `welcome` arrives. Dev servers skip the plugin (a signal listener
 would keep the process alive).
 
