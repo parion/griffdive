@@ -528,7 +528,7 @@ const facts = [
   grid-template-columns: minmax(0, 1fr);
   gap: clamp(24px, 3vw, 48px);
   align-items: center;
-  min-height: calc(100svh - 60px);
+  min-height: min(calc(100svh - 60px), 880px);
   padding-block: clamp(24px, 4vw, 48px);
 }
 @media (min-width: 1020px) {
@@ -573,7 +573,7 @@ const facts = [
   font-weight: 700;
   letter-spacing: 0.4em;
   line-height: 1;
-  color: var(--text);
+  color: var(--tier-a);
 }
 .hero-title-is::before,
 .hero-title-is::after {
@@ -582,6 +582,20 @@ const facts = [
   height: 2px;
   background: var(--line-5);
 }
+.hero-title-is::before {
+  background: linear-gradient(90deg, var(--tier-c) 0 34%, var(--tier-b) 34% 67%, var(--tier-a) 67%);
+  transform-origin: left center;
+}
+.hero-title-is::after {
+  background: linear-gradient(90deg, var(--tier-s) 0 50%, var(--tier-splus) 50%);
+  transform-origin: left center;
+}
+.hero-title-is::before,
+.hero-title-is::after {
+  animation: tierWipe 0.4s var(--ease-out) 0.5s both;
+}
+.hero-title-is::after { animation-delay: 0.9s; }
+@keyframes tierWipe { from { transform: scaleX(0); } to { transform: none; } }
 .hero-lede {
   max-width: 36rem;
   margin: 0;
