@@ -33,6 +33,9 @@ export default defineNuxtConfig({
   },
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
+    // Server-only. Optional read-only token (NUXT_GITHUB_TOKEN) for the
+    // changelog proxy: lifts GitHub's 60/hr unauthenticated limit to 5000/hr.
+    githubToken: '',
     public: {
       // Set NUXT_PUBLIC_FEEDBACK_BOARD_URL once the self-hosted Fider board is
       // live. Empty hides every link to it, so the app never points at a 404.
