@@ -242,11 +242,31 @@ const settings = computed<CrusadeSettings>(() => ({
 .m-note { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; line-height: 1.25; color: var(--muted); }
 .mode.on .m-note { color: var(--khaki); }
 
-/* Wide: where to fight spans; the start and its kit sit side by side. */
-@container setup (min-width: 760px) {
-  .setup { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; }
-  .block:first-child,
+/* Wide: the front plan and the starting difficulty share a top row; the kit
+   spans the full width beneath so its sections can pack across instead of
+   leaving the left column empty. */
+@container setup (min-width: 960px) {
+  .setup {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    column-gap: 24px;
+    align-items: stretch;
+  }
+  .block:first-child { grid-column: 1; }
+  .block:nth-child(2) { grid-column: 2; }
+  .block:nth-child(3),
   .risk { grid-column: 1 / -1; }
+  /* The difficulty column sits beside a tall front plan, so its cards become
+     horizontal bars rather than three stretched tiles with dead space. */
+  .variants { grid-template-columns: 1fr; gap: 6px; }
+  .variant {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 8px 14px;
+  }
+  .v-num { font-size: 1.8rem; }
+  .v-meta { margin-top: 0; }
 }
 @container setup (max-width: 420px) {
   .v-meta { gap: 5px; }

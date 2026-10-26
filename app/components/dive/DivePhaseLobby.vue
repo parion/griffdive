@@ -528,7 +528,7 @@ function launch(): void {
 }
 .inner {
   width: 100%;
-  max-width: 1000px;
+  max-width: 1120px;
   margin: auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr);

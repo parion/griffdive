@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useIntervalFn } from '@vueuse/core'
+import { AnimatePresence, Motion } from 'motion-v'
 import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
 import { FRONTS } from '~~/shared/data/fronts'
 import type { FrontId } from '~~/shared/data/fronts'
@@ -121,22 +122,10 @@ function pick(value: unknown): void {
         </span>
       </RadioGroupItem>
 
-      <div class="fp-alts">
-        <RadioGroupItem
-          value="locked"
-          class="fp-alt cut-sm"
-          :class="{ on: plan === 'locked' }"
-          :disabled="disabled"
-        >
-          <span class="fp-radio" />
-          <span class="fp-alt-body">
-            <span class="fp-title">Lock a faction</span>
-            <span class="fp-alt-note">Same enemy all run · no risk</span>
-          </span>
-        </RadioGroupItem>
+      <div class="fp-side">
         <RadioGroupItem
           value="rolled"
-          class="fp-alt cut-sm"
+          class="fp-alt fp-alt-roll cut-sm"
           :class="{ on: plan === 'rolled' }"
           :disabled="disabled"
         >
@@ -153,37 +142,62 @@ function pick(value: unknown): void {
             </span>
           </span>
         </RadioGroupItem>
+
+        <RadioGroupItem
+          value="locked"
+          class="fp-alt fp-alt-lock cut-sm"
+          :class="{ on: plan === 'locked' }"
+          :disabled="disabled"
+        >
+          <span class="fp-radio" />
+          <span class="fp-alt-body">
+            <span class="fp-title">Lock a faction</span>
+            <span class="fp-alt-note">Same enemy all run · no risk</span>
+          </span>
+        </RadioGroupItem>
+
+        <AnimatePresence>
+          <Motion
+            v-if="plan === 'locked'"
+            key="factions"
+            class="fp-lock-shell"
+            :initial="{ height: 0, opacity: 0 }"
+            :animate="{ height: 'auto', opacity: 1 }"
+            :exit="{ height: 0, opacity: 0 }"
+            :transition="{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }"
+          >
+            <div
+              class="fp-lock"
+              role="group"
+              aria-label="Locked faction"
+            >
+              <button
+                v-for="front in FRONTS"
+                :key="front.id"
+                type="button"
+                class="fp-faction cut-sm"
+                :class="{ on: lockedFront === front.id }"
+                :style="{ '--fp-accent': front.accent }"
+                :aria-pressed="lockedFront === front.id"
+                :aria-label="front.displayName"
+                :disabled="disabled"
+                @click="emit('update:lockedFront', front.id)"
+              >
+                <img
+                  :src="factionImageUrl(front.id)"
+                  alt=""
+                  draggable="false"
+                >
+                <span aria-hidden="true">{{ front.displayName }}</span>
+              </button>
+            </div>
+          </Motion>
+        </AnimatePresence>
       </div>
     </RadioGroupRoot>
 
-    <div
-      v-if="plan === 'locked'"
-      class="fp-lock"
-      role="group"
-      aria-label="Locked faction"
-    >
-      <button
-        v-for="front in FRONTS"
-        :key="front.id"
-        type="button"
-        class="fp-faction cut-sm"
-        :class="{ on: lockedFront === front.id }"
-        :style="{ '--fp-accent': front.accent }"
-        :aria-pressed="lockedFront === front.id"
-        :aria-label="front.displayName"
-        :disabled="disabled"
-        @click="emit('update:lockedFront', front.id)"
-      >
-        <img
-          :src="factionImageUrl(front.id)"
-          alt=""
-          draggable="false"
-        >
-        <span aria-hidden="true">{{ front.displayName }}</span>
-      </button>
-    </div>
     <button
-      v-else-if="!order && !pending && status === 'unavailable' && !disabled"
+      v-if="plan !== 'locked' && !order && !pending && status === 'unavailable' && !disabled"
       class="fp-retry"
       type="button"
       @click="emit('refresh')"
@@ -239,6 +253,7 @@ function pick(value: unknown): void {
   background:
     radial-gradient(420px 160px at 0% 0%, rgba(255, 214, 66, 0.07), transparent 70%),
     var(--panel);
+  container: fp-order / inline-size;
 }
 .fp-mo:hover:not(:disabled) { border-color: var(--line-5); }
 .fp-mo.on {
@@ -297,8 +312,22 @@ function pick(value: unknown): void {
 .fp-mo .fp-perks .fp-ends { color: var(--muted); }
 .fp-mo:disabled .fp-perks { color: var(--dim); }
 
-/* Alternatives ------------------------------------------------------------ */
-.fp-alts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+/* Alternatives: Roll each op leads, Lock a faction sits under it so the
+   chosen faction can unfold beside the lock card on wide layouts. */
+.fp-side {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+.fp-alt-roll { grid-row: 1; grid-column: 1; }
+.fp-alt-lock { grid-row: 1; grid-column: 2; }
+.fp-lock-shell {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: hidden;
+}
 .fp-alt {
   display: flex;
   align-items: center;
@@ -363,13 +392,27 @@ function pick(value: unknown): void {
 .fp-retry:hover { border-color: var(--gold); color: var(--gold); }
 .fp-retry svg { width: 15px; height: 15px; }
 
-/* Wide: the order is one big button, the alternatives stack beside it. */
-@container fp (min-width: 640px) {
+/* Wide: the order is one big button; the alternatives stack beside it, with
+   the faction row between Roll each op and Lock a faction. */
+@container fp (min-width: 560px) {
   .fp-group { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
   .fp-mo { align-content: space-between; }
-  .fp-alts { grid-template-columns: 1fr; grid-auto-rows: 1fr; }
+  .fp-side { display: flex; flex-direction: column; }
+  .fp-side .fp-alt { flex: 1 1 0; }
+  .fp-alt-roll { order: 1; }
+  .fp-lock-shell { order: 2; }
+  .fp-alt-lock { order: 3; }
+  .fp-lock { gap: 6px; }
+  .fp-faction {
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 2px;
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+  }
+  .fp-faction img { width: 24px; height: 24px; }
 }
-@container fp (max-width: 520px) {
+@container fp-order (max-width: 480px) {
   .fp-fronts { display: grid; grid-template-columns: repeat(var(--fp-count), minmax(0, 1fr)); }
   .fp-chip {
     flex-direction: column;
@@ -383,7 +426,10 @@ function pick(value: unknown): void {
   .fp-chip img { width: 30px; height: 30px; }
 }
 @container fp (max-width: 420px) {
-  .fp-alts { grid-template-columns: 1fr; }
+  .fp-side { grid-template-columns: 1fr; }
+  .fp-alt-roll { grid-row: 1; grid-column: 1; }
+  .fp-alt-lock { grid-row: 2; grid-column: 1; }
+  .fp-lock-shell { grid-row: 3; grid-column: 1; }
   .fp-alt { min-height: 52px; }
   .fp-faction { flex-direction: column; gap: 4px; font-size: 0.65rem; }
 }

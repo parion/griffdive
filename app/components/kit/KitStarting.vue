@@ -70,30 +70,33 @@ const hasRoll = computed(() => rolls.value !== null)
     class="kit"
     :class="{ compact, 'support-only': supportOnly }"
   >
-    <KitSection
-      v-for="section in sections"
-      :key="section.kind"
-      :label="section.label"
-      :accent="section.accent"
-      :art="section.art"
-      :count="section.count"
-      :compact="compact"
-    >
-      <KitTile
-        v-for="item in section.owned"
-        :key="item.id"
-        :item="item"
+    <div class="kit-sections">
+      <KitSection
+        v-for="section in sections"
+        :key="section.kind"
+        :class="`kind-${section.kind}`"
+        :label="section.label"
+        :accent="section.accent"
         :art="section.art"
-      />
-      <KitTile
-        v-for="slot in section.slots"
-        :key="slot.key"
-        :item="slot.item"
-        :art="section.art"
-        :fresh="slot.fresh"
-        :tier-label="tierLabel"
-      />
-    </KitSection>
+        :count="section.count"
+        :compact="compact"
+      >
+        <KitTile
+          v-for="item in section.owned"
+          :key="item.id"
+          :item="item"
+          :art="section.art"
+        />
+        <KitTile
+          v-for="slot in section.slots"
+          :key="slot.key"
+          :item="slot.item"
+          :art="section.art"
+          :fresh="slot.fresh"
+          :tier-label="tierLabel"
+        />
+      </KitSection>
+    </div>
     <p
       v-if="!supportOnly"
       class="kit-note"
@@ -121,16 +124,39 @@ const hasRoll = computed(() => rolls.value !== null)
   min-width: 0;
   border: 1px solid var(--line-2);
   background: var(--panel);
+  container: kit-start / inline-size;
 }
 .kit.compact { gap: var(--sp-4); }
+.kit-sections { display: grid; gap: var(--sp-5); min-width: 0; }
+.kit.compact .kit-sections { gap: var(--sp-4); }
+/* Wide kits pack their sections across: the surplus kit is long, and a
+   phone-width single column would leave half the setup empty beside it. */
+@container kit-start (min-width: 640px) {
+  .kit:not(.support-only) .kit-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-5) var(--sp-5);
+    align-items: start;
+  }
+  .kit:not(.support-only) .kind-stratagem { grid-column: 1 / -1; }
+  .kit:not(.support-only) .kit-sections:has(.kind-booster) .kind-stratagem { grid-column: auto; }
+}
+@container kit-start (min-width: 1000px) {
+  .kit:not(.support-only) .kit-sections {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .kit:not(.support-only) .kind-stratagem { grid-column: span 2; }
+  .kit:not(.support-only) .kit-sections:has(.kind-booster) .kind-stratagem { grid-column: auto; }
+}
 /* The pack alone is a handful of tiles: let the sections sit side by side and
    drop the surplus panel's frame. */
 .kit.support-only {
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  align-items: start;
   padding: 0;
   border: 0;
   background: transparent;
+}
+.kit.support-only .kit-sections {
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  align-items: start;
 }
 .kit-note {
   margin: 0;

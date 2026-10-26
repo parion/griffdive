@@ -175,20 +175,23 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
   well lamp for the squad); an open bay is a dashed ghost pod. Every bay is a big click target:
   an open bay copies the invite, your own pod opens Warbonds, and the host's tap on a squadmate
   opens **Make host / Kick diver**. On launch the pods drop through the doors (`podDrop`).
-- The host gets **`CrusadeSetup`** (shared with the Bridge's setup dialog): *Where to fight* —
-  `FrontPlanPicker` with the live **Major Order** as the featured, pre-selected card (its fronts as
-  equal tiles on narrow widths, perks and countdown); on wide containers it is one big button in
-  the left column with *Lock a faction* and *Roll each op* stacked on the right — then *Starting
-  difficulty* (three number cards, each with its **Base tier**) and, on 5/7, the SEAF/Penance pair,
-  then the **Starting kit** (`KitStarting`: the Kit drawer's grammar — `KitSection` headers over
-  `KitTile`s, with primaries, secondaries and throwables in their own sections — and, in SEAF mode,
-  blue "?" tiles ending each section, one per item the pack rolls there). On launch each diver gets
-  **`KitReveal`**, an `AppDialog` over the wheel page (`useKitReveal` arms it) where the "?" tiles
-  flip to the rolled items one by one (`.tile.fresh` landing flash, scrolled into view). It stays up
-  until the diver presses "To the wheel" (Skip while dealing), clicks out or hits Escape; it waits
-  behind the host tutorial, the Warbonds drawer and the Field Promotion gate so one modal shows at a
-  time. Reduced motion shows the finished kit at once. Squadmates see a **Stand by** card with a Declare warbonds CTA instead of disabled
-  controls (the host's picks are local until launch). Diver names are all caps.
+- The host gets **`CrusadeSetup`** (shared with the Bridge's setup dialog): on wide containers the
+  top row pairs *Where to fight* with *Starting difficulty* — `FrontPlanPicker` features the live
+  **Major Order** as the pre-selected card (its fronts as equal tiles on narrow widths, perks and
+  countdown), with *Roll each op* stacked above *Lock a faction* beside it; the difficulty cards
+  become horizontal number rows so the pair fills one row — then the **Starting kit** spans the
+  full width beneath, packing its sections across two or three columns instead of leaving the left
+  column empty. Selecting *Lock a faction* unfolds the factions right beside the card (above it on
+  desktop, below on phones, via `motion-v`; instant under reduced motion). The kit keeps the Kit
+  drawer's grammar — `KitSection` headers over `KitTile`s, with primaries, secondaries and
+  throwables in their own sections — and, in SEAF mode, blue "?" tiles ending each section, one per
+  item the pack rolls there. On launch each diver gets **`KitReveal`**, an `AppDialog` over the
+  wheel page (`useKitReveal` arms it) where the "?" tiles flip to the rolled items one by one
+  (`.tile.fresh` landing flash, scrolled into view). It stays up until the diver presses "To the
+  wheel" (Skip while dealing), clicks out or hits Escape; it waits behind the host tutorial, the
+  Warbonds drawer and the Field Promotion gate so one modal shows at a time. Reduced motion shows
+  the finished kit at once. Squadmates see a **Stand by** card with a Declare warbonds CTA instead
+  of disabled controls (the host's picks are local until launch). Diver names are all caps.
 - **Risk never shows as a Valor number.** Each plan and mode carries its per-mission risk as
   `RiskPips` skulls (`frontPlanRisk` / `modeValorAt` from the engine). `RiskSetup` totals them
   (`setupRiskOf`, out of 5) and states the game's core trade beside the total — **"More skulls,
