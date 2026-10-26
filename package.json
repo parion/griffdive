@@ -7,6 +7,7 @@
     "dev": "nuxt dev",
     "dashboard:preview": "node scripts/dashboard-preview.mjs",
     "feedback:export": "node scripts/feedback-export.mjs",
+    "og:image": "node scripts/og-image.mjs",
     "pwa:assets": "node scripts/build-icon.mjs && pwa-assets-generator",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
