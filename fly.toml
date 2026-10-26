@@ -11,8 +11,9 @@ primary_region = 'ams'
 [env]
   HOST = '0.0.0.0'
   PORT = '8080'
-  # Set once the public Fider board is deployed (see deploy/fider/README.md):
-  # NUXT_PUBLIC_FEEDBACK_BOARD_URL = 'https://feedback.griffdive.com'
+  # Public Fider board link (see deploy/fider/README.md); empty it to hide the
+  # link while the board is down.
+  NUXT_PUBLIC_FEEDBACK_BOARD_URL = 'https://feedback.griffdive.com'
 
 [http_service]
   internal_port = 8080

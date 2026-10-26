@@ -62,14 +62,15 @@ fly certs add feedback.griffdive.com --app griffdive-feedback
 [`fly.toml`](./fly.toml) and must match the public origin exactly — Fider builds
 every sign-in link from it.
 
-Finally, turn the link on in the game app (a plain env var, not a secret — public
-runtime config is serialised into the SPA shell):
+Finally, turn the link on in the game app. It is a plain env var in the game
+app's [`fly.toml`](../../fly.toml) `[env]`, not a secret — public runtime config
+is serialised into the SPA shell:
 
-```sh
-fly secrets set --app griffdive NUXT_PUBLIC_FEEDBACK_BOARD_URL='https://feedback.griffdive.com'
+```toml
+NUXT_PUBLIC_FEEDBACK_BOARD_URL = 'https://feedback.griffdive.com'
 ```
 
-Leave it unset (or empty) to hide every board link while the instance is down.
+Empty it to hide every board link while the instance is down.
 The sheet's "File report" path keeps working either way.
 
 ## First visit checklist
