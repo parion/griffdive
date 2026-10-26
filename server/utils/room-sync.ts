@@ -145,13 +145,15 @@ export interface PeerLike {
   send(text: string): void
   // The transport's own close, so reaping a silent peer goes through the normal
   // close path (crossws peers have it; test doubles may not).
-  close?(): void
+  close?(code?: number, reason?: string): void
 }
 
 // Live connections are process memory; room state lives in storage. crossws
 // topics are global to the process, so routing goes through this directory
 // instead of pub/sub.
 export interface PeerDirectory {
+  // Set once the process is shutting down (see drainPeers).
+  draining: boolean
   add(roomCode: string, peer: PeerLike): void
   remove(peer: PeerLike): void
   list(roomCode: string): PeerLike[]
@@ -162,6 +164,7 @@ export interface PeerDirectory {
 export function createPeerDirectory(): PeerDirectory {
   const byRoom = new Map<string, Set<PeerLike>>()
   return {
+    draining: false,
     add(roomCode, peer) {
       let set = byRoom.get(roomCode)
       if (!set) {
@@ -639,8 +642,11 @@ export async function processHello(
     }
 
     // Whoever comes back to a room whose host is gone takes the helm — a
-    // crusade never waits on one particular diver.
-    if (room.state.hostId !== playerId && !hostOnline) {
+    // crusade never waits on one particular diver. A host who is merely
+    // offline (a server restart dropped everyone at once) keeps the crown for
+    // the away grace; markAwayIfOffline hands it on if they don't return.
+    const host = room.state.divers.find(diver => diver.id === room.state.hostId)
+    if (room.state.hostId !== playerId && !hostOnline && (!host || host.away)) {
       room.state = reduce(room.state, { type: 'TRANSFER_HOST', playerId })
       roomMetrics.recordHostTransfer('offline_host')
       changed = true
@@ -997,7 +1003,10 @@ export async function processClose(kv: RoomKV, peers: PeerDirectory, peer: PeerL
   const roomCode = peer.context.roomCode
   const playerId = peer.context.playerId
   peers.remove(peer)
-  if (!roomCode || !playerId) {
+  // A restart drops every socket at once: handing the crown down the line as
+  // each one closes would leave it with whoever happened to close last. The
+  // squad is coming straight back, so the room record stays as it was.
+  if (!roomCode || !playerId || peers.draining) {
     return
   }
   await withRoomLock(roomCode, async () => {
@@ -1049,12 +1058,34 @@ export async function markAwayIfOffline(kv: RoomKV, peers: PeerDirectory, roomCo
     if (!room || !diver || diver.away || isOnline(peers, roomCode, playerId)) {
       return
     }
-    const action: EngineAction = { type: 'SET_AWAY', playerId, away: true }
+    let action: EngineAction = { type: 'SET_AWAY', playerId, away: true }
     room.state = reduce(room.state, action)
     roomMetrics.recordPresence('away')
+    if (room.state.hostId === playerId) {
+      const earliest = room.state.divers.find(entry => entry.id !== playerId && isOnline(peers, roomCode, entry.id))
+      if (earliest) {
+        action = { type: 'TRANSFER_HOST', playerId: earliest.id }
+        room.state = reduce(room.state, action)
+        roomMetrics.recordHostTransfer('offline_host')
+      }
+    }
     await saveRoom(kv, room)
     broadcastState(peers, roomCode, room.state, action, room.saved ?? null, room.steam ?? null)
   })
+}
+
+// Graceful shutdown (a deploy): tell every live diver the server is restarting
+// rather than gone, so the client can wait it out calmly, then close with
+// 1012 (Service Restart). Room state is already in storage.
+export function drainPeers(peers: PeerDirectory): number {
+  peers.draining = true
+  const live = peers.all()
+  const notice = JSON.stringify({ type: 'restarting' } satisfies ServerMessage)
+  for (const peer of live) {
+    peer.send(notice)
+    peer.close?.(1012, 'Server restarting')
+  }
+  return live.length
 }
 
 function scheduleAway(kv: RoomKV, peers: PeerDirectory, roomCode: string, playerId: string): void {

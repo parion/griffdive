@@ -134,5 +134,13 @@ runs `node .output/server/index.mjs` on internal port 8080. `fly.toml` pins one 
 `/app/.data`: a volume binds to one machine, and live peers live in an in-process directory — more
 than one machine splits squads across processes. Room state persists across deploys (the volume), so
 restarts no longer wipe in-flight rooms; don't touch those two settings until storage and the peer
-directory both move to Redis. Create the volume once before the first deploy that declares the
+directory both move to Redis.
+
+**Deploys cost a short outage, not progress.** The volume binds to one machine, so a deploy stops
+the old machine before starting the new one, and the gap is unavoidable while production runs on a
+single machine. Divers ride it out: the server warns every live connection on shutdown (`restarting`
++ close code `1012`), the dive page shows a "quick restart" banner instead of the connection-lost
+alarm, and the client keeps retrying for about three minutes before giving up (see
+[server architecture → Restarts](./server-architecture.md)). A truly zero-gap deploy needs a
+second machine, which needs Redis for room storage, the room lock and the peer directory first. Create the volume once before the first deploy that declares the
 mount: `fly volumes create griffdive_data --region ams --size 1`.

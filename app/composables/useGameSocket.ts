@@ -68,6 +68,20 @@ function hasDiverName(): boolean {
   return !!name && name !== 'Diver'
 }
 
+// A deploy takes the only server down for tens of seconds, so the retry budget
+// has to outlast one: back off to a 10s ceiling and keep trying for about three
+// minutes before showing the dead-end screen. Jitter spreads a whole squad's
+// reconnects so a fresh server isn't hit by every client in the same instant.
+const RECONNECT_BASE_MS = 1000
+const RECONNECT_MAX_MS = 10_000
+const RECONNECT_RETRIES = 22
+const SERVICE_RESTART = 1012
+
+function reconnectDelay(attempt: number): number {
+  const backoff = Math.min(RECONNECT_BASE_MS * 1.5 ** (attempt - 1), RECONNECT_MAX_MS)
+  return Math.round(backoff * (0.75 + Math.random() * 0.5))
+}
+
 // Room-mode driver: state is server-authoritative. The client only sends
 // actions and applies snapshots (AGENTS.md: client state is never trusted).
 export function useGameSocket(roomCode: string) {
@@ -96,8 +110,8 @@ export function useGameSocket(roomCode: string) {
   const { status, send, open, close } = useWebSocket(url, {
     immediate: false,
     autoReconnect: {
-      retries: 8,
-      delay: 1500,
+      retries: RECONNECT_RETRIES,
+      delay: reconnectDelay,
       onFailed() {
         connectionFailed.value = true
         store.status = 'disconnected'
@@ -112,6 +126,11 @@ export function useGameSocket(roomCode: string) {
     onConnected() {
       connectionFailed.value = false
       hello()
+    },
+    onDisconnected(_socket, event) {
+      if (event.code === SERVICE_RESTART) {
+        store.restarting = true
+      }
     },
     onMessage(_socket, event) {
       let message: ServerMessage
@@ -223,18 +242,21 @@ export function useGameSocket(roomCode: string) {
   })
 
   // The server reaps sockets that stop heartbeating (a sleeping phone, a frozen
-  // tab), and the retry budget below gives up after a few seconds. Coming back
-  // to the page should reopen the dive instead of leaving a dead board on screen.
+  // tab), and backoff may have the next retry seconds away. Coming back to the
+  // page, or back onto a network, should reopen the dive right away instead of
+  // leaving a dead board on screen.
   function reopenIfDead(): void {
-    if (document.visibilityState === 'visible' && connectionFailed.value) {
-      connectionFailed.value = false
-      open()
+    if (document.visibilityState !== 'visible' || awaitingJoin.value || status.value !== 'CLOSED') {
+      return
     }
+    connectionFailed.value = false
+    open()
   }
 
   onMounted(() => {
     if (import.meta.client) {
       document.addEventListener('visibilitychange', reopenIfDead)
+      window.addEventListener('online', reopenIfDead)
     }
     if (!awaitingJoin.value) {
       connect()
@@ -246,6 +268,7 @@ export function useGameSocket(roomCode: string) {
     mirrorSnapshot()
     if (import.meta.client) {
       document.removeEventListener('visibilitychange', reopenIfDead)
+      window.removeEventListener('online', reopenIfDead)
     }
     close()
   })

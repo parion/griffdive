@@ -256,18 +256,27 @@ watch(() => session.selfIsHost.value, (isHost) => {
 })
 
 // A dropped socket silently pauses sync and re-seats host — say so, but only
-// once per outage so auto-reconnect churn doesn't spam the stack.
+// once per outage so auto-reconnect churn doesn't spam the stack. A server
+// restart has its own standing banner instead of the alarm.
 let wasConnected = false
 let reportedLost = false
+let rodeOutRestart = false
 watch(
   () => session.status.value,
   (status) => {
     if (status === 'connected') {
-      if (reportedLost) {
+      if (rodeOutRestart) {
+        pushToast('Back online — your dive picked up right where it left off.')
+      }
+      else if (reportedLost) {
         pushToast('Reconnected.')
       }
       wasConnected = true
       reportedLost = false
+      rodeOutRestart = false
+    }
+    else if (status === 'disconnected' && wasConnected && session.restarting.value) {
+      rodeOutRestart = true
     }
     else if (status === 'disconnected' && wasConnected && !reportedLost) {
       pushToast('Connection lost — reconnecting…', 'warn')
@@ -275,6 +284,8 @@ watch(
     }
   },
 )
+const restartBanner = computed(() =>
+  session.restarting.value && session.status.value !== 'connected' && !session.connectionFailed.value)
 
 function spin(): void {
   dispatch({ type: 'SPIN_WHEEL', seed: session.newSeed() })
@@ -595,6 +606,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
 
 <template>
   <div class="dive-page">
+    <DiveRestartBanner v-if="restartBanner" />
     <template v-if="session.awaitingJoin.value">
       <BriefingJoin
         v-if="joinRole === 'joiner'"

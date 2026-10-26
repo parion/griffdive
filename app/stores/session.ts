@@ -13,6 +13,9 @@ export const useSessionStore = defineStore('session', () => {
   const steam = ref<SteamLobbyInfo | null>(null)
   const status = ref<SocketStatus>('disconnected')
   const lastError = ref<{ code: string, message: string } | null>(null)
+  // The server announced a restart (a deploy): the drop that follows is
+  // expected, and the room is waiting in storage.
+  const restarting = ref(false)
 
   function openSession(code: string): void {
     roomCode.value = code
@@ -22,6 +25,7 @@ export const useSessionStore = defineStore('session', () => {
     saved.value = null
     steam.value = null
     lastError.value = null
+    restarting.value = false
     status.value = 'connecting'
   }
 
@@ -35,6 +39,7 @@ export const useSessionStore = defineStore('session', () => {
         steam.value = message.steam
         status.value = 'connected'
         lastError.value = null
+        restarting.value = false
         break
       case 'state':
         snapshot.value = message.snapshot
@@ -44,6 +49,9 @@ export const useSessionStore = defineStore('session', () => {
         break
       case 'error':
         lastError.value = { code: message.code, message: message.message }
+        break
+      case 'restarting':
+        restarting.value = true
         break
     }
   }
@@ -61,6 +69,7 @@ export const useSessionStore = defineStore('session', () => {
     steam,
     status,
     lastError,
+    restarting,
     openSession,
     applyMessage,
     dismissError,

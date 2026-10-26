@@ -29,6 +29,7 @@ export type ServerMessage
   = | { type: 'welcome', selfId: string, hostId: string | null, roomCode: string, snapshot: DiveState, online: string[], saved: DiveSaveInfo | null, steam: SteamLobbyInfo | null }
     | { type: 'state', snapshot: DiveState, applied: EngineAction | null, online: string[], saved: DiveSaveInfo | null, steam: SteamLobbyInfo | null }
     | { type: 'error', code: string, message: string }
+    | { type: 'restarting' }
 
 export const HOST_ONLY_ACTIONS = [
   'START_DIVE',
