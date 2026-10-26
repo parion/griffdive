@@ -1,10 +1,15 @@
 import type { DiveState } from '../engine/types'
 
-// Frozen from alpha (v8) on: every later shape change adds a version-gated
-// migration in shared/engine/saves.ts (see AGENTS.md, Save model).
-export const SAVE_SCHEMA_VERSION = 20
+// Beta was a clean slate: every alpha save was discarded, not migrated, and
+// the versions restarted at 1. The epoch marks a save as written after that
+// reset, so an alpha save stamped with a low schema number is never mistaken
+// for a current one. From here on every shape change adds a version-gated
+// migration in shared/engine/saves.ts (see game-rules.md, Save model).
+export const SAVE_EPOCH = 'beta'
+export const SAVE_SCHEMA_VERSION = 1
 
 export interface SaveDoc {
+  epoch: typeof SAVE_EPOCH
   schemaVersion: number
   engineVersion: number
   catalogVersion: number

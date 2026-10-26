@@ -12,15 +12,16 @@
   hid caches that stacked the starting kit.
 - **Golden tests:** seeded runs (`mulberry32`) recorded as JSON snapshots — spin results, reward
   option sets, full crusade replays. Goldens live in `shared/engine/__goldens__/`; regenerate with
-  `GRIFFDIVE_UPDATE_GOLDENS=1 pnpm test`. From alpha on, a reducer change that breaks goldens must
-  bump the engine version + write a save migration (see Save model), or revert; during pre-alpha
-  they were simply regenerated.
+  `GRIFFDIVE_UPDATE_GOLDENS=1 pnpm test`. From beta on, a reducer change that breaks goldens must
+  bump the engine version + write a save migration (see Save model), or revert; before the beta
+  clean slate they were regenerated, and the alpha migration chain was dropped with its tests.
 - **Server tests** (Vitest, fake KV + fake peers in `server/utils/room-sync.spec.ts`): room
   join/spin/pick flows, host authority + coercion, host migration, reattachment, room-full,
   TTL pruning, metrics gauges/counters and session length (`metrics.spec.ts`). The feedback inbox
   (`feedback.spec.ts`) is tested at its seams: message/category normalization, control-character
   and length caps, the context allowlist (unknown paths and phases are dropped), honeypot
-  detection, reference formatting, retention/cap pruning and serialized concurrent writes.
+  detection, reference formatting, retention/cap pruning and serialized concurrent writes. The
+  staging password check (`staging-auth.spec.ts`) covers right, wrong, missing and unset credentials.
   (`@nuxt/test-utils` +
   Playwright browser flows land in Phase 3+.)
 - **Access gate tests:** `shared/kit-access.spec.ts` pins the `/kit` sheet's dev/staging allowance
