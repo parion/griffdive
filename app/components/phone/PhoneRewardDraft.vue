@@ -354,7 +354,6 @@ const pickedName = computed(() =>
   color: var(--tier);
   font-size: 34px;
   line-height: 1;
-  text-shadow: 0 0 14px color-mix(in srgb, var(--tier) 40%, transparent);
 }
 .loot-card:not([data-tier='C']) .tier { animation: slamIn 0.45s var(--ease-impact) var(--impact, 0ms) backwards; }
 .squad-row {

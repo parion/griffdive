@@ -188,7 +188,6 @@ const ctaLabel = computed(() => {
 }
 .mc-title {
   font-size: clamp(40px, 5vw, 68px);
-  text-shadow: 0 0 36px rgba(74, 215, 200, 0.16);
   animation: riseIn 0.45s var(--ease-out) both;
 }
 .mc-sub { margin: 0; color: var(--muted); font-size: 15px; }

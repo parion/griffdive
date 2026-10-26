@@ -423,7 +423,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
 .directive-card.accepted {
   box-shadow: inset 0 0 0 2px var(--gold), 0 0 32px rgba(255, 214, 66, 0.16);
 }
-.directive-card.decided:not(.accepted) .dc-name { color: var(--khaki); text-shadow: none; }
+.directive-card.decided:not(.accepted) .dc-name { color: var(--khaki); }
 /* Registration corners: the directive is the one card the squad signs for. */
 .corner {
   position: absolute;
@@ -440,7 +440,6 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   font-size: min(clamp(28px, 2.9vw, 42px), 100cqi / var(--fit-len, 1));
   line-height: 0.95;
   color: var(--gold);
-  text-shadow: 0 0 28px rgba(255, 214, 66, 0.25);
 }
 .dc-rule { margin: 0; color: var(--khaki); font-size: 15px; line-height: 1.4; }
 .dc-actions { display: flex; gap: 8px; padding-top: 6px; }
