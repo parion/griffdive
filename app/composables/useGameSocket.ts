@@ -9,7 +9,7 @@ import { useSessionStore } from '~/stores/session'
 import type { ClientMessage, ServerMessage } from '~~/shared/types/messages'
 
 function playerKey(roomCode: string): string {
-  return `griffdive:player:${roomCode}`
+  return `griffdive:seat:${roomCode}`
 }
 
 // The seat this browser holds in a room, if any. A new session seeded from a

@@ -3,7 +3,7 @@ import { customAlphabet, nanoid } from 'nanoid'
 import { SQUAD_SIZE_MAX, MAX_NAME_LENGTH } from '~~/shared/engine/config'
 import { createLobbyState, forkCrusade, joinDiver, seatingBlocked } from '~~/shared/engine/room'
 import { reduce } from '~~/shared/engine/reducer'
-import { normalizeRoomState, normalizeSaveDoc } from '~~/shared/engine/saves'
+import { normalizeSaveDoc } from '~~/shared/engine/saves'
 import type { DiveState, DivePhase, EngineAction } from '~~/shared/engine/types'
 import { isEngineActionType, isHostOnlyAction } from '~~/shared/types/messages'
 import type { DiveSaveInfo, ServerMessage, SteamLobbyInfo } from '~~/shared/types/messages'
@@ -326,8 +326,8 @@ export async function createRoom(
   return code
 }
 
-// Continues a personal session save as a brand-new room: normalizeSaveDoc runs
-// the save migrations, forkCrusade seats the saver as host and parks every
+// Continues a personal session save as a brand-new room: normalizeSaveDoc
+// refuses saves from another epoch or schema, forkCrusade seats the saver as host and parks every
 // other diver's kit as a claimable legacy cache. The save is client-supplied,
 // so a malformed doc is refused rather than seated.
 export async function createRoomFromSave(
@@ -393,10 +393,6 @@ export async function loadRoom(kv: RoomKV, code: string): Promise<StoredRoom | n
     recordSessionEnded(raw)
     return null
   }
-  // Rooms survive deploys on disk without a schema version, so states written
-  // by earlier builds are normalized on read. The normalized copy is what
-  // callers reduce and broadcast; the next saveRoom persists it.
-  raw.state = normalizeRoomState(raw.state)
   raw.bans = roomBansOf(raw)
   raw.seatIps = seatIpsOf(raw.seatIps)
   if (typeof raw.ipSalt !== 'string' || raw.ipSalt.length === 0) {

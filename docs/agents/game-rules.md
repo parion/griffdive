@@ -117,8 +117,6 @@ A fixed pack handed to the whole squad overlapped too much to lift anyone, so SE
 - **Known trade-off:** a rolled pack no longer guarantees four red (Eagle/orbital) stratagems, so
   *Oops, All Airstrikes* is often unfieldable for a SEAF squad (it needs every diver stocked) — the
   squad declines or rerolls, as with any unfieldable rule.
-- Runs begun before the rolled pack keep the fixed pack they were issued (`migrateV17toV18`
-  backfills it into `supportKit`).
 
 ### Team layer — misfortunes / squad directives (Wheel of Adversity)
 
@@ -712,7 +710,6 @@ specific items" — it narrows a pool, it never names a reward.
 - **Armor = passives, not pieces.** The catalog carries only armor passives (no pieces, no
   rating/speed/stamina). Any armor piece (any weight or rating) is freely wearable as long as its
   passive is owned. Losing a passive in a forfeit removes the ability to wear armor carrying it.
-  Armor-piece ids in pre-v2 saves no longer resolve and are stripped on migration.
 - **Forfeit on failure:** each diver loses exactly one earned item (stratagems included; never the
   starting kit) from their own personal inventory, chosen by that diver from a seeded, Valor-capped
   offer — see Mission
@@ -744,8 +741,7 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   a cache until it is spent. The gate holds only the joiner's own screen; it never gates squad
   progress through the engine — unlike the reward draft, where `allDiversPicked` blocks `ADVANCE`.
 - **Inventories are sets.** No path ever stores an item id twice in a diver's kit: claims and
-  restores merge (`mergeKit`), and `normalizeRoomState` repairs older rooms and saves (dedupes
-  kits, strips caches back to earned gear, drops empty caches).
+  restores merge (`mergeKit`).
 - **Legacy caches hold earned gear only:** every departure (kicked via `KICK_DIVER` or voluntary via
   `LEAVE_DIVE`, both self-service) parks the diver's **earned kit** — their inventory minus the
   starting kit, each item once (`earnedKit` in `shared/engine/progression.ts`) — as
@@ -786,31 +782,21 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
 ### Save model
 
 Anonymous/local-first. Named save slots in `localStorage` (`SaveDoc` in `shared/types/save.ts`,
-stamped with save-schema + engine + catalog versions), normalized on load via
-`shared/engine/saves.ts`, plus JSON export/import (Penitent Crusade parity). **Alpha policy: the
-schema is frozen and saves migrate.** From the alpha release (save schema v8) the shape is frozen:
-every later breaking change bumps `SAVE_SCHEMA_VERSION` and adds a version-gated migration step, or
-is reverted. `migrateV7toV8` is the alpha baseline — it defaults the fields whose shapes landed
-during pre-alpha (Field Promotion bookkeeping, failed-pact marks, reward tokens, bans, bonus
-honors); `migrateV8toV9` adds the strain fields and widens legacy combo keys; `migrateV9toV10`
-adds the Major Order commitment (`majorOrder: null`); `migrateV10toV11` adds the failed-directive
-mark (`misfortuneFailed: false`); `migrateV11toV12` adds the sample purse
-(`sampleBank: 0`); `migrateV12toV13` remaps the five squad-size variants onto the three starting
-difficulties (Quickplay becomes the suicide start with the SEAF mode); `migrateV13toV14` adds
-presence (`away: false` on every diver); `migrateV14toV15` widens the single honors winner
-(`bonusWinnerId`) into the shareable list (`bonusWinnerIds`); `migrateV15toV16` reshapes each legacy
-cache from a bare item list into `{ name, itemIds }` (pre-v16 kits read as "Fallen diver");
-`migrateV16toV17` renames the purse to credits (`sampleBank` → `credits`), and the tail's
-normalization deals the mission underway a Brasch's Bargains shelf (`bargainSeed`, a fresh `bargain`
-per diver); `migrateV17toV18` backfills `supportKit` on SEAF runs with the fixed pack they were issued
-(the pack is rolled per diver from then on); `migrateV18toV19` drops the mid-mission draft-skip flag —
-a joiner seated during `diving` now drafts the mission they drop into, so there is nothing to skip;
-`migrateV19toV20` remaps the item ids upstream renamed in the Scope of Authority catalog refresh
-(inventories, caches, bans, bargains and the action log) so held gear survives. The chain's tail
-also runs the idempotent
-`normalizeRoomState` remap unconditionally: session mirrors copy unversioned room state, so a
-legacy variant id or a missing field must be corrected even in a doc stamped with a newer schema.
-Normalization drops
+stamped with the save epoch + save-schema + engine + catalog versions), validated on load via
+`normalizeSaveDoc` in `shared/engine/saves.ts`, plus JSON export/import (Penitent Crusade parity).
+**Beta was a clean slate (2026-10-26).** Alpha saves were discarded, not migrated: every version
+restarted at 1 (`SAVE_SCHEMA_VERSION`, `ENGINE_VERSION`, `CATALOG_VERSION`), the alpha migration
+chain and the read-time room normalization were deleted, and the Fly volumes were wiped. A beta save
+carries `epoch: 'beta'` (`SAVE_EPOCH`), so an alpha export — no epoch, and a schema number that now
+means something else — is refused rather than misread; so is a save from a newer schema than the
+build reads. In the browser the save, session, recent-room and seat keys moved to new names
+(`griffdive:saves:v2`, `griffdive:sessions:v2`, `griffdive:rooms:v2`, `griffdive:seat:*`), and
+`app/plugins/purge-alpha-saves.client.ts` deletes the alpha keys on every boot; preferences (name,
+warbonds, intros) carry over. **Beta policy: the schema is frozen and saves migrate.** Every later
+breaking change bumps `SAVE_SCHEMA_VERSION` and adds a version-gated migration step to
+`normalizeSaveDoc` (replacing its strict version check), or is reverted. Rooms carry no schema
+version, so the same change must also normalize stored rooms on read in `loadRoom` (idempotent:
+fill only absent fields, never overwrite) — they survive deploys on the volume. Normalization drops
 only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
 `achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, inventories, per-diver warbond declarations,

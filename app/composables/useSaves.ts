@@ -2,7 +2,7 @@ import { createSaveDoc, normalizeSaveDoc } from '~~/shared/engine/saves'
 import type { DiveState } from '~~/shared/engine/types'
 import type { SaveDoc } from '~~/shared/types/save'
 
-const STORAGE_KEY = 'griffdive:saves:v1'
+const STORAGE_KEY = 'griffdive:saves:v2'
 
 function readIndex(): Record<string, SaveDoc> {
   if (!import.meta.client) {

@@ -22,13 +22,14 @@
   `ITEM_OVERRIDES`, keyed by item id, so a refresh re-applies them instead of reverting the
   generated data — never hand-edit `shared/data/equipment.ts`. Upstream sometimes corrects an item's
   `internalName`; because catalog ids are upstream names, such a rename is save-breaking and must
-  ship with a `SAVE_SCHEMA_VERSION` bump plus an id-remap migration in `shared/engine/saves.ts`.
+  ship with a `SAVE_SCHEMA_VERSION` bump plus an id-remap migration in `shared/engine/saves.ts`
+  (and the same remap on stored rooms in `loadRoom`).
   Stratagem SVGs from [Nvigneux/Helldivers-2-Stratagems-icons-svg](https://github.com/nvigneux/Helldivers-2-Stratagems-icons-svg);
   equipment images from [helldivers.wiki.gg](https://helldivers.wiki.gg/wiki/Helldivers_2). Stratagem art ships as `.webp`
   in `public/images/svgs/` (directory name historical); the importer rewrites upstream's `.svg`
   `imageURL`s to `.webp`. Asset
   licensing: respect upstream terms; hot-link or bundle only what the licenses allow.
 - **Versioning:** `CATALOG_VERSION` bumped whenever items/warbonds change (Helldivers 2 patches add
-  warbonds). Saves record catalog + engine versions as diagnostics; the save-schema version drives
-  the migration chain (see Save model). From alpha the schema is frozen — shape changes migrate
-  rather than dropping docs.
+  warbonds); it restarted at 1 with the beta clean slate. Saves record catalog + engine versions as
+  diagnostics; the save-schema version drives migrations (see Save model). From beta the schema is
+  frozen — shape changes migrate rather than dropping docs.

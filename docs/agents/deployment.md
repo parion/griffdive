@@ -77,7 +77,36 @@ every push to `main` runs the `deploy-staging` job, which deploys `fly.staging.t
 the staging app) and smoke-checks `/`. Merges accumulate there until a release. One-time setup:
 `fly apps create griffdive-staging`, `fly volumes create griffdive_staging_data --app
 griffdive-staging --region ams --size 1`, `fly tokens create deploy --app griffdive-staging`, and
-the `staging` environment in GitHub. **Releases are batched and started by hand:**
+the `staging` environment in GitHub.
+
+**Staging is private.** `server/middleware/staging-auth.ts` asks for a password (HTTP Basic) on
+every page and API call whenever the `STAGING_AUTH` secret (`user:password`) is set, and adds
+`X-Robots-Tag: noindex`. It is set on the staging app only, so production, review apps, local dev
+and e2e never see it. Set it in two places, GitHub first, because the deploy job's smoke check
+sends the same credentials and an unguarded staging simply ignores them: a `STAGING_AUTH` secret
+on the `staging` GitHub environment, then `fly secrets set STAGING_AUTH='user:password' --app
+griffdive-staging`. A browser asks
+once and remembers it for the session (phones too). Two things stay outside the gate. Static build
+assets (`/_nuxt/*`, images, the PWA manifest and service worker) are served before middleware, but
+they hold nothing that isn't in production. The `/ws` upgrade bypasses Nitro middleware, but a
+socket can only join an existing room and rooms are only created over the gated REST route. Rotate
+with the same two commands. To share a quick test, hand out the password and rotate it afterwards.
+
+**Beta clean slate (one-time, 2026-10-26).** Beta does not read alpha saves (see Save model), so
+the stored rooms, saved dives and test feedback were deleted from both volumes, each **after** the
+beta build was live on that app (otherwise the old build could write fresh alpha rooms in the gap).
+Then the machine was restarted to drop the in-process peer directory. Staging idle-stops, so wake it
+first (`fly machine start --app griffdive-staging`):
+
+```sh
+fly ssh console --app griffdive-staging -C 'sh -c "rm -rf /app/.data/rooms /app/.data/feedback"'
+fly apps restart griffdive-staging
+# after the beta release deploys to production:
+fly ssh console --app griffdive -C 'sh -c "rm -rf /app/.data/rooms /app/.data/feedback"'
+fly apps restart griffdive
+```
+
+**Releases are batched and started by hand:**
 when the accumulated merges are ready, run *CI/CD → Run workflow* from `main`
 (`workflow_dispatch`), which re-verifies the batch and then hands to the `deploy` job. That job
 targets the `production` GitHub environment, which is configured with a required reviewer, so the

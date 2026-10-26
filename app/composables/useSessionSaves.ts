@@ -2,7 +2,7 @@ import { createSaveDoc, normalizeSaveDoc } from '~~/shared/engine/saves'
 import type { DiveState } from '~~/shared/engine/types'
 import type { SessionSave } from '~~/shared/types/save'
 
-const STORAGE_KEY = 'griffdive:sessions:v1'
+const STORAGE_KEY = 'griffdive:sessions:v2'
 
 // Personal session saves are convenience copies, not the source of truth: past
 // this many the oldest mirror drops so localStorage stays bounded.

@@ -3,6 +3,9 @@
 # Create the app and volume once before the first deploy:
 #   fly apps create griffdive-staging
 #   fly volumes create griffdive_staging_data --app griffdive-staging --region ams --size 1
+# Staging is private: set the password once (also as the STAGING_AUTH secret on
+# the `staging` GitHub environment, for the CI smoke check):
+#   fly secrets set STAGING_AUTH='user:password' --app griffdive-staging
 app = 'griffdive-staging'
 primary_region = 'ams'
 

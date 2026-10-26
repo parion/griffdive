@@ -18,7 +18,7 @@ export const RELEASE_CHANNELS: readonly ReleaseChannel[] = [
     id: 'beta',
     label: 'Beta',
     name: 'Griffdive Beta',
-    summary: 'The whole loop is playable end to end, solo or with a squad of up to four: spin the Wheel of Adversity, swear pacts, dive in Helldivers 2, then draft loot and climb the ladder to Helldive. Balance is still moving, so expect number tweaks between releases, but saves are frozen and migrate, so your crusade survives updates.',
+    summary: 'The whole loop is playable end to end, solo or with a squad of up to four: spin the Wheel of Adversity, swear pacts, dive in Helldivers 2, then draft loot and climb the ladder to Helldive. Balance is still moving, so expect number tweaks between releases. Beta starts from a clean slate: alpha saves and rooms do not carry over. From here on saves are frozen and migrate, so your crusade survives updates.',
     highlights: [
       'Realtime squads over an invite link, with host handover, reconnection and mid-crusade joining.',
       'Wheel of Adversity, personal pacts and a Valor odds line that shows exactly what your chosen risk buys.',

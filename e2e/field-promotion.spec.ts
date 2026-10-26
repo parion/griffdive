@@ -40,7 +40,7 @@ test('joiners settle their Field Promotion before they dive; a forked-out diver 
   const returning = await browser.newContext()
   // This browser still remembers the seat it held in the source room.
   await returning.addInitScript(() => {
-    localStorage.setItem('griffdive:player:SOURCE', 'fallen-seat')
+    localStorage.setItem('griffdive:seat:SOURCE', 'fallen-seat')
   })
   const claimer = await browser.newContext()
   const picker = await browser.newContext()

@@ -89,6 +89,8 @@ app/
                    usePhoneShell (the 1020px breakpoint as JS, so the dive can swap the whole
                    desktop tree for the phone shell)
   stores/          session.ts (Pinia: selfId, snapshot, online)
+  plugins/         purge-alpha-saves.client.ts (drops alpha save/session/room/seat keys on
+                   boot — the beta clean slate, see Save model)
   utils/           seed.ts (client seed generation), kit.ts (Kit categories + owned-item list),
                    brandMark.ts (the logo's only geometry — AppBrandMark.vue and icon.svg both
                    derive from it), changelog.ts (pure GitHub deployment/commit → release-card
@@ -109,7 +111,9 @@ server/
                    rate-limit.ts (in-memory sliding-window limiter for joins/actions),
                    metrics.ts (Prometheus registry: presence gauges, session length + gameplay counters),
                    major-order.ts (live war API → MajorOrderSelection; pure normalizer +
-                   best-effort fetch)
+                   best-effort fetch), staging-auth.ts (Basic-auth credential check)
+  middleware/      staging-auth.ts (password-gates every page and API call when STAGING_AUTH
+                   is set — staging only, see Deployment)
   plugins/         metrics.ts (binds the gauges, serves /metrics on internal :9091),
                    room-sweeper.ts (reaps idle rooms every 15 min)
   api/             rooms/index.post.ts (create; an optional save body seeds a new session), rooms/[code].get.ts (snapshot),
@@ -119,7 +123,7 @@ deploy/fider/      separate Fly app + Postgres for the public board (see Deploym
 shared/
   engine/          config.ts, types.ts, reducer.ts, rng.ts, wheel.ts, pacts.ts,
                    rewards.ts, progression.ts, selectors.ts, saves.ts, room.ts
-  types/           save.ts (SaveDoc + SessionSave + SAVE_SCHEMA_VERSION), messages.ts (WS contracts,
+  types/           save.ts (SaveDoc + SessionSave + SAVE_EPOCH + SAVE_SCHEMA_VERSION), messages.ts (WS contracts,
                    host-only action list)
   utils/           room-code.ts (room-code alphabet + validator)
   data/            items (equipment.ts, stratagems.ts), warbonds.ts, fronts.ts,
@@ -157,11 +161,10 @@ Room state lives in `useStorage('rooms')` — Nitro `fs-lite` writing to `./.dat
 unlaunched lobby (`ROOM_TTL_MS`), 30 days once the crusade has launched (`CRUSADE_TTL_MS`), never
 while `saved` pins it (see Saved dives). `createdAt` (absent on records written before it existed)
 feeds the aggregate session-length histogram when a room ages out: the observation is
-`updatedAt - createdAt`, so the idle tail before pruning does not inflate it. Stored states are normalized on read: rooms carry no
-schema version, so `loadRoom` applies the idempotent subset of the save migrations
-(`normalizeRoomState` in `shared/engine/saves.ts` — pre-v13 variant ids, fields added after the
-room was written) before serving or reducing it, since rooms survive deploys on the Fly volume. The
-same read sanitizes the moderation metadata (`bans`, `seatIps`, `ipSalt`), so a malformed record
+`updatedAt - createdAt`, so the idle tail before pruning does not inflate it. Rooms carry no
+schema version and survive deploys on the Fly volume. The beta clean slate wiped every stored room,
+so `loadRoom` currently serves states as written; a later shape change must add an idempotent
+read-time normalization there (see Save model). The same read sanitizes the moderation metadata (`bans`, `seatIps`, `ipSalt`), so a malformed record
 never breaks a join.
 Storage is read-modify-write, so `room-sync.ts` serializes every
 mutation of a room behind an in-process per-room lock (`withRoomLock`): the process is
@@ -301,7 +304,7 @@ reducer.
   reattach; a fresh or identity-less joiner seats as a mid-crusade joiner and chooses between a
   parked **legacy cache** and their **Field Promotion** at the Field Promotion gate (see Mid-crusade joining) — "pick up
   previous equipment or roll".
-- **The home list is a cache, not an index of live rooms.** `griffdive:rooms:v1` keeps the 12 most
+- **The home list is a cache, not an index of live rooms.** `griffdive:rooms:v2` keeps the 12 most
   recent rooms for 30 days (`MAX_RECENT_ROOMS`, `RECENT_ROOM_MAX_AGE_MS` in `useRecentRooms`). The
   card's live/idle label comes from the REST `online` list — a room record outlives its squad by up
   to 30 days — and finished crusades (and empty lobbies) are dropped from the list, since RESUME has
@@ -317,7 +320,7 @@ reducer.
 A crusade can take hours, and the exact same friend group will rarely all be back online at once —
 so saves must be per person, per session, not just per room. Every seated diver's browser keeps a
 personal **session save**: a `SaveDoc` mirror of the room plus `roomCode` and `ownerId` (`SessionSave`
-in `shared/types/save.ts`), written to `localStorage` (`griffdive:sessions:v1`) on each synced
+in `shared/types/save.ts`), written to `localStorage` (`griffdive:sessions:v2`) on each synced
 snapshot by `useSessionSaves`/`useGameSocket` (debounced, capped at the 20 most recent; the last
 *seated* snapshot is flushed the moment the seat disappears — a kick — and on unmount). It is
 convenience state, never engine state — the room stays authoritative, and the mirror outlives the
@@ -328,7 +331,7 @@ RESUME is the way back to the same squad's room and **HOST** on a session save i
 the crusade on with someone else.
 
 Any save — a session mirror or a local solo `SaveDoc` — can seed a **new session**: `POST /api/rooms`
-accepts an optional `{ save, name }` body, runs `normalizeSaveDoc` (so save migrations apply), then
+accepts an optional `{ save, name }` body, runs `normalizeSaveDoc` (so alpha and unreadable saves are refused), then
 the pure `forkCrusade(state, ownerId, name)` in `shared/engine/room.ts`. The rules:
 
 - **The continuing diver keeps their seat as host**, exactly where the crusade stopped — same
@@ -344,7 +347,7 @@ the pure `forkCrusade(state, ownerId, name)` in `shared/engine/room.ts`. The rul
   forks never pile up stale kits.
 - **Returning divers are recognized by the seats their browser remembers.** Caches keep the
   departed diver's id from the source room. A browser with no seat stored for the new room sends
-  every `griffdive:player:*` id it holds as `hello.knownIds` (≤20); the server reuses the first one
+  every `griffdive:seat:*` id it holds as `hello.knownIds` (≤20); the server reuses the first one
   that matches a cache key, so `joinDiver` reclaims that diver's own kit. A cleared browser, or one
   whose kit was already claimed, simply joins fresh. No accounts or lineage tracking are involved.
 - **A fork is a copy, never a move**: the original room, its pin and its invite link are untouched.

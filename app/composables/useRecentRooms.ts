@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'griffdive:rooms:v1'
+const STORAGE_KEY = 'griffdive:rooms:v2'
 
 // The home page's "continue" list is convenience state, not an archive: keep
 // the rooms this browser actually played recently and let the rest go. A room
