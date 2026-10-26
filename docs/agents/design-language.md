@@ -61,6 +61,13 @@ set; extracted references are git-ignored and presentation-only. Nothing here to
   `SES GRIFFDIVE · DESTROYER TERMINAL`, and the boot rail signs off `Protocol 1017`. A CRT static
   layer is an inline SVG-noise tile (no image request) that sits over the whole frame. Both twins
   mirror the terminal palette, honor reduced motion, and expose one status line to assistive tech.
+- **Share cards**: link previews carry the Bridge hero as a still — hazard rails, the kicker, the
+  `FREEDOM / IS / EARNED.` stack with its tier rules, a 3 → 10 tier ladder, and the griffin in a
+  wheel dial over the wordmark. `scripts/og-image.mjs` (`pnpm og:image`) renders it from
+  `BRAND_MARK` to `public/og-image.png` (1200×630, the `og:image`/`twitter:image` in
+  `nuxt.config.ts`, absolute on `https://griffdive.com`) and `branding/github-social-preview.png`
+  (1280×640, uploaded by hand in the repo settings). The SPA is SSR-off, so every route shares the
+  one card; re-run the script when the mark, the creed or the palette changes.
 
 #### Desktop shell — one lit stage
 
