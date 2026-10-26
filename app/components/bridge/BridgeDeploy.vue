@@ -244,10 +244,9 @@ function join(): void {
   color: var(--on-gold);
   text-align: left;
   cursor: pointer;
-  filter: drop-shadow(0 0 22px rgba(255, 214, 66, 0.2));
   transition: filter var(--dur-fast);
 }
-.host-btn:hover:not(:disabled) { filter: brightness(1.08) drop-shadow(0 0 26px rgba(255, 214, 66, 0.3)); }
+.host-btn:hover:not(:disabled) { filter: brightness(1.08); }
 .host-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .host-copy { display: grid; gap: 2px; min-width: 0; }
 .host-label { font-size: clamp(18px, 1.7vw, 24px); line-height: 1.1; }

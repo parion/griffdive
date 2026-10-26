@@ -257,7 +257,6 @@ const frontCard = computed<FrontCard | null>(() => {
   font-size: min(clamp(20px, 2.1vw, 27px), 100cqi / var(--fit-len, 1));
   line-height: 1;
   color: var(--front-accent);
-  text-shadow: 0 0 22px color-mix(in srgb, var(--front-accent) 28%, transparent);
 }
 .front-planet {
   color: var(--gold);
