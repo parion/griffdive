@@ -41,7 +41,7 @@ test('the star rating is a keyboard-navigable radio group', async ({ page }) => 
   await page.locator('.strain-card').getByRole('button', { name: 'Skip' }).click()
   await page.getByRole('button', { name: 'Deal the pacts' }).click()
   await page.locator('.condition').first().click()
-  await page.getByRole('button', { name: /^Swear 1 pact/ }).click()
+  await page.getByRole('button', { name: /^Take 1 pact/ }).click()
   await page.getByRole('button', { name: 'Extracted' }).click()
 
   const threeStars = page.getByRole('radio', { name: '3 stars' })

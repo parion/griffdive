@@ -113,7 +113,6 @@ function warbondName(code: string): string {
         class="tier-heading"
         :data-tier="group.tier"
       >
-        <span class="disp tier-mark">{{ group.tier.toUpperCase() }}</span>
         <span class="tier-label">{{ group.tier.toUpperCase() }} Tier</span>
         <span
           class="dash"
@@ -161,15 +160,6 @@ function warbondName(code: string): string {
   align-items: baseline;
   gap: 0.6rem;
   margin: 1.4rem 0 0.1rem;
-}
-.tier-mark {
-  display: inline-grid;
-  place-items: center;
-  min-width: 2rem;
-  height: 2rem;
-  font-size: 1rem;
-  color: currentColor;
-  border: 1px solid currentColor;
 }
 .tier-label {
   font-family: var(--font-display);

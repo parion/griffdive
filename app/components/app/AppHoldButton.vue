@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// Hold-to-confirm action with a tap fallback. The fill is presentation only; the
-// parent's `confirm` handler decides what the action means, so this never gates
-// engine rules — reduced motion simply skips the delay.
+// Hold-to-confirm action. A pointer or touch press only counts once it is held
+// for the full duration; a tap just nudges. Keyboard and assistive-tech
+// activation arrive as a click with no press, and confirm directly. The fill is
+// presentation only; the parent's `confirm` handler decides what it means.
 const props = withDefaults(defineProps<{
   label: string
   hint?: string
@@ -19,48 +20,63 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{ confirm: [] }>()
 
-const reduced = import.meta.client
-  && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
 const holding = ref(false)
-const committed = ref(false)
+const nudged = ref(false)
+let pressed = false
+let committed = false
 let timer: ReturnType<typeof setTimeout> | undefined
+let nudgeTimer: ReturnType<typeof setTimeout> | undefined
 
 function finish(): void {
   holding.value = false
-  committed.value = true
+  committed = true
   emit('confirm')
-  setTimeout(() => {
-    committed.value = false
-  }, 300)
 }
 
-function down(): void {
-  if (props.disabled) {
+function down(event: PointerEvent): void {
+  if (props.disabled || event.button !== 0) {
     return
   }
-  committed.value = false
+  pressed = true
+  committed = false
+  nudged.value = false
   holding.value = true
   clearTimeout(timer)
-  timer = setTimeout(finish, reduced ? 0 : props.duration)
+  timer = setTimeout(finish, props.duration)
 }
 
-function up(): void {
+function release(): void {
   holding.value = false
   clearTimeout(timer)
 }
 
+function abandon(): void {
+  release()
+  pressed = false
+}
+
 function click(): void {
-  if (committed.value) {
-    committed.value = false
+  if (props.disabled) {
     return
   }
-  if (!props.disabled) {
+  if (!pressed) {
     finish()
+    return
+  }
+  pressed = false
+  if (!committed) {
+    nudged.value = true
+    clearTimeout(nudgeTimer)
+    nudgeTimer = setTimeout(() => {
+      nudged.value = false
+    }, 1600)
   }
 }
 
-onBeforeUnmount(() => clearTimeout(timer))
+onBeforeUnmount(() => {
+  clearTimeout(timer)
+  clearTimeout(nudgeTimer)
+})
 </script>
 
 <template>
@@ -71,9 +87,10 @@ onBeforeUnmount(() => clearTimeout(timer))
     :disabled="disabled"
     :aria-label="ariaLabel ?? label"
     @pointerdown="down"
-    @pointerup="up"
-    @pointerleave="up"
-    @pointercancel="up"
+    @pointerup="release"
+    @pointerleave="abandon"
+    @pointercancel="abandon"
+    @contextmenu.prevent
     @click="click"
   >
     <span
@@ -85,9 +102,11 @@ onBeforeUnmount(() => clearTimeout(timer))
       <slot>
         <span class="disp hold-label">{{ label }}</span>
         <span
-          v-if="hint"
+          v-if="hint || nudged"
           class="hold-hint"
-        >{{ hint }}</span>
+          :class="{ nudged }"
+          aria-live="polite"
+        >{{ nudged ? 'KEEP HOLDING' : hint }}</span>
       </slot>
     </span>
   </button>
@@ -147,4 +166,5 @@ onBeforeUnmount(() => clearTimeout(timer))
   text-transform: none;
   opacity: 0.8;
 }
+.hold-hint.nudged { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
 </style>

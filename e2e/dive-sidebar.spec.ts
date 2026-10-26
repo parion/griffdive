@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { dismissWarbondIntro, fileCallsign } from './helpers'
 
-test('desktop: one persistent sidebar hosts Kit, Codex, Warbonds and Bargains', async ({ page }) => {
+test('desktop: one persistent sidebar hosts Kit, Armory, Warbonds and Bargains', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
   await page.getByRole('button', { name: 'Solo drop' }).click()
@@ -15,12 +15,12 @@ test('desktop: one persistent sidebar hosts Kit, Codex, Warbonds and Bargains', 
   await expect(side.getByRole('heading', { level: 2 })).toHaveCount(0)
 
   // One panel at a time, switched from the rail, never a modal.
-  await rail.getByRole('button', { name: 'Codex', exact: true }).click()
-  await expect(side.getByRole('heading', { name: 'Codex', level: 2 })).toBeVisible()
+  await rail.getByRole('button', { name: 'Armory', exact: true }).click()
+  await expect(side.getByRole('heading', { name: 'Armory', level: 2 })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await rail.getByRole('button', { name: 'Warbonds', exact: true }).click()
   await expect(side.getByRole('heading', { name: 'Warbonds', level: 2 })).toBeVisible()
-  await expect(side.getByRole('heading', { name: 'Codex', level: 2 })).toHaveCount(0)
+  await expect(side.getByRole('heading', { name: 'Armory', level: 2 })).toHaveCount(0)
   await expect(rail.getByRole('button', { name: 'Warbonds', exact: true })).toHaveAttribute('aria-expanded', 'true')
 
   // The stage stays live beside it.
@@ -63,8 +63,8 @@ test('phone: the rail pins above the action bar and the panel rises over the sta
   // A tap anywhere off the dock puts the panel away too, and the beat tabs
   // no longer take header space.
   await expect(page.locator('.beats')).toHaveCount(0)
-  await rail.getByRole('button', { name: 'Codex', exact: true }).tap()
-  await expect(side.getByRole('heading', { name: 'Codex', level: 2 })).toBeVisible()
+  await rail.getByRole('button', { name: 'Armory', exact: true }).tap()
+  await expect(side.getByRole('heading', { name: 'Armory', level: 2 })).toBeVisible()
   await page.locator('.phone-top .diff-copy').tap()
   await expect(side.getByRole('heading', { level: 2 })).toHaveCount(0)
   await context.close()

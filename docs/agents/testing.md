@@ -33,7 +33,7 @@
   production build (`pnpm build` + Nitro server, port 3173, WebSocket included). Specs: solo dive
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host
   authority, pact lock-in; a squad that all leaves finds its room waiting and RESUME reseats
-  everyone; the squad never waits on a diver who left), Codex in the dive sidebar (opens beside the dive without dropping the session), sidebar panels (desktop rail, phone bottom dock),
+  everyone; the squad never waits on a diver who left), Armory (Codex component) in the dive sidebar (opens beside the dive without dropping the session), sidebar panels (desktop rail, phone bottom dock),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
   star-rating keyboard navigation), phone host moderation
   (`phone.spec.ts`: a squadmate's hangar bay opens host actions; after launch the 390px Squad button
@@ -42,13 +42,13 @@
   (`phone-layout.spec.ts`: no sideways overflow at 360px with a multi-front live Major Order, the
   hangar's four bays in one row with the live order as the default plan and the launch in reach, the
   live spin CTA, tapping the report's larger time cells), the phone action bar
-  (`phone-action-bar.spec.ts`: the bar is pinned to the bottom edge with a live primary action on every
+  (`phone-action-bar.spec.ts`: a tap on Launch crusade only nudges and a held press launches; the bar is pinned to the bottom edge with a live primary action on every
   dive screen from the wheel to loot (the standalone hangar pins its own launch CTA), plus confirm-failure and the surrender bar), tablet layout (`tablet-layout.spec.ts`: at
   1024×768 every phase fits the centre stage without the page scrolling vertically, and the drawn
    directive's Take it is in view; at
   768×1024 the phone shell widens to the tablet), the join briefing (`join-briefing.spec.ts`: a
   named host skips every gate and gets the tutorial, a squadmate reads the one-page briefing — callsign
-  focused on load, Enter files it and opens the squad card, issued kit, Codex drawer, the dial's
+  focused on load, Enter files it and opens the squad card, starting gear, Armory drawer, the dial's
   scroll-in sweep — lands with no tutorial or Warbonds panel, and replays it as the
   Field manual; the spec uses one room because creation is rate-limited per IP), the SEAF launch
   reveal (`kit-reveal.spec.ts`: the setup kit's "?" boxes, a solo and an online launch dealing the

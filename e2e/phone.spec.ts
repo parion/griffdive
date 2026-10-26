@@ -29,7 +29,7 @@ test('phone host moderation: open the squad, hand over or kick', async ({ browse
   await expect(bayManage).toBeHidden()
 
   // Once launched, the phone squad sheet carries moderation (never on self).
-  await pageA.getByRole('button', { name: /^Launch crusade/ }).click()
+  await pageA.getByRole('button', { name: /^Launch crusade/ }).press('Enter')
   await expect(pageA.locator('.phone-call')).toBeVisible()
   await pageA.getByRole('button', { name: 'Squad' }).click()
   const squad = pageA.getByRole('dialog', { name: 'Squad' })

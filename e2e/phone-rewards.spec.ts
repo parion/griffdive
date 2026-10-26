@@ -16,7 +16,7 @@ test('phone draft: a non-host diver can bank their reward', async ({ browser }) 
   await pageA.getByLabel('Your name').press('Enter')
   await pageA.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(pageA)
-  await pageA.getByRole('button', { name: 'Launch crusade' }).click()
+  await pageA.getByRole('button', { name: 'Launch crusade' }).press('Enter')
   await expect(pageA.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
 
   await pageB.goto(pageA.url())

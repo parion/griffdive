@@ -132,13 +132,13 @@ const PHASE_STATUS: Record<DivePhase, string> = {
   decision: 'At the wheel',
   strain: 'At the wheel',
   deal: 'At the wheel',
-  pacts: 'Swearing pacts',
-  diving: 'In the field',
+  pacts: 'Picking pacts',
+  diving: 'On a mission',
   rewards: 'Drafting rewards',
-  forfeit: 'Settling a failed mission',
-  complete: 'Crusade over',
+  forfeit: 'Sorting out a failed mission',
+  complete: 'Run over',
 }
-const status = computed(() => (props.state ? PHASE_STATUS[props.state.phase] : 'Raising the squad…'))
+const status = computed(() => (props.state ? PHASE_STATUS[props.state.phase] : 'Gathering the squad…'))
 
 // ---- 01 · the kit a Class E diver is issued --------------------------------
 // The lobby has no settings yet, so it shows the bare surplus every start shares.
@@ -157,12 +157,12 @@ const heroIcons = computed(() =>
 // ---- 02 · the mission loop, split by who acts ------------------------------
 type Who = 'host' | 'you' | 'all'
 const LOOP: readonly { who: Who, beat: string, text: string }[] = [
-  { who: 'host', beat: 'Spin', text: 'Spins the Wheel of Adversity — one Squad Directive the whole squad plays under.' },
-  { who: 'host', beat: 'Squad call', text: 'Takes or skips the directive. Weigh in on voice — it\'s your risk too.' },
-  { who: 'you', beat: 'Swear pacts', text: 'You\'re dealt a hand of personal pacts. Swear any, all or none, then lock in.' },
-  { who: 'all', beat: 'Dive', text: 'Play the mission in Helldivers 2. Finish the objectives and extract to win it.' },
-  { who: 'host', beat: 'Report', text: 'Files the stars, time and samples; spins Squad Honors on a full-star clear.' },
-  { who: 'you', beat: 'Draft', text: 'Every option rolls its own tier. Bank one, then spend credits at Brasch\'s Bargains.' },
+  { who: 'host', beat: 'Spin', text: 'Spins the Wheel of Adversity. It lands one directive the whole squad plays under.' },
+  { who: 'host', beat: 'Squad call', text: 'Takes the directive for better loot, or skips it. You play under it too, so speak up.' },
+  { who: 'you', beat: 'Pick pacts', text: 'You get a hand of personal pacts. Take any, all or none.' },
+  { who: 'all', beat: 'Dive', text: 'Play the mission in Helldivers 2. Finish the objectives and extract.' },
+  { who: 'host', beat: 'Report', text: 'Enters the stars, time left and samples from the end-of-mission screen.' },
+  { who: 'you', beat: 'Draft', text: 'Pick one reward to keep, then spend credits at Brasch\'s Bargains.' },
 ]
 const WHO_TAG: Record<Who, string> = { host: 'Host', you: 'You', all: 'Squad' }
 
@@ -260,7 +260,7 @@ function submit(): void {
           <AppBrandMark :size="24" />
           <span class="disp">Griffdive</span>
         </NuxtLink>
-        <span class="chip jb-form-no">Form 5-E · Induction</span>
+        <span class="chip jb-form-no">Squad guide</span>
         <span class="grow" />
         <span class="chan jb-uplink">
           <span
@@ -280,7 +280,7 @@ function submit(): void {
           <span
             v-if="!review"
             class="lbl gold"
-          >Incoming transmission</span>
+          >You're invited</span>
           <h1
             v-if="!review"
             id="jb-title"
@@ -302,8 +302,8 @@ function submit(): void {
             <template v-else>
               A host is leading
             </template>
-            a squad up the Helldivers 2 difficulty ladder. Griffdive keeps the rules and the host runs
-            the table — your part is small, and all of it is on this page.
+            a squad up the Helldivers 2 difficulty ladder. The host runs the run and Griffdive
+            tracks the rules. Your part is small, and it's all on this page.
           </p>
           <ul
             v-if="heroIcons.length"
@@ -329,8 +329,7 @@ function submit(): void {
             class="jb-reg cut"
           >
             <div class="jb-reg-h">
-              <span class="lbl">Citizen registry</span>
-              <span class="cap">Form 5-E</span>
+              <span class="lbl">Your diver</span>
             </div>
 
             <div
@@ -374,7 +373,7 @@ function submit(): void {
                 id="jb-callsign-hint"
                 class="jb-reg-hint"
               >
-                <span class="cap">{{ filing === 'open' ? 'The name your squad sees' : 'Filed — edit any time' }}</span>
+                <span class="cap">{{ filing === 'open' ? 'The name your squad sees' : 'Saved. Change it any time' }}</span>
                 <span class="cap"><kbd v-if="filing === 'open'">Enter</kbd> {{ name.length }} / {{ MAX_NAME_LENGTH }}</span>
               </span>
             </div>
@@ -417,7 +416,7 @@ function submit(): void {
               class="sr-only"
               aria-live="polite"
             >
-              {{ filing === 'filed' && !review ? `Filed: ${callsign}, Class E — Griffdiver.` : '' }}
+              {{ filing === 'filed' && !review ? `Saved: ${callsign}.` : '' }}
             </p>
           </div>
 
@@ -539,7 +538,7 @@ function submit(): void {
             id="jb-01"
             class="disp"
           >
-            Identify
+            Your gear
           </h2>
         </header>
         <div class="jb-id">
@@ -549,8 +548,8 @@ function submit(): void {
               <span class="jb-big-e">You are Class <span class="red">E</span>.</span>
             </p>
             <p>
-              A <b>Griffdiver</b>: shipped to the front with surplus kit and no arsenal. You earn your
-              gear back one dive at a time — every reward you bank stays yours for the whole crusade.
+              You start with basic surplus gear. Each mission you clear earns you one item, and
+              you keep it for the rest of the run.
             </p>
           </div>
 
@@ -563,7 +562,7 @@ function submit(): void {
               <span
                 id="jb-kit-h"
                 class="lbl gold"
-              >Issued kit · surplus</span>
+              >Starting gear</span>
               <span class="cap"><b>{{ kitCount }}</b> items</span>
             </div>
             <div
@@ -592,9 +591,9 @@ function submit(): void {
               {{ kitMode === 'seaf'
                 ? `Plus the SEAF Support Package the host launched with: a random B-tier pack rolled for each diver (${supportRecipe}).`
                 : state?.settings
-                  ? 'The bare surplus — this crusade runs without the SEAF Support Package.'
+                  ? 'Surplus gear only. This run has no SEAF Support Package.'
                   : 'The host\'s launch can add the SEAF Support Package on top.' }}
-              It's all yours from the first drop; every reward adds to it.
+              Every reward you earn adds to it.
             </span>
           </div>
         </div>
@@ -632,13 +631,13 @@ function submit(): void {
         </ol>
         <div class="jb-cues">
           <span class="jb-cue act"><span class="lamp gold pulse" />Your move</span>
-          <span class="jb-cue-x">It's on you — swear your pacts, draft your reward.</span>
+          <span class="jb-cue-x">Pick your pacts, or pick your reward.</span>
           <span class="jb-cue wait"><span class="lamp teal" />Stand by</span>
-          <span class="jb-cue-x">The host has it. The cue sits by the squad list on every beat.</span>
+          <span class="jb-cue-x">The host is up. Shown by the squad list.</span>
         </div>
         <p class="jb-foot">
-          Fail a mission and the squad replays the operation — and you surrender one item you earned,
-          picked from a dealt offer. Your surplus starter kit is never at stake.
+          Fail a mission and the squad replays the operation, and you give up one item you earned.
+          Your starting gear is never at risk.
         </p>
       </section>
 
@@ -660,19 +659,19 @@ function submit(): void {
         <ol class="jb-chain">
           <li>
             <span class="disp">Risk</span>
-            <span>Every rule you play under: the squad's directive plus your own pacts.</span>
+            <span>The squad's directive, plus your own pacts.</span>
           </li>
           <li>
             <span class="disp">Odds</span>
-            <span>Your risk plots one d100 line. Every point widens the better zones.</span>
+            <span>More risk means better odds of a higher tier.</span>
           </li>
           <li>
             <span class="disp">Roll</span>
-            <span>Each reward option rolls its own face. The zone it lands in sets its tier.</span>
+            <span>Each reward option rolls its tier on its own.</span>
           </li>
           <li>
             <span class="disp">Loot</span>
-            <span>Clear the mission and bank one option — its card shows the face it rolled.</span>
+            <span>Clear the mission and keep one option.</span>
           </li>
         </ol>
 
@@ -682,7 +681,7 @@ function submit(): void {
         >
           <div class="jb-dial-ctl">
             <label class="jb-dial-h">
-              <span class="lbl gold">Try it · Chosen risk</span>
+              <span class="lbl gold">Try it · Risk</span>
               <input
                 v-model.number="valor"
                 class="jb-range"
@@ -690,7 +689,7 @@ function submit(): void {
                 min="0"
                 :max="VALOR_METER_MAX"
                 step="1"
-                aria-label="Chosen risk"
+                aria-label="Risk"
                 @pointerdown="holdDial"
                 @keydown="holdDial"
               >
@@ -744,7 +743,7 @@ function submit(): void {
               <b>{{ difficultyName(dialDifficulty) }}</b> floors every reward at <b
                 class="tb"
                 :data-tier="baseTier"
-              >{{ baseTier }}</b> — risk widens the zones above it.
+              >{{ baseTier }}</b> . Risk raises the odds above that.
             </span>
             <span>Your squad dives at <b>{{ difficulty }}</b> today and climbs to {{ MAX_DIFFICULTY }}.</span>
           </p>
@@ -763,7 +762,7 @@ function submit(): void {
             id="jb-04"
             class="disp"
           >
-            Where your gear lives
+            Where things are
           </h2>
         </header>
         <div class="jb-deck">
@@ -786,7 +785,7 @@ function submit(): void {
                 <span
                   class="pl-btn"
                   :class="{ lit: lit === 'codex' }"
-                >Codex<i class="pl-mk">{{ spotNo('codex') }}</i></span>
+                >Armory<i class="pl-mk">{{ spotNo('codex') }}</i></span>
                 <span
                   class="pl-btn"
                   :class="{ lit: lit === 'warbonds' }"
@@ -801,7 +800,7 @@ function submit(): void {
               </div>
               <div class="pl-body">
                 <div class="pl-centre">
-                  <span class="pl-lbl">One lit stage</span>
+                  <span class="pl-lbl">Main screen</span>
                   <span class="pl-wheel" />
                 </div>
               </div>
@@ -848,9 +847,8 @@ function submit(): void {
             >
               <span class="jb-mk">{{ spotNo('kit') }}</span>
               <span class="jb-leg">
-                <span class="jb-leg-h"><IconKit class="jb-leg-i" /><b>Kit</b><span class="cap">Header · Kit</span></span>
-                <span>Everything you own: the surplus starters plus every reward you bank. Pacts and
-                  directives grey out what they ban, live.</span>
+                <span class="jb-leg-h"><IconKit class="jb-leg-i" /><b>Kit</b></span>
+                <span>Everything you own. Anything this mission's rules ban is greyed out.</span>
               </span>
             </li>
             <li
@@ -861,15 +859,15 @@ function submit(): void {
             >
               <span class="jb-mk">{{ spotNo('codex') }}</span>
               <span class="jb-leg">
-                <span class="jb-leg-h"><IconBook class="jb-leg-i" /><b>Codex</b><span class="cap">Header · menu</span></span>
-                <span>Every stratagem, weapon and booster in the pool, with its tier.</span>
+                <span class="jb-leg-h"><IconBook class="jb-leg-i" /><b>Armory</b></span>
+                <span>Every item that can drop, sorted by tier.</span>
                 <button
                   class="btn tiny ghost jb-try"
                   type="button"
                   aria-haspopup="dialog"
                   @click="openCodex"
                 >
-                  Open the Codex
+                  Open the armory
                 </button>
               </span>
             </li>
@@ -881,16 +879,15 @@ function submit(): void {
             >
               <span class="jb-mk">{{ spotNo('warbonds') }}</span>
               <span class="jb-leg">
-                <span class="jb-leg-h"><IconWarbond class="jb-leg-i" /><b>Warbonds</b><span class="cap">Header · menu</span></span>
-                <span>Rewards only roll from warbonds you own. Most come ticked — untick any you
-                  haven't bought.</span>
+                <span class="jb-leg-h"><IconWarbond class="jb-leg-i" /><b>Warbonds</b></span>
+                <span>Rewards only come from warbonds you own. Untick any you haven't bought.</span>
                 <span class="jb-wb">
                   <span class="jb-wb-bar"><i
                     v-for="w in WARBONDS"
                     :key="w.code"
                     :class="{ on: ownedWarbonds.includes(w.code) }"
                   /></span>
-                  <span class="cap"><b>{{ ownedWarbonds.length }}</b> / {{ WARBONDS.length }} declared</span>
+                  <span class="cap"><b>{{ ownedWarbonds.length }}</b> / {{ WARBONDS.length }} owned</span>
                 </span>
                 <button
                   class="btn tiny ghost jb-try"
@@ -898,7 +895,7 @@ function submit(): void {
                   aria-haspopup="dialog"
                   @click="openWarbonds"
                 >
-                  Declare warbonds
+                  Edit warbonds
                 </button>
               </span>
             </li>
@@ -910,8 +907,8 @@ function submit(): void {
             >
               <span class="jb-mk">{{ spotNo('tutorial') }}</span>
               <span class="jb-leg">
-                <span class="jb-leg-h"><b>Tutorial</b><span class="cap">Header · menu</span></span>
-                <span>Brings this page back, any time.</span>
+                <span class="jb-leg-h"><b>Tutorial</b></span>
+                <span>Opens this guide again.</span>
               </span>
             </li>
           </ul>

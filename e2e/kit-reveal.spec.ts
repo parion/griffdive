@@ -58,7 +58,7 @@ test('online: the launch and a late joiner each get their own pack dealt', async
 
   await pageA.getByRole('radio', { name: /^Hard/ }).click()
   await expect(pageA.locator('.tile.mystery')).toHaveCount(6)
-  await pageA.getByRole('button', { name: 'Launch crusade' }).click()
+  await pageA.getByRole('button', { name: 'Launch crusade' }).press('Enter')
 
   const reveal = pageA.getByRole('dialog', { name: 'SEAF Support Package Inbound' })
   await expect(reveal).toBeVisible()

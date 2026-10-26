@@ -30,6 +30,24 @@ Design principles — every gameplay decision must honor these:
 7. **Failure is a setback, not a wipe.** Repeat the difficulty, every diver forfeits one earned item
    from a dealt offer (tier-capped by the Valor they took on), keep climbing.
 
+### Copy and voice
+
+The terminal look is the theme; the words are plain. A player should understand every line the
+first time they read it, mid-session, on a phone. Playtest feedback flagged invented ceremony
+("sworn", "front locked", "live-synced", "Form 5-E") as confusing and fake-sounding, so:
+
+- **Say what happens, in the player's words.** Helldivers 2 vocabulary (stratagem, extract,
+  reinforce, Major Order, front, op) is welcome; invented bureaucracy and ritual verbs are not.
+  Prefer "Take 1 pact" to "Swear 1 pact", "Front" to "Front locked".
+- **One name per thing on screen.** Player-facing terms: **Directive** (the wheel's squad rule),
+  **Pacts** (taken / taken this mission, never sworn), **Strain**, **Front**, **Loot odds** (the
+  odds bar; `Valor`/`ValorRoll` stay code and rules-doc terms only), **Armory** (the full item
+  catalog; `codex` stays the component, route and metrics name), **Kit**, **Warbonds**, **Brasch's
+  Bargains**. Risk is shown as skulls and called risk.
+- **Earn every label.** Skip eyebrows and kickers that restate the heading or only add flavour; never
+  show the same fact twice (a tier-grouped list doesn't badge each card with its tier).
+- **Controls do what they say.** A "hold to" control requires a hold (see `AppHoldButton`).
+
 ### Destroyer Terminal design language — the Lit pass
 
 The whole UI speaks one terminal language. The redesign source is the **Griffdive Lit Pass** board
@@ -95,8 +113,8 @@ merge with them.
   boxed in a hex or tinted — then the gold number, difficulty name,
   op number and mission pips, front emblem), the four **`PhaseTabs`** beats (Call · Pacts · Dive ·
   Loot, current beat filled gold, finished beats checked), the connection lamp and the session
-  menu. Kit, Codex, Warbonds and Brasch's Bargains no longer live up here: they are the
-  **`DiveSidebar`** rail (see *Kit, Codex, Warbonds* below). Back to the Bridge lives
+  menu. Kit, Armory, Warbonds and Brasch's Bargains no longer live up here: they are the
+  **`DiveSidebar`** rail (see *Kit, Armory, Warbonds* below). Back to the Bridge lives
   in `DiveMenu`, because the global bridge header stands down on `/dive`.
 - **`SquadDock`** anchors the bottom: status lamps and names for every diver (`.seat` cards —
   not the global `.chip` tag utility), open seats, Steam lobby and invite copy, and the
@@ -111,7 +129,7 @@ merge with them.
   land under the modal overlay).
 - **`PhaseTabs`** replaced the old "whose move?" cue. The current beat is the lead; host-only
   controls are visibly absent for squadmates rather than disabled chrome. A non-host sees "Stand by"
-  and the host's name on the call, but still swears their own pacts and banks their own loot.
+  and the host's name on the call, but still takes their own pacts and banks their own loot.
 
 #### Bridge — the home page (`pages/index.vue` + `components/bridge/`)
 
@@ -148,7 +166,7 @@ component. Top to bottom:
   **Join a squad** (six-cell room code + Join) and **Play solo** (one full-width **Solo drop**
   button — no name field: a fresh browser files its callsign on the host tutorial that opens the
   dive, and a returning one reuses its saved name). Under the console, outside its box, three
-  quiet icon buttons: **View codex**, **Set warbonds** (the Variant & warbonds dialog: variant,
+  quiet icon buttons: **View armory**, **Set warbonds** (the Variant & warbonds dialog: variant,
   front plan, owned warbonds) and **Import save** (stacked icon-over-label in three columns on
   phones). Beside the copy sits the hero's showcase slot, decided on mount (it stays empty until
   then, so a returning squad never sees the wheel flash):
@@ -171,8 +189,8 @@ component. Top to bottom:
   1. **Call** — `BridgeDirectives`: every wheel directive as sigil + skulls tiles on two
      counter-running belts (paused on hover, static under reduced motion; a screen-reader
      list carries the same content).
-  2. **Pacts** — `BridgePacts`: three real `ConditionCard`s fan in, then two take the SWORN
-     stamp; a tally shows the sworn skulls. Phones swipe the hand.
+  2. **Pacts** — `BridgePacts`: three real `ConditionCard`s fan in, then two take the TAKEN
+     stamp; a tally shows the taken skulls. Phones swipe the hand.
   3. **Climb · Loot** — `BridgeOdds`, the one interactive teaching aid: a 3→10 rung radio
      (difficulty emblems, base tier), a **Skulls taken** range, the shared `ValorRoll` line from
      `tierZones`, and four example draws at fixed d100 faces wrapped in `RewardReveal` — the
@@ -228,7 +246,7 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
   higher-tier rewards"** with a C→S tier ladder that brightens as it climbs — rather than an odds
   table: setup teaches the rule the whole run plays by.
 - One pinned **launch bar**: the compact `RiskSetup` (one row on desktop, two on phones) beside the
-  hold-to-launch CTA (stacked and full width on phones); the Bridge dialog shows the same total
+  hold-to-launch CTA (`AppHoldButton`: a pointer or touch press must be held — a tap only shows "KEEP HOLDING" — while keyboard and assistive-tech activation confirm directly; stacked and full width on phones); the Bridge dialog shows the same total
   inline. There is no pre-launch checklist.
 
 #### Call — `DivePhaseWheel`
@@ -256,17 +274,17 @@ first spin as well as after it. Rerolls sit under the deal CTA as quiet secondar
 
 A centred, self-service hand of `ConditionCard`s dealt in with a stagger. Each card carries only
 its lit risk skulls, the vow in quotes, any benched-kit note, the accountability line and the
-inked SWORN stamp. There are no per-card odds words: hovering or picking previews the one odds
+inked TAKEN stamp. There are no per-card odds words: hovering or picking previews the one odds
 strip under the hand. The CTA is
-"Swear N pacts" (or "Dive with no pacts"), and a locked diver sees the sworn stamp while the rest of
+"Take N pacts" (or "Dive with no pacts"), and a locked diver sees the LOCKED IN stamp while the rest of
 the squad finishes. The hand is local: a squad sync leaves your picks alone — only a fresh draw or
 directive clears them. The **Kit** tab of the `DiveSidebar` shows the Kit everywhere, greying
-the items the unsworn pick would ban.
+the items the pending pick would ban.
 
 #### Dive — `DivePhaseDiving`
 
-The field screen is one column: the teal-lit directive card (HOLDING / BROKEN) and accepted strain,
-then a **Pacts sworn** ledger — one row per pact (diver, lit skulls, name, one-tap "Mark broken",
+The field screen is one column: the teal-lit directive card (ACTIVE / BROKEN) and accepted strain,
+then a **Pacts** ledger — one row per pact (diver, lit skulls, name, one-tap "Mark broken",
 confirm on the second tap). Each row is an accordion (`PactLedger`, shared with the phone) that
 opens on the vow and its accountability line, lit by a gold edge; your own pacts start open,
 everyone else's start shut. Hosts call **Extracted** or **Mission failed**; squadmates get a
@@ -310,7 +328,7 @@ it; a resolved draft waits on the squad. The **`SquadDraftBoard`** shows each sq
 tiles and status — the phone reward draft renders the same board (compact, one column), never a
 status-only summary — and the reroll control spends a banked honors token. An S+ roll is **Liberty's Cross**, shown
 not as a card but as the full-width **`LibertyCrossBand`** above the cards (crest, lore line, "Claim
-any item" opening the codex picker). Naming an item selects the Cross and the CTA banks it; the
+any item" opening the armory picker). Naming an item selects the Cross and the CTA banks it; the
 band's claim button then shows the chosen name with "Change pick".
 
 **The reveal is the fanfare.** Each card is wrapped in `RewardReveal` and cards deal in **left to
@@ -341,7 +359,7 @@ headline takes one pass of light — all stilled by reduced motion.
 
 #### ValorRoll — the one odds primitive
 
-`app/components/valor/ValorRoll.vue` draws the Valor odds line: tier zones whose widths are
+`app/components/valor/ValorRoll.vue` draws the Valor odds line (labelled **Loot odds** on screen): tier zones whose widths are
 cumulative reach chances, a ruler, zone labels with odds (or percentage-point gains), and pins at
 each rolled face. The call, pacts, dive (locked) and loot (pins) screens all use it, so the same
 visual grammar explains every roll. Zones under 0.5% read `<1%`; 0% zones are silent. When a
@@ -350,11 +368,11 @@ its leading edge; a shrinking tier keeps its settled odds label and no red block
 already shows the narrower zone. The signed movement stays in the zone tooltip. It is presentation
 only and reads `tierZones` from the engine.
 
-#### Kit, Codex, Warbonds
+#### Kit, Armory, Warbonds
 
-**`DiveSidebar`** is the one home for the dive's slide-overs: **Kit, Codex, Warbonds and Brasch's
+**`DiveSidebar`** is the one home for the dive's slide-overs: **Kit, Armory (`codex` in code), Warbonds and Brasch's
 Bargains**, on every dive shell (the lobby and the briefings stand outside it and keep the global
-Codex/Warbonds drawers). On desktop it is `DiveFrame`'s `aside`: a permanent 52px rail of vertical
+Armory/Warbonds drawers). On desktop it is `DiveFrame`'s `aside`: a permanent 52px rail of vertical
 tabs at the right edge (glyph, vertical label, and for Bargains the credit balance with its gold
 lamp, disabled with its reason mid-mission), and a non-modal panel that opens to the rail's left at
 `clamp(340px, 32vw, 34rem)`. One panel at a time; the active tab is gold-edged, a second click, the
@@ -364,7 +382,7 @@ still just call `openWarbonds()`). Bargains shuts itself when the squad drops in
 On a phone (`sheet`) the rail is a four-up row pinned just above the action bar (`PhoneShell`'s
 `dock` slot) and the panel rises over the stage from it (up to 64dvh, Hide or a tap anywhere off the dock folds it down; panels slide in and out
 symmetrically, tucked behind the rail and the action bar, never over them); the
-phone top bar and action bar no longer carry Kit, Codex or credit tiles. Components hosted here
+phone top bar and action bar no longer carry Kit, Armory or credit tiles. Components hosted here
 stay rule-free: they only render engine selectors.
 
 The Kit (`KitPanel`) keeps the lean diver list (a segmented strip with a gold lamp on the

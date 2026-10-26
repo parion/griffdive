@@ -147,7 +147,7 @@ function bannedNote(pactId: string): string {
   if (names.length === 0) {
     return ''
   }
-  return `Benches ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}`
+  return `Bans ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}`
 }
 
 const ctaLabel = computed(() => {
@@ -155,7 +155,7 @@ const ctaLabel = computed(() => {
   if (count === 0) {
     return 'Dive with no pacts'
   }
-  return `Swear ${count} pact${count === 1 ? '' : 's'}`
+  return `Take ${count} pact${count === 1 ? '' : 's'}`
 })
 
 function lockNow(): void {
@@ -170,10 +170,10 @@ function lockNow(): void {
     <header class="pact-head">
       <span class="kick">Your move</span>
       <h1 class="disp pact-title">
-        Swear your pacts
+        Pick your pacts
       </h1>
       <p class="pact-sub">
-        Only you carry them. Break one in the field and it costs you a loot option.
+        Pacts only affect you. Break one and you lose a loot option.
       </p>
     </header>
 
@@ -200,7 +200,7 @@ function lockNow(): void {
     >
       <span class="cap">Squad directive</span>
       <b class="disp directive-name">Safe dive</b>
-      <span class="directive-rule">No team rule accepted. The squad carries only its pacts.</span>
+      <span class="directive-rule">No directive this mission.</span>
     </div>
 
     <div
@@ -214,7 +214,7 @@ function lockNow(): void {
         :condition="pact"
         :risk="riskOf(pact.id)"
         :selected="selection.includes(pact.id)"
-        :stamp="selection.includes(pact.id) ? 'Sworn' : ''"
+        :stamp="selection.includes(pact.id) ? 'Taken' : ''"
         :blocked="coverage[pact.id] ?? ''"
         :note="bannedNote(pact.id)"
         :disabled="locked"
@@ -230,7 +230,7 @@ function lockNow(): void {
     <ValorRoll
       :zones="previewZones"
       :deltas="deltas"
-      :note="selectionNames ? `With ${selectionNames}` : 'No pacts sworn'"
+      :note="selectionNames ? `With ${selectionNames}` : 'No pacts'"
       :locked="locked"
     />
 
@@ -260,7 +260,7 @@ function lockNow(): void {
         class="locked-row"
         role="status"
       >
-        <span class="locked-stamp disp">Sworn</span>
+        <span class="locked-stamp disp">Locked in</span>
         <span class="locked-copy">
           <b>{{ selectionNames || 'No pacts' }}</b>
           <span>Waiting for the rest of the squad…</span>

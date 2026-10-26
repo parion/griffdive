@@ -41,7 +41,14 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
   const launchBox = await launch.boundingBox()
   expect(launchBox!.y + launchBox!.height).toBeGreaterThan(VIEWPORT.height - 40)
   expect(launchBox!.height).toBeGreaterThanOrEqual(54)
+  // Hold to launch means hold: a tap only nudges, a held press drops.
   await launch.click()
+  await expect(launch).toContainText('KEEP HOLDING')
+  await expect(page.locator('.phone-call')).toBeHidden()
+  await launch.hover()
+  await page.mouse.down()
+  await page.waitForTimeout(900)
+  await page.mouse.up()
   await expect(page.locator('.phone-call')).toBeVisible()
 
   await expectPinnedBar(page, '2-wheel-spin')
@@ -101,7 +108,7 @@ test('phone: a failed mission lands on the pinned remove bar', async ({ browser 
     await primary.getByRole('button', { name: 'Dive with no pacts' }).click()
   }
 
-  await page.getByRole('button', { name: 'Launch crusade' }).click()
+  await page.getByRole('button', { name: 'Launch crusade' }).press('Enter')
   await diveToPacts(true)
 
   // Failure only takes earned gear, so clear mission 1 and bank a reward first.

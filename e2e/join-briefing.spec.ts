@@ -45,18 +45,18 @@ test('squadmates read one briefing page; the host keeps the tutorial', async ({ 
   await expect(joiner.getByRole('button', { name: 'Set warbonds' })).toBeVisible()
 
   // The surplus kit is laid out beside the Class E copy.
-  await expect(joiner.getByRole('group', { name: 'Issued kit · surplus' }).getByRole('img').first()).toBeVisible()
+  await expect(joiner.getByRole('group', { name: 'Starting gear' }).getByRole('img').first()).toBeVisible()
 
-  // The gear legend opens the real Codex over the page.
-  await joiner.getByRole('button', { name: 'Open the Codex' }).click()
-  const codex = joiner.getByRole('dialog', { name: 'Codex' })
+  // The gear legend opens the real Armory over the page.
+  await joiner.getByRole('button', { name: 'Open the armory' }).click()
+  const codex = joiner.getByRole('dialog', { name: 'Armory' })
   await expect(codex).toBeVisible()
-  await codex.getByRole('button', { name: 'Close codex' }).click()
+  await codex.getByRole('button', { name: 'Close armory' }).click()
   await expect(codex).toBeHidden()
 
   // Scrolled into view, the dial sweeps to Valor 6 at difficulty 5; both stay
   // hand-adjustable and read the engine's real ceiling odds.
-  const valor = joiner.getByLabel('Chosen risk', { exact: true })
+  const valor = joiner.getByLabel('Risk', { exact: true })
   await valor.scrollIntoViewIfNeeded()
   await expect(valor).toHaveValue('6')
   await expect(joiner.getByRole('slider', { name: 'Difficulty' })).toHaveValue('5')

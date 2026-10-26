@@ -40,7 +40,7 @@ watch(() => props.lit, (lit) => {
 
 function stampFor(index: number): string {
   const order = cards.value.slice(0, index + 1).filter(card => card.sworn).length
-  return cards.value[index]?.sworn && order <= swornCount.value ? 'Sworn' : ''
+  return cards.value[index]?.sworn && order <= swornCount.value ? 'Taken' : ''
 }
 const swornRisk = computed(() =>
   cards.value.filter((card, i) => stampFor(i)).reduce((sum, card) => sum + card.risk, 0))
@@ -69,7 +69,7 @@ const swornRisk = computed(() =>
       </div>
     </div>
     <div class="hand-tally">
-      <span class="cap">Sworn this mission</span>
+      <span class="cap">Taken this mission</span>
       <RiskPips
         :value="swornRisk"
         :max="Math.max(swornRisk, 1)"

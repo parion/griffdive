@@ -162,7 +162,7 @@ const pickedName = computed(() =>
 <template>
   <section class="phone-loot">
     <header class="head">
-      <span class="kick">Liberty provides · {{ '★'.repeat(state.lastReport?.stars ?? 0) }}</span>
+      <span class="kick">Mission reward · {{ '★'.repeat(state.lastReport?.stars ?? 0) }}</span>
       <h1 class="disp title">
         Bank one item
       </h1>
@@ -172,7 +172,7 @@ const pickedName = computed(() =>
       v-if="options.length"
       :zones="zones"
       :markers="markers"
-      label="Your Valor rolls"
+      label="Your loot rolls"
       :note="`Best ${bestTier ?? '—'}`"
       compact
     />

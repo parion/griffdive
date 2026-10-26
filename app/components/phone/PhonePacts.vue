@@ -126,12 +126,12 @@ function bannedNote(pactId: string): string {
   if (names.length === 0) {
     return ''
   }
-  return `Benches ${names.slice(0, 2).join(', ')}${names.length > 2 ? '…' : ''}`
+  return `Bans ${names.slice(0, 2).join(', ')}${names.length > 2 ? '…' : ''}`
 }
 
 const ctaLabel = computed(() => {
   const count = selection.value.length
-  return count === 0 ? 'Dive with no pacts' : `Swear ${count} pact${count === 1 ? '' : 's'}`
+  return count === 0 ? 'Dive with no pacts' : `Take ${count} pact${count === 1 ? '' : 's'}`
 })
 
 function lockNow(): void {
@@ -146,10 +146,10 @@ function lockNow(): void {
     <header class="head">
       <span class="kick">Your move</span>
       <h1 class="disp title">
-        Swear your pacts
+        Pick your pacts
       </h1>
       <p class="lede">
-        Only you carry them. Break one in the field and it costs you a loot option.
+        Pacts only affect you. Break one and you lose a loot option.
       </p>
     </header>
 
@@ -176,7 +176,7 @@ function lockNow(): void {
     >
       <span class="cap">Squad directive</span>
       <b class="disp">Safe dive</b>
-      <span class="dir-rule">No team rule accepted.</span>
+      <span class="dir-rule">No directive this mission.</span>
     </div>
 
     <div class="hand">
@@ -186,7 +186,7 @@ function lockNow(): void {
         :condition="pact"
         :risk="riskOf(pact.id)"
         :selected="selection.includes(pact.id)"
-        :stamp="selection.includes(pact.id) ? 'Sworn' : ''"
+        :stamp="selection.includes(pact.id) ? 'Taken' : ''"
         :blocked="coverage[pact.id] ?? ''"
         :note="bannedNote(pact.id)"
         :disabled="locked"
@@ -204,7 +204,7 @@ function lockNow(): void {
     <ValorRoll
       :zones="zones"
       :deltas="deltas"
-      :note="selectionNames ? `With ${selectionNames}` : 'No pacts sworn'"
+      :note="selectionNames ? `With ${selectionNames}` : 'No pacts'"
       :locked="locked"
       compact
     />

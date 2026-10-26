@@ -22,7 +22,7 @@ const title = computed(() => {
     return props.tierLabel ? `Rolled at launch · ${props.tierLabel}-tier` : 'Rolled at launch'
   }
   return props.reason
-    ? `${props.item.displayName} — ${props.reason}${props.banPreview ? ' (if sworn)' : ''}`
+    ? `${props.item.displayName} — ${props.reason}${props.banPreview ? ' (if taken)' : ''}`
     : props.item.displayName
 })
 </script>
@@ -87,7 +87,7 @@ const title = computed(() => {
     <span
       v-if="banSource"
       class="sr-only"
-    >Banned: {{ reason }}{{ banPreview ? ' (if sworn)' : '' }}</span>
+    >Banned: {{ reason }}{{ banPreview ? ' (if taken)' : '' }}</span>
   </li>
 </template>
 

@@ -60,7 +60,7 @@ interface FrontCard {
 const frontCard = computed<FrontCard | null>(() => {
   if (front.value && !props.drawing) {
     return {
-      cap: 'Front locked',
+      cap: 'Front',
       name: front.value.displayName,
       planets: frontPlanetsLabel.value,
       accent: front.value.accent,
@@ -70,7 +70,7 @@ const frontCard = computed<FrontCard | null>(() => {
   if (props.state.majorOrder && pinnedFronts.value.length) {
     const fronts = pinnedFronts.value
     return {
-      cap: props.state.majorOrder.live ? 'Major Order pinned' : 'Faction locked',
+      cap: props.state.majorOrder.live ? 'Major Order' : 'Front',
       name: fronts.map(entry => entry.displayName).join(' · '),
       planets: pinnedPlanetsLabel.value,
       accent: fronts.length === 1 ? fronts[0]?.accent ?? 'var(--gold)' : 'var(--gold)',

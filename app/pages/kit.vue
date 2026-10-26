@@ -234,7 +234,7 @@ const regAfter = REGISTRY.map((r, i) => ({
 const STAMPS = [
   { t: 'Accepted', c: GOLD },
   { t: 'Opted out', c: KHAKI },
-  { t: 'Sworn', c: RED },
+  { t: 'Taken', c: RED },
   { t: 'Voided', c: RED },
   { t: 'Banked', c: GOLD },
   { t: 'Banned', c: RED },
@@ -263,7 +263,7 @@ const pactSelection = ref<string[]>([])
 const PACT_DEMO = [
   { id: 'packLight', stamp: '', stampTone: 'gold' as const, selectable: true },
   { id: 'primaryConcern', stamp: '', stampTone: 'gold' as const, selectable: true },
-  { id: 'untouchable', stamp: 'Sworn', stampTone: 'red' as const, selectable: false },
+  { id: 'untouchable', stamp: 'Taken', stampTone: 'red' as const, selectable: false },
   { id: 'openField', stamp: '', stampTone: 'gold' as const, selectable: true },
 ]
 
@@ -1568,7 +1568,7 @@ onBeforeUnmount(() => {
             :zones="pactPreviewZones"
             :deltas="pactDeltas"
             label="Pact odds preview"
-            :note="`${pactRiskTotal} skulls sworn`"
+            :note="`${pactRiskTotal} skulls taken`"
           />
           <p class="live-note">
             Click an available pact to preview the line. Reserve utility is exempt from pact bans, so
@@ -1614,7 +1614,7 @@ onBeforeUnmount(() => {
             <span
               class="disp"
               style="display: inline-block; padding: 3px 8px; font-size: 13px; border: 2px solid #FF4B3E; color: #FF4B3E; animation: stampLoop 2.4s cubic-bezier(.22,1,.36,1) infinite"
-            >Sworn</span>
+            >Taken</span>
           </div>
           <span class="cap"><b>stamp</b></span><span class="cap">.42s · out-quint</span>
         </div>
@@ -1720,7 +1720,7 @@ onBeforeUnmount(() => {
               </button>
               <button
                 class="icon-btn"
-                aria-label="Codex"
+                aria-label="Armory"
                 style="width: 44px; height: 44px; display: grid; place-items: center"
                 type="button"
               >
@@ -2373,7 +2373,7 @@ onBeforeUnmount(() => {
         >
           Replay unfurl
         </button>
-        <span class="sub">{{ crossClaimed ? `Claimed ${ITEMS_BY_ID.get(crossClaimed)?.displayName}` : 'Claim opens the codex; nothing is banked here' }}</span>
+        <span class="sub">{{ crossClaimed ? `Claimed ${ITEMS_BY_ID.get(crossClaimed)?.displayName}` : 'Claim opens the armory; nothing is banked here' }}</span>
       </div>
       <LibertyCrossBand
         :key="crossRun"
