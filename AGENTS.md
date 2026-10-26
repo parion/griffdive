@@ -40,6 +40,7 @@ pnpm only (`pnpm-lock.yaml` is canonical).
 | `pnpm preview` | exists | Preview production build |
 | `pnpm generate` | exists | Static build (pure client-side SPA — solo/offline only — no WebSocket server) |
 | `pnpm pwa:assets` | exists | Write `public/icon.svg` from `app/utils/brandMark.ts`, then regenerate PWA icons, favicon + head links from it (`@vite-pwa/assets-generator`) |
+| `pnpm og:image` | exists | Render the link-preview cards from `app/utils/brandMark.ts`: `public/og-image.png` (Open Graph/Twitter, 1200×630) and `branding/github-social-preview.png` (repo social preview, 1280×640, uploaded by hand); needs Playwright's chromium |
 | `pnpm dashboard:preview` | exists | Render `grafana/dashboard-preview.html` + `.png` from `grafana/griffdive-overview.json` (mock-series layout preview; needs Playwright's chromium for the PNG) |
 | `pnpm feedback:export` | exists | Print the local feedback inbox newest-first (`.data/feedback/inbox`, or `-` / a path as the first argument) |
 | `pnpm lint` | exists | ESLint via `@nuxt/eslint` module |

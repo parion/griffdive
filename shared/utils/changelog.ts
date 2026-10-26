@@ -1,6 +1,6 @@
 // GitHub deployment records and commits → the changelog's release cards.
-// Pure shaping lives here so useChangelog only fetches and caches, and the
-// release boundaries stay covered by unit tests.
+// Pure shaping lives here so the /api/changelog proxy only fetches and caches,
+// and the release boundaries stay covered by unit tests.
 
 export const CHANGELOG_REPO = 'parion/griffdive'
 

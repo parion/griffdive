@@ -69,6 +69,11 @@ board lives at `https://feedback.griffdive.com` (sign-in email via Resend); stag
 `fly.staging.toml`, production leaves it unset until a release sets it with `fly secrets set`. Fider requires an email or OAuth sign-in to post, which is exactly why
 it cannot be embedded — see `PRIVACY.md` → Feedback.
 
+The in-app changelog is served by `/api/changelog`, which fetches GitHub server-side and caches it
+for 10 minutes for every client. It works unauthenticated (60 GitHub requests/hr per machine, ~12
+per refresh), and an optional `NUXT_GITHUB_TOKEN` secret (a fine-grained, read-only token with
+public-repo access only) raises that to 5000/hr: `fly secrets set NUXT_GITHUB_TOKEN=…`.
+
 CI/CD: `.github/workflows/ci.yml` runs lint/typecheck/unit tests + the Playwright E2E suite on
 every PR and push to `main`; pushes never deploy to production. **Staging:** after CI and E2E pass,
 every push to `main` runs the `deploy-staging` job, which deploys `fly.staging.toml`

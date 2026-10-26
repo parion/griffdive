@@ -23,6 +23,23 @@ export default defineNuxtConfig({
           content: 'A Helldivers 2 squad roguelike: climb the difficulty ladder, spin the Wheel of Adversity, and let chosen risk buy rarer rewards.',
         },
         { property: 'og:type', content: 'website' },
+        { property: 'og:site_name', content: 'Griffdive' },
+        { property: 'og:url', content: 'https://griffdive.com/' },
+        // Crawlers never run the SPA, so the card must be absolute and static:
+        // `pnpm og:image` renders it from the brand mark.
+        { property: 'og:image', content: 'https://griffdive.com/og-image.png' },
+        { property: 'og:image:type', content: 'image/png' },
+        { property: 'og:image:width', content: '1200' },
+        { property: 'og:image:height', content: '630' },
+        { property: 'og:image:alt', content: 'Griffdive: Freedom is earned. A Helldivers 2 squad roguelike — climb difficulty 3 to 10.' },
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:title', content: 'Griffdive' },
+        {
+          name: 'twitter:description',
+          content: 'A Helldivers 2 squad roguelike: climb the difficulty ladder, spin the Wheel of Adversity, and let chosen risk buy rarer rewards.',
+        },
+        { name: 'twitter:image', content: 'https://griffdive.com/og-image.png' },
+        { name: 'twitter:image:alt', content: 'Griffdive: Freedom is earned. A Helldivers 2 squad roguelike — climb difficulty 3 to 10.' },
       ],
       link: [
         { rel: 'icon', href: '/icon.svg', sizes: 'any', type: 'image/svg+xml' },
@@ -33,6 +50,9 @@ export default defineNuxtConfig({
   },
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
+    // Server-only. Optional read-only token (NUXT_GITHUB_TOKEN) for the
+    // changelog proxy: lifts GitHub's 60/hr unauthenticated limit to 5000/hr.
+    githubToken: '',
     public: {
       // Set NUXT_PUBLIC_FEEDBACK_BOARD_URL once the self-hosted Fider board is
       // live. Empty hides every link to it, so the app never points at a 404.
