@@ -1,18 +1,26 @@
 <script setup lang="ts">
-import { ALL_ITEMS, ITEMS_BY_ID } from '~~/shared/data/catalog'
+import { kitAllowedOnHost } from '~~/shared/kit-access'
+import { ALL_ITEMS, CATALOG_VERSION, ITEMS_BY_ID, WARBONDS } from '~~/shared/data/catalog'
+import { MISFORTUNES, PACTS } from '~~/shared/data/conditions'
 import { FRONTS } from '~~/shared/data/fronts'
-import { factionImageUrl, itemImageUrl } from '~~/shared/data/images'
+import { factionImageUrl, itemImageUrl, warbondImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
-import { missionsPerOperation } from '~~/shared/engine/config'
+import { REWARD_TOKEN_CAP, conditionRiskAt, missionsPerOperation } from '~~/shared/engine/config'
+import { STARTING_KITS } from '~~/shared/engine/progression'
 import type { RewardOption } from '~~/shared/engine/rewards'
 import { tierZones } from '~~/shared/engine/rewards'
-import type { RewardTier } from '~~/shared/engine/types'
+import type { DivePhase, RewardTier } from '~~/shared/engine/types'
+import { deriveMisfortune } from '~~/shared/engine/wheel'
+import { CURRENT_RELEASE } from '~/utils/release'
+
+definePageMeta({ middleware: 'kit-gate' })
 
 useHead({ meta: [{ name: 'robots', content: 'noindex,nofollow' }] })
 
-// Foundations specimen — a port of the redesign's "Foundations" page. It
-// specimens the terminal tokens, atoms and composite components so contributors
-// can sanity-check the language. Dev reference only, reachable at /kit.
+// The design sheet is a living reference: tokens and catalog facts are read at
+// runtime, and the interactive specimens wrap the same components the app
+// ships. It is reachable on a dev server and the Fly staging app only; the
+// page middleware and server gate keep production on a 404.
 
 const GOLD = '#FFD642'
 const ORANGE = '#FF9F43'
@@ -28,162 +36,151 @@ const PANEL = '#13150F'
 const TIER: Record<RewardTier, string> = { 'C': '#9A9B82', 'B': '#6FBF73', 'A': '#4AD7C8', 'S': '#FFD642', 'S+': '#FF4B3E' }
 const TIERS: RewardTier[] = ['C', 'B', 'A', 'S', 'S+']
 
-const SURF = [
-  { n: 'Ground', h: GROUND, r: 'Stage' },
-  { n: 'Rail', h: '#0E100B', r: 'Rails' },
-  { n: 'Panel', h: PANEL, r: 'Panels' },
-  { n: 'Raised', h: '#1A1D15', r: 'Raised' },
-]
-const LINES = [
-  { n: 'Line 1', h: '#23261C', r: 'Hairline', t: '1px' },
-  { n: 'Line 2', h: '#2C3022', r: 'Divider', t: '1px' },
-  { n: 'Line 3', h: '#3A3F2E', r: 'Frame', t: '2px' },
-  { n: 'Line 4', h: '#454A36', r: 'Ghost', t: '2px' },
-  { n: 'Line 5', h: '#5A5E45', r: 'Pip off', t: '3px' },
-]
-const INKS = [
-  { n: 'Text', h: TEXT, r: 'Primary', bg: PANEL },
-  { n: 'Khaki', h: KHAKI, r: 'Secondary', bg: PANEL },
-  { n: 'Muted', h: MUTED, r: 'Min body', bg: PANEL },
-  { n: 'Dim', h: DIM, r: 'Large only', bg: PANEL },
-  { n: 'Ink', h: '#141410', r: 'On gold', bg: GOLD },
-]
-const SIGNALS = [
-  { n: 'Gold', h: GOLD, r: 'Act now' },
-  { n: 'Red', h: RED, r: 'Danger' },
-  { n: 'Orange', h: ORANGE, r: 'Strain · MO' },
-  { n: 'Teal', h: TEAL, r: 'Ready' },
-  { n: 'Purple', h: '#B06BFF', r: 'Illuminate' },
-]
-const STAMPS = [
-  { t: 'Accepted', c: GOLD },
-  { t: 'Opted out', c: KHAKI },
-  { t: 'Sworn', c: RED },
-  { t: 'Voided', c: RED },
-  { t: 'Banked', c: GOLD },
-  { t: 'Banned', c: RED },
-  { t: 'Confiscated', c: RED },
-  { t: 'Locked', c: TEXT },
-]
-const CONTRAST = [
-  { fg: TEXT, bg: GROUND, pair: '#ECEADA / #0B0C09', r: '16.2', pass: true },
-  { fg: MUTED, bg: PANEL, pair: '#9A9B82 / #13150F', r: '6.5', pass: true },
-  { fg: '#141410', bg: GOLD, pair: '#141410 / #FFD642', r: '13.1', pass: true },
-  { fg: '#5A5E45', bg: PANEL, pair: '#5A5E45 / #13150F', r: '2.7', pass: false },
-]
-const REGISTRY = [
-  { g: 'A', label: 'Citizens', c: GOLD, tint: 'rgba(255,214,66,.08)' },
-  { g: 'B', label: 'Residents', c: KHAKI, tint: 'rgba(184,176,141,.07)' },
-  { g: 'C', label: 'Conscripts', c: KHAKI, tint: 'rgba(184,176,141,.07)' },
-  { g: 'D', label: 'Debtors', c: ORANGE, tint: 'rgba(255,159,67,.08)' },
-  { g: 'E', label: 'Griffdivers', c: RED, tint: 'rgba(255,75,62,.09)' },
-]
-const WARBOND_TILES = [
-  { code: 'mob', name: 'Helldivers Mobilize', items: '33 ITEMS', focus: false },
-  { code: 'polar', name: 'Polar Patriots', items: '9 ITEMS', focus: false },
-  { code: 'viper', name: 'Viper Commandos', items: '7 ITEMS', focus: true },
-  { code: 'store', name: 'Superstore', items: '43 ITEMS', special: true, focus: false },
+// ---- Live facts -----------------------------------------------------------
+
+const facts = computed(() => [
+  { n: ALL_ITEMS.length, label: 'items' },
+  { n: WARBONDS.length, label: 'warbonds' },
+  { n: PACTS.length, label: 'pacts' },
+  { n: MISFORTUNES.length, label: 'directives' },
+  { n: `v${CATALOG_VERSION}`, label: 'catalog' },
+  { n: CURRENT_RELEASE.label, label: 'release' },
+])
+
+const onStaging = computed(() =>
+  !import.meta.dev && kitAllowedOnHost(false, import.meta.client ? window.location.hostname : undefined))
+
+// ---- Tokens ---------------------------------------------------------------
+
+interface TokenSpec { name: string, var: string, role: string }
+interface TokenGroup { label: string, items: TokenSpec[] }
+
+const TOKEN_GROUPS: TokenGroup[] = [
+  {
+    label: 'Surface',
+    items: [
+      { name: 'Ground', var: '--ground', role: 'Stage' },
+      { name: 'Rail', var: '--rail', role: 'Rails' },
+      { name: 'Panel', var: '--panel', role: 'Panels' },
+      { name: 'Raised', var: '--raised', role: 'Raised' },
+    ],
+  },
+  {
+    label: 'Lines',
+    items: [
+      { name: 'Line 1', var: '--line-1', role: 'Hairline' },
+      { name: 'Line 2', var: '--line-2', role: 'Divider' },
+      { name: 'Line 3', var: '--line-3', role: 'Frame' },
+      { name: 'Line 4', var: '--line-4', role: 'Ghost' },
+      { name: 'Line 5', var: '--line-5', role: 'Pip off' },
+    ],
+  },
+  {
+    label: 'Ink',
+    items: [
+      { name: 'Text', var: '--text', role: 'Primary' },
+      { name: 'Khaki', var: '--khaki', role: 'Secondary' },
+      { name: 'Muted', var: '--muted', role: 'Min body' },
+      { name: 'Dim', var: '--dim', role: 'Large only' },
+      { name: 'On gold', var: '--on-gold', role: 'On gold' },
+    ],
+  },
+  {
+    label: 'Signal',
+    items: [
+      { name: 'Gold', var: '--gold', role: 'Act now' },
+      { name: 'Gold bright', var: '--gold-bright', role: 'Gain' },
+      { name: 'Red', var: '--red', role: 'Danger' },
+      { name: 'Orange', var: '--orange', role: 'Strain · MO' },
+      { name: 'Teal', var: '--teal', role: 'Ready' },
+      { name: 'Purple', var: '--purple', role: 'Illuminate' },
+    ],
+  },
+  {
+    label: 'Samples',
+    items: [
+      { name: 'Common', var: '--sample-common', role: 'Sample' },
+      { name: 'Rare', var: '--sample-rare', role: 'Sample' },
+      { name: 'Super', var: '--sample-super', role: 'Sample' },
+    ],
+  },
+  {
+    label: 'Category',
+    items: [
+      { name: 'Supply', var: '--cat-supply', role: 'Supply' },
+      { name: 'Eagle', var: '--cat-eagle', role: 'Eagle' },
+      { name: 'Orbital', var: '--cat-orbital', role: 'Orbital' },
+      { name: 'Defense', var: '--cat-defense', role: 'Defense' },
+      { name: 'Armor', var: '--cat-armor', role: 'Armor' },
+      { name: 'Booster', var: '--cat-booster', role: 'Booster' },
+      { name: 'Primary', var: '--cat-primary', role: 'Primary' },
+      { name: 'Gear', var: '--cat-gear', role: 'Gear' },
+    ],
+  },
 ]
 
-const fallbackItem = [...ITEMS_BY_ID.values()][0] as Item
-function byId(id: string): Item {
-  return ITEMS_BY_ID.get(id) ?? fallbackItem
+const tokenValues = ref<Record<string, string>>({})
+const copiedToken = ref<string | null>(null)
+let copyTimer: ReturnType<typeof setTimeout> | undefined
+
+function tokenValue(spec: TokenSpec): string {
+  return tokenValues.value[spec.var] ?? ''
 }
 
-interface TileSpec { id: string, t: RewardTier, cat: string, tag?: string, reserve?: boolean, out?: boolean, lead?: boolean }
-const TILE_SPECS: TileSpec[] = [
-  { id: 'ac8autocannon', t: 'A', cat: 'SUPPORT' },
-  { id: 'las99quasarcannon', t: 'S', cat: 'SUPPORT', tag: 'NEW' },
-  { id: 'eaglesmokestrike', t: 'C', cat: 'EAGLE', tag: 'RESERVE', reserve: true },
-  { id: 'sh32shieldgeneratorpack', t: 'A', cat: 'BACKPACK', out: true },
-  { id: 'eagle500kgbomb', t: 'S', cat: 'EAGLE', tag: 'CEILING', lead: true },
-]
-
-const skirt = (c: string) => `repeating-linear-gradient(-45deg, ${c} 0 3px, transparent 3px 7px)`
-
-interface Skull { c: string }
-function skulls(n: number, max: number, on: string, off: string): Skull[] {
-  return Array.from({ length: max }, (_, k) => ({ c: k < n ? on : off }))
-}
-const pk1 = skulls(1, 3, RED, '#2C3022')
-const pk2 = skulls(2, 3, RED, '#2C3022')
-const pk3 = skulls(3, 3, RED, '#2C3022')
-const pkOff = skulls(0, 3, RED, '#23261C')
-const riskRows = [1, 2, 3, 4, 5].map(n => ({ k: skulls(n, 5, RED, '#2C3022'), t: `+${n}` }))
-const tokenRows = [0, 1, 2, 3].map(n => ({ n, dots: [0, 1, 2].map(i => ({ on: i < n })), max: n === 3 }))
-
-interface Cell { bg: string, bgi: string, bd: string, part: string, cls: string, rot?: string, tr?: string }
-function cells(parts: { c: string, n: number, pending?: boolean }[], extra?: (cell: Cell, i: number) => void): Cell[] {
-  const flat: { c: string, n: number, pending?: boolean }[] = []
-  parts.forEach((p) => {
-    for (let k = 0; k < p.n; k++) flat.push(p)
-  })
-  const out: Cell[] = []
-  for (let i = 0; i < 11; i++) {
-    const x = flat[i]
-    const cell: Cell = {
-      bg: x ? (x.pending ? 'transparent' : x.c) : '#15170F',
-      bgi: x && x.pending ? skirt(x.c) : 'none',
-      bd: x ? x.c : '#23261C',
-      part: '0%',
-      cls: '',
-    }
-    if (extra) extra(cell, i)
-    out.push(cell)
+async function copyToken(spec: TokenSpec): Promise<void> {
+  const value = tokenValue(spec)
+  if (!value) {
+    return
   }
-  return out.reverse()
+  const text = `var(${spec.var}) /* ${value} */`
+  try {
+    await navigator.clipboard?.writeText(text)
+  }
+  catch {
+    // Clipboard permission is a browser setting; the sheet still shows the value.
+    return
+  }
+  copiedToken.value = spec.var
+  clearTimeout(copyTimer)
+  copyTimer = setTimeout(() => {
+    copiedToken.value = null
+  }, 1400)
 }
 
-interface Rung { t: RewardTier, tc: string, tbg: string, w: string, txt: string, fg: string, op: string, luck: string, fed: boolean }
-function rung(t: RewardTier, p: number, opts: { below?: boolean, base?: boolean, luck?: string } = {}): Rung {
-  return {
-    t,
-    tc: TIER[t],
-    tbg: opts.below ? 'transparent' : (p > 0 ? 'rgba(255,255,255,.03)' : 'transparent'),
-    w: opts.below ? '0%' : (opts.base ? '100%' : `${Math.max(p, p > 0 ? 2 : 0)}%`),
-    txt: opts.below ? 'FLOOR' : (opts.base ? 'BASE' : `${p}%`),
-    fg: opts.below ? '#5A5E45' : (p > 0 ? TEXT : DIM),
-    op: opts.below ? '.4' : '1',
-    luck: opts.luck || '',
-    fed: !!opts.luck,
-  }
+// ---- Type & frames --------------------------------------------------------
+
+const typeSpecimen = ref('Risk buys rarity.')
+
+// ---- Controls -------------------------------------------------------------
+
+const holdAccepted = ref(false)
+let holdReset: ReturnType<typeof setTimeout> | undefined
+function onHoldConfirm(): void {
+  holdAccepted.value = true
+  clearTimeout(holdReset)
+  holdReset = setTimeout(() => {
+    holdAccepted.value = false
+  }, 1600)
 }
 
-const gPrev = cells([{ c: GOLD, n: 2 }, { c: ORANGE, n: 2 }, { c: RED, n: 4, pending: true }])
-const gLock = cells([{ c: GOLD, n: 2 }, { c: ORANGE, n: 2 }, { c: RED, n: 4 }])
-const gPerf = cells([{ c: GOLD, n: 2 }, { c: ORANGE, n: 2 }, { c: RED, n: 4 }], (cell, i) => {
-  if (i === 8) {
-    cell.part = '16%'
-    cell.bd = 'rgba(74,215,200,.6)'
-  }
-})
-const gBroke = cells([{ c: GOLD, n: 4 }, { c: ORANGE, n: 2 }, { c: RED, n: 5 }], (cell, i) => {
-  cell.rot = i === 10 ? '-7deg' : (i === 9 ? '2deg' : '0deg')
-  cell.tr = i === 10 ? '3px -4px' : (i === 9 ? '-1px -1px' : '0 0')
-  if (i >= 9) cell.cls = 'glitch'
-})
-const rungsPerf = [rung('S+', 4.8), rung('S', 45.8), rung('A', 80), rung('B', 100, { base: true }), rung('C', 0, { below: true })]
-const rungsBroke = [rung('S+', 11.7, { luck: '+3%' }), rung('S', 72, { luck: '+10%' }), rung('A', 80), rung('B', 100, { base: true })]
+const stars = ref(4)
+const samples = ref(14)
+const toggleA = ref(false)
+const toggleB = ref(true)
+const demoDialog = ref(false)
+const { push: pushToast } = useToasts()
 
-const tiles = TILE_SPECS.map((s) => {
-  const it = byId(s.id)
-  return {
-    ...s,
-    name: it.displayName,
-    img: itemImageUrl(it),
-    tc: TIER[s.t],
-    bg: s.reserve ? '#0E100B' : PANEL,
-    bs: s.reserve ? 'dashed' : 'solid',
-    bd: s.lead ? GOLD : (s.out ? RED : (s.reserve ? '#5A5E45' : '#2C3022')),
-    stripeOp: s.out ? '.4' : '1',
-    iop: s.out ? '.45' : '1',
-    filt: s.out ? 'grayscale(.8)' : 'none',
-    nc: s.out ? MUTED : TEXT,
-    tagBg: s.tag === 'NEW' ? GOLD : (s.tag === 'CEILING' ? 'rgba(11,12,9,.85)' : GROUND),
-    tagFg: s.tag === 'NEW' ? '#141410' : (s.tag === 'CEILING' ? GOLD : KHAKI),
-    tagBd: s.tag === 'NEW' ? GOLD : (s.tag === 'CEILING' ? GOLD : '#5A5E45'),
-  }
-})
+// ---- Atoms ----------------------------------------------------------------
+
+function itemById(id: string): Item {
+  return ITEMS_BY_ID.get(id) ?? ALL_ITEMS[0]!
+}
+
+const tokenRows = Array.from({ length: REWARD_TOKEN_CAP + 1 }, (_, n) => ({
+  n,
+  max: n === REWARD_TOKEN_CAP,
+  dots: Array.from({ length: REWARD_TOKEN_CAP }, (_, i) => ({ on: i < n })),
+}))
 
 const tags = [
   {
@@ -198,6 +195,14 @@ const tags = [
     name: 'Birdie', serial: 'SES 07·0561', status: 'RECONNECTING', host: false, you: false,
     lightC: DIM, lightText: MUTED, edge: '#2C3022', inset: '1px', bg: '#0F110C', hole: '#3A3F2E', nameC: DIM, pulse: true, tokens: 1,
   },
+]
+
+const REGISTRY = [
+  { g: 'A', label: 'Citizens', c: GOLD, tint: 'rgba(255,214,66,.08)' },
+  { g: 'B', label: 'Residents', c: KHAKI, tint: 'rgba(184,176,141,.07)' },
+  { g: 'C', label: 'Conscripts', c: KHAKI, tint: 'rgba(184,176,141,.07)' },
+  { g: 'D', label: 'Debtors', c: ORANGE, tint: 'rgba(255,159,67,.08)' },
+  { g: 'E', label: 'Griffdivers', c: RED, tint: 'rgba(255,75,62,.09)' },
 ]
 
 const regBefore = REGISTRY.map((r, i) => ({
@@ -226,53 +231,115 @@ const regAfter = REGISTRY.map((r, i) => ({
   you: i === 4,
 }))
 
-const kitStratagems = ['eaglesmokestrike', 'orbitalemsstrike', 'fx12shieldgeneratorrelay', 'am23emsmortarsentry'].map((id) => {
-  const it = byId(id)
-  return { id, name: it.displayName, img: itemImageUrl(it) }
+const STAMPS = [
+  { t: 'Accepted', c: GOLD },
+  { t: 'Opted out', c: KHAKI },
+  { t: 'Sworn', c: RED },
+  { t: 'Voided', c: RED },
+  { t: 'Banked', c: GOLD },
+  { t: 'Banned', c: RED },
+  { t: 'Confiscated', c: RED },
+  { t: 'Locked', c: TEXT },
+]
+
+const CONTRAST = [
+  { fg: TEXT, bg: GROUND, pair: '#ECEADA / #0B0C09', r: '16.2', pass: true },
+  { fg: MUTED, bg: PANEL, pair: '#9A9B82 / #13150F', r: '6.5', pass: true },
+  { fg: '#141410', bg: GOLD, pair: '#141410 / #FFD642', r: '13.1', pass: true },
+  { fg: '#5A5E45', bg: PANEL, pair: '#5A5E45 / #13150F', r: '2.7', pass: false },
+]
+
+const kitStratagems = STARTING_KITS.medium.stratagems.map((id) => {
+  const item = itemById(id)
+  return { id, name: item.displayName, img: itemImageUrl(item) }
 })
 
-const stripDiff = ref(10)
-const stripMission = ref(1)
-const stripFailed = ref(false)
-const stripAchieved = ref(false)
-const stripRoute = ref(false)
-const stripOpLength = computed(() => missionsPerOperation(stripDiff.value))
-watch(stripDiff, () => {
-  stripMission.value = Math.min(stripMission.value, stripOpLength.value)
-})
-const holdDone = ref(false)
-const holdFill = ref(0)
-let holdTimer: ReturnType<typeof setTimeout> | undefined
-let resetTimer: ReturnType<typeof setTimeout> | undefined
+// ---- Live gameplay specimens ---------------------------------------------
 
-function reduced(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+// Pact hand: the real ConditionCards, with risk read at the chosen rung. The
+// odds line below is the engine's own preview for the sworn risk.
+const pactDifficulty = ref(7)
+const pactSelection = ref<string[]>([])
+const PACT_DEMO = [
+  { id: 'packLight', stamp: '', stampTone: 'gold' as const, selectable: true },
+  { id: 'primaryConcern', stamp: '', stampTone: 'gold' as const, selectable: true },
+  { id: 'untouchable', stamp: 'Sworn', stampTone: 'red' as const, selectable: false },
+  { id: 'openField', stamp: '', stampTone: 'gold' as const, selectable: true },
+]
+
+const pactCards = computed(() => PACT_DEMO.map(entry => ({
+  ...entry,
+  condition: PACTS.find(condition => condition.id === entry.id)!,
+  risk: conditionRiskAt(entry.id, pactDifficulty.value),
+})))
+
+const pactRiskTotal = computed(() =>
+  pactSelection.value.reduce((sum, id) => sum + conditionRiskAt(id, pactDifficulty.value), 0))
+
+const PACT_BASE_VALOR = 2
+const pactBaseZones = computed(() => tierZones(pactDifficulty.value, PACT_BASE_VALOR))
+const pactPreviewZones = computed(() => tierZones(pactDifficulty.value, PACT_BASE_VALOR + pactRiskTotal.value))
+const pactDeltas = computed<Partial<Record<RewardTier, number>>>(() => {
+  const deltas: Partial<Record<RewardTier, number>> = {}
+  for (const zone of pactPreviewZones.value) {
+    const base = pactBaseZones.value.find(entry => entry.tier === zone.tier)
+    deltas[zone.tier] = (zone.chance - (base?.chance ?? 0)) * 100
+  }
+  return deltas
+})
+
+function togglePact(id: string): void {
+  pactSelection.value = pactSelection.value.includes(id)
+    ? pactSelection.value.filter(entry => entry !== id)
+    : [...pactSelection.value, id]
 }
-function clearHold(): void {
-  if (holdTimer) clearTimeout(holdTimer)
-  holdTimer = undefined
-  holdFill.value = 0
+
+// Wheel: the landing is a seed, exactly like the dive. Re-rolling writes a new
+// integer and every part of the caption re-derives from it.
+const wheelDifficulty = ref(7)
+const wheelSeed = ref<number | null>(null)
+const wheelDraw = computed(() => (wheelSeed.value === null ? null : deriveMisfortune(wheelSeed.value)))
+const wheelRisk = computed(() => (wheelDraw.value ? conditionRiskAt(wheelDraw.value.id, wheelDifficulty.value) : 0))
+
+function spinWheel(): void {
+  wheelSeed.value = Math.floor(Math.random() * 2_000_000_000)
 }
-function holdDown(): void {
-  if (holdDone.value) return
-  clearHold()
-  holdFill.value = 1
-  holdTimer = setTimeout(commit, reduced() ? 10 : 900)
-}
-function holdEnd(): void {
-  clearHold()
-}
-function holdKey(e: MouseEvent): void {
-  if (e.detail === 0 && !holdDone.value) commit()
-}
-function commit(): void {
-  clearHold()
-  if (resetTimer) clearTimeout(resetTimer)
-  holdDone.value = true
-  resetTimer = setTimeout(() => {
-    holdDone.value = false
-  }, reduced() ? 900 : 1800)
-}
+
+// The current four-beat dive rail, driven by real phase values.
+const demoPhase = ref<DivePhase>('pacts')
+const PHASE_OPTIONS: { id: DivePhase, label: string }[] = [
+  { id: 'spin', label: 'Call' },
+  { id: 'pacts', label: 'Pacts' },
+  { id: 'diving', label: 'Dive' },
+  { id: 'rewards', label: 'Loot' },
+  { id: 'forfeit', label: 'Failure' },
+]
+
+// ---- Warbonds, seats, strip, reveal ---------------------------------------
+
+const warbondTiles = computed(() => WARBONDS.map(warbond => ({
+  code: warbond.code,
+  name: warbond.displayName,
+  count: ALL_ITEMS.filter(item => item.warbondCode === warbond.code).length,
+  image: warbondImageUrl(warbond),
+  special: warbond.code === 'warbond0' || warbond.code === 'warbond1',
+})))
+const warbonds = ref<Record<string, boolean>>(
+  Object.fromEntries(WARBONDS.map((warbond, index) => [warbond.code, index < 4])),
+)
+const ownedWarbondCount = computed(() => Object.values(warbonds.value).filter(Boolean).length)
+
+const diverName = ref('')
+const seats = computed(() => {
+  const base = [
+    { init: 'G', label: 'GRIFFON', host: true, cls: '', stroke: '#5A5E45', avBg: '#2C3022', avFg: TEXT, fg: KHAKI },
+    { init: 'V', label: 'VOX', host: false, cls: '', stroke: '#5A5E45', avBg: '#2C3022', avFg: TEXT, fg: KHAKI },
+    { init: 'T', label: 'TALLOW', host: false, cls: '', stroke: '#5A5E45', avBg: '#2C3022', avFg: TEXT, fg: KHAKI },
+  ]
+  const initial = diverName.value.trim() ? diverName.value.trim()[0]!.toUpperCase() : 'B'
+  base.push({ init: initial, label: 'YOU', host: false, cls: 'seat-live', stroke: GOLD, avBg: GOLD, avFg: '#141410', fg: GOLD })
+  return base
+})
 
 // Liberty's Cross specimen: bumping the key remounts the band so the unfurl replays.
 const crossRun = ref(0)
@@ -299,27 +366,28 @@ const lootOptions = computed<RewardOption[]>(() => {
   }))
 })
 
-const toggleA = ref(false)
-const toggleB = ref(true)
-const stars = ref(4)
-const samples = ref(14)
-const diverName = ref('')
-const warbonds = ref<Record<string, boolean>>({ mob: true, polar: false, viper: false, store: false })
+const stripDiff = ref(10)
+const stripMission = ref(1)
+const stripFailed = ref(false)
+const stripAchieved = ref(false)
+const stripRoute = ref(false)
+const stripOpLength = computed(() => missionsPerOperation(stripDiff.value))
+watch(stripDiff, () => {
+  stripMission.value = Math.min(stripMission.value, stripOpLength.value)
+})
 
-const seats = computed(() => {
-  const base = [
-    { init: 'G', label: 'GRIFFON', host: true, cls: '', stroke: '#5A5E45', avBg: '#2C3022', avFg: TEXT, fg: KHAKI },
-    { init: 'V', label: 'VOX', host: false, cls: '', stroke: '#5A5E45', avBg: '#2C3022', avFg: TEXT, fg: KHAKI },
-    { init: 'T', label: 'TALLOW', host: false, cls: '', stroke: '#5A5E45', avBg: '#2C3022', avFg: TEXT, fg: KHAKI },
-  ]
-  const initial = diverName.value.trim() ? diverName.value.trim()[0]!.toUpperCase() : 'B'
-  base.push({ init: initial, label: 'YOU', host: false, cls: 'seat-live', stroke: GOLD, avBg: GOLD, avFg: '#141410', fg: GOLD })
-  return base
+onMounted(() => {
+  const style = getComputedStyle(document.documentElement)
+  for (const group of TOKEN_GROUPS) {
+    for (const spec of group.items) {
+      tokenValues.value[spec.var] = style.getPropertyValue(spec.var).trim()
+    }
+  }
 })
 
 onBeforeUnmount(() => {
-  if (holdTimer) clearTimeout(holdTimer)
-  if (resetTimer) clearTimeout(resetTimer)
+  clearTimeout(copyTimer)
+  clearTimeout(holdReset)
 })
 </script>
 
@@ -348,15 +416,55 @@ onBeforeUnmount(() => {
           <span
             class="lbl"
             style="color: var(--text)"
-          >Griffdive · kit sheet</span>
+          >Griffdive · design system</span>
           <span
             class="lbl"
             style="font-size: 10px"
-          >Foundations · every screen</span>
+          >Destroyer Terminal · live sheet</span>
+          <span
+            v-if="onStaging"
+            class="kit-stage"
+          >STAGING</span>
         </div>
         <h1 class="disp kit-title">
           Destroyer <span style="color: var(--gold)">Terminal</span>
         </h1>
+        <p class="kit-lede">
+          Tokens, components and the game surfaces they power. This sheet reads the same catalog,
+          engine odds and shared components the app ships — no mock numbers, no retired mechanics.
+        </p>
+        <div
+          class="kit-facts"
+          role="list"
+          aria-label="Live catalog facts"
+        >
+          <span
+            v-for="f in facts"
+            :key="f.label"
+            role="listitem"
+            class="kit-fact"
+          >
+            <b class="disp">{{ f.n }}</b><span>{{ f.label }}</span>
+          </span>
+        </div>
+        <nav
+          class="kit-jump"
+          aria-label="Sheet sections"
+        >
+          <a href="#tokens">Tokens</a>
+          <a href="#type">Type</a>
+          <a href="#frames">Frames</a>
+          <a href="#controls">Controls</a>
+          <a href="#atoms">Atoms</a>
+          <a href="#console">Console</a>
+          <a href="#wheel">Wheel</a>
+          <a href="#briefing">Briefing</a>
+          <a href="#liberty">Liberty’s Cross</a>
+        </nav>
+        <NuxtLink
+          class="kit-back"
+          to="/"
+        >← Back to the Bridge</NuxtLink>
       </div>
       <ol
         class="maxims"
@@ -448,171 +556,89 @@ onBeforeUnmount(() => {
       </ol>
     </header>
 
-    <!-- 02 · Color -->
+    <!-- 02 · Tokens -->
     <section
-      class="sec"
-      aria-label="Color"
+      id="tokens"
+      class="sec sec-live"
+      aria-labelledby="tokens-h"
     >
       <div class="sh">
-        <span class="disp sn">02</span><h2 class="lbl">
-          Color
-        </h2><span class="dash" /><span class="sub">Tokens · exact hex · gold is the only act-now</span>
+        <span class="disp sn">02</span><h2
+          id="tokens-h"
+          class="lbl"
+        >
+          Tokens
+        </h2><span class="dash" /><span class="sub">Live CSS custom properties · click a swatch to copy</span>
       </div>
-      <div class="crow">
-        <div class="grp">
-          <span class="vl">Surface</span>
-          <div
-            v-for="w in SURF"
-            :key="w.n"
-            class="sw"
-          >
-            <span
-              class="sw-b"
-              :style="{ background: w.h }"
-            />
-            <span class="sw-n">{{ w.n }}</span>
-            <span class="sw-h">{{ w.h }}</span>
-            <span class="sw-r">{{ w.r }}</span>
-          </div>
-        </div>
-        <div class="grp">
-          <span class="vl">Lines</span>
-          <div
-            v-for="w in LINES"
-            :key="w.n"
-            class="sw"
-          >
-            <span
-              class="sw-b"
-              style="background: #0E100B; border-color: #23261C; display: flex; align-items: center; padding: 0 6px"
+      <div class="token-groups">
+        <div
+          v-for="group in TOKEN_GROUPS"
+          :key="group.label"
+          class="token-group"
+        >
+          <span class="vl">{{ group.label }}</span>
+          <div class="token-row">
+            <button
+              v-for="token in group.items"
+              :key="token.var"
+              class="sw"
+              type="button"
+              :aria-label="`Copy ${token.var} ${tokenValue(token) || 'value not loaded'}`"
+              @click="copyToken(token)"
             >
               <span
-                class="sw-line"
-                :style="{ height: w.t, background: w.h }"
-              />
-            </span>
-            <span class="sw-n">{{ w.n }}</span>
-            <span class="sw-h">{{ w.h }}</span>
-            <span class="sw-r">{{ w.r }}</span>
+                class="sw-b"
+                :style="{ background: `var(${token.var})` }"
+              >
+                <span
+                  v-if="copiedToken === token.var"
+                  class="sw-copied"
+                >COPIED</span>
+              </span>
+              <span class="sw-n">{{ token.name }}</span>
+              <span class="sw-h">{{ tokenValue(token) || '—' }}</span>
+              <span class="sw-r">{{ token.role }}</span>
+            </button>
           </div>
         </div>
       </div>
-      <div class="crow">
-        <div class="grp">
-          <span class="vl">Text</span>
-          <div
-            v-for="w in INKS"
-            :key="w.n"
-            class="sw"
-          >
-            <span
-              class="sw-b sw-a"
-              :style="{ background: w.bg, color: w.h }"
-            >Aa</span>
-            <span class="sw-n">{{ w.n }}</span>
-            <span class="sw-h">{{ w.h }}</span>
-            <span class="sw-r">{{ w.r }}</span>
-          </div>
-        </div>
-        <div class="grp">
-          <span class="vl">Signal</span>
-          <div
-            v-for="w in SIGNALS"
-            :key="w.n"
-            class="sw"
-          >
-            <span
-              class="sw-b"
-              :style="{ background: w.h, borderColor: w.h }"
-            />
-            <span
-              class="sw-n"
-              :style="{ color: w.h }"
-            >{{ w.n }}</span>
-            <span class="sw-h">{{ w.h }}</span>
-            <span class="sw-r">{{ w.r }}</span>
-          </div>
-        </div>
-      </div>
-      <div class="crow">
+      <div class="token-foot">
         <div class="grp">
           <span class="vl">Tiers</span>
           <div
-            v-for="t in TIERS"
-            :key="t"
-            style="display: flex; flex-direction: column; width: 56px"
+            v-for="tier in TIERS"
+            :key="tier"
+            class="tier-col"
           >
-            <span :style="{ display: 'block', height: '4px', marginBottom: '6px', background: TIER[t] }" />
+            <span
+              class="tier-swatch"
+              :style="{ background: `var(--tier-${tier === 'S+' ? 'splus' : tier.toLowerCase()})` }"
+            />
             <span
               class="tb tier-chip"
-              :style="{ color: TIER[t], border: `1px solid ${TIER[t]}` }"
-            >{{ t }}</span>
-            <span
-              class="sw-h"
-              style="font-size: 10px; letter-spacing: 0"
-            >{{ TIER[t] }}</span>
-          </div>
-        </div>
-        <div class="grp">
-          <span class="vl">Valor</span>
-          <div
-            role="img"
-            aria-label="Valor sources stacked: directive, strain or Major Order, pacts"
-            style="display: flex; gap: 12px"
-          >
-            <div style="display: flex; flex-direction: column; gap: 2px; width: 20px; padding: 2px; border: 1px solid #2C3022">
-              <span style="height: 5px; border: 1px solid #23261C" />
-              <span style="height: 5px; border: 1px solid #23261C" />
-              <span style="height: 5px; background: #4AD7C8" />
-              <span style="height: 5px; background: #FF4B3E" />
-              <span style="height: 5px; background: #FF4B3E" />
-              <span style="height: 5px; background: #FF4B3E" />
-              <span style="height: 5px; background: #FF4B3E" />
-              <span style="height: 5px; background: #FF9F43" />
-              <span style="height: 5px; background: #FF9F43" />
-              <span style="height: 5px; background: #FFD642" />
-              <span style="height: 5px; background: #FFD642" />
-            </div>
-            <div style="display: flex; flex-direction: column; justify-content: space-between; width: 136px; padding: 1px 0">
-              <span
-                v-for="s in [{ n: 'Pacts', c: '#FF4B3E' }, { n: 'Strain · MO', c: '#FF9F43' }, { n: 'Directive', c: '#FFD642' }]"
-                :key="s.n"
-                style="display: flex; align-items: center; gap: 7px"
-              >
-                <span
-                  class="sq"
-                  :style="{ background: s.c }"
-                /><span
-                  class="sw-n"
-                  style="font-size: 10px; letter-spacing: .04em"
-                >{{ s.n }}</span><span
-                  class="sw-h"
-                  style="margin-left: auto; font-size: 10px; letter-spacing: 0"
-                >{{ s.c.toUpperCase() }}</span>
-              </span>
-            </div>
+              :style="{ color: TIER[tier], border: `1px solid ${TIER[tier]}` }"
+            >{{ tier }}</span>
+            <span class="sw-h">{{ TIER[tier] }}</span>
           </div>
         </div>
         <div class="grp">
           <span class="vl">Fronts</span>
           <div
-            v-for="f in FRONTS"
-            :key="f.id"
-            style="display: flex; flex-direction: column; width: 80px"
+            v-for="front in FRONTS"
+            :key="front.id"
+            class="front-col"
           >
             <img
-              :src="factionImageUrl(f.id)"
+              :src="factionImageUrl(front.id)"
               alt=""
               width="34"
               height="34"
-              style="width: 34px; height: 34px; object-fit: contain; margin-bottom: 6px"
             >
             <span
               class="sw-n"
-              style="font-size: 10px; letter-spacing: .04em"
-              :style="{ color: f.accent }"
-            >{{ f.displayName }}</span>
-            <span class="sw-h">{{ f.accent.toUpperCase() }}</span>
+              :style="{ color: front.accent }"
+            >{{ front.displayName }}</span>
+            <span class="sw-h">{{ front.accent.toUpperCase() }}</span>
           </div>
         </div>
       </div>
@@ -620,105 +646,107 @@ onBeforeUnmount(() => {
 
     <!-- 03 · Type -->
     <section
+      id="type"
       class="sec"
-      aria-label="Type"
+      aria-labelledby="type-h"
     >
       <div class="sh">
-        <span class="disp sn">03</span><h2 class="lbl">
+        <span class="disp sn">03</span><h2
+          id="type-h"
+          class="lbl"
+        >
           Type
-        </h2><span class="dash" /><span class="sub">Two families · nothing else</span>
+        </h2><span class="dash" /><span class="sub">Archivo display · Chakra Petch body · live sample</span>
       </div>
-      <div style="display: grid; grid-template-columns: 282px 1fr; gap: 14px">
-        <div style="display: flex; flex-direction: column; gap: 5px; min-width: 0">
+      <div class="type-grid">
+        <div class="type-ramp">
           <span
             class="sub"
             style="color: #FFD642; margin-bottom: 3px"
           >Archivo · 800 · wdth 125</span>
           <div
-            v-for="l in [{ s: '72', t: 'Dive', c: '#ECEADA', ls: '0' }, { s: '38', t: 'Valor', c: '#FFD642', ls: '0' }, { s: '26', t: 'Automatons', c: '#FF4B3E', ls: '0' }, { s: '17', t: 'Super Helldive', c: '#ECEADA', ls: '.06em' }]"
-            :key="l.t"
-            style="display: flex; align-items: baseline; gap: 4px"
+            v-for="line in [{ s: '56', t: 'Dive', c: '#ECEADA' }, { s: '38', t: 'Odds line', c: '#FFD642' }, { s: '26', t: 'Automatons', c: '#FF4B3E' }, { s: '17', t: 'Super Helldive', c: '#ECEADA' }]"
+            :key="line.t"
+            class="type-line"
           >
-            <span
-              class="cap"
-              style="width: 22px; flex-shrink: 0"
-            >{{ l.s }}</span>
+            <span class="cap type-line-s">{{ line.s }}</span>
             <span
               class="disp"
-              :style="{ fontSize: `${l.s}px`, lineHeight: '.85', color: l.c, letterSpacing: l.ls }"
-            >{{ l.t }}</span>
+              :style="{ fontSize: `${line.s}px`, lineHeight: '.85', color: line.c, letterSpacing: line.s === '17' ? '.06em' : '0' }"
+            >{{ line.t }}</span>
           </div>
-          <div style="display: flex; align-items: baseline; gap: 4px">
-            <span
-              class="cap"
-              style="width: 22px; flex-shrink: 0"
-            >Num</span>
+          <div class="type-line">
+            <span class="cap type-line-s">Num</span>
             <span
               class="disp"
               style="font-size: 26px; color: #B8B08D"
             >0123456789</span>
           </div>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 11px; min-width: 0">
+        <div class="type-body">
           <span
             class="sub"
             style="color: #FFD642; margin-bottom: 2px"
           >Chakra Petch · 400–700</span>
-          <div style="display: flex; flex-direction: column; gap: 3px">
+          <div class="type-spec">
             <span class="cap">16 · 500 · rule</span>
             <span style="font-size: 16px; font-weight: 500; line-height: 20px">I bring no backpack.</span>
           </div>
-          <div style="display: flex; flex-direction: column; gap: 3px">
+          <div class="type-spec">
             <span class="cap">14 · 700 · name</span>
             <span style="font-size: 14px; font-weight: 700; letter-spacing: .08em; line-height: 18px; text-transform: uppercase">Jet Brigade <span style="color: #FF9F43">+2</span></span>
           </div>
-          <div style="display: flex; flex-direction: column; gap: 3px">
+          <div class="type-spec">
             <span class="cap">12 · 400 · meta</span>
             <span style="font-size: 12px; font-weight: 400; line-height: 16px; color: #B8B08D">Code or link only</span>
           </div>
-          <div style="display: flex; flex-direction: column; gap: 3px">
+          <div class="type-spec">
             <span class="cap">11 · 600 · .18em · lbl</span>
             <span
               class="lbl"
               style="line-height: 14px"
-            >Ceiling odds</span>
+            >Odds line</span>
           </div>
         </div>
       </div>
-      <div style="display: flex; align-items: center; gap: 14px; padding: 7px 12px; background: #13150F; border: 1px solid #3A3F2E">
-        <div style="display: flex; flex-direction: column; gap: 3px; flex-grow: 1; min-width: 0">
-          <span
-            class="lbl"
-            style="line-height: 13px"
-          >Squad Directive · whole squad</span>
-          <span
-            class="disp"
-            style="font-size: 26px; color: #FFD642; line-height: 25px"
-          >No Orbitals</span>
-          <span style="font-size: 15px; font-weight: 500; line-height: 18px">No orbital stratagems.</span>
+      <div class="type-live">
+        <label
+          class="sub"
+          for="type-sample"
+        >Live sample · type anything</label>
+        <div class="type-live-row">
+          <input
+            id="type-sample"
+            v-model="typeSpecimen"
+            class="nb"
+            type="text"
+            maxlength="48"
+            spellcheck="false"
+            placeholder="Risk buys rarity."
+          >
+          <span class="cap">{{ typeSpecimen.length }} / 48</span>
         </div>
-        <div
-          aria-hidden="true"
-          style="display: flex; flex-direction: column; gap: 3px; align-items: flex-end"
-        >
-          <span
-            class="cap"
-            style="height: 13px; display: flex; align-items: center"
-          >Chakra 11 · lbl</span>
-          <span
-            class="cap"
-            style="height: 25px; display: flex; align-items: center; color: #FFD642"
-          >Archivo 26 · disp</span>
-          <span
-            class="cap"
-            style="height: 18px; display: flex; align-items: center"
-          >Chakra 15 · body</span>
+        <div class="type-live-pair">
+          <span class="disp type-live-display">{{ typeSpecimen || 'Risk buys rarity.' }}</span>
+          <span class="type-live-body">{{ typeSpecimen || 'Risk buys rarity.' }}</span>
         </div>
+      </div>
+      <div class="directive-sample">
+        <div class="directive-copy">
+          <span class="lbl">Squad Directive · whole squad</span>
+          <span class="disp directive-name">No Orbitals</span>
+          <span class="directive-rule">No orbital stratagems.</span>
+        </div>
+        <RiskPips
+          :value="2"
+          :max="2"
+        />
       </div>
     </section>
 
     <!-- 04 · Frames and motifs -->
     <section
+      id="frames"
       class="sec"
       aria-label="Frames and motifs"
     >
@@ -822,7 +850,7 @@ onBeforeUnmount(() => {
               stroke-width="2"
               aria-hidden="true"
             ><path d="M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0M12 3v18M3 12h18" /></svg>
-            <span style="font-size: 11px; font-weight: 700; letter-spacing: .2em">SPIN</span>
+            <span style="font-size: 11px; font-weight: 700; letter-spacing: .2em">CALL</span>
           </div>
           <div
             class="chev"
@@ -838,7 +866,7 @@ onBeforeUnmount(() => {
               stroke-width="2"
               aria-hidden="true"
             ><path d="M12 21v-8M12 13L6 7M12 13l6-6M4 3h5v5M20 3h-5v5" /></svg>
-            <span style="font-size: 11px; font-weight: 700; letter-spacing: .2em">DECIDE</span>
+            <span style="font-size: 11px; font-weight: 700; letter-spacing: .2em">PACTS</span>
           </div>
           <div
             class="chev"
@@ -853,7 +881,7 @@ onBeforeUnmount(() => {
               stroke-width="2"
               aria-hidden="true"
             ><path d="M6 3h12v14l-6 4-6-4zM9 8h6M9 12h6" /></svg>
-            <span style="font-size: 11px; font-weight: 700; letter-spacing: .2em">PACTS</span>
+            <span style="font-size: 11px; font-weight: 700; letter-spacing: .2em">DIVE</span>
           </div>
           <div
             class="chev"
@@ -868,7 +896,7 @@ onBeforeUnmount(() => {
               stroke-width="2"
               aria-hidden="true"
             ><path d="M12 3l10 18H2zM12 10v5M12 18v.01" /></svg>
-            <span style="font-size: 11px; font-weight: 700; letter-spacing: .2em">FAILED</span>
+            <span style="font-size: 11px; font-weight: 700; letter-spacing: .2em">FORFEIT</span>
           </div>
         </div>
         <div style="display: flex; gap: 4px">
@@ -891,101 +919,80 @@ onBeforeUnmount(() => {
 
     <!-- 05 · Controls -->
     <section
+      id="controls"
       class="sec"
       aria-label="Controls"
     >
       <div class="sh">
         <span class="disp sn">05</span><h2 class="lbl">
           Controls
-        </h2><span class="dash" /><span class="sub">Real buttons · 44px · hold commits</span>
+        </h2><span class="dash" /><span class="sub">Real components · hold, rate, focus, overlay</span>
       </div>
-      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 900px">
+      <div class="control-grid">
         <div class="cell">
-          <button
-            class="btn cut"
-            :style="{ position: 'relative', overflow: 'hidden', width: '100%', height: '50px', background: holdDone ? '#13150F' : '#FFD642', color: '#141410' }"
-            :aria-label="holdDone ? 'No Orbitals accepted, plus 2 team risk' : 'Accept No Orbitals, plus 2 team risk. Press and hold.'"
-            type="button"
-            @pointerdown="holdDown"
-            @pointerup="holdEnd"
-            @pointerleave="holdEnd"
-            @click="holdKey"
-          >
-            <template v-if="!holdDone">
-              <span
-                aria-hidden="true"
-                class="hazard crawl"
-                style="position: absolute; inset: 0; opacity: .4; transform-origin: left"
-                :style="{ transform: `scaleX(${holdFill})` }"
-              />
-              <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px">
-                <span
-                  class="disp"
-                  style="font-size: 18px"
-                >Accept +2</span>
-                <span style="font-size: 10px; font-weight: 700; letter-spacing: .24em">HOLD TO LOCK</span>
-              </span>
-            </template>
-            <template v-else>
-              <span
-                class="hazard-soft"
-                aria-hidden="true"
-                style="position: absolute; inset: 0; opacity: .5"
-              />
-              <span
-                class="disp stamp"
-                style="position: relative; display: inline-block; padding: 5px 14px; font-size: 18px; border: 3px solid #FFD642; color: #FFD642; background: rgba(11,12,9,.85)"
-              >Accepted</span>
-            </template>
-          </button>
+          <AppHoldButton
+            label="Accept +2"
+            hint="Hold to lock"
+            @confirm="onHoldConfirm"
+          />
           <span
             class="cap"
             aria-live="polite"
-          ><b>{{ holdDone ? 'Accepted' : 'Idle' }}</b> · {{ holdDone ? 'resets for the demo' : 'hold 0.9s · try it' }}</span>
+          ><b>{{ holdAccepted ? 'Accepted' : 'Idle' }}</b> · {{ holdAccepted ? 'real AppHoldButton · resets' : 'hold 0.65s · try it' }}</span>
         </div>
         <div class="cell">
-          <div
-            role="img"
-            aria-label="Hold button mid-hold, 60 percent filled"
-            class="cut"
-            style="position: relative; overflow: hidden; height: 50px; display: grid; place-items: center; background: #FFD642; color: #141410"
-          >
-            <span
-              aria-hidden="true"
-              class="hazard"
-              style="position: absolute; inset: 0; opacity: .4; background-size: 22.6px 22.6px; transform-origin: left; transform: scaleX(.6)"
-            />
-            <span
-              aria-hidden="true"
-              style="position: absolute; left: 60%; top: 0; bottom: 0; width: 2px; background: #141410"
-            />
-            <span style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px">
-              <span
-                class="disp"
-                style="font-size: 18px"
-              >Accept +2</span>
-              <span style="font-size: 10px; font-weight: 700; letter-spacing: .24em">HOLD TO LOCK</span>
-            </span>
-          </div>
-          <span class="cap"><b>Mid-hold</b> · 60% · static</span>
+          <AppStarRating v-model="stars" />
+          <span class="cap"><b>Star radio</b> · real AppStarRating · {{ stars }}/5</span>
         </div>
-        <div class="cell">
-          <div style="height: 50px; display: flex; align-items: center; justify-content: space-between; padding-left: 6px">
-            <span
-              class="disp"
-              style="display: inline-block; padding: 5px 10px; font-size: 15px; border: 3px solid #FFD642; color: #FFD642; transform: rotate(-7deg)"
-            >Accepted</span>
+        <div class="cell overlay-demos">
+          <div class="overlay-row">
             <button
               class="ghost"
-              style="height: 44px; padding: 0 9px; font-size: 10px; font-weight: 700; letter-spacing: .12em; color: #B8B08D; white-space: nowrap"
               type="button"
+              @click="demoDialog = true"
             >
-              CHANGE CALL
+              OPEN DIALOG
+            </button>
+            <AppTooltip content="Focus trap, Escape and focus return are handled by Reka.">
+              <button
+                class="icon-btn"
+                aria-label="Tooltip example"
+                type="button"
+              >
+                ?
+              </button>
+            </AppTooltip>
+            <button
+              class="ghost"
+              type="button"
+              @click="pushToast('Toast · squad synced')"
+            >
+              TOAST
             </button>
           </div>
-          <span class="cap"><b>Committed</b> · stamp + undo</span>
+          <span class="cap"><b>Overlays</b> · AppDialog · AppTooltip · toast queue</span>
         </div>
       </div>
+      <AppDialog
+        v-model:open="demoDialog"
+        title="AppDialog"
+        description="The shared modal wrapper: focus trap, Escape and focus return."
+      >
+        <p class="dialog-copy">
+          Dialogs are Reka primitives behind one themed wrapper. This one is live — close it with
+          Escape, the X, or the button.
+        </p>
+        <template #footer>
+          <button
+            class="btn cut"
+            style="height: 44px; padding: 0 18px; background: #FFD642; color: #141410"
+            type="button"
+            @click="demoDialog = false"
+          >
+            Close
+          </button>
+        </template>
+      </AppDialog>
       <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px">
         <div class="cell">
           <button
@@ -1107,37 +1114,13 @@ onBeforeUnmount(() => {
           </button><span class="cap"><b>Toggle</b> · {{ toggleB ? 'pressed · true' : 'pressed · false' }}</span>
         </div>
         <div class="cell">
-          <div
-            role="radiogroup"
-            aria-label="Stars earned"
-            style="display: flex; gap: 4px"
+          <button
+            class="ghost ring-demo"
+            type="button"
           >
-            <button
-              v-for="k in [1, 2, 3, 4, 5]"
-              :key="k"
-              class="btn"
-              role="radio"
-              :aria-checked="k === stars"
-              :aria-label="`${k}${k === 1 ? ' star' : ' stars'}`"
-              :style="{ width: '44px', height: '44px', display: 'grid', placeItems: 'center', background: k <= stars ? '#1F2216' : '#13150F', border: `1px solid ${k === stars ? '#FFD642' : '#2C3022'}` }"
-              type="button"
-              @click="stars = k"
-            >
-              <svg
-                width="26"
-                height="26"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-                :style="{ filter: k <= stars ? 'drop-shadow(0 0 5px rgba(255,214,66,.5))' : 'none' }"
-              ><path
-                d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"
-                :fill="k <= stars ? '#FFD642' : 'transparent'"
-                :stroke="k <= stars ? '#FFD642' : '#5A5E45'"
-                stroke-width="1.4"
-                stroke-linejoin="round"
-              /></svg>
-            </button>
-          </div><span class="cap"><b>Star radio</b> · {{ stars }}/5</span>
+            TAB TO FOCUS
+          </button>
+          <span class="cap"><b>Focus</b> · 2px gold ring · 3px offset</span>
         </div>
         <div class="cell">
           <MissionSampleCanister
@@ -1153,59 +1136,41 @@ onBeforeUnmount(() => {
 
     <!-- 06 · Game atoms -->
     <section
+      id="atoms"
       class="sec"
       aria-label="Game atoms"
     >
       <div class="sh">
         <span class="disp sn">06</span><h2 class="lbl">
           Game atoms
-        </h2><span class="dash" /><span class="sub">Every mechanic has a shape</span>
+        </h2><span class="dash" /><span class="sub">Risk pips · tier badges · lamps · tokens · seats · stamps</span>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px">
         <div class="cell">
           <span class="sub">Risk pips · 1–5</span>
-          <div style="display: flex; flex-direction: column; gap: 2px">
-            <div
-              v-for="r in riskRows"
-              :key="r.t"
-              :aria-label="`Risk ${r.t.slice(1)} of 5`"
-              role="img"
-              style="display: flex; align-items: center; gap: 2px; height: 14px"
+          <div class="pip-rows">
+            <span
+              v-for="n in 5"
+              :key="n"
+              class="pip-row"
             >
-              <svg
-                v-for="(k, i) in r.k"
-                :key="i"
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                aria-hidden="true"
-              ><path
-                :fill="k.c"
-                d="M8 1C4.4 1 2 3.5 2 6.8c0 1.9.9 3.3 2.2 4.1V14h1.9v-1.6h1V14h1.8v-1.6h1V14h1.9v-3.1C13.1 10.1 14 8.7 14 6.8 14 3.5 11.6 1 8 1Z"
-              /><circle
-                cx="5.6"
-                cy="7.2"
-                r="1.5"
-                fill="#0E100B"
-              /><circle
-                cx="10.4"
-                cy="7.2"
-                r="1.5"
-                fill="#0E100B"
-              /></svg>
-              <span style="margin-left: 6px; font-size: 11px; font-weight: 700; letter-spacing: .1em; color: #FF4B3E">{{ r.t }}</span>
-            </div>
+              <RiskPips
+                :value="n"
+                :max="5"
+              />
+              <b>+{{ n }}</b>
+            </span>
           </div>
         </div>
         <div class="cell">
           <span class="sub">Tier badge · letter always</span>
           <div style="display: flex; align-items: center; gap: 5px">
-            <span
+            <ItemTierBadge
               v-for="t in TIERS"
               :key="t"
-              class="tb"
-              :style="{ minWidth: '32px', height: '24px', padding: '0 4px', fontSize: '12px', color: TIER[t], border: `1px solid ${TIER[t]}` }"
-            >{{ t }}</span><span
+              :tier="t"
+            />
+            <span
               class="cap"
               style="margin-left: 6px"
             >Rail</span>
@@ -1251,12 +1216,12 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div class="cell">
-          <span class="sub">Reward tokens · cap 3</span>
+          <span class="sub">Reward tokens · cap {{ REWARD_TOKEN_CAP }}</span>
           <div style="display: flex; flex-direction: column; gap: 5px">
             <div
               v-for="r in tokenRows"
               :key="r.n"
-              :aria-label="`${r.n} of 3 reward tokens${r.max ? ', max' : ''}`"
+              :aria-label="`${r.n} of ${REWARD_TOKEN_CAP} reward tokens${r.max ? ', max' : ''}`"
               role="img"
               style="display: flex; align-items: center; gap: 3px; height: 15px"
             >
@@ -1269,11 +1234,11 @@ onBeforeUnmount(() => {
               <span
                 v-if="!r.max"
                 style="margin-left: 8px; font-size: 12px; font-weight: 700; color: #B8B08D"
-              >{{ r.n }}/3</span>
+              >{{ r.n }}/{{ REWARD_TOKEN_CAP }}</span>
               <span
                 v-else
                 style="margin-left: 8px; padding: 1px 6px; border: 1px solid #FFD642; background: rgba(255,214,66,.1); font-size: 10px; font-weight: 700; letter-spacing: .16em; color: #FFD642"
-              >MAX 3</span>
+              >MAX {{ REWARD_TOKEN_CAP }}</span>
             </div>
           </div>
         </div>
@@ -1283,7 +1248,7 @@ onBeforeUnmount(() => {
             <div
               v-for="t in tags"
               :key="t.name"
-              :aria-label="`${t.name}${t.host ? ', host' : ''}${t.you ? ', you' : ''}, ${t.status.toLowerCase()}, ${t.tokens} of 3 reward tokens`"
+              :aria-label="`${t.name}${t.host ? ', host' : ''}${t.you ? ', you' : ''}, ${t.status.toLowerCase()}, ${t.tokens} of ${REWARD_TOKEN_CAP} reward tokens`"
               role="group"
               style="position: relative; width: 190px; height: 80px"
             >
@@ -1350,7 +1315,10 @@ onBeforeUnmount(() => {
       <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px">
         <div class="cell">
           <span class="sub">Ladder rung</span>
-          <div style="display: flex; gap: 6px; height: 56px">
+          <div
+            class="ladder-scroll"
+            style="display: flex; gap: 6px; height: 56px"
+          >
             <div style="width: 138px; display: flex; flex-direction: column; justify-content: space-between; padding: 8px 12px; border: 1px solid #3A3F2E; color: #B8B08D">
               <div style="display: flex; align-items: baseline; gap: 8px">
                 <span
@@ -1474,523 +1442,139 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <!-- 07 · Composite components -->
+    <!-- 07 · Live console -->
     <section
-      class="sec"
-      aria-label="Composite components"
+      id="console"
+      class="sec sec-live"
+      aria-labelledby="console-h"
     >
       <div class="sh">
-        <span class="disp sn">07</span><h2 class="lbl">
-          Composite components
-        </h2><span class="dash" /><span class="sub">States side by side</span>
+        <span class="disp sn">07</span><h2
+          id="console-h"
+          class="lbl"
+        >
+          Live console
+        </h2><span class="dash" /><span class="sub">The Bridge's odds console · real ladder · real d100</span>
       </div>
-      <div style="display: grid; grid-template-columns: 770px 1fr; gap: 20px; min-height: 0">
-        <div style="display: flex; flex-direction: column; gap: 12px">
-          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
-            <span class="sub"><span style="color: #ECEADA">Pact card</span> · offered</span><span
-              class="sub"
-              style="color: #FF4B3E"
-            >Sworn</span><span class="sub">Voided</span><span class="sub">Unavailable</span>
-          </div>
-          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
-            <article
-              aria-label="Primary Concern pact, offered, plus 2 Valor"
-              style="position: relative; display: flex; flex-direction: column; padding: 10px 12px; background: #13150F; border: 1px solid #454A36"
-            >
-              <div style="display: flex; align-items: center; justify-content: space-between; height: 22px">
-                <span class="chan">LOADOUT</span>
-                <div
-                  role="img"
-                  aria-label="Risk 2 of 3"
-                  style="display: flex; gap: 2px"
-                >
-                  <svg
-                    v-for="(k, i) in pk2"
-                    :key="i"
-                    width="15"
-                    height="15"
-                    viewBox="0 0 16 16"
-                    aria-hidden="true"
-                  ><path
-                    :fill="k.c"
-                    d="M8 1C4.4 1 2 3.5 2 6.8c0 1.9.9 3.3 2.2 4.1V14h1.9v-1.6h1V14h1.8v-1.6h1V14h1.9v-3.1C13.1 10.1 14 8.7 14 6.8 14 3.5 11.6 1 8 1Z"
-                  /><circle
-                    cx="5.6"
-                    cy="7.2"
-                    r="1.5"
-                    fill="#13150F"
-                  /><circle
-                    cx="10.4"
-                    cy="7.2"
-                    r="1.5"
-                    fill="#13150F"
-                  /></svg>
-                </div>
-              </div>
-              <span class="disp pact-name">Primary Concern</span>
-              <span style="margin-top: 5px; font-size: 12px; line-height: 15px">I bring no support weapon.</span>
-              <div style="flex-grow: 1" />
-              <div style="height: 1px; background: repeating-linear-gradient(90deg, #454A36 0 6px, transparent 6px 10px)" />
-              <div style="display: flex; align-items: center; gap: 6px; height: 28px; margin-top: 6px">
-                <span
-                  class="disp"
-                  style="font-size: 22px; color: #FF4B3E"
-                >+2</span><span
-                  class="lbl"
-                  style="font-size: 9px"
-                >Valor</span>
-                <span style="margin-left: auto; padding: 3px 7px; border: 1px solid #454A36; font-size: 10px; font-weight: 700; letter-spacing: .14em; color: #B8B08D">OFFERED</span>
-              </div>
-            </article>
+      <p class="sec-note">
+        The rung and the skulls range are wired to <code>tierZones</code>; the four faces are fixed so
+        you can watch the same rolls move up the ladder. This is the component the Bridge ships.
+      </p>
+      <BridgeOdds :lit="true" />
+    </section>
 
-            <article
-              aria-label="Pack Light pact, sworn, plus 1 Valor"
-              style="position: relative; display: flex; flex-direction: column; padding: 10px 12px; background: #13150F; background-image: linear-gradient(180deg, rgba(255,75,62,.08), transparent 70%); border: 1px solid #FF4B3E"
-            >
-              <div style="display: flex; align-items: center; justify-content: space-between; height: 22px">
-                <span class="chan">LOADOUT</span>
-                <div
-                  role="img"
-                  aria-label="Risk 1 of 3"
-                  style="display: flex; gap: 2px"
-                >
-                  <svg
-                    v-for="(k, i) in pk1"
-                    :key="i"
-                    width="15"
-                    height="15"
-                    viewBox="0 0 16 16"
-                    aria-hidden="true"
-                  ><path
-                    :fill="k.c"
-                    d="M8 1C4.4 1 2 3.5 2 6.8c0 1.9.9 3.3 2.2 4.1V14h1.9v-1.6h1V14h1.8v-1.6h1V14h1.9v-3.1C13.1 10.1 14 8.7 14 6.8 14 3.5 11.6 1 8 1Z"
-                  /><circle
-                    cx="5.6"
-                    cy="7.2"
-                    r="1.5"
-                    fill="#13150F"
-                  /><circle
-                    cx="10.4"
-                    cy="7.2"
-                    r="1.5"
-                    fill="#13150F"
-                  /></svg>
-                </div>
-              </div>
-              <span class="disp pact-name">Pack Light</span>
-              <span style="margin-top: 5px; font-size: 12px; line-height: 15px">I bring no backpack.</span>
-              <div style="flex-grow: 1" />
-              <div style="height: 1px; background: repeating-linear-gradient(90deg, rgba(255,75,62,.5) 0 6px, transparent 6px 10px)" />
-              <div style="display: flex; align-items: center; gap: 6px; height: 28px; margin-top: 6px">
-                <span
-                  class="disp"
-                  style="font-size: 22px; color: #FF4B3E"
-                >+1</span><span
-                  class="lbl"
-                  style="font-size: 9px"
-                >Valor</span>
-                <span
-                  class="disp"
-                  style="margin-left: auto; display: inline-block; padding: 3px 8px; font-size: 13px; border: 2px solid #FF4B3E; color: #FF4B3E; transform: rotate(-7deg)"
-                >Sworn</span>
-              </div>
-            </article>
-
-            <article
-              aria-label="Untouchable pact, voided, plus 3 Valor lost"
-              style="position: relative; overflow: hidden; display: flex; flex-direction: column; padding: 10px 12px; background: #13150F; border: 1px solid rgba(255,75,62,.6)"
-            >
-              <div style="display: flex; flex-direction: column; flex-grow: 1; opacity: .45">
-                <div style="display: flex; align-items: center; justify-content: space-between; height: 22px">
-                  <span class="chan">FIELD</span>
-                  <div
-                    role="img"
-                    aria-label="Risk 3 of 3"
-                    style="display: flex; gap: 2px"
-                  >
-                    <svg
-                      v-for="(k, i) in pk3"
-                      :key="i"
-                      width="15"
-                      height="15"
-                      viewBox="0 0 16 16"
-                      aria-hidden="true"
-                    ><path
-                      :fill="k.c"
-                      d="M8 1C4.4 1 2 3.5 2 6.8c0 1.9.9 3.3 2.2 4.1V14h1.9v-1.6h1V14h1.8v-1.6h1V14h1.9v-3.1C13.1 10.1 14 8.7 14 6.8 14 3.5 11.6 1 8 1Z"
-                    /><circle
-                      cx="5.6"
-                      cy="7.2"
-                      r="1.5"
-                      fill="#13150F"
-                    /><circle
-                      cx="10.4"
-                      cy="7.2"
-                      r="1.5"
-                      fill="#13150F"
-                    /></svg>
-                  </div>
-                </div>
-                <span class="disp pact-name tc-text">Untouchable</span>
-                <span style="margin-top: 5px; font-size: 12px; line-height: 15px">I finish the mission without dying.</span>
-              </div>
-              <div style="height: 1px; background: repeating-linear-gradient(90deg, #454A36 0 6px, transparent 6px 10px)" />
-              <div style="display: flex; align-items: center; gap: 6px; height: 28px; margin-top: 6px">
-                <span
-                  class="disp"
-                  style="font-size: 22px; color: #85876F; text-decoration: line-through; text-decoration-thickness: 3px; text-decoration-color: #FF4B3E"
-                >+3</span>
-                <span
-                  class="hazard-soft-red"
-                  style="margin-left: auto; padding: 4px 7px; border: 1px solid rgba(255,75,62,.6); font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #FF4B3E; white-space: nowrap"
-                >−3 VALOR</span>
-              </div>
-              <span
-                class="disp"
-                style="position: absolute; left: 0; right: 0; top: 44px; margin: 0 auto; width: max-content; padding: 5px 12px; font-size: 22px; border: 3px solid #FF4B3E; color: #FF4B3E; background: rgba(11,12,9,.82); transform: rotate(-7deg)"
-              >Voided</span>
-            </article>
-
-            <article
-              aria-label="Grounded pact, unavailable: leaves too few stratagems"
-              style="position: relative; display: flex; flex-direction: column; padding: 10px 12px; background: transparent; border: 1px dashed #3A3F2E"
-            >
-              <div style="display: flex; align-items: center; justify-content: space-between; height: 22px">
-                <span
-                  class="chan"
-                  style="color: #85876F; border-color: #23261C"
-                >LOADOUT</span>
-                <div
-                  role="img"
-                  aria-label="Risk 2 of 3"
-                  style="display: flex; gap: 2px"
-                >
-                  <svg
-                    v-for="(k, i) in pkOff"
-                    :key="i"
-                    width="15"
-                    height="15"
-                    viewBox="0 0 16 16"
-                    aria-hidden="true"
-                  ><path
-                    :fill="k.c"
-                    d="M8 1C4.4 1 2 3.5 2 6.8c0 1.9.9 3.3 2.2 4.1V14h1.9v-1.6h1V14h1.8v-1.6h1V14h1.9v-3.1C13.1 10.1 14 8.7 14 6.8 14 3.5 11.6 1 8 1Z"
-                  /><circle
-                    cx="5.6"
-                    cy="7.2"
-                    r="1.5"
-                    fill="#0E100B"
-                  /><circle
-                    cx="10.4"
-                    cy="7.2"
-                    r="1.5"
-                    fill="#0E100B"
-                  /></svg>
-                </div>
-              </div>
-              <span
-                class="disp pact-name"
-                style="color: #85876F"
-              >Grounded</span>
-              <span style="margin-top: 5px; font-size: 12px; line-height: 15px; color: #9A9B82">I bring no offensive Eagle stratagems.</span>
-              <div style="flex-grow: 1" />
-              <div style="display: flex; align-items: center; justify-content: center; gap: 7px; height: 28px; border: 1px dashed #454A36; font-size: 10px; font-weight: 700; letter-spacing: .12em; color: #9A9B82; white-space: nowrap">
-                FLOOR · 4 STRATAGEMS
-              </div>
-            </article>
-          </div>
-
-          <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px">
-            <span class="sub"><span style="color: #ECEADA">Item tile</span> · normal</span><span
-              class="sub"
-              style="color: #FFD642"
-            >New</span><span class="sub">Reserve</span><span
-              class="sub"
-              style="color: #FF4B3E"
-            >Ruled out</span><span
-              class="sub"
-              style="color: #FFD642"
-            >Ceiling lead</span>
-          </div>
-          <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px">
+    <!-- 07b · Wheel and pacts -->
+    <section
+      id="wheel"
+      class="sec sec-live"
+      aria-labelledby="wheel-h"
+    >
+      <div class="sh">
+        <span class="disp sn">07b</span><h2
+          id="wheel-h"
+          class="lbl"
+        >
+          Wheel &amp; pacts
+        </h2><span class="dash" /><span class="sub">Seed in → directive out · risk in → odds out</span>
+      </div>
+      <div class="live-grid">
+        <div class="live-panel wheel-panel">
+          <div class="live-panel-head">
+            <span class="sub">Wheel of Adversity</span>
             <div
-              v-for="t in tiles"
-              :key="t.name"
-              :class="t.lead ? 'ticks' : ''"
-              :aria-label="`${t.name}, tier ${t.t}${t.tag ? `, ${t.tag.toLowerCase()}` : ''}${t.out ? ', ruled out by Pack Light' : ''}`"
-              role="img"
-              :style="{ position: 'relative', display: 'flex', flexDirection: 'column', backgroundColor: t.bg, border: `1px ${t.bs} ${t.bd}`, animation: t.lead ? 'glow 2.6s ease-in-out infinite' : 'none' }"
+              class="live-controls"
+              role="group"
+              aria-label="Wheel difficulty"
             >
-              <span
-                style="display: block; height: 4px; flex-shrink: 0"
-                :style="{ background: t.tc, opacity: t.stripeOp }"
-              />
-              <div
-                class="grid-bg"
-                style="position: relative; height: 62px; flex-shrink: 0; overflow: hidden; background-color: #0B0C09; border-bottom: 1px solid #23261C; display: grid; place-items: center"
+              <button
+                v-for="d in [5, 7, 10]"
+                :key="d"
+                class="ghost"
+                type="button"
+                :aria-pressed="wheelDifficulty === d"
+                @click="wheelDifficulty = d"
               >
-                <img
-                  :src="t.img"
-                  alt=""
-                  width="44"
-                  height="44"
-                  style="width: 44px; height: 44px; object-fit: contain"
-                  :style="{ opacity: t.iop, filter: t.filt }"
-                >
-                <template v-if="t.out">
-                  <span
-                    class="hazard-red"
-                    style="position: absolute; inset: 0; opacity: .26"
-                  />
-                  <span style="position: absolute; left: 5px; right: 5px; bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 5px; height: 20px; background: #0B0C09; border: 1px solid #FF4B3E; color: #FF4B3E; font-size: 10px; font-weight: 700; letter-spacing: .12em; white-space: nowrap">PACK LIGHT</span>
-                </template>
-                <span
-                  class="tb"
-                  style="position: absolute; top: 5px; right: 5px; min-width: 22px; height: 20px; padding: 0 3px; font-size: 11px; background: #0B0C09"
-                  :style="{ color: t.tc, border: `1px solid ${t.tc}` }"
-                >{{ t.t }}</span>
-                <span
-                  v-if="t.tag"
-                  style="position: absolute; top: 5px; left: 5px; padding: 2px 5px; font-size: 9px; font-weight: 700; letter-spacing: .16em"
-                  :style="{ background: t.tagBg, color: t.tagFg, border: `1px solid ${t.tagBd}` }"
-                >{{ t.tag }}</span>
-              </div>
-              <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 5px; padding: 6px 9px 7px">
-                <span
-                  style="font-size: 12px; font-weight: 700; letter-spacing: .05em; line-height: 14px; text-transform: uppercase"
-                  :style="{ color: t.nc }"
-                >{{ t.name }}</span>
-                <span style="align-self: flex-start; padding: 2px 6px; border: 1px solid #3A3F2E; font-size: 10px; font-weight: 700; letter-spacing: .12em; color: #B8B08D; white-space: nowrap">{{ t.cat }}</span>
-              </div>
+                {{ d }}
+              </button>
             </div>
           </div>
+          <WheelOfAdversity
+            :difficulty="wheelDifficulty"
+            :seed="wheelSeed"
+            can-control
+            @spin="spinWheel"
+          />
+          <div
+            class="draw-caption"
+            aria-live="polite"
+          >
+            <template v-if="wheelDraw">
+              <span class="lbl">Drawn directive</span>
+              <span class="disp draw-name">{{ wheelDraw.name }}</span>
+              <span class="draw-rule">{{ wheelDraw.rule }}</span>
+              <span class="draw-meta"><RiskPips
+                :value="wheelRisk"
+                :max="5"
+              /> risk {{ wheelRisk }} · seed {{ wheelSeed }}</span>
+            </template>
+            <template v-else>
+              <span class="lbl">Wheel ready</span>
+              <span class="draw-rule">Spin to draw a squad directive, then read its rule and risk here.</span>
+            </template>
+          </div>
+          <button
+            class="ghost"
+            type="button"
+            @click="spinWheel"
+          >
+            {{ wheelSeed === null ? 'SPIN' : 'SPIN AGAIN' }}
+          </button>
         </div>
 
-        <div style="display: grid; grid-template-columns: 84px 84px 170px 1fr; gap: 8px; min-width: 0">
-          <div style="display: flex; flex-direction: column; gap: 8px">
-            <span
-              class="sub"
-              style="color: #ECEADA"
-            >Preview</span>
-            <div style="height: 32px; display: flex; align-items: baseline; gap: 5px">
-              <span
-                class="disp"
-                style="font-size: 32px; color: #FFD642"
-              >4</span><span style="font-size: 13px; font-weight: 700; color: #FFD642">→ 8</span>
-            </div>
+        <div class="live-panel pacts-panel">
+          <div class="live-panel-head">
+            <span class="sub">Pact hand · risk at difficulty {{ pactDifficulty }}</span>
             <div
-              role="progressbar"
-              aria-label="Valor preview"
-              aria-valuemin="0"
-              aria-valuemax="11"
-              aria-valuenow="4"
-              aria-valuetext="4 of 11, 8 if both pacts are sworn"
-              style="width: 40px; display: flex; flex-direction: column; gap: 3px; padding: 3px; border: 1px solid #2C3022"
+              class="live-controls"
+              role="group"
+              aria-label="Pact risk difficulty"
             >
-              <span
-                v-for="(c, i) in gPrev"
-                :key="i"
-                style="position: relative; height: 18px"
-                :style="{ backgroundColor: c.bg, backgroundImage: c.bgi, border: `1px solid ${c.bd}` }"
-              />
-            </div>
-            <span
-              class="hazard-soft"
-              style="align-self: flex-start; padding: 3px 6px; font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #FFD642; white-space: nowrap"
-            >+4 PENDING</span>
-          </div>
-
-          <div style="display: flex; flex-direction: column; gap: 8px">
-            <span
-              class="sub"
-              style="color: #ECEADA"
-            >Locked</span>
-            <div style="height: 32px; display: flex; align-items: baseline; gap: 5px">
-              <span
-                class="disp"
-                style="font-size: 32px; color: #FFD642"
-              >8</span><span style="font-size: 12px; font-weight: 700; color: #85876F">/ 11</span>
-            </div>
-            <div
-              role="progressbar"
-              aria-label="Valor locked"
-              aria-valuemin="0"
-              aria-valuemax="11"
-              aria-valuenow="8"
-              aria-valuetext="8 of 11, locked: directive 2, strain 2, pacts 4"
-              style="width: 40px; display: flex; flex-direction: column; gap: 3px; padding: 3px; border: 1px solid #2C3022"
-            >
-              <span
-                v-for="(c, i) in gLock"
-                :key="i"
-                style="position: relative; height: 18px"
-                :style="{ backgroundColor: c.bg, border: `1px solid ${c.bd}` }"
-              />
-            </div>
-            <span style="align-self: flex-start; display: flex; align-items: center; gap: 5px; padding: 3px 6px; border: 1px solid #2C3022; font-size: 10px; font-weight: 700; letter-spacing: .12em; color: #B8B08D">LOCKED</span>
-          </div>
-
-          <div style="display: flex; flex-direction: column; gap: 8px">
-            <span
-              class="sub"
-              style="color: #ECEADA"
-            >+ Valor · odds</span>
-            <div style="height: 32px; display: flex; align-items: baseline; gap: 5px">
-              <ValorFigure
-                class="disp"
-                style="font-size: 32px; color: #FFD642"
-                :value="'8.16'"
-              /><span style="font-size: 12px; font-weight: 700; color: #85876F">/ 11</span>
-            </div>
-            <div style="display: flex; gap: 12px">
-              <div
-                role="progressbar"
-                aria-label="Valor gauge"
-                aria-valuemin="0"
-                aria-valuemax="11"
-                aria-valuenow="8.16"
-                aria-valuetext="8.16 of 11: directive 2, strain 2, pacts 4"
-                style="width: 40px; flex-shrink: 0; display: flex; flex-direction: column; gap: 3px; padding: 3px; border: 1px solid #2C3022"
+              <button
+                v-for="d in [3, 5, 7, 10]"
+                :key="d"
+                class="ghost"
+                type="button"
+                :aria-pressed="pactDifficulty === d"
+                @click="pactDifficulty = d; pactSelection = []"
               >
-                <span
-                  v-for="(c, i) in gPerf"
-                  :key="i"
-                  style="position: relative; height: 18px"
-                  :style="{ backgroundColor: c.bg, border: `1px solid ${c.bd}` }"
-                ><span
-                  style="position: absolute; left: 0; right: 0; bottom: 0; background: #4AD7C8"
-                  :style="{ height: c.part }"
-                /></span>
-              </div>
-              <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 2px 0">
-                <div
-                  v-for="r in rungsPerf"
-                  :key="r.t"
-                  style="display: flex; flex-direction: column; gap: 5px"
-                  :style="{ opacity: r.op }"
-                >
-                  <div style="display: flex; align-items: center; gap: 8px">
-                    <span
-                      class="tb"
-                      style="min-width: 32px; height: 24px; padding: 0 4px; font-size: 12px"
-                      :style="{ color: r.tc, border: `1px solid ${r.tc}`, background: r.tbg }"
-                    >{{ r.t }}</span>
-                    <span
-                      style="margin-left: auto; font-size: 14px; font-weight: 700"
-                      :style="{ color: r.fg }"
-                    >{{ r.txt }}</span>
-                  </div>
-                  <div style="height: 4px; background: #1A1D15">
-                    <div
-                      style="height: 4px"
-                      :style="{ width: r.w, background: r.tc }"
-                    />
-                  </div>
-                </div>
-              </div>
+                {{ d }}
+              </button>
             </div>
-            <span style="align-self: flex-start; padding: 3px 6px; border: 1px solid rgba(74,215,200,.6); font-size: 10px; font-weight: 700; letter-spacing: .12em; color: #4AD7C8; white-space: nowrap">+0.16 PERFORMANCE</span>
           </div>
-
-          <div
-            class="ticks ticks-red"
-            style="position: relative; padding: 9px 12px 8px; background-color: #13150F; background-image: none; border: 1px solid rgba(255,75,62,.55); overflow: hidden"
-          >
-            <span
-              aria-hidden="true"
-              class="ticks ticks-red"
-              style="position: absolute; inset: 0; pointer-events: none"
+          <div class="pact-hand">
+            <ConditionCard
+              v-for="card in pactCards"
+              :key="card.id"
+              :condition="card.condition"
+              :risk="card.risk"
+              :selected="pactSelection.includes(card.id)"
+              :selectable="card.selectable"
+              :stamp="card.stamp"
+              :stamp-tone="card.stampTone"
+              @select="togglePact(card.id)"
             />
-            <span
-              aria-hidden="true"
-              class="hazard-soft-red"
-              style="position: absolute; left: 0; right: 0; top: 0; height: 58px; opacity: .6"
-            />
-            <div style="position: relative; display: flex; flex-direction: column; gap: 4px; padding-left: 52px">
-              <span
-                class="flick"
-                style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .2em; color: #FF4B3E; white-space: nowrap"
-              ><span
-                class="hazard-red"
-                style="width: 14px; height: 10px"
-              />METER BROKEN</span>
-              <div style="display: flex; align-items: baseline; gap: 6px">
-                <span
-                  class="disp"
-                  style="font-size: 32px; color: #FFD642"
-                >13</span><span style="font-size: 12px; font-weight: 700; color: #85876F; text-decoration: line-through; text-decoration-color: #FF4B3E; text-decoration-thickness: 2px">/ 11</span>
-              </div>
-            </div>
-            <div style="position: relative; margin-top: 8px; display: flex; gap: 8px">
-              <div
-                role="progressbar"
-                aria-label="Valor, meter broken"
-                aria-valuemin="0"
-                aria-valuemax="11"
-                aria-valuenow="11"
-                aria-valuetext="Valor 13, past the 11 cap: meter broken, 2 banked as Luck"
-                style="width: 40px; flex-shrink: 0; display: flex; flex-direction: column; gap: 3px; padding: 3px; border: 1px solid #2C3022; border-top-color: transparent"
-              >
-                <span
-                  v-for="(c, i) in gBroke"
-                  :key="i"
-                  :class="c.cls"
-                  style="position: relative; height: 17px"
-                  :style="{ rotate: c.rot, translate: c.tr, backgroundColor: c.bg, border: `1px solid ${c.bd}` }"
-                />
-              </div>
-              <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px">
-                <div
-                  role="img"
-                  aria-label="Luck plus 2, banked from overflow"
-                  style="height: 50px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border: 1px dashed #FFD642; background: rgba(255,214,66,.06)"
-                >
-                  <div style="display: flex; flex-direction: column; gap: 3px">
-                    <span style="font-size: 10px; font-weight: 700; letter-spacing: .2em; color: #FFD642">LUCK</span><span
-                      class="disp"
-                      style="font-size: 22px; color: #FFD642"
-                    >+2</span>
-                  </div>
-                  <span style="margin-left: auto; display: flex; gap: 3px"><span style="width: 14px; height: 14px; background: #FFD642" /><span style="width: 14px; height: 14px; background: #FFD642" /></span>
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 8px">
-                  <div
-                    v-for="r in rungsBroke"
-                    :key="r.t"
-                    style="position: relative; display: flex; flex-direction: column; gap: 5px"
-                  >
-                    <span
-                      v-if="r.fed"
-                      aria-hidden="true"
-                      style="position: absolute; left: -8px; top: 11px; width: 8px; height: 2px; background: #FFD642"
-                    />
-                    <div style="display: flex; align-items: center; gap: 6px">
-                      <span
-                        class="tb"
-                        style="min-width: 32px; height: 24px; padding: 0 4px; font-size: 12px"
-                        :style="{ color: r.tc, border: `1px solid ${r.tc}` }"
-                      >{{ r.t }}</span>
-                      <span style="font-size: 10px; font-weight: 700; letter-spacing: .06em; color: #FFD642; white-space: nowrap">{{ r.luck }}</span>
-                      <span
-                        style="margin-left: auto; font-size: 14px; font-weight: 700"
-                        :style="{ color: r.fg }"
-                      >{{ r.txt }}</span>
-                    </div>
-                    <div style="height: 4px; background: #1A1D15">
-                      <div
-                        style="height: 4px"
-                        :style="{ width: r.w, background: r.tc }"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <span
-              class="hazard-soft"
-              style="position: relative; display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding: 3px 7px; font-size: 10px; font-weight: 700; letter-spacing: .1em; color: #FFD642; white-space: nowrap"
-            >OVERFLOW → LUCK<span style="color: #ECEADA">+2</span></span>
           </div>
+          <ValorRoll
+            :zones="pactPreviewZones"
+            :deltas="pactDeltas"
+            label="Pact odds preview"
+            :note="`${pactRiskTotal} skulls sworn`"
+          />
+          <p class="live-note">
+            Click an available pact to preview the line. Reserve utility is exempt from pact bans, so
+            a pact hand can always field four; a directive that strips reserve can still strand an
+            early squad.
+          </p>
         </div>
       </div>
     </section>
@@ -2204,183 +1788,42 @@ onBeforeUnmount(() => {
 
     <!-- 10 · Briefing and lore -->
     <section
+      id="briefing"
       class="sec"
       aria-label="Briefing and lore"
     >
       <div class="sh">
         <span class="disp sn">10</span><h2 class="lbl">
           Briefing &amp; lore
-        </h2><span class="dash" /><span class="sub">Griffdiver welcome · first run + join · six beats</span>
+        </h2><span class="dash" /><span class="sub">Four-beat dive rail · registry · dossier · warbonds · orders</span>
       </div>
 
       <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px">
-        <div
-          class="cell"
-          style="width: 560px"
-        >
-          <span class="sub">Briefing rail · desktop chevrons</span>
-          <div
-            role="group"
-            aria-label="Briefing rail specimen, desktop"
-            style="display: flex; gap: 4px"
-          >
-            <button
-              class="chev-first railbtn"
-              aria-label="Beat 1 of 6, Identify, done"
-              style="flex: 1 1 0; height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; background: #23261C; color: #B8B08D"
-              type="button"
-            >
-              <span
-                class="disp"
-                style="font-size: 13px"
-              >01</span><span style="font-size: 10px; font-weight: 700; letter-spacing: .12em">IDENTIFY</span><svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="3"
-                aria-hidden="true"
-              ><path d="M5 12l5 5 9-10" /></svg>
-            </button>
-            <button
-              class="chev railbtn rail-cur"
-              aria-current="step"
-              aria-label="Beat 2 of 6, Spin, current"
-              style="flex: 1 1 0; height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; background: #FFD642; color: #141410"
-              type="button"
-            >
-              <span
-                class="disp"
-                style="font-size: 13px"
-              >02</span><span style="font-size: 10px; font-weight: 700; letter-spacing: .12em">SPIN</span>
-            </button>
-            <button
-              class="chev railbtn"
-              aria-label="Beat 3 of 6, Pact, reachable"
-              style="flex: 1 1 0; height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; background: #1F2219; color: #ECEADA"
-              type="button"
-            >
-              <span
-                class="disp"
-                style="font-size: 13px"
-              >03</span><span style="font-size: 10px; font-weight: 700; letter-spacing: .12em">PACT</span>
-            </button>
-            <button
-              class="chev railbtn"
-              disabled
-              aria-label="Beat 4 of 6, Reward, locked"
-              style="flex: 1 1 0; height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; background: #13150F; color: #85876F"
-              type="button"
-            >
-              <span
-                class="disp"
-                style="font-size: 13px"
-              >04</span><span style="font-size: 10px; font-weight: 700; letter-spacing: .12em">REWARD</span><svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.2"
-                aria-hidden="true"
-              ><path d="M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3" /></svg>
-            </button>
-          </div>
-          <div style="display: flex; gap: 4px">
-            <span
-              class="cap"
-              style="flex: 1 1 0; text-align: center"
-            ><b>Done</b> · ✓</span><span
-              class="cap"
-              style="flex: 1 1 0; text-align: center; color: #FFD642"
-            >Current · aria</span><span
-              class="cap"
-              style="flex: 1 1 0; text-align: center"
-            ><b>Reachable</b></span><span
-              class="cap"
-              style="flex: 1 1 0; text-align: center"
-            ><b>Locked</b> · disabled</span>
-          </div>
-          <span
-            class="sub"
-            style="margin-top: 5px"
-          >Briefing rail · phone squares</span>
-          <div style="display: flex; align-items: center; gap: 24px">
+        <div class="cell briefing-rail-demo">
+          <span class="sub">Dive rail · the current four beats</span>
+          <div class="phase-demo">
             <div
+              class="live-controls"
               role="group"
-              aria-label="Briefing rail specimen, phone"
-              style="display: flex; align-items: center; width: 300px; height: 44px"
+              aria-label="Dive phase"
             >
               <button
-                class="node"
-                aria-label="Step 1 of 6, Identify, done"
+                v-for="phase in PHASE_OPTIONS"
+                :key="phase.id"
+                class="ghost"
                 type="button"
+                :aria-pressed="demoPhase === phase.id"
+                @click="demoPhase = phase.id"
               >
-                <span
-                  class="nsq disp"
-                  style="position: relative; display: grid; place-items: center; width: 30px; height: 30px; font-size: 13px; background: #2C3022; border: 1px solid #8A8C6E; color: #ECEADA"
-                >1<span style="position: absolute; right: -6px; top: -6px; width: 14px; height: 14px; display: grid; place-items: center; background: #B8B08D; color: #141410"><svg
-                  width="9"
-                  height="9"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="4"
-                  aria-hidden="true"
-                ><path d="M5 12l5 5 9-10" /></svg></span></span>
-              </button>
-              <span
-                aria-hidden="true"
-                style="flex-grow: 1; height: 2px; background: rgba(255,214,66,.7)"
-              />
-              <button
-                class="node"
-                aria-current="step"
-                aria-label="Step 2 of 6, Spin, current"
-                type="button"
-              >
-                <span
-                  class="nsq disp"
-                  style="display: grid; place-items: center; width: 36px; height: 36px; font-size: 13px; background: #FFD642; border: 1px solid #FFD642; color: #141410; box-shadow: 0 0 16px rgba(255,214,66,.35)"
-                >2</span>
-              </button>
-              <span
-                aria-hidden="true"
-                style="flex-grow: 1; height: 2px; background: #6A6F52"
-              />
-              <button
-                class="node"
-                aria-label="Step 3 of 6, Pact, visited"
-                type="button"
-              >
-                <span
-                  class="nsq disp"
-                  style="display: grid; place-items: center; width: 30px; height: 30px; font-size: 13px; background: #0B0C09; border: 1px solid #B8B08D; color: #ECEADA"
-                >3</span>
-              </button>
-              <span
-                aria-hidden="true"
-                style="flex-grow: 1; height: 2px; background: #2C3022"
-              />
-              <button
-                class="node"
-                disabled
-                aria-label="Step 4 of 6, Reward, locked"
-                type="button"
-              >
-                <span
-                  class="nsq disp"
-                  style="display: grid; place-items: center; width: 30px; height: 30px; font-size: 13px; background: #0B0C09; border: 1px dashed #3A3F2E; color: #85876F"
-                >4</span>
+                {{ phase.label }}
               </button>
             </div>
-            <div style="display: flex; flex-direction: column; gap: 5px">
-              <span class="cap"><b>Done</b> · ✓ badge · <span style="color: #FFD642">current</span> 36px glow</span>
-              <span class="cap"><b>Reached</b> · solid · <b>locked</b> · dashed, disabled</span>
-              <span class="cap">Links fill gold up to the current beat</span>
-            </div>
+            <DivePhaseTabs :phase="demoPhase" />
           </div>
+          <span class="cap">
+            The shared <b>DivePhaseTabs</b>: finished beats check, the current beat lights gold,
+            and nothing here is a hand-rolled copy.
+          </span>
         </div>
 
         <div class="cell">
@@ -2672,28 +2115,31 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div
-          class="cell"
-          style="width: 486px"
-        >
-          <span class="sub">Warbond banner tile · pressed = owned</span>
+        <div class="cell warbond-cell">
+          <div class="warbond-head">
+            <span class="sub">Warbonds · live catalog · press to own</span>
+            <span class="cap"><b>{{ ownedWarbondCount }}</b> / {{ warbondTiles.length }}</span>
+          </div>
           <div
+            class="warbond-grid"
             role="group"
-            aria-label="Warbond tile specimens"
-            style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; height: 124px"
+            aria-label="Warbond tiles"
           >
             <button
-              v-for="w in WARBOND_TILES"
-              :key="w.code"
-              :class="['wbk', warbonds[w.code] ? 'wb-on' : 'wb-off', w.focus ? 'wb-f' : '']"
-              :aria-pressed="warbonds[w.code]"
-              :aria-label="`${w.name}, ${w.items.toLowerCase()}${w.special ? ', acquisition special' : ''}`"
+              v-for="warbond in warbondTiles"
+              :key="warbond.code"
+              :class="['wbk', warbonds[warbond.code] ? 'wb-on' : 'wb-off']"
+              :aria-pressed="warbonds[warbond.code]"
+              :aria-label="`${warbond.name}, ${warbond.count} items${warbond.special ? ', acquisition special' : ''}`"
               type="button"
-              @click="warbonds[w.code] = !warbonds[w.code]"
+              @click="warbonds[warbond.code] = !warbonds[warbond.code]"
             >
-              <span class="ban">
+              <span
+                class="ban"
+                :style="warbond.image ? { backgroundImage: `url(${warbond.image})` } : undefined"
+              >
                 <span
-                  v-if="w.special"
+                  v-if="warbond.special"
                   class="hatch"
                   style="position: absolute; inset: 0; display: grid; place-items: center; border-bottom: 1px dashed #3A3F2E"
                 >
@@ -2702,10 +2148,10 @@ onBeforeUnmount(() => {
               </span>
               <span
                 style="position: absolute; top: 5px; right: 5px; width: 18px; height: 18px; display: grid; place-items: center; color: #141410"
-                :style="{ background: warbonds[w.code] ? '#FFD642' : 'rgba(11,12,9,.82)', border: `1px solid ${warbonds[w.code] ? '#FFD642' : '#85876F'}` }"
+                :style="{ background: warbonds[warbond.code] ? '#FFD642' : 'rgba(11,12,9,.82)', border: `1px solid ${warbonds[warbond.code] ? '#FFD642' : '#85876F'}` }"
               >
                 <svg
-                  v-if="warbonds[w.code]"
+                  v-if="warbonds[warbond.code]"
                   width="12"
                   height="12"
                   viewBox="0 0 24 24"
@@ -2715,31 +2161,24 @@ onBeforeUnmount(() => {
                   aria-hidden="true"
                 ><path d="M5 12l5 5 9-10" /></svg>
               </span>
-              <span style="flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 4px; padding: 7px 8px 8px">
+              <span class="wb-kit">
                 <span
                   class="wbname"
                   style="font-size: 11px; font-weight: 700; letter-spacing: .05em; line-height: 13px; text-transform: uppercase; color: #ECEADA"
-                >{{ w.name }}</span>
-                <span style="display: flex; align-items: center; justify-content: space-between">
-                  <span style="font-size: 9px; font-weight: 700; letter-spacing: .12em; color: #9A9B82">{{ w.items }}</span>
-                </span>
+                >{{ warbond.name }}</span>
+                <span class="wb-count">{{ warbond.count }} items</span>
               </span>
             </button>
           </div>
-          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
-            <span class="cap"><b>Owned</b></span><span class="cap"><b>Unowned</b> · dim</span><span
-              class="cap"
-              style="color: #FFD642"
-            >Focus · lit</span><span class="cap"><b>Special</b></span>
-          </div>
+          <span class="cap">Owned is lit · unowned is dim · acquisition specials carry the hatch</span>
         </div>
-
         <div
           class="cell"
           style="width: 510px"
         >
           <span class="sub">Order of deployment · compact · join mode</span>
           <article
+            class="order-demo"
             aria-label="Order of deployment, compact"
             style="position: relative; height: 150px; display: flex; flex-direction: column; background: #0E100B; border: 1px solid #454A36"
           >
@@ -2776,7 +2215,7 @@ onBeforeUnmount(() => {
                   class="disp"
                   style="padding: 2px 4px; font-size: 8px; border: 2px solid #FF4B3E; color: #FF4B3E; white-space: nowrap"
                 >Class E</span></span></span>
-                <span style="display: flex; flex-direction: column; gap: 4px"><span class="odl">Kit · 4 stratagems</span><span style="display: flex; gap: 4px">
+                <span style="display: flex; flex-direction: column; gap: 4px"><span class="odl">Kit · {{ kitStratagems.length }} stratagems</span><span style="display: flex; gap: 4px">
                   <img
                     v-for="s in kitStratagems"
                     :key="s.id"
@@ -2790,7 +2229,7 @@ onBeforeUnmount(() => {
                 <span style="display: flex; align-items: baseline; gap: 6px"><span class="odl">Warbonds</span><span
                   class="disp"
                   style="font-size: 14px; color: #FFD642"
-                >24</span><span style="font-size: 10px; font-weight: 700; color: #85876F">/ 26</span></span>
+                >{{ ownedWarbondCount }}</span><span style="font-size: 10px; font-weight: 700; color: #85876F">/ {{ warbondTiles.length }}</span></span>
               </div>
               <div style="display: flex; flex-direction: column; padding: 7px 12px 8px; border-left: 1px dashed #2C3022; min-width: 0">
                 <div
@@ -2859,9 +2298,9 @@ onBeforeUnmount(() => {
           style="width: 1052px"
         >
           <div style="display: flex; align-items: center; gap: 10px; height: 12px">
-            <span class="sub">Ministry notice · three tones</span><span class="dash" /><span style="display: flex; align-items: center; gap: 6px; height: 18px; padding: 0 8px; border: 1px solid #454A36; font-size: 9px; font-weight: 700; letter-spacing: .16em; color: #ECEADA; white-space: nowrap">LORE ADDS, NEVER REPLACES THE RULE</span>
+            <span class="sub">Ministry notice · three tones</span><span class="dash" /><span class="lore-chip">LORE ADDS, NEVER REPLACES THE RULE</span>
           </div>
-          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+          <div class="ministry-grid">
             <p style="margin: 0; padding: 7px 11px; border: 1px dashed #2C3022; font-size: 11px; line-height: 1.35; color: #B8B08D; text-wrap: pretty">
               <span style="display: flex; justify-content: space-between; margin-bottom: 4px"><span
                 class="lbl"
@@ -2915,6 +2354,7 @@ onBeforeUnmount(() => {
     </section>
 
     <section
+      id="liberty"
       class="sec"
       aria-label="Liberty's Cross"
     >
@@ -2924,7 +2364,7 @@ onBeforeUnmount(() => {
         </h2><span class="dash" /><span class="sub">S+ bonus band · unfurl · crest</span>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px">
+      <div class="surface-actions">
         <button
           class="ghost"
           type="button"
@@ -2953,7 +2393,7 @@ onBeforeUnmount(() => {
         </h2><span class="dash" /><span class="sub">left to right · drama by tier · Cross unfurls last</span>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px">
+      <div class="surface-actions">
         <button
           class="ghost"
           type="button"
@@ -3048,7 +2488,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.kit { max-width: 1180px; gap: 12px; }
+.kit { max-width: 1320px; gap: 12px; overflow-x: clip; }
+.kit section[id] { scroll-margin-top: 76px; }
 
 .sh h2 { color: var(--text); }
 
@@ -3059,16 +2500,22 @@ onBeforeUnmount(() => {
   gap: 28px;
   flex-wrap: wrap;
 }
-.kit-head-l { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
-.kit-crumb { display: flex; align-items: center; gap: 10px; height: 14px; }
-.kit-title { margin: 0; font-size: 44px; color: var(--text); white-space: nowrap; }
+.kit-head-l { display: flex; flex-direction: column; gap: 9px; min-width: 0; max-width: 100%; }
+.kit-crumb { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.kit-title {
+  margin: 0;
+  max-width: 100%;
+  font-size: clamp(30px, 9vw, 44px);
+  color: var(--text);
+  overflow-wrap: normal;
+}
 
 .maxims {
   margin: 0;
   padding: 0;
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 318px));
+  grid-template-columns: repeat(2, minmax(0, 296px));
   gap: 8px;
   flex-shrink: 0;
 }
@@ -3101,8 +2548,32 @@ onBeforeUnmount(() => {
 
 .crow { display: flex; gap: 16px; flex-wrap: wrap; }
 .grp { display: flex; gap: 6px; }
-.sw { display: flex; flex-direction: column; width: 69px; flex-shrink: 0; }
-.sw-b { display: block; height: 36px; border: 1px solid #3A3F2E; margin-bottom: 6px; }
+.sw {
+  display: flex;
+  flex-direction: column;
+  width: 72px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: copy;
+}
+.sw:hover .sw-b { border-color: var(--line-5); }
+.sw-b { position: relative; display: block; height: 36px; border: 1px solid #3A3F2E; margin-bottom: 6px; }
+.sw-copied {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(11, 12, 9, 0.82);
+  color: var(--gold);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
 .sw-a { display: flex; align-items: center; padding-left: 7px; font-size: 15px; font-weight: 700; }
 .sw-line { display: block; flex-grow: 1; }
 .sw-n { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; line-height: 13px; white-space: nowrap; }
@@ -3120,7 +2591,7 @@ onBeforeUnmount(() => {
   line-height: 1;
 }
 
-.cell { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.kit .cell { display: flex; flex-direction: column; gap: 5px; min-width: 0; max-width: 100%; }
 .demo {
   position: relative;
   height: 50px;
@@ -3202,5 +2673,252 @@ onBeforeUnmount(() => {
   45% { transform: translate(56px, -20px) rotate(170deg); background-color: #FF4B3E; }
   80% { transform: translate(118px, 10px) rotate(330deg); opacity: 1; background-color: #FFD642; }
   100% { transform: translate(124px, 14px) rotate(360deg) scale(.5); opacity: 0; background-color: #FFD642; }
+}
+/* ---- Header refresh ------------------------------------------------------ */
+.kit-stage {
+  padding: 1px 6px;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  line-height: 14px;
+}
+.kit-lede {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--khaki);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.kit-facts { display: flex; flex-wrap: wrap; gap: 6px; }
+.kit-fact {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--line-2);
+  background: var(--rail);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.kit-fact b { font-size: 14px; color: var(--text); }
+.kit-jump { display: flex; flex-wrap: wrap; gap: 5px 12px; }
+.kit-jump a {
+  color: var(--khaki);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.kit-jump a:hover { color: var(--gold); }
+.kit-back {
+  align-self: flex-start;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.kit-back:hover { color: var(--gold); }
+
+/* ---- Tokens -------------------------------------------------------------- */
+.token-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px 24px;
+  align-items: start;
+}
+.token-group { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.token-group .vl {
+  writing-mode: horizontal-tb;
+  transform: none;
+  border-left: 0;
+  padding-left: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line-2);
+  color: var(--text);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-align: left;
+}
+.token-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 6px;
+}
+.token-row .sw { width: auto; }
+.token-foot { display: flex; flex-wrap: wrap; gap: 20px; }
+.tier-col { display: flex; flex-direction: column; width: 56px; gap: 4px; }
+.tier-swatch { display: block; height: 4px; }
+.tier-col .tier-chip { width: 34px; }
+.front-col { display: flex; flex-direction: column; width: 86px; gap: 3px; }
+.front-col img { width: 34px; height: 34px; object-fit: contain; }
+
+/* ---- Type ---------------------------------------------------------------- */
+.type-grid { display: grid; grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); gap: 16px; }
+.type-ramp, .type-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.type-ramp { overflow: hidden; }
+.type-line { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.type-line .disp { min-width: 0; overflow: hidden; text-overflow: clip; white-space: nowrap; }
+.type-line-s { width: 26px; flex-shrink: 0; }
+.type-spec { display: flex; flex-direction: column; gap: 3px; }
+.type-live {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-3);
+  background: var(--rail);
+}
+.type-live-row { display: flex; align-items: center; gap: 10px; }
+.type-live-row .nb { flex-grow: 1; min-width: 0; }
+.type-live-pair { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.type-live-display {
+  overflow: hidden;
+  font-size: clamp(22px, 3.4cqi, 40px);
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.type-live-body { overflow: hidden; font-size: 14px; color: var(--khaki); text-overflow: ellipsis; white-space: nowrap; }
+.directive-sample {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 7px 12px;
+  border: 1px solid var(--line-3);
+  background: var(--panel);
+}
+.directive-copy { display: flex; flex-direction: column; gap: 3px; flex-grow: 1; min-width: 0; }
+.directive-name { font-size: 26px; line-height: 25px; color: var(--gold); }
+.directive-rule { font-size: 15px; font-weight: 500; line-height: 18px; }
+
+/* ---- Controls ------------------------------------------------------------ */
+.control-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 920px; }
+.ministry-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.surface-actions { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.lore-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 18px;
+  padding: 0 8px;
+  border: 1px solid #454A36;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #ECEADA;
+  white-space: nowrap;
+}
+.overlay-demos { justify-content: center; }
+.overlay-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ring-demo { height: 44px; padding: 0 14px; }
+.dialog-copy { margin: 0; color: var(--khaki); font-size: 14px; line-height: 1.5; }
+
+/* ---- Atoms --------------------------------------------------------------- */
+.pip-rows { display: flex; flex-direction: column; gap: 3px; }
+.pip-row { display: flex; align-items: center; gap: 8px; min-height: 18px; }
+.pip-row b { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: var(--red); }
+
+/* ---- Live gameplay ------------------------------------------------------- */
+.sec-note { max-width: 78ch; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.sec-note code { color: var(--khaki); font-family: var(--font-body); }
+.live-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
+.live-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: var(--pad-panel);
+  border: 1px solid var(--line-2);
+  background: var(--rail);
+}
+.live-panel-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.live-panel-head .sub { flex-grow: 1; }
+.live-controls { display: flex; gap: 4px; flex-wrap: wrap; }
+.live-controls .ghost { height: 32px; padding: 0 9px; font-size: 11px; }
+.live-controls .ghost[aria-pressed='true'] {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(255, 214, 66, 0.07);
+}
+.pact-hand { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.draw-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 96px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-2);
+  background: var(--panel);
+}
+.draw-name { font-size: 24px; line-height: 1; color: var(--gold); }
+.draw-rule { font-size: 13px; line-height: 1.4; color: var(--khaki); }
+.draw-meta { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.live-note { margin: 0; color: var(--dim); font-size: 11px; line-height: 1.45; }
+
+/* The band's mobile layout assumes a wider column than this specimen's mobile
+   card; shrink its type so the unfurl stays inside the cut. */
+#liberty :deep(.cross-title) { font-size: clamp(16px, 4cqi, 2.1rem); }
+#liberty :deep(.cross-sub) { font-size: clamp(12px, 2.2cqi, 17px); }
+#liberty :deep(.cross-copy) { min-width: 0; }
+
+/* ---- Briefing ------------------------------------------------------------ */
+.briefing-rail-demo { min-width: 0; }
+.phase-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--line-2);
+  background: var(--rail);
+}
+
+/* ---- Warbonds ------------------------------------------------------------ */
+.warbond-cell { min-width: 0; }
+.warbond-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.warbond-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(138px, 1fr));
+  gap: 10px;
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 4px;
+}
+.warbond-grid .wbk { height: 118px; }
+.wb-kit {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 7px 8px 8px;
+}
+.wb-count { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; color: var(--muted); }
+
+@media (max-width: 760px) {
+  .kit { padding-inline: 8px; }
+  .kit .sec { padding: 10px 10px 12px; }
+  .kit-head { flex-direction: column; align-items: stretch; gap: 16px; }
+  .kit-head-l { flex: 1 1 auto; }
+  .maxims { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .maxim { gap: 8px; padding-right: 6px; }
+  .maxim-t { font-size: 9px; letter-spacing: 0.1em; white-space: normal; }
+  .type-grid, .control-grid, .live-grid { grid-template-columns: minmax(0, 1fr); }
+  .pact-hand { grid-template-columns: minmax(0, 1fr); }
+  .sh { flex-wrap: wrap; }
+  .sh .sub { white-space: normal; }
+  .cap, .sub { white-space: normal; }
+  .kit .nb { min-width: 0; width: 100%; }
+  .ministry-grid { grid-template-columns: minmax(0, 1fr); }
+  .order-demo { overflow: auto; }
+  .lore-chip { white-space: normal; }
+  .kit .cell > * { max-width: 100%; }
+  .ladder-scroll { overflow-x: auto; padding-bottom: 4px; }
+  .ladder-scroll > * { flex-shrink: 0; }
 }
 </style>

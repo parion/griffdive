@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { kitAllowedOnHost } from '~~/shared/kit-access'
 import { MAX_DIFFICULTY, MIN_DIFFICULTY, SQUAD_SIZE_MAX } from '~~/shared/engine/config'
 import { STARTING_KITS } from '~~/shared/engine/progression'
 import { createDiveState } from '~~/shared/engine/reducer'
@@ -17,6 +18,11 @@ const { push: pushToast } = useToasts()
 const { ownedWarbonds: myWarbonds, setOwned: setMyWarbonds } = useOwnedWarbonds()
 const { openCodex } = useDrawers()
 const { openFeedback, hasBoard, boardUrl } = useFeedback()
+
+// The design sheet is linked only where it is reachable: a dev server or the
+// Fly staging app. Production hides the link and 404s the route.
+const showKitSheet = computed(() =>
+  kitAllowedOnHost(import.meta.dev, import.meta.client ? window.location.hostname : undefined))
 
 const variant = ref<CrusadeVariant>('medium')
 const mode = ref<CrusadeMode>('seaf')
@@ -475,7 +481,12 @@ const facts = [
         <NuxtLink
           class="foot-link"
           to="/privacy"
-        >PRIVACY</NuxtLink></span>
+        >PRIVACY</NuxtLink><template v-if="showKitSheet"> ·
+          <NuxtLink
+            class="foot-link"
+            to="/kit"
+          >KIT</NuxtLink>
+        </template></span>
       <span
         class="foot-marks"
         aria-hidden="true"

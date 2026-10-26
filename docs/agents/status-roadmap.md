@@ -139,7 +139,7 @@ Each phase lands shippable. Update the relevant `docs/agents/` files (commands, 
   front plan chosen at setup — live order, locked faction, or rolled with +1 risk — plus the live
   war API; see Operation layer) and
   the **Destroyer Terminal redesign** (single terminal language, lit-stage dive shell, Bridge
-  home, phone layout, hidden `/kit`; see Destroyer Terminal design language).
+  home, phone layout, the staging-only `/kit` design sheet; see Destroyer Terminal design language).
   **Observability expanded:** the Prometheus registry now covers the whole loop — arrivals and
   invite-link health, the room census (phase and difficulty), the play funnel, chosen-risk
   decisions, the reward economy and the no-accounts retention proxies — with the Grafana overview

@@ -382,6 +382,12 @@ layers are `aria-hidden` and `pointer-events: none` so a rotating square can't s
 
 #### Foundations kit
 
-A hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`; includes replayable Liberty's
-Cross and reward-reveal specimens) specimens the tokens/atoms so contributors can sanity-check the language. It is dev
-reference, not a product surface.
+`app/pages/kit.vue` (`/kit`, `robots: noindex`) is the live design sheet. Token swatches read the
+CSS custom properties at runtime; catalog facts, warbond counts and kit examples come from the data;
+and the specimens embed the shipping components (`BridgeOdds`, `WheelOfAdversity`, `ConditionCard`,
+`ValorRoll`, `DivePhaseTabs`, `AppHoldButton`, `AppStarRating`, `AppDialog`, `AppTooltip`, Liberty's
+Cross, reward reveal, crusade strip). It is a dev/review surface, never a product page: the Bridge
+footer links it only on a dev server or the Fly staging app, and `server/middleware/kit-gate.ts`
+plus `app/middleware/kit-gate.ts` keep production on a 404. Staging is recognised by
+`FLY_APP_NAME` ending in `-staging` (`shared/kit-access.ts`), so the same image is safe in
+production.
