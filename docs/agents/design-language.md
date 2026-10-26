@@ -112,6 +112,26 @@ The Bridge is the game's front door: a scrolling landing page that sells the mod
 into a dive. `index.vue` owns the data (saves, live rooms, hosting); each section is a `Bridge*`
 component. Top to bottom:
 
+- **`BridgeField`** — the page's backdrop, fixed behind every section (`.bridge` is
+  `isolation: isolate` so the field and the hero haze paint above the body's ground). A tactical
+  grid fainter than the dive's `.grid-bg` — 44px cells, a major line and node dot every fourth —
+  drifts one major cell toward the bottom right every 12 seconds on a loop (fast enough that the
+  hairlines glide; a crawl of a few px/s reads as shimmer). A mouse lights the grid around the
+  cursor: a gold-lit copy of the grid shows through a soft radial window that trails the pointer
+  and brightens with speed, over a warm haze. A reticle locks onto the nearest node (a 60ms glide
+  between nodes) with a sector readout (`K·07`) and two hairlines along its row and column, then
+  fades after a moment of stillness. Hovering a primary action (enabled `.cta-sweep` or
+  `.btn.primary`) arms it: the node's row lights left to right and its column top to bottom across
+  the whole field, a bright head on each leading edge, and the reticle's brackets fly out from the
+  pointer to frame the button. The frame is teleported to `body` at the header's z-index so it
+  shows around buttons inside opaque panels and the header. The lock holds while armed. A click drops a beacon: two rings ripple out from the point. On touch, a
+  tap lights the grid and pings it briefly; scrolling never does. Performance contract: the drift
+  is a WAAPI transform loop on the compositor (three synced copies: base grid, lit tile, reticle
+  layer), the lit tile only shifts within one grid period so it never repaints, and the rAF loop
+  runs only while the light is still settling — an idle Bridge costs no main-thread frames.
+  Reduced motion: no drift, no trailing, no rings, no beam sweep or bracket flight (an armed
+  reticle appears lit at once); the light and reticle still follow the pointer. The field is `aria-hidden` and ignores pointers.
+
 - **Hero** (one viewport tall on desktop): the kicker, the crusade's creed as the headline —
   **"Freedom is earned."**, typeset as a three-line stack with `FREEDOM` and gold `EARNED.` in the
   display face and a small tracked `IS` centred between rules that run the width of the headline
@@ -178,20 +198,23 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
   well lamp for the squad); an open bay is a dashed ghost pod. Every bay is a big click target:
   an open bay copies the invite, your own pod opens Warbonds, and the host's tap on a squadmate
   opens **Make host / Kick diver**. On launch the pods drop through the doors (`podDrop`).
-- The host gets **`CrusadeSetup`** (shared with the Bridge's setup dialog): *Where to fight* —
-  `FrontPlanPicker` with the live **Major Order** as the featured, pre-selected card (its fronts as
-  equal tiles on narrow widths, perks and countdown); on wide containers it is one big button in
-  the left column with *Lock a faction* and *Roll each op* stacked on the right — then *Starting
-  difficulty* (three number cards, each with its **Base tier**) and, on 5/7, the SEAF/Penance pair,
-  then the **Starting kit** (`KitStarting`: the Kit drawer's grammar — `KitSection` headers over
-  `KitTile`s, with primaries, secondaries and throwables in their own sections — and, in SEAF mode,
-  blue "?" tiles ending each section, one per item the pack rolls there). On launch each diver gets
-  **`KitReveal`**, an `AppDialog` over the wheel page (`useKitReveal` arms it) where the "?" tiles
-  flip to the rolled items one by one (`.tile.fresh` landing flash, scrolled into view). It stays up
-  until the diver presses "To the wheel" (Skip while dealing), clicks out or hits Escape; it waits
-  behind the host tutorial, the Warbonds drawer and the Field Promotion gate so one modal shows at a
-  time. Reduced motion shows the finished kit at once. Squadmates see a **Stand by** card with a Declare warbonds CTA instead of disabled
-  controls (the host's picks are local until launch). Diver names are all caps.
+- The host gets **`CrusadeSetup`** (shared with the Bridge's setup dialog): on wide containers the
+  top row pairs *Where to fight* with *Starting difficulty* — `FrontPlanPicker` features the live
+  **Major Order** as the pre-selected card (its fronts as equal tiles on narrow widths, perks and
+  countdown), with *Roll each op* stacked above *Lock a faction* beside it; the difficulty cards
+  become horizontal number rows so the pair fills one row — then the **Starting kit** spans the
+  full width beneath, packing its sections across two or three columns instead of leaving the left
+  column empty. Selecting *Lock a faction* unfolds the factions right beside the card (above it on
+  desktop, below on phones, via `motion-v`; instant under reduced motion). The kit keeps the Kit
+  drawer's grammar — `KitSection` headers over `KitTile`s, with primaries, secondaries and
+  throwables in their own sections — and, in SEAF mode, blue "?" tiles ending each section, one per
+  item the pack rolls there. On launch each diver gets **`KitReveal`**, an `AppDialog` over the
+  wheel page (`useKitReveal` arms it) where the "?" tiles flip to the rolled items one by one
+  (`.tile.fresh` landing flash, scrolled into view). It stays up until the diver presses "To the
+  wheel" (Skip while dealing), clicks out or hits Escape; it waits behind the host tutorial, the
+  Warbonds drawer and the Field Promotion gate so one modal shows at a time. Reduced motion shows
+  the finished kit at once. Squadmates see a **Stand by** card with a Declare warbonds CTA instead
+  of disabled controls (the host's picks are local until launch). Diver names are all caps.
 - **Risk never shows as a Valor number.** Each plan and mode carries its per-mission risk as
   `RiskPips` skulls (`frontPlanRisk` / `modeValorAt` from the engine). `RiskSetup` totals them
   (`setupRiskOf`, out of 5) and states the game's core trade beside the total — **"More skulls,
@@ -385,6 +408,12 @@ layers are `aria-hidden` and `pointer-events: none` so a rotating square can't s
 
 #### Foundations kit
 
-A hidden, unlinked `app/pages/kit.vue` (`/kit`, `robots: noindex`; includes replayable Liberty's
-Cross and reward-reveal specimens) specimens the tokens/atoms so contributors can sanity-check the language. It is dev
-reference, not a product surface.
+`app/pages/kit.vue` (`/kit`, `robots: noindex`) is the live design sheet. Token swatches read the
+CSS custom properties at runtime; catalog facts, warbond counts and kit examples come from the data;
+and the specimens embed the shipping components (`BridgeOdds`, `WheelOfAdversity`, `ConditionCard`,
+`ValorRoll`, `DivePhaseTabs`, `AppHoldButton`, `AppStarRating`, `AppDialog`, `AppTooltip`, Liberty's
+Cross, reward reveal, crusade strip). It is a dev/review surface, never a product page: the Bridge
+footer links it only on a dev server or the Fly staging app, and `server/middleware/kit-gate.ts`
+plus `app/middleware/kit-gate.ts` keep production on a 404. Staging is recognised by
+`FLY_APP_NAME` ending in `-staging` (`shared/kit-access.ts`), so the same image is safe in
+production.

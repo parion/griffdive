@@ -378,9 +378,9 @@ a same-group pick (the UI greys it "Conflicts with …").
 **Mandatory four stratagems — reserve and the loadout floor:** HD2 requires four equipped
 stratagems to ready up, so no pact may strand a diver below four. Every diver always owns a
 non-lethal **reserve** of warbond-free utility — Orbital EMS Strike, Orbital Smoke Strike, Eagle
-Smoke Strike, EMS Mortar Sentry, Shield Generator Relay (`RESERVE_STRATAGEMS` in
+Smoke Strike, EMS Mortar Sentry (`RESERVE_STRATAGEMS` in
 `shared/engine/config.ts`). Reserve stratagems are exempt from slot-removing *pacts*, which is why
-the category pacts read "no **offensive**": smoke, stun and shields are always legal filler, and a
+the category pacts read "no **offensive**": smoke and stun are always legal filler, and a
 mis-call never smuggles power back into a restricted loadout. Misfortunes are squad-binding, so the
 exemption does not apply to them. `hasLegalLoadout` (pact bans + accepted misfortune + reserve,
 against `STRATAGEM_SLOTS_REQUIRED`) is the hard floor: `SET_PACTS` refuses a pick that would drop

@@ -114,7 +114,7 @@ describe('reserve and loadout legality', () => {
 
   it('refuses a pick the accepted misfortune makes impossible', () => {
     // No Orbitals removes two reserve orbitals; Primary Concern removes support
-    // weapons, leaving only the three non-orbital reserve strats — under four.
+    // weapons, leaving only the two non-orbital reserve strats — under four.
     expect(hasLegalLoadout('noOrbitals', [], baseKit)).toBe(true)
     expect(hasLegalLoadout('noOrbitals', ['primaryConcern'], baseKit)).toBe(false)
   })

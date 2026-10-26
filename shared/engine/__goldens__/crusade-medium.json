@@ -12,7 +12,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "surpluseatallocation",
+      "optionId": "advancedfiltration",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -27,7 +27,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "advancedfiltration",
+      "optionId": "electricalconduit",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -74,7 +74,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "tx41sterilizer",
+      "optionId": "sh51directionalshield",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -104,7 +104,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "electricalconduit",
+      "optionId": "tx41sterilizer",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -149,7 +149,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "aflam40flamesentry",
+      "optionId": "fx12shieldgeneratorrelay",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -568,7 +568,7 @@
     }
   ],
   "firstOptions": [
-    "surpluseatallocation",
+    "advancedfiltration",
     "cqc5combathatchet",
     "flexiblereinforcementbudget"
   ],
@@ -613,7 +613,6 @@
     "personalInventory": [
       "ac8autocannon",
       "advancedfiltration",
-      "aflam40flamesentry",
       "am12mortarsentry",
       "am23emsmortarsentry",
       "amg43machinegunsentry",
@@ -651,7 +650,7 @@
       "r40khotshot",
       "r40sightliner",
       "rl77airburstrocketlauncher",
-      "surpluseatallocation",
+      "sh51directionalshield",
       "tx41sterilizer"
     ],
     "seedHistory": [

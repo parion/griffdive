@@ -9,7 +9,6 @@ const props = withDefaults(defineProps<{
   compact?: boolean
   showcase?: boolean
   owners?: string[]
-  lead?: boolean
   reserve?: boolean
   out?: boolean
   note?: string
@@ -19,7 +18,6 @@ const props = withDefaults(defineProps<{
   disabled: false,
   showcase: false,
   owners: () => [],
-  lead: false,
   reserve: false,
   out: false,
   note: '',
@@ -36,7 +34,7 @@ const ownerInitials = computed(() =>
 <template>
   <button
     class="item-card cut-sm"
-    :class="{ selected, disabled, compact, showcase, lead, out }"
+    :class="{ selected, disabled, compact, showcase, out }"
     type="button"
     :data-category="item.category.toLowerCase()"
     :style="reserve ? { borderStyle: 'dashed' } : undefined"
@@ -71,13 +69,9 @@ const ownerInitials = computed(() =>
     </span>
     <span class="item-cat odl">{{ categoryLabel(item.category) }}</span>
     <span
-      v-if="lead || reserve || item.antitank"
+      v-if="reserve || item.antitank"
       class="item-meta"
     >
-      <span
-        v-if="lead"
-        class="tag lead"
-      >Ceiling</span>
       <span
         v-if="reserve"
         class="tag reserve"
@@ -155,10 +149,6 @@ const ownerInitials = computed(() =>
 .item-card:active:not(:disabled) { transform: translateY(1px); }
 .item-card.selected { border-color: var(--gold); }
 .item-card.disabled { cursor: default; opacity: 0.85; }
-.item-card.lead {
-  border-color: var(--gold);
-  animation: glow 2.6s ease-in-out infinite;
-}
 .item-card.out {
   border-color: var(--red);
   opacity: 0.6;
@@ -201,7 +191,6 @@ const ownerInitials = computed(() =>
   padding: 0 0.35rem;
   color: var(--khaki);
 }
-.tag.lead { color: var(--gold); border-color: var(--gold); }
 .tag.reserve { color: var(--khaki); border-style: dashed; }
 .tag.at { color: var(--red); border-color: var(--red); }
 

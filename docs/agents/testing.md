@@ -24,6 +24,8 @@
   staging password check (`staging-auth.spec.ts`) covers right, wrong, missing and unset credentials.
   (`@nuxt/test-utils` +
   Playwright browser flows land in Phase 3+.)
+- **Access gate tests:** `shared/kit-access.spec.ts` pins the `/kit` sheet's dev/staging allowance
+  and its production 404 (Fly `FLY_APP_NAME` suffix and host matching).
 - **Client util tests** (Vitest, `app/utils/*.spec.ts`): the brand mark ↔ `icon.svg` invariant
   (`brandMark.spec.ts`) and the changelog's release boundaries, deployment phases (waiting vs
   deploying vs live) and conventional-commit grouping (`changelog.spec.ts`).
@@ -67,7 +69,8 @@
   room inside a spec over creating another. The e2e server also sets `GRIFFDIVE_DISABLE_MO_API=1`:
   a live order would become the default front plan and drop the strain call, so specs that need an
   order mock `/api/war/major-order` per page, PWA affordances
-  (manifest content type + icons served, SW reachable, shell head links), and the feedback sheet
+  (manifest content type + icons served, SW reachable, shell head links), the `/kit` production
+  gate (`kit-access.spec.ts`: the design sheet answers 404 outside staging), and the feedback sheet
   (`feedback.spec.ts`: the Bridge footer files a note with no account and returns a 10-character
   reference, the board link is a click-through, Escape restores focus and keeps the draft).
   Chromium only;

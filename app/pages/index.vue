@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { kitAllowedOnHost } from '~~/shared/kit-access'
 import { MAX_DIFFICULTY, MIN_DIFFICULTY, SQUAD_SIZE_MAX } from '~~/shared/engine/config'
 import { STARTING_KITS } from '~~/shared/engine/progression'
 import { createDiveState } from '~~/shared/engine/reducer'
@@ -17,6 +18,11 @@ const { push: pushToast } = useToasts()
 const { ownedWarbonds: myWarbonds, setOwned: setMyWarbonds } = useOwnedWarbonds()
 const { openCodex } = useDrawers()
 const { openFeedback, hasBoard, boardUrl } = useFeedback()
+
+// The design sheet is linked only where it is reachable: a dev server or the
+// Fly staging app. Production hides the link and 404s the route.
+const showKitSheet = computed(() =>
+  kitAllowedOnHost(import.meta.dev, import.meta.client ? window.location.hostname : undefined))
 
 const variant = ref<CrusadeVariant>('medium')
 const mode = ref<CrusadeMode>('seaf')
@@ -246,12 +252,13 @@ const facts = [
     :class="{ 'has-mo': liveOrder }"
     tabindex="-1"
   >
+    <BridgeField />
     <section
       class="hero"
       aria-labelledby="hero-h"
     >
       <div
-        class="hero-bg grid-bg"
+        class="hero-bg"
         aria-hidden="true"
       />
       <div class="hero-copy">
@@ -478,7 +485,12 @@ const facts = [
         <NuxtLink
           class="foot-link"
           to="/privacy"
-        >PRIVACY</NuxtLink></span>
+        >PRIVACY</NuxtLink><template v-if="showKitSheet"> ·
+          <NuxtLink
+            class="foot-link"
+            to="/kit"
+          >KIT</NuxtLink>
+        </template></span>
       <span
         class="foot-marks"
         aria-hidden="true"
@@ -517,6 +529,8 @@ const facts = [
   margin-inline: auto;
   padding: 0 var(--pad-page);
   overflow-x: clip;
+  /* Seats the fixed field and the hero haze above the body's ground. */
+  isolation: isolate;
 }
 .bridge:focus { outline: none; }
 .gold { color: var(--gold); }
@@ -528,7 +542,7 @@ const facts = [
   grid-template-columns: minmax(0, 1fr);
   gap: clamp(24px, 3vw, 48px);
   align-items: center;
-  min-height: calc(100svh - 60px);
+  min-height: min(calc(100svh - 60px), 880px);
   padding-block: clamp(24px, 4vw, 48px);
 }
 @media (min-width: 1020px) {
@@ -538,14 +552,8 @@ const facts = [
   position: absolute;
   inset: 0 calc(var(--pad-page) * -1);
   z-index: -1;
-  background-color: transparent;
-  mask-image: radial-gradient(80% 70% at 70% 45%, #000, transparent 75%);
-}
-.hero-bg::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(40% 50% at 74% 46%, rgba(255, 214, 66, 0.1), transparent 70%);
+  pointer-events: none;
+  background: radial-gradient(40% 50% at 74% 46%, rgba(255, 214, 66, 0.07), transparent 70%);
 }
 .hero-copy { display: grid; gap: 18px; min-width: 0; }
 .hero-k { display: inline-flex; align-items: center; gap: 12px; color: var(--gold); }
@@ -573,7 +581,7 @@ const facts = [
   font-weight: 700;
   letter-spacing: 0.4em;
   line-height: 1;
-  color: var(--text);
+  color: var(--tier-a);
 }
 .hero-title-is::before,
 .hero-title-is::after {
@@ -582,6 +590,20 @@ const facts = [
   height: 2px;
   background: var(--line-5);
 }
+.hero-title-is::before {
+  background: linear-gradient(90deg, var(--tier-c) 0 34%, var(--tier-b) 34% 67%, var(--tier-a) 67%);
+  transform-origin: left center;
+}
+.hero-title-is::after {
+  background: linear-gradient(90deg, var(--tier-s) 0 50%, var(--tier-splus) 50%);
+  transform-origin: left center;
+}
+.hero-title-is::before,
+.hero-title-is::after {
+  animation: tierWipe 0.4s var(--ease-out) 0.5s both;
+}
+.hero-title-is::after { animation-delay: 0.9s; }
+@keyframes tierWipe { from { transform: scaleX(0); } to { transform: none; } }
 .hero-lede {
   max-width: 36rem;
   margin: 0;

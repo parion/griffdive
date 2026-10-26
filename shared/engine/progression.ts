@@ -67,7 +67,6 @@ const BASE_KIT = {
     'orbitalsmokestrike',
     'eaglesmokestrike',
     'am23emsmortarsentry',
-    'fx12shieldgeneratorrelay',
   ],
   primaries: ['r2124constitution'],
   secondaries: [
