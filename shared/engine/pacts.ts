@@ -2,7 +2,7 @@ import { PACTS, pactById } from '../data/pacts'
 import type { Pact } from '../data/pacts'
 import { stratagems } from '../data/stratagems'
 import type { Item } from '../data/types'
-import { RESERVE_STRATAGEMS, STRATAGEM_SLOTS_REQUIRED, conditionRiskAt, pactOptionsFor } from './config'
+import { NON_LETHAL_DEFENSES, RESERVE_STRATAGEMS, STRATAGEM_SLOTS_REQUIRED, conditionRiskAt, pactOptionsFor } from './config'
 import { deriveSeed, mulberry32, pickIndex } from './rng'
 
 // A pact that would be redundant or impossible under the accepted misfortune
@@ -13,12 +13,17 @@ export const BLOCKED_UNDER_MISFORTUNE: Readonly<Record<string, readonly string[]
   noResupplies: ['thirsty'],
   noEagles: ['grounded'],
   noOrbitals: ['shipSilent'],
+  fragileLiberty: ['featherweight', 'ironbound'],
+  heavyLiberty: ['featherweight', 'ironbound'],
+  supplyLineCut: ['packLight', 'primaryConcern'],
+  noStims: ['stimAbstinent'],
   primaryOnly: ['primaryConcern', 'loadoutLoyalist'],
-  oopsAllAirstrikes: ['packLight', 'thirsty', 'primaryConcern', 'openField'],
-  noStratagems: ['packLight', 'thirsty', 'antiTankAbstinent', 'primaryConcern', 'grounded', 'shipSilent', 'openField'],
+  oopsAllAirstrikes: ['packLight', 'thirsty', 'primaryConcern', 'openField', 'radioSilence'],
+  noStratagems: ['packLight', 'thirsty', 'antiTankAbstinent', 'primaryConcern', 'grounded', 'shipSilent', 'openField', 'radioSilence'],
   zeroDeaths: ['deadWeight', 'untouchable'],
   noReserves: ['deadWeight'],
-  meleeOnly: ['antiTankAbstinent', 'primaryConcern'],
+  meleeOnly: ['antiTankAbstinent', 'primaryConcern', 'coldSteel'],
+  pacifist: ['objector', 'coldSteel'],
 }
 
 export function isPactSelectable(pactId: string, misfortuneId: string | null): boolean {
@@ -32,11 +37,14 @@ export function isPactSelectable(pactId: string, misfortuneId: string | null): b
 }
 
 // A pact strictly implied by another pick is not a second restriction: picking
-// both would bank risk for a limitation already held. The map is currently
-// empty — Barebones (the only pact that subsumed others) was removed because
-// HD2 requires four equipped stratagems to ready up. The machinery stays in
-// place for future subsumption rules.
-export const PACT_SUBSUMES: Readonly<Record<string, readonly string[]>> = {}
+// both would bank risk for a limitation already held. Only behavioral rules
+// subsume: Barebones (which subsumed loadout pacts) was removed because HD2
+// requires four equipped stratagems to ready up, and a loadout rule is still
+// checked on the loadout screen even when the stratagem is never called.
+export const PACT_SUBSUMES: Readonly<Record<string, readonly string[]>> = {
+  radioSilence: ['thirsty'],
+  objector: ['coldSteel'],
+}
 
 // Restrictions that tax the same strength are never offered or picked together:
 // two stratagem-category bans would bank risk for a loadout that was already
@@ -44,6 +52,8 @@ export const PACT_SUBSUMES: Readonly<Record<string, readonly string[]>> = {}
 // stratagem slots. (AGENTS.md: Personal layer — pacts.)
 export const PACT_EXCLUSIVE_GROUPS: readonly (readonly string[])[] = [
   ['grounded', 'shipSilent', 'openField'],
+  // One armor weight at a time: a diver cannot wear both.
+  ['featherweight', 'ironbound'],
 ]
 
 // The picked pact that rules out `pactId`, if any — a same-group peer.
@@ -121,6 +131,14 @@ function isSupportWeaponStratagem(item: Item): boolean {
   return item.category === 'Supply' && item.tags.includes('Weapons')
 }
 
+const NON_LETHAL_DEFENSE_SET = new Set<string>(NON_LETHAL_DEFENSES)
+
+// Sentries, mines and emplacements built to hurt the enemy. The reserve's EMS
+// Mortar Sentry is exempt through the pact path; shield relays are exempt here.
+function isOffensiveDefense(item: Item): boolean {
+  return item.category === 'Defense' && !NON_LETHAL_DEFENSE_SET.has(item.id)
+}
+
 // Pacts that remove a stratagem from the loadout. Reserve utility is exempt:
 // the reworded category pacts ban offensive firepower only.
 export const PACT_BANS_STRATAGEM: Readonly<Record<string, (item: Item) => boolean>> = {
@@ -129,7 +147,7 @@ export const PACT_BANS_STRATAGEM: Readonly<Record<string, (item: Item) => boolea
   antiTankAbstinent: item => item.antitank === true,
   grounded: item => item.category === 'Eagle',
   shipSilent: item => item.category === 'Orbital',
-  openField: item => item.category === 'Defense',
+  openField: isOffensiveDefense,
 }
 
 // Misfortunes bind the whole squad, so their bans are absolute — reserve
@@ -142,6 +160,7 @@ export const MISFORTUNE_BANS_STRATAGEM: Readonly<Record<string, (item: Item) => 
   noEagles: item => item.category === 'Eagle',
   noOrbitals: item => item.category === 'Orbital',
   primaryOnly: isSupportWeaponStratagem,
+  supplyLineCut: item => item.category === 'Supply',
 }
 
 export interface StratagemBanSource {

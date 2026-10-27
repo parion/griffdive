@@ -133,7 +133,7 @@ shared/
   utils/           room-code.ts (room-code alphabet + validator), changelog.ts (pure GitHub
                    deployment/commit → release-card shaping behind /api/changelog, unit-tested)
   data/            items (equipment.ts, stratagems.ts), warbonds.ts, fronts.ts,
-                   conditions.ts (the unified team + personal condition catalogue;
+                   glossary.ts (the rules glossary + rule-markup parser), conditions.ts (the unified team + personal condition catalogue;
                    misfortunes.ts / pacts.ts are its scope views), strains.ts,
                    catalog.ts (aggregation + CATALOG_VERSION),
                    ordering.ts (kit presentation order: stratagem role → tier → name),

@@ -25,7 +25,7 @@ const pactsByDiver = computed(() =>
         id,
         key: `${diver.id}:${id}`,
         name: pactName(id),
-        rule: pact?.rule ?? '',
+        pact: pact ?? null,
         accountability: pact ? ACCOUNTABILITY_LABELS[pact.accountability] : '',
         risk: conditionRiskAt(id, props.state.difficulty),
         failed: diver.failedPactIds.includes(id),
@@ -129,8 +129,15 @@ function markPact(diverId: string, pactId: string): void {
           <AccordionContent class="body">
             <div class="body-inner">
               <p class="vow">
-                “{{ pact.rule }}”
+                “<ConditionRule
+                  v-if="pact.pact"
+                  :condition="pact.pact"
+                />”
               </p>
+              <ConditionKeywords
+                v-if="pact.pact"
+                :keywords="pact.pact.keywords"
+              />
               <span class="acct">
                 <i aria-hidden="true" />{{ pact.accountability }}
               </span>

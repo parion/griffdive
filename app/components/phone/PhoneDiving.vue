@@ -107,8 +107,18 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         {{ misfortune?.name ?? 'Safe dive' }}
       </h2>
       <p class="dc-rule">
-        {{ misfortune?.rule ?? 'No team rule was accepted this mission.' }}
+        <ConditionRule
+          v-if="misfortune"
+          :condition="misfortune"
+        />
+        <template v-else>
+          No team rule was accepted this mission.
+        </template>
       </p>
+      <ConditionKeywords
+        v-if="misfortune"
+        :keywords="misfortune.keywords"
+      />
       <div class="dc-foot">
         <span>{{ directiveFailed ? 'Risk voided' : 'Raising everyone’s loot' }}</span>
         <button

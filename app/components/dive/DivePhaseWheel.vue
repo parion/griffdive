@@ -164,8 +164,9 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
             {{ misfortune.name }}
           </h2>
           <p class="dc-rule">
-            {{ misfortune.rule }}.
+            <ConditionRule :condition="misfortune" />.
           </p>
+          <ConditionKeywords :keywords="misfortune.keywords" />
 
           <div
             v-if="!decision.decided && canControl"

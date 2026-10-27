@@ -146,19 +146,22 @@ top of the ladder:
 | Misfortune | Rule | Risk d3→10 | Accountable via |
 | --- | --- | --- | --- |
 | No Backpacks | No backpack stratagems | 1 → 1 | loadout |
-| No Sentries | No sentry stratagems | 1 → 1 | loadout |
+| No Sentries | No sentry stratagems, the EMS Mortar Sentry included | 1 → 1 | loadout |
 | No Boosters | No boosters equipped | 1 → 1 | loadout |
-| No Resupplies | Never call resupply | 1 → 3 | field |
-| No Eagles | No Eagle stratagems | 1 → 2 | loadout |
-| Fragile Liberty | Light armor only | 1 → 2 | loadout |
-| No Orbitals | No orbital stratagems | 1 → 2 | loadout |
-| Primary Only | Primaries only — no support weapons, no pickups or swaps (stratagems allowed) | 2 → 3 | field |
-| Oops, All Airstrikes | Eagle and orbital ("red") stratagems only | 2 → 3 | loadout |
-| Zero Deaths | Any diver death = mission failure | 3 → 5 | field |
-| No Reserves | No one gets reinforced this mission | 2 → 4 | field |
-| No Stratagems | No stratagems at all, not even resupply | 3 → 5 | loadout |
-| Melee Only | Melee weapons only | 2 → 4 | field |
-| Pacifist | No diver scores a kill | 3 → 5 | stats |
+| No Resupplies | Nobody calls a resupply | 1 → 3 | field |
+| No Eagles | No Eagle stratagems, the Eagle Smoke Strike included | 1 → 2 | loadout |
+| Fragile Liberty | Everyone wears light armor | 1 → 2 | loadout |
+| Heavy Liberty | Everyone wears heavy armor | 1 → 2 | loadout |
+| No Orbitals | No orbital stratagems, EMS and Smoke Strikes included | 1 → 2 | loadout |
+| Primary Only | No support weapons, no pickups or swaps — secondaries and every other stratagem stay legal | 2 → 3 | field |
+| Oops, All Airstrikes | Equip Eagle and orbital ("red") stratagems only — yellow calls like Resupply stay open | 2 → 3 | loadout |
+| Supply Line Cut | No blue (supply) stratagems: no support weapons, backpacks or vehicles | 2 → 4 | loadout |
+| Zero Deaths | Any diver death **fails the directive**, not the mission — the mission plays on | 3 → 5 | field |
+| No Reserves | No Reinforce calls — a fallen diver stays down; every other stratagem stays legal | 2 → 4 | field |
+| No Stratagems | Nobody calls a stratagem of any color — red, blue, green or **yellow** (Resupply, SOS Beacon, Hellbomb…). **Reinforce is the one exception** (No Reserves owns it) | 3 → 5 | loadout |
+| Melee Only | Kill with melee only — no guns, grenades or offensive stratagems | 2 → 4 | field |
+| Pacifist | No diver scores a kill (stratagem kills count to the caller) | 3 → 5 | stats |
+| No Stims | Nobody uses a stim | 3 → 4 | stats |
 
 **Condition scaling.** Misfortunes (team) and pacts (personal) are one catalogue, and the only
 knob difficulty turns is **risk**, never eligibility. Each condition carries a `base` (its risk at
@@ -351,25 +354,58 @@ Starter catalog:
 
 | Pact | Rule | Risk d3→10 | Accountable via |
 | --- | --- | --- | --- |
-| Pack Light | I bring no backpack | 1 → 1 | loadout |
-| Thirsty | I call and take no resupplies | 1 → 2 | field |
+| Pack Light | I bring no backpack stratagem | 1 → 1 | loadout |
+| Thirsty | I call no resupply and take none from others | 1 → 2 | field |
 | Empty Pockets | I equip no booster | 1 → 1 | loadout |
-| Anti-Tank Abstinent | I carry nothing anti-tank | 1 → 4 | loadout |
+| Anti-Tank Abstinent | I carry nothing anti-tank — no stratagem, weapon or grenade | 1 → 4 | loadout |
 | Dead Weight | If I die, I can't be reinforced on my own — I return only when another diver needs reinforcing (squad only) | 2 → 2 | field |
 | Stim Abstinent | I use no stims | 3 → 4 | stats |
-| Loadout Loyalist | I use only my equipped loadout; no pickups or swaps | 2 → 2 | field |
-| Primary Concern | I bring no support weapon | 1 → 3 | loadout |
-| Grounded | I bring no offensive Eagle stratagems | 2 → 2 | loadout |
-| Ship Silent | I bring no offensive orbital stratagems | 2 → 2 | loadout |
-| Open Field | I bring no offensive sentries, mines, or emplacements | 2 → 2 | loadout |
-| Untouchable | I finish the mission without dying | 3 → 4 | field |
+| Loadout Loyalist | I use only my equipped loadout — no pickups or swaps | 2 → 2 | field |
+| Primary Concern | I bring no support weapon — secondaries and every other stratagem stay legal | 1 → 3 | loadout |
+| Grounded | I bring no offensive Eagle stratagems (the reserve Eagle Smoke Strike is exempt) | 2 → 2 | loadout |
+| Ship Silent | I bring no offensive orbital stratagems (reserve EMS and Smoke are exempt) | 2 → 2 | loadout |
+| Open Field | I bring no offensive sentries, mines or emplacements (the reserve EMS Mortar Sentry and shield relays are exempt) | 2 → 2 | loadout |
+| Untouchable | I do not die — a death **fails this pact**, the mission plays on | 3 → 4 | field |
+| Featherweight | I wear light armor only | 1 → 2 | loadout |
+| Ironbound | I wear heavy armor only | 1 → 1 | loadout |
+| Radio Silence | I call no stratagem of any color (Reinforce excepted) | 3 → 4 | field |
+| Objector | I score no kills | 2 → 4 | stats |
+| Cold Steel | Every kill I score is a melee kill (stats: kills = melee kills) | 2 → 3 | stats |
+| Clean Hands | I deal no friendly-fire damage | 1 → 2 | stats |
+
+### Rules glossary — keywords
+
+A rule is one short headline; the words that carry real mechanics are **keywords**, defined once in
+`shared/data/glossary.ts` (the Hades boon screen's side panels). A condition's source rule marks
+them with `{shown text}` (the text is the keyword's id or term) or `{shown text|id}`; `parseRule`
+strips the markup into `Condition.rule` (plain prose — toasts, ledgers, ban reasons keep working),
+`Condition.ruleParts` (plain/keyword spans) and `Condition.keywords` (ids, in order). An unknown
+keyword throws at load, and a spec fails if a glossary entry is used by no rule. The UI lights the
+keywords in gold (`ConditionRule`) and lists each definition beside the rule
+(`ConditionKeywords`) on the condition card, the wheel decision, the field directive card and the
+pact ledger. **To refine a rule, edit the definition once** — every rule using the word changes.
+
+Terms the catalog leans on: *stratagem* (four colors: red strikes, blue supply, green defense,
+yellow mission), *offensive* (built to hurt the enemy; smoke, EMS and shield utility never
+count), *reserve* (the four always-owned non-lethal stratagems), *support weapon* (a blue weapon
+stratagem — primaries, secondaries and throwables are not), *Reinforce* (yellow, but only rules that
+name it touch it — "no stratagems" never does) and *fails* (a broken rule is marked failed, never
+mission failure: its risk is voided and everyone it bound loses a reward option; the mission plays
+on — the same mark as Failed pacts / Failed directives below). Open Field bans offensive defenses
+only: the Shield Generator Relay is legal (`NON_LETHAL_DEFENSES`).
+
+**Pact interplay (new).** The armor pair (*Featherweight*, *Ironbound*) is mutually exclusive
+(`PACT_EXCLUSIVE_GROUPS`) and blocked under either armor directive. Only behavioral pacts subsume
+others (`PACT_SUBSUMES`): *Radio Silence* covers *Thirsty*, *Objector* covers *Cold Steel* — a
+loadout rule is still checked on the loadout screen even when the stratagem is never called, so
+*Radio Silence* does not cover *Pack Light*. *Supply Line Cut* bans every Supply-category
+stratagem; the reserve alone still fields four.
 
 **Redundant and conflicting picks:** a pact strictly implied by another picked pact never stacks
 risk. `SET_PACTS` refuses it via `pactSubsumedBy` / `applyPactToggle` (`PACT_SUBSUMES` in
-`shared/engine/pacts.ts`), and the UI greys a covered offer with "Covered by …". The map is
-currently **empty** — *Barebones* ("I fill no stratagem slots") was the only subsuming pact, and it
-was removed because HD2 requires four equipped stratagems to ready up, so the pact was impossible.
-The machinery stays in place for future subsumption rules. (Anti-Tank Abstinent stays independent:
+`shared/engine/pacts.ts`), and the UI greys a covered offer with "Covered by …". The map holds
+only **behavioral** pacts (see Rules glossary): *Barebones* ("I fill no stratagem slots") was the
+original subsuming pact and was removed because HD2 requires four equipped stratagems to ready up. (Anti-Tank Abstinent stays independent:
 thermite and other anti-tank throwables are not stratagems.) Restrictions that tax the same
 strength are instead **mutually exclusive** (`PACT_EXCLUSIVE_GROUPS`): *Grounded*, *Ship Silent* and
 *Open Field* all tax stratagem variety, so an offer never draws two of them and `SET_PACTS` refuses

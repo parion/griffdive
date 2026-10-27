@@ -164,7 +164,7 @@ function lockNow(): void {
         tone="gold"
       />
       <b class="disp">{{ misfortune.name }}</b>
-      <span class="dir-rule">{{ misfortune.rule }}</span>
+      <span class="dir-rule"><ConditionRule :condition="misfortune" /></span>
       <span
         v-if="strain"
         class="strain"

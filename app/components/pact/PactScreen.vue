@@ -188,7 +188,7 @@ function lockNow(): void {
         tone="red"
       />
       <b class="disp directive-name">{{ misfortune.name }}</b>
-      <span class="directive-rule">{{ misfortune.rule }}</span>
+      <span class="directive-rule"><ConditionRule :condition="misfortune" /></span>
       <span
         v-if="strain"
         class="strain-note"

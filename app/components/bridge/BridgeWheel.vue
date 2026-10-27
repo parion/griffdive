@@ -89,7 +89,7 @@ onBeforeUnmount(() => clearTimeout(timer))
         {{ settled ? 'Squad directive' : 'Drawing…' }}
       </span>
       <span class="disp bw-name">{{ drawn.name }}</span>
-      <span class="bw-rule">“{{ drawn.rule }}”</span>
+      <span class="bw-rule">“<ConditionRule :condition="drawn" />”</span>
       <span class="bw-risk">
         <RiskPips
           :value="risk"
