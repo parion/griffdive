@@ -192,6 +192,7 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 | S→C | `welcome` | `{ selfId, hostId, roomCode, snapshot, online, saved, steam }` |
 | S→C | `state` | `{ snapshot, applied (EngineAction \| null), online, saved, steam }` — after each applied change; also an `applied: null` presence refresh the moment a seated diver's last connection drops; `online` = diver ids with live connections |
 | S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `dive-locked`, `kicked`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message`, `rate-limited` |
+| S→C | `restarting` | `{}` — the process is shutting down (a deploy); sent to every live peer just before the socket closes with `1012` (see Restarts) |
 
 REST fallbacks: `POST /api/rooms` → `{ code, selfId }` (an optional `{ save, name }` body seeds the
 room from a personal session save; `selfId` is the seeded owner seat, `null` for a fresh lobby);
@@ -212,8 +213,21 @@ lock: `processClose` flags `peer.context.closed` first, and `processHello` refus
 socket — without that, the peer was added after the close and could never be removed, keeping a
 diver "online" and their squad waiting on them forever. Reaped peers are counted in
 `griffdive_presence_reaped_total`. The scrape-time presence gauges use the same silence threshold,
-so a silent socket stops counting before the sweep removes it. A browser that comes back to a reaped socket reopens from
-`visibilitychange` (`useGameSocket`), because the retry budget alone gives up after a few seconds.
+so a silent socket stops counting before the sweep removes it. A browser whose socket is down
+reopens immediately on `visibilitychange` or `online` (`useGameSocket`) instead of waiting out the
+retry backoff.
+
+**Restarts.** A deploy stops the only machine, so every squad drops at once (see
+[deployment](./deployment.md)). The client retries with jittered backoff (1 s growing to a 10 s
+ceiling, 22 tries ≈ 3 minutes) so it outlasts a deploy before showing "Can't reach the dive
+server". On `SIGTERM`/`SIGINT`, `server/plugins/graceful-restart.ts` runs `drainPeers` before
+Nitro's own shutdown destroys the upgraded sockets: it sets `peers.draining`, sends every live peer
+`restarting` and closes it with `1012` (Service Restart). While draining, `processClose` only
+drops the peer from the directory — no away timer, no host migration — so the room record stays
+exactly as it was and the crown does not land on whoever closed last. A client that saw
+`restarting` (or a `1012` close) shows a floating, live `AppBanner` instead of the "Connection lost" toast,
+then "Back online" once the `welcome` arrives. Dev servers skip the plugin (a signal listener
+would keep the process alive).
 
 **Transport hardening:** the server whitelists `action.type` against the reducer union and guards
 `reduce`, so an unknown or malformed action is rejected (`bad-action`) instead of persisting
@@ -247,7 +261,9 @@ host-only (`set-steam`, blank clears).
 `FAIL_PACT` is sent by the target diver or the host (server refuses everyone else); `FAIL_MISFORTUNE`
 is host-only, since the directive binds the whole squad. Host disconnect →
 `TRANSFER_HOST` to the earliest joiner still connected; none left → room hibernates in storage
-with a TTL, and the first diver back takes the host role. A diver whose last connection stays down
+with a TTL, and the first diver back takes the host role once the host is marked away. A host who
+is offline but not yet away (a restart dropped everyone at once) keeps the crown through the away
+grace; when `markAwayIfOffline` marks them away it hands the crown to the earliest connected diver. A diver whose last connection stays down
 for `AWAY_GRACE_MS` is marked away (`SET_AWAY`, issued by the server; also re-checked on every
 `hello` so divers dropped across a server restart are caught) — see Mid-crusade joining.
 Reconnect = re-`hello` with stored playerId → server replays snapshot.

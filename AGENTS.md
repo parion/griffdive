@@ -90,7 +90,10 @@ Update this table the moment a command lands.
   `reka-ui` (never rely on auto-imports). Repeated chrome gets a themed `App*` wrapper in `app/` —
   `AppDialog` (modals: `v-model:open`, required `title`, optional `description`/`size`
   (`sm`–`xl`)/`dismissible`/`showClose`/`hideTitle` (title kept for assistive tech, header row dropped), `#title`/`#description`/`#actions` (header, right)/`#footer` slots) and `AppTooltip` (`content`, `disabled`; carries its own
-  provider). Do not hand-roll dialogs, focus traps, scroll locks or tab strips (reach for Reka's `Tabs` directly and wrap it in `app/` once a second use appears). One-off controls
+  provider) and `AppBanner` (standing messages: `tone` `info`/`warn`/`error`/`locked`, optional
+  `title`, `floating`, `live`, `#actions` slot; errors are `role="alert"`, the rest
+  `role="status"`). Do not hand-roll dialogs, focus traps, scroll locks, tab strips or message
+  banners (reach for Reka's `Tabs` directly and wrap it in `app/` once a second use appears). One-off controls
   use the Reka primitive directly (`RadioGroup` in `AppStarRating`/`CrusadeSetup`, `Checkbox` in
   `ConditionCard`) so the semantics live with the component. The global foundation lives in
   `main.css` (`:focus-visible` ring, `.sr-only`, `.skip-link`) and `app.vue` (skip link →

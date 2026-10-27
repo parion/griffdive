@@ -154,6 +154,7 @@ const typeSpecimen = ref('Risk buys rarity.')
 // ---- Controls -------------------------------------------------------------
 
 const holdAccepted = ref(false)
+const floatingBanner = ref(false)
 let holdReset: ReturnType<typeof setTimeout> | undefined
 function onHoldConfirm(): void {
   holdAccepted.value = true
@@ -455,6 +456,7 @@ onBeforeUnmount(() => {
           <a href="#type">Type</a>
           <a href="#frames">Frames</a>
           <a href="#controls">Controls</a>
+          <a href="#banners">Banners</a>
           <a href="#atoms">Atoms</a>
           <a href="#console">Console</a>
           <a href="#wheel">Wheel</a>
@@ -1132,6 +1134,94 @@ onBeforeUnmount(() => {
           /><span class="cap"><b>Tube slider</b> · {{ samples }}/40</span>
         </div>
       </div>
+    </section>
+
+    <!-- 05b · Banners -->
+    <section
+      id="banners"
+      class="sec"
+      aria-label="Banners"
+    >
+      <div class="sh">
+        <span class="disp sn">05b</span><h2 class="lbl">
+          Banners
+        </h2><span class="dash" /><span class="sub">Real AppBanner · info · warn · error · locked · floating</span>
+      </div>
+      <p class="sec-note">
+        One standing message, one shape: a tone glyph, a tone edge, the copy, then optional actions.
+        Errors are <code>role="alert"</code>; the rest are <code>role="status"</code>. Each banner sizes
+        itself by its container, so the actions drop under the copy in a narrow room. Toasts are the
+        transient twin (same edge language) and leave on their own.
+      </p>
+      <div class="banner-grid">
+        <AppBanner title="Field Promotion waiting.">
+          The squad has already climbed, so you'll be offered catch-up gear the moment you land.
+        </AppBanner>
+        <AppBanner tone="warn">
+          The squad is mid-mission. Keep this page open and try again in a moment.
+        </AppBanner>
+        <AppBanner tone="error">
+          Only the host can do that.
+          <template #actions>
+            <button
+              class="btn tiny ghost"
+              type="button"
+            >
+              Dismiss
+            </button>
+          </template>
+        </AppBanner>
+        <AppBanner tone="locked">
+          Opens after your first operation
+        </AppBanner>
+      </div>
+      <div class="banner-narrow">
+        <span class="sub">Narrow container · 320px</span>
+        <AppBanner tone="error">
+          You were removed from this dive by the host. This dive will not seat you again.
+          <template #actions>
+            <button
+              class="btn tiny ghost"
+              type="button"
+            >
+              Back to base
+            </button>
+          </template>
+        </AppBanner>
+      </div>
+      <div class="surface-actions">
+        <button
+          class="ghost"
+          type="button"
+          :aria-pressed="floatingBanner"
+          @click="floatingBanner = !floatingBanner"
+        >
+          {{ floatingBanner ? 'HIDE' : 'SHOW' }} FLOATING
+        </button>
+        <button
+          class="ghost"
+          type="button"
+          @click="pushToast('Back online — your dive picked up right where it left off.')"
+        >
+          TOAST · INFO
+        </button>
+        <button
+          class="ghost"
+          type="button"
+          @click="pushToast('Connection lost — reconnecting…', 'warn')"
+        >
+          TOAST · WARN
+        </button>
+        <span class="cap"><b>Floating + live</b> · app-level state pinned over any layout (server restart)</span>
+      </div>
+      <AppBanner
+        v-if="floatingBanner"
+        floating
+        live
+        title="Griffdive is doing a quick restart."
+      >
+        Your dive is saved and picks up right where it left off — hang tight.
+      </AppBanner>
     </section>
 
     <!-- 06 · Game atoms -->
@@ -2818,6 +2908,10 @@ onBeforeUnmount(() => {
 .overlay-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ring-demo { height: 44px; padding: 0 14px; }
 .dialog-copy { margin: 0; color: var(--khaki); font-size: 14px; line-height: 1.5; }
+
+/* ---- Banners ------------------------------------------------------------- */
+.banner-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 12px; margin-block: 12px; }
+.banner-narrow { display: grid; gap: 6px; max-width: 320px; margin-bottom: 12px; }
 
 /* ---- Atoms --------------------------------------------------------------- */
 .pip-rows { display: flex; flex-direction: column; gap: 3px; }

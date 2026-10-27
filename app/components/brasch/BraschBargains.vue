@@ -56,14 +56,13 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
       </div>
     </header>
 
-    <p
+    <AppBanner
       v-if="closed"
       class="bb-closed"
-      role="status"
+      tone="locked"
     >
-      <IconLock class="bb-lock" />
       {{ closed }}
-    </p>
+    </AppBanner>
 
     <ul class="bb-grid">
       <li
@@ -165,19 +164,6 @@ function verdict(slot: BargainSlot): { allowed: boolean, reason: string | null }
 .bb-purse .lbl { color: var(--gold); }
 .bb-purse-val { font-size: 1.4rem; line-height: 1; }
 
-.bb-closed {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  padding: 8px 12px;
-  border: 1px dashed var(--line-3);
-  color: var(--khaki);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
 .bb-lock { width: 16px; height: 16px; }
 
 .bb-grid {

@@ -773,7 +773,8 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   weight, honors cadence, squad-only pacts) read the **present** divers (`activeDivers` /
   `squadSize` / `pactsSettled` in `shared/engine/selectors.ts`). A room where everyone stepped
   away never advances on its own. Reconnecting clears the mark; the host role moves to a present
-  diver when the host steps away, and whoever comes back to a room whose host is offline takes it.
+  diver when the host steps away, and whoever comes back to a room whose host has stepped away
+  takes it. A host who merely dropped (a server restart) keeps the role through the away grace.
 - **A room is never abandoned:** the last seated diver cannot `LEAVE_DIVE` or be kicked, so a
   crusade is never reset — it waits for whoever comes back to it. Benching a diver for good is the
   host's `KICK_DIVER`: their earned gear parks as a legacy cache and the removed seat is barred

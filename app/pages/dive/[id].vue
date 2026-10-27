@@ -256,18 +256,27 @@ watch(() => session.selfIsHost.value, (isHost) => {
 })
 
 // A dropped socket silently pauses sync and re-seats host — say so, but only
-// once per outage so auto-reconnect churn doesn't spam the stack.
+// once per outage so auto-reconnect churn doesn't spam the stack. A server
+// restart has its own standing banner instead of the alarm.
 let wasConnected = false
 let reportedLost = false
+let rodeOutRestart = false
 watch(
   () => session.status.value,
   (status) => {
     if (status === 'connected') {
-      if (reportedLost) {
+      if (rodeOutRestart) {
+        pushToast('Back online — your dive picked up right where it left off.')
+      }
+      else if (reportedLost) {
         pushToast('Reconnected.')
       }
       wasConnected = true
       reportedLost = false
+      rodeOutRestart = false
+    }
+    else if (status === 'disconnected' && wasConnected && session.restarting.value) {
+      rodeOutRestart = true
     }
     else if (status === 'disconnected' && wasConnected && !reportedLost) {
       pushToast('Connection lost — reconnecting…', 'warn')
@@ -275,6 +284,8 @@ watch(
     }
   },
 )
+const restartBanner = computed(() =>
+  session.restarting.value && session.status.value !== 'connected' && !session.connectionFailed.value)
 
 function spin(): void {
   dispatch({ type: 'SPIN_WHEEL', seed: session.newSeed() })
@@ -595,6 +606,14 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
 
 <template>
   <div class="dive-page">
+    <AppBanner
+      v-if="restartBanner"
+      floating
+      live
+      title="Griffdive is doing a quick restart."
+    >
+      Your dive is saved and picks up right where it left off — hang tight.
+    </AppBanner>
     <template v-if="session.awaitingJoin.value">
       <BriefingJoin
         v-if="joinRole === 'joiner'"
@@ -747,27 +766,36 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         />
       </template>
 
-      <p
+      <AppBanner
         v-if="kicked"
-        class="panel kicked"
+        tone="error"
       >
         You were removed from this dive by the host. This dive will not seat you again.
-        <NuxtLink to="/">Back to base</NuxtLink>
-      </p>
+        <template #actions>
+          <NuxtLink
+            class="btn tiny ghost"
+            to="/"
+          >
+            Back to base
+          </NuxtLink>
+        </template>
+      </AppBanner>
 
-      <p
+      <AppBanner
         v-if="session.lastError.value"
-        class="panel error-banner"
+        tone="error"
       >
         {{ session.lastError.value.message }}
-        <button
-          class="btn tiny ghost"
-          type="button"
-          @click="session.dismissError()"
-        >
-          Dismiss
-        </button>
-      </p>
+        <template #actions>
+          <button
+            class="btn tiny ghost"
+            type="button"
+            @click="session.dismissError()"
+          >
+            Dismiss
+          </button>
+        </template>
+      </AppBanner>
 
       <Transition
         v-if="!kicked"
@@ -1041,16 +1069,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
   opacity: 0;
   translate: 0 10px;
 }
-
-.error-banner {
-  border-color: var(--red);
-  color: var(--red);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.kicked { border-color: var(--red); }
 
 /* Everything below the squad list is bottom-anchored in the left rail. */
 .rail-lower {

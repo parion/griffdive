@@ -93,26 +93,28 @@ const operationClimbs = computed(() =>
     </template>
 
     <div class="phone-scroll">
-      <p
+      <AppBanner
         v-if="kicked"
-        class="phone-banner kicked"
+        tone="error"
       >
         You were removed from this dive by the host. This dive will not seat you again.
-      </p>
+      </AppBanner>
 
-      <p
+      <AppBanner
         v-if="lastError"
-        class="phone-banner error"
+        tone="error"
       >
         {{ lastError }}
-        <button
-          class="btn tiny ghost"
-          type="button"
-          @click="emit('dismissError')"
-        >
-          Dismiss
-        </button>
-      </p>
+        <template #actions>
+          <button
+            class="btn tiny ghost"
+            type="button"
+            @click="emit('dismissError')"
+          >
+            Dismiss
+          </button>
+        </template>
+      </AppBanner>
 
       <template v-if="!kicked">
         <PhoneWheel
@@ -273,16 +275,4 @@ const operationClimbs = computed(() =>
   overflow-y: auto;
   padding: 12px 12px 0;
 }
-.phone-banner {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--line-2);
-  font-size: 12px;
-}
-.phone-banner.kicked { border-color: var(--red); }
-.phone-banner.error { border-color: var(--red); color: var(--red); }
 </style>

@@ -173,13 +173,12 @@ function submit(): void {
             <span class="disp jb-name-shown">{{ callsign }}</span>
           </div>
 
-          <p
+          <AppBanner
             v-if="warning"
-            class="jb-note warn"
-            role="status"
+            tone="warn"
           >
             {{ warning }}
-          </p>
+          </AppBanner>
 
           <aside
             class="jb-squad"
@@ -234,12 +233,12 @@ function submit(): void {
                 <span class="disp jb-alt-n">{{ difficulty }} · {{ difficultyName(difficulty) }}</span>
               </span>
             </div>
-            <p
+            <AppBanner
               v-if="note"
-              class="jb-note"
+              :title="note.title"
             >
-              <b>{{ note.title }}</b> {{ note.text }}
-            </p>
+              {{ note.text }}
+            </AppBanner>
           </aside>
 
           <div class="jb-acts">
@@ -573,9 +572,6 @@ function submit(): void {
 .jb-alt img { width: 30px; height: 30px; }
 .jb-alt > span { display: flex; flex-direction: column; gap: 3px; }
 .jb-alt-n { font-size: 15px; color: var(--text); }
-.jb-note { margin: 0; padding: 8px 10px; font-size: 13px; line-height: 1.4; color: var(--khaki); background: color-mix(in srgb, var(--teal) 7%, transparent); border-left: 2px solid var(--teal); }
-.jb-note b { color: var(--teal); }
-.jb-note.warn { color: var(--orange); background: color-mix(in srgb, var(--orange) 8%, transparent); border-left-color: var(--orange); }
 
 /* The way in leads; warbonds is the optional stop beneath it. */
 .jb-acts { display: flex; flex-direction: column-reverse; gap: 8px; }
