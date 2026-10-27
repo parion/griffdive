@@ -380,10 +380,11 @@ A rule is one short headline; the words that carry real mechanics are **keywords
 them with `{shown text}` (the text is the keyword's id or term) or `{shown text|id}`; `parseRule`
 strips the markup into `Condition.rule` (plain prose — toasts, ledgers, ban reasons keep working),
 `Condition.ruleParts` (plain/keyword spans) and `Condition.keywords` (ids, in order). An unknown
-keyword throws at load, and a spec fails if a glossary entry is used by no rule. The UI lights the
-keywords in gold (`ConditionRule`) and lists each definition beside the rule
-(`ConditionKeywords`) on the condition card, the wheel decision, the field directive card and the
-pact ledger. **To refine a rule, edit the definition once** — every rule using the word changes.
+keyword throws at load, and a spec fails if a glossary entry is used by no rule. The UI underlines
+keywords inline (`ConditionRule`); the definition is **on demand only** — hover, focus or tap the
+word and a small panel opens beside it (`ConditionKeyword`) — so veterans read past it and the
+cards stay short. **To refine a rule, edit the definition once** — every rule using the word
+changes.
 
 Terms the catalog leans on: *stratagem* (four colors: red strikes, blue supply, green defense,
 yellow mission), *offensive* (built to hurt the enemy; smoke, EMS and shield utility never

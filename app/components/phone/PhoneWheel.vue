@@ -146,7 +146,6 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
       <p class="dc-rule">
         <ConditionRule :condition="misfortune" />.
       </p>
-      <ConditionKeywords :keywords="misfortune.keywords" />
       <div
         v-if="!decision.decided && canControl"
         class="dc-actions"

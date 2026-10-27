@@ -1,26 +1,17 @@
 <script setup lang="ts">
 import type { Condition } from '~~/shared/data/conditions'
 
-// A rule with its glossary words lit. Plain spans only, so it nests inside a
-// button card without breaking the markup; ConditionKeywords defines the words.
+// A rule with its glossary words underlined; each opens its definition on
+// demand (ConditionKeyword). Plain spans only, so it nests inside a button card.
 defineProps<{ condition: Pick<Condition, 'ruleParts'> }>()
 </script>
 
 <template>
-  <span class="rule"><template
+  <span class="condition-rule-text"><template
     v-for="(part, index) in condition.ruleParts"
     :key="index"
-  ><span
+  ><ConditionKeyword
     v-if="part.keyword"
-    class="kw"
-  >{{ part.text }}</span><template v-else>{{ part.text }}</template></template></span>
+    :keyword="part.keyword"
+  >{{ part.text }}</ConditionKeyword><template v-else>{{ part.text }}</template></template></span>
 </template>
-
-<style scoped>
-.kw {
-  color: var(--gold);
-  text-decoration: underline dotted;
-  text-decoration-color: color-mix(in srgb, var(--gold) 55%, transparent);
-  text-underline-offset: 3px;
-}
-</style>

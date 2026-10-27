@@ -45,6 +45,12 @@ set; extracted references are git-ignored and presentation-only. Nothing here to
 - **Utilities**: type `.disp/.lbl/.cap/.sub/.vl/.odl`; shape `.cut/.cut-sm/.chev/.ticks/.hazard/
   .hatch/.scan/.grid-bg/.hex/.tag-shape`; panels `.panel/.sec/.sec-h/.dash`; controls `.btn/
   .ghost/.icon-btn/.chip/.nb`; data atoms `.tb/.tier-badge/.pips/.chit/.chits/.lamp/.stp/.chan`.
+- **Rule keywords**: a condition's rule (`ConditionRule`) underlines its glossary words with a
+  dotted rule; the definition never occupies layout. Hover (mouse), focus or tap opens a portaled
+  panel (`ConditionKeyword`, a Reka `Popover` anchored to the word — gold left edge, term over
+  definition) and the gesture is swallowed so a word inside a selectable card never selects it.
+  Outside tap or Esc closes it. Never add an always-visible definition list: newcomers pull the
+  help, veterans never see it (the Hades boon-screen lesson).
 - **Banners**: every standing message — an error, a removal, a blocked join, a locked shop, a
   server restart — is one `AppBanner` (`app/components/app/AppBanner.vue`), never a hand-rolled
   strip. One shape: a square tone glyph (`i` teal **info**, `!` orange **warn**, `×` red **error**,

@@ -134,10 +134,6 @@ function markPact(diverId: string, pactId: string): void {
                   :condition="pact.pact"
                 />”
               </p>
-              <ConditionKeywords
-                v-if="pact.pact"
-                :keywords="pact.pact.keywords"
-              />
               <span class="acct">
                 <i aria-hidden="true" />{{ pact.accountability }}
               </span>

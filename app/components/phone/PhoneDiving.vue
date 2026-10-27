@@ -115,10 +115,6 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
           No team rule was accepted this mission.
         </template>
       </p>
-      <ConditionKeywords
-        v-if="misfortune"
-        :keywords="misfortune.keywords"
-      />
       <div class="dc-foot">
         <span>{{ directiveFailed ? 'Risk voided' : 'Raising everyone’s loot' }}</span>
         <button

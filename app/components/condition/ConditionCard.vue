@@ -89,7 +89,6 @@ function choose(): void {
 
     <template v-if="expanded">
       <span class="condition-rule">“<ConditionRule :condition="condition" />”</span>
-      <ConditionKeywords :keywords="condition.keywords" />
       <span
         v-if="note"
         class="note"
