@@ -81,7 +81,7 @@ const rollNote = computed(() => {
     return `If taken · ${misfortune.value.name}`
   }
   return props.state.misfortuneAccepted
-    ? `${misfortune.value.name}'s share`
+    ? `With ${misfortune.value.name}`
     : 'Skipped · base odds'
 })
 
@@ -114,10 +114,10 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
       class="directive empty"
     >
       <div class="dc-top">
-        <span class="cap">{{ held ? 'Drawing' : 'Directive' }}</span>
+        <span class="cap">{{ held ? 'Spinning' : 'Directive' }}</span>
       </div>
       <h2 class="disp dc-name empty-title">
-        {{ held ? 'The wheel turns…' : 'Awaiting the draw' }}
+        {{ held ? 'Spinning…' : 'Ready to spin' }}
       </h2>
       <p class="dc-rule">
         The wheel draws this mission’s directive. Every rule is on it at every difficulty.
@@ -245,7 +245,7 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         class="wait-note"
       >
         <span class="cap">Next</span>
-        <p>You’ll swear your own pacts when the host deals the hand.</p>
+        <p>You’ll swear your own pacts once the host deals them.</p>
       </div>
       <KitSnapshot
         :state="state"

@@ -26,10 +26,8 @@ export async function fileCallsign(page: Page, name: string): Promise<void> {
   if (!(await tutorial.isVisible())) {
     return
   }
-  const callsign = page.locator('#jb-callsign')
-  await callsign.fill(name)
-  await callsign.press('Enter')
-  await expect(page.getByRole('button', { name: 'Start the dive' })).toBeVisible()
+  await page.locator('#jb-callsign').fill(name)
+  await expect(page.getByRole('button', { name: 'Start the dive' })).toBeEnabled()
 }
 
 // A fresh browser gets the tutorial at dive start (its Warbonds step replaces

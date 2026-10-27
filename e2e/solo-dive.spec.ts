@@ -207,7 +207,7 @@ test('a live Major Order chosen at setup pins the front for the run', async ({ p
   await fileCallsign(page, 'Griffon')
   await dismissWarbondIntro(page)
 
-  await expect(page.locator('.front-pin')).toContainText('Major Order pinned')
+  await expect(page.locator('.front-pin')).toContainText('Major Order')
   await expect(page.locator('.front-pin')).toContainText('Automatons')
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
@@ -263,8 +263,8 @@ test('a faction locked at setup pins the front without a Major Order tag', async
   // With no order running, the Major Order plan can't be chosen.
   await expect(setup.getByText('No active Major Order')).toBeVisible()
   await expect(setup.getByRole('radio', { name: /Major Order/ })).toBeDisabled()
-  await setup.getByRole('radio', { name: /Lock a faction/ }).click()
-  await setup.getByRole('group', { name: 'Locked faction' })
+  await setup.getByRole('radio', { name: /Pick one enemy/ }).click()
+  await setup.getByRole('group', { name: 'Enemy' })
     .getByRole('button', { name: 'Automatons', exact: true }).click()
   await setup.getByRole('button', { name: /^Close/ }).first().click()
   // Its name contains "warbonds": let it close before the dive's intro check.
@@ -273,7 +273,8 @@ test('a faction locked at setup pins the front without a Major Order tag', async
   await fileCallsign(page, 'Griffon')
   await dismissWarbondIntro(page)
 
-  await expect(page.locator('.front-pin')).toContainText('Faction locked')
+  await expect(page.locator('.front-pin')).toContainText('Front')
+  await expect(page.locator('.front-pin')).not.toContainText('Major Order')
   await expect(page.locator('.front-pin')).toContainText('Automatons')
 
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
@@ -314,4 +315,24 @@ test('a failed mission labels the operation failed and removes an earned item', 
   await page.locator('.sur-tile:not([disabled])').first().click()
   await page.getByRole('button', { name: /^Remove / }).click()
   await expect(page.getByRole('img', { name: /Operation mission 1 of 2/i })).toBeVisible()
+})
+
+test('a spinning wheel never changes the stage\'s scroll extent', async ({ page }) => {
+  // The rotating rotor's corners once grew the scroll box every frame, so the
+  // scrollbars flickered for the whole spin. Run with motion so it really turns.
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griffon')
+  await dismissWarbondIntro(page)
+
+  const extent = () => page.locator('main.stage').evaluate(el => `${el.scrollWidth}x${el.scrollHeight}`)
+  const before = await extent()
+  await page.getByRole('button', { name: 'Spin', exact: true }).click({ force: true })
+  const seen = new Set<string>()
+  for (let i = 0; i < 15; i++) {
+    seen.add(await extent())
+    await page.waitForTimeout(100)
+  }
+  expect([...seen]).toEqual([before])
 })

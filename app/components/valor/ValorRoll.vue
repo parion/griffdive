@@ -25,7 +25,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   markers: () => [],
   deltas: () => ({}),
-  label: 'Valor roll',
+  label: 'Loot odds',
   note: '',
   locked: false,
   compact: false,

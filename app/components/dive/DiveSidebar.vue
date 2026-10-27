@@ -36,7 +36,7 @@ const bargainsLabel = computed(() => {
 
 const PANELS: Record<SidePanel, { title: string, description: string }> = {
   kit: { title: 'Kit', description: 'What each diver carries, with this mission\'s bans.' },
-  codex: { title: 'Codex', description: 'Every item, tier and warbond in the catalog.' },
+  codex: { title: 'Armory', description: 'Every item, tier and warbond in the catalog.' },
   warbonds: { title: 'Warbonds', description: 'Declare the warbonds you own — reward offers roll against your own catalog.' },
   bargains: { title: 'Brasch\'s Bargains', description: 'Earn credits by extracting samples from successful missions. Faster clears earn more.' },
 }
@@ -158,12 +158,12 @@ watch(bargainsClosed, (closed) => {
       <button
         class="side-tab"
         type="button"
-        aria-label="Codex"
+        aria-label="Armory"
         :aria-expanded="panel === 'codex'"
         @click="toggle('codex')"
       >
         <span class="tab-top"><IconBook /></span>
-        <span class="tab-word">Codex</span>
+        <span class="tab-word">Armory</span>
       </button>
       <button
         class="side-tab"

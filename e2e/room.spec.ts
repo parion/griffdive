@@ -21,10 +21,9 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
 
   // The host tutorial takes their callsign.
   await pageA.getByLabel('Your name').fill('Host')
-  await pageA.getByLabel('Your name').press('Enter')
   await pageA.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(pageA)
-  await pageA.getByRole('button', { name: 'Launch crusade' }).click()
+  await pageA.getByRole('button', { name: 'Launch crusade' }).press('Enter')
   await expect(pageA.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
   // The invite lives in the squad dock on every beat.
   await expect(pageA.getByLabel(/Copy invite link/)).toBeVisible()
@@ -35,7 +34,6 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   await expect(pageB.getByLabel('Your name')).toBeVisible()
   await expect(pageB.locator('.dock .seat')).toHaveCount(0)
   await pageB.getByLabel('Your name').fill('Duo')
-  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
 
@@ -119,15 +117,13 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   await pageA.goto('/')
   await pageA.getByRole('button', { name: 'Host an online dive' }).click()
   await pageA.getByLabel('Your name').fill('Host')
-  await pageA.getByLabel('Your name').press('Enter')
   await pageA.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(pageA)
-  await pageA.getByRole('button', { name: 'Launch crusade' }).click()
+  await pageA.getByRole('button', { name: 'Launch crusade' }).press('Enter')
   await expect(pageA.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Sidekick')
-  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
   await expect(pageB.locator('.dock .seat')).toHaveCount(2)
@@ -138,7 +134,7 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   await lockMisfortune(pageA)
   await pageA.locator('.strain-card').getByRole('button', { name: 'Skip' }).click()
   await pageA.getByRole('button', { name: 'Deal the pacts' }).click()
-  await expect(pageB.getByRole('button', { name: /Swear|Dive with no pacts/ })).toBeVisible()
+  await expect(pageB.getByRole('button', { name: /^Swear|Dive with no pacts/ })).toBeVisible()
 
   // The dock's manage menu kicks the stalled diver.
   await pageA.getByRole('button', { name: 'Manage Sidekick' }).click()
@@ -162,7 +158,7 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   await contextB.close()
 })
 
-test('the Codex slide-over keeps the host seated', async ({ browser }) => {
+test('the Armory slide-over keeps the host seated', async ({ browser }) => {
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()
   const pageA = await contextA.newPage()
@@ -171,28 +167,26 @@ test('the Codex slide-over keeps the host seated', async ({ browser }) => {
   await pageA.goto('/')
   await pageA.getByRole('button', { name: 'Host an online dive' }).click()
   await pageA.getByLabel('Your name').fill('Host')
-  await pageA.getByLabel('Your name').press('Enter')
   await pageA.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(pageA)
-  await pageA.getByRole('button', { name: 'Launch crusade' }).click()
+  await pageA.getByRole('button', { name: 'Launch crusade' }).press('Enter')
   await expect(pageA.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
-  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
   await expect(pageB.locator('.dock .seat')).toHaveCount(2)
 
-  // Opening the Codex docks it in the sidebar beside the session — the socket
+  // Opening the Armory docks it in the sidebar beside the session — the socket
   // stays mounted, so the host is never migrated away.
   const side = pageA.getByRole('complementary', { name: 'Dive tools' })
-  await side.getByRole('button', { name: 'Codex', exact: true }).click()
-  await expect(side.getByRole('heading', { name: 'Codex' })).toBeVisible()
+  await side.getByRole('button', { name: 'Armory', exact: true }).click()
+  await expect(side.getByRole('heading', { name: 'Armory' })).toBeVisible()
   await expect(side.getByText('S Tier')).toBeVisible()
 
   await pageA.keyboard.press('Escape')
-  await expect(side.getByRole('heading', { name: 'Codex' })).toBeHidden()
+  await expect(side.getByRole('heading', { name: 'Armory' })).toBeHidden()
 
   // Still host, still connected, still seated with the peer.
   await expect(pageA.locator('.dock .seat')).toHaveCount(2)
@@ -215,10 +209,9 @@ test('the host manages the Steam lobby from a dock bar', async ({ browser }) => 
   await page.goto('/')
   await page.getByRole('button', { name: 'Host an online dive' }).click()
   await page.getByLabel('Your name').fill('Host')
-  await page.getByLabel('Your name').press('Enter')
   await page.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(page)
-  await page.getByRole('button', { name: 'Launch crusade' }).click()
+  await page.getByRole('button', { name: 'Launch crusade' }).press('Enter')
   await expect(page.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
 
   // The dock control is a disclosure, not a dialog, for the host. Individual
@@ -251,7 +244,6 @@ test('the host manages the Steam lobby from a dock bar', async ({ browser }) => 
   // A squadmate gets a direct Join Lobby link instead of the host's control.
   await pageB.goto(page.url())
   await pageB.getByLabel('Your name').fill('Duo')
-  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
   const joinerLink = pageB.getByRole('link', { name: 'Join Game' })
@@ -289,15 +281,13 @@ async function squadAtTheWheel(browser: Browser) {
   await pageA.goto('/')
   await pageA.getByRole('button', { name: 'Host an online dive' }).click()
   await pageA.getByLabel('Your name').fill('Host')
-  await pageA.getByLabel('Your name').press('Enter')
   await pageA.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(pageA)
-  await pageA.getByRole('button', { name: 'Launch crusade' }).click()
+  await pageA.getByRole('button', { name: 'Launch crusade' }).press('Enter')
   await expect(pageA.getByRole('heading', { name: /Make the squad/ })).toBeVisible()
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
-  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
   await expect(pageB.locator('.dock .seat')).toHaveCount(2)

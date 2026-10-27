@@ -61,10 +61,6 @@ const ownerInitials = computed(() =>
         loading="lazy"
         draggable="false"
       >
-      <span
-        class="tier-dot tb"
-        :data-tier="item.tier"
-      >{{ item.tier.toUpperCase() }}</span>
       <span class="item-name">{{ item.displayName }}</span>
     </span>
     <span class="item-cat odl">{{ categoryLabel(item.category) }}</span>
@@ -169,14 +165,6 @@ const ownerInitials = computed(() =>
   padding: 0.15rem;
 }
 .item-card.compact .item-icon { width: 1.6rem; height: 1.6rem; }
-
-.tier-dot {
-  min-width: 1.4rem;
-  height: 1.4rem;
-  font-size: 0.72rem;
-  border: 1px solid currentColor;
-  flex-shrink: 0;
-}
 
 .item-cat { padding-left: 3px; }
 

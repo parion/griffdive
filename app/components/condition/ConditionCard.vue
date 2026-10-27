@@ -32,9 +32,9 @@ const emit = defineEmits<{ select: [] }>()
 
 const accountability = computed(() => {
   switch (props.condition.accountability) {
-    case 'loadout': return 'Checked on the loadout screen'
-    case 'field': return 'Watched in the field'
-    default: return 'Checked on the stats screen'
+    case 'loadout': return 'Visible on the loadout screen'
+    case 'field': return 'Squad checks during the mission'
+    default: return 'Visible on the end-of-mission stats'
   }
 })
 

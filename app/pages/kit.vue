@@ -1810,7 +1810,7 @@ onBeforeUnmount(() => {
               </button>
               <button
                 class="icon-btn"
-                aria-label="Codex"
+                aria-label="Armory"
                 style="width: 44px; height: 44px; display: grid; place-items: center"
                 type="button"
               >
@@ -2463,7 +2463,7 @@ onBeforeUnmount(() => {
         >
           Replay unfurl
         </button>
-        <span class="sub">{{ crossClaimed ? `Claimed ${ITEMS_BY_ID.get(crossClaimed)?.displayName}` : 'Claim opens the codex; nothing is banked here' }}</span>
+        <span class="sub">{{ crossClaimed ? `Claimed ${ITEMS_BY_ID.get(crossClaimed)?.displayName}` : 'Claim opens the armory; nothing is banked here' }}</span>
       </div>
       <LibertyCrossBand
         :key="crossRun"

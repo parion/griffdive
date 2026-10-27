@@ -385,11 +385,11 @@ function launch(): void {
             id="standby-h"
             class="disp standby-title"
           >
-            {{ hostName }} is setting the crusade
+            {{ hostName }} is setting up the run
           </h2>
           <p class="standby-copy">
             The host picks where the squad fights and where it starts, then launches everyone together.
-            Rewards roll from the warbonds you own — declare them before the drop.
+            Rewards only come from warbonds you own, so set yours before launch.
           </p>
           <button
             class="btn ghost cut-sm standby-cta"
@@ -397,7 +397,7 @@ function launch(): void {
             @click="openWarbonds()"
           >
             <IconWarbond aria-hidden="true" />
-            Declare warbonds · {{ ownedWarbonds.length }}
+            Your warbonds · {{ ownedWarbonds.length }}
           </button>
         </section>
       </div>

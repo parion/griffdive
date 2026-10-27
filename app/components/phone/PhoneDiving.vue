@@ -80,7 +80,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
     class="phone-field"
   >
     <header class="head">
-      <span class="kick">In the field</span>
+      <span class="kick">On mission</span>
       <h1 class="disp title">
         Hold the line
       </h1>
@@ -98,7 +98,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         <span
           class="status"
           :class="directiveFailed ? 'red' : 'teal'"
-        >{{ directiveFailed ? 'Broken' : 'Holding' }}</span>
+        >{{ directiveFailed ? 'Broken' : 'Active' }}</span>
       </div>
       <h2
         class="disp dc-name"
@@ -107,10 +107,10 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         {{ misfortune?.name ?? 'Safe dive' }}
       </h2>
       <p class="dc-rule">
-        {{ misfortune?.rule ?? 'No team rule was accepted this mission.' }}
+        {{ misfortune?.rule ?? 'No directive this mission.' }}
       </p>
       <div class="dc-foot">
-        <span>{{ directiveFailed ? 'Risk voided' : 'Raising everyone’s loot' }}</span>
+        <span>{{ directiveFailed ? 'Broken · everyone loses a loot option' : 'Boosting everyone’s loot' }}</span>
         <button
           v-if="canControl && misfortune && !directiveFailed"
           class="mark"

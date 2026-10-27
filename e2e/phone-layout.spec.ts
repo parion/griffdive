@@ -97,7 +97,6 @@ test('phone: the hangar keeps four bays in a row and the launch in reach', async
   await page.getByRole('button', { name: 'Host an online dive' }).click()
   await expect(page).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
   await page.getByLabel('Your name').fill('Host')
-  await page.getByLabel('Your name').press('Enter')
   await page.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(page)
 
