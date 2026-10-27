@@ -4,7 +4,7 @@ import { createDiveState, reduce } from '~~/shared/engine/reducer'
 import { joinDiver } from '~~/shared/engine/room'
 import { createSaveDoc } from '~~/shared/engine/saves'
 import { pactOfferFor } from '~~/shared/engine/selectors'
-import { CRUSADE_TTL_MS, InvalidSaveError, ROOM_TTL_MS, RoomLimitError, censusRooms, createPeerDirectory, createRoom, createRoomFromSave, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, reapSilentPeers, sweepRooms } from './room-sync'
+import { CRUSADE_TTL_MS, InvalidSaveError, ROOM_TTL_MS, RoomLimitError, censusRooms, createPeerDirectory, createRoom, createRoomFromSave, drainPeers, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, reapSilentPeers, sweepRooms } from './room-sync'
 import type { PeerLike, RoomKV, StoredRoom } from './room-sync'
 import { PEER_SILENCE_MS } from './peer-presence'
 import { roomMetrics } from './metrics'
@@ -1089,6 +1089,60 @@ describe('stepping away (the room never resets)', () => {
     const room = await loadRoom(kv, code)
     expect(room?.state.divers.find(diver => diver.id === guestId)?.away).toBe(true)
     expect(room?.state.hostId).toBe(hostId)
+  })
+
+  it('warns every diver of a restart and leaves the room record untouched', async () => {
+    const { kv, peers, code, host, guest, hostId } = await launchedRoom()
+    const closes: Array<[string, number | undefined]> = []
+    for (const peer of [host, guest]) {
+      peer.close = (closeCode?: number) => closes.push([peer.id, closeCode])
+    }
+    const before = await loadRoom(kv, code)
+
+    expect(drainPeers(peers)).toBe(2)
+    expect(sent(host).at(-1)).toEqual({ type: 'restarting' })
+    expect(sent(guest).at(-1)).toEqual({ type: 'restarting' })
+    expect(closes).toEqual([['ws-a', 1012], ['ws-b', 1012]])
+
+    // The host's socket closes first; the crown must not slide to the guest.
+    await processClose(kv, peers, host)
+    await processClose(kv, peers, guest)
+    const after = await loadRoom(kv, code)
+    expect(after?.state).toEqual(before?.state)
+    expect(after?.state.hostId).toBe(hostId)
+    expect(peers.all()).toHaveLength(0)
+  })
+
+  it('holds the crown for a host still on their way back from a restart', async () => {
+    const { kv, peers, code, guestId, hostId } = await launchedRoom()
+    drainPeers(peers)
+    const restarted = createPeerDirectory()
+
+    const guestBack = fakePeer('ws-b2')
+    guestBack.context.roomCode = code
+    await processHello(kv, restarted, guestBack, { name: 'Guest', playerId: guestId })
+    expect(welcomeOf(guestBack).snapshot.hostId).toBe(hostId)
+
+    const hostBack = fakePeer('ws-a2')
+    hostBack.context.roomCode = code
+    await processHello(kv, restarted, hostBack, { name: 'Host', playerId: hostId })
+    expect(welcomeOf(hostBack).snapshot.hostId).toBe(hostId)
+  })
+
+  it('hands the crown on once a host who never came back is marked away', async () => {
+    const { kv, peers, code, guestId, hostId } = await launchedRoom()
+    drainPeers(peers)
+    const restarted = createPeerDirectory()
+
+    const guestBack = fakePeer('ws-b2')
+    guestBack.context.roomCode = code
+    await processHello(kv, restarted, guestBack, { name: 'Guest', playerId: guestId })
+    await markAwayIfOffline(kv, restarted, code, hostId)
+
+    const room = await loadRoom(kv, code)
+    expect(room?.state.hostId).toBe(guestId)
+    expect(room?.state.divers.find(diver => diver.id === hostId)?.away).toBe(true)
+    expect((await lastSnapshot(guestBack)).hostId).toBe(guestId)
   })
 
   it('keeps a launched crusade far past the lobby TTL', async () => {

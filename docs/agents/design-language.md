@@ -45,6 +45,17 @@ set; extracted references are git-ignored and presentation-only. Nothing here to
 - **Utilities**: type `.disp/.lbl/.cap/.sub/.vl/.odl`; shape `.cut/.cut-sm/.chev/.ticks/.hazard/
   .hatch/.scan/.grid-bg/.hex/.tag-shape`; panels `.panel/.sec/.sec-h/.dash`; controls `.btn/
   .ghost/.icon-btn/.chip/.nb`; data atoms `.tb/.tier-badge/.pips/.chit/.chits/.lamp/.stp/.chan`.
+- **Banners**: every standing message — an error, a removal, a blocked join, a locked shop, a
+  server restart — is one `AppBanner` (`app/components/app/AppBanner.vue`), never a hand-rolled
+  strip. One shape: a square tone glyph (`i` teal **info**, `!` orange **warn**, `×` red **error**,
+  padlock khaki dashed **locked**), a 3px tone edge, a faint tone wash, then the copy (an optional
+  bold `title` in the tone colour leads it) and optional `#actions` (`.btn.tiny.ghost`). It lays
+  out by its own container, not the viewport: under 420px the actions drop beneath the copy.
+  `floating` pins it to the top of the viewport (safe-area aware, over any layout) for app-level
+  state such as the restart notice; `live` breathes the glyph for an ongoing process. Toasts
+  (`AppToastStack`) are the transient twin — same edge language, gone on their own; use a banner
+  when the message stands until the state changes. `/kit` (05b) shows every tone, the narrow
+  layout, the floating banner and the toasts.
 - **Motion**: ambient loops are CSS classes (`.pulse/.rise/.stamp/.slam/.glow/.blinkc/.glitch/…`);
   one-shot reveals use `motion-v` presets in `app/utils/motion.ts` (`riseIn/slamIn`, `SPRING_SNAP`,
   `SPRING_POP`). Animation is presentation, never rules; every effect honors

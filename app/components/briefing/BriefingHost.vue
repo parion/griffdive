@@ -1052,9 +1052,6 @@ function submit(): void {
 .jb-alt img { width: 34px; height: 34px; }
 .jb-alt > span { display: flex; flex-direction: column; gap: 3px; }
 .jb-alt-n { font-size: 15px; color: var(--text); }
-.jb-note { margin: 0; padding: 8px 10px; font-size: 13px; line-height: 1.4; color: var(--khaki); background: color-mix(in srgb, var(--teal) 7%, transparent); border-left: 2px solid var(--teal); }
-.jb-note b { color: var(--teal); }
-.jb-note.warn { color: var(--orange); background: color-mix(in srgb, var(--orange) 8%, transparent); border-left-color: var(--orange); }
 
 /* ---- Sections --------------------------------------------------------- */
 .rise { animation-delay: calc(var(--d, 0) * 90ms); }

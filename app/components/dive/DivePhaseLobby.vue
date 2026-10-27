@@ -238,20 +238,21 @@ function launch(): void {
       tabindex="-1"
     >
       <div class="inner">
-        <p
+        <AppBanner
           v-if="lastError"
-          class="error"
-          role="alert"
+          tone="error"
         >
           {{ lastError }}
-          <button
-            class="btn tiny ghost"
-            type="button"
-            @click="emit('dismissError')"
-          >
-            Dismiss
-          </button>
-        </p>
+          <template #actions>
+            <button
+              class="btn tiny ghost"
+              type="button"
+              @click="emit('dismissError')"
+            >
+              Dismiss
+            </button>
+          </template>
+        </AppBanner>
 
         <section
           class="bays"
@@ -537,17 +538,6 @@ function launch(): void {
   padding: clamp(14px, 2.4vh, 28px) var(--pad-page) 24px;
   min-width: 0;
 }
-.error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--red);
-  color: var(--text);
-}
-
 /* Bays: four lit wells, a pod standing in each ------------------------- */
 .bays { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(6px, 1.4cqi, 14px); }
 .bay {
