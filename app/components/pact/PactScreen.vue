@@ -147,7 +147,7 @@ function bannedNote(pactId: string): string {
   if (names.length === 0) {
     return ''
   }
-  return `Benches ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}`
+  return `Bans ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}`
 }
 
 const ctaLabel = computed(() => {
@@ -173,7 +173,7 @@ function lockNow(): void {
         Swear your pacts
       </h1>
       <p class="pact-sub">
-        Only you carry them. Break one in the field and it costs you a loot option.
+        Pacts only affect you. Break one and you lose a loot option.
       </p>
     </header>
 
@@ -200,7 +200,7 @@ function lockNow(): void {
     >
       <span class="cap">Squad directive</span>
       <b class="disp directive-name">Safe dive</b>
-      <span class="directive-rule">No team rule accepted. The squad carries only its pacts.</span>
+      <span class="directive-rule">No directive this mission.</span>
     </div>
 
     <div

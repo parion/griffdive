@@ -114,7 +114,7 @@ watch(() => props.open, (open) => {
         v-model="search"
         type="text"
         placeholder="Search name or id…"
-        aria-label="Search the codex"
+        aria-label="Search the armory"
       >
     </section>
 

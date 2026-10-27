@@ -171,91 +171,93 @@ const hubLabel = computed(() => {
         class="halo"
         aria-hidden="true"
       />
-      <div
-        class="rotor"
-        :style="{ transform: `rotate(${rotation}deg)`, transitionDuration: `${WHEEL_SPIN_MS}ms` }"
-      >
-        <svg
-          :width="SIZE"
-          :height="SIZE"
-          :viewBox="`0 0 ${SIZE} ${SIZE}`"
-          role="img"
-          :aria-label="`Wheel of Adversity, ${segments.length} directives`"
+      <div class="rotor-clip">
+        <div
+          class="rotor"
+          :style="{ transform: `rotate(${rotation}deg)`, transitionDuration: `${WHEEL_SPIN_MS}ms` }"
         >
-          <circle
-            :cx="CX"
-            :cy="CY"
-            :r="BEZEL + 6"
-            fill="none"
-            stroke="var(--gold)"
-            stroke-opacity="0.35"
-            stroke-width="1"
-          />
-          <circle
-            class="bezel-ticks"
-            :cx="CX"
-            :cy="CY"
-            :r="BEZEL"
-            fill="none"
-            stroke="var(--gold)"
-            stroke-width="9"
-            stroke-dasharray="1.6 5.38"
-          />
-          <circle
-            :cx="CX"
-            :cy="CY"
-            :r="R"
-            fill="var(--rail)"
-            stroke="var(--line-4)"
-            stroke-width="1"
-          />
-          <g
-            v-for="(segment, i) in segments"
-            :key="segment.id"
+          <svg
+            :width="SIZE"
+            :height="SIZE"
+            :viewBox="`0 0 ${SIZE} ${SIZE}`"
+            role="img"
+            :aria-label="`Wheel of Adversity, ${segments.length} directives`"
           >
-            <path
-              :d="slicePath(i * step - step / 2, i * step + step / 2)"
-              :fill="segmentFill(i)"
-              stroke="var(--line-2)"
+            <circle
+              :cx="CX"
+              :cy="CY"
+              :r="BEZEL + 6"
+              fill="none"
+              stroke="var(--gold)"
+              stroke-opacity="0.35"
               stroke-width="1"
             />
-          </g>
-          <path
-            v-if="landed"
-            class="hit-wedge"
-            :d="hitPath"
-            :fill="SEG_HIT"
-          />
-          <rect
-            v-for="pip in pips"
-            :key="pip.key"
-            :x="pip.x"
-            :y="pip.y"
-            width="6"
-            height="6"
-            :fill="pip.tone"
-          />
-          <circle
-            :cx="CX"
-            :cy="CY"
-            :r="72"
-            fill="var(--ground)"
-            stroke="var(--line-4)"
-            stroke-width="1"
-          />
-        </svg>
-        <div
-          class="labels"
-          aria-hidden="true"
-          :style="{ '--label-w': wheelUnits(LABEL_WIDTH), '--label-x': wheelUnits(80) }"
-        >
-          <span
-            v-for="(segment, i) in segments"
-            :key="segment.id"
-            class="seg-label"
-            :class="{ hit: i === drawnIndex && !spinning, flip: flipped(i) }"
-            :style="{ transform: labelTransform(i), fontSize: labelSize(segment.name) }"
-          >{{ segment.name }}</span>
+            <circle
+              class="bezel-ticks"
+              :cx="CX"
+              :cy="CY"
+              :r="BEZEL"
+              fill="none"
+              stroke="var(--gold)"
+              stroke-width="9"
+              stroke-dasharray="1.6 5.38"
+            />
+            <circle
+              :cx="CX"
+              :cy="CY"
+              :r="R"
+              fill="var(--rail)"
+              stroke="var(--line-4)"
+              stroke-width="1"
+            />
+            <g
+              v-for="(segment, i) in segments"
+              :key="segment.id"
+            >
+              <path
+                :d="slicePath(i * step - step / 2, i * step + step / 2)"
+                :fill="segmentFill(i)"
+                stroke="var(--line-2)"
+                stroke-width="1"
+              />
+            </g>
+            <path
+              v-if="landed"
+              class="hit-wedge"
+              :d="hitPath"
+              :fill="SEG_HIT"
+            />
+            <rect
+              v-for="pip in pips"
+              :key="pip.key"
+              :x="pip.x"
+              :y="pip.y"
+              width="6"
+              height="6"
+              :fill="pip.tone"
+            />
+            <circle
+              :cx="CX"
+              :cy="CY"
+              :r="72"
+              fill="var(--ground)"
+              stroke="var(--line-4)"
+              stroke-width="1"
+            />
+          </svg>
+          <div
+            class="labels"
+            aria-hidden="true"
+            :style="{ '--label-w': wheelUnits(LABEL_WIDTH), '--label-x': wheelUnits(80) }"
+          >
+            <span
+              v-for="(segment, i) in segments"
+              :key="segment.id"
+              class="seg-label"
+              :class="{ hit: i === drawnIndex && !spinning, flip: flipped(i) }"
+              :style="{ transform: labelTransform(i), fontSize: labelSize(segment.name) }"
+            >{{ segment.name }}</span>
+          </div>
         </div>
       </div>
 
@@ -317,12 +319,21 @@ const hubLabel = computed(() => {
   background: radial-gradient(circle, rgba(255, 214, 66, 0.09) 0%, transparent 64%);
   pointer-events: none;
 }
+/* A rotating square's corners sweep up to 21% past the wheel's box. Left
+   unclipped they grow and shrink the scroll container every frame of a spin,
+   so its scrollbars flicker; a static circle clips them (with room for the lit
+   wedge's glow). */
+.rotor-clip {
+  position: absolute;
+  inset: -4cqw;
+  overflow: hidden;
+  border-radius: 50%;
+  pointer-events: none;
+}
 .rotor {
   position: absolute;
-  inset: 0;
+  inset: 4cqw;
   transition: transform cubic-bezier(0.12, 0.72, 0.1, 1);
-  /* A rotating square's transparent corners grow past the wheel's layout box;
-     never let them steal a tap from the call controls above. */
   pointer-events: none;
 }
 .rotor svg { width: 100%; height: 100%; display: block; }

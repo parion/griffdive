@@ -60,7 +60,7 @@ function join(): void {
       >
         <span class="host-copy">
           <span class="disp host-label">{{ hosting ? 'Opening dive…' : 'Host a squad dive' }}</span>
-          <span class="host-sub">1–4 divers · live-synced · invite only</span>
+          <span class="host-sub">Up to 4 players · join with a code</span>
         </span>
         <span
           class="host-chev"
@@ -147,7 +147,7 @@ function join(): void {
         <div class="solo">
           <div class="row-head">
             <span class="lbl">Play solo</span>
-            <span class="cap">Offline · callsign next</span>
+            <span class="cap">Works offline</span>
           </div>
           <button
             class="btn ghost cut-sm solo-drop"
@@ -180,7 +180,7 @@ function join(): void {
         @click="emit('codex')"
       >
         <IconBook class="tool-icon" />
-        <span>View codex</span>
+        <span>View armory</span>
       </button>
       <button
         class="tool"

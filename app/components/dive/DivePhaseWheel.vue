@@ -90,7 +90,7 @@ const cardNote = computed(() => {
   if (!decision.value.decided) {
     return `If taken · ${misfortune.value.name}`
   }
-  return props.state.misfortuneAccepted ? `${misfortune.value.name}'s share` : 'Skipped · base odds'
+  return props.state.misfortuneAccepted ? `With ${misfortune.value.name}` : 'Skipped · base odds'
 })
 
 function take(): void {
@@ -132,7 +132,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
         <p class="call-sub">
           {{ canControl
             ? 'Talk it over on voice. Everyone carries what you take.'
-            : 'The host spins the wheel and locks the squad’s call. You weigh in on voice.' }}
+            : 'The host spins the wheel and makes the call. Have your say on voice.' }}
         </p>
       </header>
 
@@ -318,14 +318,13 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
       <template v-else>
         <article class="directive-card empty-call">
           <div class="dc-top">
-            <span class="cap">{{ drawing ? 'Drawing' : 'Directive' }}</span>
+            <span class="cap">{{ drawing ? 'Spinning' : 'Directive' }}</span>
           </div>
           <p class="disp empty-title">
-            {{ drawing ? 'The wheel turns…' : canControl ? 'Awaiting the draw' : 'Waiting on the spin' }}
+            {{ drawing ? 'Spinning…' : canControl ? 'Ready to spin' : 'Waiting on the spin' }}
           </p>
           <p class="empty-copy">
-            The wheel draws this mission’s directive. Every rule is on it at every difficulty —
-            altitude only changes what the risk buys.
+            Spin to draw this mission’s directive. Take it for better loot, or skip it.
           </p>
         </article>
 
@@ -353,7 +352,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
             :disabled="drawing"
             @click="emit('spin')"
           >
-            {{ drawing ? 'The wheel turns…' : 'Spin the wheel' }}
+            {{ drawing ? 'Spinning…' : 'Spin the wheel' }}
             <IconRefresh
               class="cta-icon"
               aria-hidden="true"

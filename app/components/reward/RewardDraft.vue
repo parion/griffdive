@@ -224,7 +224,7 @@ const kickerText = computed(() => {
     return props.kicker
   }
   const stars = '★'.repeat(Math.max(0, props.stars))
-  return `Liberty provides · ${stars}`
+  return `Mission reward · ${stars}`
 })
 </script>
 
@@ -277,7 +277,7 @@ const kickerText = computed(() => {
       v-if="!promotion && options.length"
       :zones="zones"
       :markers="markers"
-      label="Your Valor rolls"
+      label="Your loot rolls"
       :note="`One roll per option · best ${bestTier ?? '—'}`"
       compact
     />

@@ -122,7 +122,7 @@ function onChoose(itemId: string): void {
             Liberty’s Cross
           </h3>
           <p class="cross-sub">
-            Liberty’s light has seen your valor. Name any item in your codex, Helldiver — it is yours.
+            Liberty’s light has seen your valor. Name any item in the armory, Helldiver — it is yours.
           </p>
         </div>
 
@@ -136,7 +136,7 @@ function onChoose(itemId: string): void {
         >
           <span class="disp claim-word">{{ chosenName ?? 'Claim any item' }}</span>
           <span class="claim-sub">
-            {{ chosenName ? 'Change pick' : 'Search the codex' }}
+            {{ chosenName ? 'Change pick' : 'Search the armory' }}
             <svg
               width="14"
               height="14"

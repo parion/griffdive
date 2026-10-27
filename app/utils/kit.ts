@@ -1,5 +1,5 @@
 import { ITEMS_BY_ID } from '~~/shared/data/catalog'
-import type { Item, ItemCategory } from '~~/shared/data/types'
+import type { Item } from '~~/shared/data/types'
 import type { SupportRolls } from '~~/shared/engine/config'
 import { startingItemIds } from '~~/shared/engine/progression'
 import type { DiveState } from '~~/shared/engine/types'
@@ -77,16 +77,13 @@ export function earnedKitItems(state: DiveState, diverId: string | null): Item[]
   return items.filter(item => !starting.has(item.id))
 }
 
-// How an issued kit reads at a glance: stratagems, weapons, armor, boosters.
-const KIT_GROUPS: readonly { label: string, categories: readonly ItemCategory[] }[] = [
-  { label: 'Stratagems', categories: ['Supply', 'Eagle', 'Orbital', 'Defense'] },
-  { label: 'Weapons', categories: ['primary', 'secondary', 'throwable'] },
-  { label: 'Armor', categories: ['armorPassive'] },
-  { label: 'Boosters', categories: ['booster'] },
-]
+// How an issued kit reads at a glance: one group per kind of gear, in the
+// Starting Kit's own sections, stratagems first.
+const KIT_GROUP_ORDER: readonly StartKind[] = ['stratagem', 'primary', 'secondary', 'throwable', 'armorPassive', 'booster']
 
 export interface KitGroup {
   label: string
+  accent: string
   items: Item[]
 }
 
@@ -94,9 +91,11 @@ export function kitGroups(itemIds: readonly string[]): KitGroup[] {
   const items = itemIds
     .map(id => ITEMS_BY_ID.get(id))
     .filter((item): item is Item => !!item)
-  return KIT_GROUPS
-    .map(group => ({ label: group.label, items: items.filter(item => group.categories.includes(item.category)) }))
-    .filter(group => group.items.length > 0)
+  return KIT_GROUP_ORDER.flatMap((kind) => {
+    const section = START_SECTIONS.find(entry => entry.kind === kind)
+    const members = items.filter(item => startKindOf(item) === kind)
+    return section && members.length ? [{ label: section.label, accent: section.accent, items: members }] : []
+  })
 }
 
 const SUPPORT_ROLL_LABELS: Readonly<Record<keyof SupportRolls, readonly [string, string]>> = {

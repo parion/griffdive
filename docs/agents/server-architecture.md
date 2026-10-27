@@ -22,7 +22,7 @@ app/
                    dive/ (the lit-pass shell and per-phase panels: DiveFrame — header · one
                    scrolling stage · squad dock, DiveTopBar + DivePhaseTabs — identity and the
                    Call/Pacts/Dive/Loot beats, DiveMenu — Bridge, tutorial, pin, new session,
-                   leave/end, DiveSidebar — the persistent tool rail (Kit, Codex, Warbonds and
+                   leave/end, DiveSidebar — the persistent tool rail (Kit, Armory, Warbonds and
                    Brasch's Bargains share one non-modal panel), DivePhaseLobby — the
                    standalone Hellpod Bays setup page, DivePhaseWheel/Diving/Rewards/Forfeit/
                    Complete — one panel per engine phase, each owning its local form state and
@@ -37,8 +37,10 @@ app/
                    BridgeDirectives/BridgePacts/BridgeOdds — the beat visuals, BridgeMajorOrder
                    — the live Major Order, teleported into app.vue's #header-mid or pinned to
                    the bottom on phones),
-                   briefing/ (BriefingJoin — the joiner's one-page briefing, also replayed as
-                   the squadmate's Field manual; BriefingHost — the host's tutorial fork),
+                   briefing/ (BriefingLayout — the shared first-run page; BriefingPreview — the
+                   looping scene under each mission box; BriefingJoin
+                   — the joiner's wrapper, also replayed as the squadmate's Field manual;
+                   BriefingHost — the host's tutorial wrapper),
                    wheel/ (WheelOfAdversity — the seeded spinning SVG wheel),
                    condition/ (ConditionCard/ConditionSigil — directive and pact cards),
                    pact/ (PactScreen — the self-service pacts hand, PactLedger),
@@ -65,7 +67,7 @@ app/
                    ItemTierBadge), icon/ (Icon* glyphs),
                    app/ (themed Reka primitives and app chrome: AppDialog, AppDrawer — the
                    right-hand slide-over shell that keeps the dive mounted,
-                   AppTooltip, AppToastStack, AppHoldButton — press-and-hold confirm,
+                   AppTooltip, AppToastStack, AppHoldButton — press-and-hold confirm (early releases shake and nudge; keyboard/AT confirm directly),
                    AppStarRating, AppBrandMark — the griffin mark rendered from
                    utils/brandMark.ts, AppBootScreen, AppChangelogModal — GitHub release log
                    shown from the release chip in the header (Beta), which also carries the channel description from utils/release.ts, shaped by shared/utils/changelog.ts),

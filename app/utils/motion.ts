@@ -45,18 +45,15 @@ export function slamIn(delay = 0, step = 0.06): MotionPreset {
 export const POD_STAGGER = 180
 
 /**
- * Join briefing registry (ms): once a callsign is filed, classes A–D are struck
- * one every REGISTRY_BEAT and E lands; the Griffdiver stamp follows after
- * REGISTRY_STAMP, and the squad card opens REGISTRY_HOLD after that. A saved
- * callsign files itself after REGISTRY_AUTOFILE.
+ * Briefing class strike (ms): once a name is filed, classes A–D are struck one
+ * every REGISTRY_BEAT and E lands; the Griffdiver stamp follows after
+ * REGISTRY_STAMP, and the starting kit unfolds REGISTRY_HOLD after that. A
+ * saved name files itself after REGISTRY_AUTOFILE.
  */
 export const REGISTRY_BEAT = 300
 export const REGISTRY_STAMP = 280
-export const REGISTRY_HOLD = 700
+export const REGISTRY_HOLD = 600
 export const REGISTRY_AUTOFILE = 800
-
-/** Join briefing Valor dial (ms): the scroll-in sweep moves Valor one point per DIAL_STEP. */
-export const DIAL_STEP = 450
 
 /** Wheel rotation (ms): the rotor transition and the result reveal share this clock. */
 export const WHEEL_SPIN_MS = 2800

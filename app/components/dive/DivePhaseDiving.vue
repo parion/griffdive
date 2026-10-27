@@ -72,7 +72,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
     class="field"
   >
     <header class="field-head">
-      <span class="kick">In the field</span>
+      <span class="kick">On mission</span>
       <h1 class="disp field-title">
         Hold the line
       </h1>
@@ -92,7 +92,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
             <span
               class="status"
               :class="directiveFailed ? 'red' : 'teal'"
-            >{{ directiveFailed ? 'Broken' : 'Holding' }}</span>
+            >{{ directiveFailed ? 'Broken' : 'Active' }}</span>
           </div>
           <h2
             class="disp directive-name"
@@ -106,22 +106,22 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
               :condition="misfortune"
             />
             <template v-else>
-              No team rule was accepted this mission.
+              No directive this mission.
             </template>
           </p>
           <div class="directive-foot">
             <span
               v-if="directiveFailed"
               class="void"
-            >Risk voided · every diver loses a loot option</span>
+            >Broken · everyone loses a loot option</span>
             <span
               v-else-if="misfortune"
               class="gain"
-            >Raising everyone’s loot</span>
+            >Boosting everyone’s loot</span>
             <span
               v-else
               class="gain"
-            >The squad carries only its pacts</span>
+            >No directive this mission</span>
             <button
               v-if="canControl && misfortune && !directiveFailed"
               class="mark"
@@ -162,7 +162,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         v-if="isHost && misfortune"
         class="field-roll"
         :zones="zones"
-        label="Your Valor roll"
+        label="Your loot odds"
         locked
         compact
       />

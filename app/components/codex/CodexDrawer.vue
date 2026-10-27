@@ -6,7 +6,7 @@ const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 <template>
   <AppDrawer
     :open="props.open"
-    title="Codex"
+    title="Armory"
     description="Every item, tier and warbond in the catalog."
     @update:open="emit('update:open', $event)"
   >
