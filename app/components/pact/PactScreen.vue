@@ -155,7 +155,7 @@ const ctaLabel = computed(() => {
   if (count === 0) {
     return 'Dive with no pacts'
   }
-  return `Take ${count} pact${count === 1 ? '' : 's'}`
+  return `Swear ${count} pact${count === 1 ? '' : 's'}`
 })
 
 function lockNow(): void {
@@ -170,7 +170,7 @@ function lockNow(): void {
     <header class="pact-head">
       <span class="kick">Your move</span>
       <h1 class="disp pact-title">
-        Pick your pacts
+        Swear your pacts
       </h1>
       <p class="pact-sub">
         Pacts only affect you. Break one and you lose a loot option.
@@ -214,7 +214,7 @@ function lockNow(): void {
         :condition="pact"
         :risk="riskOf(pact.id)"
         :selected="selection.includes(pact.id)"
-        :stamp="selection.includes(pact.id) ? 'Taken' : ''"
+        :stamp="selection.includes(pact.id) ? 'Sworn' : ''"
         :blocked="coverage[pact.id] ?? ''"
         :note="bannedNote(pact.id)"
         :disabled="locked"
@@ -230,7 +230,7 @@ function lockNow(): void {
     <ValorRoll
       :zones="previewZones"
       :deltas="deltas"
-      :note="selectionNames ? `With ${selectionNames}` : 'No pacts'"
+      :note="selectionNames ? `With ${selectionNames}` : 'No pacts sworn'"
       :locked="locked"
     />
 
@@ -260,7 +260,7 @@ function lockNow(): void {
         class="locked-row"
         role="status"
       >
-        <span class="locked-stamp disp">Locked in</span>
+        <span class="locked-stamp disp">Sworn</span>
         <span class="locked-copy">
           <b>{{ selectionNames || 'No pacts' }}</b>
           <span>Waiting for the rest of the squad…</span>

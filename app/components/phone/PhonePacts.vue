@@ -131,7 +131,7 @@ function bannedNote(pactId: string): string {
 
 const ctaLabel = computed(() => {
   const count = selection.value.length
-  return count === 0 ? 'Dive with no pacts' : `Take ${count} pact${count === 1 ? '' : 's'}`
+  return count === 0 ? 'Dive with no pacts' : `Swear ${count} pact${count === 1 ? '' : 's'}`
 })
 
 function lockNow(): void {
@@ -146,7 +146,7 @@ function lockNow(): void {
     <header class="head">
       <span class="kick">Your move</span>
       <h1 class="disp title">
-        Pick your pacts
+        Swear your pacts
       </h1>
       <p class="lede">
         Pacts only affect you. Break one and you lose a loot option.
@@ -186,7 +186,7 @@ function lockNow(): void {
         :condition="pact"
         :risk="riskOf(pact.id)"
         :selected="selection.includes(pact.id)"
-        :stamp="selection.includes(pact.id) ? 'Taken' : ''"
+        :stamp="selection.includes(pact.id) ? 'Sworn' : ''"
         :blocked="coverage[pact.id] ?? ''"
         :note="bannedNote(pact.id)"
         :disabled="locked"
@@ -204,7 +204,7 @@ function lockNow(): void {
     <ValorRoll
       :zones="zones"
       :deltas="deltas"
-      :note="selectionNames ? `With ${selectionNames}` : 'No pacts'"
+      :note="selectionNames ? `With ${selectionNames}` : 'No pacts sworn'"
       :locked="locked"
       compact
     />

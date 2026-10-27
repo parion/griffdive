@@ -37,10 +37,11 @@ first time they read it, mid-session, on a phone. Playtest feedback flagged inve
 ("sworn", "front locked", "live-synced", "Form 5-E") as confusing and fake-sounding, so:
 
 - **Say what happens, in the player's words.** Helldivers 2 vocabulary (stratagem, extract,
-  reinforce, Major Order, front, op) is welcome; invented bureaucracy and ritual verbs are not.
-  Prefer "Take 1 pact" to "Swear 1 pact", "Front" to "Front locked".
+  reinforce, Major Order, front, op) is welcome; invented bureaucracy is not. Prefer "Front" to
+  "Front locked", "Up to 4 players" to "live-synced". Pacts keep their one ritual verb: they are
+  **sworn** ("Swear your pacts", "Swear 1 pact", the SWORN stamp).
 - **One name per thing on screen.** Player-facing terms: **Directive** (the wheel's squad rule),
-  **Pacts** (taken / taken this mission, never sworn), **Strain**, **Front**, **Loot odds** (the
+  **Pacts** (sworn), **Strain**, **Front**, **Loot odds** (the
   odds bar; `Valor`/`ValorRoll` stay code and rules-doc terms only), **Armory** (the full item
   catalog; `codex` stays the component, route and metrics name), **Kit**, **Warbonds**, **Brasch's
   Bargains**. Risk is shown as skulls and called risk.
@@ -129,7 +130,7 @@ merge with them.
   land under the modal overlay).
 - **`PhaseTabs`** replaced the old "whose move?" cue. The current beat is the lead; host-only
   controls are visibly absent for squadmates rather than disabled chrome. A non-host sees "Stand by"
-  and the host's name on the call, but still takes their own pacts and banks their own loot.
+  and the host's name on the call, but still swears their own pacts and banks their own loot.
 
 #### Bridge — the home page (`pages/index.vue` + `components/bridge/`)
 
@@ -189,8 +190,8 @@ component. Top to bottom:
   1. **Call** — `BridgeDirectives`: every wheel directive as sigil + skulls tiles on two
      counter-running belts (paused on hover, static under reduced motion; a screen-reader
      list carries the same content).
-  2. **Pacts** — `BridgePacts`: three real `ConditionCard`s fan in, then two take the TAKEN
-     stamp; a tally shows the taken skulls. Phones swipe the hand.
+  2. **Pacts** — `BridgePacts`: three real `ConditionCard`s fan in, then two take the SWORN
+     stamp; a tally shows the sworn skulls. Phones swipe the hand.
   3. **Climb · Loot** — `BridgeOdds`, the one interactive teaching aid: a 3→10 rung radio
      (difficulty emblems, base tier), a **Skulls taken** range, the shared `ValorRoll` line from
      `tierZones`, and four example draws at fixed d100 faces wrapped in `RewardReveal` — the
@@ -274,9 +275,9 @@ first spin as well as after it. Rerolls sit under the deal CTA as quiet secondar
 
 A centred, self-service hand of `ConditionCard`s dealt in with a stagger. Each card carries only
 its lit risk skulls, the vow in quotes, any benched-kit note, the accountability line and the
-inked TAKEN stamp. There are no per-card odds words: hovering or picking previews the one odds
+inked SWORN stamp. There are no per-card odds words: hovering or picking previews the one odds
 strip under the hand. The CTA is
-"Take N pacts" (or "Dive with no pacts"), and a locked diver sees the LOCKED IN stamp while the rest of
+"Swear N pacts" (or "Dive with no pacts"), and a locked diver sees the sworn stamp while the rest of
 the squad finishes. The hand is local: a squad sync leaves your picks alone — only a fresh draw or
 directive clears them. The **Kit** tab of the `DiveSidebar` shows the Kit everywhere, greying
 the items the pending pick would ban.
@@ -284,7 +285,7 @@ the items the pending pick would ban.
 #### Dive — `DivePhaseDiving`
 
 The field screen is one column: the teal-lit directive card (ACTIVE / BROKEN) and accepted strain,
-then a **Pacts** ledger — one row per pact (diver, lit skulls, name, one-tap "Mark broken",
+then a **Pacts sworn** ledger — one row per pact (diver, lit skulls, name, one-tap "Mark broken",
 confirm on the second tap). Each row is an accordion (`PactLedger`, shared with the phone) that
 opens on the vow and its accountability line, lit by a gold edge; your own pacts start open,
 everyone else's start shut. Hosts call **Extracted** or **Mission failed**; squadmates get a
@@ -396,15 +397,26 @@ carry a tier stripe and lift on hover; banned icons drop their glow.
 
 #### Join briefing and host tutorial
 
-`BriefingJoin` is the joiner's one-page "You've been drafted." registry; `BriefingHost` is its fork for
-the host ("You hold the wheel."): same registry, kit and risk dial, but the mission loop is the host's
-duties (raise, launch, spin, call, report) plus a "Keep the table" strip. The host sees it as a full page
-on first seating and as a `Host tutorial` dialog (`review`) from the session menu. In both, the squad
-box unfolds and then fades in two actions beneath it — a secondary **Set warbonds** and the primary
-**Join the dive** / **Start the dive** (the only CTA; the footer is identity + Back to base). Neither
-action exists until the callsign is filed. The hero carries a reel of the high-res item renders and the
-issued kit shows them at 52px. The deck-plan illustration depicts the lit stage or the phone shell. The
-onboarding odds dial remains a teaching aid; the live dive uses `ValorRoll`.
+One screen, not a scroll. `BriefingLayout` is the shared page; `BriefingJoin` ("You've been
+drafted.") and `BriefingHost` ("You hold the wheel.") are thin wrappers that supply the kicker, lede,
+steps and role notes. The host sees it as a full page on first seating and as a `Host tutorial`
+dialog (`review`) from the session menu; a squadmate replays it as the **Field manual**.
+
+- **Left:** kicker, title, a two-line lede, then **How a mission goes** — five numbered beats
+  (Spin, Swear pacts, Dive, Report, Loot), each tagged Host / You / Everyone with the reader's own
+  beats lit gold.
+- **Right:** one card holding the only required input — **Your name**, focused on load and prefilled
+  from a saved name — the squad seats (a joiner previews their own seat; the host's seat reads the
+  name as it's typed), the difficulty, and the actions: the primary **Start the dive** / **Join the
+  dive** over a secondary **Set warbonds**. Both actions are always shown; the primary is disabled
+  until there is a name. Enter in the field submits. On phones the card follows the lede so the way
+  in sits in the first viewport.
+- **More:** one `<details>` fold (open in `review`) for everything a first dive can skip: the
+  starting gear, Kit / Armory / Warbonds / this guide, and the role's notes (the host's squad
+  management, failed missions and continuing later; the joiner's failed missions).
+
+There is no class-strike animation, odds dial or deck-plan diagram: the live screens teach those
+in context (`ValorRoll` on the call and pact screens, the Bridge's odds console on the home page).
 
 #### Phone shell
 

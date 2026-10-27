@@ -63,7 +63,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.locator('.strain-card').getByRole('button', { name: 'Skip' }).click()
   // The host deals the hand before the dedicated pacts screen (no wheel).
   await page.getByRole('button', { name: 'Deal the pacts' }).click()
-  await expect(page.getByRole('heading', { name: 'Pick your pacts' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Swear your pacts' })).toBeVisible()
 
   // The pact hand is self-service, and the odds strip previews each pick
   // before it is sworn.
@@ -72,7 +72,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.locator('.condition').first().click()
   await expect(page.getByText(/^With /)).toBeVisible()
   expect(await strip.getAttribute('aria-label')).not.toBe(before)
-  await page.getByRole('button', { name: /^Take 1 pact/ }).click()
+  await page.getByRole('button', { name: /^Swear 1 pact/ }).click()
 
   await expect(page.getByRole('heading', { name: 'Hold the line' })).toBeVisible()
   // The tool sidebar opens the Kit beside the stage for the field, non-modal;
@@ -136,7 +136,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.locator('.directive-card').getByRole('button', { name: 'Skip' }).click()
   await page.getByRole('button', { name: 'Deal the pacts' }).click()
   await page.locator('.condition').first().click()
-  await page.getByRole('button', { name: /^Take 1 pact/ }).click()
+  await page.getByRole('button', { name: /^Swear 1 pact/ }).click()
   await page.getByRole('button', { name: 'Extracted' }).click()
 
   // Honors aren't due on mission 2 (the solo cadence is every third mission),
@@ -292,7 +292,7 @@ test('a failed mission labels the operation failed and removes an earned item', 
   await page.locator('.strain-card').getByRole('button', { name: 'Skip' }).click()
   await page.getByRole('button', { name: 'Deal the pacts' }).click()
   await page.locator('.condition').first().click()
-  await page.getByRole('button', { name: /^Take 1 pact/ }).click()
+  await page.getByRole('button', { name: /^Swear 1 pact/ }).click()
 
   // Failure only takes earned gear, so clear mission 1 and bank a reward first.
   await page.getByRole('button', { name: 'Extracted' }).click()

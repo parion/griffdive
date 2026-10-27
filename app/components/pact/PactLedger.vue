@@ -60,9 +60,9 @@ function markPact(diverId: string, pactId: string): void {
 <template>
   <section
     class="ledger"
-    aria-label="Pacts"
+    aria-label="Pacts sworn"
   >
-    <span class="cap ledger-cap">Pacts</span>
+    <span class="cap ledger-cap">Pacts sworn</span>
     <AccordionRoot
       type="multiple"
       :default-value="ownKeys"

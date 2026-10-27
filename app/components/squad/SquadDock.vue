@@ -74,7 +74,7 @@ function statusOf(diver: DiverState): string {
     case 'decision':
     case 'strain':
     case 'deal': return diver.id === host.value ? 'Host · calling' : 'Listening'
-    case 'pacts': return diver.pactsLocked ? 'Ready ✓' : 'Picking pacts'
+    case 'pacts': return diver.pactsLocked ? 'Sworn ✓' : 'Swearing'
     case 'diving': return 'In game'
     case 'rewards':
       if (diver.rewardBanned) return 'Banned'

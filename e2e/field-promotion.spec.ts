@@ -31,7 +31,6 @@ function climbedSave(): unknown {
 async function joinAs(page: Page, code: string, name: string): Promise<void> {
   await page.goto(`/dive/${code}`)
   await page.getByLabel('Your name').fill(name)
-  await page.getByLabel('Your name').press('Enter')
   await page.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(page)
 }

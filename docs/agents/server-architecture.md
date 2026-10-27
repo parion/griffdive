@@ -37,8 +37,9 @@ app/
                    BridgeDirectives/BridgePacts/BridgeOdds — the beat visuals, BridgeMajorOrder
                    — the live Major Order, teleported into app.vue's #header-mid or pinned to
                    the bottom on phones),
-                   briefing/ (BriefingJoin — the joiner's one-page briefing, also replayed as
-                   the squadmate's Field manual; BriefingHost — the host's tutorial fork),
+                   briefing/ (BriefingLayout — the shared one-screen first-run page; BriefingJoin
+                   — the joiner's wrapper, also replayed as the squadmate's Field manual;
+                   BriefingHost — the host's tutorial wrapper),
                    wheel/ (WheelOfAdversity — the seeded spinning SVG wheel),
                    condition/ (ConditionCard/ConditionSigil — directive and pact cards),
                    pact/ (PactScreen — the self-service pacts hand, PactLedger),

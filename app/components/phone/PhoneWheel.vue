@@ -245,7 +245,7 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         class="wait-note"
       >
         <span class="cap">Next</span>
-        <p>You’ll pick your own pacts once the host deals them.</p>
+        <p>You’ll swear your own pacts once the host deals them.</p>
       </div>
       <KitSnapshot
         :state="state"

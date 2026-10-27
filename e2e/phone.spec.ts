@@ -11,13 +11,11 @@ test('phone host moderation: open the squad, hand over or kick', async ({ browse
   await pageA.getByRole('button', { name: 'Host an online dive' }).click()
   await expect(pageA).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
   await pageA.getByLabel('Your name').fill('Host')
-  await pageA.getByLabel('Your name').press('Enter')
   await pageA.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(pageA)
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
-  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(pageB)
 

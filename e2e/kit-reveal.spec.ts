@@ -52,7 +52,6 @@ test('online: the launch and a late joiner each get their own pack dealt', async
   await pageA.getByRole('button', { name: 'Host an online dive' }).click()
   await expect(pageA).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
   await pageA.getByLabel('Your name').fill('Host')
-  await pageA.getByLabel('Your name').press('Enter')
   await pageA.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(pageA)
 
@@ -70,7 +69,6 @@ test('online: the launch and a late joiner each get their own pack dealt', async
 
   await pageB.goto(pageA.url())
   await pageB.getByLabel('Your name').fill('Duo')
-  await pageB.getByLabel('Your name').press('Enter')
   await pageB.getByRole('button', { name: 'Join the dive' }).click()
   const revealB = pageB.getByRole('dialog', { name: 'SEAF Support Package Inbound' })
   await expect(revealB).toBeVisible()

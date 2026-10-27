@@ -281,7 +281,7 @@ const facts = [
         <p class="hero-lede rise">
           Griffdive wraps your Helldivers 2 missions in a roguelike crusade. Start on
           Medium with surplus gear, spin the <b>Wheel of Adversity</b> before every
-          drop, take on personal <b>pacts</b> for rarer loot and climb all the way to
+          drop, swear personal <b>pacts</b> for rarer loot and climb all the way to
           <b>Super Helldive</b>.
         </p>
         <nav
@@ -379,7 +379,7 @@ const facts = [
     >
       <p>
         Every diver is dealt a hand of <b>personal pacts</b>: no stims, no backpack, never
-        die. Take as many as you dare. Each one adds skulls to <b>your</b> odds only.
+        die. Swear as many as you dare. Each one adds skulls to <b>your</b> odds only.
       </p>
       <p>
         Every pact is checked where the squad can see it: the loadout screen, the field or

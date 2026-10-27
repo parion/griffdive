@@ -32,7 +32,6 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
   await page.getByRole('button', { name: 'Host an online dive' }).click()
   await expect(page).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
   await page.getByLabel('Your name').fill('Host')
-  await page.getByLabel('Your name').press('Enter')
   await page.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(page)
 
@@ -92,7 +91,6 @@ test('phone: a failed mission lands on the pinned remove bar', async ({ browser 
   await page.getByRole('button', { name: 'Host an online dive' }).click()
   await expect(page).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
   await page.getByLabel('Your name').fill('Host')
-  await page.getByLabel('Your name').press('Enter')
   await page.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(page)
 
