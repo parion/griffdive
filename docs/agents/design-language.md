@@ -258,7 +258,7 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
   higher-tier rewards"** with a C→S tier ladder that brightens as it climbs — rather than an odds
   table: setup teaches the rule the whole run plays by.
 - One pinned **launch bar**: the compact `RiskSetup` (one row on desktop, two on phones) beside the
-  hold-to-launch CTA (`AppHoldButton`: a pointer or touch press must be held — a tap only shows "KEEP HOLDING" — while keyboard and assistive-tech activation confirm directly; stacked and full width on phones); the Bridge dialog shows the same total
+  hold-to-launch CTA (`AppHoldButton`: a pointer or touch press must be held — letting go early shakes the button hard and shows "KEEP HOLDING" — while keyboard and assistive-tech activation confirm directly; stacked and full width on phones); the Bridge dialog shows the same total
   inline. There is no pre-launch checklist.
 
 #### Call — `DivePhaseWheel`

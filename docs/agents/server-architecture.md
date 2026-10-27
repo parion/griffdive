@@ -67,7 +67,7 @@ app/
                    ItemTierBadge), icon/ (Icon* glyphs),
                    app/ (themed Reka primitives and app chrome: AppDialog, AppDrawer — the
                    right-hand slide-over shell that keeps the dive mounted,
-                   AppTooltip, AppToastStack, AppHoldButton — press-and-hold confirm (taps only nudge; keyboard/AT confirm directly),
+                   AppTooltip, AppToastStack, AppHoldButton — press-and-hold confirm (early releases shake and nudge; keyboard/AT confirm directly),
                    AppStarRating, AppBrandMark — the griffin mark rendered from
                    utils/brandMark.ts, AppBootScreen, AppChangelogModal — GitHub release log
                    shown from the release chip in the header (Beta), which also carries the channel description from utils/release.ts, shaped by shared/utils/changelog.ts),
