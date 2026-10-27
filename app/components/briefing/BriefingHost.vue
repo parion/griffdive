@@ -2,10 +2,10 @@
 import { startingItemIds } from '~~/shared/engine/progression'
 import type { DiveState } from '~~/shared/engine/types'
 import { storedDiverName } from '~/composables/useGameSocket'
-import type { BriefingFact, BriefingStep } from './BriefingLayout.vue'
+import type { BriefingStep } from './BriefingLayout.vue'
 
-// The host's first-run page: a name, then the job only the host does —
-// spinning the wheel and filing each result — in five beats.
+// The host's first-run page: a name, then the five beats of a mission with
+// the host's own (the spin and the report) lit.
 const props = withDefaults(defineProps<{
   state: DiveState
   roomCode: string
@@ -25,17 +25,11 @@ const divers = computed(() =>
   props.state.divers.map(diver => (diver.id === props.state.hostId && callsign.value ? { ...diver, name: callsign.value } : diver)))
 
 const STEPS: readonly BriefingStep[] = [
-  { who: 'you', beat: 'Spin', text: 'Spin the Wheel of Adversity for the mission’s directive, then take it for better loot or skip it.' },
-  { who: 'all', beat: 'Swear pacts', text: 'Everyone swears their own pacts: personal rules that raise only their own loot odds.' },
-  { who: 'all', beat: 'Dive', text: 'Play the mission in Helldivers 2 and extract.' },
-  { who: 'you', beat: 'Report', text: 'Enter the stars, time left and samples from the end-of-mission screen.' },
-  { who: 'all', beat: 'Loot', text: 'Everyone banks one reward. Clear an operation and the squad climbs a difficulty.' },
-]
-
-const FACTS: readonly BriefingFact[] = [
-  { title: 'Manage the squad', text: 'Kick an idle player, or make someone else host, from the squad list.' },
-  { title: 'If a mission fails', text: 'Report it as failed. The squad replays the operation and each player gives up one earned item.' },
-  { title: 'Continue later', text: 'Start a new session from the ⋯ menu to pick the run back up. Gear from players who don’t return can be claimed by new ones.' },
+  { id: 'spin', who: 'you', text: 'Spin for the squad’s directive. Take it for better loot, or skip it.' },
+  { id: 'pacts', who: 'all', text: 'Everyone swears their own pacts. More risk, better loot, for them alone.' },
+  { id: 'dive', who: 'all', text: 'Play the mission in Helldivers 2 and extract.' },
+  { id: 'report', who: 'you', text: 'Copy the stars, time and samples off the end-of-mission screen.' },
+  { id: 'loot', who: 'all', text: 'Everyone banks one reward. Clear the operation and the squad climbs.' },
 ]
 
 function submit(): void {
@@ -60,8 +54,6 @@ function submit(): void {
     :can-submit="callsign.length > 0"
     :kit-ids="startingItemIds(state.settings?.variant ?? 'medium')"
     :kit-note="startingGearNote(state.settings, 'you')"
-    guide-name="Host tutorial"
-    :facts="FACTS"
     @submit="submit"
   >
     <template #title>
@@ -73,8 +65,7 @@ function submit(): void {
       </template>
     </template>
     <template #lede>
-      You set up the run and drive each mission; Griffdive tracks the rules. Everyone else just
-      swears their pacts and plays.
+      You run the table; Griffdive keeps the rules. Everyone else swears their pacts and plays.
     </template>
   </BriefingLayout>
 </template>

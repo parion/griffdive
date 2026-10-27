@@ -47,9 +47,10 @@
   1024×768 every phase fits the centre stage without the page scrolling vertically, and the drawn
    directive's Take it is in view; at
   768×1024 the phone shell widens to the tablet), the join briefing (`join-briefing.spec.ts`: a
-  named host skips every gate and gets the tutorial, a squadmate reads the one-screen briefing — name
-  focused on load, squad and five-beat loop on show, Join disabled until named, starting gear behind
-  the More fold, Armory drawer, Enter joins — lands with no tutorial or Warbonds panel, and replays it as the
+  named host skips every gate and gets the tutorial, a squadmate reads the briefing — name focused on
+  load, five mission boxes with the first open and a box switching its panel and preview, Join
+  disabled until named, Enter filing the name into Class E and unfolding the grouped starting gear,
+  a second Enter joining, a saved name filing itself — lands with no tutorial or Warbonds panel, and replays it as the
   Field manual; the spec uses one room because creation is rate-limited per IP), the SEAF launch
   reveal (`kit-reveal.spec.ts`: the setup kit's "?" boxes, a solo and an online launch dealing the
   pack in a modal over the wheel that stays until dismissed, a late joiner's own deal, no replay on reload), personal session saves

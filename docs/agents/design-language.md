@@ -408,26 +408,35 @@ carry a tier stripe and lift on hover; banned icons drop their glow.
 
 #### Join briefing and host tutorial
 
-One screen, not a scroll. `BriefingLayout` is the shared page; `BriefingJoin` ("You've been
-drafted.") and `BriefingHost` ("You hold the wheel.") are thin wrappers that supply the kicker, lede,
-steps and role notes. The host sees it as a full page on first seating and as a `Host tutorial`
-dialog (`review`) from the session menu; a squadmate replays it as the **Field manual**.
+Illustrative, not verbose. `BriefingLayout` is the shared page; `BriefingJoin` ("You've been
+drafted.") and `BriefingHost` ("You hold the wheel.") are thin wrappers that supply the kicker, a
+one-line lede and the five step lines. The host sees it as a full page on first seating and as a
+`Host tutorial` dialog (`review`) from the session menu; a squadmate replays it as the **Field
+manual**.
 
-- **Left:** kicker, title, a two-line lede, then **How a mission goes** — five numbered beats
-  (Spin, Swear pacts, Dive, Report, Loot), each tagged Host / You / Everyone with the reader's own
-  beats lit gold.
-- **Right:** one card holding the only required input — **Your name**, focused on load and prefilled
-  from a saved name — the squad seats (a joiner previews their own seat; the host's seat reads the
-  name as it's typed), the difficulty, and the actions: the primary **Start the dive** / **Join the
-  dive** over a secondary **Set warbonds**. Both actions are always shown; the primary is disabled
-  until there is a name. Enter in the field submits. On phones the card follows the lede so the way
-  in sits in the first viewport.
-- **More:** one `<details>` fold (open in `review`) for everything a first dive can skip: the
-  starting gear, Kit / Armory / Warbonds / this guide, and the role's notes (the host's squad
-  management, failed missions and continuing later; the joiner's failed missions).
+- **The card** holds the only required input, **Your name** (focused on load, prefilled from a
+  saved name). Filing it (Enter, leaving the field, or a saved name after a beat) plays the
+  **class strike**: A–D struck one by one, E lands in red, a GRIFFDIVER stamp and one line —
+  "Helldivers are Class A. You're Class E: surplus gear, no arsenal." — then the **starting gear**
+  unfolds beneath, grouped by kind (`kitGroups`: Stratagems, Primary, Secondary, Throwables, Armor
+  passives, Boosters, each edged in its category accent). The squad seats and difficulty follow.
+  The strike is presentation only: the way in never waits on it, and reduced motion lands it at
+  once.
+- **How a mission goes** is five boxes in one row (Reka `Tabs`): Spin, Swear, Dive, Report, Loot,
+  each a glyph (`IconWheel`, `IconPact`, `IconHellpod`, `IconStar`, `IconLoot`) with its bottom edge
+  tinted by who acts (gold = you, teal = host, khaki = everyone). The first is open; the open box
+  turns gold and points down into its panel, which drops in with the step's one line, a
+  Host / You / Everyone tag and a **`BriefingPreview`** — a 150px looping scene of the beat drawn
+  from real data (the wheel landing on a directive, two pacts taking the SWORN stamp, the hellpod
+  drop, three stars and the report bars, three tiered loot cards with one BANKED). Scenes are CSS
+  loops whose resting styles are the final frame, so reduced motion shows the beat played out.
+- **The way in** — the primary **Start the dive** / **Join the dive** beside **Set warbonds** — is
+  pinned to the bottom edge at every width, so it never scrolls away while the kit unfolds; on
+  phones the warbonds button shrinks to its glyph. The primary is disabled until there is a name;
+  once filed, Enter in the field submits.
 
-There is no class-strike animation, odds dial or deck-plan diagram: the live screens teach those
-in context (`ValorRoll` on the call and pact screens, the Bridge's odds console on the home page).
+Phones read top-down: heading, card, the five boxes; wide containers put the boxes beside the card.
+There is no More fold, odds dial or deck-plan diagram.
 
 #### Phone shell
 

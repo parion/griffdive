@@ -6,8 +6,8 @@ import type { DiveState } from '~~/shared/engine/types'
 import { storedDiverName } from '~/composables/useGameSocket'
 import type { BriefingFact, BriefingStep } from './BriefingLayout.vue'
 
-// The joiner's first-run page: a name, and the little a squadmate does. The
-// host drives the table, so nothing here teaches the host's controls.
+// The joiner's first-run page: a name, then the five beats of a mission with
+// the squadmate's own (the pacts and the loot) lit.
 const props = withDefaults(defineProps<{
   // The room as it stands before seating (a pre-join snapshot), or the live
   // dive when replayed from the session menu.
@@ -39,15 +39,11 @@ const promotion = computed<BriefingFact | null>(() => {
 })
 
 const STEPS: readonly BriefingStep[] = [
-  { who: 'host', beat: 'Spin', text: 'The host spins the Wheel of Adversity for the mission’s directive. Speak up on voice: you play under it too.' },
-  { who: 'you', beat: 'Swear pacts', text: 'Swear any of the pacts you’re dealt, or none. Each one raises only your own loot odds.' },
-  { who: 'all', beat: 'Dive', text: 'Play the mission in Helldivers 2 and extract.' },
-  { who: 'host', beat: 'Report', text: 'The host enters the stars, time left and samples.' },
-  { who: 'you', beat: 'Loot', text: 'Bank one reward, then spend credits at Brasch’s Bargains if you like.' },
-]
-
-const FACTS: readonly BriefingFact[] = [
-  { title: 'If a mission fails', text: 'The squad replays the operation and you give up one item you earned. Your starting gear is never at risk.' },
+  { id: 'spin', who: 'host', text: 'The host spins for the squad’s directive. Have your say on voice.' },
+  { id: 'pacts', who: 'you', text: 'Swear any of your pacts, or none. Each one raises your own loot odds.' },
+  { id: 'dive', who: 'all', text: 'Play the mission in Helldivers 2 and extract.' },
+  { id: 'report', who: 'host', text: 'The host files the stars, time and samples.' },
+  { id: 'loot', who: 'you', text: 'Bank one reward, then spend credits at Brasch’s Bargains.' },
 ]
 
 function submit(): void {
@@ -77,10 +73,8 @@ function submit(): void {
     :can-submit="canJoin"
     :kit-ids="startingItemIds(state?.settings?.variant ?? 'medium')"
     :kit-note="startingGearNote(state?.settings, 'the host')"
-    guide-name="Field manual"
     :warning="blocked ? `${blocked}. Keep this page open and try again in a moment.` : null"
     :note="promotion"
-    :facts="FACTS"
     @submit="submit"
   >
     <template #title>
@@ -98,8 +92,7 @@ function submit(): void {
       <template v-else>
         A host is leading
       </template>
-      a squad up the Helldivers 2 difficulty ladder. Enter your name and jump in; the steps
-      below are all you need.
+      a squad up the Helldivers 2 difficulty ladder. Your part is small.
     </template>
   </BriefingLayout>
 </template>
