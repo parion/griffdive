@@ -450,20 +450,53 @@ There is no More fold, odds dial or deck-plan diagram.
 
 #### Tier Maker — `pages/tiers.vue`
 
-A plain page in the Armory's grammar, not a dive surface. A **desk** panel holds the list being
-edited:
-- an Open select (new list, start from a featured list, or one of your lists);
-- the name;
-- per-tier counts and "N moved", with an Unsaved / Next crusade chip;
-- the actions: Save, Use for next crusade, Copy share link, Import, Reset to default, Delete.
+A drag-and-drop tier board in the tiermaker mould, built for a phone first.
 
-Discarding unsaved edits and deleting a list each confirm in an `AppDialog`.
+**The board (`TierListBoard`)**
+- **Rows:** one per tier. The label is a solid block of the tier colour, cut like a panel, with the
+  letter in the display face plus a one-word gloss (Top shelf / Strong / Solid / Surplus) and a
+  count. The label's inner block is sticky, so a tall row keeps its letter in view.
+- **Tiles (`TierListTile`):** square art over a category-tinted well with a tier-coloured foot.
+  Names show as a caption once a tile is at least 70px. A moved item carries a gold corner notch.
+- **Order within a row:** the Kit's section order (weapons, armor, boosters, stratagems by role),
+  then name. Lists store tiers, not positions, so a drop sets the tier and never reorders.
+- **Layout:** tile size and label width scale with the board's container (`clamp(…cqi…)`), so the
+  board fits any width or orientation without sideways scroll.
 
-Under the desk, `TierListBoard` lists every item under the tier the draft gives it, filtered by
-category, warbond, name or "moved only". Each row is an icon, the name and category (plus "default
-X" once moved, with a gold edge) and a four-way **S/A/B/C** Reka `RadioGroup`. A dot marks the
-default tier. Tiers are assigned by tap, not drag, so the board works one-handed on a phone.
-Opening `/tiers#<code>` imports the shared list into an unsaved draft and shows an info banner.
+**Moving items**
+- **Drag (`useTierDrag`):** pointer events only, with no drag library. A mouse lifts after 5px; touch
+  must **long-press** (220ms) first, so swiping the board still scrolls. Once an item is lifted, a
+  non-passive `touchmove` guard stops native scrolling, and the page auto-scrolls near the
+  viewport edges.
+- **While dragging:** a tilted ghost follows the pointer, wearing the hovered row's tier colour and
+  a tier badge. The row under it lights up. The tile it came from greys out. Escape cancels.
+- **Keyboard:** the board is one tab stop with roving focus. Arrows walk the wrapped grid (up and
+  down by geometry). `S/A/B/C` or `1–4` move the focused item, `Shift+↑/↓` steps it a tier, and `D`
+  returns it to its default.
+- **Click or tap:** selects the item for **`TierListInspector`**: its art, name, category, default
+  tier and four big S/A/B/C buttons (a Reka `RadioGroup`).
+- **Announcements:** every move is announced in a polite live region.
+
+**Flair** (presentation only; reduced motion collapses it)
+- Every drop **slams** in (scale 1.32 → 0.94 → 1 with a brightness flash), rings out in its tier
+  colour, and flashes its row label.
+- An **S-tier** drop adds a skewed gold **sheen** that sweeps the art, two winking star glints and a
+  gold inner glow. On touch it also vibrates (`navigator.vibrate`).
+- The S label catches a slow glint every few seconds.
+
+**Shell**
+- **Header:** the list name is an inline display-face input, with per-tier counts and an "N moved"
+  link that opens `TierListChanges`.
+- **Filter strip:** sticky under the ship header, with category chips (Reka `RadioGroup`; they
+  scroll sideways on phones) and a search box that dims non-matches rather than hiding them, so the
+  board never jumps.
+- **Under 1100px:** a blurred action bar is pinned to the bottom edge with **List ▾ / Share /
+  Save**. List opens `TierListDesk` in a dialog. Selecting a tile turns the bar into the inspector,
+  which goes single-row on wide bars and landscape phones.
+- **From 1100px:** the desk and the inspector dock in a sticky column beside the board.
+- **Import:** opening `/tiers#<code>` imports the shared list into an unsaved draft and shows an
+  info banner.
+- **Confirmations:** discarding unsaved edits and deleting a list each confirm in an `AppDialog`.
 
 #### Phone shell
 

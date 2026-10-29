@@ -1,281 +1,454 @@
 <script setup lang="ts">
-import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
-import { ALL_ITEMS, WARBONDS } from '~~/shared/data/catalog'
-import { itemImageUrl } from '~~/shared/data/images'
-import type { Item, ItemCategory, Tier } from '~~/shared/data/types'
+import { ITEMS_BY_ID } from '~~/shared/data/catalog'
+import type { Item, Tier } from '~~/shared/data/types'
 import { TIERS, tieredCatalog } from '~~/shared/engine/tierList'
 import type { TierList } from '~~/shared/engine/tierList'
+import { KIT_SECTIONS, kitSectionOf } from '~/utils/kit'
+import type { KitSectionId } from '~/utils/kit'
 
-// The Tier Maker's board: every catalog item grouped under the tier the draft
-// gives it, each with a four-way S/A/B/C switch. Tap-to-assign, not drag, so
-// it works one-handed on a phone between missions.
-const props = defineProps<{ draft: TierList }>()
-const emit = defineEmits<{ set: [itemId: string, tier: Tier] }>()
+// The Tier Maker's board, tiermaker-style: one row per tier, every item a
+// tile. Drag a tile to a row (long-press on touch), or focus it and press
+// S/A/B/C. Clicking a tile selects it for the inspector. Presentation only:
+// every move is emitted, the page owns the draft.
+const props = defineProps<{
+  draft: TierList
+  section: KitSectionId | 'all'
+  query: string
+  selectedId: string | null
+  landed: { id: string, n: number } | null
+}>()
 
-const CATEGORIES: (ItemCategory | 'all')[] = [
-  'all',
-  'primary',
-  'secondary',
-  'throwable',
-  'booster',
-  'armorPassive',
-  'Supply',
-  'Eagle',
-  'Orbital',
-  'Defense',
-]
+const emit = defineEmits<{
+  set: [itemId: string, tier: Tier]
+  select: [itemId: string | null]
+}>()
 
-const category = ref<ItemCategory | 'all'>('all')
-const warbond = ref<string>('all')
-const search = ref('')
-const movedOnly = ref(false)
+const TIER_WORD: Readonly<Record<Tier, string>> = { s: 'Top shelf', a: 'Strong', b: 'Solid', c: 'Surplus' }
+const SECTION_ORDER = new Map(KIT_SECTIONS.map((section, index) => [section.id, index]))
+const SECTION_BY_ID = new Map(KIT_SECTIONS.map(section => [section.id, section]))
 
-const catalog = computed(() => tieredCatalog(props.draft))
-const defaults = new Map(ALL_ITEMS.map(item => [item.id, item.tier]))
-
-function moved(item: Item): boolean {
-  return defaults.get(item.id) !== item.tier
+function sectionOf(item: Item) {
+  return SECTION_BY_ID.get(kitSectionOf(item))!
 }
 
-const filtered = computed(() => {
-  const query = search.value.trim().toLowerCase()
-  return catalog.value.items.filter(item =>
-    (category.value === 'all' || item.category === category.value)
-    && (warbond.value === 'all' || item.warbondCode === warbond.value)
-    && (!movedOnly.value || moved(item))
-    && (!query || item.displayName.toLowerCase().includes(query) || item.id.includes(query)))
+function defaultTier(item: Item): Tier {
+  return ITEMS_BY_ID.get(item.id)?.tier ?? item.tier
+}
+
+const catalog = computed(() => tieredCatalog(props.draft))
+const needle = computed(() => props.query.trim().toLowerCase())
+
+function matches(item: Item): boolean {
+  return !needle.value || item.displayName.toLowerCase().includes(needle.value)
+}
+
+// Within a row, items keep the kit's section order (weapons, then armor,
+// boosters, stratagems by role) and then name, so a row reads in groups.
+const rows = computed(() => {
+  const visible = catalog.value.items
+    .filter(item => props.section === 'all' || kitSectionOf(item) === props.section)
+    .sort((a, b) =>
+      (SECTION_ORDER.get(kitSectionOf(a)) ?? 0) - (SECTION_ORDER.get(kitSectionOf(b)) ?? 0)
+      || a.displayName.localeCompare(b.displayName))
+  return TIERS.map(tier => ({ tier, items: visible.filter(item => item.tier === tier) }))
 })
 
-const groups = computed(() => TIERS.map(tier => ({
-  tier,
-  items: filtered.value
-    .filter(item => item.tier === tier)
-    .sort((a, b) => a.displayName.localeCompare(b.displayName)),
-})))
+const { drag, pressing, start, consumeClick } = useTierDrag((id, tier) => emit('set', id, tier))
+const dragItem = computed(() => (drag.value ? catalog.value.byId.get(drag.value.id) ?? null : null))
+
+// The row an item just landed in flashes its label.
+const flashTier = ref<Tier | null>(null)
+let flashTimer: ReturnType<typeof setTimeout> | undefined
+watch(() => props.landed, (landed) => {
+  const tier = landed ? catalog.value.byId.get(landed.id)?.tier ?? null : null
+  flashTier.value = null
+  clearTimeout(flashTimer)
+  if (tier) {
+    requestAnimationFrame(() => {
+      flashTier.value = tier
+    })
+    flashTimer = setTimeout(() => {
+      flashTier.value = null
+    }, 900)
+  }
+})
+onBeforeUnmount(() => clearTimeout(flashTimer))
+
+// One tab stop for the whole board; arrows walk the tiles.
+const focusId = ref<string | null>(null)
+const rovingId = computed(() => {
+  const all = rows.value.flatMap(row => row.items)
+  return all.some(item => item.id === focusId.value) ? focusId.value : all[0]?.id ?? null
+})
+
+const board = ref<HTMLElement | null>(null)
+
+function tileButton(id: string): HTMLElement | null {
+  return board.value?.querySelector<HTMLElement>(`[data-item="${id}"]`) ?? null
+}
+
+function focusTile(id: string): void {
+  focusId.value = id
+  nextTick(() => tileButton(id)?.focus())
+}
+
+// Up and down follow the wrapped grid by geometry: the nearest tile on the
+// next visual line, across row boundaries.
+function verticalNeighbor(id: string, down: boolean): string | null {
+  const from = tileButton(id)?.getBoundingClientRect()
+  if (!from || !board.value) {
+    return null
+  }
+  const centre = from.left + from.width / 2
+  let best: { id: string, top: number, dx: number } | null = null
+  for (const el of board.value.querySelectorAll<HTMLElement>('[data-item]')) {
+    const rect = el.getBoundingClientRect()
+    const ahead = down ? rect.top > from.top + from.height / 2 : rect.top < from.top - from.height / 2
+    if (!ahead) {
+      continue
+    }
+    const dx = Math.abs(rect.left + rect.width / 2 - centre)
+    const closer = !best
+      || (down ? rect.top < best.top - 1 : rect.top > best.top + 1)
+      || (Math.abs(rect.top - best.top) <= 1 && dx < best.dx)
+    if (closer) {
+      best = { id: el.dataset.item!, top: rect.top, dx }
+    }
+  }
+  return best?.id ?? null
+}
+
+const KEY_TIER: Readonly<Record<string, Tier>> = { s: 's', a: 'a', b: 'b', c: 'c', 1: 's', 2: 'a', 3: 'b', 4: 'c' }
+
+function moveByKey(item: Item, tier: Tier): void {
+  emit('set', item.id, tier)
+  focusTile(item.id)
+}
+
+function onKey(event: KeyboardEvent, item: Item): void {
+  if (event.ctrlKey || event.metaKey || event.altKey) {
+    return
+  }
+  const all = rows.value.flatMap(row => row.items)
+  const index = all.findIndex(entry => entry.id === item.id)
+  const key = event.key.toLowerCase()
+  if (event.shiftKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+    const next = TIERS[TIERS.indexOf(item.tier) + (event.key === 'ArrowUp' ? -1 : 1)]
+    if (next) {
+      moveByKey(item, next)
+    }
+  }
+  else if (KEY_TIER[key]) {
+    moveByKey(item, KEY_TIER[key])
+  }
+  else if (key === 'd' || event.key === 'Backspace' || event.key === 'Delete') {
+    moveByKey(item, defaultTier(item))
+  }
+  else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+    const next = all[index + (event.key === 'ArrowRight' ? 1 : -1)]
+    if (next) {
+      focusTile(next.id)
+    }
+  }
+  else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    const next = verticalNeighbor(item.id, event.key === 'ArrowDown')
+    if (next) {
+      focusTile(next)
+    }
+  }
+  else if (event.key === 'Home' || event.key === 'End') {
+    const next = event.key === 'Home' ? all[0] : all[all.length - 1]
+    if (next) {
+      focusTile(next.id)
+    }
+  }
+  else if (event.key === 'Escape' && props.selectedId) {
+    emit('select', null)
+  }
+  else {
+    return
+  }
+  event.preventDefault()
+}
+
+function onClick(item: Item): void {
+  if (consumeClick()) {
+    return
+  }
+  focusId.value = item.id
+  emit('select', props.selectedId === item.id ? null : item.id)
+}
+
+function label(item: Item): string {
+  const base = defaultTier(item)
+  const moved = base !== item.tier ? `, moved from ${base.toUpperCase()}` : ''
+  return `${item.displayName}, ${sectionOf(item).label}, ${item.tier.toUpperCase()} tier${moved}`
+}
+
+defineExpose({ focusTile })
 </script>
 
 <template>
-  <div class="tl-board">
+  <div
+    ref="board"
+    class="tm-board"
+    :class="{ dragging: drag !== null }"
+    role="group"
+    aria-roledescription="tier board"
+    aria-label="Tier board. Drag items between tiers, or focus an item and press S, A, B or C."
+  >
     <section
-      class="panel tl-filters"
-      aria-label="Item filters"
+      v-for="row in rows"
+      :key="row.tier"
+      class="tm-row"
+      :class="{ over: drag?.overTier === row.tier, flash: flashTier === row.tier }"
+      :style="{ '--tier': `var(--tier-${row.tier})` }"
+      :data-drop-tier="row.tier"
+      :aria-labelledby="`tm-row-${row.tier}`"
     >
-      <label class="field">
-        <span class="lbl">Category</span>
-        <select v-model="category">
-          <option
-            v-for="entry in CATEGORIES"
-            :key="entry"
-            :value="entry"
+      <div class="tm-label">
+        <div class="tm-label-in">
+          <h2
+            :id="`tm-row-${row.tier}`"
+            class="tm-letter disp"
           >
-            {{ entry === 'all' ? 'All categories' : categoryLabel(entry) }}
-          </option>
-        </select>
-      </label>
-      <label class="field">
-        <span class="lbl">Warbond</span>
-        <select v-model="warbond">
-          <option value="all">
-            All warbonds
-          </option>
-          <option
-            v-for="entry in WARBONDS"
-            :key="entry.code"
-            :value="entry.code"
-          >
-            {{ entry.displayName }}
-          </option>
-        </select>
-      </label>
-      <label class="field">
-        <span class="lbl">Search</span>
-        <input
-          v-model="search"
-          type="search"
-          placeholder="Item name…"
-        >
-      </label>
-      <label class="tl-moved-only">
-        <input
-          v-model="movedOnly"
-          type="checkbox"
-        >
-        <span>Moved items only</span>
-      </label>
-    </section>
-
-    <section
-      v-for="group in groups"
-      :key="group.tier"
-      class="tl-tier"
-      :aria-labelledby="`tl-tier-${group.tier}`"
-    >
-      <h2
-        :id="`tl-tier-${group.tier}`"
-        class="tl-tier-h"
-        :data-tier="group.tier"
-      >
-        <span class="tl-tier-letter disp">{{ group.tier.toUpperCase() }}</span>
-        <span class="tl-tier-word">Tier</span>
-        <span
-          class="dash"
-          aria-hidden="true"
-        />
-        <span class="cap">{{ group.items.length }} items</span>
-      </h2>
-      <p
-        v-if="!group.items.length"
-        class="muted small tl-empty"
-      >
-        Nothing here{{ filtered.length < catalog.items.length ? ' under these filters' : '' }}.
-      </p>
-      <ul
-        v-else
-        class="tl-rows"
-      >
-        <li
-          v-for="item in group.items"
-          :key="item.id"
-          class="tl-row"
-          :class="{ moved: moved(item) }"
-        >
-          <img
-            v-if="itemImageUrl(item)"
-            class="tl-icon"
-            :src="itemImageUrl(item)"
-            alt=""
-            loading="lazy"
-            draggable="false"
-          >
+            <span aria-hidden="true">{{ row.tier.toUpperCase() }}</span>
+            <span class="sr-only">{{ row.tier.toUpperCase() }} tier, {{ row.items.length }} items</span>
+          </h2>
           <span
-            v-else
-            class="tl-icon"
+            class="tm-word"
             aria-hidden="true"
-          />
-          <span class="tl-id">
-            <span class="tl-name">{{ item.displayName }}</span>
-            <span class="tl-sub">
-              {{ categoryLabel(item.category) }}
-              <template v-if="moved(item)"> · default {{ defaults.get(item.id)?.toUpperCase() }}</template>
-            </span>
-          </span>
-          <RadioGroupRoot
-            orientation="horizontal"
-            :model-value="item.tier"
-            class="tl-switch"
-            :aria-label="`${item.displayName} tier`"
-            @update:model-value="emit('set', item.id, $event as Tier)"
+          >{{ TIER_WORD[row.tier] }}</span>
+          <span
+            class="tm-count"
+            aria-hidden="true"
+          >{{ row.items.length }}</span>
+        </div>
+      </div>
+      <ul class="tm-zone">
+        <li
+          v-for="item in row.items"
+          :key="item.id"
+          class="tm-slot"
+        >
+          <button
+            type="button"
+            class="tm-btn"
+            :data-item="item.id"
+            :tabindex="rovingId === item.id ? 0 : -1"
+            :aria-label="label(item)"
+            :aria-pressed="selectedId === item.id"
+            :title="item.displayName"
+            @pointerdown="start($event, item.id)"
+            @click="onClick(item)"
+            @keydown="onKey($event, item)"
+            @focus="focusId = item.id"
+            @contextmenu.prevent
           >
-            <RadioGroupItem
-              v-for="tier in TIERS"
-              :key="tier"
-              :value="tier"
-              class="tl-seg"
-              :data-tier="tier"
-              :aria-label="`${tier.toUpperCase()} tier${defaults.get(item.id) === tier ? ' (default)' : ''}`"
-            >
-              {{ tier.toUpperCase() }}
-              <span
-                v-if="defaults.get(item.id) === tier"
-                class="tl-default-dot"
-                aria-hidden="true"
-              />
-            </RadioGroupItem>
-          </RadioGroupRoot>
+            <TierListTile
+              :item="item"
+              :default-tier="defaultTier(item)"
+              :art="sectionOf(item).art"
+              :accent="sectionOf(item).accent"
+              :selected="selectedId === item.id"
+              :dimmed="!matches(item)"
+              :landed="landed?.id === item.id"
+              :pressing="pressing === item.id"
+              :lifted="drag?.id === item.id"
+            />
+          </button>
+        </li>
+        <li
+          v-if="!row.items.length"
+          class="tm-empty"
+          aria-hidden="true"
+        >
+          Drop items here
         </li>
       </ul>
     </section>
+
+    <Teleport to="body">
+      <div
+        v-if="drag && dragItem"
+        class="tm-ghost"
+        :style="{
+          '--tile': `${drag.size}px`,
+          'transform': `translate(${drag.x - drag.size / 2}px, ${drag.y - drag.size * 0.7}px) rotate(-4deg) scale(1.14)`,
+        }"
+        aria-hidden="true"
+      >
+        <TierListTile
+          :item="{ ...dragItem, tier: drag.overTier ?? dragItem.tier }"
+          :default-tier="defaultTier(dragItem)"
+          :art="sectionOf(dragItem).art"
+          :accent="sectionOf(dragItem).accent"
+          ghost
+        />
+        <span
+          v-if="drag.overTier"
+          class="tm-ghost-tier disp"
+          :style="{ '--tier': `var(--tier-${drag.overTier})` }"
+        >{{ drag.overTier.toUpperCase() }}</span>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
-.tl-board { display: grid; gap: 18px; min-width: 0; container: tl-board / inline-size; }
-.tl-filters {
+.tm-board {
+  --label-w: clamp(46px, 9cqi, 104px);
+  --tile: clamp(48px, 6.6cqi, 78px);
+  --gap: 3px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  align-items: end;
-  gap: 0.75rem;
+  gap: 4px;
+  min-width: 0;
+  container: tm-board / inline-size;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
-.field { display: grid; gap: 0.3rem; min-width: 0; }
-.field select,
-.field input { width: 100%; min-width: 0; }
-.tl-moved-only { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; font-size: 0.82rem; color: var(--khaki); cursor: pointer; }
 
-.tl-tier { display: grid; gap: 6px; min-width: 0; }
-.tl-tier-h {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  font-size: 0.78rem;
+.tm-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--label-w) minmax(0, 1fr);
+  min-height: calc(var(--tile) + 10px);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--tier) 7%, transparent), transparent 40%),
+    var(--rail);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  transition: box-shadow var(--dur-fast), background-color var(--dur-fast);
+}
+
+/* The tier label: a solid block of the tier's colour, like a tier-list row
+   header, cut like the terminal's panels. */
+.tm-label {
+  position: relative;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.07) 0 1px, transparent 1px 3px),
+    linear-gradient(160deg, color-mix(in srgb, var(--tier) 96%, white), color-mix(in srgb, var(--tier) 70%, black));
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+.tm-label::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.5) 50%, transparent 65%);
+  background-size: 300% 100%;
+  background-position: 120% 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.tm-row[data-drop-tier='s'] .tm-label::after { animation: tm-label-glint 7s var(--ease-snap) 1.5s infinite; }
+.tm-row.flash .tm-label::after { animation: tm-label-flash 800ms var(--ease-out) both; }
+
+/* The letter rides down a tall row so the tier stays in view while scrolling. */
+.tm-label-in {
+  position: sticky;
+  top: 6px;
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 8px 2px;
+  color: var(--on-gold);
+}
+.tm-letter { margin: 0; font-size: clamp(1.7rem, 4.4cqi, 3rem); line-height: 1; color: var(--on-gold); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25); }
+.tm-word {
+  display: none;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
+  text-align: center;
   text-transform: uppercase;
+  opacity: 0.75;
 }
-.tl-tier-letter { font-size: 1.6rem; line-height: 1; }
-.tl-tier-word { color: var(--muted); }
-.tl-tier-h .dash { flex: 1; }
-.tl-tier-h .cap { color: var(--muted); }
-.tl-empty { margin: 0; }
+.tm-count { font-size: 11px; font-weight: 700; opacity: 0.7; }
 
-.tl-rows {
+.tm-zone {
   list-style: none;
   margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
-  gap: 4px;
-}
-.tl-row {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
+  padding: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: var(--gap);
   min-width: 0;
-  padding: 6px 8px;
-  border: 1px solid var(--line-1);
-  border-left: 3px solid var(--line-2);
-  background: var(--panel);
 }
-.tl-row.moved { border-left-color: var(--gold); background: var(--raised); }
-.tl-icon { width: 36px; height: 36px; object-fit: contain; }
-.tl-id { display: grid; gap: 1px; min-width: 0; }
-.tl-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.86rem; font-weight: 600; }
-.tl-sub { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.tl-row.moved .tl-sub { color: var(--khaki); }
+.tm-slot { display: block; }
+.tm-btn {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: grab;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.tm-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.tm-board.dragging,
+.tm-board.dragging .tm-btn { cursor: grabbing; }
 
-.tl-switch { display: inline-flex; border: 1px solid var(--line-3); }
-.tl-seg {
-  position: relative;
-  width: 32px;
-  height: 32px;
+.tm-empty {
   display: grid;
   place-items: center;
-  font: inherit;
-  font-size: 0.78rem;
+  flex: 1;
+  min-height: var(--tile);
+  font-size: 11px;
   font-weight: 700;
-  background: transparent;
-  border: 0;
-  border-left: 1px solid var(--line-2);
-  cursor: pointer;
-  opacity: 0.55;
-  transition: background-color var(--dur-fast), opacity var(--dur-fast);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+  border: 1px dashed var(--line-3);
 }
-.tl-seg:first-child { border-left: 0; }
-.tl-seg:hover { opacity: 0.9; }
-.tl-seg[data-state='checked'] { opacity: 1; background: color-mix(in srgb, currentColor 18%, transparent); box-shadow: inset 0 -2px 0 currentColor; }
-.tl-default-dot {
+
+/* The row under a held item opens up for it. */
+.tm-row.over {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--tier) 22%, transparent), color-mix(in srgb, var(--tier) 6%, transparent)),
+    var(--rail);
+  box-shadow: inset 0 0 0 2px var(--tier), 0 0 24px color-mix(in srgb, var(--tier) 24%, transparent);
+  z-index: 1;
+}
+.tm-row.over .tm-label { filter: brightness(1.15); }
+.tm-row.over .tm-empty { border-color: var(--tier); color: var(--tier); }
+
+.tm-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  pointer-events: none;
+  will-change: transform;
+}
+.tm-ghost-tier {
   position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: currentColor;
+  top: -10px;
+  right: -10px;
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  font-size: 0.95rem;
+  color: var(--on-gold);
+  background: var(--tier);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
 }
-@container tl-board (max-width: 360px) {
-  .tl-seg { width: 28px; }
-  .tl-row { grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; }
-  .tl-icon { width: 28px; height: 28px; }
+
+@container tm-board (min-width: 700px) {
+  .tm-word { display: block; }
+  .tm-board { --gap: 4px; }
+}
+
+@keyframes tm-label-glint {
+  0%, 82% { opacity: 0; background-position: 120% 0; }
+  86% { opacity: 1; }
+  100% { opacity: 0; background-position: -20% 0; }
+}
+@keyframes tm-label-flash {
+  0% { opacity: 1; background-position: 120% 0; }
+  100% { opacity: 0; background-position: -20% 0; }
 }
 </style>

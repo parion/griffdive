@@ -52,7 +52,7 @@
   disabled until named, Enter filing the name into Class E and unfolding the grouped starting gear,
   a second Enter joining, a saved name filing itself — lands with no tutorial or Warbonds panel, and replays it as the
   Field manual; the spec uses one room because creation is rate-limited per IP),
-  custom tier lists (`tier-lists.spec.ts`: the Tier Maker moves, saves and reloads a list; a share
+  custom tier lists (`tier-lists.spec.ts`: the Tier Maker moves an item by mouse drag, keyboard and the inspector, then saves and reloads the list; a 390px touch phone taps an item into the bottom-bar inspector with no sideways overflow; a share
   link imports one the host picks in the lobby, the squadmate reads its changes before launch and
   sees it follow the host's switches, and the launched Armory reads the squad's list), the SEAF launch
   reveal (`kit-reveal.spec.ts`: the setup kit's "?" boxes, a solo and an online launch dealing the
