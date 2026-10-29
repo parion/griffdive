@@ -1,7 +1,8 @@
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import type { Item } from '~~/shared/data/types'
 import type { SupportRolls } from '~~/shared/engine/config'
 import { startingItemIds } from '~~/shared/engine/progression'
+import { tieredItem } from '~~/shared/engine/tierList'
+import type { TierList } from '~~/shared/engine/tierList'
 import type { DiveState } from '~~/shared/engine/types'
 
 export type KitSectionId = 'primary' | 'secondary' | 'throwables' | 'armor' | 'boosters' | 'eagle' | 'orbital' | 'supply' | 'defense'
@@ -61,7 +62,7 @@ export function kitSectionOf(item: Item): KitSectionId {
 // are most of the stratagem loadout, so hiding them reads as a missing kit.
 export function ownedKitItems(state: DiveState, diverId: string | null): Item[] {
   return (diverId ? state.personalInventories[diverId] ?? [] : [])
-    .map(id => ITEMS_BY_ID.get(id))
+    .map(id => tieredItem(id, state.tierList))
     .filter((item): item is Item => item !== undefined)
 }
 
@@ -87,9 +88,9 @@ export interface KitGroup {
   items: Item[]
 }
 
-export function kitGroups(itemIds: readonly string[]): KitGroup[] {
+export function kitGroups(itemIds: readonly string[], tierList?: TierList | null): KitGroup[] {
   const items = itemIds
-    .map(id => ITEMS_BY_ID.get(id))
+    .map(id => tieredItem(id, tierList))
     .filter((item): item is Item => !!item)
   return KIT_GROUP_ORDER.flatMap((kind) => {
     const section = START_SECTIONS.find(entry => entry.kind === kind)

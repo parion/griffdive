@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { pactName } from '~~/shared/data/pacts'
 import { conditionRiskAt } from '~~/shared/engine/config'
 import { PACT_BANS_STRATAGEM, applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
@@ -13,6 +12,7 @@ const props = defineProps<{
   self: DiverState | null
   canControl: boolean
 }>()
+const { itemById } = useTierCatalog()
 
 const emit = defineEmits<{
   lock: [pactIds: string[]]
@@ -119,7 +119,7 @@ function bannedNote(pactId: string): string {
     return ''
   }
   const names = owned.value
-    .map(id => ITEMS_BY_ID.get(id))
+    .map(id => itemById(id))
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
     .filter(item => predicate(item))
     .map(item => item.displayName)

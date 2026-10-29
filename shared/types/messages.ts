@@ -33,6 +33,7 @@ export type ServerMessage
 
 export const HOST_ONLY_ACTIONS = [
   'START_DIVE',
+  'SET_TIER_LIST',
   'SPIN_WHEEL',
   'ACCEPT_MISFORTUNE',
   'ACCEPT_STRAIN',
@@ -59,6 +60,7 @@ export function isHostOnlyAction(type: string): boolean {
 // reducer has no case for it) or persisted.
 export const ENGINE_ACTION_TYPES = [
   'START_DIVE',
+  'SET_TIER_LIST',
   'SPIN_WHEEL',
   'ACCEPT_MISFORTUNE',
   'ACCEPT_STRAIN',

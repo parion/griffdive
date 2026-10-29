@@ -3,8 +3,9 @@
 > Part of the Griffdive docs set. Index: [`AGENTS.md`](../AGENTS.md).
 
 - **Schema:** items are `{ id, displayName, type: 'equipment'|'stratagem', category, tags[],
-  warbondCode, antitank?, tier }` with `tier ∈ 'c'|'b'|'a'|'s'` (community default tier list;
-  tier-maker customization is post-v1). Optional fields: `index?` (upstream ordering), `imageURL?`
+  warbondCode, antitank?, tier }` with `tier ∈ 'c'|'b'|'a'|'s'` (the community default tier list;
+  a host can override it per crusade with a custom tier list, see `game-rules.md`, *Custom tier
+  lists*. Overrides never touch the catalog: `tieredCatalog` maps items to re-tiered copies). Optional fields: `index?` (upstream ordering), `imageURL?`
   (bare filename; resolved to `public/images/<dir>/` by `shared/data/images.ts`), and armor-passive
   extra `passive?`. The catalog has no armor pieces or armor stats — only passives matter. Categories: `primary secondary throwable booster armorPassive` (equipment) and
   stratagem categories (`Supply Eagle Orbital Defense` etc.). Warbonds are `{ code, displayName,

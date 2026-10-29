@@ -133,6 +133,10 @@ function presenceLabel(dive: OnlineDive): string {
                 class="chip gold"
                 :title="`Saved as “${dive.saved.name}” — kept past the idle timeout`"
               >saved</span>
+              <TierListTag
+                :list="dive.state.tierList"
+                still
+              />
               <span
                 class="rc-squad"
                 role="img"
@@ -205,6 +209,10 @@ function presenceLabel(dive: OnlineDive): string {
         <div class="rc-main">
           <div class="rc-tags">
             <span class="rc-tag">Session save · {{ save.roomCode }}</span>
+            <TierListTag
+              :list="save.state.tierList"
+              still
+            />
           </div>
           <span class="rc-name">{{ save.slotName }}</span>
           <span class="rc-diff"><b class="disp">{{ save.state.difficulty }}</b>{{ difficultyName(save.state.difficulty) }}<i>{{ opLine(save.state) }}</i></span>
@@ -283,6 +291,10 @@ function presenceLabel(dive: OnlineDive): string {
               v-if="doc.state.achieved"
               class="chip gold"
             >ACHIEVED</span>
+            <TierListTag
+              :list="doc.state.tierList"
+              still
+            />
           </div>
           <span class="rc-name">{{ crusadeName(doc.state) }}</span>
           <span class="rc-diff"><b class="disp">{{ doc.state.difficulty }}</b>{{ difficultyName(doc.state.difficulty) }}<i>{{ opLine(doc.state) }}</i></span>

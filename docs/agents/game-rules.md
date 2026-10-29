@@ -552,6 +552,42 @@ option roll:   each option rolls a d100 face on the odds line. Zone width is
   a trio (S ~50%) and 8.75 for four divers (S ~64%, S+ ~6%). Risk pays at every altitude; nothing is
   guaranteed, but everything gets likelier.
 
+### Custom tier lists
+
+Every item carries a community default tier (`Item.tier`, see `data-catalog.md`). The host may
+replace it for one crusade with a **custom tier list** (`TierList` in `shared/engine/tierList.ts`):
+a name plus a **sparse** map of item id → tier for the items it moves. Items the list does not name,
+including items added to the catalog later, keep their default. Only C/B/A/S exist. Upstream's D
+tier has no equivalent, and anything imported as D is dropped rather than guessed.
+
+- **Where it lives:** `DiveState.tierList` (optional; absent or `null` = the default list). The host
+  sets it in the lobby with the host-only `SET_TIER_LIST` action, so the whole squad reads it before
+  launch. The reducer refuses it once `START_DIVE` has run, so the list is **frozen for the
+  crusade**. Solo crusades pass it to `createDiveState`, which applies the same action before
+  `START_DIVE`, so the action log records it either way.
+- **One door in:** `normalizeTierList` is applied to every list the engine stores. It drops unknown
+  ids, non-tiers and overrides equal to the default, caps the name at `TIER_LIST_NAME_MAX`, and
+  turns a list that moves nothing into `null`. `forkCrusade` re-normalizes the list when a save
+  becomes a new session.
+- **One resolver:** `tieredCatalog(list)` returns the catalog with the list's tiers applied (cached
+  per list object), and `tieredItem(id, list)` looks up one item. Every rule that reads a tier goes
+  through them:
+  - the reward pool (`rewardPoolFor(codes, tierList)`), so options, the nearest-tier fallback and
+    Liberty's Cross claims all roll at the list's tiers;
+  - forfeit offers (`earnedItemsOf`);
+  - the Field Promotion catch-up;
+  - the Brasch's Bargains shelf, and its price (`BUY_ITEM` prices the tiered item);
+  - the SEAF Support Package, which is dealt from the list's `SEAF_SUPPORT_TIER`.
+
+  The odds ladder itself (zones, base tiers, Valor) is untouched: a list changes *which items* sit
+  in a tier, never the chance of rolling that tier.
+- **No mechanical bonus or penalty.** A custom list is shown as a tag on the lobby, the Armory and
+  save cards ("Tiers · *name*"); it does not touch Valor, honors or tokens.
+- **Sharing:** `encodeTierList` / `decodeTierList` write and read share codes. The format is
+  `GD1:<percent-encoded name>:s=id,id;a=id;…`, keyed by item id so a code survives catalog
+  refreshes. A code also travels percent-encoded as `/tiers#<code>`. Featured lists ship in
+  `shared/data/tierLists.ts` (`TIER_LIST_PRESETS`).
+
 ### Brasch's Bargains — credits
 
 Samples recovered on a mission are not a Valor term. They are exchanged for **credits**, the
@@ -800,7 +836,9 @@ version, so the same change must also normalize stored rooms on read in `loadRoo
 fill only absent fields, never overwrite) — they survive deploys on the volume. Normalization drops
 only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
-`achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, inventories, per-diver warbond declarations,
+`achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, the host's custom
+`tierList` (optional and additive: an absent field is the default list, so it needed no schema bump
+or room normalization), inventories, per-diver warbond declarations,
 `completedCombos` (misfortune × front × strain), reroll tokens, action log (capped), RNG seed
 history, legacy caches (earned gear) parked by departed divers, per-diver catch-up bookkeeping, credit
 purses and the mission's Brasch's Bargains seed and per-diver deals.

@@ -1,8 +1,8 @@
 import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from '@prometheus-io/client'
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { ENGINE_VERSION, MAX_DIFFICULTY, MIN_DIFFICULTY } from '~~/shared/engine/config'
 import { activeDivers, diverOptions, diverRolledCeiling, diverValor, squadSize } from '~~/shared/engine/selectors'
 import { topTierOf } from '~~/shared/engine/rewards'
+import { tieredItem } from '~~/shared/engine/tierList'
 import { DIVE_PHASES } from '~~/shared/engine/types'
 import type { DivePhase, DiveState, EngineAction } from '~~/shared/engine/types'
 import type { FeedbackCategory } from '~~/shared/types/feedback'
@@ -157,11 +157,13 @@ export function gapBucket(gapMs: number): string {
   return '>1d'
 }
 
-function itemLabels(itemId: string | null | undefined): { tier: string, category: string } | null {
+// Labelled with the tier the item was played at: a custom tier list re-tiers
+// the economy, and the counters track the economy, not the catalog.
+function itemLabels(itemId: string | null | undefined, state: DiveState): { tier: string, category: string } | null {
   if (!itemId) {
     return null
   }
-  const item = ITEMS_BY_ID.get(itemId)
+  const item = tieredItem(itemId, state.tierList)
   return item ? { tier: item.tier, category: item.category } : null
 }
 
@@ -720,21 +722,21 @@ export function createRoomMetrics(): RoomMetrics {
       }
       case 'PICK_REWARD': {
         const picked = after.divers.find(diver => diver.id === action.playerId)?.pickedOptionId
-        const labels = itemLabels(picked)
+        const labels = itemLabels(picked, after)
         if (labels) {
           rewardsPicked.inc(labels)
         }
         break
       }
       case 'BUY_ITEM': {
-        const labels = itemLabels(action.itemId)
+        const labels = itemLabels(action.itemId, after)
         if (labels) {
           purchases.inc(labels)
         }
         break
       }
       case 'FORFEIT_ITEM': {
-        const labels = itemLabels(action.itemId)
+        const labels = itemLabels(action.itemId, after)
         if (labels) {
           forfeits.inc(labels)
         }

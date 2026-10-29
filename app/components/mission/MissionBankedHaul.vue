@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
 import { missionHaul } from '~~/shared/engine/rewards'
 import { draftSummaryFor } from '~~/shared/engine/selectors'
@@ -14,10 +13,11 @@ const props = withDefaults(defineProps<{
   self: DiverState | null
   phone?: boolean
 }>(), { phone: false })
+const { itemById } = useTierCatalog()
 
 const summary = computed(() => (props.self ? draftSummaryFor(props.state, props.self) : null))
 const banked = computed(() =>
-  summary.value?.bankedItemId ? ITEMS_BY_ID.get(summary.value.bankedItemId) ?? null : null)
+  summary.value?.bankedItemId ? itemById(summary.value.bankedItemId) ?? null : null)
 const bankedTier = computed<RewardTier | null>(() => {
   const option = summary.value?.options.find(entry => entry.optionId === summary.value?.bankedOptionId)
   return option?.tier ?? (banked.value ? (banked.value.tier.toUpperCase() as RewardTier) : null)

@@ -1,4 +1,4 @@
-import { ALL_ITEMS, ALL_WARBOND_CODES, ITEMS_BY_ID } from '../data/catalog'
+import { ALL_WARBOND_CODES } from '../data/catalog'
 import { FRONTS } from '../data/fronts'
 import type { Front } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
@@ -7,6 +7,8 @@ import { PACTS, pactById } from '../data/pacts'
 import type { Pact } from '../data/pacts'
 import type { Strain } from '../data/strains'
 import type { Item } from '../data/types'
+import { tierListOf, tieredCatalog, tieredItem } from './tierList'
+import type { TierList } from './tierList'
 import {
   BARGAIN_SLOTS,
   BARGAIN_STREAM,
@@ -380,9 +382,11 @@ export function itemBannedInArmory(
   return pending ? { ...pending, preview: true } : null
 }
 
-export function rewardPoolFor(codes: readonly string[]): Item[] {
+// The catalog a diver can roll from: their own warbonds, tiered by the
+// crusade's tier list when the host chose one.
+export function rewardPoolFor(codes: readonly string[], tierList?: TierList | null): Item[] {
   const owned = new Set(codes)
-  return ALL_ITEMS.filter(
+  return tieredCatalog(tierList).items.filter(
     item =>
       item.warbondCode === 'none' || owned.has(item.warbondCode),
   )
@@ -395,7 +399,7 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   const seed = diverOfferSeed(state, diver)
   // The pool is the diver's own: warbonds are personal purchases, so each
   // diver rolls offers against the catalog they can actually use.
-  const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
+  const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state))
   // Banned items never come back: a ban removes them from every future offer.
   // The deal's snapshot wins over live holdings so the offer never shifts.
   const exclude = new Set(diver.draftExcludedIds
@@ -429,7 +433,7 @@ export function earnedItemsOf(state: DiveState, diver: DiverState): Item[] {
     : [])
   return (state.personalInventories[diver.id] ?? [])
     .filter(id => !starting.has(id))
-    .map(id => ITEMS_BY_ID.get(id))
+    .map(id => tieredItem(id, tierListOf(state)))
     .filter((item): item is Item => item !== undefined)
 }
 
@@ -557,7 +561,7 @@ export function bargainShelfFor(state: DiveState, diver: DiverState): BargainShe
     return []
   }
   const boughtItemId = deal.boughtItemId
-  const boughtNow = boughtItemId ? ITEMS_BY_ID.get(boughtItemId) : undefined
+  const boughtNow = boughtItemId ? tieredItem(boughtItemId, tierListOf(state)) : undefined
   const nowKind = boughtNow ? bargainKindOf(boughtNow) : null
   const heldBack = new Set(deal.boughtKinds.filter(kind => kind !== nowKind))
   const kinds = bargainSlotKinds(state.difficulty)
@@ -565,7 +569,7 @@ export function bargainShelfFor(state: DiveState, diver: DiverState): BargainShe
     deriveSeed(deriveSeed(state.bargainSeed, BARGAIN_STREAM), hashString(diver.id)),
     state.difficulty,
     kinds.filter(kind => !heldBack.has(kind)),
-    rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES),
+    rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state)),
     new Set(deal.excludedIds),
   )
   const counts = new Map<BargainSlotKind, number>()
@@ -685,7 +689,7 @@ export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOp
   }
   const claimed = diver.catchUpGranted - diver.catchUpOwed
   const seed = deriveSeed(hashString(`${diver.id}:catchup`), claimed)
-  const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
+  const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state))
   // Bans are personal and crusade-long, so a promotion never re-offers a
   // banned item either.
   const exclude = new Set([

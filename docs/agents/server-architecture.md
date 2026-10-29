@@ -15,6 +15,7 @@ app/
   pages/           index (Bridge home — new crusade / host / join / continue), dive/[id] (solo +
                    room flow — thin orchestrator: session driver + action handlers; the
                    lit-stage shell and per-phase UI live in components/dive/), codex,
+                   tiers (the Tier Maker: browser-local tier-list library + share links),
                    kit (hidden, unlinked foundations route — see Destroyer Terminal design language)
   components/      one folder per domain; the folder path is the component-name prefix
                    (Nuxt's default naming — `kit/KitPanel.vue` registers `KitPanel`,
@@ -129,7 +130,8 @@ server/
 deploy/fider/      separate Fly app + Postgres for the public board (see Deployment)
 shared/
   engine/          config.ts, types.ts, reducer.ts, rng.ts, wheel.ts, pacts.ts,
-                   rewards.ts, progression.ts, selectors.ts, saves.ts, room.ts
+                   rewards.ts, progression.ts, selectors.ts, saves.ts, room.ts,
+                   tierList.ts (custom tier lists: normalize, resolve, share codes)
   types/           save.ts (SaveDoc + SessionSave + SAVE_EPOCH + SAVE_SCHEMA_VERSION), messages.ts (WS contracts,
                    host-only action list)
   utils/           room-code.ts (room-code alphabet + validator), changelog.ts (pure GitHub
@@ -137,7 +139,7 @@ shared/
   data/            items (equipment.ts, stratagems.ts), warbonds.ts, fronts.ts,
                    conditions.ts (the unified team + personal condition catalogue;
                    misfortunes.ts / pacts.ts are its scope views), strains.ts,
-                   catalog.ts (aggregation + CATALOG_VERSION),
+                   catalog.ts (aggregation + CATALOG_VERSION), tierLists.ts (featured tier lists),
                    ordering.ts (kit presentation order: stratagem role → tier → name),
                    images.ts (imageURL filename → /images/<dir> URL resolver,
                    difficultyImageUrl for the 1–10 difficulty emblems)
@@ -243,7 +245,7 @@ only for a seated or removed seat — never logged, exported or attached to a me
 
 Canonical engine actions (the reducer union; keep names stable):
 
-`START_DIVE{settings,seed?,majorOrder?}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
+`START_DIVE{settings,seed?,majorOrder?}` `SET_TIER_LIST{tierList}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
 `DEAL_PACTS{}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?,samples?}` `FORFEIT_ITEM{playerId,itemId}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `BUY_ITEM{playerId,itemId}`
@@ -252,7 +254,8 @@ Canonical engine actions (the reducer union; keep names stable):
 `LEAVE_DIVE{playerId}` `SET_AWAY{playerId,away}` `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
-Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
+Authority rules: host-only actions are `START_DIVE`, `SET_TIER_LIST` (lobby only; the reducer
+refuses it after launch), `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
 `ACCEPT_STRAIN`, `DEAL_PACTS`, `REROLL_WHEEL`, `REPORT_RESULT`, `FAIL_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE`, `SET_AWAY` are

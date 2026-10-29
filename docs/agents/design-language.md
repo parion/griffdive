@@ -251,7 +251,17 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
   wheel" (Skip while dealing), clicks out or hits Escape; it waits behind the host tutorial, the
   Warbonds drawer and the Field Promotion gate so one modal shows at a time. Reduced motion shows
   the finished kit at once. Squadmates see a **Stand by** card with a Declare warbonds CTA instead
-  of disabled controls (the host's picks are local until launch). Diver names are all caps.
+  of disabled controls (the host's picks are local until launch), plus the squad's **tier list** tag.
+  The tier list is the one setup choice that syncs before launch, because it changes what everyone
+  can roll. Diver names are all caps.
+- **Tier list** is the last setup block (`TierListPicker`, a Reka `RadioGroup` of cards: the
+  default, featured lists and the browser's own, each with its "N moved" count). Under it sit the
+  picked list's tag and a **Tier Maker ↗** link. The link opens in a new tab so the host keeps their
+  seat, and the library listens for `storage` events so a list saved there appears here.
+  `TierListTag` is the one chip for a run's list ("Tiers · *name*", gold). Pressing it opens
+  `TierListChanges`, an `AppDialog` of the list's moves grouped by destination tier (from → to).
+  The same tag marks save cards on the Bridge record, and the Armory's count line names the squad's
+  list.
 - **Risk never shows as a Valor number.** Each plan and mode carries its per-mission risk as
   `RiskPips` skulls (`frontPlanRisk` / `modeValorAt` from the engine). `RiskSetup` totals them
   (`setupRiskOf`, out of 5) and states the game's core trade beside the total — **"More skulls,
@@ -437,6 +447,23 @@ manual**.
 
 Phones read top-down: heading, card, the five boxes; wide containers put the boxes beside the card.
 There is no More fold, odds dial or deck-plan diagram.
+
+#### Tier Maker — `pages/tiers.vue`
+
+A plain page in the Armory's grammar, not a dive surface. A **desk** panel holds the list being
+edited:
+- an Open select (new list, start from a featured list, or one of your lists);
+- the name;
+- per-tier counts and "N moved", with an Unsaved / Next crusade chip;
+- the actions: Save, Use for next crusade, Copy share link, Import, Reset to default, Delete.
+
+Discarding unsaved edits and deleting a list each confirm in an `AppDialog`.
+
+Under the desk, `TierListBoard` lists every item under the tier the draft gives it, filtered by
+category, warbond, name or "moved only". Each row is an icon, the name and category (plus "default
+X" once moved, with a gold edge) and a four-way **S/A/B/C** Reka `RadioGroup`. A dot marks the
+default tier. Tiers are assigned by tap, not drag, so the board works one-handed on a phone.
+Opening `/tiers#<code>` imports the shared list into an unsaved draft and shows an info banner.
 
 #### Phone shell
 

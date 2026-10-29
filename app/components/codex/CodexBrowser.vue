@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ALL_ITEMS, TIER_RANK, WARBONDS } from '~~/shared/data/catalog'
+import { TIER_RANK, WARBONDS } from '~~/shared/data/catalog'
 import type { ItemCategory } from '~~/shared/data/types'
 
 const CATEGORIES: (ItemCategory | 'all')[] = [
@@ -19,8 +19,12 @@ const category = ref<ItemCategory | 'all'>('all')
 const warbond = ref<string>('all')
 const search = ref('')
 
+// Inside a dive the Codex reads the squad's tier list, so it never contradicts
+// the offers on screen.
+const { items, tierList } = useTierCatalog()
+
 const filtered = computed(() =>
-  ALL_ITEMS.filter((item) => {
+  items.value.filter((item) => {
     if (category.value !== 'all' && item.category !== category.value) {
       return false
     }
@@ -52,7 +56,13 @@ function warbondName(code: string): string {
 <template>
   <div class="codex-browser">
     <p class="muted small codex-count">
-      {{ filtered.length }} of {{ ALL_ITEMS.length }} items · tiers from the community default list
+      {{ filtered.length }} of {{ items.length }} items · tiers from
+      <template v-if="tierList">
+        the squad's list <b class="codex-list">{{ tierList.name }}</b>
+      </template>
+      <template v-else>
+        the community default list
+      </template>
     </p>
 
     <section
@@ -143,6 +153,7 @@ function warbondName(code: string): string {
 <style scoped>
 .codex-browser { display: grid; gap: 0.9rem; }
 .codex-count { margin: 0; }
+.codex-list { color: var(--gold); font-weight: 700; }
 
 .filters {
   display: grid;

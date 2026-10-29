@@ -200,6 +200,11 @@ export const CATCHUP_CAP = 4
 export const TIER_ROLL_WEIGHT_BASE = 2
 export const MAX_NAME_LENGTH = 32
 
+// Custom tier lists: the name a list carries into the lobby and onto the run,
+// and how many lists one browser keeps in its library.
+export const TIER_LIST_NAME_MAX = 40
+export const TIER_LIST_LIBRARY_MAX = 24
+
 // Helldivers 2 requires four equipped stratagems to ready up. Every diver must
 // always be able to field this many, so a pact can never strand them below it.
 export const STRATAGEM_SLOTS_REQUIRED = 4

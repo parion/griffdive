@@ -5,7 +5,7 @@ cookies, no analytics and no advertising. This page is a plain-language descript
 the code stores, where, for how long, and how to get rid of it. It is mirrored in the app at
 [`/privacy`](./app/pages/privacy.vue).
 
-_Last updated: 25 October 2026._
+_Last updated: 29 October 2026._
 
 ## What is stored
 
@@ -14,14 +14,17 @@ online dive:
 
 - Save slots and personal session mirrors (crusade state, inventories, names).
 - Recent room codes (the 12 most recent, forgotten after 30 days), and the seat id for each room you have joined (so a refresh keeps your seat).
-- Your diver name, your warbond declarations, and "you have seen the intro" flags.
+- Your diver name, your warbond declarations, the tier lists you make or import in the Tier Maker
+  (and which one your next crusade uses), and "you have seen the intro" flags. A tier list leaves
+  the browser only if you host with it or copy its share link yourself.
 
 Clearing site data in your browser deletes all of it.
 
 **On the server** — only when you create or join a dive, and only what the dive needs:
 
-- The room code, the seated divers' names (as typed, at most 32 characters), their inventories, and
-  the crusade's progress and audit log.
+- The room code, the seated divers' names (as typed, at most 32 characters), their inventories, the
+  host's custom tier list if they chose one (its name and the items it moves), and the crusade's
+  progress and audit log.
 - When the room was created and last active. These timestamps drive idle-room cleanup and the
   aggregate session-length metric; they are never attached to a name, seat id or room code in
   metrics.

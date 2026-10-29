@@ -5,6 +5,7 @@ import type { SupportRolls } from './config'
 import { startingItemIds, supportRollsFor } from './progression'
 import { deriveSeed, hashString, mulberry32 } from './rng'
 import { rewardPoolFor } from './selectors'
+import type { TierList } from './tierList'
 import type { CrusadeSettings } from './types'
 
 // One entry per roll kind, in the order the pack is dealt. The index salts the
@@ -29,13 +30,14 @@ export function rollSupportKit(
   settings: Pick<CrusadeSettings, 'variant' | 'mode'>,
   diverId: string,
   warbondCodes: readonly string[],
+  tierList?: TierList | null,
 ): string[] {
   const rolls = supportRollsFor(settings.variant, settings.mode)
   if (!rolls) {
     return []
   }
   const owned = new Set(startingItemIds(settings.variant))
-  const pool = rewardPoolFor(warbondCodes).filter(item => item.tier === SEAF_SUPPORT_TIER)
+  const pool = rewardPoolFor(warbondCodes, tierList).filter(item => item.tier === SEAF_SUPPORT_TIER)
   const base = hashString(`${diverId}:seaf`)
   const dealt: string[] = []
   KINDS.forEach(({ kind, matches }, index) => {
