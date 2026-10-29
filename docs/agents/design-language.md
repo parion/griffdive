@@ -422,20 +422,30 @@ manual**.
   passives, Boosters, each edged in its category accent). The squad seats and difficulty follow.
   The strike is presentation only: the way in never waits on it, and reduced motion lands it at
   once.
-- **How a mission goes** is five boxes in one row (Reka `Tabs`): Spin, Swear, Dive, Report, Loot,
-  each a glyph (`IconWheel`, `IconPact`, `IconHellpod`, `IconStar`, `IconLoot`) with its bottom edge
-  tinted by who acts (gold = you, teal = host, khaki = everyone). The first is open; the open box
-  turns gold and points down into its panel, which drops in with the step's one line, a
-  Host / You / Everyone tag and a **`BriefingPreview`** — a 150px looping scene of the beat drawn
-  from real data (the wheel landing on a directive, two pacts taking the SWORN stamp, the hellpod
-  drop, three stars and the report bars, three tiered loot cards with one BANKED). Scenes are CSS
-  loops whose resting styles are the final frame, so reduced motion shows the beat played out.
+- **The page** borrows the Bridge's grammar: the full page sits over the same drifting
+  `BridgeField` grid, up to 1440px wide. The **hero** puts the kicker (hazard bar), the headline,
+  the lede and a chevron run of the five steps (each opens its box below and scrolls to it; hidden
+  under 520px where it would only wrap) on the left, the card on the right; phones read top-down.
+- **How a mission goes** is its own full-width section under the hero: a display heading with a
+  who-acts legend, then five big boxes in one row (Reka `Tabs`): Spin, Swear, Dive, Report, Loot,
+  each a numbered glyph (`IconWheel`, `IconPact`, `IconHellpod`, `IconStar`, `IconLoot`) with a
+  Host / You / Everyone line and its bottom edge tinted by who acts (gold = you, teal = host,
+  khaki = everyone). The open box turns gold and points down into one lit **stage**: the step's
+  outlined number, title and one line beside its **`BriefingPreview`** — a looping scene of the
+  beat drawn from real data (the wheel landing on a directive, two pacts taking the SWORN stamp,
+  the hellpod drop, three stars and the report bars, three tiered loot cards with one BANKED),
+  plus a **Next** button. Scenes are drawn at 150px and scaled whole by the parent's `--pv-zoom`
+  (CSS `zoom`, up to 2× on wide stages); pact names bind `fitWord` so a long name never splits.
+  Steps share one grid cell, so a switch slides the old step out and the new one in, in reading
+  direction (Reka's presence waits on the exit animation). Scenes are CSS loops whose resting
+  styles are the final frame, so reduced motion shows the beat played out and swaps steps
+  instantly.
 - **The way in** — the primary **Start the dive** / **Join the dive** beside **Set warbonds** — is
-  pinned to the bottom edge at every width, so it never scrolls away while the kit unfolds; on
-  phones the warbonds button shrinks to its glyph. The primary is disabled until there is a name;
-  once filed, Enter in the field submits.
+  the page's last block and sticks to the bottom edge at every width (right-aligned on wide
+  containers), so it stays in reach from the card through every step; on phones the warbonds
+  button shrinks to its glyph. The primary is disabled until there is a name; once filed, Enter in
+  the field submits.
 
-Phones read top-down: heading, card, the five boxes; wide containers put the boxes beside the card.
 There is no More fold, odds dial or deck-plan diagram.
 
 #### Phone shell

@@ -114,7 +114,10 @@ const loot = (['c', 'b', 'a'] as const).flatMap((tier, i) => {
             :max="card.risk"
             tone="gold"
           />
-          <b class="disp pact-name">{{ card.name }}</b>
+          <b
+            class="disp pact-name"
+            :style="fitWord(card.name)"
+          >{{ card.name }}</b>
           <span
             v-if="card.sworn"
             class="disp pact-stamp"
@@ -205,8 +208,10 @@ const loot = (['c', 'b', 'a'] as const).flatMap((tier, i) => {
 </template>
 
 <style scoped>
+/* Drawn at 150px tall; a larger stage scales the whole scene with --pv-zoom. */
 .pv {
   --loop: 5.2s;
+  zoom: var(--pv-zoom, 1);
   container-type: inline-size;
   position: relative;
   height: 150px;
@@ -290,8 +295,9 @@ const loot = (['c', 'b', 'a'] as const).flatMap((tier, i) => {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  width: min(104px, 30cqw);
+  width: min(112px, 31cqw);
   height: 108px;
+  container-type: inline-size;
   padding: 9px 8px;
   background: linear-gradient(170deg, var(--raised), var(--panel));
   border: 1px solid var(--line-3);
@@ -305,7 +311,7 @@ const loot = (['c', 'b', 'a'] as const).flatMap((tier, i) => {
   100% { opacity: 0; transform: rotate(var(--tilt)); }
 }
 .pact :deep(.pips i) { width: 10px; height: 10px; }
-.pact-name { font-size: 11px; line-height: 1.1; color: var(--text); overflow-wrap: anywhere; }
+.pact-name { font-size: min(12px, 100cqi / var(--fit-len, 1)); line-height: 1.1; color: var(--text); overflow-wrap: normal; }
 .pact-stamp {
   position: absolute;
   left: 50%;

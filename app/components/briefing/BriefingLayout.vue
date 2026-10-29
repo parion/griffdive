@@ -141,7 +141,24 @@ const STEP_META: Record<BriefingStepId, { label: string, title: string, icon: Co
   loot: { label: 'Loot', title: 'Loot', icon: IconLoot },
 }
 const WHO_TAG: Record<BriefingStep['who'], string> = { host: 'Host', you: 'You', all: 'Everyone' }
+const WHO_ORDER: readonly BriefingStep['who'][] = ['you', 'host', 'all']
+const whoLegend = computed(() => WHO_ORDER.filter(who => props.steps.some(step => step.who === who)))
 const activeStep = ref<string>(props.steps[0]?.id ?? 'spin')
+const stepIndex = computed(() => Math.max(0, props.steps.findIndex(step => step.id === activeStep.value)))
+// The outgoing scene leaves the way the diver is reading: forward slides
+// left, back slides right.
+const stepDir = ref<'fwd' | 'back'>('fwd')
+watch(stepIndex, (next, prev) => {
+  stepDir.value = next < prev ? 'back' : 'fwd'
+})
+
+const stepsSection = ref<HTMLElement | null>(null)
+function goToStep(id: BriefingStepId, scroll: boolean): void {
+  activeStep.value = id
+  if (scroll) {
+    stepsSection.value?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+  }
+}
 
 function submit(): void {
   if (props.canSubmit) {
@@ -158,6 +175,7 @@ function submit(): void {
     :class="{ review }"
     :tabindex="review ? undefined : -1"
   >
+    <BridgeField v-if="!review" />
     <form
       class="jb-form"
       novalidate
@@ -192,8 +210,14 @@ function submit(): void {
         <div class="jb-head">
           <span
             v-if="!review"
-            class="lbl gold"
-          >{{ kicker }}</span>
+            class="lbl jb-kicker rise"
+          >
+            <span
+              class="hazard jb-kicker-bar"
+              aria-hidden="true"
+            />
+            {{ kicker }}
+          </span>
           <h1
             v-if="!review"
             id="jb-title"
@@ -208,9 +232,24 @@ function submit(): void {
           >
             <slot name="title" />
           </h2>
-          <p class="jb-lede">
+          <p class="jb-lede rise">
             <slot name="lede" />
           </p>
+          <nav
+            class="jb-beats rise"
+            aria-label="How a mission goes"
+          >
+            <button
+              v-for="(step, i) in steps"
+              :key="step.id"
+              type="button"
+              class="jb-beat chev"
+              :data-who="step.who"
+              @click="goToStep(step.id, true)"
+            >
+              <span class="disp">{{ i + 1 }}</span>{{ STEP_META[step.id].label }}
+            </button>
+          </nav>
         </div>
 
         <div class="jb-card cut">
@@ -429,69 +468,62 @@ function submit(): void {
             </AppBanner>
           </aside>
         </div>
+      </section>
 
-        <div class="jb-acts">
-          <button
-            class="btn ghost jb-acts-wb"
-            type="button"
-            aria-haspopup="dialog"
-            @click="openWarbonds"
-          >
-            <IconWarbond class="jb-acts-i" />
-            <span class="disp">Set warbonds</span>
-          </button>
-          <button
-            class="btn primary cut jb-cta"
-            :class="{ 'cta-sweep': canSubmit }"
-            type="submit"
-            :disabled="!canSubmit"
-          >
-            <span class="disp">{{ ctaLabel }}</span>
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.4"
-              aria-hidden="true"
-            ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-          </button>
-        </div>
-
-        <section
-          class="jb-steps"
-          aria-labelledby="jb-steps-h"
-        >
+      <section
+        id="jb-steps"
+        ref="stepsSection"
+        class="jb-steps"
+        aria-labelledby="jb-steps-h"
+      >
+        <div class="jb-steps-head">
           <h2
             id="jb-steps-h"
-            class="lbl"
+            class="disp jb-steps-title"
           >
             How a mission goes
           </h2>
-          <TabsRoot
-            v-model="activeStep"
-            class="jb-tabs-root"
+          <ul
+            class="jb-legend"
+            aria-label="Who acts"
           >
-            <TabsList
-              class="jb-tabs"
-              aria-label="Mission steps"
+            <li
+              v-for="who in whoLegend"
+              :key="who"
+              :data-who="who"
             >
-              <TabsTrigger
-                v-for="(step, i) in steps"
-                :key="step.id"
-                :value="step.id"
-                class="jb-tab"
-                :data-who="step.who"
-              >
-                <span class="jb-tab-n">{{ i + 1 }}</span>
-                <component
-                  :is="STEP_META[step.id].icon"
-                  class="jb-tab-i"
-                />
-                <span class="jb-tab-l">{{ STEP_META[step.id].label }}</span>
-              </TabsTrigger>
-            </TabsList>
+              {{ WHO_TAG[who] }}
+            </li>
+          </ul>
+        </div>
+        <TabsRoot
+          v-model="activeStep"
+          class="jb-tabs-root"
+        >
+          <TabsList
+            class="jb-tabs"
+            aria-label="Mission steps"
+          >
+            <TabsTrigger
+              v-for="(step, i) in steps"
+              :key="step.id"
+              :value="step.id"
+              class="jb-tab"
+              :data-who="step.who"
+            >
+              <span class="jb-tab-n">{{ String(i + 1).padStart(2, '0') }}</span>
+              <component
+                :is="STEP_META[step.id].icon"
+                class="jb-tab-i"
+              />
+              <span class="jb-tab-l">{{ STEP_META[step.id].label }}</span>
+              <span class="jb-tab-who">{{ WHO_TAG[step.who] }}</span>
+            </TabsTrigger>
+          </TabsList>
+          <div
+            class="jb-stage"
+            :data-dir="stepDir"
+          >
             <TabsContent
               v-for="(step, i) in steps"
               :key="step.id"
@@ -499,21 +531,71 @@ function submit(): void {
               class="jb-panel"
               :data-who="step.who"
             >
-              <div class="jb-panel-h">
-                <b class="disp jb-panel-t">{{ i + 1 }} · {{ STEP_META[step.id].title }}</b>
+              <div class="jb-panel-copy">
+                <span class="disp jb-panel-n">{{ String(i + 1).padStart(2, '0') }}</span>
                 <span class="jb-who">{{ WHO_TAG[step.who] }}</span>
+                <h3 class="disp jb-panel-t">
+                  {{ STEP_META[step.id].title }}
+                </h3>
+                <p class="jb-panel-x">
+                  {{ step.text }}
+                </p>
+                <button
+                  v-if="steps[i + 1]"
+                  type="button"
+                  class="btn ghost small jb-next"
+                  @click="goToStep(steps[i + 1]!.id, false)"
+                >
+                  Next · {{ STEP_META[steps[i + 1]!.id].label }}
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.6"
+                    aria-hidden="true"
+                  ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                </button>
               </div>
-              <p class="jb-panel-x">
-                {{ step.text }}
-              </p>
               <BriefingPreview
+                class="jb-scene"
                 :step="step.id"
                 :difficulty="difficulty"
               />
             </TabsContent>
-          </TabsRoot>
-        </section>
+          </div>
+        </TabsRoot>
       </section>
+
+      <div class="jb-acts">
+        <button
+          class="btn ghost jb-acts-wb"
+          type="button"
+          aria-haspopup="dialog"
+          @click="openWarbonds"
+        >
+          <IconWarbond class="jb-acts-i" />
+          <span class="disp">Set warbonds</span>
+        </button>
+        <button
+          class="btn primary cut jb-cta"
+          :class="{ 'cta-sweep': canSubmit }"
+          type="submit"
+          :disabled="!canSubmit"
+        >
+          <span class="disp">{{ ctaLabel }}</span>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            aria-hidden="true"
+          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </button>
+      </div>
 
       <footer
         v-if="!review"
@@ -535,19 +617,21 @@ function submit(): void {
     radial-gradient(ellipse 80% 50% at 85% 0%, rgba(255, 214, 66, 0.06), transparent 70%),
     var(--ground);
   outline: none;
+  /* Seats the fixed field above the page's ground, as on the Bridge. */
+  isolation: isolate;
+  overflow-x: clip;
 }
 .jb.review { min-height: 0; background: none; }
 
 .jb-form {
   container: jb / inline-size;
-  max-width: 1080px;
+  max-width: 1440px;
   margin-inline: auto;
   padding: 0 var(--pad-page) 24px;
   display: flex;
   flex-direction: column;
-  gap: clamp(18px, 3vw, 28px);
 }
-.review .jb-form { padding: 0; gap: 18px; }
+.review .jb-form { padding: 0; }
 
 /* ---- Top bar ---------------------------------------------------------- */
 .jb-top {
@@ -569,40 +653,72 @@ function submit(): void {
 .jb-room { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .jb-room b { color: var(--text); letter-spacing: 0.12em; }
 
-/* ---- Layout -------------------------------------------------------------
-   Phones read top-down — heading, the name card, the mission. Wide containers
-   put the mission beside the card. Either way the way in is pinned to the
-   bottom edge, so it never scrolls away while the kit unfolds. */
+/* ---- Hero ---------------------------------------------------------------
+   The Bridge's hero grammar: the creed and the way through the mission on
+   the left, the one thing the page needs — the name card — on the right.
+   Phones read top-down. */
 .jb-hero {
   display: grid;
-  gap: 18px;
+  gap: 24px;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: 'head' 'card' 'steps' 'acts';
+  align-items: center;
+  padding-block: clamp(20px, 4vw, 56px);
 }
-.jb-head { grid-area: head; display: flex; flex-direction: column; gap: 8px; }
-.jb-card { grid-area: card; }
-.jb-acts { grid-area: acts; }
-.jb-steps { grid-area: steps; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.jb-steps h2 { margin: 0; }
-@container jb (min-width: 760px) {
+.review .jb-hero { padding-block: 0 8px; }
+@container jb (min-width: 900px) {
   .jb-hero {
-    grid-template-columns: minmax(0, 1.2fr) minmax(300px, 1fr);
-    grid-template-areas: 'head card' 'steps card' 'steps acts' 'steps .';
-    grid-template-rows: auto auto auto 1fr;
-    gap: 14px 36px;
-    align-items: start;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: clamp(32px, 4vw, 72px);
+    min-height: min(calc(100svh - 160px), 820px);
   }
 }
+.jb-head { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.jb-kicker { display: inline-flex; align-items: center; gap: 12px; color: var(--gold); }
+.jb-kicker-bar { width: 44px; height: 6px; }
+.jb-card { animation: riseIn 0.5s var(--ease-out) 0.12s both; }
+.review .jb-card { animation: none; }
 
-.jb-title { margin: 0; font-size: clamp(34px, 6vw, 60px); color: var(--text); }
-.jb-title.sm { font-size: clamp(26px, 4vw, 36px); }
+.jb-title { margin: 0; font-size: clamp(40px, 5.6vw, 84px); line-height: 0.92; color: var(--text); }
+.jb-title.sm { font-size: clamp(26px, 4vw, 36px); line-height: 0.98; }
 :slotted(.jb-drafted) {
   color: var(--gold);
   display: inline-block;
   animation: slam 0.5s var(--ease-impact) 0.25s both;
 }
-.jb-lede { margin: 0; max-width: 46ch; color: var(--khaki); font-size: clamp(14px, 1.3vw, 16px); line-height: 1.5; }
+.jb-lede { margin: 0; max-width: 36rem; color: var(--khaki); font-size: clamp(15px, 1.2vw, 18px); line-height: 1.6; animation-delay: 0.08s; }
 :slotted(b) { color: var(--text); }
+
+/* The five beats as chevrons, like the Bridge's "how it plays" run; each
+   opens its step below. */
+.jb-beats { display: flex; flex-wrap: wrap; gap: 2px; animation-delay: 0.14s; }
+.jb-beat {
+  --who: var(--khaki);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 24px 0 20px;
+  border: 0;
+  background: var(--raised);
+  color: var(--khaki);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--dur-fast), color var(--dur-fast);
+}
+.jb-beat[data-who='you'] { --who: var(--gold); }
+.jb-beat[data-who='host'] { --who: var(--teal); }
+.jb-beat:first-child { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%); }
+.jb-beat .disp { font-size: 11px; color: var(--who); }
+.jb-beat:hover { background: var(--gold); color: var(--on-gold); }
+.jb-beat:hover .disp { color: var(--on-gold); }
+/* Phones reach the steps a thumb-scroll below; the run would only wrap. */
+@container jb (max-width: 519px) {
+  .jb-beats { display: none; }
+}
 
 /* Callsigns read in display type wherever a diver is named. */
 .jb-callsign,
@@ -768,12 +884,15 @@ function submit(): void {
 .jb-alt > span { display: flex; flex-direction: column; gap: 3px; }
 .jb-alt-n { font-size: 14px; color: var(--text); }
 
-/* ---- Actions ------------------------------------------------------------ */
+/* ---- Actions ------------------------------------------------------------
+   The way in sits last in the page and sticks to the bottom edge, so it
+   stays in reach from the name card through every mission step. */
 .jb-acts {
   position: sticky;
   bottom: 0;
   z-index: 2;
   display: flex;
+  justify-content: flex-end;
   gap: 8px;
   margin-inline: calc(-1 * var(--pad-page));
   padding: 10px var(--pad-page) calc(10px + env(safe-area-inset-bottom));
@@ -789,11 +908,43 @@ function submit(): void {
   .jb-acts-wb .disp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .jb-acts-wb { width: 52px; padding: 0; }
 }
-@container jb (min-width: 760px) {
-  .jb-acts { margin: 0; padding: 12px 0 16px; }
+@container jb (min-width: 900px) {
+  .jb-acts { padding-top: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .jb-acts .btn { min-height: 58px; }
+  .jb-acts-wb { padding: 0 22px; }
+  .jb-cta { flex: 0 1 clamp(300px, 30cqi, 440px); font-size: 18px; }
 }
 
-/* ---- The mission: five boxes, one open ---------------------------------- */
+/* ---- The mission: five boxes over one lit stage --------------------------- */
+.jb-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  padding-block: clamp(28px, 5vw, 72px) 8px;
+  border-top: 1px solid var(--line-1);
+  scroll-margin-top: 12px;
+}
+.review .jb-steps { padding-top: 20px; }
+.jb-steps-head { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; }
+.jb-steps-title { margin: 0; font-size: clamp(26px, 4cqi, 52px); line-height: 0.98; color: var(--text); }
+.jb-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.jb-legend li {
+  --who: var(--khaki);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--khaki);
+}
+.jb-legend li::before { content: ''; width: 18px; height: 3px; background: var(--who); }
+
+[data-who='you'] { --who: var(--gold); }
+[data-who='host'] { --who: var(--teal); }
+
 .jb-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
 .jb-tab {
   --who: var(--khaki);
@@ -801,11 +952,11 @@ function submit(): void {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
-  padding: 10px 2px 8px;
+  padding: 14px 2px 10px;
   border: 1px solid var(--line-2);
-  border-bottom: 2px solid color-mix(in srgb, var(--who) 55%, transparent);
+  border-bottom: 3px solid color-mix(in srgb, var(--who) 60%, transparent);
   background: var(--panel);
   color: var(--khaki);
   font: inherit;
@@ -814,49 +965,88 @@ function submit(): void {
 }
 .jb-tab[data-who='you'] { --who: var(--gold); }
 .jb-tab[data-who='host'] { --who: var(--teal); }
-.jb-tab:hover { color: var(--text); border-color: var(--line-4); }
-.jb-tab-n { position: absolute; top: 4px; left: 6px; font-size: 10px; font-weight: 700; color: var(--dim); }
-.jb-tab-i { width: 26px; height: 26px; }
-.jb-tab-l { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.jb-tab:hover { color: var(--text); border-color: var(--line-4); border-bottom-color: var(--who); }
+.jb-tab-n { position: absolute; top: 5px; left: 7px; font-size: 10px; font-weight: 700; color: var(--dim); }
+.jb-tab-i { width: clamp(24px, 3.2cqi, 38px); height: clamp(24px, 3.2cqi, 38px); }
+.jb-tab-l { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: clamp(11px, 1.2cqi, 14px); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.jb-tab-who { font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--who); }
+@container jb (max-width: 459px) {
+  .jb-tab-who { display: none; }
+}
 .jb-tab[data-state='active'] {
   color: var(--on-gold);
   background: var(--gold);
   border-color: var(--gold);
 }
-.jb-tab[data-state='active'] .jb-tab-n { color: var(--on-gold); opacity: 0.7; }
-/* The open box points down into its panel. */
+.jb-tab[data-state='active'] .jb-tab-n,
+.jb-tab[data-state='active'] .jb-tab-who { color: var(--on-gold); opacity: 0.7; }
+/* The open box points down into the stage. */
 .jb-tab[data-state='active']::after {
   content: '';
   position: absolute;
   left: 50%;
-  bottom: -9px;
-  width: 14px;
-  height: 8px;
-  margin-left: -7px;
+  bottom: -11px;
+  width: 16px;
+  height: 9px;
+  margin-left: -8px;
   background: var(--gold);
   clip-path: polygon(0 0, 100% 0, 50% 100%);
 }
 
+/* Panels share one grid cell, so the outgoing step slides out over the
+   incoming one instead of stacking below it. */
+.jb-stage {
+  --from: 56px;
+  --to: -56px;
+  display: grid;
+  margin-top: 10px;
+  overflow: clip;
+}
+.jb-stage[data-dir='back'] { --from: -56px; --to: 56px; }
 .jb-panel[hidden] { display: none; }
 .jb-panel {
   --who: var(--khaki);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 12px;
+  grid-area: 1 / 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+  padding: clamp(14px, 2.2cqi, 28px);
   background: var(--panel);
   border: 1px solid var(--line-2);
   border-top: 2px solid var(--gold);
-  animation: panelDrop var(--dur-med) var(--ease-out) both;
 }
-.jb-panel[data-who='you'] { --who: var(--gold); }
-.jb-panel[data-who='host'] { --who: var(--teal); }
-@keyframes panelDrop { from { opacity: 0; transform: translateY(-6px); } }
-.jb-panel-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.jb-panel-t { font-size: 16px; color: var(--text); }
-.jb-who { font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--who); }
-.jb-panel-x { margin: 0; font-size: 14px; line-height: 1.45; color: var(--khaki); }
+.jb-panel[data-state='active'] { animation: stepIn var(--dur-slow) var(--ease-out) both; }
+.jb-panel[data-state='inactive'] { animation: stepOut var(--dur-med) ease-in both; pointer-events: none; }
+@keyframes stepIn { from { opacity: 0; transform: translateX(var(--from)); } }
+@keyframes stepOut { to { opacity: 0; transform: translateX(var(--to)); } }
+@container jb (min-width: 760px) {
+  .jb-panel {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: center;
+    gap: clamp(24px, 3cqi, 48px);
+  }
+}
+
+.jb-panel-copy { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: end; gap: 10px 14px; }
+.jb-panel-copy > :not(.jb-panel-n, .jb-who) { grid-column: 1 / -1; }
+.jb-panel-n {
+  font-size: clamp(40px, 5.6cqi, 80px);
+  line-height: 0.82;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--who);
+}
+.jb-who { padding-bottom: 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--who); }
+.jb-panel-t { margin: 4px 0 0; font-size: clamp(24px, 3.4cqi, 46px); line-height: 0.98; color: var(--text); }
+.jb-panel-x { margin: 0; max-width: 34rem; font-size: clamp(15px, 1.4cqi, 18px); line-height: 1.55; color: var(--khaki); }
+.jb-next { justify-self: start; gap: 8px; margin-top: 4px; }
+
+/* The scene keeps its drawn proportions and scales with the stage. */
+.jb-scene { --pv-zoom: 1.15; }
+@container jb (min-width: 520px) { .jb-scene { --pv-zoom: 1.5; } }
+@container jb (min-width: 760px) { .jb-scene { --pv-zoom: 1.4; } }
+@container jb (min-width: 1000px) { .jb-scene { --pv-zoom: 1.7; } }
+@container jb (min-width: 1240px) { .jb-scene { --pv-zoom: 2; } }
 
 .jb-foot { display: flex; justify-content: flex-end; }
 .jb-exit { color: var(--muted); }
@@ -865,7 +1055,7 @@ function submit(): void {
 
 @media (prefers-reduced-motion: reduce) {
   .jb-name-input.empty,
-  .jb-panel,
+  .jb-panel[data-state],
   .jb-reveal.open .jb-kit-g { animation: none; }
 }
 </style>
