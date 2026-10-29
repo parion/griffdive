@@ -109,7 +109,6 @@ const emptyHaul = computed(() => {
   color: var(--tier);
   font-size: 40px;
   line-height: 0.8;
-  text-shadow: 0 0 20px color-mix(in srgb, var(--tier) 50%, transparent);
   animation: slamIn 0.45s var(--ease-impact) 0.4s both;
 }
 .haul-media {
