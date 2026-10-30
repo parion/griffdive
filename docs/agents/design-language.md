@@ -426,7 +426,9 @@ manual**.
   `BridgeField` grid, up to 1440px wide. The **hero** puts the kicker (hazard bar), the headline,
   the lede and a chevron run of the five steps (each opens its box below and scrolls to it; hidden
   under 520px where it would only wrap) on the left, the card on the right; phones read top-down.
-- **How a mission goes** is its own full-width section under the hero: a display heading with a
+  Both columns hang from the top (no forced viewport height) and the left column sticks while the
+  card grows through the class strike and kit, so the headline never floats in a centred void.
+- **How to Griffdive** is its own full-width section under the hero: a display heading with a
   who-acts legend, then five big boxes in one row (Reka `Tabs`): Spin, Swear, Dive, Report, Loot,
   each a numbered glyph (`IconWheel`, `IconPact`, `IconHellpod`, `IconStar`, `IconLoot`) with a
   Host / You / Everyone line and its bottom edge tinted by who acts (gold = you, teal = host,
@@ -436,14 +438,18 @@ manual**.
   the hellpod drop, three stars and the report bars, three tiered loot cards with one BANKED),
   plus a **Next** button. Scenes are drawn at 150px and scaled whole by the parent's `--pv-zoom`
   (CSS `zoom`, up to 2× on wide stages); pact names bind `fitWord` so a long name never splits.
-  Steps share one grid cell, so a switch slides the old step out and the new one in, in reading
-  direction (Reka's presence waits on the exit animation). Scenes are CSS loops whose resting
+  Steps share one grid cell and stay mounted (`force-mount`, inactive ones hidden), so the stage
+  holds the tallest step's height and the Next button sits pinned to the bottom of the copy column:
+  nothing shifts when a description runs long. Only the live and the outgoing step draw a scene
+  (the rest keep a same-sized slot), so each loop starts fresh. A switch slides the old step out
+  and the new one in, in reading direction. Scenes are CSS loops whose resting
   styles are the final frame, so reduced motion shows the beat played out and swaps steps
   instantly.
-- **The way in** — the primary **Start the dive** / **Join the dive** beside **Set warbonds** — is
-  the page's last block and sticks to the bottom edge at every width (right-aligned on wide
-  containers), so it stays in reach from the card through every step; on phones the warbonds
-  button shrinks to its glyph. The primary is disabled until there is a name; once filed, Enter in
+- **The way in** — the primary **Start the dive** / **Join the dive** beside **Set warbonds** — rises
+  in under **Your name** inside the card on wide containers (≥900px). Below that, and in the
+  review dialog, it is the page's last block and sticks to the bottom edge, so it stays in reach
+  from the card through every step; on phones the warbonds button shrinks to its glyph. One
+  `createReusableTemplate` body feeds both spots and container queries pick which shows. The primary is disabled until there is a name; once filed, Enter in
   the field submits.
 
 There is no More fold, odds dial or deck-plan diagram.

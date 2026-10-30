@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createReusableTemplate } from '@vueuse/core'
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
 import type { Component } from 'vue'
 import { difficultyImageUrl, itemImageUrl } from '~~/shared/data/images'
@@ -151,6 +152,21 @@ const stepDir = ref<'fwd' | 'back'>('fwd')
 watch(stepIndex, (next, prev) => {
   stepDir.value = next < prev ? 'back' : 'fwd'
 })
+// Every panel stays mounted so the stage holds the tallest step's height and
+// nothing below it shifts; only the live and the outgoing step draw a scene.
+const leavingStep = ref<string | null>(null)
+watch(activeStep, (_next, prev) => {
+  leavingStep.value = prev
+})
+function onPanelAnimEnd(id: string): void {
+  if (id === leavingStep.value && id !== activeStep.value) {
+    leavingStep.value = null
+  }
+}
+
+// The way in: under the name on wide screens, pinned to the bottom edge
+// otherwise. Container queries pick which copy shows.
+const [DefineActs, ReuseActs] = createReusableTemplate()
 
 const stepsSection = ref<HTMLElement | null>(null)
 function goToStep(id: BriefingStepId, scroll: boolean): void {
@@ -176,6 +192,34 @@ function submit(): void {
     :tabindex="review ? undefined : -1"
   >
     <BridgeField v-if="!review" />
+    <DefineActs>
+      <button
+        class="btn ghost jb-acts-wb"
+        type="button"
+        aria-haspopup="dialog"
+        @click="openWarbonds"
+      >
+        <IconWarbond class="jb-acts-i" />
+        <span class="disp">Set warbonds</span>
+      </button>
+      <button
+        class="btn primary cut jb-cta"
+        :class="{ 'cta-sweep': canSubmit }"
+        type="submit"
+        :disabled="!canSubmit"
+      >
+        <span class="disp">{{ ctaLabel }}</span>
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          aria-hidden="true"
+        ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+      </button>
+    </DefineActs>
     <form
       class="jb-form"
       novalidate
@@ -237,7 +281,7 @@ function submit(): void {
           </p>
           <nav
             class="jb-beats rise"
-            aria-label="How a mission goes"
+            aria-label="How to Griffdive"
           >
             <button
               v-for="(step, i) in steps"
@@ -285,6 +329,12 @@ function submit(): void {
               <span>The name your squad sees</span>
               <span><kbd v-if="filing === 'open' && callsign">Enter</kbd> {{ name.length }} / {{ MAX_NAME_LENGTH }}</span>
             </span>
+          </div>
+          <div
+            v-if="!review"
+            class="jb-acts-card"
+          >
+            <ReuseActs />
           </div>
           <div
             v-else
@@ -481,7 +531,7 @@ function submit(): void {
             id="jb-steps-h"
             class="disp jb-steps-title"
           >
-            How a mission goes
+            How to Griffdive
           </h2>
           <ul
             class="jb-legend"
@@ -529,7 +579,10 @@ function submit(): void {
               :key="step.id"
               :value="step.id"
               class="jb-panel"
+              :class="{ leaving: step.id === leavingStep }"
               :data-who="step.who"
+              force-mount
+              @animationend.self="onPanelAnimEnd(step.id)"
             >
               <div class="jb-panel-copy">
                 <span class="disp jb-panel-n">{{ String(i + 1).padStart(2, '0') }}</span>
@@ -559,9 +612,15 @@ function submit(): void {
                 </button>
               </div>
               <BriefingPreview
+                v-if="step.id === activeStep || step.id === leavingStep"
                 class="jb-scene"
                 :step="step.id"
                 :difficulty="difficulty"
+              />
+              <div
+                v-else
+                class="jb-scene jb-scene-slot"
+                aria-hidden="true"
               />
             </TabsContent>
           </div>
@@ -569,32 +628,7 @@ function submit(): void {
       </section>
 
       <div class="jb-acts">
-        <button
-          class="btn ghost jb-acts-wb"
-          type="button"
-          aria-haspopup="dialog"
-          @click="openWarbonds"
-        >
-          <IconWarbond class="jb-acts-i" />
-          <span class="disp">Set warbonds</span>
-        </button>
-        <button
-          class="btn primary cut jb-cta"
-          :class="{ 'cta-sweep': canSubmit }"
-          type="submit"
-          :disabled="!canSubmit"
-        >
-          <span class="disp">{{ ctaLabel }}</span>
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.4"
-            aria-hidden="true"
-          ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-        </button>
+        <ReuseActs />
       </div>
 
       <footer
@@ -665,12 +699,17 @@ function submit(): void {
   padding-block: clamp(20px, 4vw, 56px);
 }
 .review .jb-hero { padding-block: 0 8px; }
+/* The card grows as the class strike and kit unfold, so both columns hang
+   from the top and the creed rides alongside it instead of floating in a
+   centred void. */
 @container jb (min-width: 900px) {
   .jb-hero {
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    align-items: start;
     gap: clamp(32px, 4vw, 72px);
-    min-height: min(calc(100svh - 160px), 820px);
+    padding-block: clamp(40px, 6vw, 96px) clamp(40px, 5vw, 80px);
   }
+  .jb:not(.review) .jb-head { position: sticky; top: 32px; padding-top: 12px; }
 }
 .jb-head { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 .jb-kicker { display: inline-flex; align-items: center; gap: 12px; color: var(--gold); }
@@ -885,8 +924,9 @@ function submit(): void {
 .jb-alt-n { font-size: 14px; color: var(--text); }
 
 /* ---- Actions ------------------------------------------------------------
-   The way in sits last in the page and sticks to the bottom edge, so it
-   stays in reach from the name card through every mission step. */
+   Narrow screens: the way in sits last in the page and sticks to the bottom
+   edge, so it stays in reach from the name card through every mission step.
+   Wide screens: it rises in under the name, where the eye already is. */
 .jb-acts {
   position: sticky;
   bottom: 0;
@@ -908,11 +948,19 @@ function submit(): void {
   .jb-acts-wb .disp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .jb-acts-wb { width: 52px; padding: 0; }
 }
+.jb-acts-card { display: none; }
 @container jb (min-width: 900px) {
-  .jb-acts { padding-top: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
-  .jb-acts .btn { min-height: 58px; }
-  .jb-acts-wb { padding: 0 22px; }
-  .jb-cta { flex: 0 1 clamp(300px, 30cqi, 440px); font-size: 18px; }
+  .jb:not(.review) .jb-acts { display: none; }
+  /* A narrow card wraps the pair; wrap-reverse lifts the CTA to the top line. */
+  .jb-acts-card {
+    display: flex;
+    flex-wrap: wrap-reverse;
+    gap: 8px;
+    animation: riseIn 0.5s var(--ease-out) 0.36s both;
+  }
+  .jb-acts-card .btn { gap: 10px; justify-content: center; white-space: nowrap; min-height: 56px; }
+  .jb-acts-card .jb-acts-wb { flex: 1 0 auto; padding: 0 18px; }
+  .jb-acts-card .jb-cta { flex: 999 1 260px; font-size: 18px; }
 }
 
 /* ---- The mission: five boxes over one lit stage --------------------------- */
@@ -1003,12 +1051,12 @@ function submit(): void {
   overflow: clip;
 }
 .jb-stage[data-dir='back'] { --from: -56px; --to: 56px; }
-.jb-panel[hidden] { display: none; }
 .jb-panel {
   --who: var(--khaki);
   grid-area: 1 / 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 16px;
   min-width: 0;
   padding: clamp(14px, 2.2cqi, 28px);
@@ -1017,18 +1065,28 @@ function submit(): void {
   border-top: 2px solid var(--gold);
 }
 .jb-panel[data-state='active'] { animation: stepIn var(--dur-slow) var(--ease-out) both; }
-.jb-panel[data-state='inactive'] { animation: stepOut var(--dur-med) ease-in both; pointer-events: none; }
+.jb-panel[data-state='inactive'] { visibility: hidden; pointer-events: none; }
+.jb-panel.leaving[data-state='inactive'] { animation: stepOut var(--dur-med) ease-in both; }
 @keyframes stepIn { from { opacity: 0; transform: translateX(var(--from)); } }
-@keyframes stepOut { to { opacity: 0; transform: translateX(var(--to)); } }
+@keyframes stepOut {
+  from { visibility: visible; }
+  to { opacity: 0; transform: translateX(var(--to)); visibility: hidden; }
+}
 @container jb (min-width: 760px) {
   .jb-panel {
     grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    align-items: center;
+    grid-template-rows: auto;
     gap: clamp(24px, 3cqi, 48px);
   }
 }
 
-.jb-panel-copy { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: end; gap: 10px 14px; }
+.jb-panel-copy {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr auto;
+  align-items: end;
+  gap: 10px 14px;
+}
 .jb-panel-copy > :not(.jb-panel-n, .jb-who) { grid-column: 1 / -1; }
 .jb-panel-n {
   font-size: clamp(40px, 5.6cqi, 80px);
@@ -1038,8 +1096,10 @@ function submit(): void {
 }
 .jb-who { padding-bottom: 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--who); }
 .jb-panel-t { margin: 4px 0 0; font-size: clamp(24px, 3.4cqi, 46px); line-height: 0.98; color: var(--text); }
-.jb-panel-x { margin: 0; max-width: 34rem; font-size: clamp(15px, 1.4cqi, 18px); line-height: 1.55; color: var(--khaki); }
+.jb-panel-x { align-self: start; margin: 0; max-width: 34rem; font-size: clamp(15px, 1.4cqi, 18px); line-height: 1.55; color: var(--khaki); }
 .jb-next { justify-self: start; gap: 8px; margin-top: 4px; }
+.jb-scene { align-self: center; }
+.jb-scene-slot { height: 150px; zoom: var(--pv-zoom); }
 
 /* The scene keeps its drawn proportions and scales with the stage. */
 .jb-scene { --pv-zoom: 1.15; }
@@ -1056,6 +1116,8 @@ function submit(): void {
 @media (prefers-reduced-motion: reduce) {
   .jb-name-input.empty,
   .jb-panel[data-state],
+  .jb-panel.leaving[data-state],
+  .jb-acts-card,
   .jb-reveal.open .jb-kit-g { animation: none; }
 }
 </style>
