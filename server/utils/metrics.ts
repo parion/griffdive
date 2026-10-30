@@ -397,6 +397,20 @@ export function createRoomMetrics(): RoomMetrics {
     registers: [registry],
   })
 
+  const armorPacksOpened = new Counter({
+    name: 'griffdive_armor_packs_opened_total',
+    help: 'Brasch Armor Packs opened, by difficulty',
+    labelNames: ['difficulty'],
+    registers: [registry],
+  })
+
+  const armorPackPulls = new Counter({
+    name: 'griffdive_armor_pack_pulls_total',
+    help: 'Armor Pack cards dealt, by tier',
+    labelNames: ['tier'],
+    registers: [registry],
+  })
+
   const forfeits = new Counter({
     name: 'griffdive_forfeits_total',
     help: 'Items surrendered after a failed mission, by tier and category',
@@ -732,6 +746,20 @@ export function createRoomMetrics(): RoomMetrics {
         const labels = itemLabels(action.itemId, after)
         if (labels) {
           purchases.inc(labels)
+        }
+        break
+      }
+      case 'BUY_ARMOR_PACK': {
+        const diver = after.divers.find(entry => entry.id === action.playerId)
+        const pack = diver?.bargain?.pack
+        if (pack) {
+          armorPacksOpened.inc({ difficulty: String(after.difficulty) })
+          for (const itemId of pack.itemIds) {
+            const labels = itemLabels(itemId, after)
+            if (labels) {
+              armorPackPulls.inc({ tier: labels.tier })
+            }
+          }
         }
         break
       }

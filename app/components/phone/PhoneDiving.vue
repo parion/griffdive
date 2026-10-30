@@ -4,7 +4,7 @@ import {
   activeMisfortune,
   activeStrain,
 } from '~~/shared/engine/selectors'
-import type { DiverState, DiveState, MissionOutcome, MissionReport } from '~~/shared/engine/types'
+import type { DiverState, DiveState, MissionReport } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -19,7 +19,6 @@ const emit = defineEmits<{
   fail: [playerId: string, pactId: string]
   failDirective: []
   reporting: [open: boolean]
-  spinBonus: [payload: { stars: number, outcome: MissionOutcome }]
 }>()
 
 const misfortune = computed(() => activeMisfortune(props.state))
@@ -107,7 +106,13 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         {{ misfortune?.name ?? 'Safe dive' }}
       </h2>
       <p class="dc-rule">
-        {{ misfortune?.rule ?? 'No directive this mission.' }}
+        <ConditionRule
+          v-if="misfortune"
+          :condition="misfortune"
+        />
+        <template v-else>
+          No directive this mission.
+        </template>
       </p>
       <div class="dc-foot">
         <span>{{ directiveFailed ? 'Broken · everyone loses a loot option' : 'Boosting everyone’s loot' }}</span>
@@ -204,7 +209,6 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
     phone
     @submit="submit"
     @cancel="cancelReport"
-    @spin-bonus="emit('spinBonus', $event)"
   />
 </template>
 

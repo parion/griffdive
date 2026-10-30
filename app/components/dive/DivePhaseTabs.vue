@@ -110,7 +110,6 @@ function label(beat: Beat): string {
 .beat.current {
   color: var(--on-gold);
   background: var(--gold);
-  text-shadow: none;
 }
 .check { color: var(--teal); font-size: 12px; }
 .current .check { color: var(--on-gold); }

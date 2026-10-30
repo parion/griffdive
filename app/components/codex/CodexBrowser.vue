@@ -65,6 +65,13 @@ function warbondName(code: string): string {
       </template>
     </p>
 
+    <p
+      v-if="category === 'armorPassive'"
+      class="muted small"
+    >
+      Armor passives are sold only in Brasch's Armor Pack — they never appear in reward drafts.
+    </p>
+
     <section
       class="panel filters"
       aria-label="Catalog filters"

@@ -114,7 +114,9 @@ Update this table the moment a command lands.
   state changes (watch `wheel.seed`, `phase`); it must never drive or gate engine actions.
   Defaults: `motion-v` (`<Motion>`, `<AnimatePresence>`, `<MotionConfig>`, auto-registered by
   `motion-v/nuxt`) for springs, exits and shared-element/layout work; CSS keyframes + the global
-  `name="phase"` Vue transitions for ambient loops and phase swaps; shared spring/pop presets in
+  `name="phase"` Vue transitions for ambient loops and phase swaps; route swaps fade through the
+  global `page` transition (`app.pageTransition`, opacity only so fixed layers never jump — each
+  page brings its own entrance); shared spring/pop presets in
   `app/utils/motion.ts` (`SPRING_SNAP`, `SPRING_POP`, `riseIn`, `slamIn`). Easing
   and duration tokens live in `main.css` (`--ease-out`, `--ease-snap`, `--dur-*`). Reduced motion
   is mandatory: `<MotionConfig reduced-motion="user">` in `app/app.vue` for motion-v, the

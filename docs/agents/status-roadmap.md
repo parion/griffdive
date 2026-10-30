@@ -5,7 +5,7 @@
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core) and Phase 2 (realtime squads) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (510 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (532 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection — verified by a live two-peer smoke test and the Playwright E2E suite (solo flow,
@@ -54,10 +54,13 @@ tiers drawn from the difficulty band — lets them buy named items, priced by ti
 team-performance Valor term is gone; chosen risk is the only thing that moves the odds line.
 **Brasch's Bargains became a shop paid in credits:** samples now bank as credits, and
 the shop opens from the dive header (phone: a credit tile on the action bar) in every phase but the
-mission itself, once the first operation is complete. Every mission restocks one random slot per primary, secondary, throwable and armor
-passive (base tier up to one above), plus a stratagem slot per star past the third. A diver buys at
-most one item per mission, and a bought kind isn't stocked again until the next operation (see
-Brasch's Bargains — credits).
+mission itself, once the first operation is complete. Every mission restocks one random slot per
+primary, secondary and throwable (base tier up to one above), plus a stratagem slot per star past
+the third. A diver buys at most one shelf item per mission, and a bought kind isn't stocked again
+until the next operation. **Armor passives left the draft:** they are sold only in Brasch's **Armor
+Pack** — three duplicate-free passives from the diver's unowned warbonds, one B+ pull guaranteed,
+one difficulty-scaled S roll, one pack per operation, opened in a full-screen, low-text card-draw
+reveal (see Brasch's Bargains — credits).
 **Starting variants are now three difficulties:** squad size no longer gates a start (it fluctuates
 all crusade), so the five squad-size/kit variants collapsed into Medium (3), Hard (5) and Suicide
 Mission (7); the hard/suicide starts choose one of two mutually exclusive modes — the assisted
@@ -72,7 +75,7 @@ saves migrate (see Save model). Staging is password-protected (see Deployment). 
 ## Beta-readiness review (2026-10-24)
 
 Pre-beta pass: dependencies upgraded, component tree reorganised to Nuxt's default naming, dead
-code removed, docs audited against the code. Gate: lint, typecheck, 510 unit tests and 45 e2e
+code removed, docs audited against the code. Gate: lint, typecheck, 532 unit tests and 52 e2e
 specs green on the upgraded stack.
 
 **Spec relevance.** Every identifier and path the `docs/agents/` files cite was checked against the
@@ -83,17 +86,19 @@ Hellpod Bays, ValorRoll) are still current and are pinned by the `phone-*`, `tab
 Ban UI, the lobby/matchmaking. Not re-verified visually: pixel-level fidelity of each section.
 
 **Game design (from `scripts/simulate-economy.mjs`, 4000 runs).**
-- Brasch's Bargains pace well through B/A tier: a steady squad buys ~11 items over 20 missions
-  (1.4 per operation), an eager one ~16. Buys per mission drop to 0.1-0.6 at difficulty 8-10 (cause not
-  investigated).
+- Brasch's Bargains pace well through B/A tier: a steady squad buys ~11 shelf items over 20 missions
+  (~1.3 per operation), an eager one ~15. Buys per mission drop to 0.1-0.6 at difficulty 8-10 (cause not
+  investigated). The Armor Pack is a separate sink: a shelf-first diver buys almost none, while a
+  passive-first collector (`PACKFIRST=1`) buys ~1 pack per climb as steady, ~4 as eager and ~5 as
+  maxed, with an S pack roughly every 11/4/4 climbs.
 - **Addressed after this review:** S-tier at 800 credits was effectively unreachable, and difficulty 3
   had a dead shop (haul 4-8 vs a 25-credit floor). Prices now ride one curve, 35/100/280/450, and the
   shop stays shut until the first operation completes, so early credits accumulate instead of
-  stranding. A steady squad (60% of samples filed) buys an S about once per 6.6 missions in
+  stranding. A steady squad (60% of samples filed) buys an S about once per 5 missions in
   the S band (difficulty 8+) when it saves for one; a diver who always spends on the priciest
-  affordable item almost never reaches S (~1 per 590 missions), so the SAVER policy in
-  `scripts/simulate-economy.mjs` is the number to watch. Overall buys rose (steady ~11 per 20
-  missions, level with the old curve).
+  affordable item almost never reaches S (~1 per 180 missions), so the SAVER policy in
+  `scripts/simulate-economy.mjs` is the number to watch. Shelf buys landed near the old curve
+  (steady ~11 per 20 missions) after the passive slot moved to the Armor Pack.
 - Open balance/design items still on the board in `PLAN.md`: N25 (pacts are strictly "take
   everything"), N39 (reroll-token sources), N13 (`fragileLiberty` early lock-out, blocked on DEC-6).
 

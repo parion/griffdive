@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createReusableTemplate } from '@vueuse/core'
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
 import type { Component } from 'vue'
 import { difficultyImageUrl, itemImageUrl } from '~~/shared/data/images'
@@ -30,7 +31,6 @@ export interface BriefingFact {
 const props = withDefaults(defineProps<{
   review?: boolean
   roomCode: string
-  kicker: string
   steps: readonly BriefingStep[]
   divers: readonly DiverState[]
   hostId: string | null
@@ -141,8 +141,37 @@ const STEP_META: Record<BriefingStepId, { label: string, title: string, icon: Co
   report: { label: 'Report', title: 'Report', icon: IconStar },
   loot: { label: 'Loot', title: 'Loot', icon: IconLoot },
 }
-const WHO_TAG: Record<BriefingStep['who'], string> = { host: 'Host', you: 'You', all: 'Everyone' }
 const activeStep = ref<string>(props.steps[0]?.id ?? 'spin')
+const stepIndex = computed(() => Math.max(0, props.steps.findIndex(step => step.id === activeStep.value)))
+// The outgoing scene leaves the way the diver is reading: forward slides
+// left, back slides right.
+const stepDir = ref<'fwd' | 'back'>('fwd')
+watch(stepIndex, (next, prev) => {
+  stepDir.value = next < prev ? 'back' : 'fwd'
+})
+// Every panel stays mounted so the stage holds the tallest step's height and
+// nothing below it shifts; only the live and the outgoing step draw a scene.
+const leavingStep = ref<string | null>(null)
+watch(activeStep, (_next, prev) => {
+  leavingStep.value = prev
+})
+function onPanelAnimEnd(id: string): void {
+  if (id === leavingStep.value && id !== activeStep.value) {
+    leavingStep.value = null
+  }
+}
+
+// The way in: under the name on wide screens, pinned to the bottom edge
+// otherwise. Container queries pick which copy shows.
+const [DefineActs, ReuseActs] = createReusableTemplate()
+
+const stepsSection = ref<HTMLElement | null>(null)
+function goToStep(id: BriefingStepId, scroll: boolean): void {
+  activeStep.value = id
+  if (scroll) {
+    stepsSection.value?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
+  }
+}
 
 function submit(): void {
   if (props.canSubmit) {
@@ -159,6 +188,35 @@ function submit(): void {
     :class="{ review }"
     :tabindex="review ? undefined : -1"
   >
+    <BridgeField v-if="!review" />
+    <DefineActs>
+      <button
+        class="btn ghost jb-acts-wb"
+        type="button"
+        aria-haspopup="dialog"
+        @click="openWarbonds"
+      >
+        <IconWarbond class="jb-acts-i" />
+        <span class="disp">Set warbonds</span>
+      </button>
+      <button
+        class="btn primary cut jb-cta"
+        :class="{ 'cta-sweep': canSubmit }"
+        type="submit"
+        :disabled="!canSubmit"
+      >
+        <span class="disp">{{ ctaLabel }}</span>
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          aria-hidden="true"
+        ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+      </button>
+    </DefineActs>
     <form
       class="jb-form"
       novalidate
@@ -191,10 +249,6 @@ function submit(): void {
         aria-labelledby="jb-title"
       >
         <div class="jb-head">
-          <span
-            v-if="!review"
-            class="lbl gold"
-          >{{ kicker }}</span>
           <h1
             v-if="!review"
             id="jb-title"
@@ -209,9 +263,24 @@ function submit(): void {
           >
             <slot name="title" />
           </h2>
-          <p class="jb-lede">
+          <p class="jb-lede rise">
             <slot name="lede" />
           </p>
+          <nav
+            class="jb-beats rise"
+            aria-label="How to Griffdive"
+          >
+            <button
+              v-for="(step, i) in steps"
+              :key="step.id"
+              type="button"
+              class="jb-beat chev"
+              :data-who="step.who"
+              @click="goToStep(step.id, true)"
+            >
+              <span class="disp">{{ i + 1 }}</span>{{ STEP_META[step.id].label }}
+            </button>
+          </nav>
         </div>
 
         <div class="jb-card cut">
@@ -221,7 +290,7 @@ function submit(): void {
           >
             <label
               for="jb-callsign"
-              class="lbl gold"
+              class="sr-only"
             >Your name</label>
             <input
               id="jb-callsign"
@@ -247,6 +316,12 @@ function submit(): void {
               <span>The name your squad sees</span>
               <span><kbd v-if="filing === 'open' && callsign">Enter</kbd> {{ name.length }} / {{ MAX_NAME_LENGTH }}</span>
             </span>
+          </div>
+          <div
+            v-if="!review"
+            class="jb-acts-card"
+          >
+            <ReuseActs />
           </div>
           <div
             v-else
@@ -430,91 +505,104 @@ function submit(): void {
             </AppBanner>
           </aside>
         </div>
+      </section>
 
-        <div class="jb-acts">
-          <button
-            class="btn ghost jb-acts-wb"
-            type="button"
-            aria-haspopup="dialog"
-            @click="openWarbonds"
-          >
-            <IconWarbond class="jb-acts-i" />
-            <span class="disp">Set warbonds</span>
-          </button>
-          <button
-            class="btn primary cut jb-cta"
-            :class="{ 'cta-sweep': canSubmit }"
-            type="submit"
-            :disabled="!canSubmit"
-          >
-            <span class="disp">{{ ctaLabel }}</span>
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.4"
-              aria-hidden="true"
-            ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-          </button>
-        </div>
-
-        <section
-          class="jb-steps"
-          aria-labelledby="jb-steps-h"
-        >
+      <section
+        id="jb-steps"
+        ref="stepsSection"
+        class="jb-steps"
+        aria-labelledby="jb-steps-h"
+      >
+        <div class="jb-steps-head">
           <h2
             id="jb-steps-h"
-            class="lbl"
+            class="disp jb-steps-title"
           >
-            How a mission goes
+            How to Griffdive
           </h2>
-          <TabsRoot
-            v-model="activeStep"
-            class="jb-tabs-root"
+        </div>
+        <TabsRoot
+          v-model="activeStep"
+          class="jb-tabs-root"
+        >
+          <TabsList
+            class="jb-tabs"
+            aria-label="Mission steps"
           >
-            <TabsList
-              class="jb-tabs"
-              aria-label="Mission steps"
+            <TabsTrigger
+              v-for="(step, i) in steps"
+              :key="step.id"
+              :value="step.id"
+              class="jb-tab"
+              :data-who="step.who"
             >
-              <TabsTrigger
-                v-for="(step, i) in steps"
-                :key="step.id"
-                :value="step.id"
-                class="jb-tab"
-                :data-who="step.who"
-              >
-                <span class="jb-tab-n">{{ i + 1 }}</span>
-                <component
-                  :is="STEP_META[step.id].icon"
-                  class="jb-tab-i"
-                />
-                <span class="jb-tab-l">{{ STEP_META[step.id].label }}</span>
-              </TabsTrigger>
-            </TabsList>
+              <span class="jb-tab-n">{{ String(i + 1).padStart(2, '0') }}</span>
+              <component
+                :is="STEP_META[step.id].icon"
+                class="jb-tab-i"
+              />
+              <span class="jb-tab-l">{{ STEP_META[step.id].label }}</span>
+            </TabsTrigger>
+          </TabsList>
+          <div
+            class="jb-stage"
+            :data-dir="stepDir"
+          >
             <TabsContent
               v-for="(step, i) in steps"
               :key="step.id"
               :value="step.id"
               class="jb-panel"
+              :class="{ leaving: step.id === leavingStep }"
               :data-who="step.who"
+              force-mount
+              @animationend.self="onPanelAnimEnd(step.id)"
             >
-              <div class="jb-panel-h">
-                <b class="disp jb-panel-t">{{ i + 1 }} · {{ STEP_META[step.id].title }}</b>
-                <span class="jb-who">{{ WHO_TAG[step.who] }}</span>
+              <div class="jb-panel-copy">
+                <span class="disp jb-panel-n">{{ String(i + 1).padStart(2, '0') }}</span>
+                <h3 class="disp jb-panel-t">
+                  {{ STEP_META[step.id].title }}
+                </h3>
+                <p class="jb-panel-x">
+                  {{ step.text }}
+                </p>
+                <button
+                  v-if="steps[i + 1]"
+                  type="button"
+                  class="btn ghost small jb-next"
+                  @click="goToStep(steps[i + 1]!.id, false)"
+                >
+                  Next · {{ STEP_META[steps[i + 1]!.id].label }}
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.6"
+                    aria-hidden="true"
+                  ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                </button>
               </div>
-              <p class="jb-panel-x">
-                {{ step.text }}
-              </p>
               <BriefingPreview
+                v-if="step.id === activeStep || step.id === leavingStep"
+                class="jb-scene"
                 :step="step.id"
                 :difficulty="difficulty"
               />
+              <div
+                v-else
+                class="jb-scene jb-scene-slot"
+                aria-hidden="true"
+              />
             </TabsContent>
-          </TabsRoot>
-        </section>
+          </div>
+        </TabsRoot>
       </section>
+
+      <div class="jb-acts">
+        <ReuseActs />
+      </div>
 
       <footer
         v-if="!review"
@@ -536,19 +624,21 @@ function submit(): void {
     radial-gradient(ellipse 80% 50% at 85% 0%, rgba(255, 214, 66, 0.06), transparent 70%),
     var(--ground);
   outline: none;
+  /* Seats the fixed field above the page's ground, as on the Bridge. */
+  isolation: isolate;
+  overflow-x: clip;
 }
 .jb.review { min-height: 0; background: none; }
 
 .jb-form {
   container: jb / inline-size;
-  max-width: 1080px;
+  max-width: 1440px;
   margin-inline: auto;
   padding: 0 var(--pad-page) 24px;
   display: flex;
   flex-direction: column;
-  gap: clamp(18px, 3vw, 28px);
 }
-.review .jb-form { padding: 0; gap: 18px; }
+.review .jb-form { padding: 0; }
 
 /* ---- Top bar ---------------------------------------------------------- */
 .jb-top {
@@ -570,40 +660,75 @@ function submit(): void {
 .jb-room { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .jb-room b { color: var(--text); letter-spacing: 0.12em; }
 
-/* ---- Layout -------------------------------------------------------------
-   Phones read top-down — heading, the name card, the mission. Wide containers
-   put the mission beside the card. Either way the way in is pinned to the
-   bottom edge, so it never scrolls away while the kit unfolds. */
+/* ---- Hero ---------------------------------------------------------------
+   The Bridge's hero grammar: the creed and the way through the mission on
+   the left, the one thing the page needs — the name card — on the right.
+   Phones read top-down. */
 .jb-hero {
   display: grid;
-  gap: 18px;
+  gap: 24px;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: 'head' 'card' 'steps' 'acts';
+  align-items: center;
+  padding-block: clamp(20px, 4vw, 56px);
 }
-.jb-head { grid-area: head; display: flex; flex-direction: column; gap: 8px; }
-.jb-card { grid-area: card; }
-.jb-acts { grid-area: acts; }
-.jb-steps { grid-area: steps; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.jb-steps h2 { margin: 0; }
-@container jb (min-width: 760px) {
+.review .jb-hero { padding-block: 0 8px; }
+/* The card grows as the class strike and kit unfold, so both columns hang
+   from the top and the creed rides alongside it instead of floating in a
+   centred void. */
+@container jb (min-width: 900px) {
   .jb-hero {
-    grid-template-columns: minmax(0, 1.2fr) minmax(300px, 1fr);
-    grid-template-areas: 'head card' 'steps card' 'steps acts' 'steps .';
-    grid-template-rows: auto auto auto 1fr;
-    gap: 14px 36px;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
     align-items: start;
+    gap: clamp(32px, 4vw, 72px);
+    padding-block: clamp(40px, 6vw, 96px) clamp(40px, 5vw, 80px);
   }
+  .jb:not(.review) .jb-head { position: sticky; top: 32px; padding-top: 12px; }
 }
+.jb-head { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.jb-card { animation: riseIn 0.5s var(--ease-out) 0.12s both; }
+.review .jb-card { animation: none; }
 
-.jb-title { margin: 0; font-size: clamp(34px, 6vw, 60px); color: var(--text); }
-.jb-title.sm { font-size: clamp(26px, 4vw, 36px); }
+.jb-title { margin: 0; font-size: clamp(40px, 5.6vw, 84px); line-height: 0.92; color: var(--text); }
+.jb-title.sm { font-size: clamp(26px, 4vw, 36px); line-height: 0.98; }
 :slotted(.jb-drafted) {
   color: var(--gold);
   display: inline-block;
   animation: slam 0.5s var(--ease-impact) 0.25s both;
 }
-.jb-lede { margin: 0; max-width: 46ch; color: var(--khaki); font-size: clamp(14px, 1.3vw, 16px); line-height: 1.5; }
+.jb-lede { margin: 0; max-width: 36rem; color: var(--khaki); font-size: clamp(15px, 1.2vw, 18px); line-height: 1.6; animation-delay: 0.08s; }
 :slotted(b) { color: var(--text); }
+
+/* The five beats as chevrons, like the Bridge's "how it plays" run; each
+   opens its step below. */
+.jb-beats { display: flex; flex-wrap: wrap; gap: 2px; animation-delay: 0.14s; }
+.jb-beat {
+  --who: var(--khaki);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 24px 0 20px;
+  border: 0;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--who) 16%, var(--raised)), var(--raised) 70%);
+  color: var(--khaki);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--dur-fast), color var(--dur-fast);
+}
+.jb-beat[data-who='you'] { --who: var(--gold); }
+.jb-beat[data-who='host'] { --who: var(--teal); }
+.jb-beat:first-child { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%); }
+.jb-beat .disp { font-size: 11px; color: var(--text); }
+.jb-beat:hover { background: var(--gold); color: var(--on-gold); }
+.jb-beat:hover .disp { color: var(--on-gold); }
+/* Phones reach the steps a thumb-scroll below; the run would only wrap. */
+@container jb (max-width: 519px) {
+  .jb-beats { display: none; }
+}
 
 /* Callsigns read in display type wherever a diver is named. */
 .jb-callsign,
@@ -769,12 +894,16 @@ function submit(): void {
 .jb-alt > span { display: flex; flex-direction: column; gap: 3px; }
 .jb-alt-n { font-size: 14px; color: var(--text); }
 
-/* ---- Actions ------------------------------------------------------------ */
+/* ---- Actions ------------------------------------------------------------
+   Narrow screens: the way in sits last in the page and sticks to the bottom
+   edge, so it stays in reach from the name card through every mission step.
+   Wide screens: it rises in under the name, where the eye already is. */
 .jb-acts {
   position: sticky;
   bottom: 0;
   z-index: 2;
   display: flex;
+  justify-content: flex-end;
   gap: 8px;
   margin-inline: calc(-1 * var(--pad-page));
   padding: 10px var(--pad-page) calc(10px + env(safe-area-inset-bottom));
@@ -790,11 +919,38 @@ function submit(): void {
   .jb-acts-wb .disp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .jb-acts-wb { width: 52px; padding: 0; }
 }
-@container jb (min-width: 760px) {
-  .jb-acts { margin: 0; padding: 12px 0 16px; }
+.jb-acts-card { display: none; }
+@container jb (min-width: 900px) {
+  .jb:not(.review) .jb-acts { display: none; }
+  /* A narrow card wraps the pair; wrap-reverse lifts the CTA to the top line. */
+  .jb-acts-card {
+    display: flex;
+    flex-wrap: wrap-reverse;
+    gap: 8px;
+    animation: riseIn 0.5s var(--ease-out) 0.36s both;
+  }
+  .jb-acts-card .btn { gap: 10px; justify-content: center; white-space: nowrap; min-height: 56px; }
+  .jb-acts-card .jb-acts-wb { flex: 1 0 auto; padding: 0 18px; }
+  .jb-acts-card .jb-cta { flex: 999 1 260px; font-size: 18px; }
 }
 
-/* ---- The mission: five boxes, one open ---------------------------------- */
+/* ---- The mission: five boxes over one lit stage --------------------------- */
+.jb-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  padding-block: clamp(28px, 5vw, 72px) 8px;
+  border-top: 1px solid var(--line-1);
+  scroll-margin-top: 12px;
+}
+.review .jb-steps { padding-top: 20px; }
+.jb-steps-head { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; }
+.jb-steps-title { margin: 0; font-size: clamp(26px, 4cqi, 52px); line-height: 0.98; color: var(--text); }
+
+[data-who='you'] { --who: var(--gold); }
+[data-who='host'] { --who: var(--teal); }
+
 .jb-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
 .jb-tab {
   --who: var(--khaki);
@@ -802,11 +958,11 @@ function submit(): void {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
-  padding: 10px 2px 8px;
+  padding: 14px 2px 10px;
   border: 1px solid var(--line-2);
-  border-bottom: 2px solid color-mix(in srgb, var(--who) 55%, transparent);
+  border-bottom: 3px solid color-mix(in srgb, var(--who) 60%, transparent);
   background: var(--panel);
   color: var(--khaki);
   font: inherit;
@@ -815,49 +971,96 @@ function submit(): void {
 }
 .jb-tab[data-who='you'] { --who: var(--gold); }
 .jb-tab[data-who='host'] { --who: var(--teal); }
-.jb-tab:hover { color: var(--text); border-color: var(--line-4); }
-.jb-tab-n { position: absolute; top: 4px; left: 6px; font-size: 10px; font-weight: 700; color: var(--dim); }
-.jb-tab-i { width: 26px; height: 26px; }
-.jb-tab-l { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.jb-tab:hover { color: var(--text); border-color: var(--line-4); border-bottom-color: var(--who); }
+.jb-tab-n { position: absolute; top: 5px; left: 7px; font-size: 10px; font-weight: 700; color: var(--dim); }
+.jb-tab-i { width: clamp(24px, 3.2cqi, 38px); height: clamp(24px, 3.2cqi, 38px); }
+.jb-tab-l { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: clamp(11px, 1.2cqi, 14px); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+@container jb (max-width: 459px) {
+}
 .jb-tab[data-state='active'] {
   color: var(--on-gold);
   background: var(--gold);
   border-color: var(--gold);
 }
-.jb-tab[data-state='active'] .jb-tab-n { color: var(--on-gold); opacity: 0.7; }
-/* The open box points down into its panel. */
+.jb-tab[data-state='active'] .jb-tab-n,
+/* The open box points down into the stage. */
 .jb-tab[data-state='active']::after {
   content: '';
   position: absolute;
   left: 50%;
-  bottom: -9px;
-  width: 14px;
-  height: 8px;
-  margin-left: -7px;
+  bottom: -11px;
+  width: 16px;
+  height: 9px;
+  margin-left: -8px;
   background: var(--gold);
   clip-path: polygon(0 0, 100% 0, 50% 100%);
 }
 
-.jb-panel[hidden] { display: none; }
+/* Panels share one grid cell, so the outgoing step slides out over the
+   incoming one instead of stacking below it. */
+.jb-stage {
+  --from: 56px;
+  --to: -56px;
+  display: grid;
+  margin-top: 10px;
+  overflow: clip;
+}
+.jb-stage[data-dir='back'] { --from: -56px; --to: 56px; }
 .jb-panel {
   --who: var(--khaki);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 12px;
+  grid-area: 1 / 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 16px;
+  min-width: 0;
+  padding: clamp(14px, 2.2cqi, 28px);
   background: var(--panel);
   border: 1px solid var(--line-2);
   border-top: 2px solid var(--gold);
-  animation: panelDrop var(--dur-med) var(--ease-out) both;
 }
-.jb-panel[data-who='you'] { --who: var(--gold); }
-.jb-panel[data-who='host'] { --who: var(--teal); }
-@keyframes panelDrop { from { opacity: 0; transform: translateY(-6px); } }
-.jb-panel-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.jb-panel-t { font-size: 16px; color: var(--text); }
-.jb-who { font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--who); }
-.jb-panel-x { margin: 0; font-size: 14px; line-height: 1.45; color: var(--khaki); }
+.jb-panel[data-state='active'] { animation: stepIn var(--dur-slow) var(--ease-out) both; }
+.jb-panel[data-state='inactive'] { visibility: hidden; pointer-events: none; }
+.jb-panel.leaving[data-state='inactive'] { animation: stepOut var(--dur-med) ease-in both; }
+@keyframes stepIn { from { opacity: 0; transform: translateX(var(--from)); } }
+@keyframes stepOut {
+  from { visibility: visible; }
+  to { opacity: 0; transform: translateX(var(--to)); visibility: hidden; }
+}
+@container jb (min-width: 760px) {
+  .jb-panel {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    grid-template-rows: auto;
+    gap: clamp(24px, 3cqi, 48px);
+  }
+}
+
+.jb-panel-copy {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr auto;
+  align-items: end;
+  gap: 10px 14px;
+}
+.jb-panel-copy > :not(.jb-panel-n) { grid-column: 1 / -1; }
+.jb-panel-n {
+  font-size: clamp(40px, 5.6cqi, 80px);
+  line-height: 0.82;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--who);
+}
+.jb-panel-t { margin: 4px 0 0; font-size: clamp(24px, 3.4cqi, 46px); line-height: 0.98; color: var(--text); }
+.jb-panel-x { align-self: start; margin: 0; max-width: 34rem; font-size: clamp(15px, 1.4cqi, 18px); line-height: 1.55; color: var(--khaki); }
+.jb-next { justify-self: start; gap: 8px; margin-top: 4px; }
+.jb-scene { align-self: center; }
+.jb-scene-slot { height: 150px; zoom: var(--pv-zoom); }
+
+/* The scene keeps its drawn proportions and scales with the stage. */
+.jb-scene { --pv-zoom: 1.15; }
+@container jb (min-width: 520px) { .jb-scene { --pv-zoom: 1.5; } }
+@container jb (min-width: 760px) { .jb-scene { --pv-zoom: 1.4; } }
+@container jb (min-width: 1000px) { .jb-scene { --pv-zoom: 1.7; } }
+@container jb (min-width: 1240px) { .jb-scene { --pv-zoom: 2; } }
 
 .jb-foot { display: flex; justify-content: flex-end; }
 .jb-exit { color: var(--muted); }
@@ -866,7 +1069,9 @@ function submit(): void {
 
 @media (prefers-reduced-motion: reduce) {
   .jb-name-input.empty,
-  .jb-panel,
+  .jb-panel[data-state],
+  .jb-panel.leaving[data-state],
+  .jb-acts-card,
   .jb-reveal.open .jb-kit-g { animation: none; }
 }
 </style>

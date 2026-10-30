@@ -156,7 +156,6 @@ function gone(itemId: string): boolean {
   color: var(--tier);
   font-size: 34px;
   line-height: 0.8;
-  text-shadow: 0 0 18px color-mix(in srgb, var(--tier) 45%, transparent);
 }
 
 /* The art is the card, same letterboxed well as the loot draft. */

@@ -4,7 +4,7 @@ import { SEAF_SUPPORT_ANTITANK_MIN, SEAF_SUPPORT_TIER } from './config'
 import type { SupportRolls } from './config'
 import { startingItemIds, supportRollsFor } from './progression'
 import { deriveSeed, hashString, mulberry32 } from './rng'
-import { rewardPoolFor } from './selectors'
+import { catalogPoolFor } from './selectors'
 import type { TierList } from './tierList'
 import type { CrusadeSettings } from './types'
 
@@ -37,7 +37,7 @@ export function rollSupportKit(
     return []
   }
   const owned = new Set(startingItemIds(settings.variant))
-  const pool = rewardPoolFor(warbondCodes, tierList).filter(item => item.tier === SEAF_SUPPORT_TIER)
+  const pool = catalogPoolFor(warbondCodes, tierList).filter(item => item.tier === SEAF_SUPPORT_TIER)
   const base = hashString(`${diverId}:seaf`)
   const dealt: string[] = []
   KINDS.forEach(({ kind, matches }, index) => {

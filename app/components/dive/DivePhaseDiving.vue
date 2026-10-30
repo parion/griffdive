@@ -8,7 +8,7 @@ import {
   pactRiskOf,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
-import type { DiverState, DiveState, MissionOutcome, MissionReport } from '~~/shared/engine/types'
+import type { DiverState, DiveState, MissionReport } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -23,7 +23,6 @@ const emit = defineEmits<{
   fail: [playerId: string, pactId: string]
   failDirective: []
   reporting: [open: boolean]
-  spinBonus: [payload: { stars: number, outcome: MissionOutcome }]
 }>()
 
 const misfortune = computed(() => activeMisfortune(props.state))
@@ -101,7 +100,13 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
             {{ misfortune?.name ?? 'Safe dive' }}
           </h2>
           <p class="directive-rule">
-            {{ misfortune?.rule ?? 'No directive this mission.' }}
+            <ConditionRule
+              v-if="misfortune"
+              :condition="misfortune"
+            />
+            <template v-else>
+              No directive this mission.
+            </template>
           </p>
           <div class="directive-foot">
             <span
@@ -209,7 +214,6 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
     :op-length="opLength"
     @submit="submit"
     @cancel="cancelReport"
-    @spin-bonus="emit('spinBonus', $event)"
   />
 </template>
 
@@ -283,9 +287,8 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   font-size: min(clamp(32px, 3.6vw, 48px), 100cqi / var(--fit-len, 1));
   line-height: 0.95;
   color: var(--gold);
-  text-shadow: 0 0 26px rgba(255, 214, 66, 0.25);
 }
-.broken .directive-name { color: var(--red); text-decoration: line-through; text-decoration-thickness: 3px; text-shadow: none; }
+.broken .directive-name { color: var(--red); text-decoration: line-through; text-decoration-thickness: 3px; }
 .directive-rule { margin: 0; color: var(--khaki); font-size: 15px; }
 .directive-foot {
   display: flex;

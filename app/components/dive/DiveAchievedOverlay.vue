@@ -558,7 +558,6 @@ function exportCrusade(): void {
 }
 .ach-line.gold {
   color: var(--gold);
-  text-shadow: 0 0 40px rgba(255, 214, 66, 0.25);
   animation-delay: 0.5s;
 }
 

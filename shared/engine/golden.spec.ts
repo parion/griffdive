@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest'
 import { ALL_WARBOND_CODES } from '../data/catalog'
 import { STRAIN_RISK, conditionRiskAt } from './config'
 import { createDiveState, reduce } from './reducer'
-import { diverOptions, forfeitOptionsFor, pactOfferFor, rewardPoolFor } from './selectors'
+import { deriveSeed } from './rng'
+import { diverOptions, forfeitOptionsFor, pactOfferFor, honorsDue, rewardPoolFor, statsPendingPactIds } from './selectors'
 import type { DiveState } from './types'
 
 const UPDATE = process.env.GRIFFDIVE_UPDATE_GOLDENS === '1'
@@ -121,6 +122,20 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
       const diver = state.divers[0]
       if (!diver) {
         throw new Error('golden: no host diver')
+      }
+      // An honest squad attests its stats rules held at the debrief; the draft
+      // stays shut until they do.
+      for (const pactId of statsPendingPactIds(state, diver)) {
+        state = reduce(state, { type: 'HOLD_PACT', playerId: 'host', pactId })
+      }
+      state = reduce(state, { type: 'HOLD_MISFORTUNE' })
+      // Squad Honors read the same stats screen: roll the contest and name the
+      // host before anyone drafts.
+      if (honorsDue(state)) {
+        state = reduce(state, { type: 'SPIN_BONUS', seed: deriveSeed(state.wheel!.seed, 9) })
+        if (honorsDue(state)) {
+          state = reduce(state, { type: 'AWARD_BONUS', playerIds: ['host'] })
+        }
       }
       const options = diverOptions(state, diver)
       if (!firstRecorded) {

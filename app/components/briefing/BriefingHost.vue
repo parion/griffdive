@@ -44,7 +44,6 @@ function submit(): void {
     v-model:name="name"
     :review="review"
     :room-code="roomCode"
-    kicker="Host guide"
     :steps="STEPS"
     :divers="divers"
     :host-id="state.hostId"
@@ -65,7 +64,7 @@ function submit(): void {
       </template>
     </template>
     <template #lede>
-      You run the table; Griffdive keeps the rules. Everyone else swears their pacts and plays.
+      You lead a squad of Griffdivers up the difficulty ladder. Your name, diver, is all we need.
     </template>
   </BriefingLayout>
 </template>

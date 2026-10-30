@@ -3,7 +3,7 @@ withDefaults(defineProps<{
   value: number
   max?: number
   rolling?: boolean
-  tone?: 'red' | 'gold' | 'orange'
+  tone?: 'red' | 'gold' | 'orange' | 'purple'
 }>(), {
   max: 5,
   rolling: false,
@@ -49,6 +49,7 @@ withDefaults(defineProps<{
 <style scoped>
 .pips.gold { --pip: var(--gold); }
 .pips.orange { --pip: var(--orange); }
+.pips.purple { --pip: var(--purple); }
 
 /* While a draw is reeling, the pips chase back and forth instead of revealing
    the result early. Mirrored delays light 1-2-3-2-1, then the cycle repeats. */

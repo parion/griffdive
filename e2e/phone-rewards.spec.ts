@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { dismissWarbondIntro, expectJoinerLanded, lockMisfortune } from './helpers'
+import { dismissWarbondIntro, expectJoinerLanded, lockMisfortune, settleClimb } from './helpers'
 
 // Picking a reward is self-service. The phone draft once gated it on host
 // control, so every non-host diver on a phone was locked out of their own pick.
@@ -34,7 +34,8 @@ test('phone draft: a non-host diver can bank their reward', async ({ browser }) 
 
   await pageA.getByRole('button', { name: 'Extracted' }).click()
   await pageA.getByRole('button', { name: 'File report' }).click()
-
+  // The draft opens straight after the report; the stats check and honors wait
+  // for the climbs page.
   const option = pageB.locator('.phone-loot .loot-card').first()
   await expect(option).toBeEnabled()
   await option.click()
@@ -49,11 +50,11 @@ test('phone draft: a non-host diver can bank their reward', async ({ browser }) 
   await pageA.locator('.loot-card').first().click()
   await pageA.getByRole('button', { name: /^Bank / }).click()
 
-  // The squad cannot move on until the host names the Squad Honors winner.
-  const locked = pageA.getByRole('button', { name: 'Award honors first' })
-  await expect(locked).toBeDisabled()
-  await pageA.getByRole('button', { name: 'Award Squad Honors token to Duo' }).click()
-  await pageA.getByRole('button', { name: 'Award', exact: true }).click()
+  // Everyone banked: the climbs page gates the host's call on the stats check
+  // and honors, and tells the joiner what the squad is waiting on.
+  await expect(pageB.locator('.climb')).toBeVisible()
+  await settleClimb(pageB, { host: false })
+  await settleClimb(pageA)
   await expect(pageA.getByRole('button', { name: /Next mission/ })).toBeEnabled()
 
   await contextA.close()

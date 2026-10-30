@@ -43,8 +43,6 @@ const props = withDefaults(defineProps<{
   picksTotal?: number
   baseTier?: RewardTier | null
   advanceLabel?: string
-  // Squad Honors still need a winner: the host cannot move the squad on.
-  advanceLocked?: boolean
 }>(), {
   optionsLost: 0,
   squadDrafts: () => [],
@@ -70,7 +68,6 @@ const props = withDefaults(defineProps<{
   picksTotal: 0,
   baseTier: null,
   advanceLabel: 'Next mission',
-  advanceLocked: false,
 })
 const { itemById } = useTierCatalog()
 
@@ -252,7 +249,7 @@ const kickerText = computed(() => {
           v-else-if="optionsLost > 0"
           class="loot-sub red-text"
         >
-          {{ optionsLost }} option{{ optionsLost === 1 ? '' : 's' }} forfeited by broken pacts.
+          {{ optionsLost }} option{{ optionsLost === 1 ? '' : 's' }} forfeited by broken rules.
         </p>
       </div>
       <div class="head-actions">
@@ -460,12 +457,10 @@ const kickerText = computed(() => {
       <button
         v-else-if="ready && canControl"
         class="cta cut cta-sweep"
-        :class="{ 'cta-locked': advanceLocked }"
         type="button"
-        :disabled="advanceLocked"
         @click="emit('advance')"
       >
-        {{ advanceLocked ? 'Award honors first' : advanceLabel }}
+        {{ advanceLabel }}
         <svg
           width="22"
           height="14"
@@ -584,7 +579,6 @@ const kickerText = computed(() => {
   color: var(--tier);
   font-size: 40px;
   line-height: 0.8;
-  text-shadow: 0 0 20px color-mix(in srgb, var(--tier) 50%, transparent);
 }
 .loot-card:not([data-tier='C']) .tier-letter { animation: slamIn 0.45s var(--ease-impact) var(--impact, 0ms) backwards; }
 .loot-card.selected .tier-letter,

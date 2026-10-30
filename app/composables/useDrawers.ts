@@ -10,6 +10,10 @@ export type SidePanel = 'kit' | 'codex' | 'warbonds' | 'bargains'
 
 const sidePanel = ref<SidePanel | null>(null)
 const sidebarHosts = ref(0)
+// A full-screen experience can be teleported out of the sidebar. While one is
+// open, a phone tap on it must not count as a click outside the dock.
+const panelLocks = ref(0)
+const panelLocked = computed(() => panelLocks.value > 0)
 
 function panelFlag(panel: SidePanel) {
   return computed({
@@ -49,5 +53,17 @@ export function useDrawers() {
     }
   }
 
-  return { sidePanel, sidebarHosted, codexOpen, warbondsOpen, openCodex, openWarbonds, hostSidebar, releaseSidebar }
+  // Returns the matching release; a counter keeps nested/remounted hosts safe.
+  function lockPanel(): () => void {
+    panelLocks.value++
+    let held = true
+    return () => {
+      if (held) {
+        held = false
+        panelLocks.value = Math.max(0, panelLocks.value - 1)
+      }
+    }
+  }
+
+  return { sidePanel, sidebarHosted, codexOpen, warbondsOpen, panelLocked, openCodex, openWarbonds, hostSidebar, releaseSidebar, lockPanel }
 }

@@ -173,7 +173,7 @@ function lockNow(): void {
         Swear your pacts
       </h1>
       <p class="pact-sub">
-        Pacts only affect you. Break one and you lose a loot option.
+        Pacts only affect you. A broken pact costs a loot option, or Penance if only the stats screen can prove it.
       </p>
     </header>
 
@@ -188,7 +188,7 @@ function lockNow(): void {
         tone="red"
       />
       <b class="disp directive-name">{{ misfortune.name }}</b>
-      <span class="directive-rule">{{ misfortune.rule }}</span>
+      <span class="directive-rule"><ConditionRule :condition="misfortune" /></span>
       <span
         v-if="strain"
         class="strain-note"
@@ -202,6 +202,11 @@ function lockNow(): void {
       <b class="disp directive-name">Safe dive</b>
       <span class="directive-rule">No directive this mission.</span>
     </div>
+
+    <PactPenance
+      :self="self"
+      :difficulty="state.difficulty"
+    />
 
     <div
       class="hand"
@@ -318,7 +323,7 @@ function lockNow(): void {
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
 }
 .directive-strip.safe { background: var(--panel); }
-.directive-name { font-size: 18px; color: var(--gold); text-shadow: 0 0 16px rgba(255, 214, 66, 0.3); }
+.directive-name { font-size: 18px; color: var(--gold); }
 .directive-rule { color: var(--khaki); font-size: 13px; }
 .strain-note {
   color: var(--orange);

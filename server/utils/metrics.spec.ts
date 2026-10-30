@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDiveState, reduce } from '~~/shared/engine/reducer'
 import { createLobbyState, joinDiver } from '~~/shared/engine/room'
-import { diverOptions, forfeitOptionsFor, pactOfferFor } from '~~/shared/engine/selectors'
+import { diverOptions, forfeitOptionsFor, honorsDue, pactOfferFor, statsPendingPactIds } from '~~/shared/engine/selectors'
 import type { DiveState, EngineAction } from '~~/shared/engine/types'
 import { createRoomMetrics, gapBucket, routeKey, statusClass } from './metrics'
 import { PEER_SILENCE_MS } from './peer-presence'
@@ -198,6 +198,14 @@ describe('room-metrics', () => {
       samples: { common: 12, rare: 3, super: 0 },
     })
     expect(state.phase).toBe('rewards')
+    // The sworn pact may be stats-verified: attest it held to open the draft.
+    for (const pactId of statsPendingPactIds(state, state.divers[0]!)) {
+      state = apply(metrics, state, { type: 'HOLD_PACT', playerId: 'p1', pactId })
+    }
+    // Mission 1 is due for honors; a solo diver wins the roll outright.
+    if (honorsDue(state)) {
+      state = apply(metrics, state, { type: 'SPIN_BONUS', seed: 5 })
+    }
     const option = diverOptions(state, state.divers[0]!)[0]!
     state = apply(metrics, state, { type: 'PICK_REWARD', playerId: 'p1', optionId: option.optionId })
     state = apply(metrics, state, { type: 'ADVANCE' })
@@ -238,6 +246,22 @@ describe('room-metrics', () => {
     expect(text).toMatch(/griffdive_rewards_picked_total\{tier="[cbas]\+?",category="[^"]+"\} 1/)
     expect(text).toMatch(/griffdive_forfeits_total\{tier="[cbas]\+?",category="[^"]+"\} 1/)
     expect(text).toMatch(/griffdive_operation_restarts_total\{difficulty="3"\} 1/)
+  })
+
+  it('counts Armor Pack opens and the cards they deal', async () => {
+    const metrics = createRoomMetrics()
+    const started = createDiveState({ variant: 'medium' }, 'p1', 'Diver One')
+    const before: DiveState = {
+      ...started,
+      difficulty: 4,
+      divers: started.divers.map(diver => ({ ...diver, credits: 1000 })),
+    }
+    const after = apply(metrics, before, { type: 'BUY_ARMOR_PACK', playerId: 'p1' })
+    expect(after).not.toBe(before)
+
+    const text = await metrics.registry.metrics()
+    expect(text).toMatch(/griffdive_armor_packs_opened_total\{difficulty="4"\} 1/)
+    expect(text.match(/griffdive_armor_pack_pulls_total\{tier="[cbas]"\} 1/g)).toHaveLength(3)
   })
 
   it('counts refused directives, operations completed and achievements', async () => {

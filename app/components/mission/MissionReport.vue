@@ -8,13 +8,12 @@ import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import { missionHaul, optionsForDiver, timeHaulMultiplier } from '~~/shared/engine/rewards'
 import {
   bonusEligibleFor,
-  bonusFor,
   currentFront,
   missionsUntilHonors,
+  optionsLostFor,
   squadSize,
 } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionOutcome, MissionReport, SampleCounts } from '~~/shared/engine/types'
-import { HONORS_DWELL_MS } from '~/utils/motion'
 
 const props = withDefaults(defineProps<{
   state: DiveState
@@ -30,7 +29,6 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   submit: [payload: MissionReport]
   cancel: []
-  spinBonus: [payload: { stars: number, outcome: MissionOutcome }]
 }>()
 
 const maxStars = computed(() => maxStarsFor(props.state.difficulty))
@@ -69,7 +67,7 @@ const opNumber = computed(() =>
   catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
 
 const optionCount = computed(() =>
-  optionsForDiver(stars.value, props.self?.failedPactIds.length ?? 0))
+  optionsForDiver(stars.value, props.self ? optionsLostFor(props.state, props.self) : 0))
 
 const honorsEligible = computed(() =>
   props.outcome === 'success'
@@ -81,10 +79,9 @@ const honorsEligible = computed(() =>
     squadSize(props.state),
   ))
 
-const honors = computed(() => bonusFor(props.state))
 const untilHonors = computed(() =>
   missionsUntilHonors(props.state.missionIndex, squadSize(props.state)))
-// Why the reel is parked, and when it next spins: the cadence is the hard
+// Why honors are off this mission, and when they next come due: the cadence is the hard
 // limit, the full-star clear the condition on a due mission.
 const honorsReason = computed(() => {
   if (untilHonors.value > 0) {
@@ -99,47 +96,9 @@ function setTime(value: number): void {
   timePct.value = Math.min(100, Math.max(0, value))
 }
 
-// Filing a due report rolls the honors reel first: the spin goes out, the reel
-// winds down onto the seeded stat, and only then is the report filed and the
-// rewards screen brought in. The wait is presentation, the seed is the rule.
-const filing = ref(false)
-let dwellTimer: ReturnType<typeof setTimeout> | undefined
-let spinGuard: ReturnType<typeof setTimeout> | undefined
-const SPIN_GUARD_MS = 5000
-
-function file(): void {
-  clearTimeout(dwellTimer)
-  clearTimeout(spinGuard)
-  filing.value = false
+function submit(): void {
   emit('submit', report.value)
 }
-
-function submit(): void {
-  if (filing.value) {
-    return
-  }
-  if (!honorsEligible.value || honors.value) {
-    emit('submit', report.value)
-    return
-  }
-  filing.value = true
-  emit('spinBonus', { stars: stars.value, outcome: props.outcome })
-  // A refused or lost spin must not strand the squad on the form.
-  spinGuard = setTimeout(file, SPIN_GUARD_MS)
-}
-
-function reelLanded(): void {
-  if (!filing.value) {
-    return
-  }
-  clearTimeout(spinGuard)
-  dwellTimer = setTimeout(file, HONORS_DWELL_MS)
-}
-
-onBeforeUnmount(() => {
-  clearTimeout(dwellTimer)
-  clearTimeout(spinGuard)
-})
 </script>
 
 <template>
@@ -286,7 +245,7 @@ onBeforeUnmount(() => {
 
       <section
         class="honors-card"
-        :class="{ live: honorsEligible, rolling: filing }"
+        :class="{ live: honorsEligible }"
         aria-label="Squad Honors"
       >
         <div class="honors-id">
@@ -296,22 +255,11 @@ onBeforeUnmount(() => {
           >1</span>
           <span class="honors-copy">
             <span class="disp">Squad Honors</span>
-            <span class="tiny">
-              {{ !honorsEligible ? 'Not this mission' : filing ? 'Rolling the stat…' : honors ? 'Stat drawn' : 'The stat rolls when you file' }}
-            </span>
+            <span class="tiny">{{ honorsEligible ? 'Due this mission' : 'Not this mission' }}</span>
           </span>
         </div>
-
-        <HonorsReel
-          v-if="honorsEligible"
-          :stat="honors"
-          @landed="reelLanded"
-        />
-        <p
-          v-else
-          class="honors-off"
-        >
-          {{ honorsReason }}
+        <p class="honors-off">
+          {{ honorsEligible ? 'The stat rolls at the debrief, once the report is filed.' : honorsReason }}
         </p>
       </section>
     </template>
@@ -339,7 +287,6 @@ onBeforeUnmount(() => {
       <button
         class="back"
         type="button"
-        :disabled="filing"
         @click="emit('cancel')"
       >
         Back to the field
@@ -347,7 +294,6 @@ onBeforeUnmount(() => {
       <button
         class="cta cut cta-sweep"
         type="button"
-        :disabled="filing"
         @click="submit"
       >
         {{ outcome === 'success' ? 'File report' : 'File failure' }}
@@ -370,7 +316,6 @@ onBeforeUnmount(() => {
         <button
           class="bar-alt"
           type="button"
-          :disabled="filing"
           @click="emit('cancel')"
         >
           Back
@@ -380,7 +325,6 @@ onBeforeUnmount(() => {
         <button
           class="bar-cta cta-sweep"
           type="button"
-          :disabled="filing"
           @click="submit"
         >
           <span class="disp">{{ outcome === 'success' ? 'File report' : 'File failure' }}</span>
@@ -476,7 +420,7 @@ onBeforeUnmount(() => {
   color: var(--khaki);
   font-size: 14px;
 }
-.stars-foot b { color: var(--gold); font-size: 34px; line-height: 1; text-shadow: 0 0 18px rgba(255, 214, 66, 0.45); }
+.stars-foot b { color: var(--gold); font-size: 34px; line-height: 1; }
 
 .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .tiny { color: var(--dim); font-size: 11px; letter-spacing: 0.04em; }
@@ -547,7 +491,6 @@ onBeforeUnmount(() => {
   gap: 8px;
   color: var(--gold);
   font-size: 32px;
-  text-shadow: 0 0 18px rgba(255, 214, 66, 0.45);
 }
 .haul-value :deep(.credit-mark) { width: 24px; height: 24px; }
 
@@ -570,7 +513,6 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 .honors-card.live::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, var(--line-3)); }
-.honors-card.rolling::after { box-shadow: inset 0 0 0 1px var(--gold), inset 0 0 22px rgba(255, 214, 66, 0.2); }
 .honors-id { display: flex; align-items: center; gap: 12px; padding: 14px 0 14px 20px; }
 .honors-hex {
   display: grid;

@@ -3,7 +3,7 @@ import { ITEMS_BY_ID, WARBONDS } from '../data/catalog'
 import { MAX_DIFFICULTY, MIN_DIFFICULTY, STRAIN_RISK, missionsPerOperation, conditionRiskAt, directiveValorAt, directiveWeightFor } from './config'
 import { itemPrice, oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { actingDiverIds, activeMisfortune, activeStrain, armoryRules, awaitingDiverIds, bargainLamp, bargainsClosedReason, bargainShelfFor, bargainSlotKinds, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, majorOrderPlanetsForFront, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, missionsUntilHonors, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
+import { actingDiverIds, activeMisfortune, activeStrain, armorPackFor, armorPackItemsFor, armorPackOfferFor, armoryRules, awaitingDiverIds, bargainLamp, bargainsClosedReason, bargainShelfFor, bargainSlotKinds, canBuyArmorPack, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, majorOrderPlanetsForFront, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, missionsUntilHonors, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
 import { isPactSelectable, rollPactOffer } from './pacts'
 import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -180,9 +180,9 @@ describe('maxValorFor (meter scale)', () => {
 })
 
 describe('rewardPoolFor', () => {
-  it('offers armor passives', () => {
+  it('never offers armor passives — they are Brasch exclusives', () => {
     const pool = rewardPoolFor(WARBONDS.map(warbond => warbond.code))
-    expect(pool.some(item => item.category === 'armorPassive')).toBe(true)
+    expect(pool.some(item => item.category === 'armorPassive')).toBe(false)
   })
 
   it('still filters by owned warbonds', () => {
@@ -228,9 +228,9 @@ describe('bargainShelfFor / canBuyItem (Brasch\'s Bargains)', () => {
   const started = (seed = 1234): DiveState => createDiveState({ variant: 'medium' }, 'host', 'Griffin', undefined, seed)
 
   it('adds a stratagem slot per star past the third', () => {
-    expect(bargainSlotKinds(3)).toEqual(['primary', 'secondary', 'throwable', 'armorPassive'])
-    expect(bargainSlotKinds(5)).toEqual(['primary', 'secondary', 'throwable', 'armorPassive', 'stratagem'])
-    expect(bargainSlotKinds(7)).toEqual(['primary', 'secondary', 'throwable', 'armorPassive', 'stratagem', 'stratagem'])
+    expect(bargainSlotKinds(3)).toEqual(['primary', 'secondary', 'throwable'])
+    expect(bargainSlotKinds(5)).toEqual(['primary', 'secondary', 'throwable', 'stratagem'])
+    expect(bargainSlotKinds(7)).toEqual(['primary', 'secondary', 'throwable', 'stratagem', 'stratagem'])
   })
 
   it('deals a deterministic shelf at the crusade start, skipping the starting kit', () => {
@@ -278,8 +278,65 @@ describe('bargainShelfFor / canBuyItem (Brasch\'s Bargains)', () => {
     expect(canBuyItem(state, { ...diver, credits: price - 1 }, item.id)).toEqual({ allowed: false, reason: 'Not enough credits' })
     expect(canBuyItem(state, { ...diver, credits: price }, 'definitely-not-stocked').allowed).toBe(false)
     const bought = { ...diver, credits: 100_000, bargain: { ...diver.bargain!, boughtItemId: item.id } }
-    expect(bargainShelfFor(state, bought).map(slot => slot.status)).toEqual(['bought', 'locked', 'locked', 'locked'])
+    expect(bargainShelfFor(state, bought).map(slot => slot.status)).toEqual(['bought', 'locked', 'locked'])
     expect(canBuyItem(state, bought, item.id).allowed).toBe(false)
+  })
+})
+
+describe('Brasch\'s Armor Pack (side stock)', () => {
+  const host = (state: DiveState): DiverState => state.divers.find(diver => diver.id === 'host')!
+  const opened = (difficulty = 4): DiveState => ({
+    ...createDiveState({ variant: 'medium' }, 'host', 'Griffin', undefined, 1234),
+    difficulty,
+  })
+
+  it('reads its price, guaranteed floor and live S chance off the operation band', () => {
+    const low = opened(4)
+    const lowOffer = armorPackOfferFor(low, { ...host(low), credits: 100_000 })
+    expect(lowOffer).toMatchObject({ price: 160, size: 3, hitFloor: 'b', sChance: 0.01 })
+
+    const high = opened(10)
+    const highOffer = armorPackOfferFor(high, { ...host(high), credits: 100_000 })
+    expect(highOffer).toMatchObject({ price: 360, size: 3, hitFloor: 'a', sChance: 0.08 })
+
+    // A pool of only S passives is a guaranteed S pack (and still one S).
+    const onlyS = [...ITEMS_BY_ID.values()].filter(item => item.category === 'armorPassive' && item.tier === 's')
+    const stripped = {
+      ...high,
+      personalInventories: {
+        ...high.personalInventories,
+        host: [...ITEMS_BY_ID.values()]
+          .filter(item => item.category === 'armorPassive' && item.tier !== 's')
+          .map(item => item.id),
+      },
+    }
+    const thin = armorPackOfferFor(stripped, host(stripped))
+    expect(thin.available).toBe(onlyS.length)
+    expect(thin.sChance).toBe(1)
+  })
+
+  it('is a separate purchase from the shelf', () => {
+    const state = opened()
+    const diver = { ...host(state), credits: 100_000 }
+    const shelfItem = bargainShelfFor(state, diver)[0]!.item!
+    const shopped = { ...diver, bargain: { ...diver.bargain!, boughtItemId: shelfItem.id } }
+    expect(canBuyArmorPack(state, shopped)).toEqual({ allowed: true, reason: null })
+  })
+
+  it('refuses early, in the field, broke, or after this operation\'s pack', () => {
+    const state = opened()
+    const diver = { ...host(state), credits: 100_000 }
+    expect(canBuyArmorPack({ ...state, difficulty: 3 }, diver)).toEqual({ allowed: false, reason: 'Opens after your first operation' })
+    expect(canBuyArmorPack({ ...state, phase: 'diving' }, diver)).toEqual({ allowed: false, reason: 'Closed during the mission' })
+    expect(canBuyArmorPack(state, { ...diver, credits: 159 })).toEqual({ allowed: false, reason: 'Not enough credits' })
+    const openedPack = {
+      ...diver,
+      bargain: { ...diver.bargain!, pack: { seed: 1, itemIds: ['extrapadding'] } },
+    }
+    expect(canBuyArmorPack(state, openedPack)).toEqual({ allowed: false, reason: 'Already opened a pack this operation' })
+    expect(armorPackFor(openedPack)?.itemIds).toEqual(['extrapadding'])
+    expect(armorPackItemsFor(state, openedPack).map(item => item.id)).toEqual(['extrapadding'])
+    expect(armorPackFor(diver)).toBeNull()
   })
 })
 
@@ -321,6 +378,7 @@ describe('misfortuneStrandedDivers', () => {
       pactsLocked: false,
       pactIds: [],
       failedPactIds: [],
+      heldPactIds: [], brokenPactIds: [], penance: null,
       pickedOptionId: null,
       warbondCodes: [],
       catchUpGranted: 0,
