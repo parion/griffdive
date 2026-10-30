@@ -1,12 +1,13 @@
 import { ALL_ITEMS, ITEMS_BY_ID, TIER_RANK } from '../data/catalog'
+import { TIER_SLOTS } from '../data/tierSlots'
 import type { Item, Tier } from '../data/types'
 import { TIER_LIST_NAME_MAX } from './config'
 import type { DiveState } from './types'
 
-// A custom tier list: the host's re-tiering of the catalog, frozen into the
-// crusade at launch. Sparse — only items moved off their community default are
-// stored — so a list stays small in every snapshot, and an item added to the
-// catalog later simply keeps its default tier.
+// A tier list: a whole re-tiering of the catalog, standing on its own — every
+// item it rates is stored, whatever the default tiers say. The host's list is
+// frozen into the crusade at launch. An item the list never rated (one added
+// to the catalog after it was made) plays at its catalog tier until rated.
 export interface TierList {
   name: string
   tiers: Record<string, Tier>
@@ -35,8 +36,8 @@ export function cleanTierListName(name: unknown): string {
 }
 
 // The only door into the engine for a list: unknown ids and non-tiers are
-// dropped, and an override equal to the default is no override at all. A list
-// that changes nothing is no list — the crusade plays the community default.
+// dropped. A list that rates nothing is no list — the crusade plays the
+// default tiers.
 export function normalizeTierList(raw: unknown): TierList | null {
   if (!raw || typeof raw !== 'object') {
     return null
@@ -47,8 +48,7 @@ export function normalizeTierList(raw: unknown): TierList | null {
   }
   const clean: Record<string, Tier> = {}
   for (const [id, tier] of Object.entries(tiers)) {
-    const item = ITEMS_BY_ID.get(id)
-    if (item && isTier(tier) && tier !== item.tier) {
+    if (ITEMS_BY_ID.has(id) && isTier(tier)) {
       clean[id] = tier
     }
   }
@@ -56,6 +56,22 @@ export function normalizeTierList(raw: unknown): TierList | null {
     return null
   }
   return { name: cleanTierListName(name), tiers: clean }
+}
+
+// The default tiers written out as a list of their own: where a new list
+// starts. A copy, not a parent — editing it never refers back.
+export function defaultTierList(name: string): TierList {
+  return { name: cleanTierListName(name), tiers: Object.fromEntries(ALL_ITEMS.map(item => [item.id, item.tier])) }
+}
+
+export function tierListFromGroups(name: string, groups: Readonly<Partial<Record<Tier, readonly string[]>>>): TierList | null {
+  const tiers: Record<string, string> = {}
+  for (const tier of TIERS) {
+    for (const id of groups[tier] ?? []) {
+      tiers[id] = tier
+    }
+  }
+  return normalizeTierList({ name, tiers })
 }
 
 export function tierListOf(state: Pick<DiveState, 'tierList'>): TierList | null {
@@ -87,13 +103,12 @@ export function tieredItem(id: string, list: TierList | null | undefined): Item 
   return tieredCatalog(list).byId.get(id)
 }
 
-export function tierListChangeCount(list: TierList | null | undefined): number {
-  return list ? Object.keys(list.tiers).length : 0
+export function isUnrated(item: Item, list: TierList | null | undefined): boolean {
+  return !!list && list.tiers[item.id] === undefined
 }
 
-export function isRetiered(item: Item, list: TierList | null | undefined): boolean {
-  const tier = list?.tiers[item.id]
-  return tier !== undefined && tier !== ITEMS_BY_ID.get(item.id)?.tier
+export function unratedItems(list: TierList | null | undefined): Item[] {
+  return list ? ALL_ITEMS.filter(item => list.tiers[item.id] === undefined) : []
 }
 
 export function tierCounts(list: TierList | null | undefined): Record<Tier, number> {
@@ -104,51 +119,114 @@ export function tierCounts(list: TierList | null | undefined): Record<Tier, numb
   return counts
 }
 
-// Share codes carry a list between browsers with no server: plain text, safe
-// in a URL fragment once percent-encoded, and keyed by item id so a code
-// outlives catalog refreshes (an id the catalog no longer knows is dropped).
-const SHARE_PREFIX = 'GD1'
+// Share codes carry a whole list in a link with no server. Each item is
+// addressed by its permanent slot (shared/data/tierSlots.ts) and takes one of
+// five values (unrated, C, B, A, S); two slots share one base64url letter, so
+// any list — however different from the default — is about 125 letters plus
+// its name: `GD2.<slots>.<name>`. A slot this build doesn't know (a code from
+// a newer catalog) is skipped; a slot past the code's end is unrated.
+const SHARE_PREFIX = 'GD2.'
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'
+const SLOT_VALUES: readonly (Tier | null)[] = [null, 'c', 'b', 'a', 's']
+const SLOT_VALUE = new Map(SLOT_VALUES.map((tier, value) => [tier, value]))
 
 export function encodeTierList(list: TierList): string {
-  const groups = TIERS
-    .map(tier => [tier, Object.keys(list.tiers).filter(id => list.tiers[id] === tier).sort()] as const)
-    .filter(([, ids]) => ids.length > 0)
-    .map(([tier, ids]) => `${tier}=${ids.join(',')}`)
-  return `${SHARE_PREFIX}:${encodeURIComponent(list.name)}:${groups.join(';')}`
+  const values = TIER_SLOTS.map(id => SLOT_VALUE.get(list.tiers[id] ?? null) ?? 0)
+  let slots = ''
+  for (let i = 0; i < values.length; i += 2) {
+    slots += ALPHABET[values[i]! * SLOT_VALUES.length + (values[i + 1] ?? 0)]
+  }
+  return `${SHARE_PREFIX}${slots}.${encodeURIComponent(list.name)}`
 }
 
-export function decodeTierList(raw: string): TierList | null {
-  let text = raw.trim()
-  if (!text.includes(`${SHARE_PREFIX}:`)) {
-    try {
-      text = decodeURIComponent(text)
-    }
-    catch {
-      return null
-    }
-  }
-  const start = text.indexOf(`${SHARE_PREFIX}:`)
+function decodeShareCode(text: string): TierList | null {
+  const start = text.indexOf(SHARE_PREFIX)
   if (start < 0) {
     return null
   }
-  const [, encodedName = '', body = ''] = text.slice(start).split(/\s/)[0]!.split(':')
+  const code = text.slice(start + SHARE_PREFIX.length).split(/\s/)[0]!
+  const dot = code.indexOf('.')
+  const slots = dot < 0 ? code : code.slice(0, dot)
+  const encodedName = dot < 0 ? '' : code.slice(dot + 1)
   let name: string
   try {
     name = decodeURIComponent(encodedName)
   }
   catch {
-    return null
+    name = encodedName
   }
-  const tiers: Record<string, string> = {}
-  for (const group of body.split(';')) {
-    const [tier, ids = ''] = group.split('=')
-    for (const id of ids.split(',')) {
-      if (id) {
-        tiers[id] = tier ?? ''
-      }
+  const tiers: Record<string, Tier> = {}
+  for (let i = 0; i < slots.length; i++) {
+    const pair = ALPHABET.indexOf(slots[i]!)
+    if (pair < 0 || pair >= SLOT_VALUES.length ** 2) {
+      return null
     }
+    const values = [Math.floor(pair / SLOT_VALUES.length), pair % SLOT_VALUES.length]
+    values.forEach((value, offset) => {
+      const id = TIER_SLOTS[i * 2 + offset]
+      const tier = SLOT_VALUES[value]
+      if (id && tier) {
+        tiers[id] = tier
+      }
+    })
   }
   return normalizeTierList({ name, tiers })
+}
+
+// The file format: readable and hand-editable — move an id from one tier's
+// array to another. Ids are listed in catalog order within each tier.
+const JSON_FORMAT = 'griffdive-tier-list'
+
+export function tierListToJson(list: TierList): string {
+  const groups = Object.fromEntries(TIERS.map(tier => [
+    tier,
+    ALL_ITEMS.filter(item => list.tiers[item.id] === tier).map(item => item.id),
+  ]))
+  return `${JSON.stringify({ format: JSON_FORMAT, version: 1, name: list.name, tiers: groups }, null, 2)}\n`
+}
+
+function decodeJson(text: string): TierList | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  }
+  catch {
+    return null
+  }
+  if (!parsed || typeof parsed !== 'object') {
+    return null
+  }
+  const { name, tiers } = parsed as { name?: unknown, tiers?: unknown }
+  if (!tiers || typeof tiers !== 'object') {
+    return null
+  }
+  const entries = Object.entries(tiers)
+  // Grouped by tier (the export) or keyed by item id (the stored shape).
+  if (entries.every(([key, value]) => isTier(key) && Array.isArray(value))) {
+    const groups = Object.fromEntries(entries.map(([tier, ids]) =>
+      [tier, (ids as unknown[]).filter((id): id is string => typeof id === 'string')]))
+    return tierListFromGroups(typeof name === 'string' ? name : '', groups)
+  }
+  return normalizeTierList({ name, tiers })
+}
+
+// Import takes whatever a diver pastes: a share link, a bare code, or the
+// JSON export.
+export function parseTierList(raw: string): TierList | null {
+  const text = raw.trim()
+  if (text.startsWith('{')) {
+    return decodeJson(text)
+  }
+  if (text.includes(SHARE_PREFIX)) {
+    return decodeShareCode(text)
+  }
+  try {
+    const decoded = decodeURIComponent(text)
+    return decoded.includes(SHARE_PREFIX) ? decodeShareCode(decoded) : null
+  }
+  catch {
+    return null
+  }
 }
 
 export interface TierMove {
@@ -157,23 +235,30 @@ export interface TierMove {
   to: Tier
 }
 
-// What a list changes, best destination first: the squad reads a list as
-// "what got better, what got worse", not as 241 rows.
+// Where a list parts ways with the default tiers, best destination first: a
+// comparison for divers who know the default by heart, not the list itself.
 export function tierListMoves(list: TierList | null | undefined): TierMove[] {
   if (!list) {
     return []
   }
   return ALL_ITEMS
-    .flatMap(item => (list.tiers[item.id] ? [{ item, from: item.tier, to: list.tiers[item.id]! }] : []))
+    .flatMap((item) => {
+      const to = list.tiers[item.id]
+      return to && to !== item.tier ? [{ item, from: item.tier, to }] : []
+    })
     .sort((a, b) =>
       TIER_RANK[b.to] - TIER_RANK[a.to]
       || TIER_RANK[b.from] - TIER_RANK[a.from]
       || a.item.displayName.localeCompare(b.item.displayName))
 }
 
+function canonical(list: TierList): string {
+  return `${list.name}\n${Object.keys(list.tiers).sort().map(id => `${id}=${list.tiers[id]}`).join(',')}`
+}
+
 export function sameTierList(a: TierList | null | undefined, b: TierList | null | undefined): boolean {
   if (!a || !b) {
     return !a && !b
   }
-  return encodeTierList(a) === encodeTierList(b)
+  return canonical(a) === canonical(b)
 }

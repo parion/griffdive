@@ -15,15 +15,16 @@ online dive:
 - Save slots and personal session mirrors (crusade state, inventories, names).
 - Recent room codes (the 12 most recent, forgotten after 30 days), and the seat id for each room you have joined (so a refresh keeps your seat).
 - Your diver name, your warbond declarations, the tier lists you make or import in the Tier Maker
-  (and which one your next crusade uses), and "you have seen the intro" flags. A tier list leaves
-  the browser only if you host with it or copy its share link yourself.
+  (and which one your next crusade uses), the Tier Maker's display settings (names on or off, tile
+  size), and "you have seen the intro" flags. A tier list leaves the browser only if you host with
+  it or share its link, JSON or file yourself.
 
 Clearing site data in your browser deletes all of it.
 
 **On the server** — only when you create or join a dive, and only what the dive needs:
 
 - The room code, the seated divers' names (as typed, at most 32 characters), their inventories, the
-  host's custom tier list if they chose one (its name and the items it moves), and the crusade's
+  host's custom tier list if they chose one (its name and the tier it gives each item), and the crusade's
   progress and audit log.
 - When the room was created and last active. These timestamps drive idle-room cleanup and the
   aggregate session-length metric; they are never attached to a name, seat id or room code in

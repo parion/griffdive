@@ -1,6 +1,6 @@
 import { TIER_LIST_PRESETS } from '~~/shared/data/tierLists'
 import { TIER_LIST_LIBRARY_MAX } from '~~/shared/engine/config'
-import { normalizeTierList } from '~~/shared/engine/tierList'
+import { normalizeTierList, tierListFromGroups } from '~~/shared/engine/tierList'
 import type { TierList } from '~~/shared/engine/tierList'
 
 const STORAGE_KEY = 'griffdive:tier-lists:v1'
@@ -85,7 +85,7 @@ export function useTierLists() {
       name: preset.name,
       source: 'preset' as const,
       blurb: preset.blurb,
-      list: normalizeTierList({ name: preset.name, tiers: preset.tiers }),
+      list: tierListFromGroups(preset.name, preset.tiers),
     })),
     ...lists.value.map(entry => ({
       id: entry.id,
@@ -109,14 +109,9 @@ export function useTierLists() {
     return lists.value.find(entry => entry.id === id) ?? null
   }
 
-  // Saving a list that changes nothing removes it: it would play exactly like
-  // the community default.
   function save(list: TierList, id?: string): SavedTierList | null {
     const clean = normalizeTierList(list)
     if (!clean) {
-      if (id) {
-        remove(id)
-      }
       return null
     }
     const existing = id ? find(id) : null

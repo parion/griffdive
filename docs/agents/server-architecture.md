@@ -15,7 +15,7 @@ app/
   pages/           index (Bridge home — new crusade / host / join / continue), dive/[id] (solo +
                    room flow — thin orchestrator: session driver + action handlers; the
                    lit-stage shell and per-phase UI live in components/dive/), codex,
-                   tiers (the Tier Maker: browser-local tier-list library + share links),
+                   tiers (the Tier Maker: browser-local tier-list library + share links/JSON),
                    kit (hidden, unlinked foundations route — see Destroyer Terminal design language)
   components/      one folder per domain; the folder path is the component-name prefix
                    (Nuxt's default naming — `kit/KitPanel.vue` registers `KitPanel`,
@@ -131,7 +131,7 @@ deploy/fider/      separate Fly app + Postgres for the public board (see Deploym
 shared/
   engine/          config.ts, types.ts, reducer.ts, rng.ts, wheel.ts, pacts.ts,
                    rewards.ts, progression.ts, selectors.ts, saves.ts, room.ts,
-                   tierList.ts (custom tier lists: normalize, resolve, share codes)
+                   tierList.ts (custom tier lists: normalize, resolve, share codes, JSON)
   types/           save.ts (SaveDoc + SessionSave + SAVE_EPOCH + SAVE_SCHEMA_VERSION), messages.ts (WS contracts,
                    host-only action list)
   utils/           room-code.ts (room-code alphabet + validator), changelog.ts (pure GitHub
@@ -139,7 +139,7 @@ shared/
   data/            items (equipment.ts, stratagems.ts), warbonds.ts, fronts.ts,
                    conditions.ts (the unified team + personal condition catalogue;
                    misfortunes.ts / pacts.ts are its scope views), strains.ts,
-                   catalog.ts (aggregation + CATALOG_VERSION), tierLists.ts (featured tier lists),
+                   catalog.ts (aggregation + CATALOG_VERSION), tierLists.ts (featured tier lists), tierSlots.ts (append-only share-code slots),
                    ordering.ts (kit presentation order: stratagem role → tier → name),
                    images.ts (imageURL filename → /images/<dir> URL resolver,
                    difficultyImageUrl for the 1–10 difficulty emblems)

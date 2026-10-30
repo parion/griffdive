@@ -554,11 +554,15 @@ option roll:   each option rolls a d100 face on the odds line. Zone width is
 
 ### Custom tier lists
 
-Every item carries a community default tier (`Item.tier`, see `data-catalog.md`). The host may
-replace it for one crusade with a **custom tier list** (`TierList` in `shared/engine/tierList.ts`):
-a name plus a **sparse** map of item id → tier for the items it moves. Items the list does not name,
-including items added to the catalog later, keep their default. Only C/B/A/S exist. Upstream's D
-tier has no equivalent, and anything imported as D is dropped rather than guessed.
+Every item carries a default tier (`Item.tier`, see `data-catalog.md`). The host may replace the
+default tiers for one crusade with a **custom tier list** (`TierList` in
+`shared/engine/tierList.ts`): a name plus a **complete** map of item id → tier. A list stands on its
+own: it stores every rating, including ones that happen to match the default, and is never stored
+or shared as edits to the default tiers. A new list in the Tier Maker starts as a *copy* of the
+default tiers (`defaultTierList`) or of a featured list. An item the list never rated (one added to
+the catalog after the list was made) is **unrated**: it plays at its catalog tier, and the Tier
+Maker flags it New until the author places it (`isUnrated`, `unratedItems`). Only C/B/A/S exist.
+Upstream's D tier has no equivalent, and anything imported as D is dropped rather than guessed.
 
 - **Where it lives:** `DiveState.tierList` (optional; absent or `null` = the default list). The host
   sets it in the lobby with the host-only `SET_TIER_LIST` action, so the whole squad reads it before
@@ -566,8 +570,8 @@ tier has no equivalent, and anything imported as D is dropped rather than guesse
   crusade**. Solo crusades pass it to `createDiveState`, which applies the same action before
   `START_DIVE`, so the action log records it either way.
 - **One door in:** `normalizeTierList` is applied to every list the engine stores. It drops unknown
-  ids, non-tiers and overrides equal to the default, caps the name at `TIER_LIST_NAME_MAX`, and
-  turns a list that moves nothing into `null`. `forkCrusade` re-normalizes the list when a save
+  ids and non-tiers, caps the name at `TIER_LIST_NAME_MAX`, and turns a list that rates nothing
+  into `null`. `forkCrusade` re-normalizes the list when a save
   becomes a new session.
 - **One resolver:** `tieredCatalog(list)` returns the catalog with the list's tiers applied (cached
   per list object), and `tieredItem(id, list)` looks up one item. Every rule that reads a tier goes
@@ -583,10 +587,20 @@ tier has no equivalent, and anything imported as D is dropped rather than guesse
   in a tier, never the chance of rolling that tier.
 - **No mechanical bonus or penalty.** A custom list is shown as a tag on the lobby, the Armory and
   save cards ("Tiers · *name*"); it does not touch Valor, honors or tokens.
-- **Sharing:** `encodeTierList` / `decodeTierList` write and read share codes. The format is
-  `GD1:<percent-encoded name>:s=id,id;a=id;…`, keyed by item id so a code survives catalog
-  refreshes. A code also travels percent-encoded as `/tiers#<code>`. Featured lists ship in
-  `shared/data/tierLists.ts` (`TIER_LIST_PRESETS`).
+- **Sharing:** `parseTierList` reads anything a diver pastes — a link, a bare code or JSON.
+  - **Share codes** (`encodeTierList`): `GD2.<slots>.<percent-encoded name>`, travelling as
+    `/tiers#<code>`. Items are addressed by their permanent slot in `shared/data/tierSlots.ts`
+    (`TIER_SLOTS`). Each slot holds one of five values (unrated, C, B, A, S) and two slots share
+    one base64url letter, so any list — however far from the default — is about 125 letters plus
+    its name. `TIER_SLOTS` is **append-only**: never reorder or remove an id, or every code already
+    shared reads wrong. A slot the build doesn't know (a code from a newer catalog) is skipped; a
+    slot past the code's end is unrated; a retired item keeps its slot and decodes to nothing.
+  - **JSON files** (`tierListToJson`): `{ format: 'griffdive-tier-list', version: 1, name, tiers:
+    { s: [ids], a: […], b: […], c: […] } }`, readable and hand-editable. Import also accepts the
+    stored id → tier shape.
+- **Featured lists** ship in `shared/data/tierLists.ts` (`TIER_LIST_PRESETS`). Each is written out
+  tier by tier as id arrays, never computed from the default tiers, so a catalog refresh can't
+  quietly change one.
 
 ### Brasch's Bargains — credits
 

@@ -255,11 +255,13 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
   The tier list is the one setup choice that syncs before launch, because it changes what everyone
   can roll. Diver names are all caps.
 - **Tier list** is the last setup block (`TierListPicker`, a Reka `RadioGroup` of cards: the
-  default, featured lists and the browser's own, each with its "N moved" count). Under it sit the
-  picked list's tag and a **Tier Maker ↗** link. The link opens in a new tab so the host keeps their
-  seat, and the library listens for `storage` events so a list saved there appears here.
+  default tiers, featured lists and the browser's own, each with its per-tier counts). Under it sit
+  the picked list's tag and a **Tier Maker ↗** link. The link opens in a new tab so the host keeps
+  their seat (from a lobby it carries `?lobby=1`), and the library listens for `storage` events so a
+  list saved or picked there reaches the lobby, which syncs it to the squad.
   `TierListTag` is the one chip for a run's list ("Tiers · *name*", gold). Pressing it opens
-  `TierListChanges`, an `AppDialog` of the list's moves grouped by destination tier (from → to).
+  `TierListView`, an `AppDialog` with Reka `Tabs`: **Whole list** (every item, tier by tier) and
+  **Vs default** (where the list parts ways with the default tiers, from → to).
   The same tag marks save cards on the Bridge record, and the Armory's count line names the squad's
   list.
 - **Risk never shows as a Valor number.** Each plan and mode carries its per-mission risk as
@@ -456,12 +458,17 @@ A drag-and-drop tier board in the tiermaker mould, built for a phone first.
 - **Rows:** one per tier. The label is a solid block of the tier colour, cut like a panel, with the
   letter in the display face plus a one-word gloss (Top shelf / Strong / Solid / Surplus) and a
   count. The label's inner block is sticky, so a tall row keeps its letter in view.
-- **Tiles (`TierListTile`):** square art over a category-tinted well with a tier-coloured foot.
-  Names show as a caption once a tile is at least 70px. A moved item carries a gold corner notch.
-- **Order within a row:** the Kit's section order (weapons, armor, boosters, stratagems by role),
-  then name. Lists store tiers, not positions, so a drop sets the tier and never reorders.
-- **Layout:** tile size and label width scale with the board's container (`clamp(…cqi…)`), so the
-  board fits any width or orientation without sideways scroll.
+- **Tiles (`TierListTile`):** square art over a category-tinted well with a tier-coloured foot,
+  and the item's name in a two-line strip beneath when names are on. An item moved since the last
+  save carries a gold corner notch; one the list hasn't rated yet wears a gold outline and a **New**
+  flag.
+- **Order within a row:** `TIER_MAKER_SECTIONS` (`utils/kit.ts`): weapons, then stratagems by role,
+  with armor passives and boosters last; then name. Lists store tiers, not positions, so a drop
+  sets the tier and never reorders.
+- **Layout:** each row is a grid of `repeat(auto-fill, minmax(--tile, 1fr))`, so tiles stretch to
+  fill the line. The minimum tile size and label width scale with the board's container
+  (`clamp(…cqi…)`) and with the diver's size choice (`.size-s/m/l`), so the board fits any width or
+  orientation without sideways scroll.
 
 **Moving items**
 - **Drag (`useTierDrag`):** pointer events only, with no drag library. A mouse lifts after 5px; touch
@@ -472,9 +479,9 @@ A drag-and-drop tier board in the tiermaker mould, built for a phone first.
   a tier badge. The row under it lights up. The tile it came from greys out. Escape cancels.
 - **Keyboard:** the board is one tab stop with roving focus. Arrows walk the wrapped grid (up and
   down by geometry). `S/A/B/C` or `1–4` move the focused item, `Shift+↑/↓` steps it a tier, and `D`
-  returns it to its default.
-- **Click or tap:** selects the item for **`TierListInspector`**: its art, name, category, default
-  tier and four big S/A/B/C buttons (a Reka `RadioGroup`).
+  undoes it back to its tier at the last save.
+- **Click or tap:** selects the item for **`TierListInspector`**: its art, name, category, saved vs
+  current tier (or "not rated yet") and four big S/A/B/C buttons (a Reka `RadioGroup`).
 - **Announcements:** every move is announced in a polite live region.
 
 **Flair** (presentation only; reduced motion collapses it)
@@ -485,17 +492,25 @@ A drag-and-drop tier board in the tiermaker mould, built for a phone first.
 - The S label catches a slow glint every few seconds.
 
 **Shell**
-- **Header:** the list name is an inline display-face input, with per-tier counts and an "N moved"
-  link that opens `TierListChanges`.
-- **Filter strip:** sticky under the ship header, with category chips (Reka `RadioGroup`; they
-  scroll sideways on phones) and a search box that dims non-matches rather than hiding them, so the
-  board never jumps.
+- **Header:** the list name is an inline display-face input, with per-tier counts, an "N new" chip
+  when items are unrated, and an **Overview** link that opens `TierListView`.
+- **Filter strip:** sticky under the ship header. The first line is category chips (Reka
+  `RadioGroup`, in `TIER_MAKER_SECTIONS` order; they scroll sideways on phones). The second line is
+  the search box, which dims non-matches rather than hiding them so the board never jumps, and two
+  36px display controls: an **Aa** names toggle (Reka `Toggle`) and a three-step tile-size group
+  (Reka `RadioGroup` of growing squares). Both are kept in `localStorage`
+  (`griffdive:tier-maker-view`).
 - **Under 1100px:** a blurred action bar is pinned to the bottom edge with **List ▾ / Share /
   Save**. List opens `TierListDesk` in a dialog. Selecting a tile turns the bar into the inspector,
   which goes single-row on wide bars and landscape phones.
 - **From 1100px:** the desk and the inspector dock in a sticky column beside the board.
+- **Desk (`TierListDesk`):** "On the board" (start a new list from the default tiers or a featured
+  list, or open one of yours), Save, then the launch action once saved: **Host a crusade with this
+  list** picks it and opens a fresh online lobby; opened from a lobby (`?lobby=1`) it is **Use in
+  my lobby**, which only picks it, and the lobby's tab syncs it. Share holds **Copy link**,
+  **Import**, **Save as file** and **Copy JSON**; Undo changes and Delete close it out.
 - **Import:** opening `/tiers#<code>` imports the shared list into an unsaved draft and shows an
-  info banner.
+  info banner. The Import dialog takes a pasted link, code or JSON, or opens a `.json` file.
 - **Confirmations:** discarding unsaved edits and deleting a list each confirm in an `AppDialog`.
 
 #### Phone shell

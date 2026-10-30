@@ -1,18 +1,16 @@
 <script setup lang="ts">
 import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import type { Item, Tier } from '~~/shared/data/types'
 import { TIERS } from '~~/shared/engine/tierList'
 import { KIT_SECTIONS, kitSectionOf } from '~/utils/kit'
 
 // The selected item up close, with one big button per tier: the tap path on
 // a phone and the way to read an item's name when tiles are art only.
-const props = defineProps<{ item: Item }>()
+const props = defineProps<{ item: Item, savedTier: Tier, unrated: boolean }>()
 const emit = defineEmits<{ set: [tier: Tier], close: [] }>()
 
 const section = computed(() => KIT_SECTIONS.find(entry => entry.id === kitSectionOf(props.item))!)
-const base = computed(() => ITEMS_BY_ID.get(props.item.id)?.tier ?? props.item.tier)
-const moved = computed(() => base.value !== props.item.tier)
+const moved = computed(() => props.savedTier !== props.item.tier)
 </script>
 
 <template>
@@ -26,9 +24,9 @@ const moved = computed(() => base.value !== props.item.tier)
         <TierListTile
           class="tm-insp-tile"
           :item="item"
-          :default-tier="base"
           :art="section.art"
           :accent="section.accent"
+          :unrated="unrated"
         />
         <div class="tm-insp-text">
           <span class="tm-insp-cat">
@@ -40,9 +38,13 @@ const moved = computed(() => base.value !== props.item.tier)
           </span>
           <span class="tm-insp-name">{{ item.displayName }}</span>
           <span class="tm-insp-base">
-            Default <b :data-tier="base">{{ base.toUpperCase() }}</b>
-            <template v-if="moved">
+            <template v-if="unrated">Not rated yet · pick a tier</template>
+            <template v-else-if="moved">
+              Saved <b :data-tier="savedTier">{{ savedTier.toUpperCase() }}</b>
               · now <b :data-tier="item.tier">{{ item.tier.toUpperCase() }}</b>
+            </template>
+            <template v-else>
+              <b :data-tier="item.tier">{{ item.tier.toUpperCase() }}</b> tier
             </template>
           </span>
         </div>
@@ -68,11 +70,11 @@ const moved = computed(() => base.value !== props.item.tier)
           :value="tier"
           class="tm-insp-tier disp"
           :style="{ '--t': `var(--tier-${tier})` }"
-          :aria-label="`${tier.toUpperCase()} tier${tier === base ? ' (default)' : ''}`"
+          :aria-label="`${tier.toUpperCase()} tier${moved && tier === savedTier ? ' (saved)' : ''}`"
         >
           {{ tier.toUpperCase() }}
           <span
-            v-if="tier === base"
+            v-if="moved && tier === savedTier"
             class="tm-insp-dot"
             aria-hidden="true"
           />
@@ -80,7 +82,7 @@ const moved = computed(() => base.value !== props.item.tier)
       </RadioGroupRoot>
       <p class="tm-insp-hint">
         <span class="tm-hint-touch">Hold and drag any item to a row.</span>
-        <span class="tm-hint-keys">Keys: <kbd>S</kbd><kbd>A</kbd><kbd>B</kbd><kbd>C</kbd> to move, <kbd>D</kbd> for the default.</span>
+        <span class="tm-hint-keys">Keys: <kbd>S</kbd><kbd>A</kbd><kbd>B</kbd><kbd>C</kbd> to move, <kbd>D</kbd> to undo.</span>
       </p>
     </div>
   </section>

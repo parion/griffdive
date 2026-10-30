@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import type { Item, Tier } from '~~/shared/data/types'
 import { TIERS, tieredCatalog } from '~~/shared/engine/tierList'
 import type { TierList } from '~~/shared/engine/tierList'
-import { KIT_SECTIONS, kitSectionOf } from '~/utils/kit'
-import type { KitSectionId } from '~/utils/kit'
+import { KIT_SECTIONS, TIER_MAKER_SECTIONS, kitSectionOf } from '~/utils/kit'
+import type { KitSectionId, TileSize } from '~/utils/kit'
 
 // The Tier Maker's board, tiermaker-style: one row per tier, every item a
 // tile. Drag a tile to a row (long-press on touch), or focus it and press
 // S/A/B/C. Clicking a tile selects it for the inspector. Presentation only:
-// every move is emitted, the page owns the draft.
+// every move is emitted, the page owns the draft and its saved `baseline`.
 const props = defineProps<{
   draft: TierList
+  baseline: TierList
+  named: boolean
+  size: TileSize
   section: KitSectionId | 'all'
   query: string
   selectedId: string | null
@@ -20,30 +22,37 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   set: [itemId: string, tier: Tier]
+  revert: [itemId: string]
   select: [itemId: string | null]
 }>()
 
 const TIER_WORD: Readonly<Record<Tier, string>> = { s: 'Top shelf', a: 'Strong', b: 'Solid', c: 'Surplus' }
-const SECTION_ORDER = new Map(KIT_SECTIONS.map((section, index) => [section.id, index]))
+const SECTION_ORDER = new Map(TIER_MAKER_SECTIONS.map((section, index) => [section.id, index]))
 const SECTION_BY_ID = new Map(KIT_SECTIONS.map(section => [section.id, section]))
 
 function sectionOf(item: Item) {
   return SECTION_BY_ID.get(kitSectionOf(item))!
 }
 
-function defaultTier(item: Item): Tier {
-  return ITEMS_BY_ID.get(item.id)?.tier ?? item.tier
+const catalog = computed(() => tieredCatalog(props.draft))
+const saved = computed(() => tieredCatalog(props.baseline))
+
+function changed(item: Item): boolean {
+  return props.draft.tiers[item.id] !== props.baseline.tiers[item.id]
 }
 
-const catalog = computed(() => tieredCatalog(props.draft))
+function unrated(item: Item): boolean {
+  return props.draft.tiers[item.id] === undefined
+}
 const needle = computed(() => props.query.trim().toLowerCase())
 
 function matches(item: Item): boolean {
   return !needle.value || item.displayName.toLowerCase().includes(needle.value)
 }
 
-// Within a row, items keep the kit's section order (weapons, then armor,
-// boosters, stratagems by role) and then name, so a row reads in groups.
+// Within a row, items keep the Tier Maker's section order (weapons, then
+// stratagems by role, armor and boosters last) and then name, so a row reads
+// in groups.
 const rows = computed(() => {
   const visible = catalog.value.items
     .filter(item => props.section === 'all' || kitSectionOf(item) === props.section)
@@ -142,7 +151,8 @@ function onKey(event: KeyboardEvent, item: Item): void {
     moveByKey(item, KEY_TIER[key])
   }
   else if (key === 'd' || event.key === 'Backspace' || event.key === 'Delete') {
-    moveByKey(item, defaultTier(item))
+    emit('revert', item.id)
+    focusTile(item.id)
   }
   else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
     const next = all[index + (event.key === 'ArrowRight' ? 1 : -1)]
@@ -180,9 +190,11 @@ function onClick(item: Item): void {
 }
 
 function label(item: Item): string {
-  const base = defaultTier(item)
-  const moved = base !== item.tier ? `, moved from ${base.toUpperCase()}` : ''
-  return `${item.displayName}, ${sectionOf(item).label}, ${item.tier.toUpperCase()} tier${moved}`
+  const was = saved.value.byId.get(item.id)?.tier
+  const note = unrated(item)
+    ? ', not rated yet'
+    : changed(item) && was && was !== item.tier ? `, was ${was.toUpperCase()}` : ''
+  return `${item.displayName}, ${sectionOf(item).label}, ${item.tier.toUpperCase()} tier${note}`
 }
 
 defineExpose({ focusTile })
@@ -192,7 +204,7 @@ defineExpose({ focusTile })
   <div
     ref="board"
     class="tm-board"
-    :class="{ dragging: drag !== null }"
+    :class="[`size-${size}`, { dragging: drag !== null }]"
     role="group"
     aria-roledescription="tier board"
     aria-label="Tier board. Drag items between tiers, or focus an item and press S, A, B or C."
@@ -247,9 +259,11 @@ defineExpose({ focusTile })
           >
             <TierListTile
               :item="item"
-              :default-tier="defaultTier(item)"
               :art="sectionOf(item).art"
               :accent="sectionOf(item).accent"
+              :changed="changed(item)"
+              :unrated="unrated(item)"
+              :named="named"
               :selected="selectedId === item.id"
               :dimmed="!matches(item)"
               :landed="landed?.id === item.id"
@@ -280,7 +294,7 @@ defineExpose({ focusTile })
       >
         <TierListTile
           :item="{ ...dragItem, tier: drag.overTier ?? dragItem.tier }"
-          :default-tier="defaultTier(dragItem)"
+          :named="named"
           :art="sectionOf(dragItem).art"
           :accent="sectionOf(dragItem).accent"
           ghost
@@ -308,6 +322,9 @@ defineExpose({ focusTile })
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
+
+.tm-board.size-s { --tile: clamp(40px, 4.8cqi, 58px); }
+.tm-board.size-l { --tile: clamp(68px, 9.4cqi, 112px); }
 
 .tm-row {
   position: relative;
@@ -365,19 +382,21 @@ defineExpose({ focusTile })
 }
 .tm-count { font-size: 11px; font-weight: 700; opacity: 0.7; }
 
+/* Tiles stretch to fill each line, so no screen width leaves a dead strip. */
 .tm-zone {
   list-style: none;
   margin: 0;
   padding: 5px;
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--tile), 1fr));
+  align-content: start;
   gap: var(--gap);
   min-width: 0;
 }
-.tm-slot { display: block; }
+.tm-slot { display: block; min-width: 0; --tile-w: 100%; }
 .tm-btn {
   display: block;
+  width: 100%;
   padding: 0;
   border: 0;
   background: none;
@@ -393,7 +412,7 @@ defineExpose({ focusTile })
 .tm-empty {
   display: grid;
   place-items: center;
-  flex: 1;
+  grid-column: 1 / -1;
   min-height: var(--tile);
   font-size: 11px;
   font-weight: 700;

@@ -1,6 +1,6 @@
 import type { MaybeRefOrGetter } from 'vue'
 import type { Item } from '~~/shared/data/types'
-import { isRetiered, tieredCatalog } from '~~/shared/engine/tierList'
+import { tieredCatalog } from '~~/shared/engine/tierList'
 import type { TierList } from '~~/shared/engine/tierList'
 
 // The tier list of the dive on screen. Module scope rather than provide/inject
@@ -36,6 +36,5 @@ export function useTierCatalog() {
     items: computed(() => catalog.value.items),
     itemById,
     itemsByIds,
-    isRetiered: (item: Item) => isRetiered(item, active.value),
   }
 }

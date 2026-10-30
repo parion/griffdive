@@ -4,6 +4,8 @@ import type { SavedTierList } from '~/composables/useTierLists'
 
 // The Tier Maker's list controls: which list is on the board and what to do
 // with it. Docked beside the board on wide screens, in a dialog on phones.
+// `lobby` means the maker was opened from a crusade lobby: the list goes to
+// that lobby instead of starting another crusade.
 defineProps<{
   source: string
   newId: string
@@ -11,17 +13,19 @@ defineProps<{
   saved: boolean
   dirty: boolean
   picked: boolean
-  shareable: boolean
-  changes: number
+  lobby: boolean
+  launching: boolean
 }>()
 
 const emit = defineEmits<{
   open: [id: string]
   save: []
-  use: []
+  launch: []
   share: []
+  download: []
+  copyJson: []
   import: []
-  reset: []
+  revert: []
   remove: []
 }>()
 </script>
@@ -34,10 +38,10 @@ const emit = defineEmits<{
         :value="source"
         @change="emit('open', ($event.target as HTMLSelectElement).value)"
       >
-        <option :value="newId">
-          New list (from the default)
-        </option>
-        <optgroup label="Start from a featured list">
+        <optgroup label="Start a new list from">
+          <option :value="newId">
+            Default tiers
+          </option>
           <option
             v-for="preset in TIER_LIST_PRESETS"
             :key="preset.id"
@@ -70,32 +74,33 @@ const emit = defineEmits<{
     >
       {{ saved ? (dirty ? 'Save changes' : 'Saved') : 'Save to my lists' }}
     </button>
-    <button
-      v-if="saved && !dirty && !picked"
-      type="button"
-      class="btn cut-sm"
-      @click="emit('use')"
-    >
-      Use for my next crusade
-    </button>
     <p
-      v-else-if="saved && picked && !dirty"
+      v-if="lobby && saved && picked && !dirty"
       class="tm-desk-note"
     >
       <span
         class="lamp gold"
         aria-hidden="true"
-      /> Your next crusade uses this list.
+      /> Your lobby is using this list.
     </p>
+    <button
+      v-else-if="saved && !dirty"
+      type="button"
+      class="btn cut-sm tm-desk-launch"
+      :disabled="launching"
+      @click="emit('launch')"
+    >
+      {{ lobby ? 'Use in my lobby' : launching ? 'Opening a lobby…' : 'Host a crusade with this list' }}
+    </button>
 
+    <span class="lbl tm-desk-h">Share</span>
     <div class="tm-desk-row">
       <button
         type="button"
         class="btn ghost cut-sm"
-        :disabled="!shareable"
         @click="emit('share')"
       >
-        Share link
+        Copy link
       </button>
       <button
         type="button"
@@ -109,10 +114,29 @@ const emit = defineEmits<{
       <button
         type="button"
         class="btn ghost cut-sm"
-        :disabled="changes === 0"
-        @click="emit('reset')"
+        @click="emit('download')"
       >
-        Reset to default
+        Save as file
+      </button>
+      <button
+        type="button"
+        class="btn ghost cut-sm"
+        @click="emit('copyJson')"
+      >
+        Copy JSON
+      </button>
+    </div>
+    <div
+      v-if="dirty || saved"
+      class="tm-desk-row"
+    >
+      <button
+        v-if="dirty"
+        type="button"
+        class="btn ghost cut-sm"
+        @click="emit('revert')"
+      >
+        {{ saved ? 'Undo changes' : 'Start over' }}
       </button>
       <button
         v-if="saved"
@@ -130,7 +154,9 @@ const emit = defineEmits<{
 .tm-desk { display: grid; gap: 8px; min-width: 0; }
 .tm-desk-field { display: grid; gap: 0.3rem; min-width: 0; margin-bottom: 4px; }
 .tm-desk-field select { width: 100%; min-width: 0; }
-.tm-desk-save { width: 100%; }
+.tm-desk-save,
+.tm-desk-launch { width: 100%; }
+.tm-desk-h { margin-top: 6px; }
 .tm-desk-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 6px; }
 .tm-desk-row .btn { width: 100%; }
 .tm-desk-note { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; color: var(--khaki); }

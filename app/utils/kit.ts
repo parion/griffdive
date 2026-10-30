@@ -11,6 +11,9 @@ export type KitSectionId = 'primary' | 'secondary' | 'throwables' | 'armor' | 'b
 // in-game icons (stratagems, armor passives, boosters) that carry their own frame.
 export type KitArt = 'gear' | 'icon'
 
+// The Tier Maker's tile sizes, a diver's display preference.
+export type TileSize = 's' | 'm' | 'l'
+
 export interface KitSectionDef {
   id: KitSectionId
   label: string
@@ -29,6 +32,14 @@ export const KIT_SECTIONS: readonly KitSectionDef[] = [
   { id: 'orbital', label: 'Orbital stratagems', nav: 'Orbital', accent: 'var(--red)', art: 'icon' },
   { id: 'supply', label: 'Supply stratagems', nav: 'Supply', accent: 'var(--cat-supply)', art: 'icon' },
   { id: 'defense', label: 'Defense stratagems', nav: 'Defense', accent: 'var(--cat-defense)', art: 'icon' },
+]
+
+// The Tier Maker's reading order: weapons and stratagems lead every row,
+// armor passives and boosters trail it.
+const TRAILING_SECTIONS: ReadonlySet<KitSectionId> = new Set(['armor', 'boosters'])
+export const TIER_MAKER_SECTIONS: readonly KitSectionDef[] = [
+  ...KIT_SECTIONS.filter(section => !TRAILING_SECTIONS.has(section.id)),
+  ...KIT_SECTIONS.filter(section => TRAILING_SECTIONS.has(section.id)),
 ]
 
 export function kitSectionOf(item: Item): KitSectionId {

@@ -1,26 +1,31 @@
 <script setup lang="ts">
-import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
+import { useLocalStorage } from '@vueuse/core'
+import { RadioGroupItem, RadioGroupRoot, Toggle } from 'reka-ui'
 import { TIER_LIST_PRESETS } from '~~/shared/data/tierLists'
 import type { Tier } from '~~/shared/data/types'
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { TIER_LIST_NAME_MAX } from '~~/shared/engine/config'
 import {
   TIERS,
   cleanTierListName,
-  decodeTierList,
+  defaultTierList,
   encodeTierList,
-  normalizeTierList,
+  parseTierList,
+  sameTierList,
   tierCounts,
-  tierListChangeCount,
+  tierListFromGroups,
+  tierListToJson,
   tieredItem,
+  unratedItems,
 } from '~~/shared/engine/tierList'
 import type { TierList } from '~~/shared/engine/tierList'
-import { KIT_SECTIONS } from '~/utils/kit'
-import type { KitSectionId } from '~/utils/kit'
+import { TIER_MAKER_SECTIONS } from '~/utils/kit'
+import type { KitSectionId, TileSize } from '~/utils/kit'
 
-// The Tier Maker: a drag-and-drop tier board for the whole catalog. Lists
-// live in this browser's library and travel as share links; no server — a
-// list reaches a crusade when its host picks it at setup.
+// The Tier Maker: a drag-and-drop tier board for the whole catalog. Every list
+// is complete on its own — a new one starts as a copy of the default tiers or
+// a featured list, never as edits to it. Lists live in this browser's library
+// and travel as share links or JSON files; no server — a list reaches a
+// crusade when its host picks it.
 interface Draft extends TierList {
   id: string | null
 }
@@ -30,31 +35,34 @@ const route = useRoute()
 const router = useRouter()
 const { push: pushToast } = useToasts()
 const library = useTierLists()
+const recentRooms = useRecentRooms()
+
+// Opened from a lobby's setup: the list goes back to that lobby.
+const lobby = computed(() => route.query.lobby === '1')
 
 const draft = ref<Draft>(blank())
-const baseline = ref(codeOf(draft.value))
+const baseline = ref<TierList>(snapshot(draft.value))
 const source = ref<string>(NEW_ID)
 const notice = ref<string | null>(null)
 
 function blank(): Draft {
-  return { id: null, name: 'My tier list', tiers: {} }
+  return { id: null, ...defaultTierList('My tier list') }
 }
 
-function codeOf(list: TierList): string {
-  const clean = normalizeTierList(list)
-  return clean ? encodeTierList(clean) : ''
+function snapshot(list: TierList): TierList {
+  return { name: cleanTierListName(list.name), tiers: { ...list.tiers } }
 }
 
-const dirty = computed(() => codeOf(draft.value) !== baseline.value)
-const changes = computed(() => tierListChangeCount(draft.value))
+const cleaned = computed(() => snapshot(draft.value))
+const dirty = computed(() => !sameTierList(cleaned.value, baseline.value))
 const counts = computed(() => tierCounts(draft.value))
-const shareable = computed(() => normalizeTierList(draft.value))
+const unrated = computed(() => unratedItems(draft.value).length)
 const isPicked = computed(() => draft.value.id !== null && library.pickedId.value === draft.value.id)
 
 function load(next: Draft, from: string): void {
   selectedId.value = null
   draft.value = next
-  baseline.value = next.id ? codeOf(next) : codeOf(blank())
+  baseline.value = snapshot(next)
   source.value = from
 }
 
@@ -65,8 +73,9 @@ function open(id: string): void {
     return
   }
   const preset = TIER_LIST_PRESETS.find(entry => `preset:${entry.id}` === id)
-  if (preset) {
-    load({ id: null, name: `${preset.name} (copy)`, tiers: { ...preset.tiers } }, id)
+  const list = preset ? tierListFromGroups(`${preset.name} (copy)`, preset.tiers) : null
+  if (list) {
+    load({ id: null, ...list }, id)
     return
   }
   const saved = library.find(id)
@@ -109,38 +118,69 @@ const announcement = ref('')
 let landedTimer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(landedTimer))
 
-// Every edit replaces the draft object: resolved catalogs are cached per list
-// object, so mutating one in place would serve stale tiers.
-function setTier(itemId: string, tier: Tier): void {
-  const item = ITEMS_BY_ID.get(itemId)
-  if (!item) {
-    return
-  }
-  const { [itemId]: _previous, ...rest } = draft.value.tiers
-  const tiers = item.tier === tier ? rest : { ...rest, [itemId]: tier }
-  draft.value = { ...draft.value, tiers }
+function land(itemId: string, tier: Tier): void {
+  const item = tieredItem(itemId, draft.value)
   landed.value = { id: itemId, n: (landed.value?.n ?? 0) + 1 }
   clearTimeout(landedTimer)
   landedTimer = setTimeout(() => {
     landed.value = null
   }, 1400)
-  announcement.value = `${item.displayName} moved to ${tier.toUpperCase()} tier`
+  announcement.value = `${item?.displayName ?? 'Item'} moved to ${tier.toUpperCase()} tier`
   if (tier === 's') {
     navigator.vibrate?.([10, 40, 18])
   }
+}
+
+// Every edit replaces the draft object: resolved catalogs are cached per list
+// object, so mutating one in place would serve stale tiers.
+function setTier(itemId: string, tier: Tier): void {
+  if (!tieredItem(itemId, null)) {
+    return
+  }
+  draft.value = { ...draft.value, tiers: { ...draft.value.tiers, [itemId]: tier } }
+  land(itemId, tier)
+}
+
+// Back to the tier it had at the last save — unrated again if it was.
+function revertItem(itemId: string): void {
+  const { [itemId]: _current, ...rest } = draft.value.tiers
+  const saved = baseline.value.tiers[itemId]
+  draft.value = { ...draft.value, tiers: saved ? { ...rest, [itemId]: saved } : rest }
+  const tier = tieredItem(itemId, draft.value)?.tier
+  if (tier) {
+    land(itemId, tier)
+  }
+}
+
+function revertAll(): void {
+  draft.value = { ...draft.value, ...snapshot(baseline.value) }
 }
 
 const section = ref<KitSectionId | 'all'>('all')
 const query = ref('')
 const selectedId = ref<string | null>(null)
 const selected = computed(() => (selectedId.value ? tieredItem(selectedId.value, draft.value) ?? null : null))
-const changesOpen = ref(false)
+const selectedSaved = computed(() => (selectedId.value ? tieredItem(selectedId.value, baseline.value)?.tier ?? null : null))
+const selectedUnrated = computed(() => selectedId.value !== null && draft.value.tiers[selectedId.value] === undefined)
+const viewOpen = ref(false)
 const deskOpen = ref(false)
 const board = ref<{ focusTile: (id: string) => void } | null>(null)
 
+// How the board reads is the diver's own preference, kept across visits.
+const view = useLocalStorage<{ names: boolean, size: TileSize }>(
+  'griffdive:tier-maker-view',
+  { names: true, size: 'm' },
+  { mergeDefaults: true },
+)
+const SIZES: readonly { id: TileSize, label: string }[] = [
+  { id: 's', label: 'Small tiles' },
+  { id: 'm', label: 'Medium tiles' },
+  { id: 'l', label: 'Large tiles' },
+]
+
 const FILTERS = computed(() => [
   { id: 'all' as const, label: 'All', accent: 'var(--khaki)' },
-  ...KIT_SECTIONS.map(entry => ({ id: entry.id, label: entry.nav, accent: entry.accent })),
+  ...TIER_MAKER_SECTIONS.map(entry => ({ id: entry.id, label: entry.nav, accent: entry.accent })),
 ])
 
 function closeInspector(): void {
@@ -155,30 +195,39 @@ function rename(name: string): void {
   draft.value = { ...draft.value, name }
 }
 
-function resetAll(): void {
-  draft.value = { ...draft.value, tiers: {} }
-}
-
 function save(): void {
-  const list = { name: cleanTierListName(draft.value.name), tiers: draft.value.tiers }
-  if (!normalizeTierList(list)) {
-    pushToast('Move at least one item first — a list with no changes plays as the default.', 'warn')
-    return
-  }
-  const entry = library.save(list, draft.value.id ?? undefined)
+  const entry = library.save(cleaned.value, draft.value.id ?? undefined)
   if (!entry) {
     pushToast('Your library is full. Delete a list to make room.', 'warn')
     return
   }
   library.pick(entry.id)
   load({ id: entry.id, name: entry.name, tiers: { ...entry.tiers } }, entry.id)
-  pushToast(`Saved. Your next crusade will use ${entry.name}.`)
+  pushToast(lobby.value ? `Saved. Your lobby now uses ${entry.name}.` : `Saved. Your next crusade will use ${entry.name}.`)
 }
 
-function usePicked(): void {
-  if (draft.value.id) {
-    library.pick(draft.value.id)
-    pushToast(`Your next crusade will use ${draft.value.name}.`)
+// From a lobby, picking the list is enough: the lobby's tab hears the change
+// and syncs it to the squad. Anywhere else, this opens a fresh lobby that
+// starts with the list already chosen.
+const launching = ref(false)
+async function launch(): Promise<void> {
+  if (!draft.value.id) {
+    return
+  }
+  library.pick(draft.value.id)
+  if (lobby.value) {
+    pushToast(`Your lobby now uses ${draft.value.name}. Switch back to its tab to launch.`)
+    return
+  }
+  launching.value = true
+  try {
+    const created = await $fetch<{ code: string }>('/api/rooms', { method: 'POST' })
+    recentRooms.rememberRoom(created.code)
+    await navigateTo(`/dive/${created.code}`)
+  }
+  catch {
+    launching.value = false
+    pushToast(`Couldn't open a lobby. ${draft.value.name} is still picked for your next crusade.`, 'warn')
   }
 }
 
@@ -193,47 +242,80 @@ function confirmDelete(): void {
   }
 }
 
-function shareLink(list: TierList): string {
-  return `${window.location.origin}/tiers#${encodeURIComponent(encodeTierList(list))}`
-}
-
-async function copyShare(): Promise<void> {
-  const list = shareable.value
-  if (!list || !navigator.clipboard?.writeText) {
+async function copyText(text: string, done: string): Promise<void> {
+  if (!navigator.clipboard?.writeText) {
+    pushToast('Copying isn\'t available in this browser.', 'warn')
     return
   }
   try {
-    await navigator.clipboard.writeText(shareLink(list))
-    pushToast('Share link copied. Anyone who opens it can save the list.')
+    await navigator.clipboard.writeText(text)
+    pushToast(done)
   }
   catch {
-    pushToast('Could not copy the link — your browser blocked the clipboard.', 'warn')
+    pushToast('Could not copy — your browser blocked the clipboard.', 'warn')
   }
 }
 
-// Import accepts a raw share code or a whole share link.
+function copyShare(): void {
+  void copyText(
+    `${window.location.origin}/tiers#${encodeTierList(cleaned.value)}`,
+    'Share link copied. Anyone who opens it can save the list.',
+  )
+}
+
+function copyJson(): void {
+  void copyText(tierListToJson(cleaned.value), 'JSON copied. Paste it into Import to load it.')
+}
+
+function download(): void {
+  const blob = new Blob([tierListToJson(cleaned.value)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `griffdive-tiers-${cleaned.value.name.replace(/[^a-z0-9_-]+/gi, '-').toLowerCase()}.json`
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+// Import accepts a share link, a bare code, pasted JSON or a JSON file.
 const importOpen = ref(false)
 const importText = ref('')
 const importError = ref<string | null>(null)
 
 function importFrom(text: string): boolean {
-  const list = decodeTierList(text)
+  const list = parseTierList(text)
   if (!list) {
     return false
   }
-  load({ id: null, name: list.name, tiers: list.tiers }, NEW_ID)
-  notice.value = `Imported ${list.name}: ${tierListChangeCount(list)} items moved. Save it to keep it in your library.`
+  load({ id: null, ...list }, NEW_ID)
+  const missing = unratedItems(list).length
+  notice.value = missing
+    ? `Imported ${list.name}. ${missing} items aren't rated in it yet — they're flagged New. Save it to keep it.`
+    : `Imported ${list.name}. Save it to keep it in your library.`
   return true
 }
 
-function submitImport(): void {
-  if (importFrom(importText.value)) {
+function finishImport(ok: boolean): void {
+  if (ok) {
     importOpen.value = false
     importText.value = ''
     importError.value = null
   }
   else {
-    importError.value = 'That isn\'t a Griffdive tier list code or link.'
+    importError.value = 'That isn\'t a Griffdive tier list link, code or JSON.'
+  }
+}
+
+function submitImport(): void {
+  finishImport(importFrom(importText.value))
+}
+
+async function importFile(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (file) {
+    finishImport(importFrom(await file.text()))
   }
 }
 
@@ -241,13 +323,14 @@ onMounted(() => {
   if (library.picked.value.source === 'library') {
     open(library.picked.value.id)
   }
-  if (route.hash.length > 1 && importFrom(route.hash.slice(1))) {
+  // The raw hash: the router's is decoded, which would mangle a name with a `%`.
+  const hash = window.location.hash.slice(1)
+  if (hash && importFrom(hash)) {
     router.replace({ hash: '' })
   }
 })
 
 const libraryOptions = computed(() => library.tierLists.value)
-const changesList = computed(() => normalizeTierList({ ...draft.value, name: cleanTierListName(draft.value.name) }))
 
 function deskAction(run: () => void): void {
   deskOpen.value = false
@@ -291,14 +374,17 @@ useHead({ title: 'Tier Maker · Griffdive' })
         >
           <b class="disp">{{ tier.toUpperCase() }}</b>{{ counts[tier] }}
         </span>
+        <span
+          v-if="unrated"
+          class="chip gold"
+          :title="`${unrated} items this list hasn't rated yet play at their default tier`"
+        >{{ unrated }} new</span>
         <button
           type="button"
-          class="tm-moved"
-          :disabled="!changesList"
-          :aria-label="`${changes} items moved from the default. View changes`"
-          @click="changesOpen = true"
+          class="tm-overview"
+          @click="viewOpen = true"
         >
-          <b>{{ changes }}</b> moved
+          Overview
         </button>
         <span
           v-if="dirty"
@@ -307,7 +393,7 @@ useHead({ title: 'Tier Maker · Griffdive' })
         <span
           v-else-if="isPicked"
           class="chip gold"
-        >Next crusade</span>
+        >{{ lobby ? 'In your lobby' : 'Next crusade' }}</span>
       </div>
     </header>
 
@@ -351,25 +437,58 @@ useHead({ title: 'Tier Maker · Griffdive' })
               />{{ filter.label }}
             </RadioGroupItem>
           </RadioGroupRoot>
-          <label class="tm-search">
-            <span class="sr-only">Find an item</span>
-            <input
-              v-model="query"
-              type="search"
-              placeholder="Find item"
-              autocomplete="off"
+          <div class="tm-tools">
+            <label class="tm-search">
+              <span class="sr-only">Find an item</span>
+              <input
+                v-model="query"
+                type="search"
+                placeholder="Find item"
+                autocomplete="off"
+              >
+            </label>
+            <Toggle
+              v-model="view.names"
+              class="tm-tool tm-names"
+              aria-label="Show item names"
             >
-          </label>
+              <span aria-hidden="true">Aa</span>
+            </Toggle>
+            <RadioGroupRoot
+              v-model="view.size"
+              orientation="horizontal"
+              class="tm-sizes"
+              aria-label="Tile size"
+            >
+              <RadioGroupItem
+                v-for="(option, index) in SIZES"
+                :key="option.id"
+                :value="option.id"
+                class="tm-tool"
+                :aria-label="option.label"
+              >
+                <i
+                  class="tm-size-glyph"
+                  :style="{ '--n': index }"
+                  aria-hidden="true"
+                />
+              </RadioGroupItem>
+            </RadioGroupRoot>
+          </div>
         </div>
 
         <TierListBoard
           ref="board"
           :draft="draft"
+          :baseline="baseline"
+          :named="view.names"
+          :size="view.size"
           :section="section"
           :query="query"
           :selected-id="selectedId"
           :landed="landed"
           @set="setTier"
+          @revert="revertItem"
           @select="selectedId = $event"
         />
       </div>
@@ -386,21 +505,25 @@ useHead({ title: 'Tier Maker · Griffdive' })
             :saved="draft.id !== null"
             :dirty="dirty"
             :picked="isPicked"
-            :shareable="shareable !== null"
-            :changes="changes"
+            :lobby="lobby"
+            :launching="launching"
             @open="requestOpen"
             @save="save"
-            @use="usePicked"
+            @launch="launch"
             @share="copyShare"
+            @download="download"
+            @copy-json="copyJson"
             @import="importOpen = true"
-            @reset="resetAll"
+            @revert="revertAll"
             @remove="deleteOpen = true"
           />
         </div>
         <div class="tm-dock-panel panel tm-dock-insp">
           <TierListInspector
-            v-if="selected"
+            v-if="selected && selectedSaved"
             :item="selected"
+            :saved-tier="selectedSaved"
+            :unrated="selectedUnrated"
             @set="setTier(selected.id, $event)"
             @close="closeInspector"
           />
@@ -409,7 +532,8 @@ useHead({ title: 'Tier Maker · Griffdive' })
             class="tm-dock-empty"
           >
             <b>Drag any item to a row.</b> Click one to see its name and move it with a tap, or use
-            the keyboard: arrows to walk, <kbd>S</kbd> <kbd>A</kbd> <kbd>B</kbd> <kbd>C</kbd> to move.
+            the keyboard: arrows to walk, <kbd>S</kbd> <kbd>A</kbd> <kbd>B</kbd> <kbd>C</kbd> to move,
+            <kbd>D</kbd> to undo.
           </p>
         </div>
       </aside>
@@ -420,8 +544,10 @@ useHead({ title: 'Tier Maker · Griffdive' })
       aria-label="Tier list actions"
     >
       <TierListInspector
-        v-if="selected"
+        v-if="selected && selectedSaved"
         :item="selected"
+        :saved-tier="selectedSaved"
+        :unrated="selectedUnrated"
         @set="setTier(selected.id, $event)"
         @close="closeInspector"
       />
@@ -439,7 +565,6 @@ useHead({ title: 'Tier Maker · Griffdive' })
         <button
           type="button"
           class="btn ghost cut-sm"
-          :disabled="!shareable"
           @click="copyShare"
         >
           Share
@@ -475,42 +600,44 @@ useHead({ title: 'Tier Maker · Griffdive' })
         :saved="draft.id !== null"
         :dirty="dirty"
         :picked="isPicked"
-        :shareable="shareable !== null"
-        :changes="changes"
+        :lobby="lobby"
+        :launching="launching"
         @open="deskAction(() => requestOpen($event))"
         @save="deskAction(save)"
-        @use="deskAction(usePicked)"
+        @launch="deskAction(launch)"
         @share="deskAction(copyShare)"
+        @download="deskAction(download)"
+        @copy-json="deskAction(copyJson)"
         @import="deskAction(() => importOpen = true)"
-        @reset="deskAction(resetAll)"
+        @revert="deskAction(revertAll)"
         @remove="deskAction(() => deleteOpen = true)"
       />
     </AppDialog>
 
-    <TierListChanges
-      v-if="changesList"
-      v-model:open="changesOpen"
-      :list="changesList"
+    <TierListView
+      v-model:open="viewOpen"
+      :list="cleaned"
+      description="This list as it stands on the board, unsaved moves included."
     />
 
     <AppDialog
       v-model:open="importOpen"
       title="Import a tier list"
-      description="Paste a share link or code from a squadmate. It replaces the list on the board, so save any edits first."
+      description="Paste a share link, a code or a list's JSON, or open a saved file. It replaces the list on the board, so save any edits first."
       size="sm"
     >
       <form
         class="import-form"
         @submit.prevent="submitImport"
       >
-        <input
+        <textarea
           v-model="importText"
-          type="text"
-          aria-label="Share link or code"
-          placeholder="https://…/tiers#GD1… or GD1:…"
+          rows="4"
+          aria-label="Share link, code or JSON"
+          placeholder="https://…/tiers#GD2… or { &quot;tiers&quot;: … }"
           autocomplete="off"
           spellcheck="false"
-        >
+        />
         <p
           v-if="importError"
           class="import-error"
@@ -518,13 +645,24 @@ useHead({ title: 'Tier Maker · Griffdive' })
         >
           {{ importError }}
         </p>
-        <button
-          type="submit"
-          class="btn primary cut-sm"
-          :disabled="!importText.trim()"
-        >
-          Import
-        </button>
+        <div class="import-row">
+          <label class="btn ghost cut-sm import-file">
+            Open a file…
+            <input
+              type="file"
+              accept="application/json,.json,text/plain"
+              class="sr-only"
+              @change="importFile"
+            >
+          </label>
+          <button
+            type="submit"
+            class="btn primary cut-sm"
+            :disabled="!importText.trim()"
+          >
+            Import
+          </button>
+        </div>
       </form>
     </AppDialog>
 
@@ -620,7 +758,7 @@ useHead({ title: 'Tier Maker · Griffdive' })
 .tm-tally { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 0.9rem; font-weight: 700; }
 .tm-tally-tier { display: inline-flex; align-items: baseline; gap: 5px; color: var(--khaki); }
 .tm-tally-tier b { font-size: 1.05rem; color: var(--tier); }
-.tm-moved {
+.tm-overview {
   font: inherit;
   font-size: 0.82rem;
   color: var(--khaki);
@@ -630,22 +768,20 @@ useHead({ title: 'Tier Maker · Griffdive' })
   padding: 0 0 1px;
   cursor: pointer;
 }
-.tm-moved b { color: var(--gold); }
-.tm-moved:disabled { cursor: default; border-bottom-color: transparent; color: var(--muted); }
-.tm-moved:disabled b { color: inherit; }
+.tm-overview:hover { color: var(--gold); }
 
 .tm-shell { display: grid; gap: 12px; min-width: 0; }
 .tm-main { display: grid; gap: 8px; min-width: 0; container: tm / inline-size; }
 
 /* The filter strip sticks under the ship header so a long board stays
-   filterable; on phones the chips scroll sideways. */
+   filterable: category chips (scrolling sideways on phones), then search and
+   the display toggles on a line of their own. */
 .tm-filters {
   position: sticky;
   top: var(--tm-top);
   z-index: 6;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: grid;
+  gap: 6px;
   min-width: 0;
   margin: 0 -2px;
   padding: 8px 2px;
@@ -687,8 +823,40 @@ useHead({ title: 'Tier Maker · Griffdive' })
   box-shadow: inset 0 -2px 0 var(--accent);
 }
 .tm-chip-swatch { width: 7px; height: 7px; background: var(--accent); }
-.tm-search { flex: none; width: clamp(6.5rem, 26vw, 13rem); }
-.tm-search input { width: 100%; height: 32px; }
+.tm-tools { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.tm-search { flex: 1; min-width: 0; max-width: 28rem; }
+.tm-search input { width: 100%; height: 36px; }
+.tm-sizes { display: flex; }
+.tm-sizes .tm-tool + .tm-tool { margin-left: -1px; }
+.tm-tool {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  cursor: pointer;
+  transition: border-color var(--dur-fast), color var(--dur-fast), background-color var(--dur-fast);
+}
+.tm-tool:hover { color: var(--khaki); border-color: var(--line-4); }
+.tm-tool[data-state='on'],
+.tm-tool[data-state='checked'] {
+  position: relative;
+  color: var(--gold);
+  background: var(--raised);
+  border-color: var(--gold);
+}
+.tm-size-glyph {
+  width: calc(8px + var(--n) * 4px);
+  aspect-ratio: 1;
+  border: 1.5px solid currentColor;
+}
 
 .tm-dock { display: none; }
 .tm-dock-empty { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
@@ -720,7 +888,9 @@ useHead({ title: 'Tier Maker · Griffdive' })
 .tm-bar > .tm-insp { max-width: 720px; margin: 0 auto; }
 
 .import-form { display: grid; gap: 10px; }
-.import-form input { width: 100%; min-width: 0; }
+.import-form textarea { width: 100%; min-width: 0; resize: vertical; font-size: 0.82rem; }
+.import-row { display: flex; justify-content: space-between; gap: 8px; }
+.import-file { position: relative; cursor: pointer; }
 .import-error { margin: 0; color: var(--red); font-size: 0.82rem; }
 .confirm-row { display: flex; justify-content: flex-end; gap: 8px; }
 

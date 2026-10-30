@@ -11,7 +11,7 @@ const SECTIONS: Section[] = [
   {
     h: 'What this app stores',
     list: [
-      'On this device (browser storage): save slots and session mirrors, the 12 most recent room codes (forgotten after 30 days), the seat id for each room you joined, your diver name, your warbond declarations, your tier lists (and which one your next crusade uses), and intro flags. Clearing site data deletes all of it.',
+      'On this device (browser storage): save slots and session mirrors, the 12 most recent room codes (forgotten after 30 days), the seat id for each room you joined, your diver name, your warbond declarations, your tier lists (and which one your next crusade uses), the Tier Maker\'s display settings, and intro flags. Clearing site data deletes all of it.',
       'On the server, only when you host or join a dive: the room code, the squad\'s names and kits, the host\'s custom tier list, the crusade\'s progress, a saved dive\'s name, the Steam lobby link if the host pastes one, and when the room was created and last active.',
       'While you are seated: a keyed, per-room fingerprint (HMAC) of the network address you joined from. If the host removes you, your seat id and that fingerprint stay with the room as a bar so the invite link cannot reseat you. The raw address is never written, and the fingerprint cannot be compared across rooms.',
       'If you file feedback in the app: the note, its category, an optional reply-to, the screen and engine build, and a short reference id. No IP address, diver name or room code.',

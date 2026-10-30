@@ -156,5 +156,6 @@ Each phase lands shippable. Update the relevant `docs/agents/` files (commands, 
   ladders/bounties (clear risk N to claim N+1), endless mode, accounts + cloud saves, i18n, and a
   hosted tier-list marketplace (publish, browse and rank community lists) as a feature of the
   optional account. **Custom tier lists shipped without it:** the host's list syncs from the lobby
-  and is frozen at launch; the Tier Maker (`/tiers`) keeps a browser-local library; lists travel as
-  share links; featured lists ship in the repo (see game-rules.md, Custom tier lists).
+  and is frozen at launch; the Tier Maker (`/tiers`) keeps a browser-local library of complete,
+  self-standing lists; lists travel as short share links or JSON files; featured lists ship in the
+  repo (see game-rules.md, Custom tier lists).

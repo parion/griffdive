@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS, ALL_WARBOND_CODES, ITEMS_BY_ID } from '../data/catalog'
+import { TIER_LIST_PRESETS } from '../data/tierLists'
+import { TIER_SLOTS } from '../data/tierSlots'
 import type { Tier } from '../data/types'
 import { TIER_LIST_NAME_MAX } from './config'
 import { createDiveState, reduce } from './reducer'
@@ -8,15 +10,20 @@ import { createLobbyState, forkCrusade, joinDiver } from './room'
 import { bargainShelfFor, diverOptions } from './selectors'
 import { rollSupportKit } from './support'
 import {
-  decodeTierList,
+  defaultTierList,
   encodeTierList,
+  isUnrated,
   normalizeTierList,
+  parseTierList,
   sameTierList,
   tierCounts,
+  tierListFromGroups,
+  tierListMoves,
+  tierListToJson,
   tierOf,
   tieredCatalog,
   tieredItem,
-  tierListMoves,
+  unratedItems,
 } from './tierList'
 import type { TierList } from './tierList'
 import type { DiveState } from './types'
@@ -40,32 +47,56 @@ function rewardsState(tierList: TierList | null): DiveState {
 }
 
 describe('normalizeTierList', () => {
-  it('keeps real overrides and drops unknown ids, bad tiers and no-op moves', () => {
-    const [first, second] = ALL_ITEMS
+  it('keeps every rating, even ones that match the default, and drops unknown ids and bad tiers', () => {
+    const [first, second, third] = ALL_ITEMS
     const moved: Tier = first!.tier === 's' ? 'c' : 's'
     const list = normalizeTierList({
       name: '  Meta   check  ',
-      tiers: { [first!.id]: moved, [second!.id]: second!.tier, ghostGun: 's', [ALL_ITEMS[2]!.id]: 'd' },
+      tiers: { [first!.id]: moved, [second!.id]: second!.tier, ghostGun: 's', [third!.id]: 'd' },
     })
-    expect(list).toEqual({ name: 'Meta check', tiers: { [first!.id]: moved } })
+    expect(list).toEqual({ name: 'Meta check', tiers: { [first!.id]: moved, [second!.id]: second!.tier } })
   })
 
-  it('treats a list that moves nothing as no list', () => {
-    expect(normalizeTierList({ name: 'Default', tiers: {} })).toBeNull()
-    expect(normalizeTierList({ name: 'Default', tiers: { [ALL_ITEMS[0]!.id]: ALL_ITEMS[0]!.tier } })).toBeNull()
+  it('treats a list that rates nothing as no list', () => {
+    expect(normalizeTierList({ name: 'Empty', tiers: {} })).toBeNull()
     expect(normalizeTierList(null)).toBeNull()
-    expect(normalizeTierList('GD1:x:s=a')).toBeNull()
+    expect(normalizeTierList('GD2.AAAA.x')).toBeNull()
   })
 
   it('names an unnamed list and caps a long name', () => {
-    const id = ALL_ITEMS.find(item => item.tier !== 's')!.id
+    const id = ALL_ITEMS[0]!.id
     expect(normalizeTierList({ name: '', tiers: { [id]: 's' } })!.name).toBe('Custom tiers')
     expect(normalizeTierList({ name: 'x'.repeat(200), tiers: { [id]: 's' } })!.name).toHaveLength(TIER_LIST_NAME_MAX)
   })
 })
 
+describe('a list stands on its own', () => {
+  it('starts a new list as a full copy of the default tiers', () => {
+    const list = defaultTierList('Fresh')
+    expect(Object.keys(list.tiers)).toHaveLength(ALL_ITEMS.length)
+    expect(unratedItems(list)).toEqual([])
+    expect(tierListMoves(list)).toEqual([])
+  })
+
+  it('plays an item it never rated at the catalog tier, flagged unrated', () => {
+    const [rated, missing] = ALL_ITEMS
+    const list = normalizeTierList({ name: 'Partial', tiers: { [rated!.id]: 's' } })!
+    expect(tierOf(missing!, list)).toBe(missing!.tier)
+    expect(isUnrated(missing!, list)).toBe(true)
+    expect(isUnrated(rated!, list)).toBe(false)
+    expect(unratedItems(list)).toHaveLength(ALL_ITEMS.length - 1)
+  })
+
+  it('writes every featured list out in full, never as edits to the default', () => {
+    for (const preset of TIER_LIST_PRESETS) {
+      const list = tierListFromGroups(preset.name, preset.tiers)!
+      expect(unratedItems(list)).toEqual([])
+    }
+  })
+})
+
 describe('tieredCatalog', () => {
-  it('re-tiers only the listed items and leaves the catalog untouched', () => {
+  it('re-tiers the listed items and leaves the catalog untouched', () => {
     const item = ALL_ITEMS.find(entry => entry.tier === 'c')!
     const list = normalizeTierList({ name: 'Bump', tiers: { [item.id]: 's' } })!
     expect(tieredItem(item.id, list)!.tier).toBe('s')
@@ -83,23 +114,81 @@ describe('tieredCatalog', () => {
   })
 })
 
-describe('share codes', () => {
-  it('round-trips a list, raw or percent-encoded inside a link', () => {
-    const items = ALL_ITEMS.filter(item => item.tier !== 'a').slice(0, 12)
-    const list = normalizeTierList({ name: 'Squad: Night Ops', tiers: Object.fromEntries(items.map(item => [item.id, 'a'])) })!
-    const code = encodeTierList(list)
-    expect(code.startsWith('GD1:')).toBe(true)
-    expect(decodeTierList(code)).toEqual(list)
-    expect(decodeTierList(`https://griffdive.example/tiers#${encodeURIComponent(code)}`)).toEqual(list)
-    expect(decodeTierList(`  ${code}\n`)).toEqual(list)
+describe('the slot registry', () => {
+  it('gives every catalog item one permanent slot', () => {
+    expect(new Set(TIER_SLOTS).size).toBe(TIER_SLOTS.length)
+    const slotted = new Set(TIER_SLOTS)
+    expect(ALL_ITEMS.filter(item => !slotted.has(item.id)).map(item => item.id)).toEqual([])
   })
 
-  it('refuses junk and drops ids the catalog no longer knows', () => {
-    expect(decodeTierList('')).toBeNull()
-    expect(decodeTierList('not a code')).toBeNull()
-    expect(decodeTierList('%E0%A4%A')).toBeNull()
-    const item = ALL_ITEMS.find(entry => entry.tier !== 's')!
-    expect(decodeTierList(`GD1:Old:s=retiredGun,${item.id}`)).toEqual({ name: 'Old', tiers: { [item.id]: 's' } })
+  // Codes already shared address items by position: the head of the registry
+  // must never move. Extend this pin, never rewrite it.
+  it('keeps the slots codes were first shared with', () => {
+    expect(TIER_SLOTS.slice(0, 4)).toEqual(['ar23liberator', 'ar23pliberatorpenetrator', 'ar23cliberatorconcussive', 'ar23aliberatorcarbine'])
+    expect(TIER_SLOTS[249]).toBe('amw20apex')
+  })
+})
+
+describe('share codes', () => {
+  it('fits any whole list in about 130 characters', () => {
+    const underdog = TIER_LIST_PRESETS.find(preset => preset.id === 'underdog')!
+    const list = tierListFromGroups('Underdog', underdog.tiers)!
+    const code = encodeTierList(list)
+    expect(code.startsWith('GD2.')).toBe(true)
+    expect(code.length).toBeLessThan(140)
+    expect(parseTierList(code)).toEqual(list)
+  })
+
+  it('round-trips a list raw or inside a link', () => {
+    const list = normalizeTierList({ name: 'Squad: 100% Night.Ops', tiers: defaultTierList('x').tiers })!
+    const code = encodeTierList(list)
+    expect(parseTierList(code)).toEqual(list)
+    expect(parseTierList(`https://griffdive.example/tiers#${code}`)).toEqual(list)
+    expect(parseTierList(`  ${code}\n`)).toEqual(list)
+  })
+
+  it('keeps unrated items unrated', () => {
+    const [first] = ALL_ITEMS
+    const list = normalizeTierList({ name: 'One', tiers: { [first!.id]: 'a' } })!
+    expect(parseTierList(encodeTierList(list))).toEqual(list)
+  })
+
+  it('reads a code from a newer catalog, skipping slots it doesn\'t know', () => {
+    const list = everything('a', 'Future')
+    const [head, slots, name] = encodeTierList(list).split('.')
+    expect(parseTierList(`${head}.${slots}${'Y'.repeat(8)}.${name}`)).toEqual(list)
+  })
+
+  it('refuses junk', () => {
+    expect(parseTierList('')).toBeNull()
+    expect(parseTierList('not a code')).toBeNull()
+    expect(parseTierList('%E0%A4%A')).toBeNull()
+    expect(parseTierList('GD2.!!!.Bad')).toBeNull()
+  })
+})
+
+describe('JSON files', () => {
+  it('round-trips a list through its export', () => {
+    const list = everything('c', 'Scrap heap')
+    const json = tierListToJson(list)
+    expect(JSON.parse(json)).toMatchObject({ format: 'griffdive-tier-list', version: 1, name: 'Scrap heap' })
+    expect(parseTierList(json)).toEqual(list)
+  })
+
+  it('reads a hand-edited file: tiers grouped by letter, unknown ids dropped', () => {
+    const [first, second] = ALL_ITEMS
+    const json = JSON.stringify({ name: 'Hand made', tiers: { s: [first!.id, 'ghostGun'], c: [second!.id] } })
+    expect(parseTierList(json)).toEqual({ name: 'Hand made', tiers: { [first!.id]: 's', [second!.id]: 'c' } })
+  })
+
+  it('also reads the stored shape, keyed by item', () => {
+    const list = everything('b', 'Stored')
+    expect(parseTierList(JSON.stringify(list))).toEqual(list)
+  })
+
+  it('refuses broken JSON', () => {
+    expect(parseTierList('{ "tiers": ')).toBeNull()
+    expect(parseTierList('{ "name": "No tiers" }')).toBeNull()
   })
 })
 
@@ -160,7 +249,7 @@ describe('a crusade under a custom tier list', () => {
     expect(forkCrusade({ ...state, tierList: undefined }, 'p1')!.tierList).toBeNull()
   })
 
-  it('leaves a crusade without a list on the community defaults', () => {
+  it('leaves a crusade without a list on the default tiers', () => {
     const state = rewardsState(null)
     expect(state.tierList).toBeNull()
     for (const option of diverOptions(state, state.divers[0]!)) {
@@ -170,10 +259,10 @@ describe('a crusade under a custom tier list', () => {
 })
 
 describe('tierListMoves and sameTierList', () => {
-  it('lists each move once, best destination first', () => {
+  it('compares a list with the default tiers, best destination first', () => {
     const c = ALL_ITEMS.find(item => item.tier === 'c')!
     const s = ALL_ITEMS.find(item => item.tier === 's')!
-    const list = normalizeTierList({ name: 'Swap', tiers: { [c.id]: 's', [s.id]: 'c' } })!
+    const list = normalizeTierList({ name: 'Swap', tiers: { ...defaultTierList('x').tiers, [c.id]: 's', [s.id]: 'c' } })!
     expect(tierListMoves(list).map(move => [move.item.id, move.from, move.to])).toEqual([[c.id, 'c', 's'], [s.id, 's', 'c']])
     expect(tierListMoves(null)).toEqual([])
   })

@@ -1,26 +1,29 @@
 <script setup lang="ts">
 import { itemImageUrl } from '~~/shared/data/images'
-import type { Item, Tier } from '~~/shared/data/types'
+import type { Item } from '~~/shared/data/types'
 import type { KitArt } from '~/utils/kit'
 
 // One item on the Tier Maker board: its art in a lit square, edged in its
-// tier, tinted by its category. A moved item carries a gold notch; `landed`
-// plays the drop (S tier adds the sheen). The parent owns all input.
+// tier, tinted by its category, with its name beneath when `named`. An item
+// moved since the last save carries a gold notch; one the list hasn't rated
+// yet is flagged new; `landed` plays the drop (S tier adds the sheen). The
+// parent owns all input.
 const props = withDefaults(defineProps<{
   item: Item
-  defaultTier: Tier
   art: KitArt
   accent: string
+  changed?: boolean
+  unrated?: boolean
+  named?: boolean
   selected?: boolean
   dimmed?: boolean
   landed?: boolean
   pressing?: boolean
   lifted?: boolean
   ghost?: boolean
-}>(), { selected: false, dimmed: false, landed: false, pressing: false, lifted: false, ghost: false })
+}>(), { changed: false, unrated: false, named: false, selected: false, dimmed: false, landed: false, pressing: false, lifted: false, ghost: false })
 
 const image = computed(() => itemImageUrl(props.item))
-const moved = computed(() => props.item.tier !== props.defaultTier)
 const initials = computed(() => props.item.displayName
   .split(/[\s-]+/)
   .map(word => word[0])
@@ -32,7 +35,7 @@ const initials = computed(() => props.item.displayName
 <template>
   <span
     class="tm-tile"
-    :class="[`art-${art}`, `t-${item.tier}`, { moved, selected, dimmed, landed, pressing, lifted, ghost }]"
+    :class="[`art-${art}`, `t-${item.tier}`, { changed, unrated, named, selected, dimmed, landed, pressing, lifted, ghost }]"
     :style="{ '--tier': `var(--tier-${item.tier})`, '--accent': accent }"
   >
     <span
@@ -54,14 +57,20 @@ const initials = computed(() => props.item.displayName
       >{{ initials }}</span>
     </span>
     <span
+      v-if="named"
       class="tm-caption"
       aria-hidden="true"
     >{{ item.displayName }}</span>
     <span
-      v-if="moved"
+      v-if="changed"
       class="tm-notch"
       aria-hidden="true"
     />
+    <span
+      v-if="unrated"
+      class="tm-new"
+      aria-hidden="true"
+    >New</span>
     <span
       v-if="landed"
       class="tm-land"
@@ -73,11 +82,10 @@ const initials = computed(() => props.item.displayName
 <style scoped>
 .tm-tile {
   position: relative;
-  display: block;
-  width: var(--tile, 64px);
-  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  width: var(--tile-w, var(--tile, 64px));
   overflow: hidden;
-  container: tm-tile / inline-size;
   background:
     radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 68%),
     linear-gradient(180deg, color-mix(in srgb, var(--accent) 10%, var(--raised)), var(--ground));
@@ -90,10 +98,12 @@ const initials = computed(() => props.item.displayName
     filter var(--dur-med);
 }
 
-.tm-well { position: absolute; inset: 0; display: grid; place-items: center; }
+.tm-well { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 1; }
 .tm-art {
-  max-width: 100%;
-  max-height: 100%;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   pointer-events: none;
   user-select: none;
@@ -106,28 +116,39 @@ const initials = computed(() => props.item.displayName
 .art-icon .tm-art { padding: 15%; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55)); }
 .tm-initials { font-size: calc(var(--tile, 64px) * 0.28); color: var(--accent); letter-spacing: 0.02em; }
 
-/* Names show once a tile is large enough to read one. */
+/* The name strip under the art: two short lines, scaled to the tile. */
 .tm-caption {
-  position: absolute;
-  inset: auto 0 3px;
-  display: none;
-  padding: 10px 4px 1px;
+  display: -webkit-box;
+  height: calc(2 * 1.12em);
+  margin: 0 3px 6px;
   overflow: hidden;
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  line-height: 1.1;
+  font-size: clamp(9px, calc(var(--tile, 64px) * 0.16), 12px);
+  font-weight: 600;
+  line-height: 1.12;
   text-align: center;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--text);
-  background: linear-gradient(180deg, transparent, rgba(8, 9, 6, 0.88) 55%);
+  overflow-wrap: break-word;
+  hyphens: auto;
+  color: var(--khaki);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
-@container tm-tile (min-width: 70px) {
-  .tm-caption { display: block; }
-  .art-gear .tm-art { padding-bottom: 22%; }
-  .art-icon .tm-art { padding-bottom: 24%; }
+.tm-tile.selected .tm-caption { color: var(--text); }
+
+/* Not rated by this list yet: plays at its catalog tier until placed. */
+.tm-tile.unrated { box-shadow: inset 0 0 0 1px var(--gold), inset 0 -3px 0 var(--tier); }
+.tm-new {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  padding: 1px 3px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: var(--on-gold);
+  background: var(--gold);
 }
 
 .tm-notch {

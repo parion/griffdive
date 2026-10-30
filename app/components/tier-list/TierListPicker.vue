@@ -1,20 +1,25 @@
 <script setup lang="ts">
 import { RadioGroupItem, RadioGroupRoot } from 'reka-ui'
-import { tierListChangeCount } from '~~/shared/engine/tierList'
+import { TIERS, tierCounts } from '~~/shared/engine/tierList'
 
-// The host's tier-list choice at setup: the community default, a featured
+// The host's tier-list choice at setup: the default tiers, a featured
 // list, or one from this browser's library. The choice is remembered, so a
 // squad that always plays its own list never has to pick it again.
 withDefaults(defineProps<{ disabled?: boolean }>(), { disabled: false })
 
 const { choices, picked, pick } = useTierLists()
 
-const SOURCE_LABEL = { default: 'Community', preset: 'Featured', library: 'Yours' } as const
+const SOURCE_LABEL = { default: 'Default', preset: 'Featured', library: 'Yours' } as const
 
-const rows = computed(() => choices.value.map(choice => ({
-  ...choice,
-  changes: tierListChangeCount(choice.list),
-})))
+const rows = computed(() => choices.value.map((choice) => {
+  const counts = tierCounts(choice.list)
+  return { ...choice, counts: TIERS.map(tier => ({ tier, n: counts[tier] })) }
+}))
+
+// Opened from a lobby, the Tier Maker offers to use a list there rather than
+// to start another crusade.
+const route = useRoute()
+const makerLink = computed(() => (route.path.startsWith('/dive/') ? '/tiers?lobby=1' : '/tiers'))
 </script>
 
 <template>
@@ -32,17 +37,25 @@ const rows = computed(() => choices.value.map(choice => ({
         :value="row.id"
         class="tl-option cut-sm"
         :class="{ on: picked.id === row.id }"
-        :aria-label="row.changes ? `${row.name}, ${row.changes} items moved` : `${row.name}, every item at its default tier`"
+        :aria-label="`${row.name}: ${row.counts.map(count => `${count.n} ${count.tier.toUpperCase()}`).join(', ')}`"
       >
         <span class="tl-src">{{ SOURCE_LABEL[row.source] }}</span>
         <span class="tl-name">{{ row.name }}</span>
-        <span class="tl-meta">{{ row.changes ? `${row.changes} moved` : 'No changes' }}</span>
+        <span
+          class="tl-meta"
+          aria-hidden="true"
+        >
+          <span
+            v-for="count in row.counts"
+            :key="count.tier"
+          ><b :data-tier="count.tier">{{ count.tier.toUpperCase() }}</b>{{ count.n }}</span>
+        </span>
       </RadioGroupItem>
     </RadioGroupRoot>
     <div class="tl-foot">
       <TierListTag :list="picked.list" />
       <NuxtLink
-        to="/tiers"
+        :to="makerLink"
         target="_blank"
         class="btn tiny ghost cut-sm"
         aria-label="Tier Maker (opens in a new tab)"
@@ -90,6 +103,7 @@ const rows = computed(() => choices.value.map(choice => ({
   text-transform: uppercase;
 }
 .tl-option.on .tl-name { color: var(--gold); }
-.tl-meta { font-size: 11px; color: var(--muted); }
+.tl-meta { display: flex; gap: 7px; font-size: 11px; color: var(--muted); }
+.tl-meta b { margin-right: 2px; }
 .tl-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
 </style>

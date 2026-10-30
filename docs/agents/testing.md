@@ -52,8 +52,8 @@
   disabled until named, Enter filing the name into Class E and unfolding the grouped starting gear,
   a second Enter joining, a saved name filing itself — lands with no tutorial or Warbonds panel, and replays it as the
   Field manual; the spec uses one room because creation is rate-limited per IP),
-  custom tier lists (`tier-lists.spec.ts`: the Tier Maker moves an item by mouse drag, keyboard and the inspector, then saves and reloads the list; a 390px touch phone taps an item into the bottom-bar inspector with no sideways overflow; a share
-  link imports one the host picks in the lobby, the squadmate reads its changes before launch and
+  custom tier lists (`tier-lists.spec.ts`: the Tier Maker moves an item by mouse drag, keyboard (D undoes) and the inspector, then saves and reloads the list; armor passives and boosters close out every row; the names and tile-size toggles apply and persist; a 390px touch phone taps an item into the bottom-bar inspector with no sideways overflow; a JSON file imports a list and flags the items it leaves out as New; a share
+  link imports a list, Host a crusade with this list opens a lobby already on it, the squadmate reads the whole list and its Vs default tab before launch and
   sees it follow the host's switches, and the launched Armory reads the squad's list), the SEAF launch
   reveal (`kit-reveal.spec.ts`: the setup kit's "?" boxes, a solo and an online launch dealing the
   pack in a modal over the wheel that stays until dismissed, a late joiner's own deal, no replay on reload), personal session saves
