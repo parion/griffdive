@@ -88,7 +88,7 @@ function choose(): void {
     >{{ condition.name }}</span>
 
     <template v-if="expanded">
-      <span class="condition-rule">“{{ condition.rule }}”</span>
+      <span class="condition-rule">“<ConditionRule :condition="condition" />”</span>
       <span
         v-if="note"
         class="note"

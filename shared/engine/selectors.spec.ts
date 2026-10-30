@@ -378,6 +378,7 @@ describe('misfortuneStrandedDivers', () => {
       pactsLocked: false,
       pactIds: [],
       failedPactIds: [],
+      heldPactIds: [], brokenPactIds: [], penance: null,
       pickedOptionId: null,
       warbondCodes: [],
       catchUpGranted: 0,

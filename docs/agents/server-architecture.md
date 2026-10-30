@@ -43,7 +43,7 @@ app/
                    BriefingHost — the host's tutorial wrapper),
                    wheel/ (WheelOfAdversity — the seeded spinning SVG wheel),
                    condition/ (ConditionCard/ConditionSigil — directive and pact cards),
-                   pact/ (PactScreen — the self-service pacts hand, PactLedger),
+                   pact/ (PactScreen — the self-service pacts hand, PactLedger, PactPenance),
                    valor/ (ValorRoll — the shared d100 odds line, ValorFigure),
                    risk/ (RiskPips — risk dots, rolling while a wheel draw reels; RiskSetup —
                    the setup skull total via setupRiskOf),
@@ -52,9 +52,11 @@ app/
                    and the lobby, CrusadeLadder — the 3→10 ladder, CrusadeStrip),
                    kit/ (KitPanel — the lean Kit, KitStarting — the issued starting kit,
                    KitSection/KitTile/KitSnapshot/KitReveal),
-                   mission/ (MissionReport — stars, haul, time cells, honors; MissionCleared,
+                   mission/ (MissionReport — stars, haul, time cells, honors; MissionTrack,
                    MissionBankedHaul, MissionSampleCanister — the report's tinted sample tubes),
-                   operation/ (OperationCleared — the climb screen after the last mission),
+                   climb/ (ClimbCleared — the squad-climbs page after every draft: report strip,
+                   stats check with Penance rows, Squad Honors, Brasch, the next-drop CTA;
+                   ClimbReport/ClimbStats/ClimbHonors),
                    honors/ (HonorsReel), reward/ (RewardDraft, RewardReveal,
                    RewardDiversChoicePicker), liberty-cross/ (LibertyCrossBand/Emblem),
                    squad/ (SquadDock — seats, presence, honors tokens, Steam/invite;
@@ -135,7 +137,7 @@ shared/
   utils/           room-code.ts (room-code alphabet + validator), changelog.ts (pure GitHub
                    deployment/commit → release-card shaping behind /api/changelog, unit-tested)
   data/            items (equipment.ts, stratagems.ts), warbonds.ts, fronts.ts,
-                   conditions.ts (the unified team + personal condition catalogue;
+                   glossary.ts (the rules glossary + rule-markup parser), conditions.ts (the unified team + personal condition catalogue;
                    misfortunes.ts / pacts.ts are its scope views), strains.ts,
                    catalog.ts (aggregation + CATALOG_VERSION),
                    ordering.ts (kit presentation order: stratagem role → tier → name),
@@ -244,7 +246,7 @@ only for a seated or removed seat — never logged, exported or attached to a me
 Canonical engine actions (the reducer union; keep names stable):
 
 `START_DIVE{settings,seed?,majorOrder?}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
-`DEAL_PACTS{}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
+`DEAL_PACTS{}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `HOLD_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `HOLD_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?,samples?}` `FORFEIT_ITEM{playerId,itemId}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `BUY_ITEM{playerId,itemId}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
@@ -253,14 +255,14 @@ Canonical engine actions (the reducer union; keep names stable):
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
-`ACCEPT_STRAIN`, `DEAL_PACTS`, `REROLL_WHEEL`, `REPORT_RESULT`, `FAIL_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
+`ACCEPT_STRAIN`, `DEAL_PACTS`, `REROLL_WHEEL`, `REPORT_RESULT`, `FAIL_MISFORTUNE`, `HOLD_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE`, `SET_AWAY` are
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated
 diver, `unsave-dive` is host-only; the Steam lobby link is likewise outside the union and
 host-only (`set-steam`, blank clears).
-`FAIL_PACT` is sent by the target diver or the host (server refuses everyone else); `FAIL_MISFORTUNE`
-is host-only, since the directive binds the whole squad. Host disconnect →
+`FAIL_PACT` and `HOLD_PACT` are sent by the target diver or the host (server refuses everyone else; the squad-climbs page lets the host settle any diver's stats pact);
+`FAIL_MISFORTUNE` and `HOLD_MISFORTUNE` are host-only, since the directive binds the whole squad. Host disconnect →
 `TRANSFER_HOST` to the earliest joiner still connected; none left → room hibernates in storage
 with a TTL, and the first diver back takes the host role once the host is marked away. A host who
 is offline but not yet away (a restart dropped everyone at once) keeps the crown through the away

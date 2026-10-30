@@ -6,6 +6,8 @@ import {
   currentMisfortune,
   misfortuneDecision,
   misfortuneStrandedDivers,
+  squadInventories,
+  squadPenances,
   strainDecision,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
@@ -144,7 +146,7 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         {{ misfortune.name }}
       </h2>
       <p class="dc-rule">
-        {{ misfortune.rule }}.
+        <ConditionRule :condition="misfortune" />.
       </p>
       <div
         v-if="!decision.decided && canControl"
@@ -234,6 +236,8 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
       <WheelOfAdversity
         :difficulty="state.difficulty"
         :seed="state.wheel?.seed ?? null"
+        :inventories="squadInventories(state)"
+        :penance="squadPenances(state)"
         :can-control="canControl"
         @spin="emit('spin')"
       />

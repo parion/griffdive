@@ -47,7 +47,7 @@ import { STARTING_KITS, catchUpOpsBehind, startingItemIds } from './progression'
 import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, bargainKindOf, rollBargainShelf, rollBonus, rollCeiling, rollRewardOffer, rollRewardOptions, topTierOf, valorOf } from './rewards'
 import type { BargainSlot, RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
-import type { ArmorPackDeal, BargainDeal, BargainSlotKind, CrusadeMode, CrusadeSettings, DiveState, DivePhase, DiverState, FrontPlan, MajorOrderPlanet, MissionOutcome, RewardTier } from './types'
+import type { ArmorPackDeal, BargainDeal, BargainSlotKind, CrusadeMode, CrusadeSettings, DiveState, DivePhase, DiverState, FrontPlan, MajorOrderPlanet, MissionOutcome, PenanceDebt, RewardTier } from './types'
 import { eligibleMisfortunes, eligibleStrains, frontById, strainById } from './wheel'
 
 // A completed run is tracked by its full draw — misfortune, front and strain —
@@ -136,6 +136,18 @@ export function activeDivers(state: DiveState): DiverState[] {
 // away still reads as the solo squad that will come back to it.
 export function squadSize(state: DiveState): number {
   return Math.max(1, activeDivers(state).length)
+}
+
+// Each present diver's owned item ids — what decides which directives the
+// wheel may draw (see eligibleMisfortunes).
+export function squadInventories(state: DiveState): string[][] {
+  return activeDivers(state).map(diver => state.personalInventories[diver.id] ?? [])
+}
+
+// The pacts the squad owes back as Penance: a directive that blocks one never
+// reaches the wheel (see eligibleMisfortunes).
+export function squadPenances(state: DiveState): string[] {
+  return state.divers.flatMap(diver => diver.penance?.pactIds ?? [])
 }
 
 // Pact lock-in completes once every present diver has locked. A room where
@@ -253,10 +265,31 @@ export function strainDecision(state: DiveState): StrainDecision {
 }
 
 // A failed pact is voided: it no longer stakes risk, so its share of the
-// diver's Valor disappears from previews and from the rolled offer alike. Each
-// surviving pact's risk is scaled by the operation's difficulty.
+// diver's Valor disappears from previews and from the rolled offer alike. A
+// Penance pact never staked any: it is a debt, not a bet. Each surviving
+// pact's risk is scaled by the operation's difficulty.
 export function pactRiskOf(diver: DiverState, difficulty: number): number {
-  return pactRiskTotal(diver.pactIds.filter(id => !diver.failedPactIds.includes(id)), difficulty)
+  const owed = diver.penance?.pactIds ?? []
+  return pactRiskTotal(
+    diver.pactIds.filter(id => !diver.failedPactIds.includes(id) && !owed.includes(id)),
+    difficulty,
+  )
+}
+
+// Whether a pact is one the diver swore for Penance rather than chose.
+export function isPenancePact(diver: DiverState, pactId: string): boolean {
+  return diver.penance?.pactIds.includes(pactId) ?? false
+}
+
+// Reward options a diver's draft has lost: each pact marked failed in the
+// field (Penance pacts excepted: their price is the voided reward), a
+// directive broken in the field, and the tax left by last mission's directive
+// broken at the stats check.
+export function optionsLostFor(state: DiveState, diver: DiverState): number {
+  const failed = diver.failedPactIds.filter(id => !isPenancePact(diver, id)).length
+  return failed * OPTIONS_LOST_PER_FAILED_PACT
+    + (state.misfortuneFailed ? OPTIONS_LOST_PER_FAILED_DIRECTIVE : 0)
+    + (state.directiveTax ? OPTIONS_LOST_PER_FAILED_DIRECTIVE : 0)
 }
 
 // Chosen risk lives on the diver and the team; it is the diver's Valor. Samples
@@ -418,9 +451,7 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   // Every failed pact and the broken team directive each forfeit one reward
   // option (AGENTS.md: Reward math) — floored at one so the draft can always
   // complete and never deadlock ADVANCE.
-  const lostOptions = diver.failedPactIds.length * OPTIONS_LOST_PER_FAILED_PACT
-    + (state.misfortuneFailed ? OPTIONS_LOST_PER_FAILED_DIRECTIVE : 0)
-  const count = optionsForDiver(state.lastReport.stars, lostOptions)
+  const count = optionsForDiver(state.lastReport.stars, optionsLostFor(state, diver))
   // Every option rolls its own d100 on the same Valor line. The tier is the
   // rolled result, not a ceiling the option was then drawn under.
   return rollRewardOffer(
@@ -853,15 +884,6 @@ export function bonusEligible(state: DiveState): boolean {
   )
 }
 
-// A spun contest nobody has been named for yet. The squad cannot move on until
-// the host names a winner: ADVANCE refuses while this holds, and the Next
-// controls read it to explain why they are locked.
-export function honorsPending(state: DiveState): boolean {
-  return state.phase === 'rewards'
-    && state.bonusSeed !== null
-    && state.bonusWinnerIds.length === 0
-}
-
 // Missions until the cadence next puts honors on the table: 0 when the current
 // mission is due. The report card names it when the spin is unavailable.
 export function missionsUntilHonors(missionIndex: number, squadSizeValue: number): number {
@@ -1056,6 +1078,125 @@ export function canFailMisfortune(state: DiveState): boolean {
   return state.phase === 'diving' && state.misfortuneAccepted && !state.misfortuneFailed
 }
 
+// The stats check: rules only the end-of-mission stats screen can prove (the
+// 'stats' accountability channel). HD2 shows that screen after the report, so
+// they are settled on the squad-climbs page once the squad has banked its
+// drafts: each is attested held or broke. A broken pact is owed back as Penance
+// next mission; the draft itself is never touched.
+export function statsPendingPactIds(state: DiveState, diver: DiverState): string[] {
+  if (state.phase !== 'rewards') {
+    return []
+  }
+  return diver.pactIds.filter(id =>
+    pactById(id)?.accountability === 'stats'
+    && !diver.failedPactIds.includes(id)
+    && !diver.brokenPactIds.includes(id)
+    && !diver.heldPactIds.includes(id))
+}
+
+// The accepted directive, when it is stats-verified and not yet settled. It is
+// the squad's, so the host settles it.
+export function statsPendingMisfortune(state: DiveState): Misfortune | null {
+  if (state.phase !== 'rewards' || state.misfortuneFailed || state.misfortuneBroken || state.misfortuneHeld) {
+    return null
+  }
+  const misfortune = activeMisfortune(state)
+  return misfortune?.accountability === 'stats' ? misfortune : null
+}
+
+// Squad Honors read the same stats screen, so they are part of the climb: a due
+// contest (rolled or not yet) with nobody named is a gate on moving on.
+export function honorsDue(state: DiveState): boolean {
+  return state.phase === 'rewards'
+    && state.bonusWinnerIds.length === 0
+    && bonusEligible(state)
+}
+
+// One line of the climb's stats-checked section: a rule only the stats screen
+// can prove, and where it stands.
+export type StatsRuleStatus = 'pending' | 'held' | 'broke'
+
+export interface StatsRule {
+  // The squad directive has no diver; a pact belongs to one.
+  scope: 'directive' | 'pact'
+  diverId: string | null
+  conditionId: string
+  status: StatsRuleStatus
+  // A pact the diver swore as Penance: held keeps last mission's reward, broke
+  // voids it.
+  penance: boolean
+  // Broke at this check, after the draft (it is owed next mission), rather
+  // than marked in the field (it already cost its draft option).
+  afterDraft: boolean
+}
+
+export function statsRules(state: DiveState): StatsRule[] {
+  if (state.phase !== 'rewards') {
+    return []
+  }
+  const rules: StatsRule[] = []
+  const directive = activeMisfortune(state)
+  if (directive?.accountability === 'stats') {
+    rules.push({
+      scope: 'directive',
+      diverId: null,
+      conditionId: directive.id,
+      status: state.misfortuneFailed || state.misfortuneBroken ? 'broke' : state.misfortuneHeld ? 'held' : 'pending',
+      penance: false,
+      afterDraft: state.misfortuneBroken,
+    })
+  }
+  for (const diver of state.divers) {
+    for (const id of diver.pactIds) {
+      if (pactById(id)?.accountability !== 'stats') {
+        continue
+      }
+      rules.push({
+        scope: 'pact',
+        diverId: diver.id,
+        conditionId: id,
+        status: diver.failedPactIds.includes(id) || diver.brokenPactIds.includes(id)
+          ? 'broke'
+          : diver.heldPactIds.includes(id) ? 'held' : 'pending',
+        penance: isPenancePact(diver, id),
+        afterDraft: diver.brokenPactIds.includes(id),
+      })
+    }
+  }
+  return rules
+}
+
+// Everything between the banked drafts and the next drop: rules still to
+// attest and Squad Honors still to roll and name. ADVANCE refuses until both
+// are clear, so a penalty can never be skipped by moving on.
+export interface ClimbBlockers {
+  rules: number
+  honors: boolean
+}
+
+export function climbBlockers(state: DiveState): ClimbBlockers {
+  return {
+    rules: statsRules(state).filter(rule => rule.status === 'pending').length,
+    honors: honorsDue(state),
+  }
+}
+
+export function climbSettled(state: DiveState): boolean {
+  const blockers = climbBlockers(state)
+  return blockers.rules === 0 && !blockers.honors
+}
+
+// What a diver stands to lose next mission for what they broke at this check:
+// the pacts they owe back and the reward that rides on them.
+export function penanceIncurredBy(diver: DiverState): PenanceDebt | null {
+  const owed = diver.penance?.pactIds ?? []
+  const fresh = diver.brokenPactIds.filter(id => !owed.includes(id))
+  if (fresh.length === 0) {
+    return null
+  }
+  return { pactIds: fresh, itemId: diver.pickedOptionId, status: 'owed' }
+}
+
 export function allDiversPicked(state: DiveState): boolean {
   return activeDivers(state).every(
     diver => diver.pickedOptionId !== null || diver.rewardBanned,
@@ -1144,5 +1285,6 @@ export function pactOfferFor(state: DiveState, diverId: string): Pact[] {
     active?.id ?? null,
     state.difficulty,
     squadSize(state),
+    state.divers.find(diver => diver.id === diverId)?.penance?.pactIds ?? [],
   )
 }
