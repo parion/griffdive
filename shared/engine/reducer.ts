@@ -1,4 +1,4 @@
-import { ALL_WARBOND_CODES, ITEMS_BY_ID, WARBONDS } from '../data/catalog'
+import { ALL_WARBOND_CODES, WARBONDS } from '../data/catalog'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection } from './types'
 import { ACTION_LOG_CAP, ARMOR_PACK_STREAM, MAJOR_ORDER_REROLL_BONUS, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, REWARD_TOKEN_CAP, armorPackPrice, maxStarsFor, missionsPerOperation } from './config'
 import { STARTING_KITS, earnedKit, mergeKit, startingItemIds } from './progression'
@@ -9,6 +9,8 @@ import { deriveSeed, hashString } from './rng'
 import { rollSupportKit } from './support'
 import { activeDivers, activeMisfortune, allDiversPicked, armorPackPoolFor, availableCaches, bonusEligibleFor, canBuyArmorPack, canBuyItem, catchUpOptionsFor, climbSettled, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, isPenancePact, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, penanceIncurredBy, rewardPoolFor, squadInventories, squadPenances, squadSize, statsPendingMisfortune, statsPendingPactIds, strainDecision } from './selectors'
 import { bargainKindOf, itemPrice, missionHaul, rollArmorPack } from './rewards'
+import { normalizeTierList, tierListOf, tieredItem } from './tierList'
+import type { TierList } from './tierList'
 import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 
 export function createDiveState(
@@ -18,6 +20,7 @@ export function createDiveState(
   warbondCodes?: string[],
   seed?: number,
   majorOrder?: MajorOrderSelection | null,
+  tierList?: TierList | null,
 ): DiveState {
   const lobby = joinDiver(createLobbyState(), hostId, hostName) ?? createLobbyState()
   // The host's own warbond selection, applied like any self-service action so
@@ -25,7 +28,10 @@ export function createDiveState(
   const seated = warbondCodes
     ? reduce(lobby, { type: 'SET_WARBONDS', playerId: hostId, warbondCodes })
     : lobby
-  return reduce(seated, { type: 'START_DIVE', settings, seed, majorOrder })
+  const tiered = tierList
+    ? reduce(seated, { type: 'SET_TIER_LIST', tierList })
+    : seated
+  return reduce(tiered, { type: 'START_DIVE', settings, seed, majorOrder })
 }
 
 function commit(state: DiveState, patch: Partial<DiveState>, action: EngineAction): DiveState {
@@ -49,7 +55,7 @@ function applyStart(
   // warbonds they have declared by launch.
   const personalInventories: Record<string, string[]> = {}
   const supported = state.divers.map((diver) => {
-    const supportKit = rollSupportKit(settings, diver.id, diver.warbondCodes)
+    const supportKit = rollSupportKit(settings, diver.id, diver.warbondCodes, state.tierList)
     personalInventories[diver.id] = mergeKit(startingItemIds(settings.variant), supportKit)
     return { ...diver, supportKit }
   })
@@ -244,6 +250,19 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         return state
       }
       return commit(state, applyStart(state, action.settings, action.seed, action.majorOrder), action)
+    }
+
+    case 'SET_TIER_LIST': {
+      // The list is the squad's to read before launch, then frozen: every
+      // roll of the crusade resolves against the one the host launched with.
+      if (state.phase !== 'lobby' || state.settings) {
+        return state
+      }
+      const tierList = normalizeTierList(action.tierList)
+      if (!tierList && !state.tierList) {
+        return state
+      }
+      return commit(state, { tierList }, { type: 'SET_TIER_LIST', tierList })
     }
 
     case 'SPIN_WHEEL': {
@@ -699,7 +718,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (!itemId) {
         return state
       }
-      const item = ITEMS_BY_ID.get(itemId)
+      const item = tieredItem(itemId, tierListOf(state))
       if (!item) {
         return state
       }
@@ -712,7 +731,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         // The free pick still honors the personal-catalog rules: only items
         // from the diver's own warbonds, nothing owned or banned.
         const owned = new Set(state.personalInventories[diver.id] ?? [])
-        const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
+        const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state))
         if (
           owned.has(item.id)
           || diver.bannedItemIds.includes(item.id)
@@ -743,7 +762,8 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (!canBuyItem(state, diver, action.itemId).allowed) {
         return state
       }
-      const item = ITEMS_BY_ID.get(action.itemId)
+      // Priced at the crusade's tier for the item, as the shelf showed it.
+      const item = tieredItem(action.itemId, tierListOf(state))
       if (!item) {
         return state
       }

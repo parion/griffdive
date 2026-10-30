@@ -16,6 +16,7 @@ const sessions = useSessionSaves()
 const recentRooms = useRecentRooms()
 const { push: pushToast } = useToasts()
 const { ownedWarbonds: myWarbonds, setOwned: setMyWarbonds } = useOwnedWarbonds()
+const { picked: pickedTierList } = useTierLists()
 const { openCodex } = useDrawers()
 const { openFeedback, hasBoard, boardUrl } = useFeedback()
 
@@ -183,6 +184,7 @@ function createCrusade(plan: FrontPlan): void {
     [...myWarbonds.value],
     crypto.getRandomValues(new Uint32Array(1))[0],
     frontPinFor(plan, lockedFront.value, liveOrder.value),
+    pickedTierList.value.list,
   )
   const variantName = VARIANTS_LABELS[variant.value] ?? 'Crusade'
   const id = saves.createSlot(state, `${name} · ${variantName}`)

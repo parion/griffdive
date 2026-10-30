@@ -216,6 +216,33 @@ describe('room-sync', () => {
     expect(afterNoop).toBe(before)
   })
 
+  it('shows the host\'s tier list to the squad and lets only the host set it', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    await processHello(kv, peers, joiner, { name: 'B' })
+    sent(joiner).length = 0
+
+    const item = [...ITEMS_BY_ID.values()].find(entry => entry.tier === 'c')!
+    const tierList = { name: 'Squad list', tiers: { [item.id]: 's' as const } }
+    await processAction(kv, peers, joiner, { action: { type: 'SET_TIER_LIST', tierList } })
+    expect(sent(joiner).some(m => m.type === 'error' && m.code === 'not-host')).toBe(true)
+
+    await processAction(kv, peers, host, { action: { type: 'SET_TIER_LIST', tierList } })
+    expect((await lastSnapshot(joiner)).tierList).toEqual(tierList)
+
+    await processAction(kv, peers, host, { action: { type: 'START_DIVE', settings: { variant: 'medium' } } })
+    sent(joiner).length = 0
+    await processAction(kv, peers, host, { action: { type: 'SET_TIER_LIST', tierList: null } })
+    expect(sent(joiner)).toHaveLength(0)
+    expect((await loadRoom(kv, code))?.state.tierList).toEqual(tierList)
+  })
+
   it('lets the diver and the host mark pacts failed, nobody else', async () => {
     const kv = fakeKV()
     const peers = createPeerDirectory()

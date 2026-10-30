@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
 import type { RewardOption } from '~~/shared/engine/rewards'
@@ -15,6 +14,7 @@ const props = withDefaults(defineProps<{
   drafts: SquadDraft[]
   compact?: boolean
 }>(), { compact: false })
+const { itemById } = useTierCatalog()
 
 interface Tile {
   key: string
@@ -30,7 +30,7 @@ interface Tile {
 function tileOf(option: RewardOption, summary: DraftSummary): Tile {
   const banked = summary.bankedOptionId === option.optionId
   const named = option.choice && banked && summary.bankedItemId
-    ? ITEMS_BY_ID.get(summary.bankedItemId) ?? null
+    ? itemById(summary.bankedItemId) ?? null
     : null
   const item = option.choice ? named : option.item
   const resolved = summary.status === 'banked' || summary.status === 'banned'
@@ -49,7 +49,7 @@ const cards = computed(() =>
   props.drafts.map(draft => ({
     ...draft,
     tiles: draft.summary.options.map(option => tileOf(option, draft.summary)),
-    bankedItem: draft.summary.bankedItemId ? ITEMS_BY_ID.get(draft.summary.bankedItemId) ?? null : null,
+    bankedItem: draft.summary.bankedItemId ? itemById(draft.summary.bankedItemId) ?? null : null,
   })))
 
 function tileLabel(tile: Tile): string {

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import type { CrusadeMode, CrusadeVariant } from '~~/shared/engine/types'
 
 // The launch beat: a modal over the wheel where the diver's SEAF pack lands in
@@ -11,6 +10,7 @@ const props = defineProps<{
   mode?: CrusadeMode
   support: readonly string[]
 }>()
+const { itemById } = useTierCatalog()
 
 const open = defineModel<boolean>('open', { required: true })
 
@@ -22,7 +22,7 @@ const total = computed(() => props.support.length)
 const finished = computed(() => shown.value >= total.value)
 const latest = computed(() => {
   const id = shown.value > 0 ? props.support[shown.value - 1] : undefined
-  return id ? ITEMS_BY_ID.get(id)?.displayName ?? '' : ''
+  return id ? itemById(id)?.displayName ?? '' : ''
 })
 
 const body = useTemplateRef<HTMLElement>('body')

@@ -40,7 +40,7 @@ const rewardPool = computed(() => {
     return []
   }
   const banned = new Set(props.self.bannedItemIds)
-  return rewardPoolFor(props.self.warbondCodes ?? ALL_WARBOND_CODES)
+  return rewardPoolFor(props.self.warbondCodes ?? ALL_WARBOND_CODES, props.state.tierList)
     .filter(item => !banned.has(item.id))
 })
 const ownedIds = computed(() => props.state.personalInventories[props.selfId ?? ''] ?? [])

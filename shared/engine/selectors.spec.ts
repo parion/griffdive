@@ -335,7 +335,7 @@ describe('Brasch\'s Armor Pack (side stock)', () => {
     }
     expect(canBuyArmorPack(state, openedPack)).toEqual({ allowed: false, reason: 'Already opened a pack this operation' })
     expect(armorPackFor(openedPack)?.itemIds).toEqual(['extrapadding'])
-    expect(armorPackItemsFor(openedPack).map(item => item.id)).toEqual(['extrapadding'])
+    expect(armorPackItemsFor(state, openedPack).map(item => item.id)).toEqual(['extrapadding'])
     expect(armorPackFor(diver)).toBeNull()
   })
 })

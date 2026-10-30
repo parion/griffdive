@@ -655,6 +655,59 @@ option roll:   each option rolls a d100 face on the odds line. Zone width is
   a trio (S ~50%) and 8.75 for four divers (S ~64%, S+ ~6%). Risk pays at every altitude; nothing is
   guaranteed, but everything gets likelier.
 
+### Custom tier lists
+
+Every item carries a default tier (`Item.tier`, see `data-catalog.md`). The host may replace the
+default tiers for one crusade with a **custom tier list** (`TierList` in
+`shared/engine/tierList.ts`): a name plus a **complete** map of item id → tier. A list stands on its
+own: it stores every rating, including ones that happen to match the default, and is never stored
+or shared as edits to the default tiers. A new list in the Tier Maker starts as a *copy* of the
+default tiers (`defaultTierList`) or of a featured list. An item the list never rated (one added to
+the catalog after the list was made) is **unrated**: it plays at its catalog tier, and the Tier
+Maker flags it New until the author places it (`isUnrated`, `unratedItems`). Only C/B/A/S exist.
+Upstream's D tier has no equivalent, and anything imported as D is dropped rather than guessed.
+
+- **Where it lives:** `DiveState.tierList` (optional; absent or `null` = the default list). The host
+  sets it in the lobby with the host-only `SET_TIER_LIST` action, so the whole squad reads it before
+  launch. The reducer refuses it once `START_DIVE` has run, so the list is **frozen for the
+  crusade**. Solo crusades pass it to `createDiveState`, which applies the same action before
+  `START_DIVE`, so the action log records it either way.
+- **One door in:** `normalizeTierList` is applied to every list the engine stores. It drops unknown
+  ids and non-tiers, caps the name at `TIER_LIST_NAME_MAX`, and turns a list that rates nothing
+  into `null`. `forkCrusade` re-normalizes the list when a save
+  becomes a new session.
+- **One resolver:** `tieredCatalog(list)` returns the catalog with the list's tiers applied (cached
+  per list object), and `tieredItem(id, list)` looks up one item. Every rule that reads a tier goes
+  through them:
+  - the catalog pool (`catalogPoolFor(codes, tierList)`, and its views `rewardPoolFor` and
+    `armorPassivePoolFor`), so options, the nearest-tier fallback and
+    Liberty's Cross claims all roll at the list's tiers;
+  - forfeit offers (`earnedItemsOf`);
+  - the Field Promotion catch-up;
+  - the Brasch's Bargains shelf, and its price (`BUY_ITEM` prices the tiered item);
+  - the Armor Pack: its pool, odds summary and the dealt cards (`armorPackPoolFor`,
+    `armorPackItemsFor`) read passives at the list's tiers;
+  - the SEAF Support Package, which is dealt from the list's `SEAF_SUPPORT_TIER`.
+
+  The odds ladder itself (zones, base tiers, Valor) is untouched: a list changes *which items* sit
+  in a tier, never the chance of rolling that tier.
+- **No mechanical bonus or penalty.** A custom list is shown as a tag on the lobby, the Armory and
+  save cards ("Tiers · *name*"); it does not touch Valor, honors or tokens.
+- **Sharing:** `parseTierList` reads anything a diver pastes — a link, a bare code or JSON.
+  - **Share codes** (`encodeTierList`): `GD2.<slots>.<percent-encoded name>`, travelling as
+    `/tiers#<code>`. Items are addressed by their permanent slot in `shared/data/tierSlots.ts`
+    (`TIER_SLOTS`). Each slot holds one of five values (unrated, C, B, A, S) and two slots share
+    one base64url letter, so any list — however far from the default — is about 125 letters plus
+    its name. `TIER_SLOTS` is **append-only**: never reorder or remove an id, or every code already
+    shared reads wrong. A slot the build doesn't know (a code from a newer catalog) is skipped; a
+    slot past the code's end is unrated; a retired item keeps its slot and decodes to nothing.
+  - **JSON files** (`tierListToJson`): `{ format: 'griffdive-tier-list', version: 1, name, tiers:
+    { s: [ids], a: […], b: […], c: […] } }`, readable and hand-editable. Import also accepts the
+    stored id → tier shape.
+- **Featured lists** ship in `shared/data/tierLists.ts` (`TIER_LIST_PRESETS`). Each is written out
+  tier by tier as id arrays, never computed from the default tiers, so a catalog refresh can't
+  quietly change one.
+
 ### Brasch's Bargains — credits
 
 Samples recovered on a mission are not a Valor term. They are exchanged for **credits**, the
@@ -943,7 +996,9 @@ version, so the same change must also normalize stored rooms on read in `loadRoo
 fill only absent fields, never overwrite) — they survive deploys on the volume. Normalization drops
 only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
-`achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, inventories, per-diver warbond declarations,
+`achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, the host's custom
+`tierList` (optional and additive: an absent field is the default list, so it needed no schema bump
+or room normalization), inventories, per-diver warbond declarations,
 `completedCombos` (misfortune × front × strain), reroll tokens, action log (capped), RNG seed
 history, legacy caches (earned gear) parked by departed divers, per-diver catch-up bookkeeping, credit
 purses and the mission's Brasch's Bargains seed and per-diver deals (the one Armor Pack pull

@@ -160,6 +160,7 @@ function exportCrusade(): void {
             <span class="lbl ach-op">
               Operation {{ opNumber }} · {{ difficultyName(state.difficulty) }} · {{ opLength }}/{{ opLength }} missions
             </span>
+            <TierListTag :list="state.tierList" />
           </div>
           <h1 class="ach-title">
             <span class="disp rv-slam ach-line">Griffdive</span>

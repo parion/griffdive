@@ -16,6 +16,7 @@ import {
 } from './config'
 import { VARIANTS, catchUpOpsBehind, earnedKit, mergeKit, startingItemIds } from './progression'
 import { rollSupportKit } from './support'
+import { normalizeTierList } from './tierList'
 import type { ArmorPackDeal, BargainDeal, BargainSlotKind, DivePhase, DiveState, DiverState, FrontPlan, LegacyCache, MajorOrderSelection, PenanceDebt, WheelResult } from './types'
 
 // A freshly created room: no settings, no divers. The first joiner becomes
@@ -41,6 +42,7 @@ export function createLobbyState(): DiveState {
     strainAccepted: false,
     strainDecided: false,
     majorOrder: null,
+    tierList: null,
     rerollTokens: REROLL_TOKENS_PER_OPERATION,
     completedCombos: [],
     personalInventories: {},
@@ -99,7 +101,7 @@ export function joinDiver(
   const warbondCodes = declaredWarbonds
     ? [...new Set(declaredWarbonds.filter(code => ALL_WARBOND_CODES.includes(code)))]
     : [...ALL_WARBOND_CODES]
-  const supportKit = state.settings ? rollSupportKit(state.settings, playerId, warbondCodes) : []
+  const supportKit = state.settings ? rollSupportKit(state.settings, playerId, warbondCodes, state.tierList) : []
   const startingKit = state.settings ? mergeKit(startingItemIds(state.settings.variant), supportKit) : []
   // A cache holds only earned gear: the returning diver is reissued the
   // starting kit and gets their winnings back on top, with no promotion owed.
@@ -500,6 +502,7 @@ export function forkCrusade(
     strainAccepted: state.strainAccepted === true,
     strainDecided: state.strainDecided === true,
     majorOrder,
+    tierList: normalizeTierList(state.tierList),
     rerollTokens: clampInt(state.rerollTokens, 0, 10, REROLL_TOKENS_PER_OPERATION),
     completedCombos: stringArray(state.completedCombos, 2000),
     personalInventories: { [owner.id]: ownerKit },

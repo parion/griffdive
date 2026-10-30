@@ -33,6 +33,8 @@ const {
   commitName,
 } = useDiveView(session)
 
+useActiveTierList(() => state.value?.tierList)
+
 const dispatch = (action: EngineAction) => session.dispatch(action)
 
 // A removed diver's hello is refused, so no snapshot arrives: the server's
@@ -702,6 +704,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       :room-code="session.slotName.value"
       :last-error="session.lastError.value?.message ?? null"
       @start="launchCrusade"
+      @set-tier-list="dispatch({ type: 'SET_TIER_LIST', tierList: $event })"
       @copy-invite="copyInvite"
       @open-menu="sessionMenuOpen = true"
       @transfer-host="transferHost"

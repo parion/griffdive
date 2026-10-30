@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
 import type { RewardOption } from '~~/shared/engine/rewards'
@@ -70,6 +69,7 @@ const props = withDefaults(defineProps<{
   baseTier: null,
   advanceLabel: 'Next mission',
 })
+const { itemById } = useTierCatalog()
 
 const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
@@ -141,7 +141,7 @@ function nameOf(option: RewardOption): string {
 
 const crossSelected = computed(() => crossOption.value !== null && selectedId.value === crossOption.value.optionId)
 const crossChosenName = computed(() =>
-  crossSelected.value && choiceItemId.value ? ITEMS_BY_ID.get(choiceItemId.value)?.displayName ?? null : null)
+  crossSelected.value && choiceItemId.value ? itemById(choiceItemId.value)?.displayName ?? null : null)
 
 function chosenItemName(): string {
   if (!selectedId.value) {
@@ -152,7 +152,7 @@ function chosenItemName(): string {
     return ''
   }
   if (option.choice && choiceItemId.value) {
-    return ITEMS_BY_ID.get(choiceItemId.value)?.displayName ?? 'Liberty’s Cross'
+    return itemById(choiceItemId.value)?.displayName ?? 'Liberty’s Cross'
   }
   return nameOf(option)
 }
@@ -164,7 +164,7 @@ const pickedItem = computed(() => {
   if (!props.pickedId) {
     return null
   }
-  const direct = ITEMS_BY_ID.get(props.pickedId)
+  const direct = itemById(props.pickedId)
   if (direct) {
     return direct
   }
