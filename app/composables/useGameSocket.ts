@@ -227,7 +227,13 @@ export function useGameSocket(roomCode: string) {
     send(JSON.stringify(message))
   }
 
+  // Idempotent: under the out-in page transition the page's setup can connect
+  // (host probe) before onMounted runs, and a second open() would drop the
+  // first socket after its hello seated us, seating this browser twice.
   function connect(): void {
+    if (status.value !== 'CLOSED') {
+      return
+    }
     awaitingJoin.value = false
     connectionFailed.value = false
     store.openSession(roomCode)
