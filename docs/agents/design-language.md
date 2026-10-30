@@ -21,8 +21,10 @@ Design principles — every gameplay decision must honor these:
 3. **Reward scales with stakes.** Each reward option rolls its own tier on that line; altitude and
    chosen risk move the whole line, and Brasch's Bargains stocks higher tiers at altitude.
 4. **Guarantee rarity class, never specific items** (Balatro skip tags). Players buy a *chance* at
-   better gear, not a shopping list — with one deliberate exception: **Brasch's Bargains** sells
-   one named item per mission for credits, from the operation's base tier up to one tier above.
+   better gear, not a shopping list — with one deliberate exception: **Brasch's Bargains**, whose
+   shelf sells one named item per mission for credits (operation base tier up to one above), and
+   whose **Armor Pack** sells a blind pull of unowned passives (three cards, one B+ guaranteed, one
+   S roll).
 5. **Misfortunes reshape decisions, not stats** (Deep Rock Galactic's mutator design). A misfortune
    should change loadout strategy, route, or behavior — not just make numbers bigger.
 6. **Team risk is shared; personal risk is personal** (Slay the Spire 2 co-op model). The whole squad
@@ -334,8 +336,9 @@ class is the e2e hook.
 The draft is "Bank one item": one card per option. **The item art is the
 card**: a 4:3 well (a square thumb on phones) letterboxes the whole catalog image with
 `object-fit: contain` — never crop it — and the name is a quiet caption under it. Each card is
-stamped with its **rolled tier** only; the d100 faces live on the odds line above, one pin per option. The old ceiling-climb intro,
-`CeilingTrack`, ban flow and settlement screen are retired. Picking a card selects it; the CTA banks
+stamped with its **rolled tier** only; the d100 faces live on the odds line above, one pin per option.
+Armor passives never appear here: they are Brasch's Armor Pack (see *Kit, Armory, Warbonds*). The old
+ceiling-climb intro, `CeilingTrack`, ban flow and settlement screen are retired. Picking a card selects it; the CTA banks
 it; a resolved draft waits on the squad. The **`SquadDraftBoard`** shows each squadmate's offered
 tiles and status — the phone reward draft renders the same board (compact, one column), never a
 status-only summary — and the reroll control spends a banked honors token. An S+ roll is **Liberty's Cross**, shown
@@ -405,6 +408,18 @@ accent spotlight; **icon** groups (armor passives, boosters, stratagems) show th
 icon full size over a blurred copy of itself, so each frame glows in its own colour. Stratagem
 groups take their in-game frame colours (Eagle/Orbital red, Supply blue, Defense green). Tiles
 carry a tier stripe and lift on hover; banned icons drop their glow.
+
+**Brasch's Armor Pack** sits under the shelf as **side stock**: a sealed foil card with the band
+price, "up to 3 armor passives · one B+ pull · S pull X%", and "one pack per operation". It is a
+separate purchase, so the shelf's one-buy rule is untouched. Buying takes over the whole screen
+(`BraschPackReveal`, not a dialog card): a sealed foil floats on a dark stage, tap/Enter tears it,
+a three-card deck appears, and each card flies out and flips into a hand fan. The draw is
+low-text — the pack label, the tier and name on each card, and one **To the shelf** control — with
+tier-scaled pacing from `revealTimeline`; an S pull gets a gold burst and a holo wash. The side
+card keeps the pull for the operation (tier tick + name per card) and a **View pull** replay.
+Reduced motion lands the settled fan at once. The stage locks the phone sidebar's click-outside so
+the shop cannot close under it. The Armory still lists passives, with a note that they come only
+from the pack.
 
 #### Join briefing and host tutorial
 

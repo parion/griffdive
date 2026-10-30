@@ -55,6 +55,13 @@ function warbondName(code: string): string {
       {{ filtered.length }} of {{ ALL_ITEMS.length }} items · tiers from the community default list
     </p>
 
+    <p
+      v-if="category === 'armorPassive'"
+      class="muted small"
+    >
+      Armor passives are sold only in Brasch's Armor Pack — they never appear in reward drafts.
+    </p>
+
     <section
       class="panel filters"
       aria-label="Catalog filters"

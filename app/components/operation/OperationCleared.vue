@@ -16,7 +16,7 @@ const props = withDefaults(defineProps<{
   phone?: boolean
 }>(), { phone: false })
 
-const emit = defineEmits<{ start: [], buy: [itemId: string] }>()
+const emit = defineEmits<{ start: [], buy: [itemId: string], openPack: [] }>()
 
 const hostName = computed(() =>
   upperName(props.state.divers.find(diver => diver.id === props.state.hostId)?.name) ?? 'the host')
@@ -131,6 +131,7 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
           :state="state"
           :self="self"
           @buy="emit('buy', $event)"
+          @open-pack="emit('openPack')"
         />
       </div>
     </div>

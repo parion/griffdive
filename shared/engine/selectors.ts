@@ -1,4 +1,4 @@
-import { ALL_ITEMS, ALL_WARBOND_CODES, ITEMS_BY_ID } from '../data/catalog'
+import { ALL_ITEMS, ALL_WARBOND_CODES, ITEMS_BY_ID, TIER_RANK } from '../data/catalog'
 import { FRONTS } from '../data/fronts'
 import type { Front } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
@@ -6,8 +6,10 @@ import type { Misfortune } from '../data/misfortunes'
 import { PACTS, pactById } from '../data/pacts'
 import type { Pact } from '../data/pacts'
 import type { Strain } from '../data/strains'
-import type { Item } from '../data/types'
+import type { Item, Tier } from '../data/types'
 import {
+  ARMOR_PACK_ODDS,
+  ARMOR_PACK_SIZE,
   BARGAIN_SLOTS,
   BARGAIN_STREAM,
   FRONT_ROLL_RISK,
@@ -19,6 +21,8 @@ import {
   SQUAD_SIZE_MAX,
   STRAIN_RISK,
   bargainStratagemSlotsFor,
+  armorPackBandFor,
+  armorPackPrice,
   baseTierFor,
   bonusIntervalFor,
   conditionRiskAt,
@@ -43,7 +47,7 @@ import { STARTING_KITS, catchUpOpsBehind, startingItemIds } from './progression'
 import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, bargainKindOf, rollBargainShelf, rollBonus, rollCeiling, rollRewardOffer, rollRewardOptions, topTierOf, valorOf } from './rewards'
 import type { BargainSlot, RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
-import type { BargainDeal, BargainSlotKind, CrusadeMode, CrusadeSettings, DiveState, DivePhase, DiverState, FrontPlan, MajorOrderPlanet, MissionOutcome, RewardTier } from './types'
+import type { ArmorPackDeal, BargainDeal, BargainSlotKind, CrusadeMode, CrusadeSettings, DiveState, DivePhase, DiverState, FrontPlan, MajorOrderPlanet, MissionOutcome, RewardTier } from './types'
 import { eligibleMisfortunes, eligibleStrains, frontById, strainById } from './wheel'
 
 // A completed run is tracked by its full draw — misfortune, front and strain —
@@ -380,12 +384,23 @@ export function itemBannedInArmory(
   return pending ? { ...pending, preview: true } : null
 }
 
-export function rewardPoolFor(codes: readonly string[]): Item[] {
+export function catalogPoolFor(codes: readonly string[]): Item[] {
   const owned = new Set(codes)
   return ALL_ITEMS.filter(
     item =>
       item.warbondCode === 'none' || owned.has(item.warbondCode),
   )
+}
+
+// The reward-eligible pool: armor passives are Brasch exclusives now, so they
+// never enter a draft, a Liberty's Cross claim, or a Field Promotion. They
+// still roll in the SEAF Support Package (which uses the full catalog pool).
+export function rewardPoolFor(codes: readonly string[]): Item[] {
+  return catalogPoolFor(codes).filter(item => item.category !== 'armorPassive')
+}
+
+export function armorPassivePoolFor(codes: readonly string[]): Item[] {
+  return catalogPoolFor(codes).filter(item => item.category === 'armorPassive')
 }
 
 export function diverOptions(state: DiveState, diver: DiverState): RewardOption[] {
@@ -516,13 +531,20 @@ export function draftSummaryFor(state: DiveState, diver: DiverState): DraftSumma
 }
 
 // A diver's Brasch's Bargains deal for the mission about to start: the
-// holdings and bans the shelf skips, and the kinds already bought this
-// operation (empty when a new operation begins).
-export function dealBargain(state: DiveState, diver: DiverState, boughtKinds: readonly BargainSlotKind[]): BargainDeal {
+// holdings and bans the shelf skips, and what the operation has already
+// spent (a bought kind on the shelf, the one Armor Pack). A new operation
+// clears both; a failure restart keeps them.
+export function dealBargain(
+  state: DiveState,
+  diver: DiverState,
+  previous: BargainDeal | null,
+  newOperation: boolean,
+): BargainDeal {
   return {
     excludedIds: [...(state.personalInventories[diver.id] ?? []), ...diver.bannedItemIds],
     boughtItemId: null,
-    boughtKinds: [...boughtKinds],
+    boughtKinds: newOperation ? [] : previous?.boughtKinds ?? [],
+    pack: newOperation ? null : previous?.pack ?? null,
   }
 }
 
@@ -565,7 +587,7 @@ export function bargainShelfFor(state: DiveState, diver: DiverState): BargainShe
     deriveSeed(deriveSeed(state.bargainSeed, BARGAIN_STREAM), hashString(diver.id)),
     state.difficulty,
     kinds.filter(kind => !heldBack.has(kind)),
-    rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES),
+    catalogPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES),
     new Set(deal.excludedIds),
   )
   const counts = new Map<BargainSlotKind, number>()
@@ -650,6 +672,101 @@ export function canBuyItem(
   return { allowed: true, reason: null }
 }
 
+// The Armor Pack side table: a sealed pack of up to three armor passives from
+// the diver's unowned pool. The offer is display data — the engine re-derives
+// the actual pull from the mission seed when the diver buys.
+export interface ArmorPackOffer {
+  price: number
+  // How many passives the pack would deal right now (3 unless the pool is thin).
+  size: number
+  // How many unowned passives remain in the diver's warbonds.
+  available: number
+  // Whole-percent chance of the pack's one S roll; 0 when no S passive is left.
+  sChance: number
+  // The weakest tier the guaranteed hit card can land in.
+  hitFloor: Tier
+}
+
+export function armorPackOfferFor(state: DiveState, diver: DiverState): ArmorPackOffer {
+  const odds = ARMOR_PACK_ODDS[armorPackBandFor(state.difficulty)]
+  const pool = armorPackPoolFor(state, diver)
+  const bandFloor = odds.hit.reduce(
+    (lowest, entry) => (TIER_RANK[entry.tier] < TIER_RANK[lowest] ? entry.tier : lowest),
+    odds.hit[0]!.tier,
+  )
+  const ordinary = pool.filter(item => item.tier !== 's')
+  const hasS = pool.some(item => item.tier === 's')
+  const hasFloor = ordinary.some(item => TIER_RANK[item.tier] >= TIER_RANK[bandFloor])
+  // If the band floor is exhausted, the hit card can only drop; advertise what
+  // is actually left (or S, when the pool has nothing ordinary at all).
+  const hitFloor = ordinary.length === 0
+    ? (hasS ? 's' : bandFloor)
+    : hasFloor
+      ? bandFloor
+      : ordinary.reduce<Tier>(
+          (best, item) => (TIER_RANK[item.tier] > TIER_RANK[best] ? item.tier : best),
+          'c',
+        )
+  return {
+    price: armorPackPrice(state.difficulty),
+    size: Math.min(ARMOR_PACK_SIZE, pool.length),
+    available: pool.length,
+    // A thin pool that cannot fill three cards without S guarantees one; a
+    // normal pool only sees S through the pack's single roll.
+    sChance: hasS ? (ordinary.length < ARMOR_PACK_SIZE ? 1 : odds.sChance) : 0,
+    hitFloor,
+  }
+}
+
+// The passives a pack may still deal: the diver's warbonds, minus what they
+// already hold and anything banned for the crusade. Duplicates are impossible,
+// so a thin pool deals a smaller pack instead of repeating a card.
+export function armorPackPoolFor(state: DiveState, diver: DiverState): Item[] {
+  const excluded = new Set([
+    ...(state.personalInventories[diver.id] ?? []),
+    ...diver.bannedItemIds,
+  ])
+  return armorPassivePoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
+    .filter(item => !excluded.has(item.id))
+}
+
+// The one pack this operation already dealt, or null.
+export function armorPackFor(diver: DiverState): ArmorPackDeal | null {
+  return diver.bargain?.pack ?? null
+}
+
+export function armorPackItemsFor(diver: DiverState): Item[] {
+  return (diver.bargain?.pack?.itemIds ?? [])
+    .map(id => ITEMS_BY_ID.get(id))
+    .filter((item): item is Item => item !== undefined)
+}
+
+// Whether a diver can open this operation's Armor Pack: the shop is open, the
+// pack has not been opened, they have unowned passives left, and they can
+// afford it. The shelf's one-item limit does not apply — the pack is side stock.
+export function canBuyArmorPack(
+  state: DiveState,
+  diver: DiverState,
+): { allowed: boolean, reason: string | null } {
+  const closed = bargainsClosedReason(state)
+  if (closed) {
+    return { allowed: false, reason: closed }
+  }
+  if (!diver.bargain) {
+    return { allowed: false, reason: 'Brasch has not dealt your shelf' }
+  }
+  if (diver.bargain.pack) {
+    return { allowed: false, reason: 'Already opened a pack this operation' }
+  }
+  if (armorPackPoolFor(state, diver).length === 0) {
+    return { allowed: false, reason: 'You own every armor passive in your warbonds' }
+  }
+  if (armorPackPrice(state.difficulty) > diver.credits) {
+    return { allowed: false, reason: 'Not enough credits' }
+  }
+  return { allowed: true, reason: null }
+}
+
 // The Bargains entry's lamp: dark while nothing on the shelf is buyable, lit
 // once something is, and pulsing only for a fresh operation's restock — the
 // first mission after an operation was completed, before the diver buys from
@@ -659,6 +776,7 @@ export type BargainLamp = 'off' | 'ready' | 'restocked'
 export function bargainLamp(state: DiveState, diver: DiverState): BargainLamp {
   const buyable = bargainShelfFor(state, diver)
     .some(slot => slot.item && canBuyItem(state, diver, slot.item.id).allowed)
+    || canBuyArmorPack(state, diver).allowed
   if (!buyable || !state.settings) {
     return 'off'
   }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS, ALL_WARBOND_CODES, ITEMS_BY_ID } from '../data/catalog'
 import type { FrontId } from '../data/fronts'
 import { PACTS } from '../data/pacts'
-import { BONUS_STATS, FRONT_ROLL_RISK, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, PENANCE_VALOR, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor, directiveValorAt, maxStarsFor, seafSupportValorAt } from './config'
+import { BONUS_STATS, FRONT_ROLL_RISK, MAJOR_ORDER_REROLL_BONUS, MAJOR_ORDER_RISK, PENANCE_VALOR, REWARD_TOKEN_CAP, STRAIN_RISK, baseTierFor, directiveValorAt, maxStarsFor, armorPackPrice, seafSupportValorAt } from './config'
 import { startingItemIds } from './progression'
 import { rollSupportKit } from './support'
 import { DIVERS_CHOICE_OPTION_ID, bargainKindOf, itemPrice, maxCeiling } from './rewards'
@@ -897,8 +897,8 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
   it('deals every diver a shelf at the crusade start', () => {
     const state = freshState()
     expect(state.bargainSeed).not.toBeNull()
-    expect(requireDiver(state).bargain).toEqual({ excludedIds: state.personalInventories.p1, boughtItemId: null, boughtKinds: [] })
-    expect(bargainShelfFor(state, requireDiver(state))).toHaveLength(4)
+    expect(requireDiver(state).bargain).toEqual({ excludedIds: state.personalInventories.p1, boughtItemId: null, boughtKinds: [], pack: null })
+    expect(bargainShelfFor(state, requireDiver(state))).toHaveLength(3)
   })
 
   it('buys one item per mission, then offers nothing else', () => {
@@ -959,7 +959,6 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
       ['primary', 'heldBack'],
       ['secondary', 'open'],
       ['throwable', 'open'],
-      ['armorPassive', 'open'],
     ])
     expect(second[0]!.item).toBeNull()
     expect(requireDiver(state).bargain).toMatchObject({ boughtItemId: null, boughtKinds: ['primary'] })
@@ -992,6 +991,69 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
     expect(state.phase).toBe('spin')
     expect(state.bargainSeed).not.toBe(seed)
     expect(requireDiver(state).bargain).toMatchObject({ boughtItemId: null, boughtKinds: ['primary'] })
+  })
+
+  it('opens one Armor Pack per operation, pays for it, and leaves the shelf buyable', () => {
+    let state = rich(opened(freshState()))
+    const diver = requireDiver(state)
+    const price = armorPackPrice(state.difficulty)
+    const before = new Set(state.personalInventories.p1)
+
+    state = reduce(state, { type: 'BUY_ARMOR_PACK', playerId: 'p1' })
+    expect(requireDiver(state).credits).toBe(100_000 - price)
+    const pack = requireDiver(state).bargain!.pack!
+    expect(pack.itemIds).toHaveLength(3)
+    expect(new Set(pack.itemIds).size).toBe(3)
+    expect(pack.itemIds.every(id => ITEMS_BY_ID.get(id)?.category === 'armorPassive')).toBe(true)
+    for (const id of pack.itemIds) {
+      expect(before.has(id)).toBe(false)
+      expect(state.personalInventories.p1).toContain(id)
+    }
+    // Side stock, not a shelf slot: the one-buy limit is untouched.
+    expect(requireDiver(state).bargain!.boughtItemId).toBeNull()
+    expect(bargainShelfFor(state, requireDiver(state)).every(slot => slot.status === 'open')).toBe(true)
+    const shelfItem = bargainShelfFor(state, requireDiver(state))[0]!.item!
+    expect(reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: shelfItem.id })).not.toBe(state)
+
+    // One pack per operation: a second send is a no-op.
+    const bought = state
+    expect(reduce(bought, { type: 'BUY_ARMOR_PACK', playerId: 'p1' })).toBe(bought)
+    expect(diver.bargain!.pack).toBeNull()
+  })
+
+  it('refuses an Armor Pack before the first operation, in the field, or without funds', () => {
+    const early = rich(freshState())
+    expect(reduce(early, { type: 'BUY_ARMOR_PACK', playerId: 'p1' })).toBe(early)
+    const diving = rich(divingState(42))
+    expect(reduce(diving, { type: 'BUY_ARMOR_PACK', playerId: 'p1' })).toBe(diving)
+    const broke = opened(freshState())
+    expect(reduce(broke, { type: 'BUY_ARMOR_PACK', playerId: 'p1' })).toBe(broke)
+  })
+
+  it('keeps the pack through a failure restart and clears it for the next operation', () => {
+    const playMission = (from: DiveState, seed: number): DiveState => {
+      let state = reduce(from, { type: 'SPIN_WHEEL', seed })
+      state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })
+      if (state.phase === 'strain') {
+        state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
+      }
+      state = reduce(state, { type: 'DEAL_PACTS' })
+      state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+      state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+      return reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: diverOptions(state, requireDiver(state))[0]!.optionId })
+    }
+    let state = reduce(rich(opened(freshState())), { type: 'BUY_ARMOR_PACK', playerId: 'p1' })
+    const pack = requireDiver(state).bargain!.pack!
+
+    state = playMission(state, 42)
+    state = reduce(state, { type: 'ADVANCE' })
+    expect(state.missionInOperation).toBe(2)
+    expect(requireDiver(state).bargain!.pack).toEqual(pack)
+
+    state = playMission(state, 43)
+    state = reduce(state, { type: 'ADVANCE' })
+    expect(state.difficulty).toBe(opened(freshState()).difficulty + 1)
+    expect(requireDiver(state).bargain!.pack).toBeNull()
   })
 })
 

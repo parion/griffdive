@@ -15,7 +15,7 @@ const props = withDefaults(defineProps<{
   phone?: boolean
 }>(), { phone: false })
 
-const emit = defineEmits<{ advance: [], buy: [itemId: string] }>()
+const emit = defineEmits<{ advance: [], buy: [itemId: string], openPack: [] }>()
 
 const mission = computed(() => props.state.missionInOperation)
 const opEnds = computed(() => mission.value >= props.opLength)
@@ -86,6 +86,7 @@ const ctaLabel = computed(() => {
           :state="state"
           :self="self"
           @buy="emit('buy', $event)"
+          @open-pack="emit('openPack')"
         />
       </div>
     </div>

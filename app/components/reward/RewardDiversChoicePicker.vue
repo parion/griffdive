@@ -16,7 +16,6 @@ const CATEGORIES: (ItemCategory | 'all')[] = [
   'secondary',
   'throwable',
   'booster',
-  'armorPassive',
   'Supply',
   'Eagle',
   'Orbital',

@@ -39,7 +39,9 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
    extracted), which banks a credit haul into every diver's purse. Each diver is then dealt N
    options; **every option rolls its own d100 tier** on the same Valor odds line, and the diver
    picks one. All rewards go to the diver's personal inventory — stratagems included. Armor
-   rewards are **passives**; the catalog has no armor pieces (see inventory model). Credits bank
+   passives are **not** in the reward pool: the surplus kit and the SEAF Support Package still
+   issue them, but the only way to earn another is **Brasch's Armor Pack** (see Brasch's
+   Bargains — credits). The catalog has no armor pieces (see inventory model). Credits bank
    into each diver's purse for **Brasch's Bargains**, the shop that restocks every mission (see
    Brasch's Bargains — credits).
 7. **Advance** — next mission, which draws a fresh misfortune (the front and strain persist).
@@ -507,7 +509,10 @@ option roll:   each option rolls a d100 face on the odds line. Zone width is
   zone gains or loses. No screen shows a numeric Valor total and no rule is gated on the gauge.
   `VALOR_METER_MAX` and the Luck caps remain internal odds math.
 - The reward pool is personal: each diver rolls against the catalog of warbonds *they* declared
-  (plus `warbondCode === 'none'` items) — never the squad's or the host's.
+  (plus `warbondCode === 'none'` items) — never the squad's or the host's. Armor passives are
+  excluded from that pool: they are Brasch exclusives (see Brasch's Armor Pack), so a draft, a
+  Liberty's Cross claim and a Field Promotion can never name one. The forfeit offer still takes
+  a passive the diver bought.
 - Higher difficulties inside a band climb easier: diff 5 rolls into B more readily than diff 3,
   diff 10 into S more readily than diff 8 (`bandPosition`).
 - **Each option rolls its own tier.** The draft is seeded from the offer seed (one rng stream) so
@@ -516,11 +521,11 @@ option roll:   each option rolls a d100 face on the odds line. Zone width is
   stays a hard floor (a Super Helldive never offers C-tier gear). A thin pool falls back to the
   nearest stocked tier and the needle moves with it, so the roll never lies about the card.
 - **S+ = Liberty's Cross.** No catalog item carries the S+ tier. A rolled S+ face becomes the Cross:
-  the diver claims **any item from their own catalog** — same personal-pool rules as every reward
-  (warbond-owned items only, nothing already owned). One Cross per draft; a second S+ face rerolls
-  inside S. The option rides a stable sentinel id (`DIVERS_CHOICE_OPTION_ID` in
-  `shared/engine/rewards.ts`); the UI opens a minified codex picker, and `PICK_REWARD` carries the
-  named item in `choiceItemId`.
+  the diver claims **any reward-eligible item from their own catalog** — same personal-pool rules as
+  every reward (warbond-owned items only, nothing already owned, armor passives excluded). One Cross
+  per draft; a second S+ face rerolls inside S. The option rides a stable sentinel id
+  (`DIVERS_CHOICE_OPTION_ID` in `shared/engine/rewards.ts`); the UI opens a minified codex picker,
+  and `PICK_REWARD` carries the named item in `choiceItemId`.
 - **The offer is frozen at the deal.** `REPORT_RESULT` snapshots each drafting diver's holdings
   and bans into `DiverState.draftExcludedIds`, and `diverOptions` rolls against that snapshot, not
   live holdings — so a pick or a Bargains purchase never reshuffles an offer the squad has seen,
@@ -587,10 +592,10 @@ reshuffle the forfeit offers, which derive from the live kit) and once the crusa
 (`bargainsClosedReason`). It is the one deliberate exception to design principle 4 (it names
 items):
 
-- **Slots:** one item each for **primary**, **secondary**, **throwable** and **armor passive**
-  (`BARGAIN_SLOTS`). Difficulties where a mission can award a 4th star (diff 5+) add one random
-  **stratagem** slot, and a 5th star (diff 7+) adds a second one (`bargainStratagemSlotsFor`). Two
-  stratagem slots never offer the same stratagem.
+- **Slots:** one item each for **primary**, **secondary** and **throwable** (`BARGAIN_SLOTS`).
+  Difficulties where a mission can award a 4th star (diff 5+) add one random **stratagem** slot,
+  and a 5th star (diff 7+) adds a second one (`bargainStratagemSlotsFor`). Two stratagem slots never
+  offer the same stratagem. Armor passives are not a shelf slot; they are side stock (below).
 - **Tiers:** each slot is a uniformly random item of its kind from the operation's **base tier up to
   one tier above it** (`BARGAIN_TIER_REACH`): C–B at diffs 3–5, B–A at 6–7, A–S at 8–10. Valor plays
   no part. A kind with nothing in that band steps to the nearest stocked tier, cheaper first.
@@ -607,7 +612,8 @@ items):
   C/B/A/S cost 35/100/280/450 — roughly 2.8× per tier through A, then a flatter step to S so the top
   stays in reach — so C/B sit within a mission or two's haul, A is a short save, and S (stocked from difficulty 8) lands about once per 6–7
   missions for a squad filing a modest share of the map's samples (`scripts/simulate-economy.mjs`;
-  `SAVER=1` models a diver who skips small buys to afford a nearby S). Primaries ×1.25, armor passives ×0.75, everything else ×1.
+  `SAVER=1` models a diver who skips small buys to afford a nearby S). Primaries ×1.25, everything
+  else ×1. The Armor Pack is priced by band, not by a card's tier (below).
 - **One buy per mission:** `BUY_ITEM` (self-service) deducts the price, banks the item in
   `personalInventories` and records it as `bargain.boughtItemId`. The shelf keeps its layout: the
   bought slot reads `bought` and every other slot `locked` until the next mission (`bargainShelfFor`
@@ -618,14 +624,56 @@ items):
 - **Soft:** buying never gates any phase. A diver who can't buy sees each card disabled with the
   engine's reason (`canBuyItem`).
 
+#### Brasch's Armor Pack — passives on the side
+
+Armor passives never appear in a reward draft, Liberty's Cross or a Field Promotion. The surplus
+kit and the SEAF Support Package still issue them; the only way to **earn** another is the Armor
+Pack. It sits beside the shelf, not on it: a **separate purchase** (a diver can buy one shelf item
+and one pack in the same mission), **one pack per operation**, priced by the operation's base tier.
+
+| Base band | Price | Ordinary cards | Hit card | S roll |
+| --- | --- | --- | --- | --- |
+| C (3–5) | 160 | C 30 / B 50 / A 20 | B 70 / A 30 | 1% |
+| B (6–7) | 240 | B 45 / A 55 | B 30 / A 70 | 4% |
+| A (8–10) | 360 | A 100 | A 100 | 8% |
+
+- **Up to three duplicate-free passives** from the diver's own warbonds, minus everything they
+  already own and anything banned. The pack never repeats a card; a pool with fewer than three left
+  deals a smaller pack, and an empty pool closes the product.
+- **One guaranteed hit:** the first card is the hit, drawn from the band's hit ladder; the other two
+  fill from the ordinary ladder. A tier with nothing left steps to the nearest stocked tier — the
+  hit looks up first, so its floor survives while any ordinary B/A passive remains. S is not an
+  exhaustion upgrade while ordinary cards remain: it comes from the roll (or from a pool too thin
+  to fill the pack without it), and never more than once.
+- **One S roll per pack:** a single roll can lift the hit card to S, never more than one S per pack.
+  The chance is 1% at base C, 4% at base B and 8% at base A; it reads 0% once the diver owns both S
+  passives, and 100% ("S guaranteed") when the unowned pool is too thin to fill three cards without
+  one.
+- **Derived from the mission seed, then stored:** `BUY_ARMOR_PACK` derives the pull from the
+  mission's `bargainSeed` (stream salt 7) folded with the diver id, then stores the seed and the
+  dealt item ids in `DiverState.bargain.pack`. The stored pull is what the shelf and a reload show:
+  a new mission in the same operation keeps it, a failure restart keeps it, a new operation clears
+  it. The pull is not re-derived from live holdings, so a later forfeit cannot reshuffle the reveal.
+- **At stake:** bought passives are earned gear, so a failure's forfeit can take one.
+- **The reveal is presentation:** buying takes over the screen with `BraschPackReveal` — a sealed
+  foil floats on a dark stage, tap/Enter tears it, a three-card deck appears and each card flies out
+  and flips into a hand fan, with an S pull getting a gold burst and holo wash. It is low-text: the
+  pack label, the tier and name on each card, and one "To the shelf" control. The pull is already
+  banked; the full-screen stage is dismissible and the side card keeps a "View pull" replay.
+
 **Tuning check:** `node --experimental-strip-types scripts/simulate-economy.mjs` Monte-Carlos a
 full 3→10 climb (20 missions, 8 operations) for four collection profiles against the live
 `config.ts`, spending greedily one buy per mission. Targets: a casual squad (~35% of spawns) buys
-about one item per operation (~7 per climb, mostly C/B); a steady one (~60%) ~11; an eager collector
-(~85% plus Sample Scanner) ~15 — near a buy every mission through diff 7 but only every other
-mission at diff 8+, where A gear costs 400; the honor-system maxed haul (the 2× report ceiling) ~17
-and still reaches S only by saving. Re-run it after touching `SAMPLE_CREDITS`, `TIME_HAUL_FLOOR`,
-`CREDIT_PRICE_*` or `SAMPLE_AVAILABILITY`.
+about 6 items per climb (mostly C/B); a steady one (~60%) ~11; an eager collector (~85% plus Sample
+Scanner) ~15; the honor-system maxed haul (the 2× report ceiling) ~17. The shelf no longer carries a
+passive slot, so those are slightly below the old totals; with the Armor Pack on (default) a
+shelf-first diver spends most of the purse before the pack and buys almost none (~0.1 per climb
+steady, ~0.2 eager, ~0.3 maxed). A passive-first collector (`PACKFIRST=1`) buys the pack before
+shelf gear: ~1 pack per climb as steady, ~4 eager and ~5 maxed, with an S pack roughly every
+11/4/4 climbs. `PACKS=0` reproduces the shelf-only numbers, and `SAVER=1` models a diver who skips
+small buys to afford a nearby S (steady: an S about once per 5 missions at the top band). Re-run it
+after touching `SAMPLE_CREDITS`, `TIME_HAUL_FLOOR`, `CREDIT_PRICE_*`, `ARMOR_PACK_PRICES` or
+`ARMOR_PACK_ODDS`.
 
 ### Mission failure — the forfeit offer
 
@@ -709,7 +757,10 @@ specific items" — it narrows a pool, it never names a reward.
   no shared pool — a deliberate deviation from Penitent Crusade's sharing rule.
 - **Armor = passives, not pieces.** The catalog carries only armor passives (no pieces, no
   rating/speed/stamina). Any armor piece (any weight or rating) is freely wearable as long as its
-  passive is owned. Losing a passive in a forfeit removes the ability to wear armor carrying it.
+  passive is owned. Passives are **Brasch exclusives**: the starting surplus and the SEAF Support
+  Package issue them, and the Armor Pack is the only way to earn another (they never enter a reward
+  draft, Liberty's Cross or Field Promotion). Losing a passive in a forfeit removes the ability to
+  wear armor carrying it.
 - **Forfeit on failure:** each diver loses exactly one earned item (stratagems included; never the
   starting kit) from their own personal inventory, chosen by that diver from a seeded, Valor-capped
   offer — see Mission
@@ -803,4 +854,5 @@ session link is the identity. Crusade state includes: settings, difficulty, miss
 `achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, inventories, per-diver warbond declarations,
 `completedCombos` (misfortune × front × strain), reroll tokens, action log (capped), RNG seed
 history, legacy caches (earned gear) parked by departed divers, per-diver catch-up bookkeeping, credit
-purses and the mission's Brasch's Bargains seed and per-diver deals.
+purses and the mission's Brasch's Bargains seed and per-diver deals (the one Armor Pack pull
+included).

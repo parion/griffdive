@@ -12,7 +12,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "advancedfiltration",
+      "optionId": "surpluseatallocation",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -27,7 +27,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "electricalconduit",
+      "optionId": "samplescanner",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -44,7 +44,7 @@
       ],
       "outcome": "success",
       "stars": 3,
-      "optionId": "gsh39shield",
+      "optionId": "p44mist",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -61,7 +61,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "gsh39shield"
+      "forfeitedItemId": "p44mist"
     },
     {
       "mission": 4,
@@ -104,7 +104,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "tx41sterilizer",
+      "optionId": "eagle110mmrocketpods",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -119,7 +119,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "las98lasercannon",
+      "optionId": "eat700expendablenapalm",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -136,7 +136,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "las98lasercannon"
+      "forfeitedItemId": "eat700expendablenapalm"
     },
     {
       "mission": 9,
@@ -187,14 +187,14 @@
       "mission": 12,
       "seed": 1788458060,
       "misfortuneId": "oopsAllAirstrikes",
-      "misfortuneAccepted": false,
+      "misfortuneAccepted": true,
       "front": "illuminate",
       "strainId": "mindlessMasses",
       "strainAccepted": true,
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "ma5cassaultrifle",
+      "optionId": "ar32pacifier",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -211,7 +211,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "ma5cassaultrifle"
+      "forfeitedItemId": "ar32pacifier"
     },
     {
       "mission": 14,
@@ -224,7 +224,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "kineticdisplacementmitigation",
+      "optionId": "mg43machinegun",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -239,7 +239,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "am12mortarsentry",
+      "optionId": "alas98lasersentry",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -247,14 +247,14 @@
       "mission": 16,
       "seed": 3816266512,
       "misfortuneId": "oopsAllAirstrikes",
-      "misfortuneAccepted": false,
+      "misfortuneAccepted": true,
       "front": "illuminate",
       "strainId": "mindlessMasses",
       "strainAccepted": true,
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "r40sightliner",
+      "optionId": "gl15evictor",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -262,14 +262,14 @@
       "mission": 17,
       "seed": 2175734977,
       "misfortuneId": "oopsAllAirstrikes",
-      "misfortuneAccepted": false,
+      "misfortuneAccepted": true,
       "front": "illuminate",
       "strainId": "mindlessMasses",
       "strainAccepted": false,
       "pactIds": [],
       "outcome": "success",
       "stars": 5,
-      "optionId": "mp98knight",
+      "optionId": "sg20halt",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -286,7 +286,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "mp98knight"
+      "forfeitedItemId": "alas98lasersentry"
     },
     {
       "mission": 19,
@@ -299,7 +299,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "eaglenapalmairstrike",
+      "optionId": "orbitalrailcannonstrike",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -314,7 +314,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "rl77airburstrocketlauncher",
+      "optionId": "axlas5rover",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -331,7 +331,7 @@
       ],
       "outcome": "success",
       "stars": 4,
-      "optionId": "apw1antimaterielrifle",
+      "optionId": "ms11solosilo",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -363,7 +363,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "apw1antimaterielrifle"
+      "forfeitedItemId": "sg20halt"
     },
     {
       "mission": 24,
@@ -376,7 +376,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "orbitalwalkingbarrage",
+      "optionId": "ag16gatlingsentry",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -391,7 +391,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "ac8autocannon",
+      "optionId": "axarc3k9",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -408,7 +408,7 @@
       ],
       "outcome": "success",
       "stars": 4,
-      "optionId": "las16sickle",
+      "optionId": "r2amendment",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -423,7 +423,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 5,
-      "optionId": "axarc3k9",
+      "optionId": "m102gunnerfrv",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -453,7 +453,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "r40khotshot",
+      "optionId": "smg203gallant",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -483,7 +483,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "orbitalgasstrike",
+      "optionId": "orbital120mmhebarrage",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -499,27 +499,28 @@
         "antiTankAbstinent"
       ],
       "outcome": "success",
-      "stars": 5,
-      "optionId": "las99quasarcannon",
+      "stars": 0,
+      "optionId": null,
       "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
       "mission": 33,
-      "seed": 1697034193,
-      "misfortuneId": "pacifist",
+      "seed": 3337565728,
+      "misfortuneId": "oopsAllAirstrikes",
       "misfortuneAccepted": true,
       "front": "terminids",
       "strainId": "ruptureStrain",
       "strainAccepted": true,
       "pactIds": [
-        "stimAbstinent"
+        "stimAbstinent",
+        "loadoutLoyalist"
       ],
       "outcome": "failure",
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "axarc3k9"
+      "forfeitedItemId": "m102gunnerfrv"
     },
     {
       "mission": 34,
@@ -532,7 +533,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "las44nova",
+      "optionId": "ted63throwabledynamite",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -547,7 +548,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "experimentalinfusion",
+      "optionId": "plas45epoch",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -562,20 +563,20 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "bflam80cremator",
+      "optionId": "agm17gasmortarsentry",
       "choiceItemId": null,
       "forfeitedItemId": null
     }
   ],
   "firstOptions": [
-    "advancedfiltration",
+    "surpluseatallocation",
     "cqc5combathatchet",
-    "flexiblereinforcementbudget"
+    "expertextractionpilot"
   ],
   "final": {
     "phase": "complete",
     "difficulty": 10,
-    "missionIndex": 30,
+    "missionIndex": 29,
     "missionInOperation": 3,
     "rerollTokens": 1,
     "completedCombos": [
@@ -603,7 +604,6 @@
       "oopsAllAirstrikes:terminids:predatorStrain",
       "oopsAllAirstrikes:terminids:predatorStrain",
       "oopsAllAirstrikes:terminids:ruptureStrain",
-      "oopsAllAirstrikes:terminids:ruptureStrain",
       "pacifist:illuminate:mindlessMasses",
       "primaryOnly:illuminate:mindlessMasses",
       "primaryOnly:terminids:ruptureStrain",
@@ -611,12 +611,12 @@
       "zeroDeaths:terminids:ruptureStrain"
     ],
     "personalInventory": [
-      "ac8autocannon",
-      "advancedfiltration",
-      "am12mortarsentry",
+      "ag16gatlingsentry",
+      "agm17gasmortarsentry",
       "am23emsmortarsentry",
       "amg43machinegunsentry",
-      "bflam80cremator",
+      "axarc3k9",
+      "axlas5rover",
       "cqc19stunlance",
       "cqc1onetrueflag",
       "cqc2saber",
@@ -625,33 +625,32 @@
       "cqc5combathatchet",
       "cqc73entrenchmenttool",
       "cqc9defoliationtool",
-      "eaglenapalmairstrike",
+      "eagle110mmrocketpods",
       "eaglesmokestrike",
-      "electricalconduit",
-      "experimentalinfusion",
       "extrapadding",
       "fx12shieldgeneratorrelay",
       "g12highexplosivegrenade",
       "g3smokegrenade",
       "g89smokescreen",
+      "gl15evictor",
       "k2throwingknife",
-      "kineticdisplacementmitigation",
-      "las16sickle",
-      "las44nova",
       "las7dagger",
-      "las99quasarcannon",
       "md17antitankmines",
+      "mg43machinegun",
+      "ms11solosilo",
+      "orbital120mmhebarrage",
       "orbitalemsstrike",
-      "orbitalgasstrike",
+      "orbitalrailcannonstrike",
       "orbitalsmokestrike",
-      "orbitalwalkingbarrage",
       "p2peacemaker",
+      "plas45epoch",
       "r2124constitution",
-      "r40khotshot",
-      "r40sightliner",
-      "rl77airburstrocketlauncher",
+      "r2amendment",
+      "samplescanner",
       "sh51directionalshield",
-      "tx41sterilizer"
+      "smg203gallant",
+      "surpluseatallocation",
+      "ted63throwabledynamite"
     ],
     "seedHistory": [
       0,
@@ -688,7 +687,6 @@
       2323661502,
       683129967,
       3337565728,
-      1697034193,
       56502658,
       2710938419,
       1070406884
