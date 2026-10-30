@@ -501,6 +501,8 @@ A drag-and-drop tier board in the tiermaker mould, built for a phone first.
 - The S label catches a slow glint every few seconds.
 
 **Shell**
+- **Entry:** the ship nav opens with a **Tier Maker** link (`IconTiers`) before Ko-fi and Star
+  repo (on phones **Tiers** and **Star**, to fit); the standalone site swaps it for **Play Griffdive**.
 - **Header:** the list name is an inline display-face input, with per-tier counts, an "N new" chip
   when items are unrated, and an **Overview** link that opens `TierListView`.
 - **Filter strip:** sticky under the ship header. The first line is category chips (Reka
@@ -516,7 +518,7 @@ A drag-and-drop tier board in the tiermaker mould, built for a phone first.
 - **Desk (`TierListDesk`):** "On the board" (start a new list from the default tiers or a featured
   list, or open one of yours), then one primary button that is the list's **next step**. It saves
   while the list is new or changed. Once saved and unchanged it becomes:
-  - **Back to my lobby with this list** when a lobby is open in another tab: it picks the list
+  - **Back to lobby** when a lobby is open in another tab: it picks the list
     (the lobby syncs it) and closes this tab, which the setup link opened, so the diver lands back
     in the lobby; a browser that refuses to close it navigates to the lobby instead;
   - **Host a crusade with this list** otherwise: it picks the list and opens a fresh online lobby;

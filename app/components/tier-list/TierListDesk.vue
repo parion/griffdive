@@ -19,7 +19,7 @@ const props = defineProps<{
 const label = computed(() => {
   switch (props.step) {
     case 'lobby':
-      return 'Back to my lobby with this list'
+      return 'Back to lobby'
     case 'host':
       return props.launching ? 'Opening a lobby…' : 'Host a crusade with this list'
     case 'play':

@@ -75,6 +75,19 @@ const { standalone, mainOrigin } = useTiersSite()
           >
             <span>Play Griffdive</span>
           </a>
+          <NuxtLink
+            v-else
+            class="icon-btn navb"
+            to="/tiers"
+            aria-label="Tier Maker"
+          >
+            <IconTiers class="nav-icon" />
+            <span class="wide-label">Tier Maker</span>
+            <span
+              class="phone-label"
+              aria-hidden="true"
+            >Tiers</span>
+          </NuxtLink>
           <a
             class="icon-btn navb"
             href="https://ko-fi.com/griffdive"
@@ -92,7 +105,7 @@ const { standalone, mainOrigin } = useTiersSite()
             aria-label="Star Griffdive on GitHub"
           >
             <IconStar class="nav-icon star" />
-            <span>Star repo</span>
+            <span>Star<span class="wide-label"> repo</span></span>
           </a>
         </nav>
       </header>
@@ -183,9 +196,10 @@ const { standalone, mainOrigin } = useTiersSite()
 .play-link { color: var(--gold); }
 .nav-icon { width: 20px; height: 20px; }
 .nav-icon.star { color: var(--gold); }
+.phone-label { display: none; }
 
 @media (max-width: 720px) {
-  .term-header { padding: 0 12px; gap: 10px; }
+  .term-header { padding: 0 12px; gap: 8px; }
   .brand-word { font-size: 14px; letter-spacing: 0.04em; }
   .release-chip { display: none; }
   .uplink { display: none; }
@@ -193,11 +207,13 @@ const { standalone, mainOrigin } = useTiersSite()
      icons. Icon and label sit side by side to fit beside the brand. */
   /* The standalone Tier Maker keeps one way out on a phone: to the game. */
   .ship-nav.standalone .navb:not(.play-link) { display: none; }
+  .wide-label { display: none; }
+  .phone-label { display: inline; }
   .navb {
     flex-direction: row;
     gap: 6px;
     height: 44px;
-    padding: 0 8px;
+    padding: 0 6px;
     font-size: 10px;
     letter-spacing: 0.12em;
   }

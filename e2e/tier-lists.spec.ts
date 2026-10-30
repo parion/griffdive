@@ -7,7 +7,9 @@ import { dismissWarbondIntro, expectJoinerLanded } from './helpers'
 const SQUAD_LIST = { name: 'Squad Test', tiers: { ...defaultTierList('x').tiers, tx41sterilizer: 's' as const } }
 
 test('the Tier Maker drags, keys and taps an item between tiers, and saves the list', async ({ page }) => {
-  await page.goto('/tiers')
+  await page.goto('/')
+  await page.getByRole('navigation', { name: 'Ship' }).getByRole('link', { name: 'Tier Maker' }).click()
+  await expect(page).toHaveURL(/\/tiers$/)
   await expect(page.getByRole('heading', { name: 'Tier Maker' })).toBeVisible()
   // Supply alone, in small nameless tiles, keeps every row on screen for the mouse.
   await page.getByRole('radio', { name: 'Supply' }).click()
@@ -204,7 +206,7 @@ test('opened from a lobby, the saved list sends the host back to it', async ({ c
   const [maker] = await Promise.all([context.waitForEvent('page'), page.getByRole('link', { name: /Tier Maker/ }).click()])
   await maker.getByRole('textbox', { name: 'List name' }).fill('Lobby List')
   await maker.getByRole('button', { name: 'Save to my lists' }).click()
-  const back = maker.getByRole('button', { name: 'Back to my lobby with this list' })
+  const back = maker.getByRole('button', { name: 'Back to lobby' })
   await expect(back).toBeVisible()
   await Promise.all([maker.waitForEvent('close'), back.click()])
   await expect(page.getByRole('radio', { name: /^Lobby List:/ })).toBeChecked()
