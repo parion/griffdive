@@ -3,9 +3,10 @@ import { currentFront, draftSummaryFor, honorsPending } from '~~/shared/engine/s
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 // The beat between two missions of one operation: the whole squad has banked,
-// so everyone regroups here — their haul, the squad's picks and Brasch's shelf
-// — until the host calls the next drop. Presentation only: the engine stays in
-// rewards and ADVANCE is the one way out, exactly as from the draft.
+// so everyone regroups here — their haul, the squad's picks and the way into
+// Brasch's Bargains — until the host calls the next drop. Presentation only:
+// the engine stays in rewards and ADVANCE is the one way out, exactly as from
+// the draft.
 const props = withDefaults(defineProps<{
   state: DiveState
   self: DiverState | null
@@ -15,7 +16,7 @@ const props = withDefaults(defineProps<{
   phone?: boolean
 }>(), { phone: false })
 
-const emit = defineEmits<{ advance: [], buy: [itemId: string], openPack: [] }>()
+const emit = defineEmits<{ advance: [] }>()
 
 const mission = computed(() => props.state.missionInOperation)
 const opEnds = computed(() => mission.value >= props.opLength)
@@ -82,11 +83,9 @@ const ctaLabel = computed(() => {
       />
 
       <div class="shop">
-        <BraschBargains
+        <BraschShopDoor
           :state="state"
           :self="self"
-          @buy="emit('buy', $event)"
-          @open-pack="emit('openPack')"
         />
       </div>
     </div>
@@ -243,9 +242,8 @@ const ctaLabel = computed(() => {
 }
 
 .shop {
-  padding: 16px;
-  background: var(--rail);
-  box-shadow: inset 0 0 0 1px var(--line-2);
+  display: flex;
+  flex-direction: column;
   animation: deal-in 0.55s var(--ease-out) 0.25s both;
 }
 
@@ -285,5 +283,5 @@ const ctaLabel = computed(() => {
 .phone .seg { flex: 1; min-width: 0; height: 40px; padding: 0 8px 0 16px; gap: 6px; }
 .phone .seg:first-child { padding-left: 10px; }
 .phone .seg-word { display: none; }
-.phone .shop { padding: 12px; }
+.phone .shop { padding: 0; }
 </style>

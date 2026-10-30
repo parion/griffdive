@@ -24,7 +24,7 @@ Design principles — every gameplay decision must honor these:
    better gear, not a shopping list — with one deliberate exception: **Brasch's Bargains**, whose
    shelf sells one named item per mission for credits (operation base tier up to one above), and
    whose **Armor Pack** sells a blind pull of unowned passives (three cards, one B+ guaranteed, one
-   S roll).
+   S roll) as repeatable side stock at a rising price.
 5. **Misfortunes reshape decisions, not stats** (Deep Rock Galactic's mutator design). A misfortune
    should change loadout strategy, route, or behavior — not just make numbers bigger.
 6. **Team risk is shared; personal risk is personal** (Slay the Spire 2 co-op model). The whole squad
@@ -128,7 +128,8 @@ merge with them.
   op number and mission pips, front emblem), the four **`PhaseTabs`** beats (Call · Pacts · Dive ·
   Loot, current beat filled gold, finished beats checked), the connection lamp and the session
   menu. Kit, Armory, Warbonds and Brasch's Bargains no longer live up here: they are the
-  **`DiveSidebar`** rail (see *Kit, Armory, Warbonds* below). Back to the Bridge lives
+  **`DiveSidebar`** rail's tools (Bargains opens the counter dialog from its tab; see *Kit,
+  Armory, Warbonds* below). Back to the Bridge lives
   in `DiveMenu`, because the global bridge header stands down on `/dive`.
 - **`SquadDock`** anchors the bottom: status lamps and names for every diver (`.seat` cards —
   not the global `.chip` tag utility), open seats, Steam lobby and invite copy, and the
@@ -337,7 +338,7 @@ The draft is "Bank one item": one card per option. **The item art is the
 card**: a 4:3 well (a square thumb on phones) letterboxes the whole catalog image with
 `object-fit: contain` — never crop it — and the name is a quiet caption under it. Each card is
 stamped with its **rolled tier** only; the d100 faces live on the odds line above, one pin per option.
-Armor passives never appear here: they are Brasch's Armor Pack (see *Kit, Armory, Warbonds*). The old
+Armor passives never appear here: they are Brasch's Armor Pack (see *Kit, Armory, Warbonds, and the Bargains counter*). The old
 ceiling-climb intro, `CeilingTrack`, ban flow and settlement screen are retired. Picking a card selects it; the CTA banks
 it; a resolved draft waits on the squad. The **`SquadDraftBoard`** shows each squadmate's offered
 tiles and status — the phone reward draft renders the same board (compact, one column), never a
@@ -364,10 +365,10 @@ Once **every** diver has banked (`allDiversPicked`, synced state, so the whole s
 draft hands off to an interstitial; the engine stays in rewards and the host's ADVANCE is the only
 way on. Mid-operation that is **`MissionCleared`** ("Regroup"): a mission track (secured drops lit
 teal, the next one breathing gold), the diver's banked haul as a hero card with the credits it
-earned, the squad's picks (`SquadDraftBoard`), and **Brasch's Bargains inline** so divers shop
+earned, the squad's picks (`SquadDraftBoard`), and the **door to Brasch's Bargains** so divers shop
 while they wait. Both beats share **`MissionBankedHaul`** (the haul hero card). At the operation's end, **`OperationCleared`** carries the climb
 to the next difficulty — the next in-game difficulty emblem slams in over rays, above a 3–10
-chevron ladder underlined in each rung's base tier — then regroups like the mission beat: the haul, the squad's picks and Brasch's shelf as a **last
+chevron ladder underlined in each rung's base tier — then regroups like the mission beat: the haul, the squad's picks and Brasch's counter as a **last
 call** (the shelf restocks at the new altitude only when the next operation starts). Its backdrop
 is alive: two ray fields counter-rotate behind the emblem, a halo breathes, embers rise and the
 headline takes one pass of light — all stilled by reduced motion.
@@ -383,22 +384,24 @@ its leading edge; a shrinking tier keeps its settled odds label and no red block
 already shows the narrower zone. The signed movement stays in the zone tooltip. It is presentation
 only and reads `tierZones` from the engine.
 
-#### Kit, Armory, Warbonds
+#### Kit, Armory, Warbonds, and the Bargains counter
 
-**`DiveSidebar`** is the one home for the dive's slide-overs: **Kit, Armory (`codex` in code), Warbonds and Brasch's
-Bargains**, on every dive shell (the lobby and the briefings stand outside it and keep the global
+**`DiveSidebar`** is the one home for the dive's slide-overs: **Kit, Armory (`codex` in code) and
+Warbonds**, on every dive shell (the lobby and the briefings stand outside it and keep the global
 Armory/Warbonds drawers). On desktop it is `DiveFrame`'s `aside`: a permanent 52px rail of vertical
 tabs at the right edge (glyph, vertical label, and for Bargains the credit balance with its gold
 lamp, disabled with its reason mid-mission), and a non-modal panel that opens to the rail's left at
 `clamp(340px, 32vw, 34rem)`. One panel at a time; the active tab is gold-edged, a second click, the
 panel's Hide control or Esc folds it, and the rail never moves. State is `useDrawers().sidePanel`
 (`codexOpen` / `warbondsOpen` are flags over it, so the tutorial, lobby and Field Promotion gate
-still just call `openWarbonds()`). Bargains shuts itself when the squad drops into the field.
-On a phone (`sheet`) the rail is a four-up row pinned just above the action bar (`PhoneShell`'s
-`dock` slot) and the panel rises over the stage from it (up to 64dvh, Hide or a tap anywhere off the dock folds it down; panels slide in and out
-symmetrically, tucked behind the rail and the action bar, never over them); the
-phone top bar and action bar no longer carry Kit, Armory or credit tiles. Components hosted here
-stay rule-free: they only render engine selectors.
+still just call `openWarbonds()`). **Brasch's Bargains is not a panel:** its rail tab carries the
+same credit balance and lamp but opens the counter's own dialog (`useDrawers().bargainsOpen`), and
+shuts itself when the squad drops into the field. On a phone (`sheet`) the rail is a four-up row
+pinned just above the action bar (`PhoneShell`'s `dock` slot) and the three panels rise over the
+stage from it (up to 64dvh, Hide or a tap anywhere off the dock folds it down; panels slide in and
+out symmetrically, tucked behind the rail and the action bar, never over them); the phone top bar
+and action bar no longer carry Kit, Armory or credit tiles. The counter is a full-viewport takeover
+there instead (below). Components hosted here stay rule-free: they only render engine selectors.
 
 The Kit (`KitPanel`) keeps the lean diver list (a segmented strip with a gold lamp on the
 selected diver), jump chips (each with its group's accent square) over the earned-only switch, and
@@ -409,16 +412,30 @@ icon full size over a blurred copy of itself, so each frame glows in its own col
 groups take their in-game frame colours (Eagle/Orbital red, Supply blue, Defense green). Tiles
 carry a tier stripe and lift on hover; banned icons drop their glow.
 
-**Brasch's Armor Pack** sits under the shelf as **side stock**: a sealed foil card with the band
-price, "up to 3 armor passives · one B+ pull · S pull X%", and "one pack per operation". It is a
-separate purchase, so the shelf's one-buy rule is untouched. Buying takes over the whole screen
-(`BraschPackReveal`, not a dialog card): a sealed foil floats on a dark stage, tap/Enter tears it,
-a three-card deck appears, and each card flies out and flips into a hand fan. The draw is
-low-text — the pack label, the tier and name on each card, and one **To the shelf** control — with
-tier-scaled pacing from `revealTimeline`; an S pull gets a gold burst and a holo wash. The side
-card keeps the pull for the operation (tier tick + name per card) and a **View pull** replay.
-Reduced motion lands the settled fan at once. The stage locks the phone sidebar's click-outside so
-the shop cannot close under it. The Armory still lists passives, with a note that they come only
+**Brasch's Bargains** is a counter, not a drawer: `BraschShopDoor` on the regroup beats is one
+clipped requisition panel (pack glyph, credits, stock count, "Shop"), the rail tab opens the same
+thing, and on desktop `AppDialog` (`fullscreen="mobile"`) renders a wide counter; on a phone it is
+the whole viewport. The interior is a sign (operation/mission, the title, a purse), a shelf and a
+footer, and nothing else: no explanatory paragraphs.
+
+The shelf is one centered row of **price tags**, not cards: each slot is a product name over a 1:1
+tier spotlight, a tier badge in its header, and a punched requisition tag (`Buy` + credit glyph)
+hanging under it. There is no per-item frame — the row's brass lip and the spotlight do the
+boxing. A bought slot keeps its place with a rotated **Taken** stamp; the others veil to
+"Next mission", and a kind bought this operation veils to "Next operation". The Armor Pack is the
+last card in the row (`BraschArmorPack`): a foil-wrapped side-stock card with **three mini card
+backs fanned in the Griffdive mark**, an S-roll micro-badge, the next price, a count badge for
+packs opened, and a replay control for the newest pull. It is narrow, so the row stays one shelf
+rather than a grid plus a banner. On a phone the pack card becomes a compact horizontal row under
+the two-column shelf.
+
+Buying opens `BraschPackReveal` over the counter: on desktop a contained stage (the counter stays
+visible and inert underneath), on a phone the full screen. A sealed foil floats on a dark stage,
+tap/Enter tears it, a three-card deck appears, and each card flies out and flips into a hand fan.
+The draw is low-text — the pack label, the tier and name on each card, and one **To the shelf**
+control — with tier-scaled pacing from `revealTimeline`; an S pull gets a gold burst and a holo
+wash. Reduced motion lands the settled fan at once. The rail's lamp and credit count are the only
+shop chrome outside the counter. The Armory still lists passives, with a note that they come only
 from the pack.
 
 #### Join briefing and host tutorial

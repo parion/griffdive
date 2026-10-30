@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { dismissWarbondIntro, fileCallsign } from './helpers'
 
-// The shop only opens after the first operation, and a pack costs a real save.
+// The shop only opens after the first operation, and the first pack is cheap
+// enough that a funded test account can buy several and watch the price climb.
 // Seed the save's purse and altitude through localStorage so the test exercises
 // the live purchase/reveal rather than a mocked engine.
 async function stockedDive(page: Page): Promise<void> {
@@ -25,52 +26,80 @@ async function stockedDive(page: Page): Promise<void> {
   await expect(page.getByRole('button', { name: /Brasch's Bargains, 1000 credits/ })).toBeEnabled()
 }
 
-test('Brasch sells one Armor Pack per operation and opens the pull', async ({ page }) => {
+const counter = (page: Page) => page.getByRole('dialog', { name: 'Brasch\'s Bargains' })
+const reveal = (page: Page) => page.getByRole('dialog', { name: 'Armor Pack' })
+
+test('the Armor Pack is a card in the shelf row and opens over the counter', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await stockedDive(page)
 
   await page.getByRole('button', { name: /Brasch's Bargains, 1000 credits/ }).click()
-  const shop = page.getByRole('region', { name: 'Brasch\'s Bargains' })
-  const pack = shop.locator('.bb-pack')
+  const shop = counter(page)
+  await expect(shop).toBeVisible()
+  await expect(shop.locator('.shelf .slot')).toHaveCount(3)
+
+  // The pack is side stock in the row, not a banner below it.
+  const pack = shop.locator('.pack-card')
   await expect(pack).toContainText('Armor Pack')
-  await expect(pack).toContainText('Up to 3 armor passives')
-  await expect(shop.locator('.bb-side')).toContainText('One pack per operation')
+  await expect(pack).toContainText('3 armor passives')
+  await expect(pack).toContainText('S 1%')
+  await expect(pack.locator('.mini')).toHaveCount(3)
 
-  await pack.locator('.bb-pack-btn').click()
-  const dialog = page.getByRole('dialog', { name: 'Armor Pack' })
-  await expect(dialog).toBeVisible()
-  // Not a dialog card: the pack stage owns the viewport.
-  const box = await dialog.boundingBox()
-  expect(box).toMatchObject({ x: 0, y: 0, width: 1440, height: 900 })
-  await expect(dialog.locator('.card-slot')).toHaveCount(3)
-  await expect(dialog.locator('.card-name')).toHaveCount(3)
-  await dialog.getByRole('button', { name: 'To the shelf' }).click()
-  await expect(dialog).toBeHidden()
+  await pack.getByRole('button', { name: 'Open Armor Pack 1 for 25 credits' }).click()
+  const fan = reveal(page)
+  await expect(fan).toBeVisible()
+  // A contained stage over the counter, not a viewport takeover. The counter
+  // stays painted underneath but is inert while the pack has focus.
+  const box = await fan.boundingBox()
+  expect(box!.x).toBeGreaterThan(0)
+  expect(box!.y).toBeGreaterThan(0)
+  expect(box!.width).toBeLessThan(1440)
+  expect(box!.height).toBeLessThan(900)
+  await expect(page.locator('.brasch-dialog')).toBeVisible()
+  await expect(fan.locator('.card-slot')).toHaveCount(3)
+  await fan.getByRole('button', { name: 'To the shelf' }).click()
+  await expect(fan).toBeHidden()
 
-  // The shelf keeps its three slots; the side table now shows the pull.
-  await expect(shop.locator('.bb-card')).toHaveCount(3)
-  await expect(pack).toContainText('Opened this operation')
-  await expect(pack.getByRole('button', { name: 'View pull' })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Brasch's Bargains, 840 credits/ })).toBeEnabled()
+  // The counter never closed; it shows the opened pack and the next price.
+  await expect(shop).toBeVisible()
+  await expect(pack.locator('.pack-count')).toHaveText('1')
+  await expect(pack.getByRole('button', { name: 'Open Armor Pack 2 for 38 credits' })).toBeVisible()
+  await expect(pack.getByRole('button', { name: 'View the newest Armor Pack pull' })).toBeVisible()
 })
 
-test('the pack opens on a tap and settles the fan', async ({ page }) => {
+test('a second pack costs more and the replay opens the settled fan', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.emulateMedia({ reducedMotion: 'no-preference' })
   await stockedDive(page)
 
   await page.getByRole('button', { name: /Brasch's Bargains, 1000 credits/ }).click()
-  await page.getByRole('region', { name: 'Brasch\'s Bargains' }).locator('.bb-pack-btn').click()
-  const dialog = page.getByRole('dialog', { name: 'Armor Pack' })
-  await expect(dialog).toHaveClass(/sealed/)
-  await dialog.locator('.tap-zone').click()
-  await expect(dialog).toHaveClass(/bursting|drawing/)
-  // The deck deals and the fan settles; the single CTA is the end state.
-  await expect(dialog.getByRole('button', { name: 'To the shelf' })).toBeVisible({ timeout: 10_000 })
-  await expect(dialog.locator('.card-slot')).toHaveCount(3)
+  const shop = counter(page)
+  const pack = shop.locator('.pack-card')
+
+  await pack.getByRole('button', { name: 'Open Armor Pack 1 for 25 credits' }).click()
+  const first = reveal(page)
+  await expect(first).toBeVisible()
+  await first.getByRole('button', { name: 'To the shelf' }).click()
+  await expect(first).toBeHidden()
+
+  await pack.getByRole('button', { name: 'Open Armor Pack 2 for 38 credits' }).click()
+  const second = reveal(page)
+  await expect(second).toBeVisible()
+  await second.getByRole('button', { name: 'To the shelf' }).click()
+  await expect(second).toBeHidden()
+  await expect(pack.locator('.pack-count')).toHaveText('2')
+  await expect(pack.getByRole('button', { name: 'Open Armor Pack 3 for 56 credits' })).toBeVisible()
+
+  // The replay is instant and still shows the newest pull.
+  await pack.getByRole('button', { name: 'View the newest Armor Pack pull' }).click()
+  const replay = reveal(page)
+  await expect(replay).toBeVisible()
+  await expect(replay).toHaveClass(/settled/)
+  await expect(replay.locator('.card-slot')).toHaveCount(3)
+  await replay.getByRole('button', { name: 'To the shelf' }).click()
+  await expect(replay).toBeHidden()
 })
 
-test('the Armor Pack reveal stacks over the phone shop', async ({ browser }) => {
+test('the phone opens the counter and the pack fullscreen', async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     hasTouch: true,
@@ -80,14 +109,21 @@ test('the Armor Pack reveal stacks over the phone shop', async ({ browser }) => 
   await stockedDive(page)
 
   await page.getByRole('button', { name: /Brasch's Bargains, 1000 credits/ }).tap()
-  const shop = page.getByRole('region', { name: 'Brasch\'s Bargains' })
-  await shop.locator('.bb-pack-btn').tap()
-  const dialog = page.getByRole('dialog', { name: 'Armor Pack' })
-  await expect(dialog).toBeVisible()
-  await expect(dialog.locator('.card-slot')).toHaveCount(3)
-  await dialog.getByRole('button', { name: 'To the shelf' }).tap()
-  await expect(dialog).toBeHidden()
-  // The phone sidebar stays open under the stage (the click-outside lock).
-  await expect(shop).toContainText('Opened this operation')
+  const shop = counter(page)
+  await expect(shop).toBeVisible()
+  await expect(await shop.boundingBox()).toMatchObject({ x: 0, y: 0, width: 390, height: 844 })
+
+  const pack = shop.locator('.pack-card')
+  await pack.getByRole('button', { name: 'Open Armor Pack 1 for 25 credits' }).tap()
+  const fan = reveal(page)
+  await expect(fan).toBeVisible()
+  await expect(await fan.boundingBox()).toMatchObject({ x: 0, y: 0, width: 390, height: 844 })
+  await expect(fan.locator('.card-slot')).toHaveCount(3)
+  await fan.getByRole('button', { name: 'To the shelf' }).tap()
+  await expect(fan).toBeHidden()
+
+  // The phone counter stays open under the stage and shows the pull count.
+  await expect(shop).toBeVisible()
+  await expect(pack.locator('.pack-count')).toHaveText('1')
   await context.close()
 })

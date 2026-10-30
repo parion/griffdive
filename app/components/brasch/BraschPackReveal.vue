@@ -14,9 +14,13 @@ const props = withDefaults(defineProps<{
   items: Item[]
   packSeed?: number | null
   instant?: boolean
+  // Desktop: sit the stage over the shop instead of taking the whole viewport.
+  // A phone keeps the fullscreen takeover (the shop is fullscreen there too).
+  contained?: boolean
 }>(), {
   packSeed: null,
   instant: false,
+  contained: false,
 })
 
 const emit = defineEmits<{ close: [] }>()
@@ -173,7 +177,7 @@ function onScreenKey(event: KeyboardEvent): void {
         <div
           ref="screen"
           class="pack-screen"
-          :class="phase"
+          :class="[phase, { contained }]"
           tabindex="-1"
           @keydown.enter.prevent="onScreenKey"
           @keydown.space.prevent="onScreenKey"
@@ -377,8 +381,8 @@ function onScreenKey(event: KeyboardEvent): void {
   position: fixed;
   inset: 0;
   z-index: 70;
-  background: rgba(4, 5, 3, 0.9);
-  backdrop-filter: blur(3px);
+  background: rgba(4, 5, 3, 0.78);
+  backdrop-filter: blur(1px);
   animation: veil-in 0.35s ease-out both;
 }
 
@@ -396,6 +400,28 @@ function onScreenKey(event: KeyboardEvent): void {
     radial-gradient(ellipse 75% 55% at 50% 42%, #202014 0%, #0d0f09 52%, #060704 100%);
   outline: none;
   animation: screen-in 0.4s var(--ease-out) both;
+}
+
+/* The desktop reveal is a stage laid over Brasch's counter, not a takeover:
+   the shop stays visible around it and comes straight back when the fan
+   closes. A phone keeps the edge-to-edge version below. */
+.pack-screen.contained {
+  inset: 50% auto auto 50%;
+  translate: -50% -50%;
+  width: min(60rem, calc(100vw - 8rem));
+  height: min(40rem, calc(100dvh - 9rem));
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--line-3));
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  animation: screen-in 0.28s var(--ease-out) both;
+}
+@media (min-width: 1021px) {
+  .pack-screen.contained .pack-wrap { width: clamp(190px, 20vw, 270px); }
+  .pack-screen.contained .pack-deck { --card-w: clamp(150px, 15vw, 190px); }
+  .pack-screen.contained .pack-fan {
+    --card-w: clamp(150px, 15vw, 190px);
+    --spread: clamp(118px, 11vw, 158px);
+    --lift: 34px;
+  }
 }
 .pack-screen::before {
   content: '';
@@ -879,6 +905,17 @@ function onScreenKey(event: KeyboardEvent): void {
 }
 @keyframes rise-in {
   from { opacity: 0; translate: 0 14px; }
+}
+
+@media (max-width: 1020px) {
+  .pack-screen.contained {
+    inset: 0;
+    translate: 0 0;
+    width: auto;
+    height: auto;
+    border: 0;
+    clip-path: none;
+  }
 }
 
 @media (max-width: 720px) {

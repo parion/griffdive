@@ -16,7 +16,7 @@ const props = withDefaults(defineProps<{
   phone?: boolean
 }>(), { phone: false })
 
-const emit = defineEmits<{ start: [], buy: [itemId: string], openPack: [] }>()
+const emit = defineEmits<{ start: [] }>()
 
 const hostName = computed(() =>
   upperName(props.state.divers.find(diver => diver.id === props.state.hostId)?.name) ?? 'the host')
@@ -125,13 +125,11 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
       <div class="shop">
         <p class="last-call">
           <span class="cap">Last call</span>
-          Brasch restocks at Difficulty {{ nextDifficulty }} prices when operation {{ nextOp }} starts.
+          Brasch restocks at Difficulty {{ nextDifficulty }} when operation {{ nextOp }} starts.
         </p>
-        <BraschBargains
+        <BraschShopDoor
           :state="state"
           :self="self"
-          @buy="emit('buy', $event)"
-          @open-pack="emit('openPack')"
         />
       </div>
     </div>
@@ -388,10 +386,6 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 14px 16px 16px;
-  background: color-mix(in srgb, var(--rail) 88%, transparent);
-  box-shadow: inset 0 0 0 1px var(--line-2);
-  backdrop-filter: blur(4px);
   animation: deal-in 0.55s var(--ease-out) 0.3s both;
 }
 @keyframes deal-in {
@@ -436,7 +430,7 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
 
 .phone { gap: 14px; }
 .phone .regroup { grid-template-columns: minmax(0, 1fr); }
-.phone .shop { padding: 12px; }
+.phone .shop { padding: 0; }
 .phone .last-call { flex-direction: column; gap: 2px; }
 .phone .title { font-size: 34px; }
 </style>

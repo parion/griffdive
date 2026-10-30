@@ -22,8 +22,9 @@ app/
                    dive/ (the lit-pass shell and per-phase panels: DiveFrame — header · one
                    scrolling stage · squad dock, DiveTopBar + DivePhaseTabs — identity and the
                    Call/Pacts/Dive/Loot beats, DiveMenu — Bridge, tutorial, pin, new session,
-                   leave/end, DiveSidebar — the persistent tool rail (Kit, Armory, Warbonds and
-                   Brasch's Bargains share one non-modal panel), DivePhaseLobby — the
+                   leave/end, DiveSidebar — the persistent tool rail (Kit, Armory and Warbonds
+                   share one non-modal panel; Brasch's Bargains opens its own counter dialog),
+                   DivePhaseLobby — the
                    standalone Hellpod Bays setup page, DivePhaseWheel/Diving/Rewards/Forfeit/
                    Complete — one panel per engine phase, each owning its local form state and
                    emitting intents, DiveAchievedOverlay — the full-bleed achieved takeover,
@@ -60,12 +61,15 @@ app/
                    squad/ (SquadDock — seats, presence, honors tokens, Steam/invite;
                    SquadDraftBoard, SquadForfeitBoard), forfeit/ (ForfeitPicker),
                    field-promotion/ (FieldPromotionGate — the mid-crusade catch-up gate),
-                   brasch/ (BraschBargains — the per-mission shop), credit/ (CreditAmount),
+                   brasch/ (BraschBargains — the counter modal/fullscreen shop, BraschShopDoor —
+                   the regroup-beat entry, BraschShelfSlot/BraschArmorPack — the shelf cards,
+                   BraschPackReveal — the sealed-pack fan), credit/ (CreditAmount),
                    feedback/ (FeedbackSheet — the no-account feedback form, see Feedback inbox),
                    steam/ (SteamLobbyBar/Box), codex/ (CodexBrowser, CodexDrawer), warbond/
                    (WarbondBrowser, WarbondDrawer, WarbondPicker), item/ (ItemCard,
                    ItemTierBadge), icon/ (Icon* glyphs),
-                   app/ (themed Reka primitives and app chrome: AppDialog, AppDrawer — the
+                   app/ (themed Reka primitives and app chrome: AppDialog — the modal shell,
+                   `size` plus a `fullscreen` mode for phone takeovers, AppDrawer — the
                    right-hand slide-over shell that keeps the dive mounted,
                    AppTooltip, AppToastStack, AppHoldButton — press-and-hold confirm (early releases shake and nudge; keyboard/AT confirm directly),
                    AppStarRating, AppBrandMark — the griffin mark rendered from
@@ -78,7 +82,8 @@ app/
                    mirrors: list/mirror/delete/export),
                    useDrawers (the one open sidebar panel; `codexOpen`/`warbondsOpen` are
                    flags over it, so the dive can open Warbonds without unmounting — the
-                   global drawers in `app.vue` only render where no sidebar is mounted), useWarbondIntro (one-shot
+                   global drawers in `app.vue` only render where no sidebar is mounted;
+                   `bargainsOpen` is its own flag for the counter modal), useWarbondIntro (one-shot
                    dive-start Warbonds prompt memory), useDiveIntro (one-shot dive-start
                    "How a dive works" primer memory), useOwnedWarbonds (localStorage-backed
                    warbond declaration shared by the Warbonds drawer, the home setup and every

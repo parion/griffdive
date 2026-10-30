@@ -4,10 +4,11 @@ import { bargainLamp, bargainsClosedReason } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 import type { SidePanel } from '~/composables/useDrawers'
 
-// The dive's permanent tool rail. Kit, Codex, Warbonds and Brasch's Bargains
-// share one non-modal panel: on desktop it docks beside the stage with a slim
-// tab rail at the right edge, on a phone the rail pins to the bottom and the
-// panel rises over the stage. Nothing here is a rule; it only hosts the browsers.
+// The dive's permanent tool rail. Kit, Codex and Warbonds share one non-modal
+// panel: on desktop it docks beside the stage with a slim tab rail at the right
+// edge, on a phone the rail pins to the bottom and the panel rises over the
+// stage. Brasch's Bargains is not a panel: it opens its own modal/fullscreen
+// counter. Nothing here is a rule; it only hosts the browsers.
 const props = withDefaults(defineProps<{
   state: DiveState
   selfId: string | null
@@ -17,9 +18,7 @@ const props = withDefaults(defineProps<{
   fieldKit?: boolean
 }>(), { previewPactIds: () => [], sheet: false, fieldKit: false })
 
-const emit = defineEmits<{ buy: [itemId: string], openPack: [] }>()
-
-const { sidePanel: panel, hostSidebar, releaseSidebar, panelLocked } = useDrawers()
+const { sidePanel: panel, bargainsOpen, openBargains, hostSidebar, releaseSidebar, panelLocked } = useDrawers()
 onMounted(hostSidebar)
 onBeforeUnmount(releaseSidebar)
 
@@ -38,7 +37,6 @@ const PANELS: Record<SidePanel, { title: string, description: string }> = {
   kit: { title: 'Kit', description: 'What each diver carries, with this mission\'s bans.' },
   codex: { title: 'Armory', description: 'Every item, tier and warbond in the catalog.' },
   warbonds: { title: 'Warbonds', description: 'Declare the warbonds you own — reward offers roll against your own catalog.' },
-  bargains: { title: 'Brasch\'s Bargains', description: 'Earn credits by extracting samples from successful missions. Faster clears earn more.' },
 }
 const current = computed(() => (panel.value ? PANELS[panel.value] : null))
 
@@ -63,16 +61,23 @@ function toggle(next: SidePanel): void {
   panel.value = panel.value === next ? null : next
 }
 
+// The shop is a takeover, not a panel: fold the panel slot and toggle its own
+// modal flag so the rail highlights the right control.
+function toggleBargains(): void {
+  autoKit.value = false
+  panel.value = null
+  if (bargainsOpen.value) {
+    bargainsOpen.value = false
+  }
+  else if (!bargainsClosed.value) {
+    openBargains()
+  }
+}
+
 // A phone's panel overlays the stage, so a tap anywhere off the dock puts it away.
 const root = useTemplateRef<HTMLElement>('root')
 onClickOutside(root, () => {
   if (props.sheet && !panelLocked.value) {
-    panel.value = null
-  }
-})
-
-watch(bargainsClosed, (closed) => {
-  if (closed && panel.value === 'bargains') {
     panel.value = null
   }
 })
@@ -131,13 +136,6 @@ watch(bargainsClosed, (closed) => {
           />
           <CodexBrowser v-else-if="panel === 'codex'" />
           <WarbondBrowser v-else-if="panel === 'warbonds'" />
-          <BraschBargains
-            v-else-if="panel === 'bargains'"
-            :state="state"
-            :self="self"
-            @buy="emit('buy', $event)"
-            @open-pack="emit('openPack')"
-          />
         </div>
       </section>
     </Transition>
@@ -182,8 +180,8 @@ watch(bargainsClosed, (closed) => {
         :disabled="Boolean(bargainsClosed)"
         :aria-label="bargainsLabel"
         :title="bargainsClosed ?? bargainsLabel"
-        :aria-expanded="panel === 'bargains'"
-        @click="toggle('bargains')"
+        :aria-expanded="bargainsOpen"
+        @click="toggleBargains"
       >
         <span
           v-if="lamp !== 'off' && !bargainsClosed"

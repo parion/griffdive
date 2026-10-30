@@ -40,8 +40,6 @@ const emit = defineEmits<{
   spinBonus: [payload?: { stars: number, outcome: MissionOutcome }]
   awardBonus: [playerIds: string[]]
   advance: []
-  buy: [itemId: string]
-  openPack: []
   forfeit: [itemId: string]
   kick: [diverId: string]
   transferHost: [diverId: string]
@@ -162,8 +160,6 @@ const operationClimbs = computed(() =>
           :can-control="canControl"
           phone
           @start="emit('advance')"
-          @buy="emit('buy', $event)"
-          @open-pack="emit('openPack')"
         />
 
         <MissionCleared
@@ -175,8 +171,6 @@ const operationClimbs = computed(() =>
           :op-length="opLength"
           phone
           @advance="emit('advance')"
-          @buy="emit('buy', $event)"
-          @open-pack="emit('openPack')"
         />
 
         <PhoneRewardDraft
@@ -217,8 +211,6 @@ const operationClimbs = computed(() =>
         :self="self"
         :preview-pact-ids="pactPreviewIds"
         sheet
-        @buy="emit('buy', $event)"
-        @open-pack="emit('openPack')"
       />
     </template>
   </PhoneShell>

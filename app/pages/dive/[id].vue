@@ -386,7 +386,7 @@ function buyItem(itemId: string): void {
   }
 }
 
-// The Armor Pack is side stock: one per operation, paid from the same purse.
+// The Armor Pack is side stock: repeatable, at a rising price, from the same purse.
 function openPack(): void {
   if (selfId.value) {
     dispatch({ type: 'BUY_ARMOR_PACK', playerId: selfId.value })
@@ -740,8 +740,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @spin-bonus="spinBonus"
       @award-bonus="awardBonus"
       @advance="advance"
-      @buy="buyItem"
-      @open-pack="openPack"
       @forfeit="forfeit"
       @kick="kick"
       @transfer-host="transferHost"
@@ -863,8 +861,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
               :self-id="selfId"
               :can-control="canControl"
               @start="advance"
-              @buy="buyItem"
-              @open-pack="openPack"
             />
             <MissionCleared
               v-else-if="squadBanked"
@@ -874,8 +870,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
               :can-control="canControl"
               :op-length="opLength"
               @advance="advance"
-              @buy="buyItem"
-              @open-pack="openPack"
             />
             <DivePhaseRewards
               v-else
@@ -914,8 +908,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
           :self="self"
           :preview-pact-ids="pactPreviewIds"
           :field-kit="fieldKit"
-          @buy="buyItem"
-          @open-pack="openPack"
         />
       </template>
 
@@ -1058,6 +1050,14 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         </button>
       </div>
     </AppDialog>
+
+    <BraschBargains
+      v-if="state"
+      :state="state"
+      :self="self"
+      @buy="buyItem"
+      @open-pack="openPack"
+    />
   </div>
 </template>
 

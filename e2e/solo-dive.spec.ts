@@ -116,14 +116,15 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.locator('.loot-card').first().click()
   await page.getByRole('button', { name: /^Bank / }).click()
   // With the whole squad banked, the dive regroups between missions: the
-  // banked haul, Brasch's shelf inline, and the host's call to drop again.
+  // banked haul and the door to Brasch's counter.
   await expect(page.getByRole('heading', { name: 'Regroup' })).toBeVisible()
   await expect(page.getByRole('article', { name: 'Your haul' }).locator('img')).toBeVisible()
-  await expect(page.locator('.mc .bb-card')).toHaveCount(3)
+  await expect(page.locator('.mc .door')).toContainText('Brasch\'s Bargains')
 
   // Brasch's Bargains stays shut until the first operation is complete; the
-  // shelf is only a tease, and credits keep banking toward the first buy.
-  await expect(page.locator('.mc .bb-closed')).toContainText('Opens after your first operation')
+  // door is locked and credits keep banking toward the first buy.
+  await expect(page.locator('.mc .door')).toBeDisabled()
+  await expect(page.locator('.mc .door')).toContainText('Opens after your first operation')
   await expect(side.getByRole('button', { name: /Brasch's Bargains, 9 credits — Opens after your first operation/ })).toBeDisabled()
 
   await page.getByRole('button', { name: /Next mission/ }).click()
@@ -154,22 +155,19 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.locator('.loot-card').first().click()
   await page.getByRole('button', { name: /^Bank / }).click()
 
-  // Medium's two-mission operation closes on the climb screen.
-  await expect(page.getByRole('heading', { name: 'The squad climbs' })).toBeVisible()
   // The climb regroups too: the operation's last haul and a last call at Brasch.
+  await expect(page.getByRole('heading', { name: 'The squad climbs' })).toBeVisible()
   await expect(page.getByRole('article', { name: 'Your haul' }).locator('img')).toBeVisible()
-  await expect(page.locator('.cleared .bb-card')).toHaveCount(3)
-  // The operation is complete, so the shop opens: one slot each for primary,
-  // secondary and throwable at Medium, plus the Armor Pack side stock.
-  await expect(page.locator('.cleared .bb-closed')).toHaveCount(0)
-  await expect(page.locator('.cleared .bb-pack')).toContainText('Armor Pack')
-  await expect(page.locator('.cleared .bb-side')).toContainText('One pack per operation')
-  await side.getByRole('button', { name: /^Brasch's Bargains, \d+ credits/ }).click()
-  const bargains = side.getByRole('region', { name: 'Brasch\'s Bargains' })
-  await expect(bargains.locator('.bb-card')).toHaveCount(3)
-  await expect(bargains.locator('.bb-pack')).toBeVisible()
-  await expect(bargains.locator('.bb-pack-btn')).toBeDisabled()
-  await side.getByRole('button', { name: /^Hide/ }).click()
+  await expect(page.locator('.cleared .door')).toBeEnabled()
+  await expect(page.locator('.cleared .door')).toContainText('Shop')
+  // The operation is complete, so the counter opens: one slot each for primary,
+  // secondary and throwable at Medium, plus the Armor Pack card.
+  await page.locator('.cleared .door').click()
+  const bargains = page.getByRole('dialog', { name: 'Brasch\'s Bargains' })
+  await expect(bargains.locator('.shelf .slot')).toHaveCount(3)
+  await expect(bargains.locator('.pack-card')).toBeVisible()
+  await expect(bargains.locator('.pack-card').getByRole('button', { name: /Open Armor Pack 1/ })).toBeDisabled()
+  await page.getByRole('button', { name: 'Close Brasch\'s Bargains' }).click()
   await expect(bargains).toBeHidden()
   await page.getByRole('button', { name: /Start operation 2/ }).click()
   await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeVisible()

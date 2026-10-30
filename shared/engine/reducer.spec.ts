@@ -897,7 +897,7 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
   it('deals every diver a shelf at the crusade start', () => {
     const state = freshState()
     expect(state.bargainSeed).not.toBeNull()
-    expect(requireDiver(state).bargain).toEqual({ excludedIds: state.personalInventories.p1, boughtItemId: null, boughtKinds: [], pack: null })
+    expect(requireDiver(state).bargain).toEqual({ excludedIds: state.personalInventories.p1, boughtItemId: null, boughtKinds: [], packs: [] })
     expect(bargainShelfFor(state, requireDiver(state))).toHaveLength(3)
   })
 
@@ -993,32 +993,38 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
     expect(requireDiver(state).bargain).toMatchObject({ boughtItemId: null, boughtKinds: ['primary'] })
   })
 
-  it('opens one Armor Pack per operation, pays for it, and leaves the shelf buyable', () => {
+  it('opens repeat Armor Packs at an escalating price and leaves the shelf buyable', () => {
     let state = rich(opened(freshState()))
-    const diver = requireDiver(state)
-    const price = armorPackPrice(state.difficulty)
+    const firstPrice = armorPackPrice(state.difficulty, 0)
+    const secondPrice = armorPackPrice(state.difficulty, 1)
     const before = new Set(state.personalInventories.p1)
+    expect(secondPrice).toBeGreaterThan(firstPrice)
 
     state = reduce(state, { type: 'BUY_ARMOR_PACK', playerId: 'p1' })
-    expect(requireDiver(state).credits).toBe(100_000 - price)
-    const pack = requireDiver(state).bargain!.pack!
-    expect(pack.itemIds).toHaveLength(3)
-    expect(new Set(pack.itemIds).size).toBe(3)
-    expect(pack.itemIds.every(id => ITEMS_BY_ID.get(id)?.category === 'armorPassive')).toBe(true)
-    for (const id of pack.itemIds) {
+    expect(requireDiver(state).credits).toBe(100_000 - firstPrice)
+    const first = requireDiver(state).bargain!.packs[0]!
+    expect(first.itemIds).toHaveLength(3)
+    expect(new Set(first.itemIds).size).toBe(3)
+    expect(first.itemIds.every(id => ITEMS_BY_ID.get(id)?.category === 'armorPassive')).toBe(true)
+    for (const id of first.itemIds) {
       expect(before.has(id)).toBe(false)
       expect(state.personalInventories.p1).toContain(id)
     }
     // Side stock, not a shelf slot: the one-buy limit is untouched.
     expect(requireDiver(state).bargain!.boughtItemId).toBeNull()
     expect(bargainShelfFor(state, requireDiver(state)).every(slot => slot.status === 'open')).toBe(true)
+
+    // A second pack in the same operation costs more and never repeats a card.
+    state = reduce(state, { type: 'BUY_ARMOR_PACK', playerId: 'p1' })
+    expect(requireDiver(state).credits).toBe(100_000 - firstPrice - secondPrice)
+    const packs = requireDiver(state).bargain!.packs
+    expect(packs).toHaveLength(2)
+    const pulled = packs.flatMap(pack => pack.itemIds)
+    expect(pulled).toHaveLength(6)
+    expect(new Set(pulled).size).toBe(6)
+
     const shelfItem = bargainShelfFor(state, requireDiver(state))[0]!.item!
     expect(reduce(state, { type: 'BUY_ITEM', playerId: 'p1', itemId: shelfItem.id })).not.toBe(state)
-
-    // One pack per operation: a second send is a no-op.
-    const bought = state
-    expect(reduce(bought, { type: 'BUY_ARMOR_PACK', playerId: 'p1' })).toBe(bought)
-    expect(diver.bargain!.pack).toBeNull()
   })
 
   it('refuses an Armor Pack before the first operation, in the field, or without funds', () => {
@@ -1030,7 +1036,7 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
     expect(reduce(broke, { type: 'BUY_ARMOR_PACK', playerId: 'p1' })).toBe(broke)
   })
 
-  it('keeps the pack through a failure restart and clears it for the next operation', () => {
+  it('keeps the packs through a failure restart and clears them for the next operation', () => {
     const playMission = (from: DiveState, seed: number): DiveState => {
       let state = reduce(from, { type: 'SPIN_WHEEL', seed })
       state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })
@@ -1043,17 +1049,17 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
       return reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: diverOptions(state, requireDiver(state))[0]!.optionId })
     }
     let state = reduce(rich(opened(freshState())), { type: 'BUY_ARMOR_PACK', playerId: 'p1' })
-    const pack = requireDiver(state).bargain!.pack!
+    const packs = requireDiver(state).bargain!.packs
 
     state = playMission(state, 42)
     state = reduce(state, { type: 'ADVANCE' })
     expect(state.missionInOperation).toBe(2)
-    expect(requireDiver(state).bargain!.pack).toEqual(pack)
+    expect(requireDiver(state).bargain!.packs).toEqual(packs)
 
     state = playMission(state, 43)
     state = reduce(state, { type: 'ADVANCE' })
     expect(state.difficulty).toBe(opened(freshState()).difficulty + 1)
-    expect(requireDiver(state).bargain!.pack).toBeNull()
+    expect(requireDiver(state).bargain!.packs).toEqual([])
   })
 })
 

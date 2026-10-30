@@ -749,7 +749,7 @@ export function createRoomMetrics(): RoomMetrics {
       }
       case 'BUY_ARMOR_PACK': {
         const diver = after.divers.find(entry => entry.id === action.playerId)
-        const pack = diver?.bargain?.pack
+        const pack = diver?.bargain?.packs.at(-1)
         if (pack) {
           armorPacksOpened.inc({ difficulty: String(after.difficulty) })
           for (const itemId of pack.itemIds) {

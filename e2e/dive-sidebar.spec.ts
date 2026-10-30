@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { dismissWarbondIntro, fileCallsign } from './helpers'
 
-test('desktop: one persistent sidebar hosts Kit, Armory, Warbonds and Bargains', async ({ page }) => {
+test('desktop: one persistent sidebar hosts Kit, Armory and Warbonds', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
   await page.getByRole('button', { name: 'Solo drop' }).click()
@@ -14,7 +14,8 @@ test('desktop: one persistent sidebar hosts Kit, Armory, Warbonds and Bargains',
   // The rail is always there; the panel only opens on demand outside the field.
   await expect(side.getByRole('heading', { level: 2 })).toHaveCount(0)
 
-  // One panel at a time, switched from the rail, never a modal.
+  // The three browsers share one non-modal panel, switched from the rail;
+  // Brasch's Bargains opens its own counter dialog instead.
   await rail.getByRole('button', { name: 'Armory', exact: true }).click()
   await expect(side.getByRole('heading', { name: 'Armory', level: 2 })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)

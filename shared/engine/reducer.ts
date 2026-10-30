@@ -115,8 +115,8 @@ export function resetOperation(state: DiveState): Partial<DiveState> {
 
 // Brasch restocks at every mission start, a failure restart included: a fresh
 // seed off the mission just played and a fresh deal per diver against their
-// current holdings. What the operation already spent — a bought kind, the one
-// Armor Pack — stays spent until a new operation begins.
+// current holdings. What the operation already spent — a bought kind, the
+// Armor Packs opened — stays spent until a new operation begins.
 function redealBargains(
   state: DiveState,
   divers: DiverState[],
@@ -662,7 +662,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
                 ...diver.bargain!,
                 boughtItemId: item.id,
                 boughtKinds: [...diver.bargain!.boughtKinds, bargainKindOf(item)!],
-                pack: diver.bargain!.pack ?? null,
+                packs: diver.bargain!.packs,
               },
             }
           : candidate,
@@ -682,12 +682,15 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (!canBuyArmorPack(state, diver).allowed) {
         return state
       }
-      // The pack is derived from the mission's seed, not a purchase-time seed:
-      // a client can't reroll the paid pull by choosing a number. The pull is
-      // stored once, so the shelf and a reload show the same cards.
+      // The pack is derived from the mission's seed and its place in the
+      // operation, not a purchase-time seed: a client can't reroll the paid pull
+      // by choosing a number, and each pack in the same mission draws a
+      // different hand. The pull is stored, so the shelf and a reload show the
+      // same cards.
+      const packs = diver.bargain.packs
       const seed = deriveSeed(
         deriveSeed(state.bargainSeed, ARMOR_PACK_STREAM),
-        hashString(diver.id),
+        hashString(`${diver.id}:${packs.length}`),
       )
       const items = rollArmorPack(seed, state.difficulty, armorPackPoolFor(state, diver), new Set())
       if (items.length === 0) {
@@ -697,10 +700,10 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         candidate.id === diver.id
           ? {
               ...candidate,
-              credits: candidate.credits - armorPackPrice(state.difficulty),
+              credits: candidate.credits - armorPackPrice(state.difficulty, packs.length),
               bargain: {
                 ...diver.bargain!,
-                pack: { seed, itemIds: items.map(item => item.id) },
+                packs: [...packs, { seed, itemIds: items.map(item => item.id) }],
               },
             }
           : candidate,
