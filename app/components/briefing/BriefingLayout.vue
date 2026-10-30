@@ -31,7 +31,6 @@ export interface BriefingFact {
 const props = withDefaults(defineProps<{
   review?: boolean
   roomCode: string
-  kicker: string
   steps: readonly BriefingStep[]
   divers: readonly DiverState[]
   hostId: string | null
@@ -141,9 +140,6 @@ const STEP_META: Record<BriefingStepId, { label: string, title: string, icon: Co
   report: { label: 'Report', title: 'Report', icon: IconStar },
   loot: { label: 'Loot', title: 'Loot', icon: IconLoot },
 }
-const WHO_TAG: Record<BriefingStep['who'], string> = { host: 'Host', you: 'You', all: 'Everyone' }
-const WHO_ORDER: readonly BriefingStep['who'][] = ['you', 'host', 'all']
-const whoLegend = computed(() => WHO_ORDER.filter(who => props.steps.some(step => step.who === who)))
 const activeStep = ref<string>(props.steps[0]?.id ?? 'spin')
 const stepIndex = computed(() => Math.max(0, props.steps.findIndex(step => step.id === activeStep.value)))
 // The outgoing scene leaves the way the diver is reading: forward slides
@@ -252,16 +248,6 @@ function submit(): void {
         aria-labelledby="jb-title"
       >
         <div class="jb-head">
-          <span
-            v-if="!review"
-            class="lbl jb-kicker rise"
-          >
-            <span
-              class="hazard jb-kicker-bar"
-              aria-hidden="true"
-            />
-            {{ kicker }}
-          </span>
           <h1
             v-if="!review"
             id="jb-title"
@@ -303,7 +289,7 @@ function submit(): void {
           >
             <label
               for="jb-callsign"
-              class="lbl gold"
+              class="sr-only"
             >Your name</label>
             <input
               id="jb-callsign"
@@ -533,18 +519,6 @@ function submit(): void {
           >
             How to Griffdive
           </h2>
-          <ul
-            class="jb-legend"
-            aria-label="Who acts"
-          >
-            <li
-              v-for="who in whoLegend"
-              :key="who"
-              :data-who="who"
-            >
-              {{ WHO_TAG[who] }}
-            </li>
-          </ul>
         </div>
         <TabsRoot
           v-model="activeStep"
@@ -567,7 +541,6 @@ function submit(): void {
                 class="jb-tab-i"
               />
               <span class="jb-tab-l">{{ STEP_META[step.id].label }}</span>
-              <span class="jb-tab-who">{{ WHO_TAG[step.who] }}</span>
             </TabsTrigger>
           </TabsList>
           <div
@@ -586,7 +559,6 @@ function submit(): void {
             >
               <div class="jb-panel-copy">
                 <span class="disp jb-panel-n">{{ String(i + 1).padStart(2, '0') }}</span>
-                <span class="jb-who">{{ WHO_TAG[step.who] }}</span>
                 <h3 class="disp jb-panel-t">
                   {{ STEP_META[step.id].title }}
                 </h3>
@@ -712,8 +684,6 @@ function submit(): void {
   .jb:not(.review) .jb-head { position: sticky; top: 32px; padding-top: 12px; }
 }
 .jb-head { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
-.jb-kicker { display: inline-flex; align-items: center; gap: 12px; color: var(--gold); }
-.jb-kicker-bar { width: 44px; height: 6px; }
 .jb-card { animation: riseIn 0.5s var(--ease-out) 0.12s both; }
 .review .jb-card { animation: none; }
 
@@ -738,7 +708,7 @@ function submit(): void {
   height: 34px;
   padding: 0 24px 0 20px;
   border: 0;
-  background: var(--raised);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--who) 16%, var(--raised)), var(--raised) 70%);
   color: var(--khaki);
   font: inherit;
   font-size: 11px;
@@ -751,7 +721,7 @@ function submit(): void {
 .jb-beat[data-who='you'] { --who: var(--gold); }
 .jb-beat[data-who='host'] { --who: var(--teal); }
 .jb-beat:first-child { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%); }
-.jb-beat .disp { font-size: 11px; color: var(--who); }
+.jb-beat .disp { font-size: 11px; color: var(--text); }
 .jb-beat:hover { background: var(--gold); color: var(--on-gold); }
 .jb-beat:hover .disp { color: var(--on-gold); }
 /* Phones reach the steps a thumb-scroll below; the run would only wrap. */
@@ -976,19 +946,6 @@ function submit(): void {
 .review .jb-steps { padding-top: 20px; }
 .jb-steps-head { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; }
 .jb-steps-title { margin: 0; font-size: clamp(26px, 4cqi, 52px); line-height: 0.98; color: var(--text); }
-.jb-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; }
-.jb-legend li {
-  --who: var(--khaki);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--khaki);
-}
-.jb-legend li::before { content: ''; width: 18px; height: 3px; background: var(--who); }
 
 [data-who='you'] { --who: var(--gold); }
 [data-who='host'] { --who: var(--teal); }
@@ -1017,9 +974,7 @@ function submit(): void {
 .jb-tab-n { position: absolute; top: 5px; left: 7px; font-size: 10px; font-weight: 700; color: var(--dim); }
 .jb-tab-i { width: clamp(24px, 3.2cqi, 38px); height: clamp(24px, 3.2cqi, 38px); }
 .jb-tab-l { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: clamp(11px, 1.2cqi, 14px); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
-.jb-tab-who { font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--who); }
 @container jb (max-width: 459px) {
-  .jb-tab-who { display: none; }
 }
 .jb-tab[data-state='active'] {
   color: var(--on-gold);
@@ -1027,7 +982,6 @@ function submit(): void {
   border-color: var(--gold);
 }
 .jb-tab[data-state='active'] .jb-tab-n,
-.jb-tab[data-state='active'] .jb-tab-who { color: var(--on-gold); opacity: 0.7; }
 /* The open box points down into the stage. */
 .jb-tab[data-state='active']::after {
   content: '';
@@ -1087,14 +1041,13 @@ function submit(): void {
   align-items: end;
   gap: 10px 14px;
 }
-.jb-panel-copy > :not(.jb-panel-n, .jb-who) { grid-column: 1 / -1; }
+.jb-panel-copy > :not(.jb-panel-n) { grid-column: 1 / -1; }
 .jb-panel-n {
   font-size: clamp(40px, 5.6cqi, 80px);
   line-height: 0.82;
   color: transparent;
   -webkit-text-stroke: 1.5px var(--who);
 }
-.jb-who { padding-bottom: 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--who); }
 .jb-panel-t { margin: 4px 0 0; font-size: clamp(24px, 3.4cqi, 46px); line-height: 0.98; color: var(--text); }
 .jb-panel-x { align-self: start; margin: 0; max-width: 34rem; font-size: clamp(15px, 1.4cqi, 18px); line-height: 1.55; color: var(--khaki); }
 .jb-next { justify-self: start; gap: 8px; margin-top: 4px; }

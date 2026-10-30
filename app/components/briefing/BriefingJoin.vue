@@ -61,7 +61,6 @@ function submit(): void {
     v-model:name="name"
     :review="review"
     :room-code="roomCode"
-    kicker="You’re invited"
     :steps="STEPS"
     :divers="state?.divers ?? []"
     :host-id="state?.hostId ?? null"
@@ -92,7 +91,7 @@ function submit(): void {
       <template v-else>
         A host is leading
       </template>
-      a squad up the Helldivers 2 difficulty ladder. Your part is small.
+      a squad of Griffdivers up the difficulty ladder. Your name, diver, is all we need.
     </template>
   </BriefingLayout>
 </template>

@@ -409,12 +409,13 @@ carry a tier stripe and lift on hover; banned icons drop their glow.
 #### Join briefing and host tutorial
 
 Illustrative, not verbose. `BriefingLayout` is the shared page; `BriefingJoin` ("You've been
-drafted.") and `BriefingHost` ("You hold the wheel.") are thin wrappers that supply the kicker, a
-one-line lede and the five step lines. The host sees it as a full page on first seating and as a
+drafted.") and `BriefingHost` ("You hold the wheel.") are thin wrappers that supply a
+one-line lede ("{host} is leading a squad of Griffdivers up the difficulty ladder. Your name,
+diver, is all we need."; the host's opens "You lead…") and the five step lines. The host sees it as a full page on first seating and as a
 `Host tutorial` dialog (`review`) from the session menu; a squadmate replays it as the **Field
 manual**.
 
-- **The card** holds the only required input, **Your name** (focused on load, prefilled from a
+- **The card** holds the only required input, the name field (label kept for assistive tech only; focused on load, prefilled from a
   saved name). Filing it (Enter, leaving the field, or a saved name after a beat) plays the
   **class strike**: A–D struck one by one, E lands in red, a GRIFFDIVER stamp and one line —
   "Helldivers are Class A. You're Class E: surplus gear, no arsenal." — then the **starting gear**
@@ -423,16 +424,15 @@ manual**.
   The strike is presentation only: the way in never waits on it, and reduced motion lands it at
   once.
 - **The page** borrows the Bridge's grammar: the full page sits over the same drifting
-  `BridgeField` grid, up to 1440px wide. The **hero** puts the kicker (hazard bar), the headline,
-  the lede and a chevron run of the five steps (each opens its box below and scrolls to it; hidden
+  `BridgeField` grid, up to 1440px wide. The **hero** puts the headline (no kicker),
+  the lede and a chevron run of the five steps (neutral numbers; who acts shows only as a faint
+  tint gradient on each chevron; each opens its box below and scrolls to it; hidden
   under 520px where it would only wrap) on the left, the card on the right; phones read top-down.
   Both columns hang from the top (no forced viewport height) and the left column sticks while the
   card grows through the class strike and kit, so the headline never floats in a centred void.
-- **How to Griffdive** is its own full-width section under the hero: a display heading with a
-  who-acts legend, then five big boxes in one row (Reka `Tabs`): Spin, Swear, Dive, Report, Loot,
-  each a numbered glyph (`IconWheel`, `IconPact`, `IconHellpod`, `IconStar`, `IconLoot`) with a
-  Host / You / Everyone line and its bottom edge tinted by who acts (gold = you, teal = host,
-  khaki = everyone). The open box turns gold and points down into one lit **stage**: the step's
+- **How to Griffdive** is its own full-width section under the hero: a display heading, then five big boxes in one row (Reka `Tabs`): Spin, Swear, Dive, Report, Loot,
+  each a numbered glyph (`IconWheel`, `IconPact`, `IconHellpod`, `IconStar`, `IconLoot`) with its
+  bottom edge tinted by who acts (gold = you, teal = host, khaki = everyone); no who-acts text. The open box turns gold and points down into one lit **stage**: the step's
   outlined number, title and one line beside its **`BriefingPreview`** — a looping scene of the
   beat drawn from real data (the wheel landing on a directive, two pacts taking the SWORN stamp,
   the hellpod drop, three stars and the report bars, three tiered loot cards with one BANKED),
