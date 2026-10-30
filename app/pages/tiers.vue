@@ -608,15 +608,19 @@ useHead({ title: standalone ? 'Helldivers 2 Tier List Maker · Griffdive' : 'Tie
             @set="setTiers(selection, $event)"
             @close="closeInspector"
           />
-          <p
+          <div
             v-else
             class="tm-dock-empty"
           >
-            <b>Drag any item to a row.</b> Click one to see its name and move it with a tap;
-            <kbd>Ctrl</kbd>-click to gather several and move them together. Or use the keyboard:
-            arrows to walk, <kbd>S</kbd> <kbd>A</kbd> <kbd>B</kbd> <kbd>C</kbd> to move, <kbd>D</kbd> to
-            undo.
-          </p>
+            <b>Drag any item to a row.</b>
+            <ul>
+              <li>Click to see its name and move it</li>
+              <li><kbd>Ctrl</kbd>-click to move several together</li>
+              <li>Arrows to walk the board</li>
+              <li><kbd>S</kbd> <kbd>A</kbd> <kbd>B</kbd> <kbd>C</kbd> to move</li>
+              <li><kbd>D</kbd> to undo</li>
+            </ul>
+          </div>
         </div>
       </aside>
     </div>
@@ -943,6 +947,7 @@ useHead({ title: standalone ? 'Helldivers 2 Tier List Maker · Griffdive' : 'Tie
 .tm-dock { display: none; }
 .tm-dock-empty { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
 .tm-dock-empty b { display: block; margin-bottom: 4px; color: var(--khaki); }
+.tm-dock-empty ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .tm-dock-empty kbd {
   display: inline-block;
   min-width: 1.3em;

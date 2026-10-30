@@ -130,7 +130,11 @@ const mix = computed(() => TIERS
       </RadioGroupRoot>
       <p class="tm-insp-hint">
         <span class="tm-hint-touch">Hold and drag any item to a row.</span>
-        <span class="tm-hint-keys"><kbd>Ctrl</kbd>-click to pick several. Keys: <kbd>S</kbd><kbd>A</kbd><kbd>B</kbd><kbd>C</kbd> to move, <kbd>D</kbd> to undo.</span>
+        <span class="tm-hint-keys">
+          <span><kbd>Ctrl</kbd>-click to pick several</span>
+          <span><kbd>S</kbd><kbd>A</kbd><kbd>B</kbd><kbd>C</kbd> to move</span>
+          <span><kbd>D</kbd> to undo</span>
+        </span>
       </p>
     </div>
   </section>
@@ -220,6 +224,6 @@ const mix = computed(() => TIERS
 
 @media (hover: hover) and (pointer: fine) {
   .tm-hint-touch { display: none; }
-  .tm-hint-keys { display: inline; }
+  .tm-hint-keys { display: grid; gap: 4px; }
 }
 </style>
