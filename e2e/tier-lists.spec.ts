@@ -11,6 +11,10 @@ test('the Tier Maker drags, keys and taps an item between tiers, and saves the l
   await page.getByRole('navigation', { name: 'Ship' }).getByRole('link', { name: 'Tier Maker' }).click()
   await expect(page).toHaveURL(/\/tiers$/)
   await expect(page.getByRole('heading', { name: 'Tier Maker' })).toBeVisible()
+  // Inside the maker the header rebrands and offers the way back.
+  const ship = page.getByRole('navigation', { name: 'Ship' })
+  await expect(ship.getByRole('link', { name: 'Back to Griffdive' })).toBeVisible()
+  await expect(page.locator('.term-header .brand-word')).toHaveText('Tier Maker')
   // Supply alone, in small nameless tiles, keeps every row on screen for the mouse.
   await page.getByRole('radio', { name: 'Supply' }).click()
   await page.getByRole('radio', { name: 'Small tiles' }).click()

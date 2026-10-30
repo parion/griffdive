@@ -11,6 +11,8 @@ const changelogOpen = ref(false)
 const { codexOpen, warbondsOpen, sidebarHosted } = useDrawers()
 const { online } = useSessionStore()
 const { standalone, mainOrigin } = useTiersSite()
+// The Tier Maker wears its own brand; only the logo leads back to the game.
+const inMaker = computed(() => standalone || route.name === 'tiers')
 </script>
 
 <template>
@@ -24,29 +26,47 @@ const { standalone, mainOrigin } = useTiersSite()
         v-if="!onDive"
         class="term-header"
       >
-        <NuxtLink
-          to="/"
-          class="brand"
-          :aria-label="standalone ? 'Griffdive Tier Maker' : 'Griffdive bridge'"
-        >
-          <AppBrandMark :size="26" />
-          <span class="brand-word disp">Griffdive</span>
-        </NuxtLink>
-        <span
-          v-if="standalone"
-          class="chip release-chip"
-        >Tier Maker</span>
-        <button
-          v-else
-          type="button"
-          class="chip release-chip"
-          :title="`${CURRENT_RELEASE.label} — click for the release notes`"
-          aria-haspopup="dialog"
-          :aria-expanded="changelogOpen"
-          @click="changelogOpen = true"
-        >
-          {{ CURRENT_RELEASE.label }}
-        </button>
+        <template v-if="inMaker">
+          <div class="brand">
+            <a
+              v-if="standalone"
+              :href="mainOrigin"
+              class="brand-home"
+              aria-label="Back to Griffdive"
+            >
+              <AppBrandMark :size="26" />
+            </a>
+            <NuxtLink
+              v-else
+              to="/"
+              class="brand-home"
+              aria-label="Back to Griffdive"
+            >
+              <AppBrandMark :size="26" />
+            </NuxtLink>
+            <span class="brand-word disp">Tier Maker</span>
+          </div>
+        </template>
+        <template v-else>
+          <NuxtLink
+            to="/"
+            class="brand"
+            aria-label="Griffdive bridge"
+          >
+            <AppBrandMark :size="26" />
+            <span class="brand-word disp">Griffdive</span>
+          </NuxtLink>
+          <button
+            type="button"
+            class="chip release-chip"
+            :title="`${CURRENT_RELEASE.label} — click for the release notes`"
+            aria-haspopup="dialog"
+            :aria-expanded="changelogOpen"
+            @click="changelogOpen = true"
+          >
+            {{ CURRENT_RELEASE.label }}
+          </button>
+        </template>
         <!-- The Bridge docks its live Major Order here. -->
         <div
           id="header-mid"
@@ -75,6 +95,18 @@ const { standalone, mainOrigin } = useTiersSite()
           >
             <span>Play Griffdive</span>
           </a>
+          <NuxtLink
+            v-else-if="inMaker"
+            class="icon-btn navb play-link"
+            to="/"
+            aria-label="Back to Griffdive"
+          >
+            <span class="wide-label">Back to Griffdive</span>
+            <span
+              class="phone-label"
+              aria-hidden="true"
+            >Griffdive</span>
+          </NuxtLink>
           <NuxtLink
             v-else
             class="icon-btn navb"
@@ -157,6 +189,8 @@ const { standalone, mainOrigin } = useTiersSite()
   color: var(--gold);
 }
 .brand:hover { color: var(--gold); text-decoration: none; }
+.brand-home { display: flex; color: inherit; }
+.brand-home:hover { color: var(--gold); }
 .brand-word {
   font-size: 17px;
   letter-spacing: 0.06em;
