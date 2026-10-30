@@ -43,7 +43,7 @@ const SOURCES: readonly ConditionSource[] = [
   { id: 'oopsAllAirstrikes', name: 'Oops, All Airstrikes', rule: 'Equip {Eagle} and {orbital} stratagems only ({yellow} calls like Resupply stay open)', accountability: 'loadout', scope: 'team' },
   { id: 'zeroDeaths', name: 'Spotless Record', rule: 'Any diver death {fails the directive|failed} (the mission plays on)', accountability: 'field', scope: 'team' },
   { id: 'noReserves', name: 'Martyrdom', rule: 'No one is {reinforced|reinforce}, so a fallen diver stays down (every other stratagem stays legal)', accountability: 'field', scope: 'team' },
-  { id: 'noStratagems', name: 'Deserted', rule: 'Stratagems only in the mission\'s first minute ({Reinforce} and {SEAF resources|seaf} like Artillery excepted)', accountability: 'field', scope: 'team' },
+  { id: 'noStratagems', name: 'Deserted', rule: 'Stratagems only in the mission\'s first minute ({Reinforce} and {SEAF resources|seaf} excepted)', accountability: 'field', scope: 'team' },
   { id: 'meleeOnly', name: 'Fix Bayonets', rule: 'Kill with {melee} only (no guns, grenades or {offensive} stratagems)', accountability: 'field', scope: 'team' },
   { id: 'pacifist', name: 'Peacekeepers', rule: 'No diver {scores a kill|kill} (stratagem kills count to the caller)', accountability: 'stats', scope: 'team' },
   { id: 'heavyBurden', name: 'Heavy Burden', rule: 'Everyone wears {heavy armor}', accountability: 'loadout', scope: 'team' },
