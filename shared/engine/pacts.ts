@@ -22,7 +22,7 @@ export const BLOCKED_UNDER_MISFORTUNE: Readonly<Record<string, readonly string[]
   zeroDeaths: ['deadWeight', 'untouchable'],
   noReserves: ['deadWeight'],
   meleeOnly: ['antiTankAbstinent', 'primaryConcern', 'coldSteel'],
-  pacifist: ['objector', 'coldSteel'],
+  pacifist: ['coldSteel'],
 }
 
 export function isPactSelectable(pactId: string, misfortuneId: string | null): boolean {
@@ -42,7 +42,6 @@ export function isPactSelectable(pactId: string, misfortuneId: string | null): b
 // checked on the loadout screen even when the stratagem is never called.
 export const PACT_SUBSUMES: Readonly<Record<string, readonly string[]>> = {
   radioSilence: ['thirsty'],
-  objector: ['coldSteel'],
 }
 
 // Restrictions that tax the same strength are never offered or picked together:

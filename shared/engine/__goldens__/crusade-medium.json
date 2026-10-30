@@ -331,11 +331,11 @@
       "strainId": "mindlessMasses",
       "strainAccepted": false,
       "pactIds": [
-        "loadoutLoyalist"
+        "stimAbstinent"
       ],
       "outcome": "success",
       "stars": 4,
-      "optionId": "inflammable",
+      "optionId": "apw1antimaterielrifle",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -367,7 +367,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "p4senator"
+      "forfeitedItemId": "sg20halt"
     },
     {
       "mission": 24,
@@ -395,7 +395,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "m1000maxigun",
+      "optionId": "ac8autocannon",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -410,7 +410,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "las16sickle",
+      "optionId": "r72censor",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -444,7 +444,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "las16sickle"
+      "forfeitedItemId": "ac8autocannon"
     },
     {
       "mission": 29,
@@ -521,7 +521,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "m1000maxigun"
+      "forfeitedItemId": "orbital380mmhebarrage"
     },
     {
       "mission": 34,
@@ -616,6 +616,7 @@
       "agm17gasmortarsentry",
       "am23emsmortarsentry",
       "amls4xrocketsentry",
+      "apw1antimaterielrifle",
       "axar23guarddog",
       "bflam80cremator",
       "cb9explodingcrossbow",
@@ -638,20 +639,19 @@
       "g3smokegrenade",
       "g89smokescreen",
       "gr8recoillessrifle",
-      "inflammable",
       "k2throwingknife",
       "las44nova",
       "las7dagger",
       "m102gunnerfrv",
       "ma5cassaultrifle",
       "orbital120mmhebarrage",
-      "orbital380mmhebarrage",
       "orbitalemsstrike",
       "orbitalsmokestrike",
       "p2peacemaker",
+      "p4senator",
       "r2124constitution",
       "r4hyena",
-      "sg20halt",
+      "r72censor",
       "sh51directionalshield",
       "tx41sterilizer"
     ],

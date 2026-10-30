@@ -378,7 +378,6 @@ Starter catalog:
 | Featherweight | I wear light armor only | 1 → 2 | loadout |
 | Ironbound | I wear heavy armor only | 1 → 1 | loadout |
 | Radio Silence | I call no stratagem: red, blue, green or yellow alike (Reinforce excepted) | 3 → 4 | field |
-| Objector | I score no kills (stratagem kills count to the caller) | 2 → 4 | stats |
 | Cold Steel | Every kill I score is a melee kill (stats: kills = melee kills) | 2 → 3 | stats |
 | Clean Hands | I deal no friendly-fire damage | 1 → 2 | stats |
 
@@ -406,7 +405,7 @@ only: the Shield Generator Relay is legal (`NON_LETHAL_DEFENSES`).
 
 **Pact interplay (new).** The armor pair (*Featherweight*, *Ironbound*) is mutually exclusive
 (`PACT_EXCLUSIVE_GROUPS`) and blocked under either armor directive. Only behavioral pacts subsume
-others (`PACT_SUBSUMES`): *Radio Silence* covers *Thirsty*, *Objector* covers *Cold Steel* — a
+others (`PACT_SUBSUMES`): *Radio Silence* covers *Thirsty* — a
 loadout rule is still checked on the loadout screen even when the stratagem is never called, so
 *Radio Silence* does not cover *Pack Light*. *Deserted* leaves the loadout pacts open (a diver can
 still call a support weapon or backpack in the first minute and hold it) and blocks only *Thirsty*.
@@ -457,7 +456,7 @@ It is the mission/operation-secured beat — the operation track, the report's s
 credit haul, and a recap (front, directive, strain, the diver's draft size) — with a **Stats check**
 section beside it.
 
-- **Rules.** Every rule on the `stats` accountability channel in force (Stim Abstinent, Objector, Cold
+- **Rules.** Every rule on the `stats` accountability channel in force (Stim Abstinent, Cold
   Steel, Clean Hands; Peacekeepers and Stim Shortage among directives) is listed with its owner
   (`statsRules`) and attested **Held** (`HOLD_PACT`, `HOLD_MISFORTUNE`) or **Broke** (`FAIL_PACT`,
   `FAIL_MISFORTUNE`, a second confirming tap) — both one-way. A diver settles their own pacts, the

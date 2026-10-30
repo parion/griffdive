@@ -499,7 +499,6 @@ export const CONDITION_RISK: Readonly<Record<string, ConditionRiskCurve>> = {
   featherweight: { base: 1, slope: 0.15 },
   ironbound: { base: 1, slope: 0 },
   radioSilence: { base: 3, slope: 0.2 },
-  objector: { base: 2, slope: 0.3 },
   coldSteel: { base: 2, slope: 0.15 },
   cleanHands: { base: 1, slope: 0.2 },
 }

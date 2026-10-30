@@ -2300,13 +2300,13 @@ describe('stats check before the draft', () => {
   })
 
   it('treats held and broke as one-way, and refuses either outside the debrief', () => {
-    const state = debrief(['cleanHands', 'objector'])
+    const state = debrief(['cleanHands', 'coldSteel'])
     const held = reduce(state, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'cleanHands' })
     expect(reduce(held, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'cleanHands' })).toBe(held)
     expect(reduce(held, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'cleanHands' })).toBe(held)
-    const broke = reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'objector' })
-    expect(reduce(broke, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'objector' })).toBe(broke)
-    expect(reduce(broke, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'objector' })).toBe(broke)
+    const broke = reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'coldSteel' })
+    expect(reduce(broke, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'coldSteel' })).toBe(broke)
+    expect(reduce(broke, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'coldSteel' })).toBe(broke)
 
     const diving = divingState(1)
     expect(reduce(diving, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'cleanHands' })).toBe(diving)
@@ -2348,14 +2348,14 @@ describe('stats check before the draft', () => {
   })
 
   it('lists every stats-verified rule with where it stands, for the debrief', () => {
-    const state = debrief(['cleanHands', 'untouchable', 'objector'], 'stimShortage')
+    const state = debrief(['cleanHands', 'untouchable', 'coldSteel'], 'stimShortage')
     expect(statsRules(state)).toEqual([
       { scope: 'directive', diverId: null, conditionId: 'stimShortage', status: 'pending' },
       { scope: 'pact', diverId: 'p1', conditionId: 'cleanHands', status: 'pending' },
-      { scope: 'pact', diverId: 'p1', conditionId: 'objector', status: 'pending' },
+      { scope: 'pact', diverId: 'p1', conditionId: 'coldSteel', status: 'pending' },
     ])
     let next = reduce(state, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'cleanHands' })
-    next = reduce(next, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'objector' })
+    next = reduce(next, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'coldSteel' })
     next = reduce(next, { type: 'FAIL_MISFORTUNE' })
     expect(statsRules(next).map(rule => rule.status)).toEqual(['broke', 'held', 'broke'])
     expect(statsRules(divingState(1))).toEqual([])

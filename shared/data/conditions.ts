@@ -65,7 +65,6 @@ const SOURCES: readonly ConditionSource[] = [
   { id: 'featherweight', name: 'Featherweight', rule: 'I wear {light armor} only', accountability: 'loadout', scope: 'personal' },
   { id: 'ironbound', name: 'Ironbound', rule: 'I wear {heavy armor} only', accountability: 'loadout', scope: 'personal' },
   { id: 'radioSilence', name: 'Radio Silence', rule: 'I call no {stratagem}: red, blue, green or {yellow} alike ({Reinforce} excepted)', accountability: 'field', scope: 'personal' },
-  { id: 'objector', name: 'Objector', rule: 'I {score no kills|kill} (stratagem kills count to the caller)', accountability: 'stats', scope: 'personal' },
   { id: 'coldSteel', name: 'Cold Steel', rule: 'Every kill I score is a {melee} kill', accountability: 'stats', scope: 'personal' },
   { id: 'cleanHands', name: 'Clean Hands', rule: 'I deal no {friendly fire} damage', accountability: 'stats', scope: 'personal' },
 ]

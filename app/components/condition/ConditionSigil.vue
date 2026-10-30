@@ -32,7 +32,6 @@ const paths: Record<string, string[]> = {
   ironbound: ['M7 5h10l3 4-2 3v8H6v-8L4 9z', 'M12 5v15', 'M8 13h8'],
   featherweight: ['M5 19C5 11 11 5 19 5c0 8-6 14-14 14z', 'M5 19 14 10'],
   stimShortage: ['M9 4h6v5l2 2v9H7v-9l2-2z', 'M12 9v8M9 13h6', 'M3 3l18 18'],
-  objector: ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', 'M12 3v18', 'M12 12l6 6', 'M12 12l-6 6'],
   coldSteel: ['M12 3l3 9-3 3-3-3z', 'M8 15h8', 'M12 15v6'],
   cleanHands: ['M8 12V6a1.5 1.5 0 0 1 3 0v5', 'M11 11V5a1.5 1.5 0 0 1 3 0v6', 'M14 11V7a1.5 1.5 0 0 1 3 0v8c0 4-3 6-6 6s-5-2-6-5l-1-3a1.5 1.5 0 0 1 3-1l1 2'],
   meleeOnly: ['M5 19 19 5', 'M15 5h4v4', 'M7 17l-3 3'],

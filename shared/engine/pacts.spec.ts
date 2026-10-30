@@ -61,9 +61,7 @@ describe('pact subsumption', () => {
 
   it('reports a pact as covered only by the pact that implies it', () => {
     expect(pactSubsumedBy('thirsty', ['radioSilence'])).toBe('radioSilence')
-    expect(pactSubsumedBy('coldSteel', ['objector'])).toBe('objector')
     expect(pactSubsumedBy('radioSilence', ['thirsty'])).toBeNull()
-    expect(pactSubsumedBy('objector', ['coldSteel'])).toBeNull()
     expect(pactSubsumedBy('packLight', ['radioSilence'])).toBeNull()
   })
 
