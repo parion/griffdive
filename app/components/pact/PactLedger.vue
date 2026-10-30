@@ -2,6 +2,7 @@
 import { AccordionContent, AccordionHeader, AccordionItem, AccordionRoot, AccordionTrigger } from 'reka-ui'
 import { conditionRiskAt } from '~~/shared/engine/config'
 import { pactById, pactName } from '~~/shared/data/pacts'
+import { isPenancePact } from '~~/shared/engine/selectors'
 import type { DiveState } from '~~/shared/engine/types'
 
 // The field's "Pacts sworn" ledger, shared by the desktop and phone screens.
@@ -28,7 +29,8 @@ const pactsByDiver = computed(() =>
         pact: pact ?? null,
         accountability: pact ? ACCOUNTABILITY_LABELS[pact.accountability] : '',
         risk: conditionRiskAt(id, props.state.difficulty),
-        failed: diver.failedPactIds.includes(id),
+        failed: diver.failedPactIds.includes(id) || diver.brokenPactIds.includes(id),
+        penance: isPenancePact(diver, id),
       }
     }),
   })))
@@ -84,7 +86,7 @@ function markPact(diverId: string, pactId: string): void {
           :key="pact.key"
           :value="pact.key"
           class="row"
-          :class="{ failed: pact.failed, cont: index > 0, own: diver.id === selfId }"
+          :class="{ failed: pact.failed, penance: pact.penance, cont: index > 0, own: diver.id === selfId }"
         >
           <span class="who"><b v-if="index === 0">{{ diver.name }}</b></span>
           <AccordionHeader
@@ -95,9 +97,13 @@ function markPact(diverId: string, pactId: string): void {
               <RiskPips
                 :value="pact.risk"
                 :max="pact.risk"
-                :tone="pact.risk >= 3 ? 'red' : 'gold'"
+                :tone="pact.penance ? 'purple' : pact.risk >= 3 ? 'red' : 'gold'"
               />
               <span class="pact-name">{{ pact.name }}</span>
+              <span
+                v-if="pact.penance"
+                class="penance-tag"
+              >Penance</span>
               <svg
                 class="row-chev"
                 width="12"
@@ -184,6 +190,18 @@ function markPact(diverId: string, pactId: string): void {
 }
 .row[data-state='open']::before { opacity: 1; }
 .row.failed::before { background: var(--red); box-shadow: none; }
+.row.penance::before { background: var(--purple); box-shadow: 0 0 10px color-mix(in srgb, var(--purple) 50%, transparent); }
+.row.penance.failed::before { box-shadow: none; }
+.penance-tag {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  color: var(--purple);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--purple) 60%, transparent);
+}
 
 .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .who b { font-size: 15px; font-weight: 700; }
@@ -266,6 +284,7 @@ function markPact(diverId: string, pactId: string): void {
   text-transform: uppercase;
 }
 .acct i { width: 5px; height: 5px; background: var(--teal); box-shadow: 0 0 6px var(--teal); }
+.row.penance .acct i { background: var(--purple); box-shadow: 0 0 6px var(--purple); }
 
 @keyframes ledger-open {
   from { height: 0; opacity: 0; }

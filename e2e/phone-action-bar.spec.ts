@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { dismissWarbondIntro, settleDebrief } from './helpers'
+import { dismissWarbondIntro, settleClimb } from './helpers'
 
 const VIEWPORT = { width: 390, height: 844 }
 
@@ -17,8 +17,11 @@ async function expectPinnedBar(page: Page, label: string): Promise<void> {
   expect(box, label).not.toBeNull()
   expect(box!.y + box!.height, `${label}: bar sits at the bottom edge`).toBeCloseTo(VIEWPORT.height, 0)
   expect(box!.width, `${label}: bar spans the column`).toBeGreaterThanOrEqual(VIEWPORT.width - 4)
-  const primary = await page.locator('#phone-bar-primary > *').first().boundingBox()
-  expect(primary!.height, `${label}: primary hit area`).toBeGreaterThanOrEqual(54)
+  // A phase swap can replace the bar's content between the visibility check and the measure.
+  await expect(async () => {
+    const primary = await page.locator('#phone-bar-primary > *').first().boundingBox()
+    expect(primary?.height, `${label}: primary hit area`).toBeGreaterThanOrEqual(54)
+  }).toPass()
   if (process.env.SHOTS) {
     await page.screenshot({ path: `${process.env.SHOTS}/${label}.png` })
   }
@@ -70,15 +73,17 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
   await expect(page.getByRole('heading', { name: 'Mission report' })).toBeVisible()
   await expectPinnedBar(page, '7-report')
 
-  // Filing brings in the debrief, which settles the stats check and honors before the draft.
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'File report' }).click()
-  await settleDebrief(page)
 
   await expect(page.locator('.phone-loot .loot-card').first()).toBeVisible()
   await expectPinnedBar(page, '8-draft')
   await page.locator('.phone-loot .loot-card').first().click()
   await expectPinnedBar(page, '9-draft-banked')
   await page.locator('#phone-bar-primary').getByRole('button', { name: /^Bank / }).click()
+  // Banking lands on the climbs page; its bar gates on the stats check and honors.
+  await expect(page.locator('.climb')).toBeVisible()
+  await expectPinnedBar(page, '9b-climb')
+  await settleClimb(page)
   await expect(page.locator('#phone-bar-primary').getByRole('button', { name: 'Next mission' })).toBeVisible()
 
   await context.close()
@@ -113,9 +118,9 @@ test('phone: a failed mission lands on the pinned remove bar', async ({ browser 
   // Failure only takes earned gear, so clear mission 1 and bank a reward first.
   await primary.getByRole('button', { name: 'Extracted' }).click()
   await primary.getByRole('button', { name: 'File report' }).click()
-  await settleDebrief(page)
   await page.locator('.phone-loot .loot-card').first().click()
   await primary.getByRole('button', { name: /^Bank / }).click()
+  await settleClimb(page)
   await primary.getByRole('button', { name: /Next mission/ }).click()
   await diveToPacts(false)
 

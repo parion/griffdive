@@ -9,7 +9,6 @@ import {
   canRerollRewards,
   diverOptions,
   draftSummaryFor,
-  honorsPending,
   pactRiskOf,
   rewardPoolFor,
   teamRiskOf,
@@ -98,7 +97,6 @@ const markers = computed(() =>
       }]
     : []))
 
-const honorsLocked = computed(() => honorsPending(props.state))
 const advanceLabel = computed(() =>
   props.state.missionInOperation >= props.opLength
     ? `Start operation ${Math.min(props.state.difficulty + 1, MAX_DIFFICULTY)}`
@@ -267,17 +265,13 @@ const pickedName = computed(() =>
           <span class="disp">{{ selectedId ? `Bank ${selectedName}` : 'Select an item' }}</span>
         </button>
         <button
-          v-else-if="ready && canControl && !honorsLocked"
+          v-else-if="ready && canControl"
           class="bar-cta cta-sweep"
           type="button"
           @click="emit('advance')"
         >
           <span class="disp">{{ advanceLabel }}</span>
         </button>
-        <span
-          v-else-if="ready && canControl"
-          class="bar-gate"
-        ><span class="bar-gate-word quiet">Award honors first</span></span>
         <span
           v-else
           class="bar-gate"

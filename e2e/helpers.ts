@@ -77,36 +77,33 @@ export async function expectJoinerLanded(page: Page): Promise<void> {
   await expect(page.getByRole('dialog', { name: 'Warbonds' })).toBeHidden()
 }
 
-// After a report the draft opens behind the debrief: the stats check and Squad
-// Honors. An honest squad attests every rule held; the host's page also names an
-// honors winner once the reel lands (it rolls by itself a beat after the screen
-// opens). Settle the host's page first so a joiner's draft can unlock.
-export async function settleDebrief(page: Page): Promise<void> {
-  const debrief = page.locator('.debrief')
-  const draft = page.locator('.loot-card').first()
-  await expect(debrief.or(draft).first()).toBeVisible()
-  if (!(await debrief.isVisible())) {
-    return
-  }
-  const open = page.getByRole('button', { name: 'Open the draft' })
+// Once every draft is banked the squad lands on the climbs page: the stats
+// check and Squad Honors settle there before the host can call the next drop. An
+// honest squad attests every rule held; the host's page also names an honors
+// winner once the reel lands (it rolls by itself a beat after the page opens).
+// A joiner only settles their own rules. Returns with the host's CTA live.
+export async function settleClimb(page: Page, { host = true }: { host?: boolean } = {}): Promise<void> {
+  const climb = page.locator('.climb')
+  await expect(climb).toBeVisible()
+  const advance = climb.locator('.cta:not([disabled])').or(page.locator('#phone-bar-primary .bar-cta'))
   for (let step = 0; step < 100; step++) {
-    if (await open.isVisible().catch(() => false)) {
-      await open.click()
-      await expect(debrief).toBeHidden()
+    if (host && await advance.first().isVisible().catch(() => false)) {
       return
     }
-    const held = debrief.locator('.stat-rule-act .held').first()
+    const held = climb.locator('.rule-act .held').first()
     if (await held.isVisible().catch(() => false)) {
       await held.click()
     }
+    else if (!host) {
+      return
+    }
     else {
-      const winner = debrief.getByRole('button', { name: /^Award Squad Honors token to / }).first()
+      const winner = climb.getByRole('button', { name: /^Award Squad Honors token to / }).first()
       if (await winner.isVisible().catch(() => false)) {
         await winner.click()
-        await debrief.getByRole('button', { name: 'Award', exact: true }).click()
+        await climb.getByRole('button', { name: 'Award', exact: true }).click()
       }
     }
     await page.waitForTimeout(150)
   }
-  // A joiner still waiting on the host: leave the debrief up for the caller.
 }

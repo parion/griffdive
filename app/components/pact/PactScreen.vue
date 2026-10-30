@@ -173,7 +173,7 @@ function lockNow(): void {
         Swear your pacts
       </h1>
       <p class="pact-sub">
-        Pacts only affect you. Break one and you lose a loot option.
+        Pacts only affect you. A broken pact costs a loot option, or Penance if only the stats screen can prove it.
       </p>
     </header>
 
@@ -202,6 +202,11 @@ function lockNow(): void {
       <b class="disp directive-name">Safe dive</b>
       <span class="directive-rule">No directive this mission.</span>
     </div>
+
+    <PactPenance
+      :self="self"
+      :difficulty="state.difficulty"
+    />
 
     <div
       class="hand"

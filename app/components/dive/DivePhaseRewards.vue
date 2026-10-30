@@ -6,7 +6,7 @@ import {
   canRerollRewards,
   diverOptions,
   draftSummaryFor,
-  honorsPending,
+  optionsLostFor,
   pactRiskOf,
   rewardPoolFor,
   teamRiskOf,
@@ -25,18 +25,7 @@ const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
   reroll: []
   advance: []
-  holdPact: [playerId: string, pactId: string]
-  failPact: [playerId: string, pactId: string]
-  holdDirective: []
-  failDirective: []
-  spinBonus: []
-  awardBonus: [playerIds: string[]]
 }>()
-
-// The debrief comes first: the report's numbers, the stats check and Squad
-// Honors. Opening the draft is local — the engine keeps it shut (draftLocked)
-// until the debrief is settled, and a diver who already drafted never sees it.
-const debriefOpen = ref(false)
 
 const options = computed(() => (props.self ? diverOptions(props.state, props.self) : []))
 
@@ -62,8 +51,6 @@ const canReroll = computed(() =>
 const ready = computed(() => allDiversPicked(props.state))
 const draftResolved = computed(() =>
   props.self !== null && (props.self.pickedOptionId !== null || props.self.rewardBanned))
-const showDebrief = computed(() =>
-  props.self !== null && !draftResolved.value && !debriefOpen.value)
 
 const advanceLabel = computed(() =>
   props.state.missionInOperation >= props.opLength
@@ -75,28 +62,12 @@ const pactRisk = computed(() => (props.self ? pactRiskOf(props.self, props.state
 </script>
 
 <template>
-  <MissionDebrief
-    v-if="showDebrief"
-    :state="state"
-    :self="self"
-    :self-id="selfId"
-    :is-host="canControl"
-    :op-length="opLength"
-    @hold-pact="(playerId, pactId) => emit('holdPact', playerId, pactId)"
-    @fail-pact="(playerId, pactId) => emit('failPact', playerId, pactId)"
-    @hold-directive="emit('holdDirective')"
-    @fail-directive="emit('failDirective')"
-    @spin-bonus="emit('spinBonus')"
-    @award-bonus="emit('awardBonus', $event)"
-    @open="debriefOpen = true"
-  />
   <RewardDraft
-    v-else
     :options="options"
     :picked-id="self?.pickedOptionId ?? null"
     :pool="rewardPool"
     :owned-ids="ownedIds"
-    :options-lost="self?.failedPactIds.length ?? 0"
+    :options-lost="self ? optionsLostFor(state, self) : 0"
     :squad-drafts="squadDrafts"
     :token-count="rewardTokens"
     :can-reroll="canReroll"
@@ -108,7 +79,6 @@ const pactRisk = computed(() => (props.self ? pactRiskOf(props.self, props.state
     :ready="ready"
     :can-control="canControl"
     :advance-label="advanceLabel"
-    :advance-locked="honorsPending(state)"
     @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
     @reroll="emit('reroll')"
     @advance="emit('advance')"

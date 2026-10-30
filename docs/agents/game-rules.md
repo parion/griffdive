@@ -32,14 +32,14 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
 4. **Dive** — play the mission in Helldivers 2. Success = main objectives complete **and** the squad
    extracts. Objectives complete + squad wipe = failure (extraction rule).
 5. **Report** — squad records outcome: success (stars 1–max, optional time %) or failure (no stars,
-   no reward draft — each diver faces a forfeit offer instead). A success lands on the
-   **Debrief** (see Debrief — stats check & squad honors): the mission-secured recap, the rules only
-   HD2's stats screen can prove, and — on a full-star clear — **bonus honors**, rolled there by
-   themselves (see Reward tokens & squad honors).
+   no reward draft — each diver faces a forfeit offer instead). A success opens the reward draft at
+   once; the rules only HD2's stats screen can prove, and — on a full-star clear — **bonus honors**,
+   are settled afterwards on the squad-climbs page (see Squad climbs — stats check, Penance &
+   squad honors).
 6. **Rewards** (success only) — the host files the report (stars + time + the samples the squad
    extracted), which banks a credit haul into every diver's purse. Each diver is then dealt N
    options; **every option rolls its own d100 tier** on the same Valor odds line, and the diver
-   picks one — once any stats-verified rule is settled (see Debrief). All rewards go to the diver's personal inventory — stratagems included. Armor
+   picks one — nothing waits on a stats rule, because the draft is paid first. All rewards go to the diver's personal inventory — stratagems included. Armor
    rewards are **passives**; the catalog has no armor pieces (see inventory model). Credits bank
    into each diver's purse for **Brasch's Bargains**, the shop that restocks every mission (see
    Brasch's Bargains — credits).
@@ -131,7 +131,7 @@ weighted by squad size — **1× solo, 1.25× duo, 1.5× trio, 1.75× four diver
 divers must hold one rule the harder it is (`TEAM_DIRECTIVE_VALOR_WEIGHTS` / `directiveWeightFor`,
 read from the live roster; the operation-long strain, the live Major Order and the rolled-front
 risk keep their own unweighted fixed values). Once accepted, the host
-may mark it **failed** in the field if the squad breaks the rule (`FAIL_MISFORTUNE`, `diving` phase — or the debrief for a stats-verified directive,
+may mark it **failed** in the field if the squad breaks the rule (`FAIL_MISFORTUNE`, `diving` phase — or the squad-climbs page for a stats-verified directive,
 host-only): the shared risk is voided for every diver and each forfeits one reward option — see
 Failed directives. A reroll redraws and resets the decision (returning the squad to the `decision`
 phase, before the deal). A squad-binding rule must be
@@ -168,9 +168,11 @@ the headline reads first (`RulePart.aside`).
 **Wheel eligibility.** Every directive is on the wheel at every difficulty, with one gate:
 `eligibleMisfortunes(inventories)` drops a directive that would leave **any** present diver below
 four fieldable stratagems (`hasLegalLoadout`). In practice that is *Oops, All Airstrikes* — it
-returns once every diver owns enough red stratagems — so a draw is never a dead end. The reducer
-(`SPIN_WHEEL`, `REROLL_WHEEL`) and the wheel component both pass `squadInventories(state)`, so the
-drawn segment is the same on every client.
+returns once every diver owns enough red stratagems — so a draw is never a dead end. A second
+filter keeps a directive off the wheel while it would block a pact the squad owes as Penance
+(`BLOCKED_UNDER_MISFORTUNE`: *Stim Shortage* vs Stim Abstinent, *Peacekeepers* vs Cold Steel). The
+reducer (`SPIN_WHEEL`, `REROLL_WHEEL`) and the wheel component both pass `squadInventories(state)`
+and `squadPenances(state)`, so the drawn segment is the same on every client.
 
 **Condition scaling.** Misfortunes (team) and pacts (personal) are one catalogue, and the only
 knob difficulty turns is **risk**, never eligibility. Each condition carries a `base` (its risk at
@@ -446,36 +448,56 @@ failed pact is **voided**: its pact risk stops counting toward Valor, so both th
 and the rolled offer drop, and it costs one reward option (`OPTIONS_LOST_PER_FAILED_PACT` in
 `shared/engine/config.ts`, floored at one so the draft always completes and never deadlocks
 ADVANCE). Failed pacts ride the diver's state (`failedPactIds`), reset with the pacts every
-mission, and land in the action log for audit.
+mission, and land in the action log for audit. A stats-verified pact is judged later, on the
+squad-climbs page, where a broken one is owed back as Penance instead (below).
 
-**Debrief — stats check & squad honors.**
+**Squad climbs — stats check, Penance & squad honors.**
 
-HD2's end-of-mission stats screen comes up *after* the report, so everything it proves is settled on
-the **Debrief** (`MissionDebrief`), the first screen of the `rewards` phase, before any draft opens.
-It is the mission/operation-secured beat — the operation track, the report's stars, time, samples and
-credit haul, and a recap (front, directive, strain, the diver's draft size) — with a **Stats check**
-section beside it.
+HD2's end-of-mission stats screen comes up *after* the report and the rewards, so what it proves is
+settled **after the draft**, never before it. Once every diver has banked, the squad lands on the
+**squad-climbs page** (`ClimbCleared`) — one page for the end of every mission and operation. It
+carries the report strip (stars, time, samples, front, directive, strain), each diver's haul, the
+**Stats check**, **Squad Honors**, Brasch's Bargains (hidden until the shop can open, i.e. after the
+first operation) and the host's call to the next drop. At an operation's end the page also shows the
+difficulty emblem and the climb ladder ("The squad climbs").
 
 - **Rules.** Every rule on the `stats` accountability channel in force (Stim Abstinent, Cold
   Steel, Clean Hands; Peacekeepers and Stim Shortage among directives) is listed with its owner
   (`statsRules`) and attested **Held** (`HOLD_PACT`, `HOLD_MISFORTUNE`) or **Broke** (`FAIL_PACT`,
   `FAIL_MISFORTUNE`, a second confirming tap) — both one-way. A diver settles their own pacts, the
-  host settles any diver's (as with field marks) and the squad directive. A broke mark is the ordinary
-  failed mark: the risk is voided, the offer re-rolls on the lower Valor and one option is lost, so
-  nothing is ever clawed back after a pick. The `FAIL_PACT` window reopens in `rewards` for
-  stats-channel pacts only, until the diver drafts (it is otherwise `diving`-only); field and loadout
-  rules are judged live and never gate. Held attestations (`DiverState.heldPactIds`,
-  `DiveState.misfortuneHeld`) reset with the pacts every mission.
-- **Squad Honors** are the same stats-screen moment, so they live here too: a due contest rolls **by
-  itself** a beat after the screen opens (`HONORS_AUTO_ROLL_MS`; the host's client sends
-  `SPIN_BONUS`, with a host-only *Roll now* fallback), the reel winds down, and the host names the
-  winner(s) from the same screen. A solo diver (or a lone present diver) wins outright.
-- **The gate.** `draftLocked(state, diver)` = `statsCheckPending` (the diver's unsettled stats pacts
-  or an unsettled stats directive) **or** `honorsDue` (a due contest, rolled or not, with no winner
-  named). `PICK_REWARD`, `REROLL_REWARDS` and `BAN_REWARDS` are refused while it holds — the honors
-  token can buy a reroll of that very draft, so the winner is named first. The debrief's *Open the
-  draft* button is local presentation; the engine, not the button, keeps the draft shut.
-- Failed missions skip the debrief (there is no draft); a diver who already drafted never sees it.
+  host settles any diver's (as with field marks) and the squad directive. The `FAIL_PACT` window
+  reopens in `rewards` for stats-channel pacts only (it is otherwise `diving`-only); field and
+  loadout rules are judged live and never gate. Attestations (`DiverState.heldPactIds` /
+  `brokenPactIds`, `DiveState.misfortuneHeld` / `misfortuneBroken`) reset with the pacts every
+  mission. The draft is already banked, so a broke mark here never re-derives the offer (it is
+  kept apart from the field's `failedPactIds`).
+- **Penance.** A stats pact marked broke here is owed back: next mission the diver swears it again
+  **without choosing it and without Valor** (`DiverState.penance`, `PenanceDebt`;
+  `penanceIncurredBy`, applied by `ADVANCE`). The reward they banked in the mission they broke it
+  rides on the debt (`itemId`). Hold the pact (and clear the mission) and the reward stays; break it
+  again — in the field or on the next climbs page — or **fail the mission**, and the reward is
+  **voided** (removed from the kit by `voidPenance`, before any forfeit offer is dealt). No second
+  debt follows a voided one. Penance pacts: are sworn ahead of the diver's picks (`SET_PACTS`),
+  never appear in the diver's offer, add no risk (`pactRiskOf`), cost no draft option when broken in
+  the field (`optionsLostFor`), and the wheel never draws a directive that would block one
+  (`eligibleMisfortunes(inventories, penance)`). A debt carries across an operation boundary; it
+  is replaced at `ADVANCE` by whatever that mission's own check leaves owing, and is
+  dropped when the crusade completes or the operation restarts after a failure. Penance is **purple** everywhere: purple skulls and a *Penance* tag
+  in the Pacts sworn list, the owed strip on the pact screens (`PactPenance`) and the climbs-page
+  row.
+- **A broken directive** (stats-verified, host-attested) costs nothing now: it sets
+  `directiveTax`, and **every diver's next draft loses one option** (`OPTIONS_LOST_PER_FAILED_DIRECTIVE`,
+  floored at one). A directive broken in the field keeps its old rule (this draft, voided Valor).
+- **Squad Honors** live on the same page: a due contest rolls **by itself** a beat after the page
+  opens (`HONORS_AUTO_ROLL_MS`; the host's client sends `SPIN_BONUS`, with a host-only *Roll now*
+  fallback), the reel winds down, and the host names the winner(s) from the same page. A solo diver
+  (or a lone present diver) wins outright. The token it banks serves the **next** mission's draft.
+- **The gate.** The draft is never gated. `ADVANCE` is refused until `climbSettled`: every stats rule
+  attested (`climbBlockers().rules === 0`) and no honors contest due or unnamed
+  (`honorsDue`). The page's CTA names what is left ("Settle 1 rule first", "Rolling Squad Honors",
+  "Award honors first"); the engine, not the button, enforces it.
+- Failed missions skip the page (there is no draft): the forfeit follows, and any Penance in
+  progress is voided first.
 
 **Failed directives:** the same rule applies to the squad's team directive. The host marks it
 broken in the field (`FAIL_MISFORTUNE`, host-only, `diving` phase only; the UI asks for a confirm
@@ -737,7 +759,7 @@ never won, so it is never taken.
 
 ### Reward tokens & squad honors
 
-**Honors roll on the debrief.** On a **full-star clear**
+**Honors roll on the squad-climbs page.** On a **full-star clear**
 (`stars === maxStarsFor(difficulty)`) the mission offers one **bonus honors** contest (a
 Mario-Party bonus star): a random stat from HD2's end-of-mission screen — kills, accuracy, deaths,
 stims, samples, friendly fire, … — with a winning direction (*most* or *least*), each entry in
@@ -747,11 +769,11 @@ four-diver squad every mission, a three- or two-diver squad every other mission,
 every third. The report form only says whether honors are due (or why not and when they return,
 `missionsUntilHonors`); it no longer rolls anything.
 
-Once the report is filed, the debrief (see above) rolls the contest by itself: `SPIN_BONUS{seed}`
+Once every draft is banked, the squad-climbs page (see above) rolls the contest by itself: `SPIN_BONUS{seed}`
 (host-only, read from the filed report in the `rewards` phase) and the slot reel winds down onto the
 seeded stat — the seed is what syncs (`rollBonus`, stream salt 4). **The app never captures the
 stats**: the host reads HD2's stats screen and names the winner(s) (`AWARD_BONUS{playerIds}`,
-host-only) on the debrief. Ties are common, so an award names **one or several** divers — every tied
+host-only) on that page. Ties are common, so an award names **one or several** divers — every tied
 diver banks a token. Awarding banks each winner's **one flexible reward token** immediately (capped
 at `REWARD_TOKEN_CAP`, 3); there is no separate claim step. When only one diver can win (solo, or a
 squad where everyone else sat the draft out), selection is redundant: the spin resolves the ceremony
@@ -764,8 +786,8 @@ diver's own offer. A reroll must move (a seed that re-derives the same offer is 
 (`BAN_REWARDS`) remains in the engine for older sessions and saves, but the lit-pass UI no longer
 offers it; the redesigned draft spends tokens on rerolls only.
 
-The ceremony is a **hard gate** on the draft (`honorsDue`, via `draftLocked`) and, for older
-states, on `ADVANCE` (`honorsPending`). The squad dock shows the rolled stat and the banked token but
+The ceremony is a **hard gate** on `ADVANCE` (`honorsDue`, via `climbSettled`), never on the draft:
+a token banked on the climbs page buys a reroll in the *next* mission's draft. The squad dock shows the rolled stat and the banked token but
 no longer carries award controls. Claimed tokens persist across missions; reroll seeds and the old ban flag
 reset with the pacts. Negative targeting (bans) did not violate "guarantee rarity class, never
 specific items" — it narrows a pool, it never names a reward.

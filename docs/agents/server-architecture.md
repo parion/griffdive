@@ -43,7 +43,7 @@ app/
                    BriefingHost — the host's tutorial wrapper),
                    wheel/ (WheelOfAdversity — the seeded spinning SVG wheel),
                    condition/ (ConditionCard/ConditionSigil — directive and pact cards),
-                   pact/ (PactScreen — the self-service pacts hand, PactLedger),
+                   pact/ (PactScreen — the self-service pacts hand, PactLedger, PactPenance),
                    valor/ (ValorRoll — the shared d100 odds line, ValorFigure),
                    risk/ (RiskPips — risk dots, rolling while a wheel draw reels; RiskSetup —
                    the setup skull total via setupRiskOf),
@@ -52,9 +52,11 @@ app/
                    and the lobby, CrusadeLadder — the 3→10 ladder, CrusadeStrip),
                    kit/ (KitPanel — the lean Kit, KitStarting — the issued starting kit,
                    KitSection/KitTile/KitSnapshot/KitReveal),
-                   mission/ (MissionReport — stars, haul, time cells, honors; MissionCleared,
+                   mission/ (MissionReport — stars, haul, time cells, honors; MissionTrack,
                    MissionBankedHaul, MissionSampleCanister — the report's tinted sample tubes),
-                   operation/ (OperationCleared — the climb screen after the last mission),
+                   climb/ (ClimbCleared — the squad-climbs page after every draft: report strip,
+                   stats check with Penance rows, Squad Honors, Brasch, the next-drop CTA;
+                   ClimbReport/ClimbStats/ClimbHonors),
                    honors/ (HonorsReel), reward/ (RewardDraft, RewardReveal,
                    RewardDiversChoicePicker), liberty-cross/ (LibertyCrossBand/Emblem),
                    squad/ (SquadDock — seats, presence, honors tokens, Steam/invite;
@@ -259,7 +261,7 @@ Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFO
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated
 diver, `unsave-dive` is host-only; the Steam lobby link is likewise outside the union and
 host-only (`set-steam`, blank clears).
-`FAIL_PACT` and `HOLD_PACT` are sent by the target diver or the host (server refuses everyone else; the debrief lets the host settle any diver's stats pact);
+`FAIL_PACT` and `HOLD_PACT` are sent by the target diver or the host (server refuses everyone else; the squad-climbs page lets the host settle any diver's stats pact);
 `FAIL_MISFORTUNE` and `HOLD_MISFORTUNE` are host-only, since the directive binds the whole squad. Host disconnect →
 `TRANSFER_HOST` to the earliest joiner still connected; none left → room hibernates in storage
 with a TTL, and the first diver back takes the host role once the host is marked away. A host who

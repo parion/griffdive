@@ -72,11 +72,15 @@ set; extracted references are git-ignored and presentation-only. Nothing here to
   help, veterans never see it (the Hades boon-screen lesson). A rule's parenthetical detail is an
   **aside** (`RulePart.aside`): smaller, `--dim` and italic, so the headline reads first. Rules
   use brackets for extra detail, never an em dash.
-- **Debrief**: the first screen of the rewards phase (`MissionDebrief`) reuses the regroup's
-  language: the secured-drops track (`MissionTrack`, shared with `MissionCleared`), a report panel and a
-  Stats check panel with the Squad Honors reel as its last row. The reel is built for a flex *row*
+- **Squad climbs**: the page after the draft (`ClimbCleared`, in `components/climb/`). The Stats
+  check (`ClimbStats`) and Squad Honors (`ClimbHonors`) share one panel beside the haul card; the
+  report is a slim strip (`ClimbReport`) above them. The honors reel is built for a flex *row*
   (`flex: 1 1 340px`), so in a column it must sit in a plain block slot or it turns 340px tall.
-  Never name a local class `.rule` — `main.css` owns it.
+  Never name a local class `.row` or `.rule` — `main.css` owns both (`.row` carries
+  `flex-wrap: wrap`, which wrapped the reel's labels until `HonorsReel` set `nowrap`).
+- **Penance is purple.** `--purple` is reserved for it: purple skulls (`RiskPips tone="purple"`) and
+  a *Penance* tag on the Pacts sworn row, the owed strip on the pact screens (`PactPenance`), and a
+  purple-edged row on the climbs page. Never reuse it for anything else.
 - **Banners**: every standing message — an error, a removal, a blocked join, a locked shop, a
   server restart — is one `AppBanner` (`app/components/app/AppBanner.vue`), never a hand-rolled
   strip. One shape: a square tone glyph (`i` teal **info**, `!` orange **warn**, `×` red **error**,
@@ -371,16 +375,17 @@ never pre-empts the fanfare. Banking settles them at once; a reroll replays the 
 local and survives the squad's syncs — only a genuinely new offer (a reroll) clears it.
 
 Once **every** diver has banked (`allDiversPicked`, synced state, so the whole squad sees it), the
-draft hands off to an interstitial; the engine stays in rewards and the host's ADVANCE is the only
-way on. Mid-operation that is **`MissionCleared`** ("Regroup"): a mission track (secured drops lit
-teal, the next one breathing gold), the diver's banked haul as a hero card with the credits it
-earned, the squad's picks (`SquadDraftBoard`), and **Brasch's Bargains inline** so divers shop
-while they wait. Both beats share **`MissionBankedHaul`** (the haul hero card). At the operation's end, **`OperationCleared`** carries the climb
-to the next difficulty — the next in-game difficulty emblem slams in over rays, above a 3–10
-chevron ladder underlined in each rung's base tier — then regroups like the mission beat: the haul, the squad's picks and Brasch's shelf as a **last
-call** (the shelf restocks at the new altitude only when the next operation starts). Its backdrop
-is alive: two ray fields counter-rotate behind the emblem, a halo breathes, embers rise and the
-headline takes one pass of light — all stilled by reduced motion.
+draft hands off to **`ClimbCleared`** — one page for every mission and operation end; the engine
+stays in rewards and the host's ADVANCE is the only way on (refused until the stats check and honors
+settle). Mid-operation it reads "Mission secured": a mission track (secured drops lit teal, the next
+one breathing gold), the report strip, the diver's banked haul as a hero card
+(`MissionBankedHaul`), the Stats check and Squad Honors, the squad's picks (`SquadDraftBoard`), and
+**Brasch's Bargains inline** when the shop is open (it is left off the page entirely until the first
+operation completes). At the operation's end it becomes "The squad climbs": the next in-game
+difficulty emblem slams in over rays, above a 3–10 chevron ladder underlined in each rung's base
+tier, and Brasch's shelf is a **last call** (it restocks at the new altitude only when the next
+operation starts). That backdrop is alive: two ray fields counter-rotate behind the emblem, a halo
+breathes, embers rise and the headline takes one pass of light — all stilled by reduced motion.
 
 #### ValorRoll — the one odds primitive
 
@@ -458,8 +463,8 @@ column: `PhoneTopBar` (identity, Squad, menu — no beat tabs, to give the stage
 scrolling stage, the sidebar's tool rail, and a pinned `footer.phone-bar`. The bar never changes shape — its CTA label stays on one line and
 ellipsizes a long item name: optional detail above, an optional secondary
 on the left and one primary action filling the rest, supplied through `PhoneActionBar`'s deferred
-teleports. Report and forfeit actions use the same bar, and so do the `MissionCleared` and
-`OperationCleared` interstitials (their `phone` variants put the host's CTA in the bar). The squad sheet is a dialog with inline
+teleports. Report and forfeit actions use the same bar, and so does `ClimbCleared` (its `phone` variant puts the host's CTA in the bar, or what is
+still to settle). The squad sheet is a dialog with inline
 moderation; the wheel call is a flat top-down stage (directive, front-and-strain card, odds, wheel),
 not a bottom sheet. Short phones keep the call's take/skip buttons reachable by scrolling, and tap
 targets stay at least 24px. No page-level horizontal overflow is allowed; long live text needs

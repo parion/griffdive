@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { useIntervalFn } from '@vueuse/core'
-import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { createSaveDoc } from '~~/shared/engine/saves'
-import { allDiversPicked, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending, squadInventories } from '~~/shared/engine/selectors'
+import { allDiversPicked, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending, squadInventories, squadPenances } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
@@ -68,16 +67,13 @@ const reporting = ref(false)
 // takes the stage without it.
 const fieldKit = computed(() => phase.value === 'diving' && !reporting.value)
 
-// Once the whole squad has banked, everyone regroups on an interstitial instead
-// of idling on the draft: a mission-cleared beat mid-operation, the climb at
-// its end. It is derived from synced state, so every diver sees the same beat;
-// the engine stays in rewards and the host's ADVANCE is the only way on.
+// Once the whole squad has banked, everyone regroups on the squad-climbs page
+// instead of idling on the draft: the stats check, Squad Honors and the shop, at
+// the end of every mission and operation. It is derived from synced state, so
+// every diver sees the same beat; the engine stays in rewards and the host's
+// ADVANCE is the only way on.
 const squadBanked = computed(() =>
   state.value?.phase === 'rewards' && allDiversPicked(state.value))
-const operationClimbs = computed(() =>
-  Boolean(state.value)
-  && state.value!.missionInOperation >= opLength.value
-  && state.value!.difficulty < MAX_DIFFICULTY)
 
 // A new beat starts at its top. Without this the stage keeps the scroll the
 // last beat left behind — banking from the bottom of the draft would open the
@@ -302,7 +298,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   let seed = session.newSeed()
   for (let attempt = 0; attempt < 32; attempt++) {
     const same = wheel === 'misfortune'
-      ? deriveMisfortune(seed, squadInventories(current)).id === current.wheel.misfortuneId
+      ? deriveMisfortune(seed, squadInventories(current), squadPenances(current)).id === current.wheel.misfortuneId
       : wheel === 'front'
         ? deriveFront(seed, majorOrderFronts(current)) === current.frontId
         : deriveStrain(seed, current.difficulty, current.frontId!)?.id === current.strainId
@@ -854,17 +850,8 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
             name="phase"
             mode="out-in"
           >
-            <OperationCleared
-              v-if="squadBanked && operationClimbs"
-              :state="state"
-              :self="self"
-              :self-id="selfId"
-              :can-control="canControl"
-              @start="advance"
-              @buy="buyItem"
-            />
-            <MissionCleared
-              v-else-if="squadBanked"
+            <ClimbCleared
+              v-if="squadBanked"
               :state="state"
               :self="self"
               :self-id="selfId"
@@ -872,6 +859,12 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
               :op-length="opLength"
               @advance="advance"
               @buy="buyItem"
+              @hold-pact="holdPact"
+              @fail-pact="failPact"
+              @hold-directive="holdDirective"
+              @fail-directive="failDirective"
+              @spin-bonus="spinBonus"
+              @award-bonus="awardBonus"
             />
             <DivePhaseRewards
               v-else
@@ -883,12 +876,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
               @pick="pick"
               @reroll="rerollRewards"
               @advance="advance"
-              @hold-pact="holdPact"
-              @fail-pact="failPact"
-              @hold-directive="holdDirective"
-              @fail-directive="failDirective"
-              @spin-bonus="spinBonus"
-              @award-bonus="awardBonus"
             />
           </Transition>
 

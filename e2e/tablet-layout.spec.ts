@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { dismissWarbondIntro, fileCallsign, settleDebrief } from './helpers'
+import { dismissWarbondIntro, fileCallsign } from './helpers'
 
 // Tablet guards from the responsive audit. Just above the 1020px breakpoint the
 // three-rail terminal once squeezed the centre phase until the wheel's decision
@@ -69,7 +69,6 @@ test('landscape tablet: the terminal keeps every phase inside the centre column'
   await expectNoVerticalOverflow(page)
 
   await page.getByRole('button', { name: 'File report' }).click()
-  await settleDebrief(page)
   await expect(page.getByRole('heading', { name: 'Bank one item' })).toBeVisible()
   await expectCentreFits(page)
   await expectNoVerticalOverflow(page)

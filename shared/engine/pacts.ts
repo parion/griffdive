@@ -233,9 +233,17 @@ export function hasLegalLoadout(
 // another diver's reinforce, so a solo diver would simply stay dead.
 export const SQUAD_ONLY_PACTS: readonly string[] = ['deadWeight']
 
-export function rollPactOffer(seed: number, misfortuneId: string | null, difficulty: number, squadSize: number): Pact[] {
+// `sworn` are pacts the diver already carries (Penance): never offered again.
+export function rollPactOffer(
+  seed: number,
+  misfortuneId: string | null,
+  difficulty: number,
+  squadSize: number,
+  sworn: readonly string[] = [],
+): Pact[] {
   const pool = PACTS.filter(pact =>
     isPactSelectable(pact.id, misfortuneId)
+    && !sworn.includes(pact.id)
     && (squadSize > 1 || !SQUAD_ONLY_PACTS.includes(pact.id)))
   const rng = mulberry32(deriveSeed(seed, 3))
   const remaining = [...pool]

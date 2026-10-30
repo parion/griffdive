@@ -5,7 +5,7 @@ import type { Front, FrontId } from '../data/fronts'
 import type { Misfortune } from '../data/misfortunes'
 import type { Strain } from '../data/strains'
 import { MIN_DIFFICULTY, STRAIN_MIN_DIFFICULTY } from './config'
-import { hasLegalLoadout } from './pacts'
+import { hasLegalLoadout, isPactSelectable } from './pacts'
 import { deriveSeed, mulberry32, pickRandom } from './rng'
 
 // Every team condition is on the wheel at every difficulty — difficulty scales
@@ -14,9 +14,15 @@ import { deriveSeed, mulberry32, pickRandom } from './rng'
 // stratagems (Oops, All Airstrikes for a diver short on red stratagems) is off
 // the wheel, so a draw is never a dead end. Pass every present diver's
 // inventory; omit it for the whole catalogue (display scales, marketing).
-export function eligibleMisfortunes(inventories: readonly (readonly string[])[] = []): Misfortune[] {
+// `penance` are the pacts the squad owes back: a directive that blocks one of
+// them would void the debt unserved, so it stays off the wheel too.
+export function eligibleMisfortunes(
+  inventories: readonly (readonly string[])[] = [],
+  penance: readonly string[] = [],
+): Misfortune[] {
   return MISFORTUNES.filter(misfortune =>
-    inventories.every(owned => hasLegalLoadout(misfortune.id, [], owned)))
+    inventories.every(owned => hasLegalLoadout(misfortune.id, [], owned))
+    && !penance.some(pactId => !isPactSelectable(pactId, misfortune.id)))
 }
 
 // Strains belong to a front: the pool is that front's subfactions eligible at
@@ -35,9 +41,13 @@ export function eligibleStrains(difficulty: number, frontId?: FrontId): Strain[]
 // Same seed always yields the same draw on every client (AGENTS.md: spins are
 // seeds). A front with no eligible strain draws none — the operation runs
 // against standard forces.
-export function deriveMisfortune(seed: number, inventories: readonly (readonly string[])[] = []): Misfortune {
+export function deriveMisfortune(
+  seed: number,
+  inventories: readonly (readonly string[])[] = [],
+  penance: readonly string[] = [],
+): Misfortune {
   const rng = mulberry32(deriveSeed(seed, 1))
-  return pickRandom(rng, eligibleMisfortunes(inventories))
+  return pickRandom(rng, eligibleMisfortunes(inventories, penance))
 }
 
 // The front pool is the whole roster by default; a Major Order narrows it to

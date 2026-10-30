@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
-import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { allDiversPicked, bonusFor, bonusWinners } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionReport } from '~~/shared/engine/types'
 import type { SteamLobbyInfo } from '~~/shared/types/messages'
@@ -60,13 +59,6 @@ const emit = defineEmits<{
 
 const { sidePanel } = useDrawers()
 const phase = computed(() => props.state.phase)
-// The debrief precedes the draft; opening it is local (see MissionDebrief).
-const debriefOpen = ref(false)
-const showDebrief = computed(() =>
-  props.self !== null
-  && props.self.pickedOptionId === null
-  && !props.self.rewardBanned
-  && !debriefOpen.value)
 const squadOpen = ref(false)
 const menuOpen = ref(false)
 
@@ -81,10 +73,8 @@ const honors = computed(() => (props.state.phase !== 'diving' ? bonusFor(props.s
 const honorsWinners = computed(() => bonusWinners(props.state).map(diver => upperName(diver.name)))
 const honorsAwarded = computed(() => Boolean(props.state.bonusWinnerIds.length))
 
-// Same regroup beats as the desktop shell, derived from synced state.
+// Same squad-climbs beat as the desktop shell, derived from synced state.
 const squadBanked = computed(() => phase.value === 'rewards' && allDiversPicked(props.state))
-const operationClimbs = computed(() =>
-  props.state.missionInOperation >= props.opLength && props.state.difficulty < MAX_DIFFICULTY)
 </script>
 
 <template>
@@ -161,18 +151,7 @@ const operationClimbs = computed(() =>
           @fail-directive="emit('failDirective')"
         />
 
-        <OperationCleared
-          v-else-if="squadBanked && operationClimbs"
-          :state="state"
-          :self="self"
-          :self-id="selfId"
-          :can-control="canControl"
-          phone
-          @start="emit('advance')"
-          @buy="emit('buy', $event)"
-        />
-
-        <MissionCleared
+        <ClimbCleared
           v-else-if="squadBanked"
           :state="state"
           :self="self"
@@ -182,23 +161,12 @@ const operationClimbs = computed(() =>
           phone
           @advance="emit('advance')"
           @buy="emit('buy', $event)"
-        />
-
-        <MissionDebrief
-          v-else-if="phase === 'rewards' && showDebrief"
-          :state="state"
-          :self="self"
-          :self-id="selfId"
-          :is-host="isHost"
-          :op-length="opLength"
-          phone
           @hold-pact="(playerId, pactId) => emit('holdPact', playerId, pactId)"
           @fail-pact="(playerId, pactId) => emit('failPact', playerId, pactId)"
           @hold-directive="emit('holdDirective')"
           @fail-directive="emit('failDirective')"
           @spin-bonus="emit('spinBonus')"
           @award-bonus="emit('awardBonus', $event)"
-          @open="debriefOpen = true"
         />
 
         <PhoneRewardDraft

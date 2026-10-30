@@ -10,7 +10,9 @@ const props = withDefaults(defineProps<{
   spinning?: boolean
   // Every present diver's kit: directives someone can't field leave the wheel.
   inventories?: readonly (readonly string[])[]
-}>(), { canControl: false, spinning: false, inventories: () => [] })
+  // Pacts the squad owes back as Penance: directives that block one are off the wheel.
+  penance?: readonly string[]
+}>(), { canControl: false, spinning: false, inventories: () => [], penance: () => [] })
 
 const emit = defineEmits<{ spin: [] }>()
 
@@ -28,7 +30,7 @@ const SEG_HIT = 'var(--gold)'
 const HIT_REACH = 18
 
 const segments = computed(() =>
-  eligibleMisfortunes(props.inventories).map((misfortune) => {
+  eligibleMisfortunes(props.inventories, props.penance).map((misfortune) => {
     const risk = conditionRiskAt(misfortune.id, props.difficulty)
     const tone = risk >= 4 ? 'var(--red)' : risk === 3 ? 'var(--orange)' : 'var(--khaki)'
     return { id: misfortune.id, name: misfortune.name, risk, tone }
@@ -37,7 +39,7 @@ const segments = computed(() =>
 const step = computed(() => (segments.value.length ? 360 / segments.value.length : 360))
 
 const drawn = computed(() =>
-  props.seed === null ? null : deriveMisfortune(props.seed, props.inventories))
+  props.seed === null ? null : deriveMisfortune(props.seed, props.inventories, props.penance))
 const drawnIndex = computed(() =>
   drawn.value ? segments.value.findIndex(segment => segment.id === drawn.value!.id) : -1)
 const drawnRisk = computed(() =>
@@ -132,7 +134,7 @@ watch(
       isSpinning.value = false
       return
     }
-    const index = segments.value.findIndex(segment => segment.id === deriveMisfortune(seed, props.inventories).id)
+    const index = segments.value.findIndex(segment => segment.id === deriveMisfortune(seed, props.inventories, props.penance).id)
     if (index < 0) {
       return
     }

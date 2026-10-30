@@ -10,6 +10,7 @@ import {
   bonusEligibleFor,
   currentFront,
   missionsUntilHonors,
+  optionsLostFor,
   squadSize,
 } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionOutcome, MissionReport, SampleCounts } from '~~/shared/engine/types'
@@ -66,7 +67,7 @@ const opNumber = computed(() =>
   catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
 
 const optionCount = computed(() =>
-  optionsForDiver(stars.value, props.self?.failedPactIds.length ?? 0))
+  optionsForDiver(stars.value, props.self ? optionsLostFor(props.state, props.self) : 0))
 
 const honorsEligible = computed(() =>
   props.outcome === 'success'
