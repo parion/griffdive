@@ -257,8 +257,10 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
 - **Tier list** is the last setup block (`TierListPicker`, a Reka `RadioGroup` of cards: the
   default tiers, featured lists and the browser's own, each with its per-tier counts). Under it sit
   the picked list's tag and a **Tier Maker ↗** link. The link opens in a new tab so the host keeps
-  their seat (from a lobby it carries `?lobby=1`), and the library listens for `storage` events so a
-  list saved or picked there reaches the lobby, which syncs it to the squad.
+  their seat. The library listens for `storage` events, so a list saved or picked there reaches the
+  lobby, which syncs it to the squad. While the host can still change the list, the lobby
+  announces itself on a `BroadcastChannel` (`useLobbyBeacon`), so a Tier Maker tab knows a lobby
+  is open (`useOpenLobby`) and can send the diver back to it.
   `TierListTag` is the one chip for a run's list ("Tiers · *name*", gold). Pressing it opens
   `TierListView`, an `AppDialog` with Reka `Tabs`: **Whole list** (every item, tier by tier) and
   **Vs default** (where the list parts ways with the default tiers, from → to).
@@ -477,11 +479,18 @@ A drag-and-drop tier board in the tiermaker mould, built for a phone first.
   viewport edges.
 - **While dragging:** a tilted ghost follows the pointer, wearing the hovered row's tier colour and
   a tier badge. The row under it lights up. The tile it came from greys out. Escape cancels.
+- **Several at once:** Ctrl/⌘-click (Ctrl-click on a Mac arrives as `contextmenu`, also handled)
+  or Ctrl/⌘+Space/Enter adds an item to the selection. Dragging any selected item carries the whole
+  selection: every selected tile greys out, and the ghost grows a second card behind it and a gold
+  ×N count. `S/A/B/C`, `Shift+↑/↓` and `D` on a selected item act on all of them, and so do the
+  inspector's tier buttons. A plain click selects one item again; Escape clears.
 - **Keyboard:** the board is one tab stop with roving focus. Arrows walk the wrapped grid (up and
   down by geometry). `S/A/B/C` or `1–4` move the focused item, `Shift+↑/↓` steps it a tier, and `D`
   undoes it back to its tier at the last save.
 - **Click or tap:** selects the item for **`TierListInspector`**: its art, name, category, saved vs
-  current tier (or "not rated yet") and four big S/A/B/C buttons (a Reka `RadioGroup`).
+  current tier (or "not rated yet") and four big S/A/B/C buttons (a Reka `RadioGroup`). With
+  several selected it shows a stack of up to three tiles, "N items selected", their names and
+  tier mix, and the buttons move them all (none checked unless they share a tier).
 - **Announcements:** every move is announced in a polite live region.
 
 **Flair** (presentation only; reduced motion collapses it)
@@ -500,18 +509,39 @@ A drag-and-drop tier board in the tiermaker mould, built for a phone first.
   36px display controls: an **Aa** names toggle (Reka `Toggle`) and a three-step tile-size group
   (Reka `RadioGroup` of growing squares). Both are kept in `localStorage`
   (`griffdive:tier-maker-view`).
-- **Under 1100px:** a blurred action bar is pinned to the bottom edge with **List ▾ / Share /
-  Save**. List opens `TierListDesk` in a dialog. Selecting a tile turns the bar into the inspector,
+- **Under 1100px:** a blurred action bar is pinned to the bottom edge with **List ▾ / Share /**
+  and the next-step button (**Save**, **Back to lobby**, **Host crusade** or **Play it ↗**). List opens `TierListDesk` in a dialog. Selecting a tile turns the bar into the inspector,
   which goes single-row on wide bars and landscape phones.
 - **From 1100px:** the desk and the inspector dock in a sticky column beside the board.
 - **Desk (`TierListDesk`):** "On the board" (start a new list from the default tiers or a featured
-  list, or open one of yours), Save, then the launch action once saved: **Host a crusade with this
-  list** picks it and opens a fresh online lobby; opened from a lobby (`?lobby=1`) it is **Use in
-  my lobby**, which only picks it, and the lobby's tab syncs it. Share holds **Copy link**,
-  **Import**, **Save as file** and **Copy JSON**; Undo changes and Delete close it out.
+  list, or open one of yours), then one primary button that is the list's **next step**. It saves
+  while the list is new or changed. Once saved and unchanged it becomes:
+  - **Back to my lobby with this list** when a lobby is open in another tab: it picks the list
+    (the lobby syncs it) and closes this tab, which the setup link opened, so the diver lands back
+    in the lobby; a browser that refuses to close it navigates to the lobby instead;
+  - **Host a crusade with this list** otherwise: it picks the list and opens a fresh online lobby;
+  - **Play it in Griffdive ↗** on the standalone site (below).
+
+  Share holds **Copy link**, **Import**, **Save as file** and **Copy JSON**; Undo changes and
+  Delete close it out.
 - **Import:** opening `/tiers#<code>` imports the shared list into an unsaved draft and shows an
   info banner. The Import dialog takes a pasted link, code or JSON, or opens a `.json` file.
 - **Confirmations:** discarding unsaved edits and deleting a list each confirm in an `AppDialog`.
+
+**Standalone site (`tiers.griffdive.com`)**
+- The same build serves it. `shared/tiers-site.ts` (`isTiersHost`, `mainSiteOrigin`) recognizes a
+  `tiers.` hostname (`tiers.localhost` works locally). `app/router.options.ts` mounts the Tier
+  Maker at `/`, and `middleware/tiers-site.global.ts` sends every page but the maker and
+  `/privacy` to the main site.
+- **Shell:** the header's release chip reads **Tier Maker**, and a gold **Play Griffdive** link
+  joins the ship nav; on phones it is the only nav item. The kicker reads "Helldivers 2 Tier List
+  Maker", with a short pitch under the header that links to the game.
+- **Head:** `server/plugins/tiers-site.ts` rewrites the SPA shell's title, description and card
+  text on a `tiers.` host, so link previews describe the maker, not the game.
+- **Storage is per origin**, so a list crosses to the game by link, not shared storage: **Play it
+  in Griffdive ↗** opens `<main>/tiers?play=1#<code>`. There the import is saved to the library
+  and picked at once, so the next step is **Host a crusade with this list**. Share links use the
+  current path (`/#…` on the standalone site).
 
 #### Phone shell
 

@@ -163,3 +163,67 @@ test('a share link imports a list, hosts a crusade with it, and the squad can re
   await contextA.close()
   await contextB.close()
 })
+
+test('Ctrl-click gathers several items and one drag moves them all', async ({ page }) => {
+  await page.goto('/tiers')
+  await page.getByRole('radio', { name: 'Supply' }).click()
+  await page.getByRole('radio', { name: 'Small tiles' }).click()
+  await page.getByRole('button', { name: 'Show item names' }).click()
+  for (const name of ['Sterilizer', 'Railgun']) {
+    await page.getByRole('button', { name: new RegExp(`^${name},`) }).click({ modifiers: ['ControlOrMeta'] })
+  }
+  await expect(page.getByRole('region', { name: 'Selected items' })).toContainText('2 items selected')
+
+  const from = (await page.getByRole('button', { name: /^Railgun,/ }).boundingBox())!
+  const to = (await page.locator('[data-drop-tier="s"]').boundingBox())!
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 })
+  await expect(page.locator('.tm-ghost-count')).toHaveText('×2')
+  await page.mouse.up()
+  const row = page.locator('[data-drop-tier="s"]')
+  await expect(row.getByRole('button', { name: /^Sterilizer, .*S tier, was C/ })).toBeVisible()
+  await expect(row.getByRole('button', { name: /^Railgun, .*S tier, was B/ })).toBeVisible()
+
+  // The group's tier buttons and D move them together too.
+  await page.getByRole('region', { name: 'Selected items' }).getByRole('radio', { name: /^A tier/ }).click()
+  await expect(page.locator('[data-drop-tier="a"]').getByRole('button', { name: /^(Sterilizer|Railgun),/ })).toHaveCount(2)
+  await page.getByRole('button', { name: /^Railgun,/ }).press('d')
+  await expect(page.getByRole('button', { name: /^Sterilizer, .*C tier$/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Railgun, .*B tier$/ })).toBeVisible()
+})
+
+test('opened from a lobby, the saved list sends the host back to it', async ({ context, page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Host an online dive' }).click()
+  await expect(page).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
+  await page.getByLabel('Your name').fill('Host')
+  await page.getByRole('button', { name: 'Start the dive' }).click()
+  await dismissWarbondIntro(page)
+
+  const [maker] = await Promise.all([context.waitForEvent('page'), page.getByRole('link', { name: /Tier Maker/ }).click()])
+  await maker.getByRole('textbox', { name: 'List name' }).fill('Lobby List')
+  await maker.getByRole('button', { name: 'Save to my lists' }).click()
+  const back = maker.getByRole('button', { name: 'Back to my lobby with this list' })
+  await expect(back).toBeVisible()
+  await Promise.all([maker.waitForEvent('close'), back.click()])
+  await expect(page.getByRole('radio', { name: /^Lobby List:/ })).toBeChecked()
+})
+
+test('the standalone Tier Maker on tiers. stands alone and hands a list to the game', async ({ page, baseURL }) => {
+  const main = new URL(baseURL!)
+  const tiers = `${main.protocol}//tiers.localhost:${main.port}`
+  await page.goto(`${tiers}/`)
+  await expect(page).toHaveTitle(/Tier List Maker/)
+  await expect(page.getByRole('heading', { name: 'Helldivers 2 Tier List Maker' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Play Griffdive' }).first()).toBeVisible()
+
+  await page.getByRole('textbox', { name: 'List name' }).fill('Fresh Meta')
+  await page.getByRole('button', { name: 'Save to my lists' }).click()
+  await page.getByRole('button', { name: 'Play it in Griffdive ↗' }).click()
+
+  // Over on the main site the list arrives saved, one step from a crusade.
+  await expect(page).toHaveURL(`${main.origin}/tiers`)
+  await expect(page.getByRole('textbox', { name: 'List name' })).toHaveValue('Fresh Meta')
+  await expect(page.getByRole('button', { name: 'Host a crusade with this list' })).toBeVisible()
+})

@@ -4,23 +4,34 @@ import type { SavedTierList } from '~/composables/useTierLists'
 
 // The Tier Maker's list controls: which list is on the board and what to do
 // with it. Docked beside the board on wide screens, in a dialog on phones.
-// `lobby` means the maker was opened from a crusade lobby: the list goes to
-// that lobby instead of starting another crusade.
-defineProps<{
+// The first button is the list's next step: save it, then take it back to an
+// open lobby, host a crusade with it, or — on the standalone site — play it.
+const props = defineProps<{
   source: string
   newId: string
   library: readonly SavedTierList[]
   saved: boolean
   dirty: boolean
-  picked: boolean
-  lobby: boolean
+  step: 'save' | 'lobby' | 'host' | 'play'
   launching: boolean
 }>()
 
+const label = computed(() => {
+  switch (props.step) {
+    case 'lobby':
+      return 'Back to my lobby with this list'
+    case 'host':
+      return props.launching ? 'Opening a lobby…' : 'Host a crusade with this list'
+    case 'play':
+      return 'Play it in Griffdive ↗'
+    default:
+      return props.saved ? 'Save changes' : 'Save to my lists'
+  }
+})
+
 const emit = defineEmits<{
   open: [id: string]
-  save: []
-  launch: []
+  primary: []
   share: []
   download: []
   copyJson: []
@@ -69,29 +80,20 @@ const emit = defineEmits<{
       type="button"
       class="btn primary cut-sm tm-desk-save"
       :class="{ 'cta-sweep': dirty }"
-      :disabled="saved && !dirty"
-      @click="emit('save')"
+      :disabled="launching"
+      @click="emit('primary')"
     >
-      {{ saved ? (dirty ? 'Save changes' : 'Saved') : 'Save to my lists' }}
+      {{ label }}
     </button>
     <p
-      v-if="lobby && saved && picked && !dirty"
+      v-if="step !== 'save'"
       class="tm-desk-note"
     >
       <span
         class="lamp gold"
         aria-hidden="true"
-      /> Your lobby is using this list.
+      /> Saved in this browser.
     </p>
-    <button
-      v-else-if="saved && !dirty"
-      type="button"
-      class="btn cut-sm tm-desk-launch"
-      :disabled="launching"
-      @click="emit('launch')"
-    >
-      {{ lobby ? 'Use in my lobby' : launching ? 'Opening a lobby…' : 'Host a crusade with this list' }}
-    </button>
 
     <span class="lbl tm-desk-h">Share</span>
     <div class="tm-desk-row">
@@ -154,8 +156,7 @@ const emit = defineEmits<{
 .tm-desk { display: grid; gap: 8px; min-width: 0; }
 .tm-desk-field { display: grid; gap: 0.3rem; min-width: 0; margin-bottom: 4px; }
 .tm-desk-field select { width: 100%; min-width: 0; }
-.tm-desk-save,
-.tm-desk-launch { width: 100%; }
+.tm-desk-save { width: 100%; }
 .tm-desk-h { margin-top: 6px; }
 .tm-desk-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 6px; }
 .tm-desk-row .btn { width: 100%; }

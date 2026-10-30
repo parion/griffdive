@@ -10,6 +10,7 @@ const onDive = computed(() => route.path.startsWith('/dive'))
 const changelogOpen = ref(false)
 const { codexOpen, warbondsOpen, sidebarHosted } = useDrawers()
 const { online } = useSessionStore()
+const { standalone, mainOrigin } = useTiersSite()
 </script>
 
 <template>
@@ -26,12 +27,17 @@ const { online } = useSessionStore()
         <NuxtLink
           to="/"
           class="brand"
-          aria-label="Griffdive bridge"
+          :aria-label="standalone ? 'Griffdive Tier Maker' : 'Griffdive bridge'"
         >
           <AppBrandMark :size="26" />
           <span class="brand-word disp">Griffdive</span>
         </NuxtLink>
+        <span
+          v-if="standalone"
+          class="chip release-chip"
+        >Tier Maker</span>
         <button
+          v-else
           type="button"
           class="chip release-chip"
           :title="`${CURRENT_RELEASE.label} — click for the release notes`"
@@ -59,8 +65,16 @@ const { online } = useSessionStore()
         </div>
         <nav
           class="ship-nav"
+          :class="{ standalone }"
           aria-label="Ship"
         >
+          <a
+            v-if="standalone"
+            class="icon-btn navb play-link"
+            :href="mainOrigin"
+          >
+            <span>Play Griffdive</span>
+          </a>
           <a
             class="icon-btn navb"
             href="https://ko-fi.com/griffdive"
@@ -166,6 +180,7 @@ const { online } = useSessionStore()
   text-transform: uppercase;
 }
 .navb:hover { text-decoration: none; }
+.play-link { color: var(--gold); }
 .nav-icon { width: 20px; height: 20px; }
 .nav-icon.star { color: var(--gold); }
 
@@ -176,6 +191,8 @@ const { online } = useSessionStore()
   .uplink { display: none; }
   /* Labels stay on phones — playtesters never found Codex/Warbonds behind bare
      icons. Icon and label sit side by side to fit beside the brand. */
+  /* The standalone Tier Maker keeps one way out on a phone: to the game. */
+  .ship-nav.standalone .navb:not(.play-link) { display: none; }
   .navb {
     flex-direction: row;
     gap: 6px;

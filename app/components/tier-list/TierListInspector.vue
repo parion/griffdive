@@ -4,23 +4,71 @@ import type { Item, Tier } from '~~/shared/data/types'
 import { TIERS } from '~~/shared/engine/tierList'
 import { KIT_SECTIONS, kitSectionOf } from '~/utils/kit'
 
-// The selected item up close, with one big button per tier: the tap path on
-// a phone and the way to read an item's name when tiles are art only.
-const props = defineProps<{ item: Item, savedTier: Tier, unrated: boolean }>()
+// The selection up close, with one big button per tier: the tap path on a
+// phone and the way to read an item's name when tiles are art only. Several
+// selected items (Ctrl/⌘-click) share the buttons and move together.
+const props = defineProps<{ items: readonly Item[], savedTier: Tier | null, unrated: boolean }>()
 const emit = defineEmits<{ set: [tier: Tier], close: [] }>()
 
-const section = computed(() => KIT_SECTIONS.find(entry => entry.id === kitSectionOf(props.item))!)
-const moved = computed(() => props.savedTier !== props.item.tier)
+const item = computed(() => props.items[0]!)
+const many = computed(() => props.items.length > 1)
+const sectionOf = (entry: Item) => KIT_SECTIONS.find(def => def.id === kitSectionOf(entry))!
+const section = computed(() => sectionOf(item.value))
+const moved = computed(() => !many.value && props.savedTier !== null && props.savedTier !== item.value.tier)
+const common = computed(() => (props.items.every(entry => entry.tier === item.value.tier) ? item.value.tier : ''))
+const mix = computed(() => TIERS
+  .map(tier => ({ tier, n: props.items.filter(entry => entry.tier === tier).length }))
+  .filter(entry => entry.n > 0))
 </script>
 
 <template>
   <section
     class="tm-insp"
     :style="{ '--tier': `var(--tier-${item.tier})` }"
-    aria-label="Selected item"
+    :aria-label="many ? 'Selected items' : 'Selected item'"
   >
     <div class="tm-insp-body">
-      <div class="tm-insp-id">
+      <div
+        v-if="many"
+        class="tm-insp-id"
+      >
+        <span
+          class="tm-insp-stack"
+          aria-hidden="true"
+        >
+          <TierListTile
+            v-for="(entry, index) in items.slice(0, 3)"
+            :key="entry.id"
+            class="tm-insp-tile"
+            :style="{ '--i': index }"
+            :item="entry"
+            :art="sectionOf(entry).art"
+            :accent="sectionOf(entry).accent"
+          />
+        </span>
+        <div class="tm-insp-text">
+          <span class="tm-insp-cat">{{ items.length }} items selected</span>
+          <span class="tm-insp-name tm-insp-names">{{ items.map(entry => entry.displayName).join(', ') }}</span>
+          <span class="tm-insp-base">
+            <template
+              v-for="(entry, index) in mix"
+              :key="entry.tier"
+            >{{ index ? ' · ' : '' }}{{ entry.n }} <b :data-tier="entry.tier">{{ entry.tier.toUpperCase() }}</b></template>
+          </span>
+        </div>
+        <button
+          type="button"
+          class="icon-btn tm-insp-close"
+          aria-label="Clear selection"
+          @click="emit('close')"
+        >
+          ×
+        </button>
+      </div>
+      <div
+        v-else
+        class="tm-insp-id"
+      >
         <TierListTile
           class="tm-insp-tile"
           :item="item"
@@ -39,7 +87,7 @@ const moved = computed(() => props.savedTier !== props.item.tier)
           <span class="tm-insp-name">{{ item.displayName }}</span>
           <span class="tm-insp-base">
             <template v-if="unrated">Not rated yet · pick a tier</template>
-            <template v-else-if="moved">
+            <template v-else-if="moved && savedTier">
               Saved <b :data-tier="savedTier">{{ savedTier.toUpperCase() }}</b>
               · now <b :data-tier="item.tier">{{ item.tier.toUpperCase() }}</b>
             </template>
@@ -58,10 +106,10 @@ const moved = computed(() => props.savedTier !== props.item.tier)
         </button>
       </div>
       <RadioGroupRoot
-        :model-value="item.tier"
+        :model-value="common"
         orientation="horizontal"
         class="tm-insp-tiers"
-        :aria-label="`${item.displayName} tier`"
+        :aria-label="many ? `Tier for ${items.length} items` : `${item.displayName} tier`"
         @update:model-value="emit('set', $event as Tier)"
       >
         <RadioGroupItem
@@ -82,7 +130,7 @@ const moved = computed(() => props.savedTier !== props.item.tier)
       </RadioGroupRoot>
       <p class="tm-insp-hint">
         <span class="tm-hint-touch">Hold and drag any item to a row.</span>
-        <span class="tm-hint-keys">Keys: <kbd>S</kbd><kbd>A</kbd><kbd>B</kbd><kbd>C</kbd> to move, <kbd>D</kbd> to undo.</span>
+        <span class="tm-hint-keys"><kbd>Ctrl</kbd>-click to pick several. Keys: <kbd>S</kbd><kbd>A</kbd><kbd>B</kbd><kbd>C</kbd> to move, <kbd>D</kbd> to undo.</span>
       </p>
     </div>
   </section>
@@ -93,6 +141,9 @@ const moved = computed(() => props.savedTier !== props.item.tier)
 .tm-insp-body { display: grid; gap: 10px; min-width: 0; }
 .tm-insp-id { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
 .tm-insp-tile { --tile: 64px; }
+.tm-insp-stack { position: relative; display: block; width: 80px; height: 72px; }
+.tm-insp-stack .tm-insp-tile { position: absolute; top: calc(var(--i) * 4px); left: calc(var(--i) * 8px); z-index: calc(3 - var(--i)); --tile: 56px; }
+.tm-insp-names { font-size: 0.82rem; }
 .tm-insp-text { display: grid; gap: 2px; min-width: 0; }
 .tm-insp-cat {
   display: inline-flex;

@@ -15,11 +15,6 @@ const rows = computed(() => choices.value.map((choice) => {
   const counts = tierCounts(choice.list)
   return { ...choice, counts: TIERS.map(tier => ({ tier, n: counts[tier] })) }
 }))
-
-// Opened from a lobby, the Tier Maker offers to use a list there rather than
-// to start another crusade.
-const route = useRoute()
-const makerLink = computed(() => (route.path.startsWith('/dive/') ? '/tiers?lobby=1' : '/tiers'))
 </script>
 
 <template>
@@ -55,7 +50,7 @@ const makerLink = computed(() => (route.path.startsWith('/dive/') ? '/tiers?lobb
     <div class="tl-foot">
       <TierListTag :list="picked.list" />
       <NuxtLink
-        :to="makerLink"
+        to="/tiers"
         target="_blank"
         class="btn tiny ghost cut-sm"
         aria-label="Tier Maker (opens in a new tab)"

@@ -15,7 +15,8 @@ app/
   pages/           index (Bridge home — new crusade / host / join / continue), dive/[id] (solo +
                    room flow — thin orchestrator: session driver + action handlers; the
                    lit-stage shell and per-phase UI live in components/dive/), codex,
-                   tiers (the Tier Maker: browser-local tier-list library + share links/JSON),
+                   tiers (the Tier Maker: browser-local tier-list library + share links/JSON;
+                   also the home page of the standalone tiers. host via app/router.options.ts),
                    kit (hidden, unlinked foundations route — see Destroyer Terminal design language)
   components/      one folder per domain; the folder path is the component-name prefix
                    (Nuxt's default naming — `kit/KitPanel.vue` registers `KitPanel`,
@@ -121,7 +122,8 @@ server/
                    (password-gates every page and API call when STAGING_AUTH is set —
                    staging only, see Deployment)
   plugins/         metrics.ts (binds the gauges, serves /metrics on internal :9091),
-                   room-sweeper.ts (reaps idle rooms every 15 min)
+                   room-sweeper.ts (reaps idle rooms every 15 min), tiers-site.ts (swaps the
+                   shell's title and card text on the standalone tiers. host)
   api/             rooms/index.post.ts (create; an optional save body seeds a new session), rooms/[code].get.ts (snapshot),
                    war/major-order.get.ts (cached live MO proxy),
                    changelog.get.ts (10-min shared cache of the GitHub release log; serves

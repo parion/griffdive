@@ -17,7 +17,9 @@ online dive:
 - Your diver name, your warbond declarations, the tier lists you make or import in the Tier Maker
   (and which one your next crusade uses), the Tier Maker's display settings (names on or off, tile
   size), and "you have seen the intro" flags. A tier list leaves the browser only if you host with
-  it or share its link, JSON or file yourself.
+  it or share its link, JSON or file yourself. The standalone Tier Maker at `tiers.griffdive.com`
+  keeps its own library in that site's storage; "Play it in Griffdive" carries a list to the main
+  site in the link itself.
 
 Clearing site data in your browser deletes all of it.
 

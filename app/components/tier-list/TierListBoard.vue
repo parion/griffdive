@@ -7,8 +7,10 @@ import type { KitSectionId, TileSize } from '~/utils/kit'
 
 // The Tier Maker's board, tiermaker-style: one row per tier, every item a
 // tile. Drag a tile to a row (long-press on touch), or focus it and press
-// S/A/B/C. Clicking a tile selects it for the inspector. Presentation only:
-// every move is emitted, the page owns the draft and its saved `baseline`.
+// S/A/B/C. Clicking a tile selects it for the inspector; Ctrl/⌘-click adds it
+// to the selection, and a drag or key then moves every selected item.
+// Presentation only: every move is emitted, the page owns the draft, its
+// saved `baseline` and the selection.
 const props = defineProps<{
   draft: TierList
   baseline: TierList
@@ -16,14 +18,14 @@ const props = defineProps<{
   size: TileSize
   section: KitSectionId | 'all'
   query: string
-  selectedId: string | null
-  landed: { id: string, n: number } | null
+  selection: readonly string[]
+  landed: { ids: readonly string[], n: number } | null
 }>()
 
 const emit = defineEmits<{
-  set: [itemId: string, tier: Tier]
-  revert: [itemId: string]
-  select: [itemId: string | null]
+  set: [itemIds: string[], tier: Tier]
+  revert: [itemIds: string[]]
+  select: [itemId: string | null, additive: boolean]
 }>()
 
 const TIER_WORD: Readonly<Record<Tier, string>> = { s: 'Top shelf', a: 'Strong', b: 'Solid', c: 'Surplus' }
@@ -62,14 +64,22 @@ const rows = computed(() => {
   return TIERS.map(tier => ({ tier, items: visible.filter(item => item.tier === tier) }))
 })
 
-const { drag, pressing, start, consumeClick } = useTierDrag((id, tier) => emit('set', id, tier))
+const selected = computed(() => new Set(props.selection))
+
+// An item in a multi-selection carries the whole selection with it.
+function group(id: string): string[] {
+  return selected.value.has(id) && props.selection.length > 1 ? [...props.selection] : [id]
+}
+
+const { drag, pressing, start, consumeClick } = useTierDrag((id, tier) => emit('set', group(id), tier))
 const dragItem = computed(() => (drag.value ? catalog.value.byId.get(drag.value.id) ?? null : null))
+const dragGroup = computed(() => new Set(drag.value ? group(drag.value.id) : []))
 
 // The row an item just landed in flashes its label.
 const flashTier = ref<Tier | null>(null)
 let flashTimer: ReturnType<typeof setTimeout> | undefined
 watch(() => props.landed, (landed) => {
-  const tier = landed ? catalog.value.byId.get(landed.id)?.tier ?? null : null
+  const tier = landed?.ids[0] ? catalog.value.byId.get(landed.ids[0])?.tier ?? null : null
   flashTier.value = null
   clearTimeout(flashTimer)
   if (tier) {
@@ -130,11 +140,16 @@ function verticalNeighbor(id: string, down: boolean): string | null {
 const KEY_TIER: Readonly<Record<string, Tier>> = { s: 's', a: 'a', b: 'b', c: 'c', 1: 's', 2: 'a', 3: 'b', 4: 'c' }
 
 function moveByKey(item: Item, tier: Tier): void {
-  emit('set', item.id, tier)
+  emit('set', group(item.id), tier)
   focusTile(item.id)
 }
 
 function onKey(event: KeyboardEvent, item: Item): void {
+  if ((event.ctrlKey || event.metaKey) && (event.key === ' ' || event.key === 'Enter')) {
+    event.preventDefault()
+    emit('select', item.id, true)
+    return
+  }
   if (event.ctrlKey || event.metaKey || event.altKey) {
     return
   }
@@ -151,7 +166,7 @@ function onKey(event: KeyboardEvent, item: Item): void {
     moveByKey(item, KEY_TIER[key])
   }
   else if (key === 'd' || event.key === 'Backspace' || event.key === 'Delete') {
-    emit('revert', item.id)
+    emit('revert', group(item.id))
     focusTile(item.id)
   }
   else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
@@ -172,8 +187,8 @@ function onKey(event: KeyboardEvent, item: Item): void {
       focusTile(next.id)
     }
   }
-  else if (event.key === 'Escape' && props.selectedId) {
-    emit('select', null)
+  else if (event.key === 'Escape' && props.selection.length) {
+    emit('select', null, false)
   }
   else {
     return
@@ -181,12 +196,25 @@ function onKey(event: KeyboardEvent, item: Item): void {
   event.preventDefault()
 }
 
-function onClick(item: Item): void {
+function onClick(event: MouseEvent, item: Item): void {
   if (consumeClick()) {
     return
   }
   focusId.value = item.id
-  emit('select', props.selectedId === item.id ? null : item.id)
+  if (event.ctrlKey || event.metaKey) {
+    emit('select', item.id, true)
+    return
+  }
+  const only = props.selection.length === 1 && props.selection[0] === item.id
+  emit('select', only ? null : item.id, false)
+}
+
+// On a Mac, Ctrl-click opens the context menu instead of clicking.
+function onContext(event: MouseEvent, item: Item): void {
+  if (event.ctrlKey) {
+    focusId.value = item.id
+    emit('select', item.id, true)
+  }
 }
 
 function label(item: Item): string {
@@ -249,13 +277,13 @@ defineExpose({ focusTile })
             :data-item="item.id"
             :tabindex="rovingId === item.id ? 0 : -1"
             :aria-label="label(item)"
-            :aria-pressed="selectedId === item.id"
+            :aria-pressed="selected.has(item.id)"
             :title="item.displayName"
             @pointerdown="start($event, item.id)"
-            @click="onClick(item)"
+            @click="onClick($event, item)"
             @keydown="onKey($event, item)"
             @focus="focusId = item.id"
-            @contextmenu.prevent
+            @contextmenu.prevent="onContext($event, item)"
           >
             <TierListTile
               :item="item"
@@ -264,11 +292,11 @@ defineExpose({ focusTile })
               :changed="changed(item)"
               :unrated="unrated(item)"
               :named="named"
-              :selected="selectedId === item.id"
+              :selected="selected.has(item.id)"
               :dimmed="!matches(item)"
-              :landed="landed?.id === item.id"
+              :landed="landed?.ids.includes(item.id) ?? false"
               :pressing="pressing === item.id"
-              :lifted="drag?.id === item.id"
+              :lifted="dragGroup.has(item.id)"
             />
           </button>
         </li>
@@ -299,6 +327,15 @@ defineExpose({ focusTile })
           :accent="sectionOf(dragItem).accent"
           ghost
         />
+        <span
+          v-if="dragGroup.size > 1"
+          class="tm-ghost-stack"
+          aria-hidden="true"
+        />
+        <span
+          v-if="dragGroup.size > 1"
+          class="tm-ghost-count"
+        >×{{ dragGroup.size }}</span>
         <span
           v-if="drag.overTier"
           class="tm-ghost-tier disp"
@@ -440,6 +477,26 @@ defineExpose({ focusTile })
   z-index: 1000;
   pointer-events: none;
   will-change: transform;
+}
+/* A multi-item drag lifts a stack: a second card peeks out behind the held one. */
+.tm-ghost-stack {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line-4), 0 10px 20px rgba(0, 0, 0, 0.6);
+  transform: translate(7px, 7px) rotate(6deg);
+}
+.tm-ghost-count {
+  position: absolute;
+  bottom: -10px;
+  left: -10px;
+  padding: 2px 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--on-gold);
+  background: var(--gold);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
 }
 .tm-ghost-tier {
   position: absolute;

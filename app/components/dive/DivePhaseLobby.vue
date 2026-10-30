@@ -56,6 +56,11 @@ watch([() => pickedTierList.value.list, () => props.canControl], ([list, control
   }
 }, { immediate: true })
 
+// While the host can still change the list, a Tier Maker tab can find this
+// lobby and send the diver back to it.
+const route = useRoute()
+useLobbyBeacon(() => (props.canControl && !launched.value ? route.path : null))
+
 const hostName = computed(() =>
   upperName(props.state.divers.find(diver => diver.id === props.state.hostId)?.name) ?? 'The host')
 

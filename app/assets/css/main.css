@@ -333,8 +333,10 @@ p { margin: 0.25rem 0; }
 /* ============================================================================
    Shape motifs
    ========================================================================== */
-.cut { clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
-.cut-sm { clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); }
+/* The straight edges overshoot by 1px: a box whose edge lands on a fractional
+   pixel would otherwise have its 1px border antialiased away by the clip. */
+.cut { clip-path: polygon(10px -1px, calc(100% + 1px) -1px, calc(100% + 1px) calc(100% - 10px), calc(100% - 10px) calc(100% + 1px), -1px calc(100% + 1px), -1px 10px); }
+.cut-sm { clip-path: polygon(6px -1px, calc(100% + 1px) -1px, calc(100% + 1px) calc(100% - 6px), calc(100% - 6px) calc(100% + 1px), -1px calc(100% + 1px), -1px 6px); }
 .chev { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%, 14px 50%); }
 .chev-first { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%); }
 .hex { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }

@@ -37,8 +37,10 @@ const { push: pushToast } = useToasts()
 const library = useTierLists()
 const recentRooms = useRecentRooms()
 
-// Opened from a lobby's setup: the list goes back to that lobby.
-const lobby = computed(() => route.query.lobby === '1')
+const { standalone, mainOrigin } = useTiersSite()
+// A lobby this host has open in another tab (the Tier Maker opens in a new
+// one from setup): the list, and the diver, go back to it.
+const lobbyPath = useOpenLobby()
 
 const draft = ref<Draft>(blank())
 const baseline = ref<TierList>(snapshot(draft.value))
@@ -60,7 +62,7 @@ const unrated = computed(() => unratedItems(draft.value).length)
 const isPicked = computed(() => draft.value.id !== null && library.pickedId.value === draft.value.id)
 
 function load(next: Draft, from: string): void {
-  selectedId.value = null
+  selection.value = []
   draft.value = next
   baseline.value = snapshot(next)
   source.value = from
@@ -113,19 +115,26 @@ function confirmSwitch(): void {
 
 // The tile that just moved plays its landing; the counter restarts it when the
 // same tile moves twice in a row.
-const landed = ref<{ id: string, n: number } | null>(null)
+const landed = ref<{ ids: string[], n: number } | null>(null)
 const announcement = ref('')
 let landedTimer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(landedTimer))
 
-function land(itemId: string, tier: Tier): void {
-  const item = tieredItem(itemId, draft.value)
-  landed.value = { id: itemId, n: (landed.value?.n ?? 0) + 1 }
+function land(itemIds: string[]): void {
+  const items = itemIds.map(id => tieredItem(id, draft.value)).filter(item => item !== undefined)
+  const tier = items[0]?.tier
+  if (!tier) {
+    return
+  }
+  landed.value = { ids: itemIds, n: (landed.value?.n ?? 0) + 1 }
   clearTimeout(landedTimer)
   landedTimer = setTimeout(() => {
     landed.value = null
   }, 1400)
-  announcement.value = `${item?.displayName ?? 'Item'} moved to ${tier.toUpperCase()} tier`
+  const what = items.length > 1 ? `${items.length} items` : items[0]!.displayName
+  announcement.value = items.every(item => item.tier === tier)
+    ? `${what} moved to ${tier.toUpperCase()} tier`
+    : `${what} back to their saved tiers`
   if (tier === 's') {
     navigator.vibrate?.([10, 40, 18])
   }
@@ -133,23 +142,25 @@ function land(itemId: string, tier: Tier): void {
 
 // Every edit replaces the draft object: resolved catalogs are cached per list
 // object, so mutating one in place would serve stale tiers.
-function setTier(itemId: string, tier: Tier): void {
-  if (!tieredItem(itemId, null)) {
+function setTiers(itemIds: string[], tier: Tier): void {
+  const known = itemIds.filter(id => tieredItem(id, null))
+  if (!known.length) {
     return
   }
-  draft.value = { ...draft.value, tiers: { ...draft.value.tiers, [itemId]: tier } }
-  land(itemId, tier)
+  draft.value = { ...draft.value, tiers: { ...draft.value.tiers, ...Object.fromEntries(known.map(id => [id, tier])) } }
+  land(known)
 }
 
-// Back to the tier it had at the last save — unrated again if it was.
-function revertItem(itemId: string): void {
-  const { [itemId]: _current, ...rest } = draft.value.tiers
-  const saved = baseline.value.tiers[itemId]
-  draft.value = { ...draft.value, tiers: saved ? { ...rest, [itemId]: saved } : rest }
-  const tier = tieredItem(itemId, draft.value)?.tier
-  if (tier) {
-    land(itemId, tier)
-  }
+// Back to the tiers they had at the last save — unrated again if they were.
+function revertItems(itemIds: string[]): void {
+  const reverting = new Set(itemIds)
+  const kept = Object.entries(draft.value.tiers).filter(([id]) => !reverting.has(id))
+  const restored = itemIds.flatMap((id) => {
+    const saved = baseline.value.tiers[id]
+    return saved ? [[id, saved] as const] : []
+  })
+  draft.value = { ...draft.value, tiers: Object.fromEntries([...kept, ...restored]) }
+  land(itemIds)
 }
 
 function revertAll(): void {
@@ -158,10 +169,28 @@ function revertAll(): void {
 
 const section = ref<KitSectionId | 'all'>('all')
 const query = ref('')
-const selectedId = ref<string | null>(null)
-const selected = computed(() => (selectedId.value ? tieredItem(selectedId.value, draft.value) ?? null : null))
-const selectedSaved = computed(() => (selectedId.value ? tieredItem(selectedId.value, baseline.value)?.tier ?? null : null))
-const selectedUnrated = computed(() => selectedId.value !== null && draft.value.tiers[selectedId.value] === undefined)
+// Click selects one item; Ctrl/⌘-click gathers several, which move together.
+const selection = ref<string[]>([])
+const selectedItems = computed(() =>
+  selection.value.map(id => tieredItem(id, draft.value)).filter(item => item !== undefined))
+const selectedSaved = computed(() =>
+  selection.value.length === 1 ? tieredItem(selection.value[0]!, baseline.value)?.tier ?? null : null)
+const selectedUnrated = computed(() =>
+  selection.value.length === 1 && draft.value.tiers[selection.value[0]!] === undefined)
+
+function select(id: string | null, additive: boolean): void {
+  if (!id) {
+    selection.value = []
+  }
+  else if (!additive) {
+    selection.value = [id]
+  }
+  else {
+    selection.value = selection.value.includes(id)
+      ? selection.value.filter(entry => entry !== id)
+      : [...selection.value, id]
+  }
+}
 const viewOpen = ref(false)
 const deskOpen = ref(false)
 const board = ref<{ focusTile: (id: string) => void } | null>(null)
@@ -184,8 +213,8 @@ const FILTERS = computed(() => [
 ])
 
 function closeInspector(): void {
-  const id = selectedId.value
-  selectedId.value = null
+  const id = selection.value[selection.value.length - 1]
+  selection.value = []
   if (id) {
     board.value?.focusTile(id)
   }
@@ -203,22 +232,62 @@ function save(): void {
   }
   library.pick(entry.id)
   load({ id: entry.id, name: entry.name, tiers: { ...entry.tiers } }, entry.id)
-  pushToast(lobby.value ? `Saved. Your lobby now uses ${entry.name}.` : `Saved. Your next crusade will use ${entry.name}.`)
+  pushToast(standalone
+    ? `Saved ${entry.name} to your lists in this browser.`
+    : lobbyPath.value ? `Saved. Your lobby now uses ${entry.name}.` : `Saved. Your next crusade will use ${entry.name}.`)
 }
 
-// From a lobby, picking the list is enough: the lobby's tab hears the change
-// and syncs it to the squad. Anywhere else, this opens a fresh lobby that
-// starts with the list already chosen.
+// Once a list is saved and unchanged, the Save button turns into the next
+// step: back to the lobby open in another tab, a fresh crusade, or — on the
+// standalone site — over to Griffdive to play it.
+type NextStep = 'save' | 'lobby' | 'host' | 'play'
+const step = computed<NextStep>(() => {
+  if (draft.value.id === null || dirty.value) {
+    return 'save'
+  }
+  return standalone ? 'play' : lobbyPath.value ? 'lobby' : 'host'
+})
 const launching = ref(false)
-async function launch(): Promise<void> {
+const BAR_LABEL: Readonly<Record<NextStep, string>> = {
+  save: 'Save',
+  lobby: 'Back to lobby',
+  host: 'Host crusade',
+  play: 'Play it ↗',
+}
+
+function primary(): void {
+  if (step.value === 'save') {
+    save()
+  }
+  else if (step.value === 'lobby') {
+    backToLobby()
+  }
+  else if (step.value === 'play') {
+    window.location.assign(`${mainOrigin}/tiers?play=1#${encodeTierList(cleaned.value)}`)
+  }
+  else {
+    void hostCrusade()
+  }
+}
+
+// The lobby's tab hears the pick and syncs the list to the squad. This tab
+// was opened from setup, so closing it lands the diver back in the lobby;
+// a browser that won't close it navigates to the lobby instead.
+function backToLobby(): void {
+  const path = lobbyPath.value
+  if (!draft.value.id || !path) {
+    return
+  }
+  library.pick(draft.value.id)
+  window.close()
+  setTimeout(() => navigateTo(path), 250)
+}
+
+async function hostCrusade(): Promise<void> {
   if (!draft.value.id) {
     return
   }
   library.pick(draft.value.id)
-  if (lobby.value) {
-    pushToast(`Your lobby now uses ${draft.value.name}. Switch back to its tab to launch.`)
-    return
-  }
   launching.value = true
   try {
     const created = await $fetch<{ code: string }>('/api/rooms', { method: 'POST' })
@@ -258,7 +327,7 @@ async function copyText(text: string, done: string): Promise<void> {
 
 function copyShare(): void {
   void copyText(
-    `${window.location.origin}/tiers#${encodeTierList(cleaned.value)}`,
+    `${window.location.origin}${route.path}#${encodeTierList(cleaned.value)}`,
     'Share link copied. Anyone who opens it can save the list.',
   )
 }
@@ -326,7 +395,13 @@ onMounted(() => {
   // The raw hash: the router's is decoded, which would mangle a name with a `%`.
   const hash = window.location.hash.slice(1)
   if (hash && importFrom(hash)) {
-    router.replace({ hash: '' })
+    // Sent over from the standalone Tier Maker to be played: keep it at once,
+    // so the next step is hosting a crusade with it.
+    if (route.query.play === '1' && !standalone) {
+      save()
+      notice.value = `${draft.value.name} came over from the Tier Maker and is saved to your lists. Host a crusade with it whenever you're ready.`
+    }
+    router.replace({ hash: '', query: {} })
   }
 })
 
@@ -337,20 +412,20 @@ function deskAction(run: () => void): void {
   run()
 }
 
-useHead({ title: 'Tier Maker · Griffdive' })
+useHead({ title: standalone ? 'Helldivers 2 Tier List Maker · Griffdive' : 'Tier Maker · Griffdive' })
 </script>
 
 <template>
   <main
     id="main-content"
     class="tm-page"
-    :class="{ inspecting: selected !== null }"
+    :class="{ inspecting: selectedItems.length > 0 }"
     tabindex="-1"
   >
     <header class="tm-head">
       <div class="tm-title">
         <h1 class="lbl tm-kicker">
-          Tier Maker
+          {{ standalone ? 'Helldivers 2 Tier List Maker' : 'Tier Maker' }}
         </h1>
         <input
           class="tm-name disp"
@@ -391,10 +466,18 @@ useHead({ title: 'Tier Maker · Griffdive' })
           class="chip orange"
         >Unsaved</span>
         <span
-          v-else-if="isPicked"
+          v-else-if="isPicked && !standalone"
           class="chip gold"
-        >{{ lobby ? 'In your lobby' : 'Next crusade' }}</span>
+        >{{ lobbyPath ? 'In your lobby' : 'Next crusade' }}</span>
       </div>
+      <p
+        v-if="standalone"
+        class="tm-pitch"
+      >
+        Rank every weapon, stratagem, booster and armor passive, then share it with a link. Want to
+        play by it? <a :href="mainOrigin">Griffdive</a> turns your tier list into a squad roguelike:
+        climb the difficulties, and the higher an item's tier, the rarer it drops.
+      </p>
     </header>
 
     <AppBanner
@@ -485,11 +568,11 @@ useHead({ title: 'Tier Maker · Griffdive' })
           :size="view.size"
           :section="section"
           :query="query"
-          :selected-id="selectedId"
+          :selection="selection"
           :landed="landed"
-          @set="setTier"
-          @revert="revertItem"
-          @select="selectedId = $event"
+          @set="setTiers"
+          @revert="revertItems"
+          @select="select"
         />
       </div>
 
@@ -504,12 +587,10 @@ useHead({ title: 'Tier Maker · Griffdive' })
             :library="libraryOptions"
             :saved="draft.id !== null"
             :dirty="dirty"
-            :picked="isPicked"
-            :lobby="lobby"
+            :step="step"
             :launching="launching"
             @open="requestOpen"
-            @save="save"
-            @launch="launch"
+            @primary="primary"
             @share="copyShare"
             @download="download"
             @copy-json="copyJson"
@@ -520,20 +601,21 @@ useHead({ title: 'Tier Maker · Griffdive' })
         </div>
         <div class="tm-dock-panel panel tm-dock-insp">
           <TierListInspector
-            v-if="selected && selectedSaved"
-            :item="selected"
+            v-if="selectedItems.length"
+            :items="selectedItems"
             :saved-tier="selectedSaved"
             :unrated="selectedUnrated"
-            @set="setTier(selected.id, $event)"
+            @set="setTiers(selection, $event)"
             @close="closeInspector"
           />
           <p
             v-else
             class="tm-dock-empty"
           >
-            <b>Drag any item to a row.</b> Click one to see its name and move it with a tap, or use
-            the keyboard: arrows to walk, <kbd>S</kbd> <kbd>A</kbd> <kbd>B</kbd> <kbd>C</kbd> to move,
-            <kbd>D</kbd> to undo.
+            <b>Drag any item to a row.</b> Click one to see its name and move it with a tap;
+            <kbd>Ctrl</kbd>-click to gather several and move them together. Or use the keyboard:
+            arrows to walk, <kbd>S</kbd> <kbd>A</kbd> <kbd>B</kbd> <kbd>C</kbd> to move, <kbd>D</kbd> to
+            undo.
           </p>
         </div>
       </aside>
@@ -544,11 +626,11 @@ useHead({ title: 'Tier Maker · Griffdive' })
       aria-label="Tier list actions"
     >
       <TierListInspector
-        v-if="selected && selectedSaved"
-        :item="selected"
+        v-if="selectedItems.length"
+        :items="selectedItems"
         :saved-tier="selectedSaved"
         :unrated="selectedUnrated"
-        @set="setTier(selected.id, $event)"
+        @set="setTiers(selection, $event)"
         @close="closeInspector"
       />
       <div
@@ -572,11 +654,11 @@ useHead({ title: 'Tier Maker · Griffdive' })
         <button
           type="button"
           class="btn primary cut-sm tm-bar-save"
-          :class="{ 'cta-sweep': dirty }"
-          :disabled="draft.id !== null && !dirty"
-          @click="save"
+          :class="{ 'cta-sweep': dirty, 'tm-next': step !== 'save' }"
+          :disabled="launching"
+          @click="primary"
         >
-          {{ draft.id !== null && !dirty ? 'Saved' : 'Save' }}
+          {{ BAR_LABEL[step] }}
         </button>
       </div>
     </section>
@@ -599,12 +681,10 @@ useHead({ title: 'Tier Maker · Griffdive' })
         :library="libraryOptions"
         :saved="draft.id !== null"
         :dirty="dirty"
-        :picked="isPicked"
-        :lobby="lobby"
+        :step="step"
         :launching="launching"
         @open="deskAction(() => requestOpen($event))"
-        @save="deskAction(save)"
-        @launch="deskAction(launch)"
+        @primary="deskAction(primary)"
         @share="deskAction(copyShare)"
         @download="deskAction(download)"
         @copy-json="deskAction(copyJson)"
@@ -755,6 +835,8 @@ useHead({ title: 'Tier Maker · Griffdive' })
 .tm-name:hover { border-bottom-color: var(--line-4); }
 .tm-name:focus-visible { outline: none; border-bottom: 1px solid var(--gold); }
 
+.tm-pitch { flex-basis: 100%; max-width: 62ch; margin: 0; font-size: 0.86rem; line-height: 1.5; color: var(--khaki); }
+.tm-pitch a { color: var(--gold); }
 .tm-tally { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 0.9rem; font-weight: 700; }
 .tm-tally-tier { display: inline-flex; align-items: baseline; gap: 5px; color: var(--khaki); }
 .tm-tally-tier b { font-size: 1.05rem; color: var(--tier); }
