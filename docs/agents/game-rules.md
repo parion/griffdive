@@ -160,7 +160,7 @@ top of the ladder:
 | Oops, All Airstrikes (`oopsAllAirstrikes`) | Equip Eagle and orbital ("red") stratagems only (yellow calls like Resupply stay open). On the wheel only when **every** seated diver can field four | 2 → 3 | loadout |
 | Spotless Record (`zeroDeaths`) | Any diver death **fails the directive**, not the mission (the mission plays on) | 3 → 5 | field |
 | Martyrdom (`noReserves`) | No one is reinforced, so a fallen diver stays down (every other stratagem stays legal) | 2 → 4 | field |
-| Deserted (`noStratagems`) | Stratagems only in the mission's first minute (Reinforce and SEAF resources like Artillery excepted) | 2 → 4 | field |
+| Deserted (`noStratagems`) | Stratagems only in the mission's first minute (Reinforce and SEAF resources excepted) | 2 → 4 | field |
 | Fix Bayonets (`meleeOnly`) | Kill with melee only (no guns, grenades or offensive stratagems) | 2 → 4 | field |
 | Peacekeepers (`pacifist`) | No diver scores a kill (stratagem kills count to the caller) | 3 → 5 | stats |
 | Stim Shortage (`stimShortage`) | Nobody uses a stim | 3 → 4 | stats |
