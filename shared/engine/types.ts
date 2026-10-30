@@ -1,4 +1,5 @@
 import type { FrontId } from '../data/fronts'
+import type { TierList } from './tierList'
 
 export type BargainSlotKind = 'primary' | 'secondary' | 'throwable' | 'armorPassive' | 'stratagem'
 
@@ -255,6 +256,10 @@ export interface DiveState {
   // live order banks an extra reroll token on each completion. null = the
   // front rolls every operation.
   majorOrder: MajorOrderSelection | null
+  // The host's custom tier list, chosen in the lobby where the whole squad can
+  // read it and frozen at launch. Absent or null = the community default tiers
+  // (rooms and saves from before custom lists carry no field).
+  tierList?: TierList | null
   rerollTokens: number
   completedCombos: string[]
   personalInventories: Record<string, string[]>
@@ -281,6 +286,7 @@ export interface DiveState {
 
 export type EngineAction
   = | { type: 'START_DIVE', settings: CrusadeSettings, seed?: number, majorOrder?: MajorOrderSelection | null }
+    | { type: 'SET_TIER_LIST', tierList: TierList | null }
     | { type: 'SPIN_WHEEL', seed: number }
     | { type: 'ACCEPT_MISFORTUNE', accepted: boolean }
     | { type: 'ACCEPT_STRAIN', accepted: boolean }

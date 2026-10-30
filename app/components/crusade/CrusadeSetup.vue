@@ -10,8 +10,8 @@ import type { MajorOrderStatus } from '~/composables/useMajorOrder'
 // The crusade's setup, shared by the Bridge's solo dialog and the room lobby:
 // where to fight (the front plan, Major Order first), where to start (the
 // difficulty) and, on the hard/suicide starts, how (SEAF or Penance), then the
-// kit it issues and the skulls the whole setup carries — risk shows as skulls,
-// never a Valor number.
+// kit it issues, the tier list loot rolls against, and the skulls the whole
+// setup carries — risk shows as skulls, never a Valor number.
 const props = withDefaults(defineProps<{
   variant: CrusadeVariant
   mode?: CrusadeMode
@@ -168,6 +168,19 @@ const settings = computed<CrusadeSettings>(() => ({
       </section>
 
       <section
+        class="block tiers"
+        aria-labelledby="setup-tiers-h"
+      >
+        <h2
+          id="setup-tiers-h"
+          class="lbl block-h"
+        >
+          Tier list
+        </h2>
+        <TierListPicker :disabled="disabled" />
+      </section>
+
+      <section
         v-if="showRisk"
         class="block risk"
         aria-label="Setup risk"
@@ -254,6 +267,7 @@ const settings = computed<CrusadeSettings>(() => ({
   .block:first-child { grid-column: 1; }
   .block:nth-child(2) { grid-column: 2; }
   .block:nth-child(3),
+  .tiers,
   .risk { grid-column: 1 / -1; }
   /* The difficulty column sits beside a tall front plan, so its cards become
      horizontal bars rather than three stretched tiles with dead space. */

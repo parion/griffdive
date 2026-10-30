@@ -164,5 +164,10 @@ Each phase lands shippable. Update the relevant `docs/agents/` files (commands, 
   separate Fly app (`deploy/fider/`). See [Deployment](./deployment.md) → Feedback inbox.
   Remaining: the final polish pass. *Done
   when: production URL serves a full multiplayer dive.*
-- **Phase 5 — Post-v1 backlog.** Specialists (PC parity), tier-maker custom rarity tables, heat
-  ladders/bounties (clear risk N to claim N+1), endless mode, accounts + cloud saves, i18n.
+- **Phase 5 — Post-v1 backlog.** Specialists (PC parity), heat
+  ladders/bounties (clear risk N to claim N+1), endless mode, accounts + cloud saves, i18n, and a
+  hosted tier-list marketplace (publish, browse and rank community lists) as a feature of the
+  optional account. **Custom tier lists shipped without it:** the host's list syncs from the lobby
+  and is frozen at launch; the Tier Maker (`/tiers`) keeps a browser-local library of complete,
+  self-standing lists; lists travel as short share links or JSON files; featured lists ship in the
+  repo (see game-rules.md, Custom tier lists).

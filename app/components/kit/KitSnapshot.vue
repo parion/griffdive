@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
 import type { Item, ItemCategory } from '~~/shared/data/types'
 import type { DiveState } from '~~/shared/engine/types'
@@ -9,12 +8,13 @@ const props = withDefaults(defineProps<{
   selfId: string | null
   compact?: boolean
 }>(), { compact: false })
+const { itemById } = useTierCatalog()
 
 const emit = defineEmits<{ open: [] }>()
 
 const owned = computed<Item[]>(() =>
   (props.state.personalInventories[props.selfId ?? ''] ?? [])
-    .map(id => ITEMS_BY_ID.get(id))
+    .map(id => itemById(id))
     .filter((item): item is Item => Boolean(item)))
 
 function firstOf(category: ItemCategory): Item | null {

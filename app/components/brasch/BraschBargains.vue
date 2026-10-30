@@ -24,7 +24,7 @@ const closed = computed(() => bargainsClosedReason(props.state))
 const shelf = computed(() => (props.self ? bargainShelfFor(props.state, props.self) : []))
 const pack = computed(() => (props.self ? armorPackOfferFor(props.state, props.self) : null))
 const packs = computed(() => (props.self ? armorPacksFor(props.self) : []))
-const lastPull = computed(() => (props.self ? armorPackItemsFor(props.self) : []))
+const lastPull = computed(() => (props.self ? armorPackItemsFor(props.state, props.self) : []))
 const packVerdict = computed(() =>
   props.self ? canBuyArmorPack(props.state, props.self) : { allowed: false, reason: null })
 

@@ -69,6 +69,16 @@ board lives at `https://feedback.griffdive.com` (sign-in email via Resend); stag
 `fly.staging.toml` / `fly.toml` `[env]`. Fider requires an email or OAuth sign-in to post, which is exactly why
 it cannot be embedded — see `PRIVACY.md` → Feedback.
 
+The **standalone Tier Maker** at `https://tiers.griffdive.com` is the same `griffdive` app under a
+second hostname — no separate deploy. The client and `server/plugins/tiers-site.ts` switch on the
+`tiers.` host (see design-language.md, *Standalone site*). To bring it up, give the production app
+a certificate and point DNS at it:
+
+```sh
+fly certs add tiers.griffdive.com --app griffdive
+# then add the records it prints (`fly certs setup tiers.griffdive.com --app griffdive`)
+```
+
 The in-app changelog is served by `/api/changelog`, which fetches GitHub server-side and caches it
 for 10 minutes for every client. It works unauthenticated (60 GitHub requests/hr per machine, ~12
 per refresh), and an optional `NUXT_GITHUB_TOKEN` secret (a fine-grained, read-only token with

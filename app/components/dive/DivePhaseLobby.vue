@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { FRONTS } from '~~/shared/data/fronts'
 import { STARTING_KITS, VARIANTS } from '~~/shared/engine/progression'
+import { sameTierList } from '~~/shared/engine/tierList'
+import type { TierList } from '~~/shared/engine/tierList'
 import type { CrusadeMode, CrusadeSettings, CrusadeVariant, DiveState, MajorOrderSelection } from '~~/shared/engine/types'
 
 // The room's setup screen. It stands alone — no dive header or squad dock,
@@ -17,6 +19,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   start: [settings: CrusadeSettings, majorOrder: MajorOrderSelection | null]
+  setTierList: [tierList: TierList | null]
   copyInvite: []
   openMenu: []
   transferHost: [playerId: string]
@@ -26,6 +29,7 @@ const emit = defineEmits<{
 
 const { ownedWarbonds } = useOwnedWarbonds()
 const { openWarbonds } = useDrawers()
+const { picked: pickedTierList } = useTierLists()
 
 const variant = ref<CrusadeVariant>('medium')
 const mode = ref<CrusadeMode>('seaf')
@@ -43,6 +47,19 @@ const {
 const launched = ref(false)
 let launchTimer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(launchTimer))
+
+// Unlike the rest of the setup, the tier list syncs before launch: it changes
+// what every diver can roll, so the squad reads it while the host decides.
+watch([() => pickedTierList.value.list, () => props.canControl], ([list, control]) => {
+  if (control && !launched.value && !sameTierList(list, props.state.tierList)) {
+    emit('setTierList', list)
+  }
+}, { immediate: true })
+
+// While the host can still change the list, a Tier Maker tab can find this
+// lobby and send the diver back to it.
+const route = useRoute()
+useLobbyBeacon(() => (props.canControl && !launched.value ? route.path : null))
 
 const hostName = computed(() =>
   upperName(props.state.divers.find(diver => diver.id === props.state.hostId)?.name) ?? 'The host')
@@ -391,6 +408,13 @@ function launch(): void {
             The host picks where the squad fights and where it starts, then launches everyone together.
             Rewards only come from warbonds you own, so set yours before launch.
           </p>
+          <p class="standby-tiers">
+            <span class="lbl">Tier list</span>
+            <TierListTag
+              :list="state.tierList"
+              show-default
+            />
+          </p>
           <button
             class="btn ghost cut-sm standby-cta"
             type="button"
@@ -678,6 +702,7 @@ button.bay.open:hover .tag-name { color: var(--gold); }
 }
 .standby-title { margin: 0; font-size: clamp(1.2rem, 4cqi, 1.9rem); color: var(--text); }
 .standby-copy { margin: 0; max-width: 56ch; color: var(--khaki); line-height: 1.45; }
+.standby-tiers { display: flex; align-items: center; gap: 10px; margin: 0; min-width: 0; }
 .standby-cta { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; }
 .standby-cta svg { width: 18px; height: 18px; }
 

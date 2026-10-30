@@ -62,7 +62,8 @@ function later(ms: number, run: () => void): void {
 onBeforeUnmount(() => timers.forEach(clearTimeout))
 
 const callsign = computed(() => name.value.trim())
-const kitGroupList = computed(() => kitGroups(props.kitIds))
+const { tierList } = useTierCatalog()
+const kitGroupList = computed(() => kitGroups(props.kitIds, tierList.value))
 const openSeats = computed(() => Math.max(0, SQUAD_SIZE_MAX - props.divers.length))
 
 // ---- Filing: the name rolls the class strike A→E, then the kit unfolds -----

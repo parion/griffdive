@@ -337,7 +337,7 @@ describe('Brasch\'s Armor Pack (side stock)', () => {
     }
     expect(armorPackFor(shopped)?.itemIds).toEqual(['extrapadding'])
     expect(armorPacksFor(shopped)).toHaveLength(1)
-    expect(armorPackItemsFor(shopped).map(item => item.id)).toEqual(['extrapadding'])
+    expect(armorPackItemsFor(state, shopped).map(item => item.id)).toEqual(['extrapadding'])
     expect(armorPackFor(diver)).toBeNull()
     // The next pack costs 1.5x the last.
     expect(armorPackOfferFor(state, shopped)).toMatchObject({ price: 38, packsOpened: 1 })
