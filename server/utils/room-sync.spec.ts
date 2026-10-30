@@ -200,12 +200,15 @@ describe('room-sync', () => {
 
     // Reducer no-ops stay silent.
     const before = await lastSnapshot(joiner)
-    // BUY_ITEM is self-service, not host-only: a non-host may send it. The
-    // reducer no-ops outside the reward window, but the transport must not
-    // refuse it as a host action.
+    // BUY_ITEM and BUY_ARMOR_PACK are self-service, not host-only: a non-host
+    // may send them. The reducer no-ops outside the shop window, but the
+    // transport must not refuse them as host actions.
     const mark = sent(joiner).length
     await processAction(kv, peers, joiner, {
       action: { type: 'BUY_ITEM', playerId: hostId.selfId, itemId: 'anything' },
+    })
+    await processAction(kv, peers, joiner, {
+      action: { type: 'BUY_ARMOR_PACK', playerId: hostId.selfId },
     })
     expect(sent(joiner).slice(mark).filter(m => m.type === 'error')).toEqual([])
     await processAction(kv, peers, joiner, { action: { type: 'ADVANCE' } })

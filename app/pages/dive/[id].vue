@@ -384,14 +384,22 @@ function rerollRewards(): void {
   dispatch({ type: 'REROLL_REWARDS', playerId: diver.id, seed })
 }
 
-// Brasch's Bargains: one shelf item per operation, paid in credits (self-service).
+// Brasch's Bargains: one shelf item per mission, paid in credits (self-service).
 function buyItem(itemId: string): void {
   if (selfId.value) {
     dispatch({ type: 'BUY_ITEM', playerId: selfId.value, itemId })
   }
 }
 
-// The debrief rolls Squad Honors a beat after it opens; the seed is what syncs.
+// The Armor Pack is side stock: one per operation, paid from the same purse.
+function openPack(): void {
+  if (selfId.value) {
+    dispatch({ type: 'BUY_ARMOR_PACK', playerId: selfId.value })
+  }
+}
+
+// The climbs page rolls Squad Honors a beat after it opens; the seed is what
+// syncs, and the filed report supplies the stars and outcome.
 function spinBonus(): void {
   dispatch({ type: 'SPIN_BONUS', seed: session.newSeed() })
 }
@@ -737,6 +745,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @award-bonus="awardBonus"
       @advance="advance"
       @buy="buyItem"
+      @open-pack="openPack"
       @forfeit="forfeit"
       @kick="kick"
       @transfer-host="transferHost"
@@ -859,6 +868,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
               :op-length="opLength"
               @advance="advance"
               @buy="buyItem"
+              @open-pack="openPack"
               @hold-pact="holdPact"
               @fail-pact="failPact"
               @hold-directive="holdDirective"
@@ -904,6 +914,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
           :preview-pact-ids="pactPreviewIds"
           :field-kit="fieldKit"
           @buy="buyItem"
+          @open-pack="openPack"
         />
       </template>
 

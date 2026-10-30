@@ -1,4 +1,4 @@
-import { ALL_WARBOND_CODES } from '../data/catalog'
+import { ALL_WARBOND_CODES, ITEMS_BY_ID } from '../data/catalog'
 import { FRONTS } from '../data/fronts'
 import type { FrontId } from '../data/fronts'
 import { STRAINS } from '../data/strains'
@@ -16,7 +16,7 @@ import {
 } from './config'
 import { VARIANTS, catchUpOpsBehind, earnedKit, mergeKit, startingItemIds } from './progression'
 import { rollSupportKit } from './support'
-import type { BargainDeal, BargainSlotKind, DivePhase, DiveState, DiverState, FrontPlan, LegacyCache, MajorOrderSelection, PenanceDebt, WheelResult } from './types'
+import type { ArmorPackDeal, BargainDeal, BargainSlotKind, DivePhase, DiveState, DiverState, FrontPlan, LegacyCache, MajorOrderSelection, PenanceDebt, WheelResult } from './types'
 
 // A freshly created room: no settings, no divers. The first joiner becomes
 // host; START_DIVE applies the variant kit to everyone present.
@@ -129,7 +129,7 @@ export function joinDiver(
     // Helldiver starts their purse empty again.
     credits: 0,
     // Seated mid-crusade: Brasch deals the joiner this mission's shelf.
-    bargain: state.settings ? { excludedIds: [...inventory], boughtItemId: null, boughtKinds: [] } : null,
+    bargain: state.settings ? { excludedIds: [...inventory], boughtItemId: null, boughtKinds: [], pack: null } : null,
     bannedItemIds: [],
     rewardRerollSeed: null,
     rewardBanned: false,
@@ -231,7 +231,23 @@ function sanitizeBargain(raw: unknown): BargainDeal | null {
     boughtItemId: typeof deal.boughtItemId === 'string' ? deal.boughtItemId : null,
     boughtKinds: stringArray(deal.boughtKinds, 10)
       .filter((kind): kind is BargainSlotKind => kinds.has(kind)),
+    pack: sanitizeArmorPack(deal.pack),
   }
+}
+
+// The stored Armor Pack pull: a finite seed and the ids it dealt. An older room
+// (or a save written before the pack existed) reads as null.
+function sanitizeArmorPack(raw: unknown): ArmorPackDeal | null {
+  if (!raw || typeof raw !== 'object') {
+    return null
+  }
+  const pack = raw as Partial<ArmorPackDeal>
+  if (typeof pack.seed !== 'number' || !Number.isFinite(pack.seed) || !Array.isArray(pack.itemIds)) {
+    return null
+  }
+  const itemIds = stringArray(pack.itemIds, 10)
+    .filter(id => ITEMS_BY_ID.get(id)?.category === 'armorPassive')
+  return itemIds.length > 0 ? { seed: pack.seed, itemIds } : null
 }
 
 function sanitizeWheel(raw: unknown): WheelResult | null {

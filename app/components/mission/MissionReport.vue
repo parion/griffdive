@@ -420,7 +420,7 @@ function submit(): void {
   color: var(--khaki);
   font-size: 14px;
 }
-.stars-foot b { color: var(--gold); font-size: 34px; line-height: 1; text-shadow: 0 0 18px rgba(255, 214, 66, 0.45); }
+.stars-foot b { color: var(--gold); font-size: 34px; line-height: 1; }
 
 .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .tiny { color: var(--dim); font-size: 11px; letter-spacing: 0.04em; }
@@ -491,7 +491,6 @@ function submit(): void {
   gap: 8px;
   color: var(--gold);
   font-size: 32px;
-  text-shadow: 0 0 18px rgba(255, 214, 66, 0.45);
 }
 .haul-value :deep(.credit-mark) { width: 24px; height: 24px; }
 

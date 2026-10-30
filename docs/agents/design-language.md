@@ -21,8 +21,10 @@ Design principles — every gameplay decision must honor these:
 3. **Reward scales with stakes.** Each reward option rolls its own tier on that line; altitude and
    chosen risk move the whole line, and Brasch's Bargains stocks higher tiers at altitude.
 4. **Guarantee rarity class, never specific items** (Balatro skip tags). Players buy a *chance* at
-   better gear, not a shopping list — with one deliberate exception: **Brasch's Bargains** sells
-   one named item per mission for credits, from the operation's base tier up to one tier above.
+   better gear, not a shopping list — with one deliberate exception: **Brasch's Bargains**, whose
+   shelf sells one named item per mission for credits (operation base tier up to one above), and
+   whose **Armor Pack** sells a blind pull of unowned passives (three cards, one B+ guaranteed, one
+   S roll).
 5. **Misfortunes reshape decisions, not stats** (Deep Rock Galactic's mutator design). A misfortune
    should change loadout strategy, route, or behavior — not just make numbers bigger.
 6. **Team risk is shared; personal risk is personal** (Slay the Spire 2 co-op model). The whole squad
@@ -351,8 +353,9 @@ class is the e2e hook.
 The draft is "Bank one item": one card per option. **The item art is the
 card**: a 4:3 well (a square thumb on phones) letterboxes the whole catalog image with
 `object-fit: contain` — never crop it — and the name is a quiet caption under it. Each card is
-stamped with its **rolled tier** only; the d100 faces live on the odds line above, one pin per option. The old ceiling-climb intro,
-`CeilingTrack`, ban flow and settlement screen are retired. Picking a card selects it; the CTA banks
+stamped with its **rolled tier** only; the d100 faces live on the odds line above, one pin per option.
+Armor passives never appear here: they are Brasch's Armor Pack (see *Kit, Armory, Warbonds*). The old
+ceiling-climb intro, `CeilingTrack`, ban flow and settlement screen are retired. Picking a card selects it; the CTA banks
 it; a resolved draft waits on the squad. The **`SquadDraftBoard`** shows each squadmate's offered
 tiles and status — the phone reward draft renders the same board (compact, one column), never a
 status-only summary — and the reroll control spends a banked honors token. An S+ roll is **Liberty's Cross**, shown
@@ -424,15 +427,28 @@ icon full size over a blurred copy of itself, so each frame glows in its own col
 groups take their in-game frame colours (Eagle/Orbital red, Supply blue, Defense green). Tiles
 carry a tier stripe and lift on hover; banned icons drop their glow.
 
+**Brasch's Armor Pack** sits under the shelf as **side stock**: a sealed foil card with the band
+price, "up to 3 armor passives · one B+ pull · S pull X%", and "one pack per operation". It is a
+separate purchase, so the shelf's one-buy rule is untouched. Buying takes over the whole screen
+(`BraschPackReveal`, not a dialog card): a sealed foil floats on a dark stage, tap/Enter tears it,
+a three-card deck appears, and each card flies out and flips into a hand fan. The draw is
+low-text — the pack label, the tier and name on each card, and one **To the shelf** control — with
+tier-scaled pacing from `revealTimeline`; an S pull gets a gold burst and a holo wash. The side
+card keeps the pull for the operation (tier tick + name per card) and a **View pull** replay.
+Reduced motion lands the settled fan at once. The stage locks the phone sidebar's click-outside so
+the shop cannot close under it. The Armory still lists passives, with a note that they come only
+from the pack.
+
 #### Join briefing and host tutorial
 
 Illustrative, not verbose. `BriefingLayout` is the shared page; `BriefingJoin` ("You've been
-drafted.") and `BriefingHost` ("You hold the wheel.") are thin wrappers that supply the kicker, a
-one-line lede and the five step lines. The host sees it as a full page on first seating and as a
+drafted.") and `BriefingHost` ("You hold the wheel.") are thin wrappers that supply a
+one-line lede ("{host} is leading a squad of Griffdivers up the difficulty ladder. Your name,
+diver, is all we need."; the host's opens "You lead…") and the five step lines. The host sees it as a full page on first seating and as a
 `Host tutorial` dialog (`review`) from the session menu; a squadmate replays it as the **Field
 manual**.
 
-- **The card** holds the only required input, **Your name** (focused on load, prefilled from a
+- **The card** holds the only required input, the name field (label kept for assistive tech only; focused on load, prefilled from a
   saved name). Filing it (Enter, leaving the field, or a saved name after a beat) plays the
   **class strike**: A–D struck one by one, E lands in red, a GRIFFDIVER stamp and one line —
   "Helldivers are Class A. You're Class E: surplus gear, no arsenal." — then the **starting gear**
@@ -440,20 +456,35 @@ manual**.
   passives, Boosters, each edged in its category accent). The squad seats and difficulty follow.
   The strike is presentation only: the way in never waits on it, and reduced motion lands it at
   once.
-- **How a mission goes** is five boxes in one row (Reka `Tabs`): Spin, Swear, Dive, Report, Loot,
-  each a glyph (`IconWheel`, `IconPact`, `IconHellpod`, `IconStar`, `IconLoot`) with its bottom edge
-  tinted by who acts (gold = you, teal = host, khaki = everyone). The first is open; the open box
-  turns gold and points down into its panel, which drops in with the step's one line, a
-  Host / You / Everyone tag and a **`BriefingPreview`** — a 150px looping scene of the beat drawn
-  from real data (the wheel landing on a directive, two pacts taking the SWORN stamp, the hellpod
-  drop, three stars and the report bars, three tiered loot cards with one BANKED). Scenes are CSS
-  loops whose resting styles are the final frame, so reduced motion shows the beat played out.
-- **The way in** — the primary **Start the dive** / **Join the dive** beside **Set warbonds** — is
-  pinned to the bottom edge at every width, so it never scrolls away while the kit unfolds; on
-  phones the warbonds button shrinks to its glyph. The primary is disabled until there is a name;
-  once filed, Enter in the field submits.
+- **The page** borrows the Bridge's grammar: the full page sits over the same drifting
+  `BridgeField` grid, up to 1440px wide. The **hero** puts the headline (no kicker),
+  the lede and a chevron run of the five steps (neutral numbers; who acts shows only as a faint
+  tint gradient on each chevron; each opens its box below and scrolls to it; hidden
+  under 520px where it would only wrap) on the left, the card on the right; phones read top-down.
+  Both columns hang from the top (no forced viewport height) and the left column sticks while the
+  card grows through the class strike and kit, so the headline never floats in a centred void.
+- **How to Griffdive** is its own full-width section under the hero: a display heading, then five big boxes in one row (Reka `Tabs`): Spin, Swear, Dive, Report, Loot,
+  each a numbered glyph (`IconWheel`, `IconPact`, `IconHellpod`, `IconStar`, `IconLoot`) with its
+  bottom edge tinted by who acts (gold = you, teal = host, khaki = everyone); no who-acts text. The open box turns gold and points down into one lit **stage**: the step's
+  outlined number, title and one line beside its **`BriefingPreview`** — a looping scene of the
+  beat drawn from real data (the wheel landing on a directive, two pacts taking the SWORN stamp,
+  the hellpod drop, three stars and the report bars, three tiered loot cards with one BANKED),
+  plus a **Next** button. Scenes are drawn at 150px and scaled whole by the parent's `--pv-zoom`
+  (CSS `zoom`, up to 2× on wide stages); pact names bind `fitWord` so a long name never splits.
+  Steps share one grid cell and stay mounted (`force-mount`, inactive ones hidden), so the stage
+  holds the tallest step's height and the Next button sits pinned to the bottom of the copy column:
+  nothing shifts when a description runs long. Only the live and the outgoing step draw a scene
+  (the rest keep a same-sized slot), so each loop starts fresh. A switch slides the old step out
+  and the new one in, in reading direction. Scenes are CSS loops whose resting
+  styles are the final frame, so reduced motion shows the beat played out and swaps steps
+  instantly.
+- **The way in** — the primary **Start the dive** / **Join the dive** beside **Set warbonds** — rises
+  in under **Your name** inside the card on wide containers (≥900px). Below that, and in the
+  review dialog, it is the page's last block and sticks to the bottom edge, so it stays in reach
+  from the card through every step; on phones the warbonds button shrinks to its glyph. One
+  `createReusableTemplate` body feeds both spots and container queries pick which shows. The primary is disabled until there is a name; once filed, Enter in
+  the field submits.
 
-Phones read top-down: heading, card, the five boxes; wide containers put the boxes beside the card.
 There is no More fold, odds dial or deck-plan diagram.
 
 #### Phone shell

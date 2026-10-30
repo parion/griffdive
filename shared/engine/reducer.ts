@@ -1,14 +1,14 @@
 import { ALL_WARBOND_CODES, ITEMS_BY_ID, WARBONDS } from '../data/catalog'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection } from './types'
-import { ACTION_LOG_CAP, MAJOR_ORDER_REROLL_BONUS, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, REWARD_TOKEN_CAP, maxStarsFor, missionsPerOperation } from './config'
+import { ACTION_LOG_CAP, ARMOR_PACK_STREAM, MAJOR_ORDER_REROLL_BONUS, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, REWARD_TOKEN_CAP, armorPackPrice, maxStarsFor, missionsPerOperation } from './config'
 import { STARTING_KITS, earnedKit, mergeKit, startingItemIds } from './progression'
 import { pactById } from '../data/pacts'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver, resolveFrontPlan } from './room'
 import { deriveSeed, hashString } from './rng'
 import { rollSupportKit } from './support'
-import { activeDivers, activeMisfortune, allDiversPicked, availableCaches, bonusEligibleFor, canBuyItem, catchUpOptionsFor, climbSettled, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, isPenancePact, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, penanceIncurredBy, squadInventories, squadPenances, squadSize, statsPendingMisfortune, statsPendingPactIds, strainDecision } from './selectors'
-import { bargainKindOf, itemPrice, missionHaul } from './rewards'
+import { activeDivers, activeMisfortune, allDiversPicked, armorPackPoolFor, availableCaches, bonusEligibleFor, canBuyArmorPack, canBuyItem, catchUpOptionsFor, climbSettled, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, isPenancePact, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, penanceIncurredBy, rewardPoolFor, squadInventories, squadPenances, squadSize, statsPendingMisfortune, statsPendingPactIds, strainDecision } from './selectors'
+import { bargainKindOf, itemPrice, missionHaul, rollArmorPack } from './rewards'
 import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 
 export function createDiveState(
@@ -56,7 +56,7 @@ function applyStart(
   // The first mission's Brasch's Bargains deal. A caller that injects no seed
   // still gets a deterministic shelf, keyed to the host.
   const stocked = { ...state, personalInventories }
-  const divers = supported.map(diver => ({ ...diver, bargain: dealBargain(stocked, diver, []) }))
+  const divers = supported.map(diver => ({ ...diver, bargain: dealBargain(stocked, diver, null, true) }))
   return {
     divers,
     bargainSeed: typeof seed === 'number' && Number.isFinite(seed) ? seed : hashString(state.hostId ?? ''),
@@ -151,8 +151,8 @@ export function resetOperation(state: DiveState): Partial<DiveState> {
 
 // Brasch restocks at every mission start, a failure restart included: a fresh
 // seed off the mission just played and a fresh deal per diver against their
-// current holdings. Kinds bought this operation stay off the shelf until a new
-// operation begins.
+// current holdings. What the operation already spent — a bought kind, the one
+// Armor Pack — stays spent until a new operation begins.
 function redealBargains(
   state: DiveState,
   divers: DiverState[],
@@ -162,7 +162,7 @@ function redealBargains(
     bargainSeed: deriveSeed(state.wheel?.seed ?? state.bargainSeed ?? 0, state.missionIndex + 1),
     divers: divers.map(diver => ({
       ...diver,
-      bargain: dealBargain(state, diver, newOperation ? [] : diver.bargain?.boughtKinds ?? []),
+      bargain: dealBargain(state, diver, diver.bargain, newOperation),
     })),
   }
 }
@@ -756,6 +756,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
                 ...diver.bargain!,
                 boughtItemId: item.id,
                 boughtKinds: [...diver.bargain!.boughtKinds, bargainKindOf(item)!],
+                pack: diver.bargain!.pack ?? null,
               },
             }
           : candidate,
@@ -763,6 +764,47 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       const personalInventories = {
         ...state.personalInventories,
         [diver.id]: [...(state.personalInventories[diver.id] ?? []), item.id],
+      }
+      return commit(state, { divers, personalInventories }, action)
+    }
+
+    case 'BUY_ARMOR_PACK': {
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      if (!diver?.bargain || state.bargainSeed === null) {
+        return state
+      }
+      if (!canBuyArmorPack(state, diver).allowed) {
+        return state
+      }
+      // The pack is derived from the mission's seed, not a purchase-time seed:
+      // a client can't reroll the paid pull by choosing a number. The pull is
+      // stored once, so the shelf and a reload show the same cards.
+      const seed = deriveSeed(
+        deriveSeed(state.bargainSeed, ARMOR_PACK_STREAM),
+        hashString(diver.id),
+      )
+      const items = rollArmorPack(seed, state.difficulty, armorPackPoolFor(state, diver), new Set())
+      if (items.length === 0) {
+        return state
+      }
+      const divers = state.divers.map(candidate =>
+        candidate.id === diver.id
+          ? {
+              ...candidate,
+              credits: candidate.credits - armorPackPrice(state.difficulty),
+              bargain: {
+                ...diver.bargain!,
+                pack: { seed, itemIds: items.map(item => item.id) },
+              },
+            }
+          : candidate,
+      )
+      const personalInventories = {
+        ...state.personalInventories,
+        [diver.id]: mergeKit(
+          state.personalInventories[diver.id] ?? [],
+          items.map(item => item.id),
+        ),
       }
       return commit(state, { divers, personalInventories }, action)
     }

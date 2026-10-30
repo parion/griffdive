@@ -407,7 +407,7 @@ function markerTone(marker: ValorMarker): RewardTier {
   opacity: 0.6;
 }
 .zone-label .letter { font-size: 17px; line-height: 1; }
-.zone-label.gain .letter { color: var(--gold-bright); text-shadow: 0 0 12px rgba(255, 214, 66, 0.5); }
+.zone-label.gain .letter { color: var(--gold-bright); }
 .zone-label.loss .letter { opacity: 0.75; }
 .zone-label.silent { opacity: 0; }
 

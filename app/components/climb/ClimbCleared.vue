@@ -24,6 +24,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   advance: []
   buy: [itemId: string]
+  openPack: []
   holdPact: [playerId: string, pactId: string]
   failPact: [playerId: string, pactId: string]
   holdDirective: []
@@ -231,6 +232,7 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
         :state="state"
         :self="self"
         @buy="emit('buy', $event)"
+        @open-pack="emit('openPack')"
       />
     </section>
 

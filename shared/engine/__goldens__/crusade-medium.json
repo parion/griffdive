@@ -12,7 +12,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "advancedfiltration",
+      "optionId": "surpluseatallocation",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -27,7 +27,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "electricalconduit",
+      "optionId": "samplescanner",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -42,7 +42,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "firebombhellpods",
+      "optionId": "flexiblereinforcementbudget",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -61,7 +61,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "advancedfiltration"
+      "forfeitedItemId": "surpluseatallocation"
     },
     {
       "mission": 4,
@@ -104,7 +104,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "tx41sterilizer",
+      "optionId": "eagle110mmrocketpods",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -119,7 +119,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "eagle110mmrocketpods",
+      "optionId": "tx41sterilizer",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -136,7 +136,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "firebombhellpods"
+      "forfeitedItemId": "flexiblereinforcementbudget"
     },
     {
       "mission": 9,
@@ -179,7 +179,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "alas98lasersentry",
+      "optionId": "eat12antitankemplacement",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -194,7 +194,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "ma5cassaultrifle",
+      "optionId": "ar32pacifier",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -211,7 +211,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "alas98lasersentry"
+      "forfeitedItemId": "eat12antitankemplacement"
     },
     {
       "mission": 14,
@@ -224,7 +224,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "kineticdisplacementmitigation",
+      "optionId": "mg206heavymachinegun",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -241,7 +241,7 @@
       ],
       "outcome": "success",
       "stars": 3,
-      "optionId": "bflam80cremator",
+      "optionId": "exo55breakthroughexosuit",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -256,7 +256,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "p4senator",
+      "optionId": "gl15evictor",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -288,7 +288,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "kineticdisplacementmitigation"
+      "forfeitedItemId": "mg206heavymachinegun"
     },
     {
       "mission": 19,
@@ -303,7 +303,7 @@
       ],
       "outcome": "success",
       "stars": 4,
-      "optionId": "amls4xrocketsentry",
+      "optionId": "emg101hmgemplacement",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -318,7 +318,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "faf14spear",
+      "optionId": "lift860hoverpack",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -335,7 +335,7 @@
       ],
       "outcome": "success",
       "stars": 4,
-      "optionId": "apw1antimaterielrifle",
+      "optionId": "mls4xcommando",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -380,7 +380,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "orbital380mmhebarrage",
+      "optionId": "orbitalwalkingbarrage",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -395,7 +395,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "ac8autocannon",
+      "optionId": "axtx13dogbreath",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -410,7 +410,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "r72censor",
+      "optionId": "r2amendment",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -427,7 +427,7 @@
       ],
       "outcome": "success",
       "stars": 5,
-      "optionId": "axar23guarddog",
+      "optionId": "sh32shieldgeneratorpack",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -444,7 +444,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "ac8autocannon"
+      "forfeitedItemId": "axtx13dogbreath"
     },
     {
       "mission": 29,
@@ -457,7 +457,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "r4hyena",
+      "optionId": "smg203gallant",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -472,7 +472,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "orbital120mmhebarrage",
+      "optionId": "amg43machinegunsentry",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -487,7 +487,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "m102gunnerfrv",
+      "optionId": "orbitalgasstrike",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -504,7 +504,7 @@
       ],
       "outcome": "success",
       "stars": 5,
-      "optionId": "gr8recoillessrifle",
+      "optionId": "lift850jumppack",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -521,7 +521,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "orbital380mmhebarrage"
+      "forfeitedItemId": "orbitalwalkingbarrage"
     },
     {
       "mission": 34,
@@ -549,7 +549,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "experimentalinfusion",
+      "optionId": "g48giga",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -564,15 +564,15 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "agm17gasmortarsentry",
+      "optionId": "bflam80cremator",
       "choiceItemId": null,
       "forfeitedItemId": null
     }
   ],
   "firstOptions": [
-    "advancedfiltration",
+    "surpluseatallocation",
     "cqc5combathatchet",
-    "flexiblereinforcementbudget"
+    "expertextractionpilot"
   ],
   "final": {
     "phase": "complete",
@@ -613,11 +613,9 @@
       "zeroDeaths:terminids:ruptureStrain"
     ],
     "personalInventory": [
-      "agm17gasmortarsentry",
       "am23emsmortarsentry",
-      "amls4xrocketsentry",
-      "apw1antimaterielrifle",
-      "axar23guarddog",
+      "amg43machinegunsentry",
+      "ar32pacifier",
       "bflam80cremator",
       "cb9explodingcrossbow",
       "cqc19stunlance",
@@ -630,29 +628,31 @@
       "cqc9defoliationtool",
       "eagle110mmrocketpods",
       "eaglesmokestrike",
-      "electricalconduit",
-      "experimentalinfusion",
+      "emg101hmgemplacement",
+      "exo55breakthroughexosuit",
       "extrapadding",
-      "faf14spear",
       "fx12shieldgeneratorrelay",
       "g12highexplosivegrenade",
       "g3smokegrenade",
+      "g48giga",
       "g89smokescreen",
-      "gr8recoillessrifle",
+      "gl15evictor",
       "k2throwingknife",
       "las44nova",
       "las7dagger",
-      "m102gunnerfrv",
-      "ma5cassaultrifle",
-      "orbital120mmhebarrage",
+      "lift850jumppack",
+      "lift860hoverpack",
+      "mls4xcommando",
       "orbitalemsstrike",
+      "orbitalgasstrike",
       "orbitalsmokestrike",
       "p2peacemaker",
-      "p4senator",
       "r2124constitution",
-      "r4hyena",
-      "r72censor",
+      "r2amendment",
+      "samplescanner",
+      "sh32shieldgeneratorpack",
       "sh51directionalshield",
+      "smg203gallant",
       "tx41sterilizer"
     ],
     "seedHistory": [

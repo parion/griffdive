@@ -579,7 +579,6 @@ const kickerText = computed(() => {
   color: var(--tier);
   font-size: 40px;
   line-height: 0.8;
-  text-shadow: 0 0 20px color-mix(in srgb, var(--tier) 50%, transparent);
 }
 .loot-card:not([data-tier='C']) .tier-letter { animation: slamIn 0.45s var(--ease-impact) var(--impact, 0ms) backwards; }
 .loot-card.selected .tier-letter,

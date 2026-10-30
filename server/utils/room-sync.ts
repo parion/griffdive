@@ -710,6 +710,7 @@ function enforceSelf(action: EngineAction, playerId: string): EngineAction {
     || action.type === 'PICK_REWARD'
     || action.type === 'FORFEIT_ITEM'
     || action.type === 'BUY_ITEM'
+    || action.type === 'BUY_ARMOR_PACK'
     || action.type === 'SET_NAME'
     || action.type === 'CLAIM_CATCHUP_OPTION'
     || action.type === 'CLAIM_CACHE'

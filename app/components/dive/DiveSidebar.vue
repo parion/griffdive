@@ -17,9 +17,9 @@ const props = withDefaults(defineProps<{
   fieldKit?: boolean
 }>(), { previewPactIds: () => [], sheet: false, fieldKit: false })
 
-const emit = defineEmits<{ buy: [itemId: string] }>()
+const emit = defineEmits<{ buy: [itemId: string], openPack: [] }>()
 
-const { sidePanel: panel, hostSidebar, releaseSidebar } = useDrawers()
+const { sidePanel: panel, hostSidebar, releaseSidebar, panelLocked } = useDrawers()
 onMounted(hostSidebar)
 onBeforeUnmount(releaseSidebar)
 
@@ -66,7 +66,7 @@ function toggle(next: SidePanel): void {
 // A phone's panel overlays the stage, so a tap anywhere off the dock puts it away.
 const root = useTemplateRef<HTMLElement>('root')
 onClickOutside(root, () => {
-  if (props.sheet) {
+  if (props.sheet && !panelLocked.value) {
     panel.value = null
   }
 })
@@ -136,6 +136,7 @@ watch(bargainsClosed, (closed) => {
             :state="state"
             :self="self"
             @buy="emit('buy', $event)"
+            @open-pack="emit('openPack')"
           />
         </div>
       </section>

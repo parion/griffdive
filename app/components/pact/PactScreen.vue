@@ -323,7 +323,7 @@ function lockNow(): void {
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
 }
 .directive-strip.safe { background: var(--panel); }
-.directive-name { font-size: 18px; color: var(--gold); text-shadow: 0 0 16px rgba(255, 214, 66, 0.3); }
+.directive-name { font-size: 18px; color: var(--gold); }
 .directive-rule { color: var(--khaki); font-size: 13px; }
 .strain-note {
   color: var(--orange);

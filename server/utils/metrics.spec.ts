@@ -248,6 +248,22 @@ describe('room-metrics', () => {
     expect(text).toMatch(/griffdive_operation_restarts_total\{difficulty="3"\} 1/)
   })
 
+  it('counts Armor Pack opens and the cards they deal', async () => {
+    const metrics = createRoomMetrics()
+    const started = createDiveState({ variant: 'medium' }, 'p1', 'Diver One')
+    const before: DiveState = {
+      ...started,
+      difficulty: 4,
+      divers: started.divers.map(diver => ({ ...diver, credits: 1000 })),
+    }
+    const after = apply(metrics, before, { type: 'BUY_ARMOR_PACK', playerId: 'p1' })
+    expect(after).not.toBe(before)
+
+    const text = await metrics.registry.metrics()
+    expect(text).toMatch(/griffdive_armor_packs_opened_total\{difficulty="4"\} 1/)
+    expect(text.match(/griffdive_armor_pack_pulls_total\{tier="[cbas]"\} 1/g)).toHaveLength(3)
+  })
+
   it('counts refused directives, operations completed and achievements', async () => {
     const metrics = createRoomMetrics()
     metrics.recordDirectiveRefused('noStratagems', 3)

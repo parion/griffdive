@@ -9,6 +9,10 @@
   extra `passive?`. The catalog has no armor pieces or armor stats — only passives matter. Categories: `primary secondary throwable booster armorPassive` (equipment) and
   stratagem categories (`Supply Eagle Orbital Defense` etc.). Warbonds are `{ code, displayName,
   internalName?, imageURL? }` — they carry no overall tier; only individual items are ranked.
+  **Armor passives are a Brasch-exclusive reward channel:** the catalog still carries them (the
+  Armory lists them, and the starting kit and SEAF Support Package issue them), but
+  `rewardPoolFor` excludes `armorPassive`, so drafts, Liberty's Cross and Field Promotions never
+  draw one. They are earned through Brasch's Armor Pack (see game-rules.md).
 - **Seed source:** constants from [Selenestica/hd2-random-strat](https://github.com/Selenestica/hd2-random-strat)
   (MIT) — vendored at `scripts/upstream/` (snapshot commit recorded there), converted to our
   schema by `node scripts/import-catalog.mjs` (re-run after every upstream refresh), attributed in
