@@ -85,7 +85,7 @@ const inMaker = computed(() => standalone || route.name === 'tiers')
         </div>
         <nav
           class="ship-nav"
-          :class="{ standalone }"
+          :class="{ maker: inMaker }"
           aria-label="Ship"
         >
           <a
@@ -101,6 +101,7 @@ const inMaker = computed(() => standalone || route.name === 'tiers')
             to="/"
             aria-label="Back to Griffdive"
           >
+            <IconGriffdive class="nav-icon" />
             <span class="wide-label">Back to Griffdive</span>
             <span
               class="phone-label"
@@ -194,6 +195,7 @@ const inMaker = computed(() => standalone || route.name === 'tiers')
 .brand-word {
   font-size: 17px;
   letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 
 .release-chip {
@@ -219,6 +221,7 @@ const inMaker = computed(() => standalone || route.name === 'tiers')
 }
 .navb {
   flex-direction: column;
+  white-space: nowrap;
   gap: 0.12rem;
   padding: 0.3rem 0.55rem;
   font-size: 12px;
@@ -239,8 +242,8 @@ const inMaker = computed(() => standalone || route.name === 'tiers')
   .uplink { display: none; }
   /* Labels stay on phones — playtesters never found Codex/Warbonds behind bare
      icons. Icon and label sit side by side to fit beside the brand. */
-  /* The standalone Tier Maker keeps one way out on a phone: to the game. */
-  .ship-nav.standalone .navb:not(.play-link) { display: none; }
+  /* The Tier Maker keeps one way out on a phone: to the game. */
+  .ship-nav.maker .navb:not(.play-link) { display: none; }
   .wide-label { display: none; }
   .phone-label { display: inline; }
   .navb {
@@ -256,7 +259,7 @@ const inMaker = computed(() => standalone || route.name === 'tiers')
 
 @media (max-width: 380px) {
   .term-header { gap: 6px; padding: 0 8px; }
-  .brand-word { font-size: 13px; }
-  .navb { padding: 0 6px; letter-spacing: 0.08em; }
+  .brand-word { font-size: 13px; letter-spacing: 0.02em; }
+  .navb { gap: 4px; padding: 0 5px; letter-spacing: 0.02em; }
 }
 </style>

@@ -504,7 +504,8 @@ A drag-and-drop tier board in the tiermaker mould, built for a phone first.
 - **Entry:** the ship nav opens with a **Tier Maker** link (`IconTiers`) before Ko-fi and Star
   repo (on phones **Tiers** and **Star**, to fit). Inside the maker the header rebrands: the
   wordmark reads **Tier Maker**, the release chip goes, only the logo links back to Griffdive, and the
-  nav link becomes a gold **Back to Griffdive** (**Griffdive** on phones); the standalone site reads
+  nav link becomes a gold **Back to Griffdive** (**Griffdive** on phones) under `IconGriffdive`, the
+  mark without its dial; on phones that link is the maker's only nav item; the standalone site reads
   **Play Griffdive** there instead.
 - **Header:** the list name is an inline display-face input, with per-tier counts, an "N new" chip
   when items are unrated, and an **Overview** link that opens `TierListView`.
@@ -539,7 +540,7 @@ A drag-and-drop tier board in the tiermaker mould, built for a phone first.
   Maker at `/`, and `middleware/tiers-site.global.ts` sends every page but the maker and
   `/privacy` to the main site.
 - **Shell:** the rebranded maker header (above), with a gold **Play Griffdive** link that
-  joins the ship nav; on phones it is the only nav item. The kicker reads "Helldivers 2 Tier List
+  joins the ship nav. The kicker reads "Helldivers 2 Tier List
   Maker", with a short pitch under the header that links to the game.
 - **Head:** `server/plugins/tiers-site.ts` rewrites the SPA shell's title, description and card
   text on a `tiers.` host, so link previews describe the maker, not the game.
