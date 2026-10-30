@@ -2,31 +2,47 @@
 import { baseTierFor, MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
-import { draftSummaryFor, honorsPending } from '~~/shared/engine/selectors'
+import { bargainsClosedReason, climbBlockers, currentFront, draftSummaryFor } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
-// The operation's last bank: the climb to the next difficulty, then the same
-// regroup as between missions — the diver's haul, the squad's picks and a last
-// call at Brasch's shelf before the host starts the next operation.
+// The squad-climbs page: where the squad regroups once every draft is banked,
+// at the end of every mission and operation. HD2 shows its stats screen only
+// after the report, so everything it proves settles here, after the rewards:
+// the stats-checked rules (a broken pact is owed back as Penance), Squad
+// Honors, then a last call at Brasch's shelf, until the host calls the next
+// drop. The engine stays in rewards and ADVANCE is the one way out; it refuses
+// until the stats check and honors are settled.
 const props = withDefaults(defineProps<{
   state: DiveState
   self: DiverState | null
   selfId: string | null
   canControl: boolean
+  opLength: number
   phone?: boolean
 }>(), { phone: false })
 
-const emit = defineEmits<{ start: [] }>()
+const emit = defineEmits<{
+  advance: []
+  holdPact: [playerId: string, pactId: string]
+  failPact: [playerId: string, pactId: string]
+  holdDirective: []
+  failDirective: []
+  spinBonus: []
+  awardBonus: [playerIds: string[]]
+}>()
 
-const hostName = computed(() =>
-  upperName(props.state.divers.find(diver => diver.id === props.state.hostId)?.name) ?? 'the host')
+const mission = computed(() => props.state.missionInOperation)
+const opEnds = computed(() => mission.value >= props.opLength)
+// The operation's last mission climbs a rung; the crusade's last has none left.
+const climbs = computed(() => opEnds.value && props.state.difficulty < MAX_DIFFICULTY)
 const nextDifficulty = computed(() => Math.min(MAX_DIFFICULTY, props.state.difficulty + 1))
 const nextName = computed(() => difficultyName(nextDifficulty.value))
 const opNumber = computed(() =>
   catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
 const nextOp = computed(() => opNumber.value + 1)
-const honorsLocked = computed(() => honorsPending(props.state))
-const startLabel = computed(() => (honorsLocked.value ? 'Award honors first' : `Start operation ${nextOp.value}`))
+const hostName = computed(() =>
+  upperName(props.state.divers.find(diver => diver.id === props.state.hostId)?.name) ?? 'the host')
+
 const rungs = computed(() => Array.from({ length: MAX_DIFFICULTY - 2 }, (_, i) => {
   const n = i + 3
   return {
@@ -36,10 +52,46 @@ const rungs = computed(() => Array.from({ length: MAX_DIFFICULTY - 2 }, (_, i) =
   }
 }))
 
+const shopOpen = computed(() => props.self?.bargain != null && bargainsClosedReason(props.state) === null)
+
 const squadDrafts = computed(() =>
   props.state.divers
     .filter(diver => diver.id !== props.selfId)
     .map(diver => ({ id: diver.id, name: upperName(diver.name), summary: draftSummaryFor(props.state, diver) })))
+
+const blockers = computed(() => climbBlockers(props.state))
+const settled = computed(() => !blockers.value.honors && blockers.value.rules === 0)
+const blockerLabel = computed(() => {
+  if (blockers.value.rules > 0) {
+    return `Settle ${blockers.value.rules} rule${blockers.value.rules === 1 ? '' : 's'} first`
+  }
+  if (blockers.value.honors) {
+    return props.state.bonusSeed === null ? 'Rolling Squad Honors' : 'Award honors first'
+  }
+  return ''
+})
+const ctaLabel = computed(() => {
+  if (!settled.value) {
+    return blockerLabel.value
+  }
+  if (climbs.value) {
+    return `Start operation ${nextOp.value}`
+  }
+  return opEnds.value ? 'Complete operation' : 'Next mission'
+})
+const waitingLabel = computed(() => (settled.value ? `Waiting on ${hostName.value}` : blockerLabel.value))
+
+const nextDrop = computed(() => {
+  if (climbs.value) {
+    return `Next drop: Difficulty ${nextDifficulty.value} · ${nextName.value}`
+  }
+  if (opEnds.value) {
+    return 'The crusade’s last rung is cleared.'
+  }
+  const front = currentFront(props.state)
+  const where = front ? ` · ${front.displayName} front` : ''
+  return `Next drop: mission ${mission.value + 1} of ${props.opLength}${where}`
+})
 
 // Embers are laid out by index, not Math.random: the server render and the
 // client hydrate must agree, and a fixed scatter reads the same every time.
@@ -55,10 +107,12 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
 
 <template>
   <section
-    class="cleared"
-    :class="{ phone }"
+    class="climb"
+    :class="{ phone, climbs }"
+    aria-labelledby="climb-h"
   >
     <div
+      v-if="climbs"
       class="backdrop"
       aria-hidden="true"
     >
@@ -81,7 +135,10 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
     </div>
 
     <header class="hero">
-      <div class="mark-wrap">
+      <div
+        v-if="climbs"
+        class="mark-wrap"
+      >
         <img
           class="diff-emblem"
           :src="difficultyImageUrl(nextDifficulty)"
@@ -89,16 +146,20 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
           draggable="false"
         >
       </div>
-      <span class="kicker">Operation {{ opNumber }} cleared</span>
-      <h1 class="disp title">
-        The squad climbs
+      <span class="kicker">{{ climbs ? `Operation ${opNumber} cleared` : `Mission ${mission} of ${opLength} secured` }}</span>
+      <h1
+        id="climb-h"
+        class="disp title"
+      >
+        {{ climbs ? 'The squad climbs' : opEnds ? 'Operation secured' : 'Mission secured' }}
       </h1>
       <p class="next-drop">
-        Next drop: <b>Difficulty {{ nextDifficulty }} · {{ nextName }}</b>
+        {{ nextDrop }}
       </p>
     </header>
 
     <ol
+      v-if="climbs"
       class="ladder"
       :aria-label="`Crusade ladder, next drop difficulty ${nextDifficulty} of ${MAX_DIFFICULTY}`"
     >
@@ -114,25 +175,62 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
         {{ rung.n }}
       </li>
     </ol>
+    <MissionTrack
+      v-else
+      class="track"
+      :mission="mission"
+      :op-length="opLength"
+      :phone="phone"
+    />
 
-    <div class="regroup">
+    <ClimbReport
+      :state="state"
+      :phone="phone"
+    />
+
+    <div class="board">
       <MissionBankedHaul
         class="haul-card"
         :state="state"
         :self="self"
         :phone="phone"
       />
-      <div class="shop">
-        <p class="last-call">
-          <span class="cap">Last call</span>
-          Brasch restocks at Difficulty {{ nextDifficulty }} when operation {{ nextOp }} starts.
-        </p>
-        <BraschShopDoor
+
+      <article class="check">
+        <ClimbStats
           :state="state"
-          :self="self"
+          :self-id="selfId"
+          :is-host="canControl"
+          @hold-pact="(playerId, pactId) => emit('holdPact', playerId, pactId)"
+          @fail-pact="(playerId, pactId) => emit('failPact', playerId, pactId)"
+          @hold-directive="emit('holdDirective')"
+          @fail-directive="emit('failDirective')"
         />
-      </div>
+        <ClimbHonors
+          :state="state"
+          :is-host="canControl"
+          @spin-bonus="emit('spinBonus')"
+          @award-bonus="emit('awardBonus', $event)"
+        />
+      </article>
     </div>
+
+    <section
+      v-if="shopOpen"
+      class="shop"
+    >
+      <p
+        v-if="climbs"
+        class="last-call"
+      >
+        <span class="cap">Last call</span>
+        Brasch restocks at Difficulty {{ nextDifficulty }} prices when operation {{ nextOp }} starts.
+      </p>
+      <BraschShopDoor
+        :state="state"
+        :self="self"
+      />
+    </section>
 
     <SquadDraftBoard
       v-if="squadDrafts.length"
@@ -144,21 +242,17 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
     <PhoneActionBar v-if="phone">
       <template #primary>
         <button
-          v-if="canControl && !honorsLocked"
+          v-if="canControl && settled"
           class="bar-cta cta-sweep"
           type="button"
-          @click="emit('start')"
+          @click="emit('advance')"
         >
-          <span class="disp">{{ startLabel }}</span>
+          <span class="disp">{{ ctaLabel }}</span>
         </button>
-        <span
-          v-else-if="canControl"
-          class="bar-gate"
-        ><span class="bar-gate-word quiet">Award honors first</span></span>
         <span
           v-else
           class="bar-gate"
-        >Waiting on {{ hostName }}</span>
+        ><span class="bar-gate-word quiet">{{ canControl ? blockerLabel : waitingLabel }}</span></span>
       </template>
     </PhoneActionBar>
     <footer
@@ -168,13 +262,14 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
       <button
         v-if="canControl"
         class="cta cut cta-sweep"
-        :class="{ 'cta-locked': honorsLocked }"
+        :class="{ 'cta-locked': !settled }"
         type="button"
-        :disabled="honorsLocked"
-        @click="emit('start')"
+        :disabled="!settled"
+        @click="emit('advance')"
       >
-        {{ startLabel }}
+        {{ ctaLabel }}
         <svg
+          v-if="settled"
           width="22"
           height="14"
           viewBox="0 0 22 14"
@@ -191,14 +286,14 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
         class="waiting"
         role="status"
       >
-        Waiting for {{ hostName }} to start operation {{ nextOp }}. Shop while you wait.
+        {{ settled ? `Waiting for ${hostName} to call the next drop.` : `${blockerLabel}.` }}{{ shopOpen ? ' Shop while you wait.' : '' }}
       </p>
     </footer>
   </section>
 </template>
 
 <style scoped>
-.cleared {
+.climb {
   position: relative;
   isolation: isolate;
   display: flex;
@@ -209,7 +304,7 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
   max-width: 1120px;
   margin: 0 auto;
 }
-.cleared > * { width: 100%; }
+.climb > * { width: 100%; }
 
 /* The backdrop lives: two ray fields turn against each other behind the
    emblem, a halo breathes, and embers rise past the climb. It spans the stage
@@ -374,7 +469,11 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
 }
 @keyframes glowPulse { 50% { filter: brightness(1.12) drop-shadow(0 0 12px rgba(255, 214, 66, 0.6)); } }
 
-.regroup {
+.climb:not(.climbs) .hero { gap: 8px; }
+.climb:not(.climbs) .kicker { color: var(--teal); }
+.climb:not(.climbs) .title { animation: riseIn 0.45s var(--ease-out) both; background: none; color: var(--text); filter: none; text-shadow: 0 0 36px rgba(74, 215, 200, 0.16); }
+.climb > .track { width: auto; align-self: center; }
+.board {
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
   gap: 18px;
@@ -382,6 +481,16 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
   /* A wider art well keeps the climb, the haul and the CTA on one desktop screen. */
   --haul-aspect: 16 / 10;
 }
+.check {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--rail) 88%, transparent);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  animation: deal-in 0.55s var(--ease-out) 0.25s both;
+}
+.check > * { flex-shrink: 0; }
 .shop {
   display: flex;
   flex-direction: column;
@@ -419,7 +528,7 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
 .waiting { margin: 0; color: var(--muted); font-size: 14px; text-align: center; }
 
 @media (max-width: 860px) {
-  .regroup { grid-template-columns: minmax(0, 1fr); --haul-aspect: 4 / 3; }
+  .board { grid-template-columns: minmax(0, 1fr); --haul-aspect: 4 / 3; }
 }
 @media (max-width: 600px) {
   .rung { height: 46px; font-size: 15px; padding-left: 6px; clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%, 8px 50%); }
@@ -429,8 +538,11 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
 }
 
 .phone { gap: 14px; }
-.phone .regroup { grid-template-columns: minmax(0, 1fr); }
+.phone .board { grid-template-columns: minmax(0, 1fr); }
+.phone .check { padding: 12px; }
 .phone .shop { padding: 0; }
 .phone .last-call { flex-direction: column; gap: 2px; }
 .phone .title { font-size: 34px; }
+.phone:not(.climbs) .hero { align-items: flex-start; text-align: left; }
+.phone:not(.climbs) .kicker::after { display: none; }
 </style>

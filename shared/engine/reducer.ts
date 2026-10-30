@@ -2,11 +2,12 @@ import { ALL_WARBOND_CODES, ITEMS_BY_ID, WARBONDS } from '../data/catalog'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection } from './types'
 import { ACTION_LOG_CAP, ARMOR_PACK_STREAM, MAJOR_ORDER_REROLL_BONUS, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, REWARD_TOKEN_CAP, armorPackPrice, maxStarsFor, missionsPerOperation } from './config'
 import { STARTING_KITS, earnedKit, mergeKit, startingItemIds } from './progression'
+import { pactById } from '../data/pacts'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver, resolveFrontPlan } from './room'
 import { deriveSeed, hashString } from './rng'
 import { rollSupportKit } from './support'
-import { activeDivers, activeMisfortune, allDiversPicked, armorPackPoolFor, availableCaches, bonusEligibleFor, canBuyArmorPack, canBuyItem, catchUpOptionsFor, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, honorsPending, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, rewardPoolFor, squadSize, strainDecision } from './selectors'
+import { activeDivers, activeMisfortune, allDiversPicked, armorPackPoolFor, availableCaches, bonusEligibleFor, canBuyArmorPack, canBuyItem, catchUpOptionsFor, climbSettled, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, isPenancePact, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, penanceIncurredBy, rewardPoolFor, squadInventories, squadPenances, squadSize, statsPendingMisfortune, statsPendingPactIds, strainDecision } from './selectors'
 import { bargainKindOf, itemPrice, missionHaul, rollArmorPack } from './rewards'
 import { deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 
@@ -78,12 +79,45 @@ function resetDivers(state: DiveState): DiverState[] {
     pactsLocked: false,
     pactIds: [],
     failedPactIds: [],
+    heldPactIds: [],
+    brokenPactIds: [],
+    penance: null,
     pickedOptionId: null,
     forfeitedItemId: null,
     rewardRerollSeed: null,
     rewardBanned: false,
     draftExcludedIds: null,
   }))
+}
+
+// A broken Penance pact (or a failed mission) voids the reward it was
+// guarding: the item leaves the kit. A debt already served or voided is inert.
+function voidPenance(state: DiveState, diverId: string): Pick<DiveState, 'divers' | 'personalInventories'> {
+  const debt = state.divers.find(diver => diver.id === diverId)?.penance
+  if (!debt || debt.status !== 'owed') {
+    return { divers: state.divers, personalInventories: state.personalInventories }
+  }
+  return {
+    divers: state.divers.map(diver =>
+      diver.id === diverId ? { ...diver, penance: { ...debt, status: 'voided' } } : diver),
+    personalInventories: debt.itemId
+      ? {
+          ...state.personalInventories,
+          [diverId]: (state.personalInventories[diverId] ?? []).filter(id => id !== debt.itemId),
+        }
+      : state.personalInventories,
+  }
+}
+
+// What the stats check leaves owing into the next mission: each diver's broken
+// pacts come back as Penance, and a broken directive taxes every draft.
+function carryDebts(state: DiveState, next: Partial<DiveState>): Partial<DiveState> {
+  const owed = new Map(state.divers.map(diver => [diver.id, penanceIncurredBy(diver)]))
+  return {
+    ...next,
+    directiveTax: state.misfortuneBroken,
+    divers: next.divers!.map(diver => ({ ...diver, penance: owed.get(diver.id) ?? null })),
+  }
 }
 
 function resetForNextMission(state: DiveState): Partial<DiveState> {
@@ -93,6 +127,8 @@ function resetForNextMission(state: DiveState): Partial<DiveState> {
     bonusSeed: null,
     bonusWinnerIds: [],
     misfortuneFailed: false,
+    misfortuneHeld: false,
+    misfortuneBroken: false,
     divers: resetDivers(state),
   }
 }
@@ -222,7 +258,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       const frontId = state.frontId ?? deriveFront(action.seed, majorOrderFronts(state))
       const drawingOperation = state.frontId === null
       return commit(state, {
-        wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed).id },
+        wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed, squadInventories(state), squadPenances(state)).id },
         frontId,
         strainId: state.majorOrder
           ? null
@@ -232,6 +268,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         // too (a failure restart has already reset it).
         misfortuneAccepted: false,
         misfortuneFailed: false,
+        misfortuneHeld: false,
         ...(drawingOperation ? { strainAccepted: false, strainDecided: false } : {}),
         phase: 'decision',
         seedHistory: [...state.seedHistory, action.seed],
@@ -341,7 +378,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // lands on the result it would replace, so a paid reroll never returns
       // the same outcome. Only the immediately replaced result is excluded.
       const sameResult = action.wheel === 'misfortune'
-        ? deriveMisfortune(action.seed).id === state.wheel.misfortuneId
+        ? deriveMisfortune(action.seed, squadInventories(state), squadPenances(state)).id === state.wheel.misfortuneId
         : action.wheel === 'front'
           ? deriveFront(action.seed, majorOrderFronts(state)) === state.frontId
           : deriveStrain(action.seed, state.difficulty, state.frontId)?.id === state.strainId
@@ -361,9 +398,11 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // decision — a new front brings a new subfaction.
       if (action.wheel === 'misfortune') {
         return commit(state, {
-          wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed).id },
+          wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed, squadInventories(state), squadPenances(state)).id },
           misfortuneAccepted: false,
           misfortuneFailed: false,
+          misfortuneHeld: false,
+          misfortuneBroken: false,
           phase: 'decision',
           rerollTokens,
           seedHistory,
@@ -408,14 +447,16 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (!action.pactIds.every(id => offer.some(pact => pact.id === id))) {
         return state
       }
+      // Penance pacts are sworn whether chosen or not, ahead of the diver's picks.
+      const pactIds = [...(diver.penance?.pactIds ?? []), ...action.pactIds]
       // Redundant picks never stack risk (AGENTS.md: Personal layer — pacts):
       // a pact another pick already covers is refused outright.
-      if (action.pactIds.some(id => pactSubsumedBy(id, action.pactIds))) {
+      if (pactIds.some(id => pactSubsumedBy(id, pactIds))) {
         return state
       }
       // Same-axis restrictions are mutually exclusive — two stratagem-category
       // bans would tax the same strength and can strand the loadout.
-      if (action.pactIds.some(id => pactConflictsWith(id, action.pactIds))) {
+      if (pactIds.some(id => pactConflictsWith(id, pactIds))) {
         return state
       }
       // HD2 requires four equipped stratagems: never accept a pick that leaves
@@ -424,12 +465,12 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       const misfortuneId = activeMisfortune(state)?.id ?? null
       const owned = state.personalInventories[diver.id] ?? []
       if (hasLegalLoadout(misfortuneId, [], owned)
-        && !hasLegalLoadout(misfortuneId, action.pactIds, owned)) {
+        && !hasLegalLoadout(misfortuneId, pactIds, owned)) {
         return state
       }
       const divers = state.divers.map(candidate =>
         candidate.id === diver.id
-          ? { ...candidate, pactIds: [...action.pactIds], pactsLocked: true }
+          ? { ...candidate, pactIds, pactsLocked: true }
           : candidate,
       )
       return commit(state, {
@@ -439,23 +480,56 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
     }
 
     case 'FAIL_PACT': {
-      // Broken pacts are marked while the mission runs — after the report the
-      // offers are already rolled, so the window is the diving phase only.
-      if (state.phase !== 'diving') {
-        return state
-      }
+      // Broken pacts are marked while the mission runs. A stats-verified pact
+      // can only be proven once the stats screen is up, so its window reopens
+      // on the squad-climbs page, after the draft: that mark leaves the banked
+      // offer alone and is owed back next mission as Penance.
       const diver = state.divers.find(candidate => candidate.id === action.playerId)
       if (!diver || !diver.pactIds.includes(action.pactId)) {
         return state
       }
-      if (diver.failedPactIds.includes(action.pactId)) {
+      if ([diver.failedPactIds, diver.brokenPactIds, diver.heldPactIds].some(ids => ids.includes(action.pactId))) {
         return state
       }
-      const divers = state.divers.map(candidate =>
+      const diving = state.phase === 'diving'
+      const atCheck = state.phase === 'rewards'
+        && pactById(action.pactId)?.accountability === 'stats'
+      if (!diving && !atCheck) {
+        return state
+      }
+      const marked = state.divers.map(candidate =>
         candidate.id === diver.id
-          ? { ...candidate, failedPactIds: [...candidate.failedPactIds, action.pactId] }
+          ? diving
+            ? { ...candidate, failedPactIds: [...candidate.failedPactIds, action.pactId] }
+            : { ...candidate, brokenPactIds: [...candidate.brokenPactIds, action.pactId] }
           : candidate,
       )
+      // Breaking a pact sworn as Penance voids the reward it was guarding.
+      const voided = isPenancePact(diver, action.pactId)
+        ? voidPenance({ ...state, divers: marked }, diver.id)
+        : { divers: marked, personalInventories: state.personalInventories }
+      return commit(state, voided, action)
+    }
+
+    case 'HOLD_PACT': {
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      if (!diver || !statsPendingPactIds(state, diver).includes(action.pactId)) {
+        return state
+      }
+      const divers = state.divers.map((candidate) => {
+        if (candidate.id !== diver.id) {
+          return candidate
+        }
+        const heldPactIds = [...candidate.heldPactIds, action.pactId]
+        const debt = candidate.penance
+        // The debt is served once every pact it swore is held.
+        const served = debt?.status === 'owed' && debt.pactIds.every(id => heldPactIds.includes(id))
+        return {
+          ...candidate,
+          heldPactIds,
+          penance: served ? { ...debt, status: 'served' as const } : debt,
+        }
+      })
       return commit(state, { divers }, action)
     }
 
@@ -463,11 +537,24 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // A team directive broken in the field is marked once, by the host, while
       // the mission runs — the same window as a pact. The squad still dove
       // under the rule (its bans stand for the mission), but the shared risk it
-      // staked is voided and every diver forfeits a reward option.
-      if (state.phase !== 'diving' || !state.misfortuneAccepted || state.misfortuneFailed) {
+      // staked is voided and every diver forfeits a reward option. A
+      // stats-verified directive is judged on the squad-climbs page instead,
+      // after the drafts: the squad takes the draft tax next mission.
+      const diving = state.phase === 'diving' && state.misfortuneAccepted && !state.misfortuneFailed
+      if (diving) {
+        return commit(state, { misfortuneFailed: true }, action)
+      }
+      if (statsPendingMisfortune(state) === null) {
         return state
       }
-      return commit(state, { misfortuneFailed: true }, action)
+      return commit(state, { misfortuneBroken: true }, action)
+    }
+
+    case 'HOLD_MISFORTUNE': {
+      if (statsPendingMisfortune(state) === null) {
+        return state
+      }
+      return commit(state, { misfortuneHeld: true }, action)
     }
 
     case 'SET_WARBONDS': {
@@ -555,10 +642,17 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // A failure deals every diver their forfeit offer, rolled like a draft off
       // the mission's offer seed. With nothing owed (empty kits) the operation
       // restarts at once.
+      // A failed mission also voids every reward a diver was still working off
+      // as Penance — before the forfeit offers derive from the live kit.
+      const voided = state.divers.reduce<Pick<DiveState, 'divers' | 'personalInventories'>>(
+        (acc, diver) => voidPenance({ ...state, ...acc }, diver.id),
+        { divers: state.divers, personalInventories: state.personalInventories },
+      )
       const failed = commit(state, {
         phase: 'forfeit',
         lastReport: report,
-        divers: settleHonors(state.divers),
+        personalInventories: voided.personalInventories,
+        divers: settleHonors(voided.divers),
         offerSeed: deriveSeed(state.wheel.seed, state.missionIndex),
         ...honorsPatch,
       }, action)
@@ -719,7 +813,9 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
     }
 
     case 'ADVANCE': {
-      if (state.phase !== 'rewards' || !allDiversPicked(state) || honorsPending(state)) {
+      // The squad moves on once every draft is banked and the stats check and
+      // Squad Honors on the climbs page are settled.
+      if (state.phase !== 'rewards' || !allDiversPicked(state) || !climbSettled(state)) {
         return state
       }
       const missionIndex = state.missionIndex + 1
@@ -744,7 +840,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         // first spin. The setup's front pin is a run-long commitment, so it
         // stays pinned and every operation played toward a live order banks
         // its extra reroll token.
-        const next = resetForNextMission(state)
+        const next = carryDebts(state, resetForNextMission(state))
         return commit(state, {
           missionIndex,
           difficulty: nextDifficulty,
@@ -764,7 +860,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }
       // Same operation: the front and its strain persist, but every mission
       // draws a fresh misfortune — the next mission begins at the spin.
-      const next = resetForNextMission(state)
+      const next = carryDebts(state, resetForNextMission(state))
       return commit(state, {
         missionIndex,
         missionInOperation,

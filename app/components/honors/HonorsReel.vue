@@ -166,6 +166,7 @@ onBeforeUnmount(() => clearTimeout(timer))
 }
 .row {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 12px;
   height: var(--row-h);

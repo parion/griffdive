@@ -58,6 +58,7 @@ export const REGISTRY_AUTOFILE = 800
 /** Wheel rotation (ms): the rotor transition and the result reveal share this clock. */
 export const WHEEL_SPIN_MS = 2800
 
-/** Squad Honors reel (ms): the strip's wind-down onto the seeded stat, then the dwell that lets the squad read it before the report files. */
+/** Squad Honors reel (ms): the strip's wind-down onto the seeded stat. */
 export const HONORS_REEL_MS = 2000
-export const HONORS_DWELL_MS = 1100
+/** The debrief rolls Squad Honors by itself this long after it opens (ms), so the squad sees the screen land first. */
+export const HONORS_AUTO_ROLL_MS = 1600

@@ -736,7 +736,7 @@ onBeforeUnmount(() => {
       <div class="directive-sample">
         <div class="directive-copy">
           <span class="lbl">Squad Directive · whole squad</span>
-          <span class="disp directive-name">No Orbitals</span>
+          <span class="disp directive-name">Orbital Blackout</span>
           <span class="directive-rule">No orbital stratagems.</span>
         </div>
         <RiskPips

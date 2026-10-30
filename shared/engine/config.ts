@@ -1,7 +1,7 @@
 import type { Tier } from '../data/types'
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 1
+export const ENGINE_VERSION = 2
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -214,6 +214,10 @@ export const RESERVE_STRATAGEMS = [
   'eaglesmokestrike',
   'am23emsmortarsentry',
 ] as const
+// Defensive stratagems that never hurt anyone. They sit outside the reserve
+// (a squad directive may still ban them, and not every diver owns one), but a
+// rule that bans "offensive" defenses leaves them legal.
+export const NON_LETHAL_DEFENSES = ['fx12shieldgeneratorrelay'] as const
 
 // Reward scale-back: difficulty alone buys a base tier — C on diffs 3–5,
 // B on 6–7, A on 8+. S and S+ are reachable only through chosen risk
@@ -538,9 +542,11 @@ export const CONDITION_RISK: Readonly<Record<string, ConditionRiskCurve>> = {
   oopsAllAirstrikes: { base: 2, slope: 0.2 },
   zeroDeaths: { base: 3, slope: 0.3 },
   noReserves: { base: 2, slope: 0.35 },
-  noStratagems: { base: 3, slope: 0.3 },
+  noStratagems: { base: 2, slope: 0.3 },
   meleeOnly: { base: 2, slope: 0.35 },
   pacifist: { base: 3, slope: 0.3 },
+  heavyBurden: { base: 1, slope: 0.1 },
+  stimShortage: { base: 3, slope: 0.15 },
 
   // Personal rules — pacts. Most rise with altitude: losing healing, anti-tank
   // or your life costs more where the enemy hits harder. Dead Weight stays flat
@@ -558,6 +564,11 @@ export const CONDITION_RISK: Readonly<Record<string, ConditionRiskCurve>> = {
   shipSilent: { base: 2, slope: 0 },
   openField: { base: 2, slope: 0 },
   untouchable: { base: 2.5, slope: 0.25 },
+  featherweight: { base: 1, slope: 0.15 },
+  ironbound: { base: 1, slope: 0 },
+  radioSilence: { base: 3, slope: 0.2 },
+  coldSteel: { base: 2, slope: 0.15 },
+  cleanHands: { base: 1, slope: 0.2 },
 }
 
 // A condition's risk at a difficulty, clamped to the 1–5 scale. Unknown ids
