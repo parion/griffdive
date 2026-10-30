@@ -69,7 +69,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // before it is sworn.
   const strip = page.locator('.roll-strip')
   const before = await strip.getAttribute('aria-label')
-  await page.locator('.condition').first().click()
+  await page.locator('.condition:not([disabled])').first().click()
   await expect(page.getByText(/^With /)).toBeVisible()
   expect(await strip.getAttribute('aria-label')).not.toBe(before)
   await page.getByRole('button', { name: /^Swear 1 pact/ }).click()
@@ -111,13 +111,15 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // Every option carries its own d100 roll on the same odds line.
   await expect(page.locator('.loot-card')).toHaveCount(3)
   await expect(page.locator('.roll-pins .pin')).toHaveCount(3)
+  // Armor passives are Brasch exclusives now: the draft never deals one.
+  await expect(page.locator('.loot-grid')).not.toContainText('Armor Passive')
   await page.locator('.loot-card').first().click()
   await page.getByRole('button', { name: /^Bank / }).click()
   // With the whole squad banked, the dive regroups between missions: the
   // banked haul, Brasch's shelf inline, and the host's call to drop again.
   await expect(page.getByRole('heading', { name: 'Regroup' })).toBeVisible()
   await expect(page.getByRole('article', { name: 'Your haul' }).locator('img')).toBeVisible()
-  await expect(page.locator('.mc .bb-card')).toHaveCount(4)
+  await expect(page.locator('.mc .bb-card')).toHaveCount(3)
 
   // Brasch's Bargains stays shut until the first operation is complete; the
   // shelf is only a tease, and credits keep banking toward the first buy.
@@ -135,7 +137,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.locator('.directive-card .dc-actions')).toBeVisible()
   await page.locator('.directive-card').getByRole('button', { name: 'Skip' }).click()
   await page.getByRole('button', { name: 'Deal the pacts' }).click()
-  await page.locator('.condition').first().click()
+  await page.locator('.condition:not([disabled])').first().click()
   await page.getByRole('button', { name: /^Swear 1 pact/ }).click()
   await page.getByRole('button', { name: 'Extracted' }).click()
 
@@ -156,13 +158,17 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('heading', { name: 'The squad climbs' })).toBeVisible()
   // The climb regroups too: the operation's last haul and a last call at Brasch.
   await expect(page.getByRole('article', { name: 'Your haul' }).locator('img')).toBeVisible()
-  await expect(page.locator('.cleared .bb-card')).toHaveCount(4)
+  await expect(page.locator('.cleared .bb-card')).toHaveCount(3)
   // The operation is complete, so the shop opens: one slot each for primary,
-  // secondary, throwable and armor passive at Medium.
+  // secondary and throwable at Medium, plus the Armor Pack side stock.
   await expect(page.locator('.cleared .bb-closed')).toHaveCount(0)
+  await expect(page.locator('.cleared .bb-pack')).toContainText('Armor Pack')
+  await expect(page.locator('.cleared .bb-side')).toContainText('One pack per operation')
   await side.getByRole('button', { name: /^Brasch's Bargains, \d+ credits/ }).click()
   const bargains = side.getByRole('region', { name: 'Brasch\'s Bargains' })
-  await expect(bargains.locator('.bb-card')).toHaveCount(4)
+  await expect(bargains.locator('.bb-card')).toHaveCount(3)
+  await expect(bargains.locator('.bb-pack')).toBeVisible()
+  await expect(bargains.locator('.bb-pack-btn')).toBeDisabled()
   await side.getByRole('button', { name: /^Hide/ }).click()
   await expect(bargains).toBeHidden()
   await page.getByRole('button', { name: /Start operation 2/ }).click()
@@ -291,7 +297,7 @@ test('a failed mission labels the operation failed and removes an earned item', 
   await lockMisfortune(page)
   await page.locator('.strain-card').getByRole('button', { name: 'Skip' }).click()
   await page.getByRole('button', { name: 'Deal the pacts' }).click()
-  await page.locator('.condition').first().click()
+  await page.locator('.condition:not([disabled])').first().click()
   await page.getByRole('button', { name: /^Swear 1 pact/ }).click()
 
   // Failure only takes earned gear, so clear mission 1 and bank a reward first.

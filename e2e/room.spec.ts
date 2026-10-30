@@ -150,7 +150,7 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   await expect(pageB.getByText('You were removed from this dive by the host.')).toBeVisible()
 
   // …and the dive no longer waits on them: the host locks pacts alone.
-  await pageA.locator('.condition').first().click()
+  await pageA.locator('.condition:not([disabled])').first().click()
   await pageA.getByRole('button', { name: /^Swear 1 pact/ }).click()
   await expect(pageA.getByRole('heading', { name: 'Hold the line' })).toBeVisible()
 

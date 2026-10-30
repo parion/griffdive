@@ -379,10 +379,17 @@ function rerollRewards(): void {
   dispatch({ type: 'REROLL_REWARDS', playerId: diver.id, seed })
 }
 
-// Brasch's Bargains: one shelf item per operation, paid in credits (self-service).
+// Brasch's Bargains: one shelf item per mission, paid in credits (self-service).
 function buyItem(itemId: string): void {
   if (selfId.value) {
     dispatch({ type: 'BUY_ITEM', playerId: selfId.value, itemId })
+  }
+}
+
+// The Armor Pack is side stock: one per operation, paid from the same purse.
+function openPack(): void {
+  if (selfId.value) {
+    dispatch({ type: 'BUY_ARMOR_PACK', playerId: selfId.value })
   }
 }
 
@@ -734,6 +741,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @award-bonus="awardBonus"
       @advance="advance"
       @buy="buyItem"
+      @open-pack="openPack"
       @forfeit="forfeit"
       @kick="kick"
       @transfer-host="transferHost"
@@ -856,6 +864,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
               :can-control="canControl"
               @start="advance"
               @buy="buyItem"
+              @open-pack="openPack"
             />
             <MissionCleared
               v-else-if="squadBanked"
@@ -866,6 +875,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
               :op-length="opLength"
               @advance="advance"
               @buy="buyItem"
+              @open-pack="openPack"
             />
             <DivePhaseRewards
               v-else
@@ -905,6 +915,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
           :preview-pact-ids="pactPreviewIds"
           :field-kit="fieldKit"
           @buy="buyItem"
+          @open-pack="openPack"
         />
       </template>
 

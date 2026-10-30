@@ -331,8 +331,8 @@ export const SAMPLE_CREDITS: Readonly<Record<'common' | 'rare' | 'super', number
 export const TIME_HAUL_FLOOR = 0.5
 
 // Brasch's Bargains prices: tier first, then type. Tier dominates (a C primary
-// is far cheaper than an S passive); the type multiplier is how a primary
-// out-prices an armor passive. The curve is steep through C/B/A (~2.8x per tier)
+// is far cheaper than an S stratagem); the type multiplier is how a primary
+// out-prices a stratagem. The curve is steep through C/B/A (~2.8x per tier)
 // and flattens into S so the top stays in reach: C and B are a mission or two's
 // haul, A is a short save, and S, which only
 // stocks from difficulty 8, lands about once per 6-7 missions for a squad
@@ -347,7 +347,6 @@ export const CREDIT_PRICE_TIER: Readonly<Record<'c' | 'b' | 'a' | 's', number>> 
 
 export const CREDIT_PRICE_TYPE: Readonly<Record<string, number>> = {
   primary: 1.25,
-  armorPassive: 0.75,
 }
 
 export const CREDIT_PRICE_TYPE_DEFAULT = 1
@@ -356,7 +355,7 @@ export const CREDIT_PRICE_TYPE_DEFAULT = 1
 // Difficulties whose missions can award more than BARGAIN_BASE_STARS stars add
 // one random stratagem slot per extra star (4 stars → one, 5 → two). Stock
 // spans the difficulty's base tier up to BARGAIN_TIER_REACH tiers above it.
-export const BARGAIN_SLOTS = ['primary', 'secondary', 'throwable', 'armorPassive'] as const
+export const BARGAIN_SLOTS = ['primary', 'secondary', 'throwable'] as const
 export const BARGAIN_BASE_STARS = 3
 export const BARGAIN_TIER_REACH = 1
 
@@ -366,6 +365,65 @@ export function bargainStratagemSlotsFor(difficulty: number): number {
 
 // Stream salt 5 off the mission's bargain seed.
 export const BARGAIN_STREAM = 5
+
+// Brasch's Armor Pack: three armor passives sold on the side of the shelf,
+// one pack per operation. The pack is the only way to earn new passives —
+// they never enter reward drafts, Liberty's Cross, or Field Promotions — so
+// its odds are tuned to make the S passives a genuine chase: one hit card is
+// guaranteed at the band's floor, the other two fill the same band, and a
+// single S roll (never more than one S per pack) sits on top. The pool is
+// finite and duplicate-free, so the pack naturally gets humbler as a diver
+// completes their warbond passives.
+export interface ArmorPackTierWeight {
+  tier: Tier
+  weight: number
+}
+
+export type ArmorPackBand = 'C' | 'B' | 'A'
+
+export interface ArmorPackOdds {
+  // The two ordinary cards.
+  standard: readonly ArmorPackTierWeight[]
+  // The guaranteed hit card; its lowest tier is the pack's floor.
+  hit: readonly ArmorPackTierWeight[]
+  // One roll per pack, applied to the hit card. Zero when no S passive is
+  // left in the diver's pool (the selector reads the live pool).
+  sChance: number
+}
+
+export const ARMOR_PACK_SIZE = 3
+export const ARMOR_PACK_STREAM = 7
+export const ARMOR_PACK_PRICES: Readonly<Record<ArmorPackBand, number>> = {
+  C: 160,
+  B: 240,
+  A: 360,
+}
+
+export const ARMOR_PACK_ODDS: Readonly<Record<ArmorPackBand, ArmorPackOdds>> = {
+  C: {
+    standard: [{ tier: 'c', weight: 30 }, { tier: 'b', weight: 50 }, { tier: 'a', weight: 20 }],
+    hit: [{ tier: 'b', weight: 70 }, { tier: 'a', weight: 30 }],
+    sChance: 0.01,
+  },
+  B: {
+    standard: [{ tier: 'b', weight: 45 }, { tier: 'a', weight: 55 }],
+    hit: [{ tier: 'b', weight: 30 }, { tier: 'a', weight: 70 }],
+    sChance: 0.04,
+  },
+  A: {
+    standard: [{ tier: 'a', weight: 100 }],
+    hit: [{ tier: 'a', weight: 100 }],
+    sChance: 0.08,
+  },
+}
+
+export function armorPackBandFor(difficulty: number): ArmorPackBand {
+  return baseTierFor(difficulty) as ArmorPackBand
+}
+
+export function armorPackPrice(difficulty: number): number {
+  return ARMOR_PACK_PRICES[armorPackBandFor(difficulty)]
+}
 
 // A failed mission's forfeit offer: a seeded handful of the diver's own items
 // (one per star the difficulty can award) to choose the one they lose, capped

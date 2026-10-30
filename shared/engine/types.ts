@@ -106,6 +106,15 @@ export interface DiverState {
   away: boolean
 }
 
+// The one Armor Pack a diver opened this operation. The seed is the derivation
+// that dealt it (for audit and a replayed reveal); the item ids are what it
+// dealt. Stored, not re-derived: the pack is a purchase, and its pull must
+// never reshuffle under the diver.
+export interface ArmorPackDeal {
+  seed: number
+  itemIds: string[]
+}
+
 // What a diver's Brasch's Bargains shelf was dealt against. Frozen for the
 // mission so a draft pick or a ban never reshuffles the shelf.
 export interface BargainDeal {
@@ -115,6 +124,9 @@ export interface BargainDeal {
   boughtItemId: string | null
   // Slot kinds bought this operation: not rolled again until the next one.
   boughtKinds: BargainSlotKind[]
+  // The Armor Pack opened this operation, or null. One per operation; re-dealt
+  // (as null) when a new operation begins, kept through a failure restart.
+  pack: ArmorPackDeal | null
 }
 
 export interface WheelResult {
@@ -250,6 +262,7 @@ export type EngineAction
     | { type: 'FORFEIT_ITEM', playerId: string, itemId: string }
     | { type: 'PICK_REWARD', playerId: string, optionId: string, choiceItemId?: string }
     | { type: 'BUY_ITEM', playerId: string, itemId: string }
+    | { type: 'BUY_ARMOR_PACK', playerId: string }
     | { type: 'CLAIM_CATCHUP_OPTION', playerId: string, optionId: string }
     | { type: 'CLAIM_CACHE', playerId: string, cacheOwnerId: string }
     | { type: 'REROLL_REWARDS', playerId: string, seed: number }
