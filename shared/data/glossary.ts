@@ -21,14 +21,14 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
     definition: 'Mission stratagems: Resupply, SOS Beacon, Hellbomb, SEAF Artillery and the objective tools. Reinforce is yellow too, but it keeps its own rules.',
   },
   {
-    id: 'supply',
-    term: 'Blue stratagem',
-    definition: 'Supply stratagems: support weapons, backpacks and vehicles.',
-  },
-  {
     id: 'reinforce',
     term: 'Reinforce',
-    definition: 'The yellow stratagem that drops a fallen diver back in. Only rules that name it touch it; "no stratagems" never does.',
+    definition: 'The yellow stratagem that drops a fallen diver back in. Only rules that name it touch it; a stratagem ban never does.',
+  },
+  {
+    id: 'seaf',
+    term: 'SEAF resources',
+    definition: 'Super Earth forces already on the ground, like the SEAF Artillery. Calling on them never counts as a stratagem call.',
   },
   {
     id: 'resupply',
@@ -141,6 +141,9 @@ export interface RulePart {
   text: string
   // Set on a keyword span: the glossary entry that defines it.
   keyword?: string
+  // Set on a span inside a parenthetical: extra detail the card sets smaller
+  // and lighter, so the headline reads first.
+  aside?: true
 }
 
 export interface ParsedRule {
@@ -154,30 +157,53 @@ export interface ParsedRule {
 // Rule markup: `{shown text}` marks a keyword whose id or term is the text
 // itself; `{shown text|id}` names the entry when the wording differs. An
 // unknown keyword is a data bug, so it throws at load rather than rendering
-// a dead highlight.
+// a dead highlight. Text inside `( )` is flagged as an aside, brackets
+// included, and may hold keywords.
 export function parseRule(markup: string): ParsedRule {
   const parts: RulePart[] = []
   const keywords: string[] = []
+  let inAside = false
+
+  function push(text: string, aside: boolean, keyword?: string): void {
+    if (text === '') {
+      return
+    }
+    parts.push({ text, ...(keyword ? { keyword } : {}), ...(aside ? { aside: true as const } : {}) })
+  }
+
+  function pushPlain(text: string): void {
+    let start = 0
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] === '(' && !inAside) {
+        push(text.slice(start, i), false)
+        inAside = true
+        start = i
+      }
+      else if (text[i] === ')' && inAside) {
+        push(text.slice(start, i + 1), true)
+        inAside = false
+        start = i + 1
+      }
+    }
+    push(text.slice(start), inAside)
+  }
+
   const marker = /\{([^{}|]+)(?:\|([^{}]+))?\}/g
   let cursor = 0
   for (const match of markup.matchAll(marker)) {
     const [whole, shown = '', named] = match
-    if (match.index > cursor) {
-      parts.push({ text: markup.slice(cursor, match.index) })
-    }
+    pushPlain(markup.slice(cursor, match.index))
     const key = (named ?? shown).trim()
     const entry = GLOSSARY_BY_ID.get(key.toLowerCase()) ?? GLOSSARY_BY_TERM.get(key.toLowerCase())
     if (!entry) {
       throw new Error(`Unknown glossary keyword "${key}" in rule: ${markup}`)
     }
-    parts.push({ text: shown, keyword: entry.id })
+    push(shown, inAside, entry.id)
     if (!keywords.includes(entry.id)) {
       keywords.push(entry.id)
     }
     cursor = match.index + whole.length
   }
-  if (cursor < markup.length) {
-    parts.push({ text: markup.slice(cursor) })
-  }
+  pushPlain(markup.slice(cursor))
   return { text: parts.map(part => part.text).join(''), parts, keywords }
 }

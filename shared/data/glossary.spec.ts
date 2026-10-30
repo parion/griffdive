@@ -18,6 +18,20 @@ describe('parseRule', () => {
     expect(() => parseRule('No {flux capacitor}')).toThrow(/flux capacitor/)
   })
 
+  it('flags parenthetical text as an aside, keywords inside it included', () => {
+    const parsed = parseRule('I call no {stratagem} (except {Reinforce}) today')
+    expect(parsed.text).toBe('I call no stratagem (except Reinforce) today')
+    expect(parsed.parts).toEqual([
+      { text: 'I call no ' },
+      { text: 'stratagem', keyword: 'stratagem' },
+      { text: ' ' },
+      { text: '(except ', aside: true },
+      { text: 'Reinforce', keyword: 'reinforce', aside: true },
+      { text: ')', aside: true },
+      { text: ' today' },
+    ])
+  })
+
   it('passes a rule with no markup through untouched', () => {
     expect(parseRule('Plain rule')).toEqual({ text: 'Plain rule', parts: [{ text: 'Plain rule' }], keywords: [] })
   })
@@ -53,10 +67,22 @@ describe('rule wording contracts', () => {
     expect(rule('zeroDeaths')).toMatch(/mission plays on/)
   })
 
-  it('spells out that No Stratagems covers every color but Reinforce', () => {
-    expect(rule('noStratagems')).toMatch(/red, blue, green or yellow/)
-    expect(rule('noStratagems')).toMatch(/Reinforce is the one exception/)
+  it('spells out that Deserted gives one minute and exempts Reinforce and SEAF resources', () => {
+    expect(rule('noStratagems')).toMatch(/first minute/)
+    expect(rule('noStratagems')).toMatch(/Reinforce/)
+    expect(rule('noStratagems')).toMatch(/SEAF resources/)
     expect(rule('noReserves')).toMatch(/reinforced/)
+  })
+
+  it('spells out that Radio Silence covers every color but Reinforce', () => {
+    expect(rule('radioSilence')).toMatch(/red, blue, green or yellow/)
+    expect(rule('radioSilence')).toMatch(/Reinforce excepted/)
+  })
+
+  it('keeps extra detail in a parenthetical aside, never an em dash', () => {
+    for (const condition of CONDITIONS) {
+      expect(condition.rule).not.toContain('—')
+    }
   })
 
   it('keeps the support-weapon rules scoped to support weapons', () => {

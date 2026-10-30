@@ -14,12 +14,11 @@ export const BLOCKED_UNDER_MISFORTUNE: Readonly<Record<string, readonly string[]
   noEagles: ['grounded'],
   noOrbitals: ['shipSilent'],
   fragileLiberty: ['featherweight', 'ironbound'],
-  heavyLiberty: ['featherweight', 'ironbound'],
-  supplyLineCut: ['packLight', 'primaryConcern'],
-  noStims: ['stimAbstinent'],
+  heavyBurden: ['featherweight', 'ironbound'],
+  stimShortage: ['stimAbstinent'],
   primaryOnly: ['primaryConcern', 'loadoutLoyalist'],
   oopsAllAirstrikes: ['packLight', 'thirsty', 'primaryConcern', 'openField', 'radioSilence'],
-  noStratagems: ['packLight', 'thirsty', 'antiTankAbstinent', 'primaryConcern', 'grounded', 'shipSilent', 'openField', 'radioSilence'],
+  noStratagems: ['thirsty'],
   zeroDeaths: ['deadWeight', 'untouchable'],
   noReserves: ['deadWeight'],
   meleeOnly: ['antiTankAbstinent', 'primaryConcern', 'coldSteel'],
@@ -152,7 +151,7 @@ export const PACT_BANS_STRATAGEM: Readonly<Record<string, (item: Item) => boolea
 
 // Misfortunes bind the whole squad, so their bans are absolute — reserve
 // utility is not exempt. Only rules that restrict what can be *equipped* count
-// here; purely behavioral misfortunes (No Stratagems: four slots still equip,
+// here; purely behavioral misfortunes (Deserted: four slots still equip,
 // they just cannot be called) do not remove loadout choices.
 export const MISFORTUNE_BANS_STRATAGEM: Readonly<Record<string, (item: Item) => boolean>> = {
   noBackpacks: isBackpackStratagem,
@@ -160,7 +159,6 @@ export const MISFORTUNE_BANS_STRATAGEM: Readonly<Record<string, (item: Item) => 
   noEagles: item => item.category === 'Eagle',
   noOrbitals: item => item.category === 'Orbital',
   primaryOnly: isSupportWeaponStratagem,
-  supplyLineCut: item => item.category === 'Supply',
 }
 
 export interface StratagemBanSource {
@@ -171,7 +169,7 @@ export interface StratagemBanSource {
 // Why an item cannot be equipped: the accepted misfortune or one of the
 // diver's pacts. Misfortunes bind absolutely (reserve is not exempt); pacts
 // leave reserve utility legal, because HD2 still needs four equipped
-// stratagems to ready up. Purely behavioural rules (No Stratagems, Melee Only)
+// stratagems to ready up. Purely behavioural rules (Deserted, Melee Only)
 // do not remove equip choices and return null.
 export function stratagemBanReason(
   misfortuneId: string | null,

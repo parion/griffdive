@@ -474,12 +474,11 @@ export const CONDITION_RISK: Readonly<Record<string, ConditionRiskCurve>> = {
   oopsAllAirstrikes: { base: 2, slope: 0.2 },
   zeroDeaths: { base: 3, slope: 0.3 },
   noReserves: { base: 2, slope: 0.35 },
-  noStratagems: { base: 3, slope: 0.3 },
+  noStratagems: { base: 2, slope: 0.3 },
   meleeOnly: { base: 2, slope: 0.35 },
   pacifist: { base: 3, slope: 0.3 },
-  heavyLiberty: { base: 1, slope: 0.1 },
-  supplyLineCut: { base: 2, slope: 0.25 },
-  noStims: { base: 3, slope: 0.15 },
+  heavyBurden: { base: 1, slope: 0.1 },
+  stimShortage: { base: 3, slope: 0.15 },
 
   // Personal rules — pacts. Most rise with altitude: losing healing, anti-tank
   // or your life costs more where the enemy hits harder. Dead Weight stays flat

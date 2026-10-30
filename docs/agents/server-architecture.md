@@ -244,7 +244,7 @@ only for a seated or removed seat — never logged, exported or attached to a me
 Canonical engine actions (the reducer union; keep names stable):
 
 `START_DIVE{settings,seed?,majorOrder?}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
-`DEAL_PACTS{}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
+`DEAL_PACTS{}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `HOLD_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `HOLD_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?,samples?}` `FORFEIT_ITEM{playerId,itemId}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `BUY_ITEM{playerId,itemId}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
@@ -253,14 +253,14 @@ Canonical engine actions (the reducer union; keep names stable):
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
-`ACCEPT_STRAIN`, `DEAL_PACTS`, `REROLL_WHEEL`, `REPORT_RESULT`, `FAIL_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
+`ACCEPT_STRAIN`, `DEAL_PACTS`, `REROLL_WHEEL`, `REPORT_RESULT`, `FAIL_MISFORTUNE`, `HOLD_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE`, `SET_AWAY` are
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated
 diver, `unsave-dive` is host-only; the Steam lobby link is likewise outside the union and
 host-only (`set-steam`, blank clears).
-`FAIL_PACT` is sent by the target diver or the host (server refuses everyone else); `FAIL_MISFORTUNE`
-is host-only, since the directive binds the whole squad. Host disconnect →
+`FAIL_PACT` and `HOLD_PACT` are sent by the target diver or the host (server refuses everyone else; the debrief lets the host settle any diver's stats pact);
+`FAIL_MISFORTUNE` and `HOLD_MISFORTUNE` are host-only, since the directive binds the whole squad. Host disconnect →
 `TRANSFER_HOST` to the earliest joiner still connected; none left → room hibernates in storage
 with a TTL, and the first diver back takes the host role once the host is marked away. A host who
 is offline but not yet away (a restart dropped everyone at once) keeps the crown through the away

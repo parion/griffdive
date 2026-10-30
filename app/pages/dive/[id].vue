@@ -2,10 +2,10 @@
 import { useIntervalFn } from '@vueuse/core'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { createSaveDoc } from '~~/shared/engine/saves'
-import { allDiversPicked, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending } from '~~/shared/engine/selectors'
+import { allDiversPicked, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending, squadInventories } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
-import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionOutcome, MissionReport } from '~~/shared/engine/types'
+import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
 import { rememberDiverName, storeSeat } from '~/composables/useGameSocket'
 
 const route = useRoute()
@@ -302,7 +302,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   let seed = session.newSeed()
   for (let attempt = 0; attempt < 32; attempt++) {
     const same = wheel === 'misfortune'
-      ? deriveMisfortune(seed).id === current.wheel.misfortuneId
+      ? deriveMisfortune(seed, squadInventories(current)).id === current.wheel.misfortuneId
       : wheel === 'front'
         ? deriveFront(seed, majorOrderFronts(current)) === current.frontId
         : deriveStrain(seed, current.difficulty, current.frontId!)?.id === current.strainId
@@ -337,6 +337,15 @@ function lockPacts(pactIds: string[]): void {
 // host refereeing the squad.
 function failPact(playerId: string, pactId: string): void {
   dispatch({ type: 'FAIL_PACT', playerId, pactId })
+}
+
+// The stats check before the draft: held or broke, once the stats screen is up.
+function holdPact(playerId: string, pactId: string): void {
+  dispatch({ type: 'HOLD_PACT', playerId, pactId })
+}
+
+function holdDirective(): void {
+  dispatch({ type: 'HOLD_MISFORTUNE' })
 }
 
 // The host referees the squad's team directive: mark it broken in the field and
@@ -386,13 +395,9 @@ function buyItem(itemId: string): void {
   }
 }
 
-function spinBonus(payload?: { stars: number, outcome: MissionOutcome }): void {
-  dispatch({
-    type: 'SPIN_BONUS',
-    seed: session.newSeed(),
-    stars: payload?.stars,
-    outcome: payload?.outcome,
-  })
+// The debrief rolls Squad Honors a beat after it opens; the seed is what syncs.
+function spinBonus(): void {
+  dispatch({ type: 'SPIN_BONUS', seed: session.newSeed() })
 }
 
 function awardBonus(playerIds: string[]): void {
@@ -728,6 +733,8 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @report="report"
       @fail-pact="failPact"
       @fail-directive="failDirective"
+      @hold-pact="holdPact"
+      @hold-directive="holdDirective"
       @pick="pick"
       @reroll-rewards="rerollRewards"
       @spin-bonus="spinBonus"
@@ -840,7 +847,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
             @fail="failPact"
             @fail-directive="failDirective"
             @reporting="reporting = $event"
-            @spin-bonus="spinBonus"
           />
 
           <Transition
@@ -877,6 +883,12 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
               @pick="pick"
               @reroll="rerollRewards"
               @advance="advance"
+              @hold-pact="holdPact"
+              @fail-pact="failPact"
+              @hold-directive="holdDirective"
+              @fail-directive="failDirective"
+              @spin-bonus="spinBonus"
+              @award-bonus="awardBonus"
             />
           </Transition>
 
@@ -935,7 +947,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
             @kick="kick"
             @copy-invite="copyInvite"
             @open-steam="openSteam"
-            @award-bonus="awardBonus"
           />
         </div>
       </template>

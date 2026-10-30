@@ -4,7 +4,7 @@
     {
       "mission": 0,
       "seed": 1786503607,
-      "misfortuneId": "noOrbitals",
+      "misfortuneId": "fragileLiberty",
       "misfortuneAccepted": false,
       "front": "automatons",
       "strainId": "jetBrigade",
@@ -35,21 +35,21 @@
       "mission": 2,
       "seed": 1013904226,
       "misfortuneId": "noStratagems",
-      "misfortuneAccepted": true,
+      "misfortuneAccepted": false,
       "front": "terminids",
       "strainId": "predatorStrain",
       "strainAccepted": true,
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "gsh39shield",
+      "optionId": "firebombhellpods",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
       "mission": 3,
       "seed": 3668339987,
-      "misfortuneId": "primaryOnly",
+      "misfortuneId": "noOrbitals",
       "misfortuneAccepted": false,
       "front": "terminids",
       "strainId": "predatorStrain",
@@ -61,7 +61,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "gsh39shield"
+      "forfeitedItemId": "advancedfiltration"
     },
     {
       "mission": 4,
@@ -96,7 +96,7 @@
     {
       "mission": 6,
       "seed": 3041712678,
-      "misfortuneId": "noOrbitals",
+      "misfortuneId": "fragileLiberty",
       "misfortuneAccepted": false,
       "front": "terminids",
       "strainId": "predatorStrain",
@@ -111,7 +111,7 @@
     {
       "mission": 7,
       "seed": 1401181143,
-      "misfortuneId": "heavyLiberty",
+      "misfortuneId": "heavyBurden",
       "misfortuneAccepted": false,
       "front": "terminids",
       "strainId": "predatorStrain",
@@ -126,8 +126,8 @@
     {
       "mission": 8,
       "seed": 4055616904,
-      "misfortuneId": "supplyLineCut",
-      "misfortuneAccepted": true,
+      "misfortuneId": "heavyBurden",
+      "misfortuneAccepted": false,
       "front": "terminids",
       "strainId": "predatorStrain",
       "strainAccepted": true,
@@ -136,7 +136,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "electricalconduit"
+      "forfeitedItemId": "firebombhellpods"
     },
     {
       "mission": 9,
@@ -156,7 +156,7 @@
     {
       "mission": 10,
       "seed": 774553834,
-      "misfortuneId": "noOrbitals",
+      "misfortuneId": "fragileLiberty",
       "misfortuneAccepted": false,
       "front": "terminids",
       "strainId": "predatorStrain",
@@ -171,7 +171,7 @@
     {
       "mission": 11,
       "seed": 3428989595,
-      "misfortuneId": "noReserves",
+      "misfortuneId": "zeroDeaths",
       "misfortuneAccepted": true,
       "front": "terminids",
       "strainId": "predatorStrain",
@@ -179,14 +179,14 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "md17antitankmines",
+      "optionId": "alas98lasersentry",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
       "mission": 12,
       "seed": 1788458060,
-      "misfortuneId": "noReserves",
+      "misfortuneId": "zeroDeaths",
       "misfortuneAccepted": true,
       "front": "illuminate",
       "strainId": "mindlessMasses",
@@ -211,12 +211,12 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "ma5cassaultrifle"
+      "forfeitedItemId": "alas98lasersentry"
     },
     {
       "mission": 14,
       "seed": 2802362286,
-      "misfortuneId": "noOrbitals",
+      "misfortuneId": "fragileLiberty",
       "misfortuneAccepted": false,
       "front": "illuminate",
       "strainId": "mindlessMasses",
@@ -325,8 +325,8 @@
     {
       "mission": 21,
       "seed": 4203543429,
-      "misfortuneId": "supplyLineCut",
-      "misfortuneAccepted": true,
+      "misfortuneId": "heavyBurden",
+      "misfortuneAccepted": false,
       "front": "illuminate",
       "strainId": "mindlessMasses",
       "strainAccepted": false,
@@ -335,14 +335,14 @@
       ],
       "outcome": "success",
       "stars": 4,
-      "optionId": "apw1antimaterielrifle",
+      "optionId": "inflammable",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
       "mission": 22,
       "seed": 2563011894,
-      "misfortuneId": "zeroDeaths",
+      "misfortuneId": "oopsAllAirstrikes",
       "misfortuneAccepted": true,
       "front": "terminids",
       "strainId": "ruptureStrain",
@@ -367,7 +367,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "sg20halt"
+      "forfeitedItemId": "p4senator"
     },
     {
       "mission": 24,
@@ -387,22 +387,22 @@
     {
       "mission": 25,
       "seed": 1936384585,
-      "misfortuneId": "heavyLiberty",
-      "misfortuneAccepted": false,
+      "misfortuneId": "pacifist",
+      "misfortuneAccepted": true,
       "front": "terminids",
       "strainId": "ruptureStrain",
       "strainAccepted": true,
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "ac8autocannon",
+      "optionId": "m1000maxigun",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
       "mission": 26,
       "seed": 295853050,
-      "misfortuneId": "noStratagems",
+      "misfortuneId": "noReserves",
       "misfortuneAccepted": true,
       "front": "terminids",
       "strainId": "ruptureStrain",
@@ -410,7 +410,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "r72censor",
+      "optionId": "las16sickle",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -434,7 +434,7 @@
     {
       "mission": 28,
       "seed": 1309757276,
-      "misfortuneId": "noStims",
+      "misfortuneId": "stimShortage",
       "misfortuneAccepted": true,
       "front": "illuminate",
       "strainId": "mindlessMasses",
@@ -444,7 +444,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "ac8autocannon"
+      "forfeitedItemId": "las16sickle"
     },
     {
       "mission": 29,
@@ -494,7 +494,7 @@
     {
       "mission": 32,
       "seed": 3337565728,
-      "misfortuneId": "noReserves",
+      "misfortuneId": "zeroDeaths",
       "misfortuneAccepted": true,
       "front": "terminids",
       "strainId": "ruptureStrain",
@@ -511,7 +511,7 @@
     {
       "mission": 33,
       "seed": 1697034193,
-      "misfortuneId": "noStims",
+      "misfortuneId": "stimShortage",
       "misfortuneAccepted": true,
       "front": "terminids",
       "strainId": "ruptureStrain",
@@ -521,7 +521,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "orbital380mmhebarrage"
+      "forfeitedItemId": "m1000maxigun"
     },
     {
       "mission": 34,
@@ -556,8 +556,8 @@
     {
       "mission": 36,
       "seed": 1070406884,
-      "misfortuneId": "noEagles",
-      "misfortuneAccepted": false,
+      "misfortuneId": "noResupplies",
+      "misfortuneAccepted": true,
       "front": "terminids",
       "strainId": "ruptureStrain",
       "strainAccepted": true,
@@ -581,9 +581,13 @@
     "missionInOperation": 3,
     "rerollTokens": 1,
     "completedCombos": [
+      "fragileLiberty:automatons:jetBrigade",
       "fragileLiberty:illuminate:mindlessMasses",
-      "heavyLiberty:terminids:predatorStrain",
-      "heavyLiberty:terminids:ruptureStrain",
+      "fragileLiberty:illuminate:mindlessMasses",
+      "fragileLiberty:terminids:predatorStrain",
+      "fragileLiberty:terminids:predatorStrain",
+      "heavyBurden:illuminate:mindlessMasses",
+      "heavyBurden:terminids:predatorStrain",
       "noBackpacks:illuminate:mindlessMasses",
       "noBackpacks:terminids:predatorStrain",
       "noBackpacks:terminids:ruptureStrain",
@@ -591,33 +595,27 @@
       "noBoosters:illuminate:mindlessMasses",
       "noBoosters:illuminate:mindlessMasses",
       "noBoosters:terminids:ruptureStrain",
-      "noEagles:terminids:ruptureStrain",
-      "noOrbitals:automatons:jetBrigade",
-      "noOrbitals:illuminate:mindlessMasses",
-      "noOrbitals:terminids:predatorStrain",
-      "noOrbitals:terminids:predatorStrain",
       "noReserves:illuminate:mindlessMasses",
       "noReserves:illuminate:mindlessMasses",
-      "noReserves:illuminate:mindlessMasses",
-      "noReserves:terminids:predatorStrain",
       "noReserves:terminids:predatorStrain",
       "noReserves:terminids:ruptureStrain",
       "noReserves:terminids:ruptureStrain",
       "noResupplies:illuminate:mindlessMasses",
+      "noResupplies:terminids:ruptureStrain",
       "noStratagems:terminids:predatorStrain",
-      "noStratagems:terminids:ruptureStrain",
       "oopsAllAirstrikes:illuminate:mindlessMasses",
+      "oopsAllAirstrikes:terminids:ruptureStrain",
+      "pacifist:terminids:ruptureStrain",
       "primaryOnly:terminids:predatorStrain",
-      "supplyLineCut:illuminate:mindlessMasses",
       "zeroDeaths:illuminate:mindlessMasses",
+      "zeroDeaths:illuminate:mindlessMasses",
+      "zeroDeaths:terminids:predatorStrain",
       "zeroDeaths:terminids:ruptureStrain"
     ],
     "personalInventory": [
-      "advancedfiltration",
       "agm17gasmortarsentry",
       "am23emsmortarsentry",
       "amls4xrocketsentry",
-      "apw1antimaterielrifle",
       "axar23guarddog",
       "bflam80cremator",
       "cb9explodingcrossbow",
@@ -631,6 +629,7 @@
       "cqc9defoliationtool",
       "eagle110mmrocketpods",
       "eaglesmokestrike",
+      "electricalconduit",
       "experimentalinfusion",
       "extrapadding",
       "faf14spear",
@@ -639,19 +638,20 @@
       "g3smokegrenade",
       "g89smokescreen",
       "gr8recoillessrifle",
+      "inflammable",
       "k2throwingknife",
       "las44nova",
       "las7dagger",
       "m102gunnerfrv",
-      "md17antitankmines",
+      "ma5cassaultrifle",
       "orbital120mmhebarrage",
+      "orbital380mmhebarrage",
       "orbitalemsstrike",
       "orbitalsmokestrike",
       "p2peacemaker",
-      "p4senator",
       "r2124constitution",
       "r4hyena",
-      "r72censor",
+      "sg20halt",
       "sh51directionalshield",
       "tx41sterilizer"
     ],

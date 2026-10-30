@@ -69,7 +69,14 @@ set; extracted references are git-ignored and presentation-only. Nothing here to
   panel (`ConditionKeyword`, a Reka `Popover` anchored to the word — gold left edge, term over
   definition) and the gesture is swallowed so a word inside a selectable card never selects it.
   Outside tap or Esc closes it. Never add an always-visible definition list: newcomers pull the
-  help, veterans never see it (the Hades boon-screen lesson).
+  help, veterans never see it (the Hades boon-screen lesson). A rule's parenthetical detail is an
+  **aside** (`RulePart.aside`): smaller, `--dim` and italic, so the headline reads first. Rules
+  use brackets for extra detail, never an em dash.
+- **Debrief**: the first screen of the rewards phase (`MissionDebrief`) reuses the regroup's
+  language: the secured-drops track (`MissionTrack`, shared with `MissionCleared`), a report panel and a
+  Stats check panel with the Squad Honors reel as its last row. The reel is built for a flex *row*
+  (`flex: 1 1 340px`), so in a column it must sit in a plain block slot or it turns 340px tall.
+  Never name a local class `.rule` — `main.css` owns it.
 - **Banners**: every standing message — an error, a removal, a blocked join, a locked shop, a
   server restart — is one `AppBanner` (`app/components/app/AppBanner.vue`), never a hand-rolled
   strip. One shape: a square tone glyph (`i` teal **info**, `!` orange **warn**, `×` red **error**,

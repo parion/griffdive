@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { dismissWarbondIntro } from './helpers'
+import { dismissWarbondIntro, settleDebrief } from './helpers'
 
 const VIEWPORT = { width: 390, height: 844 }
 
@@ -70,8 +70,9 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
   await expect(page.getByRole('heading', { name: 'Mission report' })).toBeVisible()
   await expectPinnedBar(page, '7-report')
 
-  // Filing rolls the honors reel first, then brings in the rewards screen.
+  // Filing brings in the debrief, which settles the stats check and honors before the draft.
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'File report' }).click()
+  await settleDebrief(page)
 
   await expect(page.locator('.phone-loot .loot-card').first()).toBeVisible()
   await expectPinnedBar(page, '8-draft')
@@ -112,6 +113,7 @@ test('phone: a failed mission lands on the pinned remove bar', async ({ browser 
   // Failure only takes earned gear, so clear mission 1 and bank a reward first.
   await primary.getByRole('button', { name: 'Extracted' }).click()
   await primary.getByRole('button', { name: 'File report' }).click()
+  await settleDebrief(page)
   await page.locator('.phone-loot .loot-card').first().click()
   await primary.getByRole('button', { name: /^Bank / }).click()
   await primary.getByRole('button', { name: /Next mission/ }).click()

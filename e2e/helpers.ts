@@ -76,3 +76,37 @@ export async function expectJoinerLanded(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'You hold the wheel.' })).toBeHidden()
   await expect(page.getByRole('dialog', { name: 'Warbonds' })).toBeHidden()
 }
+
+// After a report the draft opens behind the debrief: the stats check and Squad
+// Honors. An honest squad attests every rule held; the host's page also names an
+// honors winner once the reel lands (it rolls by itself a beat after the screen
+// opens). Settle the host's page first so a joiner's draft can unlock.
+export async function settleDebrief(page: Page): Promise<void> {
+  const debrief = page.locator('.debrief')
+  const draft = page.locator('.loot-card').first()
+  await expect(debrief.or(draft).first()).toBeVisible()
+  if (!(await debrief.isVisible())) {
+    return
+  }
+  const open = page.getByRole('button', { name: 'Open the draft' })
+  for (let step = 0; step < 100; step++) {
+    if (await open.isVisible().catch(() => false)) {
+      await open.click()
+      await expect(debrief).toBeHidden()
+      return
+    }
+    const held = debrief.locator('.stat-rule-act .held').first()
+    if (await held.isVisible().catch(() => false)) {
+      await held.click()
+    }
+    else {
+      const winner = debrief.getByRole('button', { name: /^Award Squad Honors token to / }).first()
+      if (await winner.isVisible().catch(() => false)) {
+        await winner.click()
+        await debrief.getByRole('button', { name: 'Award', exact: true }).click()
+      }
+    }
+    await page.waitForTimeout(150)
+  }
+  // A joiner still waiting on the host: leave the debrief up for the caller.
+}

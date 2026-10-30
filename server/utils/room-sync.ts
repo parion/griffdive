@@ -814,10 +814,14 @@ export async function processAction(
       sendError(peer, 'not-host', 'Only the host can do that')
       return
     }
-    // FAIL_PACT is neither host-only nor self-service: the diver owns their
-    // pact, but the host referees the squad — so sender = target or host.
-    if (action.type === 'FAIL_PACT' && action.playerId !== playerId && room.state.hostId !== playerId) {
-      sendError(peer, 'bad-action', 'Only the diver or the host can mark a pact failed')
+    // FAIL_PACT and HOLD_PACT are neither host-only nor self-service: the diver
+    // owns their pact, but the host referees the squad — so sender = target or host.
+    if (
+      (action.type === 'FAIL_PACT' || action.type === 'HOLD_PACT')
+      && action.playerId !== playerId
+      && room.state.hostId !== playerId
+    ) {
+      sendError(peer, 'bad-action', 'Only the diver or the host can settle a pact')
       return
     }
 

@@ -55,6 +55,9 @@ export interface DiverState {
   // Pacts broken in the field and marked failed: their risk is voided and
   // each costs a reward option. Reset with the pacts every mission.
   failedPactIds: string[]
+  // Stats-verified pacts the diver attested held at the debrief, before the
+  // draft. One-way, like a failed mark; reset with the pacts every mission.
+  heldPactIds: string[]
   pickedOptionId: string | null
   // The item this diver chose to lose from their forfeit offer after a failed
   // mission. Held until every diver owing one has chosen, then all are removed
@@ -196,6 +199,8 @@ export interface DiveState {
   // host while diving: its shared risk is voided for the whole squad and every
   // diver forfeits one reward option. Reset with the pacts every mission.
   misfortuneFailed: boolean
+  // A stats-verified directive the host attested held at the debrief.
+  misfortuneHeld: boolean
   // The strain is a subfaction rolled with the front and persisting with it.
   // It is optional: the squad accepts or declines it on the operation's first
   // mission (phase 'strain'), and an accepted strain adds its team risk to
@@ -244,7 +249,9 @@ export type EngineAction
     | { type: 'REROLL_WHEEL', wheel: 'misfortune' | 'front' | 'strain', seed: number }
     | { type: 'SET_PACTS', playerId: string, pactIds: string[] }
     | { type: 'FAIL_PACT', playerId: string, pactId: string }
+    | { type: 'HOLD_PACT', playerId: string, pactId: string }
     | { type: 'FAIL_MISFORTUNE' }
+    | { type: 'HOLD_MISFORTUNE' }
     | { type: 'SET_WARBONDS', playerId: string, warbondCodes: string[] }
     | { type: 'REPORT_RESULT', outcome: MissionOutcome, stars: number, timePct?: number, samples?: SampleCounts }
     | { type: 'FORFEIT_ITEM', playerId: string, itemId: string }

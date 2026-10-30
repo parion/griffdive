@@ -32,13 +32,14 @@ restart keeps it. Every mission begins with a fresh misfortune draw. Per mission
 4. **Dive** — play the mission in Helldivers 2. Success = main objectives complete **and** the squad
    extracts. Objectives complete + squad wipe = failure (extraction rule).
 5. **Report** — squad records outcome: success (stars 1–max, optional time %) or failure (no stars,
-   no reward draft — each diver faces a forfeit offer instead). On a full-star clear the report
-   window also rolls **bonus honors** as the report files — a random end-screen stat the host resolves to a winner, who
-   banks a reward token (see Reward tokens & squad honors).
+   no reward draft — each diver faces a forfeit offer instead). A success lands on the
+   **Debrief** (see Debrief — stats check & squad honors): the mission-secured recap, the rules only
+   HD2's stats screen can prove, and — on a full-star clear — **bonus honors**, rolled there by
+   themselves (see Reward tokens & squad honors).
 6. **Rewards** (success only) — the host files the report (stars + time + the samples the squad
    extracted), which banks a credit haul into every diver's purse. Each diver is then dealt N
    options; **every option rolls its own d100 tier** on the same Valor odds line, and the diver
-   picks one. All rewards go to the diver's personal inventory — stratagems included. Armor
+   picks one — once any stats-verified rule is settled (see Debrief). All rewards go to the diver's personal inventory — stratagems included. Armor
    rewards are **passives**; the catalog has no armor pieces (see inventory model). Credits bank
    into each diver's purse for **Brasch's Bargains**, the shop that restocks every mission (see
    Brasch's Bargains — credits).
@@ -115,8 +116,7 @@ A fixed pack handed to the whole squad overlapped too much to lift anyone, so SE
   support gear, not winnings: it never parks in a legacy cache (`earnedKit` skips `supportKit`) and
   Earned-only views hide it.
 - **Known trade-off:** a rolled pack no longer guarantees four red (Eagle/orbital) stratagems, so
-  *Oops, All Airstrikes* is often unfieldable for a SEAF squad (it needs every diver stocked) — the
-  squad declines or rerolls, as with any unfieldable rule.
+  *Oops, All Airstrikes* stays off the wheel until every diver is stocked (see Wheel eligibility).
 
 ### Team layer — misfortunes / squad directives (Wheel of Adversity)
 
@@ -131,7 +131,7 @@ weighted by squad size — **1× solo, 1.25× duo, 1.5× trio, 1.75× four diver
 divers must hold one rule the harder it is (`TEAM_DIRECTIVE_VALOR_WEIGHTS` / `directiveWeightFor`,
 read from the live roster; the operation-long strain, the live Major Order and the rolled-front
 risk keep their own unweighted fixed values). Once accepted, the host
-may mark it **failed** in the field if the squad breaks the rule (`FAIL_MISFORTUNE`, `diving` phase,
+may mark it **failed** in the field if the squad breaks the rule (`FAIL_MISFORTUNE`, `diving` phase — or the debrief for a stats-verified directive,
 host-only): the shared risk is voided for every diver and each forfeits one reward option — see
 Failed directives. A reroll redraws and resets the decision (returning the squad to the `decision`
 phase, before the deal). A squad-binding rule must be
@@ -143,25 +143,34 @@ Starter catalog (ids and shape are the contract; the per-difficulty values are t
 `CONDITION_RISK` in `shared/engine/config.ts`). "Risk d3→10" is the value at the floor and the
 top of the ladder:
 
-| Misfortune | Rule | Risk d3→10 | Accountable via |
+| Directive (id) | Rule | Risk d3→10 | Accountable via |
 | --- | --- | --- | --- |
-| No Backpacks | No backpack stratagems | 1 → 1 | loadout |
-| No Sentries | No sentry stratagems, the EMS Mortar Sentry included | 1 → 1 | loadout |
-| No Boosters | No boosters equipped | 1 → 1 | loadout |
-| No Resupplies | Nobody calls a resupply | 1 → 3 | field |
-| No Eagles | No Eagle stratagems, the Eagle Smoke Strike included | 1 → 2 | loadout |
-| Fragile Liberty | Everyone wears light armor | 1 → 2 | loadout |
-| Heavy Liberty | Everyone wears heavy armor | 1 → 2 | loadout |
-| No Orbitals | No orbital stratagems, EMS and Smoke Strikes included | 1 → 2 | loadout |
-| Primary Only | No support weapons, no pickups or swaps — secondaries and every other stratagem stay legal | 2 → 3 | field |
-| Oops, All Airstrikes | Equip Eagle and orbital ("red") stratagems only — yellow calls like Resupply stay open | 2 → 3 | loadout |
-| Supply Line Cut | No blue (supply) stratagems: no support weapons, backpacks or vehicles | 2 → 4 | loadout |
-| Zero Deaths | Any diver death **fails the directive**, not the mission — the mission plays on | 3 → 5 | field |
-| No Reserves | No Reinforce calls — a fallen diver stays down; every other stratagem stays legal | 2 → 4 | field |
-| No Stratagems | Nobody calls a stratagem of any color — red, blue, green or **yellow** (Resupply, SOS Beacon, Hellbomb…). **Reinforce is the one exception** (No Reserves owns it) | 3 → 5 | loadout |
-| Melee Only | Kill with melee only — no guns, grenades or offensive stratagems | 2 → 4 | field |
-| Pacifist | No diver scores a kill (stratagem kills count to the caller) | 3 → 5 | stats |
-| No Stims | Nobody uses a stim | 3 → 4 | stats |
+| Bare Backs (`noBackpacks`) | No backpack stratagems | 1 → 1 | loadout |
+| Stand Down (`noSentries`) | No sentry stratagems (the EMS Mortar Sentry included) | 1 → 1 | loadout |
+| Clean Living (`noBoosters`) | No boosters equipped | 1 → 1 | loadout |
+| Ration Cut (`noResupplies`) | Nobody calls a resupply | 1 → 3 | field |
+| Hangar Fire (`noEagles`) | No Eagle stratagems (the Eagle Smoke Strike included) | 1 → 2 | loadout |
+| Fragile Liberty (`fragileLiberty`) | Everyone wears light armor | 1 → 2 | loadout |
+| Heavy Burden (`heavyBurden`) | Everyone wears heavy armor | 1 → 2 | loadout |
+| Orbital Blackout (`noOrbitals`) | No orbital stratagems (EMS and Smoke Strikes included) | 1 → 2 | loadout |
+| Standard Issue (`primaryOnly`) | No support weapons, no pickups or swaps (secondaries and every other stratagem stay legal) | 2 → 3 | field |
+| Oops, All Airstrikes (`oopsAllAirstrikes`) | Equip Eagle and orbital ("red") stratagems only (yellow calls like Resupply stay open). On the wheel only when **every** seated diver can field four | 2 → 3 | loadout |
+| Spotless Record (`zeroDeaths`) | Any diver death **fails the directive**, not the mission (the mission plays on) | 3 → 5 | field |
+| Martyrdom (`noReserves`) | No one is reinforced, so a fallen diver stays down (every other stratagem stays legal) | 2 → 4 | field |
+| Deserted (`noStratagems`) | Stratagems only in the mission's first minute (Reinforce and SEAF resources like Artillery excepted) | 2 → 4 | field |
+| Fix Bayonets (`meleeOnly`) | Kill with melee only (no guns, grenades or offensive stratagems) | 2 → 4 | field |
+| Peacekeepers (`pacifist`) | No diver scores a kill (stratagem kills count to the caller) | 3 → 5 | stats |
+| Stim Shortage (`stimShortage`) | Nobody uses a stim | 3 → 4 | stats |
+
+Rule text carries extra detail in a `( )` aside, which the cards set smaller, lighter and italic so
+the headline reads first (`RulePart.aside`).
+
+**Wheel eligibility.** Every directive is on the wheel at every difficulty, with one gate:
+`eligibleMisfortunes(inventories)` drops a directive that would leave **any** present diver below
+four fieldable stratagems (`hasLegalLoadout`). In practice that is *Oops, All Airstrikes* — it
+returns once every diver owns enough red stratagems — so a draw is never a dead end. The reducer
+(`SPIN_WHEEL`, `REROLL_WHEEL`) and the wheel component both pass `squadInventories(state)`, so the
+drawn segment is the same on every client.
 
 **Condition scaling.** Misfortunes (team) and pacts (personal) are one catalogue, and the only
 knob difficulty turns is **risk**, never eligibility. Each condition carries a `base` (its risk at
@@ -357,19 +366,19 @@ Starter catalog:
 | Pack Light | I bring no backpack stratagem | 1 → 1 | loadout |
 | Thirsty | I call no resupply and take none from others | 1 → 2 | field |
 | Empty Pockets | I equip no booster | 1 → 1 | loadout |
-| Anti-Tank Abstinent | I carry nothing anti-tank — no stratagem, weapon or grenade | 1 → 4 | loadout |
-| Dead Weight | If I die, I can't be reinforced on my own — I return only when another diver needs reinforcing (squad only) | 2 → 2 | field |
+| Anti-Tank Abstinent | I carry nothing anti-tank (no stratagem, weapon or grenade) | 1 → 4 | loadout |
+| Dead Weight | If I die I can't be reinforced on my own (I return only when another diver needs reinforcing; squad only) | 2 → 2 | field |
 | Stim Abstinent | I use no stims | 3 → 4 | stats |
-| Loadout Loyalist | I use only my equipped loadout — no pickups or swaps | 2 → 2 | field |
-| Primary Concern | I bring no support weapon — secondaries and every other stratagem stay legal | 1 → 3 | loadout |
+| Loadout Loyalist | I use only my equipped loadout (no pickups or swaps) | 2 → 2 | field |
+| Primary Concern | I bring no support weapon (secondaries and every other stratagem stay legal) | 1 → 3 | loadout |
 | Grounded | I bring no offensive Eagle stratagems (the reserve Eagle Smoke Strike is exempt) | 2 → 2 | loadout |
 | Ship Silent | I bring no offensive orbital stratagems (reserve EMS and Smoke are exempt) | 2 → 2 | loadout |
 | Open Field | I bring no offensive sentries, mines or emplacements (the reserve EMS Mortar Sentry and shield relays are exempt) | 2 → 2 | loadout |
-| Untouchable | I do not die — a death **fails this pact**, the mission plays on | 3 → 4 | field |
+| Untouchable | I do not die (a death **fails this pact** and the mission plays on) | 3 → 4 | field |
 | Featherweight | I wear light armor only | 1 → 2 | loadout |
 | Ironbound | I wear heavy armor only | 1 → 1 | loadout |
-| Radio Silence | I call no stratagem of any color (Reinforce excepted) | 3 → 4 | field |
-| Objector | I score no kills | 2 → 4 | stats |
+| Radio Silence | I call no stratagem: red, blue, green or yellow alike (Reinforce excepted) | 3 → 4 | field |
+| Objector | I score no kills (stratagem kills count to the caller) | 2 → 4 | stats |
 | Cold Steel | Every kill I score is a melee kill (stats: kills = melee kills) | 2 → 3 | stats |
 | Clean Hands | I deal no friendly-fire damage | 1 → 2 | stats |
 
@@ -399,8 +408,8 @@ only: the Shield Generator Relay is legal (`NON_LETHAL_DEFENSES`).
 (`PACT_EXCLUSIVE_GROUPS`) and blocked under either armor directive. Only behavioral pacts subsume
 others (`PACT_SUBSUMES`): *Radio Silence* covers *Thirsty*, *Objector* covers *Cold Steel* — a
 loadout rule is still checked on the loadout screen even when the stratagem is never called, so
-*Radio Silence* does not cover *Pack Light*. *Supply Line Cut* bans every Supply-category
-stratagem; the reserve alone still fields four.
+*Radio Silence* does not cover *Pack Light*. *Deserted* leaves the loadout pacts open (a diver can
+still call a support weapon or backpack in the first minute and hold it) and blocks only *Thirsty*.
 
 **Redundant and conflicting picks:** a pact strictly implied by another picked pact never stacks
 risk. `SET_PACTS` refuses it via `pactSubsumedBy` / `applyPactToggle` (`PACT_SUBSUMES` in
@@ -425,10 +434,11 @@ the diver below four, and the UI greys it "Leaves too few stratagems to ready up
 enforced at **both** ends: a pact that would strand the diver is refused at pick time, and a
 misfortune that would strand **any** seated diver on its own is refused at the wheel decision
 (`ACCEPT_MISFORTUNE`, via `misfortuneStrandedDivers` in `shared/engine/selectors.ts`) — the squad
-could otherwise never ready up. `No Stratagems` is behavioral (four slots still equip, they just
-cannot be called), so it stays out of the equip ban-list; `Oops, All Airstrikes` is the loadout rule
+could otherwise never ready up. *Deserted* is behavioral (four slots still equip, they just
+cannot be called after the first minute), so it stays out of the equip ban-list; `Oops, All Airstrikes` is the loadout rule
 that most often strands an early squad, since the base kit fields only three red stratagems (Eagle
-Smoke Strike plus Orbital EMS/Smoke Strike) and reserve adds no more.
+Smoke Strike plus Orbital EMS/Smoke Strike) and reserve adds no more — so the wheel leaves it out
+until every diver can field it.
 
 **Failed pacts:** a broken pact is marked **failed** (`FAIL_PACT{playerId,pactId}`) while the
 mission runs — during the diving phase only, by the diver themselves or by the host refereeing the
@@ -438,6 +448,35 @@ and the rolled offer drop, and it costs one reward option (`OPTIONS_LOST_PER_FAI
 `shared/engine/config.ts`, floored at one so the draft always completes and never deadlocks
 ADVANCE). Failed pacts ride the diver's state (`failedPactIds`), reset with the pacts every
 mission, and land in the action log for audit.
+
+**Debrief — stats check & squad honors.**
+
+HD2's end-of-mission stats screen comes up *after* the report, so everything it proves is settled on
+the **Debrief** (`MissionDebrief`), the first screen of the `rewards` phase, before any draft opens.
+It is the mission/operation-secured beat — the operation track, the report's stars, time, samples and
+credit haul, and a recap (front, directive, strain, the diver's draft size) — with a **Stats check**
+section beside it.
+
+- **Rules.** Every rule on the `stats` accountability channel in force (Stim Abstinent, Objector, Cold
+  Steel, Clean Hands; Peacekeepers and Stim Shortage among directives) is listed with its owner
+  (`statsRules`) and attested **Held** (`HOLD_PACT`, `HOLD_MISFORTUNE`) or **Broke** (`FAIL_PACT`,
+  `FAIL_MISFORTUNE`, a second confirming tap) — both one-way. A diver settles their own pacts, the
+  host settles any diver's (as with field marks) and the squad directive. A broke mark is the ordinary
+  failed mark: the risk is voided, the offer re-rolls on the lower Valor and one option is lost, so
+  nothing is ever clawed back after a pick. The `FAIL_PACT` window reopens in `rewards` for
+  stats-channel pacts only, until the diver drafts (it is otherwise `diving`-only); field and loadout
+  rules are judged live and never gate. Held attestations (`DiverState.heldPactIds`,
+  `DiveState.misfortuneHeld`) reset with the pacts every mission.
+- **Squad Honors** are the same stats-screen moment, so they live here too: a due contest rolls **by
+  itself** a beat after the screen opens (`HONORS_AUTO_ROLL_MS`; the host's client sends
+  `SPIN_BONUS`, with a host-only *Roll now* fallback), the reel winds down, and the host names the
+  winner(s) from the same screen. A solo diver (or a lone present diver) wins outright.
+- **The gate.** `draftLocked(state, diver)` = `statsCheckPending` (the diver's unsettled stats pacts
+  or an unsettled stats directive) **or** `honorsDue` (a due contest, rolled or not, with no winner
+  named). `PICK_REWARD`, `REROLL_REWARDS` and `BAN_REWARDS` are refused while it holds — the honors
+  token can buy a reroll of that very draft, so the winner is named first. The debrief's *Open the
+  draft* button is local presentation; the engine, not the button, keeps the draft shut.
+- Failed missions skip the debrief (there is no draft); a diver who already drafted never sees it.
 
 **Failed directives:** the same rule applies to the squad's team directive. The host marks it
 broken in the field (`FAIL_MISFORTUNE`, host-only, `diving` phase only; the UI asks for a confirm
@@ -699,32 +738,26 @@ never won, so it is never taken.
 
 ### Reward tokens & squad honors
 
-**Honors are spun in the report window.** On a **full-star clear**
-(`stars === maxStarsFor(difficulty)`) the mission report offers one **bonus honors** contest (a
+**Honors roll on the debrief.** On a **full-star clear**
+(`stars === maxStarsFor(difficulty)`) the mission offers one **bonus honors** contest (a
 Mario-Party bonus star): a random stat from HD2's end-of-mission screen — kills, accuracy, deaths,
 stims, samples, friendly fire, … — with a winning direction (*most* or *least*), each entry in
 `BONUS_STATS` (`shared/engine/config.ts`). Honors are a **limited prize** (`bonusEligibleFor`): the
 token only lands when the **squad-size cadence** is due — `BONUS_TOKEN_INTERVAL` awards a
 four-diver squad every mission, a three- or two-diver squad every other mission, and a solo diver
-every third. Off the cadence or short of full stars, the report card states why instead of offering
-the spin.
+every third. The report form only says whether honors are due (or why not and when they return,
+`missionsUntilHonors`); it no longer rolls anything.
 
-When due, the contest is **spun by filing the report**: there is no spin button. Filing a due
-report sends `SPIN_BONUS{seed, stars?, outcome?}` (host-only) and the report card's slot reel winds
-down onto the seeded stat; once it lands the report files and the rewards screen comes in. The wait
-is presentation only (a guard files anyway if the spin never arrives). The form passes the
-stars/outcome it is about to file because `REPORT_RESULT` has not landed yet; a spin from the
-rewards phase reads the filed report instead. The seed is what syncs: `rollBonus` (stream salt 4)
-derives the same stat on every client. When honors are not due the card replaces the reel with a
-plain message naming the next mission they return (`missionsUntilHonors`) or the full-star
-requirement. **The pending report must still qualify:** if the filed report is a failure or a
-lower-star clear, `REPORT_RESULT` strikes the seed and claws back any token the spin auto-banked, so
-changing the result cannot mint honors. **The app never captures the stats**: the host reads HD2's stats screen and names the
-winner(s) (`AWARD_BONUS{playerIds}`, host-only) from the squad dock. Ties are common, so an award
-names **one or several** divers — every tied diver banks a token. Awarding banks each winner's **one
-flexible reward token** immediately (capped at `REWARD_TOKEN_CAP`, 3); there is no separate claim
-step. When only one diver can win (solo, or a squad where everyone else sat the draft out),
-selection is redundant: the spin resolves the ceremony and banks the token by itself.
+Once the report is filed, the debrief (see above) rolls the contest by itself: `SPIN_BONUS{seed}`
+(host-only, read from the filed report in the `rewards` phase) and the slot reel winds down onto the
+seeded stat — the seed is what syncs (`rollBonus`, stream salt 4). **The app never captures the
+stats**: the host reads HD2's stats screen and names the winner(s) (`AWARD_BONUS{playerIds}`,
+host-only) on the debrief. Ties are common, so an award names **one or several** divers — every tied
+diver banks a token. Awarding banks each winner's **one flexible reward token** immediately (capped
+at `REWARD_TOKEN_CAP`, 3); there is no separate claim step. When only one diver can win (solo, or a
+squad where everyone else sat the draft out), selection is redundant: the spin resolves the ceremony
+and banks the token by itself. The engine still accepts a spin from the `diving` phase (and
+`REPORT_RESULT` strikes one whose report no longer qualifies); the UI no longer sends it.
 
 A token is spent by its owner during a reward draft on a **Reroll** (`REROLL_REWARDS`): redraw the
 diver's own offer. A reroll must move (a seed that re-derives the same offer is refused, mirroring
@@ -732,9 +765,9 @@ diver's own offer. A reroll must move (a seed that re-derives the same offer is 
 (`BAN_REWARDS`) remains in the engine for older sessions and saves, but the lit-pass UI no longer
 offers it; the redesigned draft spends tokens on rerolls only.
 
-The ceremony is a **hard gate**: once a contest is spun, `ADVANCE` is refused (`honorsPending`) until
-the host names a winner, and every Next mission / Start operation control locks as *Award Squad
-Honors first*. The stat stays out of the squad dock until the report's reel has landed. Claimed tokens persist across missions; reroll seeds and the old ban flag
+The ceremony is a **hard gate** on the draft (`honorsDue`, via `draftLocked`) and, for older
+states, on `ADVANCE` (`honorsPending`). The squad dock shows the rolled stat and the banked token but
+no longer carries award controls. Claimed tokens persist across missions; reroll seeds and the old ban flag
 reset with the pacts. Negative targeting (bans) did not violate "guarantee rarity class, never
 specific items" — it narrows a pool, it never names a reward.
 

@@ -7,6 +7,7 @@ import {
   currentStrain,
   misfortuneDecision,
   misfortuneStrandedDivers,
+  squadInventories,
   strainDecision,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
@@ -115,6 +116,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
       <WheelOfAdversity
         :difficulty="state.difficulty"
         :seed="state.wheel?.seed ?? null"
+        :inventories="squadInventories(state)"
         :can-control="canControl"
         @spin="emit('spin')"
       />

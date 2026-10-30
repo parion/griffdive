@@ -134,6 +134,12 @@ export function squadSize(state: DiveState): number {
   return Math.max(1, activeDivers(state).length)
 }
 
+// Each present diver's owned item ids — what decides which directives the
+// wheel may draw (see eligibleMisfortunes).
+export function squadInventories(state: DiveState): string[][] {
+  return activeDivers(state).map(diver => state.personalInventories[diver.id] ?? [])
+}
+
 // Pact lock-in completes once every present diver has locked. A room where
 // everyone stepped away never advances on its own.
 export function pactsSettled(divers: readonly DiverState[]): boolean {
@@ -936,6 +942,92 @@ export function canRerollWheel(
 // runs — and only when one is actually in force.
 export function canFailMisfortune(state: DiveState): boolean {
   return state.phase === 'diving' && state.misfortuneAccepted && !state.misfortuneFailed
+}
+
+// The stats check: rules only the end-of-mission stats screen can prove (the
+// 'stats' accountability channel) are settled before the draft, because the
+// screen comes up after the report. Each is attested held or broke — a broken
+// one is marked failed exactly like a field mark, so its risk is voided and the
+// offer is rolled with the option already lost.
+export function statsPendingPactIds(state: DiveState, diver: DiverState): string[] {
+  if (state.phase !== 'rewards') {
+    return []
+  }
+  return diver.pactIds.filter(id =>
+    pactById(id)?.accountability === 'stats'
+    && !diver.failedPactIds.includes(id)
+    && !diver.heldPactIds.includes(id))
+}
+
+// The accepted directive, when it is stats-verified and not yet settled. It is
+// the squad's, so the host settles it and every diver's draft waits.
+export function statsPendingMisfortune(state: DiveState): Misfortune | null {
+  if (state.phase !== 'rewards' || state.misfortuneFailed || state.misfortuneHeld) {
+    return null
+  }
+  const misfortune = activeMisfortune(state)
+  return misfortune?.accountability === 'stats' ? misfortune : null
+}
+
+// A diver's draft stays shut while any rule that binds them is unsettled.
+export function statsCheckPending(state: DiveState, diver: DiverState): boolean {
+  return statsPendingPactIds(state, diver).length > 0 || statsPendingMisfortune(state) !== null
+}
+
+// Squad Honors read the same stats screen, so they are part of the debrief: a
+// due contest (rolled or not yet) with nobody named blocks every draft, since
+// the token it banks can buy a reroll of that very draft.
+export function honorsDue(state: DiveState): boolean {
+  return state.phase === 'rewards'
+    && state.bonusWinnerIds.length === 0
+    && bonusEligible(state)
+}
+
+// The draft opens only once the whole debrief is settled for this diver.
+export function draftLocked(state: DiveState, diver: DiverState): boolean {
+  return statsCheckPending(state, diver) || honorsDue(state)
+}
+
+// One line of the debrief's stats-checked section: a rule only the stats screen
+// can prove, and where it stands.
+export type StatsRuleStatus = 'pending' | 'held' | 'broke'
+
+export interface StatsRule {
+  // The squad directive has no diver; a pact belongs to one.
+  scope: 'directive' | 'pact'
+  diverId: string | null
+  conditionId: string
+  status: StatsRuleStatus
+}
+
+export function statsRules(state: DiveState): StatsRule[] {
+  if (state.phase !== 'rewards') {
+    return []
+  }
+  const rules: StatsRule[] = []
+  const directive = activeMisfortune(state)
+  if (directive?.accountability === 'stats') {
+    rules.push({
+      scope: 'directive',
+      diverId: null,
+      conditionId: directive.id,
+      status: state.misfortuneFailed ? 'broke' : state.misfortuneHeld ? 'held' : 'pending',
+    })
+  }
+  for (const diver of state.divers) {
+    for (const id of diver.pactIds) {
+      if (pactById(id)?.accountability !== 'stats') {
+        continue
+      }
+      rules.push({
+        scope: 'pact',
+        diverId: diver.id,
+        conditionId: id,
+        status: diver.failedPactIds.includes(id) ? 'broke' : diver.heldPactIds.includes(id) ? 'held' : 'pending',
+      })
+    }
+  }
+  return rules
 }
 
 export function allDiversPicked(state: DiveState): boolean {

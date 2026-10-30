@@ -2,7 +2,7 @@
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { allDiversPicked, bonusFor, bonusWinners } from '~~/shared/engine/selectors'
-import type { DiverState, DiveState, MissionOutcome, MissionReport } from '~~/shared/engine/types'
+import type { DiverState, DiveState, MissionReport } from '~~/shared/engine/types'
 import type { SteamLobbyInfo } from '~~/shared/types/messages'
 
 const props = defineProps<{
@@ -35,9 +35,11 @@ const emit = defineEmits<{
   report: [payload: MissionReport]
   failPact: [playerId: string, pactId: string]
   failDirective: []
+  holdPact: [playerId: string, pactId: string]
+  holdDirective: []
   pick: [optionId: string, choiceItemId?: string]
   rerollRewards: []
-  spinBonus: [payload?: { stars: number, outcome: MissionOutcome }]
+  spinBonus: []
   awardBonus: [playerIds: string[]]
   advance: []
   buy: [itemId: string]
@@ -58,6 +60,13 @@ const emit = defineEmits<{
 
 const { sidePanel } = useDrawers()
 const phase = computed(() => props.state.phase)
+// The debrief precedes the draft; opening it is local (see MissionDebrief).
+const debriefOpen = ref(false)
+const showDebrief = computed(() =>
+  props.self !== null
+  && props.self.pickedOptionId === null
+  && !props.self.rewardBanned
+  && !debriefOpen.value)
 const squadOpen = ref(false)
 const menuOpen = ref(false)
 
@@ -150,7 +159,6 @@ const operationClimbs = computed(() =>
           @report="emit('report', $event)"
           @fail="(playerId, pactId) => emit('failPact', playerId, pactId)"
           @fail-directive="emit('failDirective')"
-          @spin-bonus="emit('spinBonus', $event)"
         />
 
         <OperationCleared
@@ -174,6 +182,23 @@ const operationClimbs = computed(() =>
           phone
           @advance="emit('advance')"
           @buy="emit('buy', $event)"
+        />
+
+        <MissionDebrief
+          v-else-if="phase === 'rewards' && showDebrief"
+          :state="state"
+          :self="self"
+          :self-id="selfId"
+          :is-host="isHost"
+          :op-length="opLength"
+          phone
+          @hold-pact="(playerId, pactId) => emit('holdPact', playerId, pactId)"
+          @fail-pact="(playerId, pactId) => emit('failPact', playerId, pactId)"
+          @hold-directive="emit('holdDirective')"
+          @fail-directive="emit('failDirective')"
+          @spin-bonus="emit('spinBonus')"
+          @award-bonus="emit('awardBonus', $event)"
+          @open="debriefOpen = true"
         />
 
         <PhoneRewardDraft
@@ -242,7 +267,6 @@ const operationClimbs = computed(() =>
       @kick="emit('kick', $event)"
       @copy-invite="emit('copyInvite')"
       @open-steam="openSteamFromSquad"
-      @award-bonus="emit('awardBonus', $event)"
     />
   </AppDialog>
 

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Browser, Page } from '@playwright/test'
-import { dismissWarbondIntro, expectJoinerLanded, lockMisfortune } from './helpers'
+import { dismissWarbondIntro, expectJoinerLanded, lockMisfortune, settleDebrief } from './helpers'
 
 async function leaveDive(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Session menu' }).click()
@@ -80,6 +80,8 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   // the host banks their own.
   await pageA.getByRole('button', { name: 'Extracted' }).click()
   await pageA.getByRole('button', { name: 'File report' }).click()
+  await settleDebrief(pageA)
+  await settleDebrief(pageB)
   await expect(pageB.getByRole('heading', { name: 'Bank one item' })).toBeVisible()
   await expect(pageB.locator('.squad-pick[aria-label*=": Choosing"]')).toHaveCount(1)
 

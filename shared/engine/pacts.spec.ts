@@ -111,14 +111,14 @@ describe('armor weight', () => {
   })
 
   it('treats the armor pacts as redundant or impossible under a squad armor rule', () => {
-    for (const misfortune of ['fragileLiberty', 'heavyLiberty']) {
+    for (const misfortune of ['fragileLiberty', 'heavyBurden']) {
       expect(isPactSelectable('featherweight', misfortune)).toBe(false)
       expect(isPactSelectable('ironbound', misfortune)).toBe(false)
     }
   })
 })
 
-describe('supply and defense bans', () => {
+describe('defense bans', () => {
   const byName = (name: string) => {
     const item = ALL_ITEMS.find(entry => entry.displayName === name)
     if (!item) {
@@ -127,21 +127,10 @@ describe('supply and defense bans', () => {
     return item
   }
 
-  it('bans every blue stratagem under Supply Line Cut and leaves red and green alone', () => {
-    expect(stratagemBanReason('supplyLineCut', [], byName('Machine Gun'))).not.toBeNull()
-    expect(stratagemBanReason('supplyLineCut', [], byName('Supply Pack'))).not.toBeNull()
-    expect(stratagemBanReason('supplyLineCut', [], byName('Eagle Airstrike'))).toBeNull()
-    expect(stratagemBanReason('supplyLineCut', [], byName('Machine Gun Sentry'))).toBeNull()
-  })
-
   it('leaves the Shield Generator Relay legal under Open Field, but bans lethal defenses', () => {
     expect(stratagemBanReason(null, ['openField'], byName('Shield Generator Relay'))).toBeNull()
     expect(stratagemBanReason(null, ['openField'], byName('Gas Mines'))).toEqual({ source: 'pact', id: 'openField' })
     expect(stratagemBanReason(null, ['openField'], byName('Tesla Tower'))).toEqual({ source: 'pact', id: 'openField' })
-  })
-
-  it('fields Supply Line Cut from the reserve alone', () => {
-    expect(hasLegalLoadout('supplyLineCut', [], startingItemIds('medium'))).toBe(true)
   })
 })
 
@@ -196,8 +185,15 @@ describe('reserve and loadout legality', () => {
     }
   })
 
-  it('keeps No Stratagems behavioral — four slots still equip', () => {
+  it('keeps Deserted behavioral (four slots still equip)', () => {
     expect(hasLegalLoadout('noStratagems', [], baseKit)).toBe(true)
+  })
+
+  it('leaves the loadout pacts open under Deserted, since stratagems still drop in the first minute', () => {
+    for (const pactId of ['packLight', 'primaryConcern', 'grounded', 'radioSilence']) {
+      expect(isPactSelectable(pactId, 'noStratagems')).toBe(true)
+    }
+    expect(isPactSelectable('thirsty', 'noStratagems')).toBe(false)
   })
 
   it('flags a genuine anti-tank weapon but not the Eruptor, an explosive primary', () => {
