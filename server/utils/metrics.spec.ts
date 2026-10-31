@@ -261,7 +261,8 @@ describe('room-metrics', () => {
 
     const text = await metrics.registry.metrics()
     expect(text).toMatch(/griffdive_armor_packs_opened_total\{difficulty="4"\} 1/)
-    expect(text.match(/griffdive_armor_pack_pulls_total\{tier="[cbas]"\} 1/g)).toHaveLength(3)
+    const pulls = [...text.matchAll(/griffdive_armor_pack_pulls_total\{tier="[cbas]"\} (\d+)/g)]
+    expect(pulls.reduce((sum, match) => sum + Number(match[1]), 0)).toBe(3)
   })
 
   it('counts refused directives, operations completed and achievements', async () => {

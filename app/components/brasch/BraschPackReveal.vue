@@ -14,9 +14,13 @@ const props = withDefaults(defineProps<{
   items: Item[]
   packSeed?: number | null
   instant?: boolean
+  // Desktop: sit the stage over the shop instead of taking the whole viewport.
+  // A phone keeps the fullscreen takeover (the shop is fullscreen there too).
+  contained?: boolean
 }>(), {
   packSeed: null,
   instant: false,
+  contained: false,
 })
 
 const emit = defineEmits<{ close: [] }>()
@@ -126,6 +130,17 @@ function cardStyle(index: number): Record<string, string> {
   }
 }
 
+// The deck sheds its top back as each card leaves it, so the pile is never
+// still standing behind a card that has already landed. The backs paint in
+// DOM order, so the last one is the top card and deals first.
+function deckStyle(back: number): Record<string, string> {
+  const cue = cues.value[props.items.length - 1 - back]
+  return {
+    '--i': `${back}`,
+    '--out': `${(cue?.start ?? 0) + DECK_SETTLE}ms`,
+  }
+}
+
 function advance(): void {
   if (phase.value === 'sealed') {
     phase.value = 'bursting'
@@ -173,7 +188,7 @@ function onScreenKey(event: KeyboardEvent): void {
         <div
           ref="screen"
           class="pack-screen"
-          :class="phase"
+          :class="[phase, { contained }]"
           tabindex="-1"
           @keydown.enter.prevent="onScreenKey"
           @keydown.space.prevent="onScreenKey"
@@ -260,14 +275,13 @@ function onScreenKey(event: KeyboardEvent): void {
             <div
               v-if="phase === 'drawing'"
               class="pack-deck"
-              :class="{ drawing: phase === 'drawing' }"
               aria-hidden="true"
             >
               <span
                 v-for="i in 3"
                 :key="i"
                 class="deck-card"
-                :style="{ '--i': i - 1 }"
+                :style="deckStyle(i - 1)"
               />
             </div>
 
@@ -377,8 +391,8 @@ function onScreenKey(event: KeyboardEvent): void {
   position: fixed;
   inset: 0;
   z-index: 70;
-  background: rgba(4, 5, 3, 0.9);
-  backdrop-filter: blur(3px);
+  background: rgba(4, 5, 3, 0.78);
+  backdrop-filter: blur(1px);
   animation: veil-in 0.35s ease-out both;
 }
 
@@ -396,6 +410,28 @@ function onScreenKey(event: KeyboardEvent): void {
     radial-gradient(ellipse 75% 55% at 50% 42%, #202014 0%, #0d0f09 52%, #060704 100%);
   outline: none;
   animation: screen-in 0.4s var(--ease-out) both;
+}
+
+/* The desktop reveal is a stage laid over Brasch's counter, not a takeover:
+   the shop stays visible around it and comes straight back when the fan
+   closes. A phone keeps the edge-to-edge version below. */
+.pack-screen.contained {
+  inset: 50% auto auto 50%;
+  translate: -50% -50%;
+  width: min(60rem, calc(100vw - 8rem));
+  height: min(40rem, calc(100dvh - 9rem));
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--line-3));
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  animation: screen-in 0.28s var(--ease-out) both;
+}
+@media (min-width: 1021px) {
+  .pack-screen.contained .pack-wrap { width: clamp(190px, 20vw, 270px); }
+  .pack-screen.contained .pack-deck { --card-w: clamp(150px, 15vw, 190px); }
+  .pack-screen.contained .pack-fan {
+    --card-w: clamp(150px, 15vw, 190px);
+    --spread: clamp(118px, 11vw, 158px);
+    --lift: 34px;
+  }
 }
 .pack-screen::before {
   content: '';
@@ -578,7 +614,6 @@ function onScreenKey(event: KeyboardEvent): void {
   transform-style: preserve-3d;
   animation: deck-in 0.36s var(--ease-out) both;
 }
-.pack-deck.drawing { animation: deck-in 0.36s var(--ease-out) both, deck-fade 0.5s var(--ease-out) 1.15s forwards; }
 .deck-card {
   position: absolute;
   inset: 0;
@@ -588,6 +623,7 @@ function onScreenKey(event: KeyboardEvent): void {
     linear-gradient(155deg, #2a2817, #0b0c09 60%);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
   transform: translateY(calc(var(--i) * 5px)) rotate(calc((var(--i) - 1) * 2deg));
+  animation: deck-deal 0.16s var(--ease-out) var(--out, 0ms) forwards;
 }
 .deck-card::after {
   content: '';
@@ -847,7 +883,9 @@ function onScreenKey(event: KeyboardEvent): void {
   from { opacity: 0; scale: 0.7; translate: -50% -46%; }
   to { opacity: 1; scale: 1; translate: -50% -54%; }
 }
-@keyframes deck-fade { to { opacity: 0; scale: 0.82; translate: -50% -58%; } }
+@keyframes deck-deal {
+  to { opacity: 0; scale: 0.9; }
+}
 @keyframes card-fly {
   0% { transform: translate(-50%, -50%) translate(0, 26px) rotate(0deg) scale(0.58); opacity: 0; filter: brightness(2); }
   16% { opacity: 1; }
@@ -879,6 +917,17 @@ function onScreenKey(event: KeyboardEvent): void {
 }
 @keyframes rise-in {
   from { opacity: 0; translate: 0 14px; }
+}
+
+@media (max-width: 1020px) {
+  .pack-screen.contained {
+    inset: 0;
+    translate: 0 0;
+    width: auto;
+    height: auto;
+    border: 0;
+    clip-path: none;
+  }
 }
 
 @media (max-width: 720px) {

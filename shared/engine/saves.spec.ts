@@ -36,6 +36,26 @@ describe('save docs', () => {
     expect(normalizeSaveDoc({ ...alpha, schemaVersion: 20, engineVersion: 30 })).toBeNull()
   })
 
+  it('migrates a v1 Armor Pack pull into the repeatable packs list', () => {
+    const current = currentDoc()
+    const divers = current.state.divers.map((diver) => {
+      if (!diver.bargain) {
+        return diver
+      }
+      const { packs: _packs, ...legacy } = diver.bargain
+      return { ...diver, bargain: { ...legacy, pack: { seed: 7, itemIds: ['extrapadding'] } } }
+    })
+    const migrated = normalizeSaveDoc({
+      ...current,
+      schemaVersion: 1,
+      state: { ...current.state, divers },
+    })
+    expect(migrated?.schemaVersion).toBe(SAVE_SCHEMA_VERSION)
+    const bargain = migrated!.state.divers[0]!.bargain!
+    expect(bargain.packs).toEqual([{ seed: 7, itemIds: ['extrapadding'] }])
+    expect((bargain as { pack?: unknown }).pack).toBeUndefined()
+  })
+
   it('refuses a save from a newer schema than this build reads', () => {
     expect(normalizeSaveDoc({ ...currentDoc(), schemaVersion: SAVE_SCHEMA_VERSION + 1 })).toBeNull()
   })

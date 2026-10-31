@@ -3,7 +3,7 @@ import { ITEMS_BY_ID, WARBONDS } from '../data/catalog'
 import { MAX_DIFFICULTY, MIN_DIFFICULTY, STRAIN_RISK, missionsPerOperation, conditionRiskAt, directiveValorAt, directiveWeightFor } from './config'
 import { itemPrice, oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { actingDiverIds, activeMisfortune, activeStrain, armorPackFor, armorPackItemsFor, armorPackOfferFor, armoryRules, awaitingDiverIds, bargainLamp, bargainsClosedReason, bargainShelfFor, bargainSlotKinds, canBuyArmorPack, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, majorOrderPlanetsForFront, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, missionsUntilHonors, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
+import { actingDiverIds, activeMisfortune, activeStrain, armorPackFor, armorPackItemsFor, armorPackOfferFor, armorPacksFor, armoryRules, awaitingDiverIds, bargainLamp, bargainsClosedReason, bargainShelfFor, bargainSlotKinds, canBuyArmorPack, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, majorOrderPlanetsForFront, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, missionsUntilHonors, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
 import { isPactSelectable, rollPactOffer } from './pacts'
 import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -293,11 +293,11 @@ describe('Brasch\'s Armor Pack (side stock)', () => {
   it('reads its price, guaranteed floor and live S chance off the operation band', () => {
     const low = opened(4)
     const lowOffer = armorPackOfferFor(low, { ...host(low), credits: 100_000 })
-    expect(lowOffer).toMatchObject({ price: 160, size: 3, hitFloor: 'b', sChance: 0.01 })
+    expect(lowOffer).toMatchObject({ price: 25, packsOpened: 0, size: 3, hitFloor: 'b', sChance: 0.01 })
 
     const high = opened(10)
     const highOffer = armorPackOfferFor(high, { ...host(high), credits: 100_000 })
-    expect(highOffer).toMatchObject({ price: 360, size: 3, hitFloor: 'a', sChance: 0.08 })
+    expect(highOffer).toMatchObject({ price: 45, packsOpened: 0, size: 3, hitFloor: 'a', sChance: 0.08 })
 
     // A pool of only S passives is a guaranteed S pack (and still one S).
     const onlyS = [...ITEMS_BY_ID.values()].filter(item => item.category === 'armorPassive' && item.tier === 's')
@@ -323,20 +323,26 @@ describe('Brasch\'s Armor Pack (side stock)', () => {
     expect(canBuyArmorPack(state, shopped)).toEqual({ allowed: true, reason: null })
   })
 
-  it('refuses early, in the field, broke, or after this operation\'s pack', () => {
+  it('refuses early, in the field or broke, and prices each pack above the last', () => {
     const state = opened()
     const diver = { ...host(state), credits: 100_000 }
     expect(canBuyArmorPack({ ...state, difficulty: 3 }, diver)).toEqual({ allowed: false, reason: 'Opens after your first operation' })
     expect(canBuyArmorPack({ ...state, phase: 'diving' }, diver)).toEqual({ allowed: false, reason: 'Closed during the mission' })
-    expect(canBuyArmorPack(state, { ...diver, credits: 159 })).toEqual({ allowed: false, reason: 'Not enough credits' })
-    const openedPack = {
+    expect(canBuyArmorPack(state, { ...diver, credits: 24 })).toEqual({ allowed: false, reason: 'Not enough credits' })
+    expect(canBuyArmorPack(state, { ...diver, credits: 25 })).toEqual({ allowed: true, reason: null })
+
+    const shopped = {
       ...diver,
-      bargain: { ...diver.bargain!, pack: { seed: 1, itemIds: ['extrapadding'] } },
+      bargain: { ...diver.bargain!, packs: [{ seed: 1, itemIds: ['extrapadding'] }] },
     }
-    expect(canBuyArmorPack(state, openedPack)).toEqual({ allowed: false, reason: 'Already opened a pack this operation' })
-    expect(armorPackFor(openedPack)?.itemIds).toEqual(['extrapadding'])
-    expect(armorPackItemsFor(state, openedPack).map(item => item.id)).toEqual(['extrapadding'])
+    expect(armorPackFor(shopped)?.itemIds).toEqual(['extrapadding'])
+    expect(armorPacksFor(shopped)).toHaveLength(1)
+    expect(armorPackItemsFor(state, shopped).map(item => item.id)).toEqual(['extrapadding'])
     expect(armorPackFor(diver)).toBeNull()
+    // The next pack costs 1.5x the last.
+    expect(armorPackOfferFor(state, shopped)).toMatchObject({ price: 38, packsOpened: 1 })
+    expect(canBuyArmorPack(state, { ...shopped, credits: 37 })).toEqual({ allowed: false, reason: 'Not enough credits' })
+    expect(canBuyArmorPack(state, { ...shopped, credits: 38 })).toEqual({ allowed: true, reason: null })
   })
 })
 

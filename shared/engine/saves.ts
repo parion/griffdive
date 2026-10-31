@@ -2,6 +2,7 @@ import { CATALOG_VERSION } from '../data/catalog'
 import { SAVE_EPOCH, SAVE_SCHEMA_VERSION } from '../types/save'
 import type { SaveDoc } from '../types/save'
 import { ENGINE_VERSION } from './config'
+import type { ArmorPackDeal, BargainDeal, DiveState } from './types'
 
 export function createSaveDoc(state: SaveDoc['state'], slotName: string, savedAt: string): SaveDoc {
   return {
@@ -15,11 +16,36 @@ export function createSaveDoc(state: SaveDoc['state'], slotName: string, savedAt
   }
 }
 
+// v1 → v2: the Armor Pack became repeatable, so a diver's deal carries an array
+// of pulls instead of the operation's single `pack`. Older saves are migrated
+// on read rather than discarded (beta policy in game-rules.md, Save model).
+function migrateV1toV2(state: DiveState): DiveState {
+  if (!Array.isArray(state.divers)) {
+    return state
+  }
+  return {
+    ...state,
+    divers: state.divers.map((diver) => {
+      const legacy = diver.bargain as (BargainDeal & { pack?: ArmorPackDeal | null }) | null
+      if (!legacy) {
+        return diver
+      }
+      const { pack, ...deal } = legacy
+      return {
+        ...diver,
+        bargain: {
+          ...deal,
+          packs: Array.isArray(deal.packs) ? deal.packs : pack ? [pack] : [],
+        },
+      }
+    }),
+  }
+}
+
 // Beta restarted the save versions at 1 with no migration chain (see
 // game-rules.md, Save model), so an alpha save — no epoch stamp, or a schema
-// number that now means something else — is refused rather than misread. The
-// next breaking shape change bumps SAVE_SCHEMA_VERSION and adds the first
-// version-gated step here instead of the strict equality.
+// number that now means something else — is refused rather than misread. Each
+// later breaking shape change adds a version-gated step here.
 export function normalizeSaveDoc(raw: unknown): SaveDoc | null {
   if (!raw || typeof raw !== 'object') {
     return null
@@ -27,7 +53,7 @@ export function normalizeSaveDoc(raw: unknown): SaveDoc | null {
   const doc = raw as Partial<SaveDoc>
   if (
     doc.epoch !== SAVE_EPOCH
-    || doc.schemaVersion !== SAVE_SCHEMA_VERSION
+    || (doc.schemaVersion !== 1 && doc.schemaVersion !== SAVE_SCHEMA_VERSION)
     || typeof doc.engineVersion !== 'number'
     || typeof doc.catalogVersion !== 'number'
     || typeof doc.savedAt !== 'string'
@@ -39,5 +65,6 @@ export function normalizeSaveDoc(raw: unknown): SaveDoc | null {
   ) {
     return null
   }
-  return doc as SaveDoc
+  const state = doc.schemaVersion === 1 ? migrateV1toV2(doc.state as DiveState) : doc.state
+  return { ...doc, schemaVersion: SAVE_SCHEMA_VERSION, state } as SaveDoc
 }

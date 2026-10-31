@@ -59,8 +59,8 @@ primary, secondary and throwable (base tier up to one above), plus a stratagem s
 the third. A diver buys at most one shelf item per mission, and a bought kind isn't stocked again
 until the next operation. **Armor passives left the draft:** they are sold only in Brasch's **Armor
 Pack** — three duplicate-free passives from the diver's unowned warbonds, one B+ pull guaranteed,
-one difficulty-scaled S roll, one pack per operation, opened in a full-screen, low-text card-draw
-reveal (see Brasch's Bargains — credits).
+one difficulty-scaled S roll, repeatable as side stock at a rising price (the counter's last card),
+opened in a card-draw reveal (see Brasch's Bargains — credits).
 **Starting variants are now three difficulties:** squad size no longer gates a start (it fluctuates
 all crusade), so the five squad-size/kit variants collapsed into Medium (3), Hard (5) and Suicide
 Mission (7); the hard/suicide starts choose one of two mutually exclusive modes — the assisted
@@ -86,11 +86,24 @@ Hellpod Bays, ValorRoll) are still current and are pinned by the `phone-*`, `tab
 Ban UI, the lobby/matchmaking. Not re-verified visually: pixel-level fidelity of each section.
 
 **Game design (from `scripts/simulate-economy.mjs`, 4000 runs).**
+- **2026-10-30 pack pass:** Armor Packs became repeatable side stock at a rising price — 25/35/45
+  credits by band, ×1.5 per pack opened in the operation. A modest difficulty 5–7 operation now
+  banks 1–3 packs. With the shelf-first greedy policy, a casual squad buys ~2 shelf items and ~10
+  packs per 20-mission climb, steady ~8 shelf and ~10 packs, eager ~14 and ~10, maxed ~16 and ~10
+  (the pack count is the sim's passive-pool ceiling, since it does not model duplicates). Re-ran
+  after the counter redesign.
+- **2026-10-31 pack price carry-over:** the ×1.5 tally now survives a new operation instead of
+  resetting to the band's base, so shop rounds no longer offer a fresh 25-credit pack. Re-ran the
+  sim (superseding the pack counts in the 10-30 pass): the crusade tally, not the passive pool, is
+  the cap — a shelf-first diver ends a 20-mission climb with ~5 packs (casual ~4.9, steady and eager
+  ~5.0, maxed ~5.1), while a passive-first collector (`PACKFIRST=1`) buys ~5–7 (casual 5.0, steady
+  5.9, eager 6.1, maxed 6.7) and fewer shelf items.
 - Brasch's Bargains pace well through B/A tier: a steady squad buys ~11 shelf items over 20 missions
   (~1.3 per operation), an eager one ~15. Buys per mission drop to 0.1-0.6 at difficulty 8-10 (cause not
-  investigated). The Armor Pack is a separate sink: a shelf-first diver buys almost none, while a
-  passive-first collector (`PACKFIRST=1`) buys ~1 pack per climb as steady, ~4 as eager and ~5 as
-  maxed, with an S pack roughly every 11/4/4 climbs.
+  investigated). At this review the Armor Pack was a one-per-operation sink: a shelf-first diver bought
+  almost none, while a passive-first collector (`PACKFIRST=1`) bought ~1 pack per climb as steady, ~4
+  as eager and ~5 as maxed, with an S pack roughly every 11/4/4 climbs. The 2026-10-30 pack pass
+  above supersedes those pack numbers.
 - **Addressed after this review:** S-tier at 800 credits was effectively unreachable, and difficulty 3
   had a dead shop (haul 4-8 vs a 25-credit floor). Prices now ride one curve, 35/100/280/450, and the
   shop stays shut until the first operation completes, so early credits accumulate instead of
