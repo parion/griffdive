@@ -42,7 +42,7 @@ test('the Armor Pack is a card in the shelf row and opens over the counter', asy
   const pack = shop.locator('.pack-card')
   await expect(pack).toContainText('Armor Pack')
   await expect(pack).toContainText('3 armor passives')
-  await expect(pack).toContainText('S 1%')
+  await expect(pack.locator('.card-price')).toContainText('25')
   await expect(pack.locator('.mini')).toHaveCount(3)
 
   await pack.getByRole('button', { name: 'Open Armor Pack 1 for 25 credits' }).click()
@@ -97,6 +97,24 @@ test('a second pack costs more and the replay opens the settled fan', async ({ p
   await expect(replay.locator('.card-slot')).toHaveCount(3)
   await replay.getByRole('button', { name: 'To the shelf' }).click()
   await expect(replay).toBeHidden()
+})
+
+test('the whole shelf card is the buy target', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await stockedDive(page)
+
+  await page.getByRole('button', { name: /Brasch's Bargains, 1000 credits/ }).click()
+  const shop = counter(page)
+  const slot = shop.locator('.shelf .slot').first()
+  await expect(slot).toHaveClass(/open/)
+  const itemName = await slot.locator('.card-name').innerText()
+
+  await slot.click()
+
+  await expect(slot).toHaveClass(/bought/)
+  await expect(slot.locator('.card-veil.stamp')).toHaveText('Taken')
+  await expect(slot.locator('.card-name')).toHaveText(itemName)
+  await expect(shop.locator('.shelf .slot.open')).toHaveCount(0)
 })
 
 test('the phone opens the counter and the pack fullscreen', async ({ browser }) => {

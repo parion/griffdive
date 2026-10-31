@@ -566,9 +566,9 @@ export function draftSummaryFor(state: DiveState, diver: DiverState): DraftSumma
 }
 
 // A diver's Brasch's Bargains deal for the mission about to start: the
-// holdings and bans the shelf skips, and what the operation has already
-// spent (a bought kind on the shelf, the Armor Packs opened). A new operation
-// clears both; a failure restart keeps them.
+// holdings and bans the shelf skips, and what the crusade has already spent.
+// A new operation clears the bought kinds but keeps the Armor Pack tally, so
+// its price keeps climbing across rounds; a failure restart keeps both.
 export function dealBargain(
   state: DiveState,
   diver: DiverState,
@@ -579,7 +579,7 @@ export function dealBargain(
     excludedIds: [...(state.personalInventories[diver.id] ?? []), ...diver.bannedItemIds],
     boughtItemId: null,
     boughtKinds: newOperation ? [] : previous?.boughtKinds ?? [],
-    packs: newOperation ? [] : previous?.packs ?? [],
+    packs: previous?.packs ?? [],
   }
 }
 
@@ -710,10 +710,11 @@ export function canBuyItem(
 // The Armor Pack side table: a sealed pack of up to three armor passives from
 // the diver's unowned pool. The offer is display data — the engine re-derives
 // the actual pull from the mission seed when the diver buys. The price is the
-// next pack's: it climbs with every pack already opened this operation.
+// next pack's: it climbs with every pack the diver has opened this crusade,
+// operations included.
 export interface ArmorPackOffer {
   price: number
-  // How many packs the diver has opened this operation.
+  // How many packs the diver has opened this crusade.
   packsOpened: number
   // How many passives the pack would deal right now (3 unless the pool is thin).
   size: number
@@ -770,12 +771,13 @@ export function armorPackPoolFor(state: DiveState, diver: DiverState): Item[] {
     .filter(item => !excluded.has(item.id))
 }
 
-// Every pack this operation already dealt, oldest first.
+// Every pack this crusade has dealt, oldest first. Kept across operations so
+// the price tally survives (a new operation still restocks the shelf).
 export function armorPacksFor(diver: DiverState): ArmorPackDeal[] {
   return diver.bargain?.packs ?? []
 }
 
-// The newest pack this operation dealt, or null.
+// The newest pack this crusade dealt, or null.
 export function armorPackFor(diver: DiverState): ArmorPackDeal | null {
   return diver.bargain?.packs.at(-1) ?? null
 }
@@ -788,9 +790,9 @@ export function armorPackItemsFor(state: DiveState, diver: DiverState): Item[] {
     .filter((item): item is Item => item !== undefined)
 }
 
-// Whether a diver can open another Armor Pack this operation: the shop is open,
-// they have unowned passives left, and they can afford the next pack's price.
-// The shelf's one-item limit does not apply — the pack is side stock.
+// Whether a diver can open another Armor Pack: the shop is open, they have
+// unowned passives left, and they can afford the next pack's price. The
+// shelf's one-item limit does not apply — the pack is side stock.
 export function canBuyArmorPack(
   state: DiveState,
   diver: DiverState,

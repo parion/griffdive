@@ -224,7 +224,7 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
         class="last-call"
       >
         <span class="cap">Last call</span>
-        Brasch restocks at Difficulty {{ nextDifficulty }} prices when operation {{ nextOp }} starts.
+        Shelf restocks at Difficulty {{ nextDifficulty }} when operation {{ nextOp }} starts. Pack prices carry over.
       </p>
       <BraschShopDoor
         :state="state"

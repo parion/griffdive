@@ -383,10 +383,11 @@ export const BARGAIN_STREAM = 5
 // one S per pack) sits on top. The pool is finite and duplicate-free, so the
 // pack naturally gets humbler as a diver completes their warbond passives.
 //
-// A diver can open more than one pack in an operation. Each purchase raises the
-// next one's price by ARMOR_PACK_PRICE_STEP, so a modest haul buys a couple and
-// a big one never turns the shelf into a bulk order: the escalation is the cap,
-// alongside the finite passive pool.
+// A diver can open more than one pack. Each purchase raises the next one's
+// price by ARMOR_PACK_PRICE_STEP for the rest of the crusade — operations
+// included — so a modest haul buys a couple and a big one never turns the shelf
+// into a bulk order: the escalation is the cap, alongside the finite passive
+// pool.
 export interface ArmorPackTierWeight {
   tier: Tier
   weight: number
@@ -406,11 +407,12 @@ export interface ArmorPackOdds {
 
 export const ARMOR_PACK_SIZE = 3
 export const ARMOR_PACK_STREAM = 7
-// Base prices by the operation's band; the first pack of an operation costs
-// this, then each further pack multiplies by ARMOR_PACK_PRICE_STEP. These are
-// deliberately cheap next to the shelf: a pack is the repeatable, gambling
-// purchase, and a modest sample hunt should buy a few. The step keeps the
-// tenth pack from being pocket change without closing the shelf.
+// Base prices by the operation's band; the first pack of a crusade costs this,
+// then each further pack multiplies by ARMOR_PACK_PRICE_STEP. A crusade that
+// climbs bands keeps the step but reprices against the new band's base. These
+// are deliberately cheap next to the shelf: a pack is the repeatable, gambling
+// purchase, and a modest sample hunt should buy a few. The step keeps the tenth
+// pack from being pocket change without closing the shelf.
 export const ARMOR_PACK_PRICES: Readonly<Record<ArmorPackBand, number>> = {
   C: 25,
   B: 35,

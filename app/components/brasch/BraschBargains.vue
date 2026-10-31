@@ -174,20 +174,18 @@ function verdict(slotId: string): { allowed: boolean, reason: string | null } {
           v-else
           class="shop-body"
         >
-          <div class="shop-row">
-            <ul
-              class="shelf"
-              :style="{ '--cols': Math.max(1, shelf.length) }"
-              aria-label="Brasch's shelf"
-            >
-              <BraschShelfSlot
-                v-for="entry in shelf"
-                :key="entry.slotId"
-                :entry="entry"
-                :verdict="verdict(entry.slotId)"
-                @buy="entry.item && emit('buy', entry.item.id)"
-              />
-            </ul>
+          <ul
+            class="shelf"
+            :style="{ '--cols': Math.max(1, shelf.length + (pack ? 1 : 0)) }"
+            aria-label="Brasch's shelf"
+          >
+            <BraschShelfSlot
+              v-for="entry in shelf"
+              :key="entry.slotId"
+              :entry="entry"
+              :verdict="verdict(entry.slotId)"
+              @buy="entry.item && emit('buy', entry.item.id)"
+            />
 
             <BraschArmorPack
               v-if="pack"
@@ -198,7 +196,7 @@ function verdict(slotId: string): { allowed: boolean, reason: string | null } {
               @buy="buyPack"
               @view="viewPack"
             />
-          </div>
+          </ul>
 
           <div
             class="shelf-lip"
@@ -387,24 +385,16 @@ function verdict(slotId: string): { allowed: boolean, reason: string | null } {
   gap: 8px;
 }
 
-.shop-row {
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  gap: clamp(16px, 2vw, 28px);
-}
-
 /* -- the shelf ------------------------------------------------------------ */
 .shelf {
   --gap: clamp(12px, 1.5vw, 20px);
   display: grid;
   grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
-  flex: 1;
   gap: var(--gap);
   width: 100%;
   max-width: calc(var(--cols, 3) * 210px + (var(--cols, 3) - 1) * var(--gap));
-  margin: 0;
-  padding: 0 0 2px;
+  margin: 0 auto;
+  padding: 0 6px 2px;
   list-style: none;
 }
 .shelf-lip {
@@ -421,10 +411,6 @@ function verdict(slotId: string): { allowed: boolean, reason: string | null } {
   .shelf { --gap: 12px; }
 }
 @media (max-width: 720px) {
-  .shop-row {
-    flex-direction: column;
-    gap: 18px;
-  }
   .shelf {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     max-width: none;

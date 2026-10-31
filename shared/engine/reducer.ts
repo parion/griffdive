@@ -157,8 +157,8 @@ export function resetOperation(state: DiveState): Partial<DiveState> {
 
 // Brasch restocks at every mission start, a failure restart included: a fresh
 // seed off the mission just played and a fresh deal per diver against their
-// current holdings. What the operation already spent — a bought kind, the
-// Armor Packs opened — stays spent until a new operation begins.
+// current holdings. What the crusade already spent — a bought kind until the
+// next operation, the Armor Packs opened for good — stays spent.
 function redealBargains(
   state: DiveState,
   divers: DiverState[],

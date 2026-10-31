@@ -27,7 +27,7 @@ const RUNS = Number(process.argv[2] ?? 4000)
 // SAVER=1: a diver who sees an S on the shelf within two missions' haul skips smaller buys to afford it.
 const SAVER = process.env.SAVER === '1'
 // PACKS=0: skip Brasch's Armor Pack entirely, to compare shelf-only spending.
-// PACKFIRST=1: a passive collector buys the operation's pack before shelf gear.
+// PACKFIRST=1: a passive collector buys a pack before shelf gear.
 const PACKS = process.env.PACKS !== '0'
 const PACKFIRST = process.env.PACKFIRST === '1'
 const TIERS = ['c', 'b', 'a', 's']
@@ -106,16 +106,18 @@ function shelf(difficulty) {
 
 // Diver buys the priciest shelf item they can afford each mission (one buy per
 // mission, a bought kind is held back until the next operation), then opens
-// Armor Packs with what is left. Packs are repeatable now and each one costs
-// ARMOR_PACK_PRICE_STEP more, so the loop stops when the next pack is
-// unaffordable or the passive pool would be exhausted. Pool duplicates across
-// packs are not modelled, so the pull totals are the optimistic ceiling.
+// Armor Packs with what is left. Packs are repeatable and each one costs
+// ARMOR_PACK_PRICE_STEP more for the rest of the crusade, so the loop stops
+// when the next pack is unaffordable or the passive pool would be exhausted.
+// Pool duplicates across packs are not modelled, so the pull totals are the
+// optimistic ceiling.
 function climb(profile) {
   let purse = 0
   const bought = { c: 0, b: 0, a: 0, s: 0 }
   const packs = { count: 0, pulls: { c: 0, b: 0, a: 0, s: 0 }, sPacks: 0 }
   const perDiff = {}
   let passivePool = armorPassives.length
+  let packTally = 0
   for (let difficulty = MIN_DIFFICULTY; difficulty <= MAX_DIFFICULTY; difficulty++) {
     const stats = (perDiff[difficulty] = { haul: 0, missions: 0, bought: { c: 0, b: 0, a: 0, s: 0 }, packs: 0 })
     const held = new Set()
@@ -132,13 +134,14 @@ function climb(profile) {
         if (!PACKS || passivePool < 1) {
           return false
         }
-        const cost = armorPackPrice(difficulty, stats.packs)
+        const cost = armorPackPrice(difficulty, packTally)
         if (purse < cost) {
           return false
         }
         purse -= cost
         passivePool -= Math.min(passivePool, ARMOR_PACK_SIZE)
         packs.count++
+        packTally++
         stats.packs++
         const pull = openArmorPack(difficulty)
         for (const tier of pull) {

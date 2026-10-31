@@ -92,6 +92,12 @@ Ban UI, the lobby/matchmaking. Not re-verified visually: pixel-level fidelity of
   packs per 20-mission climb, steady ~8 shelf and ~10 packs, eager ~14 and ~10, maxed ~16 and ~10
   (the pack count is the sim's passive-pool ceiling, since it does not model duplicates). Re-ran
   after the counter redesign.
+- **2026-10-31 pack price carry-over:** the ×1.5 tally now survives a new operation instead of
+  resetting to the band's base, so shop rounds no longer offer a fresh 25-credit pack. Re-ran the
+  sim (superseding the pack counts in the 10-30 pass): the crusade tally, not the passive pool, is
+  the cap — a shelf-first diver ends a 20-mission climb with ~5 packs (casual ~4.9, steady and eager
+  ~5.0, maxed ~5.1), while a passive-first collector (`PACKFIRST=1`) buys ~5–7 (casual 5.0, steady
+  5.9, eager 6.1, maxed 6.7) and fewer shelf items.
 - Brasch's Bargains pace well through B/A tier: a steady squad buys ~11 shelf items over 20 missions
   (~1.3 per operation), an eager one ~15. Buys per mission drop to 0.1-0.6 at difficulty 8-10 (cause not
   investigated). At this review the Armor Pack was a one-per-operation sink: a shelf-first diver bought

@@ -130,7 +130,7 @@ export interface PenanceDebt {
   status: 'owed' | 'served' | 'voided'
 }
 
-// The Armor Packs a diver opened this operation, in purchase order. The seed is
+// The Armor Packs a diver opened this crusade, in purchase order. The seed is
 // the derivation that dealt each one (for audit and a replayed reveal); the item
 // ids are what it dealt. Stored, not re-derived: a pack is a purchase, and its
 // pull must never reshuffle under the diver.
@@ -148,9 +148,9 @@ export interface BargainDeal {
   boughtItemId: string | null
   // Slot kinds bought this operation: not rolled again until the next one.
   boughtKinds: BargainSlotKind[]
-  // The Armor Packs opened this operation, in purchase order. Cleared when a
-  // new operation begins, kept through a failure restart. Each pack's price is
-  // derived from how many precede it (see armorPackPrice).
+  // The Armor Packs opened this crusade, in purchase order. Kept through a new
+  // operation and a failure restart, so the price keeps climbing across rounds;
+  // each pack's price is derived from how many precede it (see armorPackPrice).
   packs: ArmorPackDeal[]
 }
 

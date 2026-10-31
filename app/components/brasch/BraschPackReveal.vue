@@ -130,6 +130,17 @@ function cardStyle(index: number): Record<string, string> {
   }
 }
 
+// The deck sheds its top back as each card leaves it, so the pile is never
+// still standing behind a card that has already landed. The backs paint in
+// DOM order, so the last one is the top card and deals first.
+function deckStyle(back: number): Record<string, string> {
+  const cue = cues.value[props.items.length - 1 - back]
+  return {
+    '--i': `${back}`,
+    '--out': `${(cue?.start ?? 0) + DECK_SETTLE}ms`,
+  }
+}
+
 function advance(): void {
   if (phase.value === 'sealed') {
     phase.value = 'bursting'
@@ -264,14 +275,13 @@ function onScreenKey(event: KeyboardEvent): void {
             <div
               v-if="phase === 'drawing'"
               class="pack-deck"
-              :class="{ drawing: phase === 'drawing' }"
               aria-hidden="true"
             >
               <span
                 v-for="i in 3"
                 :key="i"
                 class="deck-card"
-                :style="{ '--i': i - 1 }"
+                :style="deckStyle(i - 1)"
               />
             </div>
 
@@ -604,7 +614,6 @@ function onScreenKey(event: KeyboardEvent): void {
   transform-style: preserve-3d;
   animation: deck-in 0.36s var(--ease-out) both;
 }
-.pack-deck.drawing { animation: deck-in 0.36s var(--ease-out) both, deck-fade 0.5s var(--ease-out) 1.15s forwards; }
 .deck-card {
   position: absolute;
   inset: 0;
@@ -614,6 +623,7 @@ function onScreenKey(event: KeyboardEvent): void {
     linear-gradient(155deg, #2a2817, #0b0c09 60%);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
   transform: translateY(calc(var(--i) * 5px)) rotate(calc((var(--i) - 1) * 2deg));
+  animation: deck-deal 0.16s var(--ease-out) var(--out, 0ms) forwards;
 }
 .deck-card::after {
   content: '';
@@ -873,7 +883,9 @@ function onScreenKey(event: KeyboardEvent): void {
   from { opacity: 0; scale: 0.7; translate: -50% -46%; }
   to { opacity: 1; scale: 1; translate: -50% -54%; }
 }
-@keyframes deck-fade { to { opacity: 0; scale: 0.82; translate: -50% -58%; } }
+@keyframes deck-deal {
+  to { opacity: 0; scale: 0.9; }
+}
 @keyframes card-fly {
   0% { transform: translate(-50%, -50%) translate(0, 26px) rotate(0deg) scale(0.58); opacity: 0; filter: brightness(2); }
   16% { opacity: 1; }

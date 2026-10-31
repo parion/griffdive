@@ -10,7 +10,7 @@ import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
 import { eligibleMisfortunes, deriveFront, deriveStrain } from './wheel'
-import { activeMisfortune, allDiversPicked, availableCaches, awaitingDiverIds, bargainShelfFor, bargainSlotKinds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, setupRiskOf, pactRiskOf, promotionPending, rewardPoolFor, squadSize, climbBlockers, honorsDue, optionsLostFor, squadPenances, statsPendingMisfortune, statsPendingPactIds, statsRules, teamRiskOf } from './selectors'
+import { activeMisfortune, allDiversPicked, armorPackOfferFor, availableCaches, awaitingDiverIds, bargainShelfFor, bargainSlotKinds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, setupRiskOf, pactRiskOf, promotionPending, rewardPoolFor, squadSize, climbBlockers, honorsDue, optionsLostFor, squadPenances, statsPendingMisfortune, statsPendingPactIds, statsRules, teamRiskOf } from './selectors'
 import type { DiveState, DiverState, EngineAction } from './types'
 
 const SETTINGS = { variant: 'medium' as const }
@@ -1066,7 +1066,7 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
     expect(reduce(broke, { type: 'BUY_ARMOR_PACK', playerId: 'p1' })).toBe(broke)
   })
 
-  it('keeps the packs through a failure restart and clears them for the next operation', () => {
+  it('keeps the packs and their rising price across the operation boundary', () => {
     const playMission = (from: DiveState, seed: number): DiveState => {
       let state = reduce(from, { type: 'SPIN_WHEEL', seed })
       state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: false })
@@ -1079,7 +1079,9 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
       return reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: diverOptions(state, requireDiver(state))[0]!.optionId })
     }
     let state = reduce(rich(opened(freshState())), { type: 'BUY_ARMOR_PACK', playerId: 'p1' })
+    state = reduce(state, { type: 'BUY_ARMOR_PACK', playerId: 'p1' })
     const packs = requireDiver(state).bargain!.packs
+    expect(packs).toHaveLength(2)
 
     state = settleDebrief(playMission(state, 42))
     state = reduce(state, { type: 'ADVANCE' })
@@ -1089,7 +1091,12 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
     state = settleDebrief(playMission(state, 43))
     state = reduce(state, { type: 'ADVANCE' })
     expect(state.difficulty).toBe(opened(freshState()).difficulty + 1)
-    expect(requireDiver(state).bargain!.packs).toEqual([])
+    // The new operation restocks the shelf, not the pack tally: the next pack
+    // keeps climbing instead of falling back to the band's base price.
+    expect(requireDiver(state).bargain!.packs).toEqual(packs)
+    const offer = armorPackOfferFor(state, requireDiver(state))
+    expect(offer).toMatchObject({ packsOpened: 2, price: armorPackPrice(state.difficulty, 2) })
+    expect(offer.price).toBeGreaterThan(armorPackPrice(state.difficulty, 0))
   })
 })
 
