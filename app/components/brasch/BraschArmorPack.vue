@@ -165,12 +165,6 @@ const packName = computed(() =>
 
 @media (prefers-reduced-motion: reduce) {
   .mini { transition: none; }
-  .pack-card.actionable:hover .mini.one,
-  .pack-card.actionable:hover .mini.two,
-  .pack-card.actionable:hover .mini.three {
-    rotate: initial;
-    translate: initial;
-  }
   .pack-card.actionable:hover .mini.one { rotate: -15deg; translate: -72% -50%; }
   .pack-card.actionable:hover .mini.two { translate: -50% -54%; }
   .pack-card.actionable:hover .mini.three { rotate: 15deg; translate: -28% -50%; }

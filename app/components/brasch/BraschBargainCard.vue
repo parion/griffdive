@@ -228,6 +228,11 @@ watch(() => props.purchases, (next, previous) => {
     radial-gradient(ellipse 62% 58% at 50% 54%, color-mix(in srgb, var(--line-3) 12%, transparent), transparent 74%),
     linear-gradient(180deg, color-mix(in srgb, var(--line-2) 18%, transparent), transparent 70%);
 }
+.bargain-card.locked .card-glow,
+.bargain-card.heldBack .card-glow {
+  background: color-mix(in srgb, var(--line-3) 22%, transparent);
+  opacity: 0.35;
+}
 
 /* The product floats over its own accent spotlight; the frame does the boxing. */
 .card-stage {

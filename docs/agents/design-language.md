@@ -451,16 +451,15 @@ the whole viewport. The interior is a sign (operation/mission, the title, a purs
 footer, and nothing else: no explanatory paragraphs.
 
 The shelf is one centered grid of **requisition cards**. Every card — named stock and the Armor
-Pack alike — uses the same shell: a small kind label, the price in credits at the top right (display
-face, larger than the old tag price), a 1:1 accent-lit stage, and the product name under it. There is
-no tier badge, percentage or odds copy. The whole card is the buy target: hovering lifts the foil and
-brightens the accent, and a purchase strikes the card gold (a bought slot keeps its place under a
-rotated **Taken** stamp). A locked slot greys out under a tilted clock notice, "Next mission"; a kind
-bought this operation greys out under "Next operation". The Armor Pack is the last card in the same
-grid (`BraschArmorPack`): a foil-wrapped
-side-stock card with **three mini card backs fanned in the Griffdive mark**, a crusade pack count,
-and a replay control for the newest pull. On a phone every card, pack included, wraps into the same
-two-column shelf.
+Pack alike — uses the same shell: a small kind label, the price in credits at the top right in the
+display face, a 1:1 stage lit by the item's tier accent (gold for the pack), and the product name
+under it. There is no tier badge, percentage or odds copy. The whole card is the buy target: hovering
+lifts the foil and brightens the accent, and a purchase strikes the card gold (a bought slot keeps its
+place under a rotated **Taken** stamp). A locked slot greys out under a tilted clock notice, "Next
+mission"; a kind bought this operation greys out under "Next operation". The Armor Pack is the last
+card in the same grid (`BraschArmorPack`): a foil-wrapped side-stock card with **three mini card backs
+fanned in the Griffdive mark**, a crusade pack count, and a replay control for the newest pull. On a
+phone every card, pack included, wraps into the same two-column shelf.
 
 Buying opens `BraschPackReveal` over the counter: on desktop a contained stage (the counter stays
 visible and inert underneath), on a phone the full screen. A sealed foil floats on a dark stage,

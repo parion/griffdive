@@ -115,6 +115,12 @@ test('the whole shelf card is the buy target', async ({ page }) => {
   await expect(slot.locator('.card-veil.stamp')).toHaveText('Taken')
   await expect(slot.locator('.card-name')).toHaveText(itemName)
   await expect(shop.locator('.shelf .slot.open')).toHaveCount(0)
+
+  // The rest of the shelf greys out under the tilted next-mission notice.
+  const locked = shop.locator('.shelf .slot.locked').first()
+  const notice = locked.locator('.card-veil.notice')
+  await expect(notice).toContainText('Next mission')
+  await expect(notice.locator('svg')).toBeVisible()
 })
 
 test('the phone opens the counter and the pack fullscreen', async ({ browser }) => {
