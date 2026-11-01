@@ -131,7 +131,7 @@ export function joinDiver(
     // Helldiver starts their purse empty again.
     credits: 0,
     // Seated mid-crusade: Brasch deals the joiner this mission's shelf.
-    bargain: state.settings ? { excludedIds: [...inventory], boughtItemId: null, boughtKinds: [], pack: null } : null,
+    bargain: state.settings ? { excludedIds: [...inventory], boughtItemId: null, boughtKinds: [], packs: [] } : null,
     bannedItemIds: [],
     rewardRerollSeed: null,
     rewardBanned: false,
@@ -226,14 +226,21 @@ function sanitizeBargain(raw: unknown): BargainDeal | null {
   if (!raw || typeof raw !== 'object') {
     return null
   }
-  const deal = raw as Partial<BargainDeal>
+  const deal = raw as Partial<BargainDeal> & { pack?: unknown }
   const kinds = new Set<string>([...BARGAIN_SLOTS, 'stratagem'])
+  // A room written before packs were repeatable carries one `pack`; fold it in
+  // as the first pull so a deploy never strands an operation's purchase.
+  const rawPacks = Array.isArray(deal.packs) ? deal.packs : [deal.pack]
+  const packs = rawPacks
+    .slice(0, 50)
+    .map(sanitizeArmorPack)
+    .filter((pack): pack is ArmorPackDeal => pack !== null)
   return {
     excludedIds: stringArray(deal.excludedIds, 2000),
     boughtItemId: typeof deal.boughtItemId === 'string' ? deal.boughtItemId : null,
     boughtKinds: stringArray(deal.boughtKinds, 10)
       .filter((kind): kind is BargainSlotKind => kinds.has(kind)),
-    pack: sanitizeArmorPack(deal.pack),
+    packs,
   }
 }
 

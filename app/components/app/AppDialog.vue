@@ -14,6 +14,10 @@ const props = withDefaults(defineProps<{
   // Keeps the title for assistive tech but drops the header row, for content
   // that brings its own heading.
   hideTitle?: boolean
+  // `mobile` turns the dialog into a full-viewport sheet at the phone
+  // breakpoint (the same 1020px the dive shell uses); `always` takes the
+  // viewport at every size.
+  fullscreen?: 'mobile' | 'always'
   contentClass?: string
 }>(), {
   description: undefined,
@@ -21,6 +25,7 @@ const props = withDefaults(defineProps<{
   dismissible: true,
   showClose: true,
   hideTitle: false,
+  fullscreen: undefined,
   contentClass: undefined,
 })
 
@@ -58,7 +63,12 @@ function blockDismiss(event: Event): void {
         >
           <Motion
             class="app-dialog cut"
-            :class="[`app-dialog--${size}`, contentClass]"
+            :class="[
+              `app-dialog--${size}`,
+              fullscreen === 'always' ? 'app-dialog--fullscreen' : null,
+              fullscreen === 'mobile' ? 'app-dialog--fullscreen-mobile' : null,
+              contentClass,
+            ]"
             :initial="{ opacity: 0, y: 24, scale: 0.97 }"
             :animate="{ opacity: 1, y: 0, scale: 1 }"
             :exit="{ opacity: 0, y: 12, scale: 0.98 }"
@@ -144,6 +154,49 @@ function blockDismiss(event: Event): void {
 .app-dialog--md { width: min(42rem, calc(100vw - 2rem)); }
 .app-dialog--lg { width: min(52rem, calc(100vw - 2rem)); }
 .app-dialog--xl { width: min(64rem, calc(100vw - 2rem)); }
+
+/* A full-viewport takeover: the content owns its own header, safe areas and
+   internal scroll. The phone breakpoint matches usePhoneShell's 1020px. */
+.app-dialog--fullscreen {
+  inset: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: none;
+  display: flex;
+  flex-direction: column;
+}
+.app-dialog--fullscreen .app-dialog-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+@media (max-width: 1020px) {
+  .app-dialog--fullscreen-mobile {
+    inset: 0;
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: none;
+    display: flex;
+    flex-direction: column;
+  }
+  .app-dialog--fullscreen-mobile .app-dialog-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+}
 
 .app-dialog-head {
   display: flex;

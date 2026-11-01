@@ -566,9 +566,9 @@ export function draftSummaryFor(state: DiveState, diver: DiverState): DraftSumma
 }
 
 // A diver's Brasch's Bargains deal for the mission about to start: the
-// holdings and bans the shelf skips, and what the operation has already
-// spent (a bought kind on the shelf, the one Armor Pack). A new operation
-// clears both; a failure restart keeps them.
+// holdings and bans the shelf skips, and what the crusade has already spent.
+// A new operation clears the bought kinds but keeps the Armor Pack tally, so
+// its price keeps climbing across rounds; a failure restart keeps both.
 export function dealBargain(
   state: DiveState,
   diver: DiverState,
@@ -579,7 +579,7 @@ export function dealBargain(
     excludedIds: [...(state.personalInventories[diver.id] ?? []), ...diver.bannedItemIds],
     boughtItemId: null,
     boughtKinds: newOperation ? [] : previous?.boughtKinds ?? [],
-    pack: newOperation ? null : previous?.pack ?? null,
+    packs: previous?.packs ?? [],
   }
 }
 
@@ -709,9 +709,13 @@ export function canBuyItem(
 
 // The Armor Pack side table: a sealed pack of up to three armor passives from
 // the diver's unowned pool. The offer is display data — the engine re-derives
-// the actual pull from the mission seed when the diver buys.
+// the actual pull from the mission seed when the diver buys. The price is the
+// next pack's: it climbs with every pack the diver has opened this crusade,
+// operations included.
 export interface ArmorPackOffer {
   price: number
+  // How many packs the diver has opened this crusade.
+  packsOpened: number
   // How many passives the pack would deal right now (3 unless the pool is thin).
   size: number
   // How many unowned passives remain in the diver's warbonds.
@@ -725,6 +729,7 @@ export interface ArmorPackOffer {
 export function armorPackOfferFor(state: DiveState, diver: DiverState): ArmorPackOffer {
   const odds = ARMOR_PACK_ODDS[armorPackBandFor(state.difficulty)]
   const pool = armorPackPoolFor(state, diver)
+  const packsOpened = diver.bargain?.packs.length ?? 0
   const bandFloor = odds.hit.reduce(
     (lowest, entry) => (TIER_RANK[entry.tier] < TIER_RANK[lowest] ? entry.tier : lowest),
     odds.hit[0]!.tier,
@@ -743,7 +748,8 @@ export function armorPackOfferFor(state: DiveState, diver: DiverState): ArmorPac
           'c',
         )
   return {
-    price: armorPackPrice(state.difficulty),
+    price: armorPackPrice(state.difficulty, packsOpened),
+    packsOpened,
     size: Math.min(ARMOR_PACK_SIZE, pool.length),
     available: pool.length,
     // A thin pool that cannot fill three cards without S guarantees one; a
@@ -765,20 +771,28 @@ export function armorPackPoolFor(state: DiveState, diver: DiverState): Item[] {
     .filter(item => !excluded.has(item.id))
 }
 
-// The one pack this operation already dealt, or null.
-export function armorPackFor(diver: DiverState): ArmorPackDeal | null {
-  return diver.bargain?.pack ?? null
+// Every pack this crusade has dealt, oldest first. Kept across operations so
+// the price tally survives (a new operation still restocks the shelf).
+export function armorPacksFor(diver: DiverState): ArmorPackDeal[] {
+  return diver.bargain?.packs ?? []
 }
 
+// The newest pack this crusade dealt, or null.
+export function armorPackFor(diver: DiverState): ArmorPackDeal | null {
+  return diver.bargain?.packs.at(-1) ?? null
+}
+
+// The newest pack's items, for the reveal and the shelf's pull summary. The
+// room's custom tier list can re-tier a passive, so the state is needed.
 export function armorPackItemsFor(state: DiveState, diver: DiverState): Item[] {
-  return (diver.bargain?.pack?.itemIds ?? [])
+  return (armorPackFor(diver)?.itemIds ?? [])
     .map(id => tieredItem(id, tierListOf(state)))
     .filter((item): item is Item => item !== undefined)
 }
 
-// Whether a diver can open this operation's Armor Pack: the shop is open, the
-// pack has not been opened, they have unowned passives left, and they can
-// afford it. The shelf's one-item limit does not apply — the pack is side stock.
+// Whether a diver can open another Armor Pack: the shop is open, they have
+// unowned passives left, and they can afford the next pack's price. The
+// shelf's one-item limit does not apply — the pack is side stock.
 export function canBuyArmorPack(
   state: DiveState,
   diver: DiverState,
@@ -790,13 +804,11 @@ export function canBuyArmorPack(
   if (!diver.bargain) {
     return { allowed: false, reason: 'Brasch has not dealt your shelf' }
   }
-  if (diver.bargain.pack) {
-    return { allowed: false, reason: 'Already opened a pack this operation' }
-  }
   if (armorPackPoolFor(state, diver).length === 0) {
     return { allowed: false, reason: 'You own every armor passive in your warbonds' }
   }
-  if (armorPackPrice(state.difficulty) > diver.credits) {
+  const price = armorPackPrice(state.difficulty, diver.bargain.packs.length)
+  if (price > diver.credits) {
     return { allowed: false, reason: 'Not enough credits' }
   }
   return { allowed: true, reason: null }

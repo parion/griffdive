@@ -746,7 +746,8 @@ items):
 - **Slots:** one item each for **primary**, **secondary** and **throwable** (`BARGAIN_SLOTS`).
   Difficulties where a mission can award a 4th star (diff 5+) add one random **stratagem** slot,
   and a 5th star (diff 7+) adds a second one (`bargainStratagemSlotsFor`). Two stratagem slots never
-  offer the same stratagem. Armor passives are not a shelf slot; they are side stock (below).
+  offer the same stratagem. Armor passives are not a shelf slot; they are repeatable side stock
+  beside it (below).
 - **Tiers:** each slot is a uniformly random item of its kind from the operation's **base tier up to
   one tier above it** (`BARGAIN_TIER_REACH`): C–B at diffs 3–5, B–A at 6–7, A–S at 8–10. Valor plays
   no part. A kind with nothing in that band steps to the nearest stocked tier, cheaper first.
@@ -764,7 +765,8 @@ items):
   stays in reach — so C/B sit within a mission or two's haul, A is a short save, and S (stocked from difficulty 8) lands about once per 6–7
   missions for a squad filing a modest share of the map's samples (`scripts/simulate-economy.mjs`;
   `SAVER=1` models a diver who skips small buys to afford a nearby S). Primaries ×1.25, everything
-  else ×1. The Armor Pack is priced by band, not by a card's tier (below).
+  else ×1. The Armor Pack is priced by band, not by a card's tier, and each pack opened in the
+  crusade raises the next one's price by half (below).
 - **One buy per mission:** `BUY_ITEM` (self-service) deducts the price, banks the item in
   `personalInventories` and records it as `bargain.boughtItemId`. The shelf keeps its layout: the
   bought slot reads `bought` and every other slot `locked` until the next mission (`bargainShelfFor`
@@ -779,14 +781,20 @@ items):
 
 Armor passives never appear in a reward draft, Liberty's Cross or a Field Promotion. The surplus
 kit and the SEAF Support Package still issue them; the only way to **earn** another is the Armor
-Pack. It sits beside the shelf, not on it: a **separate purchase** (a diver can buy one shelf item
-and one pack in the same mission), **one pack per operation**, priced by the operation's base tier.
+Pack. It sits last in the same shelf grid, as **side stock**: a separate purchase (a diver can
+buy one shelf item and any number of packs in the same mission), repeatable, priced by the current
+operation's base tier and rising with every pack opened in the crusade. The tally does not reset when
+a new operation starts — it carries across rounds — so the price keeps climbing; a band change only
+replaces the base it multiplies.
 
-| Base band | Price | Ordinary cards | Hit card | S roll |
+| Base band | Pack 1 | Pack 2 | Pack 3 | Pack 4 |
 | --- | --- | --- | --- | --- |
-| C (3–5) | 160 | C 30 / B 50 / A 20 | B 70 / A 30 | 1% |
-| B (6–7) | 240 | B 45 / A 55 | B 30 / A 70 | 4% |
-| A (8–10) | 360 | A 100 | A 100 | 8% |
+| C (3–5) | 25 | 38 | 56 | 84 |
+| B (6–7) | 35 | 53 | 79 | 118 |
+| A (8–10) | 45 | 68 | 101 | 152 |
+
+The columns count packs across the whole crusade, so a later band keeps the count and swaps the base:
+a fifth pack bought at band B costs 35 × 1.5⁴ = 177, not the band's 35.
 
 - **Up to three duplicate-free passives** from the diver's own warbonds, minus everything they
   already own and anything banned. The pack never repeats a card; a pool with fewer than three left
@@ -800,30 +808,32 @@ and one pack in the same mission), **one pack per operation**, priced by the ope
   The chance is 1% at base C, 4% at base B and 8% at base A; it reads 0% once the diver owns both S
   passives, and 100% ("S guaranteed") when the unowned pool is too thin to fill three cards without
   one.
-- **Derived from the mission seed, then stored:** `BUY_ARMOR_PACK` derives the pull from the
-  mission's `bargainSeed` (stream salt 7) folded with the diver id, then stores the seed and the
-  dealt item ids in `DiverState.bargain.pack`. The stored pull is what the shelf and a reload show:
-  a new mission in the same operation keeps it, a failure restart keeps it, a new operation clears
-  it. The pull is not re-derived from live holdings, so a later forfeit cannot reshuffle the reveal.
+- **Derived from the mission seed, then stored:** `BUY_ARMOR_PACK` derives each pull from the
+  mission's `bargainSeed` (stream salt 7) folded with the diver id and the pack's place in the
+  crusade, then stores the seed and the dealt item ids in `DiverState.bargain.packs`. The stored
+  pulls are what the shelf and a reload show: a new mission, a failure restart and a new operation
+  all keep them (the price tally rides on the list). A later forfeit cannot reshuffle a reveal.
 - **At stake:** bought passives are earned gear, so a failure's forfeit can take one.
-- **The reveal is presentation:** buying takes over the screen with `BraschPackReveal` — a sealed
+- **The reveal is presentation:** buying opens `BraschPackReveal` on top of the counter — a sealed
   foil floats on a dark stage, tap/Enter tears it, a three-card deck appears and each card flies out
-  and flips into a hand fan, with an S pull getting a gold burst and holo wash. It is low-text: the
-  pack label, the tier and name on each card, and one "To the shelf" control. The pull is already
-  banked; the full-screen stage is dismissible and the side card keeps a "View pull" replay.
+  and flips into a hand fan, with an S pull getting a gold burst and holo wash. On desktop it is a
+  contained stage over the shop; on a phone it takes the whole screen. It is low-text: the pack
+  label, the tier and name on each card, and one "To the shelf" control. The pull is already
+  banked; the shop's pack card keeps a replay control for the newest pull.
 
 **Tuning check:** `node --experimental-strip-types scripts/simulate-economy.mjs` Monte-Carlos a
 full 3→10 climb (20 missions, 8 operations) for four collection profiles against the live
-`config.ts`, spending greedily one buy per mission. Targets: a casual squad (~35% of spawns) buys
-about 6 items per climb (mostly C/B); a steady one (~60%) ~11; an eager collector (~85% plus Sample
-Scanner) ~15; the honor-system maxed haul (the 2× report ceiling) ~17. The shelf no longer carries a
-passive slot, so those are slightly below the old totals; with the Armor Pack on (default) a
-shelf-first diver spends most of the purse before the pack and buys almost none (~0.1 per climb
-steady, ~0.2 eager, ~0.3 maxed). A passive-first collector (`PACKFIRST=1`) buys the pack before
-shelf gear: ~1 pack per climb as steady, ~4 eager and ~5 maxed, with an S pack roughly every
-11/4/4 climbs. `PACKS=0` reproduces the shelf-only numbers, and `SAVER=1` models a diver who skips
-small buys to afford a nearby S (steady: an S about once per 5 missions at the top band). Re-run it
-after touching `SAMPLE_CREDITS`, `TIME_HAUL_FLOOR`, `CREDIT_PRICE_*`, `ARMOR_PACK_PRICES` or
+`config.ts`, spending greedily one shelf buy per mission and then opening packs with what is left.
+Targets: a casual squad (~35% of spawns) buys about 2 shelf items per climb (mostly C); a steady
+one (~60%) ~8 (a C/B/A mix); an eager collector (~85% plus Sample Scanner) ~14; the honor-system
+maxed haul (the 2× report ceiling) ~16. Packs are the repeatable sink now: a modest difficulty 5–7
+operation banks roughly 1–2 packs, and the crusade tally — not the passive pool — is the binding cap
+over a climb. A shelf-first diver ends a 20-mission climb with about 5 packs (casual ~4.9, steady and
+eager ~5.0, maxed ~5.1); a passive-first collector (`PACKFIRST=1`) buys ~5–7 (casual 5.0, steady
+5.9, eager 6.1, maxed 6.7) and fewer shelf items. `PACKS=0` reproduces the
+shelf-only numbers, and `SAVER=1` models a diver who skips small buys to afford a nearby S (steady:
+an S about once per 5 missions at the top band). Re-run it after touching `SAMPLE_CREDITS`,
+`TIME_HAUL_FLOOR`, `CREDIT_PRICE_*`, `ARMOR_PACK_PRICES`, `ARMOR_PACK_PRICE_STEP` or
 `ARMOR_PACK_ODDS`.
 
 ### Mission failure — the forfeit offer
@@ -991,8 +1001,9 @@ build reads. In the browser the save, session, recent-room and seat keys moved t
 `app/plugins/purge-alpha-saves.client.ts` deletes the alpha keys on every boot; preferences (name,
 warbonds, intros) carry over. **Beta policy: the schema is frozen and saves migrate.** Every later
 breaking change bumps `SAVE_SCHEMA_VERSION` and adds a version-gated migration step to
-`normalizeSaveDoc` (replacing its strict version check), or is reverted. Rooms carry no schema
-version, so the same change must also normalize stored rooms on read in `loadRoom` (idempotent:
+`normalizeSaveDoc` (replacing its strict version check), or is reverted. The first such step is
+v1 → v2 (`migrateV1toV2`, the Armor Pack's single `bargain.pack` folded into `bargain.packs`).
+Rooms carry no schema version, so the same change must also normalize stored rooms on read in `loadRoom` (idempotent:
 fill only absent fields, never overwrite) — they survive deploys on the volume. Normalization drops
 only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
@@ -1001,5 +1012,5 @@ session link is the identity. Crusade state includes: settings, difficulty, miss
 or room normalization), inventories, per-diver warbond declarations,
 `completedCombos` (misfortune × front × strain), reroll tokens, action log (capped), RNG seed
 history, legacy caches (earned gear) parked by departed divers, per-diver catch-up bookkeeping, credit
-purses and the mission's Brasch's Bargains seed and per-diver deals (the one Armor Pack pull
-included).
+purses and the mission's Brasch's Bargains seed and per-diver deals (the crusade's Armor Pack
+pulls included).

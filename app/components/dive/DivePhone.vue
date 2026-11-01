@@ -41,8 +41,6 @@ const emit = defineEmits<{
   spinBonus: []
   awardBonus: [playerIds: string[]]
   advance: []
-  buy: [itemId: string]
-  openPack: []
   forfeit: [itemId: string]
   kick: [diverId: string]
   transferHost: [diverId: string]
@@ -161,8 +159,6 @@ const squadBanked = computed(() => phase.value === 'rewards' && allDiversPicked(
           :op-length="opLength"
           phone
           @advance="emit('advance')"
-          @buy="emit('buy', $event)"
-          @open-pack="emit('openPack')"
           @hold-pact="(playerId, pactId) => emit('holdPact', playerId, pactId)"
           @fail-pact="(playerId, pactId) => emit('failPact', playerId, pactId)"
           @hold-directive="emit('holdDirective')"
@@ -209,8 +205,6 @@ const squadBanked = computed(() => phase.value === 'rewards' && allDiversPicked(
         :self="self"
         :preview-pact-ids="pactPreviewIds"
         sheet
-        @buy="emit('buy', $event)"
-        @open-pack="emit('openPack')"
       />
     </template>
   </PhoneShell>

@@ -375,14 +375,19 @@ export function bargainStratagemSlotsFor(difficulty: number): number {
 // Stream salt 5 off the mission's bargain seed.
 export const BARGAIN_STREAM = 5
 
-// Brasch's Armor Pack: three armor passives sold on the side of the shelf,
-// one pack per operation. The pack is the only way to earn new passives —
-// they never enter reward drafts, Liberty's Cross, or Field Promotions — so
-// its odds are tuned to make the S passives a genuine chase: one hit card is
-// guaranteed at the band's floor, the other two fill the same band, and a
-// single S roll (never more than one S per pack) sits on top. The pool is
-// finite and duplicate-free, so the pack naturally gets humbler as a diver
-// completes their warbond passives.
+// Brasch's Armor Pack: three armor passives sold on the side of the shelf.
+// The pack is the only way to earn new passives — they never enter reward
+// drafts, Liberty's Cross, or Field Promotions — so its odds are tuned to make
+// the S passives a genuine chase: one hit card is guaranteed at the band's
+// floor, the other two fill the same band, and a single S roll (never more than
+// one S per pack) sits on top. The pool is finite and duplicate-free, so the
+// pack naturally gets humbler as a diver completes their warbond passives.
+//
+// A diver can open more than one pack. Each purchase raises the next one's
+// price by ARMOR_PACK_PRICE_STEP for the rest of the crusade — operations
+// included — so a modest haul buys a couple and a big one never turns the shelf
+// into a bulk order: the escalation is the cap, alongside the finite passive
+// pool.
 export interface ArmorPackTierWeight {
   tier: Tier
   weight: number
@@ -402,11 +407,18 @@ export interface ArmorPackOdds {
 
 export const ARMOR_PACK_SIZE = 3
 export const ARMOR_PACK_STREAM = 7
+// Base prices by the operation's band; the first pack of a crusade costs this,
+// then each further pack multiplies by ARMOR_PACK_PRICE_STEP. A crusade that
+// climbs bands keeps the step but reprices against the new band's base. These
+// are deliberately cheap next to the shelf: a pack is the repeatable, gambling
+// purchase, and a modest sample hunt should buy a few. The step keeps the tenth
+// pack from being pocket change without closing the shelf.
 export const ARMOR_PACK_PRICES: Readonly<Record<ArmorPackBand, number>> = {
-  C: 160,
-  B: 240,
-  A: 360,
+  C: 25,
+  B: 35,
+  A: 45,
 }
+export const ARMOR_PACK_PRICE_STEP = 1.5
 
 export const ARMOR_PACK_ODDS: Readonly<Record<ArmorPackBand, ArmorPackOdds>> = {
   C: {
@@ -430,8 +442,8 @@ export function armorPackBandFor(difficulty: number): ArmorPackBand {
   return baseTierFor(difficulty) as ArmorPackBand
 }
 
-export function armorPackPrice(difficulty: number): number {
-  return ARMOR_PACK_PRICES[armorPackBandFor(difficulty)]
+export function armorPackPrice(difficulty: number, packsBought = 0): number {
+  return Math.round(ARMOR_PACK_PRICES[armorPackBandFor(difficulty)] * ARMOR_PACK_PRICE_STEP ** packsBought)
 }
 
 // A failed mission's forfeit offer: a seeded handful of the diver's own items

@@ -2,6 +2,7 @@
 //   node --experimental-strip-types scripts/simulate-economy.mjs [runs]
 // Reads the live numbers from shared/engine/config.ts, so it always reflects
 // what ships. Profiles are how much of the map's spawned samples a squad files.
+import { armorPassives } from '../shared/data/equipment.ts'
 import {
   ARMOR_PACK_ODDS,
   ARMOR_PACK_SIZE,
@@ -26,7 +27,7 @@ const RUNS = Number(process.argv[2] ?? 4000)
 // SAVER=1: a diver who sees an S on the shelf within two missions' haul skips smaller buys to afford it.
 const SAVER = process.env.SAVER === '1'
 // PACKS=0: skip Brasch's Armor Pack entirely, to compare shelf-only spending.
-// PACKFIRST=1: a passive collector buys the operation's pack before shelf gear.
+// PACKFIRST=1: a passive collector buys a pack before shelf gear.
 const PACKS = process.env.PACKS !== '0'
 const PACKFIRST = process.env.PACKFIRST === '1'
 const TIERS = ['c', 'b', 'a', 's']
@@ -105,16 +106,21 @@ function shelf(difficulty) {
 
 // Diver buys the priciest shelf item they can afford each mission (one buy per
 // mission, a bought kind is held back until the next operation), then opens
-// this operation's Armor Pack if the purse still covers it.
+// Armor Packs with what is left. Packs are repeatable and each one costs
+// ARMOR_PACK_PRICE_STEP more for the rest of the crusade, so the loop stops
+// when the next pack is unaffordable or the passive pool would be exhausted.
+// Pool duplicates across packs are not modelled, so the pull totals are the
+// optimistic ceiling.
 function climb(profile) {
   let purse = 0
   const bought = { c: 0, b: 0, a: 0, s: 0 }
   const packs = { count: 0, pulls: { c: 0, b: 0, a: 0, s: 0 }, sPacks: 0 }
   const perDiff = {}
+  let passivePool = armorPassives.length
+  let packTally = 0
   for (let difficulty = MIN_DIFFICULTY; difficulty <= MAX_DIFFICULTY; difficulty++) {
     const stats = (perDiff[difficulty] = { haul: 0, missions: 0, bought: { c: 0, b: 0, a: 0, s: 0 }, packs: 0 })
     const held = new Set()
-    let packBought = false
     for (let m = 0; m < missionsPerOperation(difficulty); m++) {
       const haul = missionHaul(difficulty, profile)
       purse += haul
@@ -124,14 +130,18 @@ function climb(profile) {
       const beforePack = stock.filter(slot => slot.cost <= purse).sort((a, b) => b.cost - a.cost)
       const saving = SAVER && !beforePack.some(slot => slot.tier === 's')
         && stock.some(slot => slot.tier === 's' && slot.cost <= purse + 2 * haul)
-      const packCost = armorPackPrice(difficulty)
       const buyPack = () => {
-        if (!PACKS || packBought || purse < packCost) {
-          return
+        if (!PACKS || passivePool < 1) {
+          return false
         }
-        purse -= packCost
-        packBought = true
+        const cost = armorPackPrice(difficulty, packTally)
+        if (purse < cost) {
+          return false
+        }
+        purse -= cost
+        passivePool -= Math.min(passivePool, ARMOR_PACK_SIZE)
         packs.count++
+        packTally++
         stats.packs++
         const pull = openArmorPack(difficulty)
         for (const tier of pull) {
@@ -140,9 +150,12 @@ function climb(profile) {
         if (pull.includes('s')) {
           packs.sPacks++
         }
+        return true
       }
       if (PACKFIRST && !saving) {
-        buyPack()
+        while (buyPack()) {
+          // A passive-first collector keeps opening until the next price is out of reach.
+        }
       }
       const options = stock.filter(slot => slot.cost <= purse).sort((a, b) => b.cost - a.cost)
       const pick = saving ? undefined : options[0]
@@ -153,7 +166,9 @@ function climb(profile) {
         stats.bought[pick.tier]++
       }
       if (!PACKFIRST) {
-        buyPack()
+        while (buyPack()) {
+          // Spend the rest of the purse on packs, one rising price at a time.
+        }
       }
     }
   }

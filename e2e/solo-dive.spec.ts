@@ -157,22 +157,19 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.locator('.loot-card').first().click()
   await page.getByRole('button', { name: /^Bank / }).click()
 
-  // Medium's two-mission operation closes on the climb screen.
-  await expect(page.getByRole('heading', { name: 'The squad climbs' })).toBeVisible()
   // The climb regroups too: the operation's last haul and a last call at Brasch.
+  await expect(page.getByRole('heading', { name: 'The squad climbs' })).toBeVisible()
   await expect(page.getByRole('article', { name: 'Your haul' }).locator('img')).toBeVisible()
-  await expect(page.locator('.climb .bb-card')).toHaveCount(3)
-  // The operation is complete, so the shop opens: one slot each for primary,
-  // secondary and throwable at Medium, plus the Armor Pack side stock.
-  await expect(page.locator('.climb .bb-closed')).toHaveCount(0)
-  await expect(page.locator('.climb .bb-pack')).toContainText('Armor Pack')
-  await expect(page.locator('.climb .bb-side')).toContainText('One pack per operation')
-  await side.getByRole('button', { name: /^Brasch's Bargains, \d+ credits/ }).click()
-  const bargains = side.getByRole('region', { name: 'Brasch\'s Bargains' })
-  await expect(bargains.locator('.bb-card')).toHaveCount(3)
-  await expect(bargains.locator('.bb-pack')).toBeVisible()
-  await expect(bargains.locator('.bb-pack-btn')).toBeDisabled()
-  await side.getByRole('button', { name: /^Hide/ }).click()
+  await expect(page.locator('.climb .door')).toBeEnabled()
+  await expect(page.locator('.climb .door')).toContainText('Shop')
+  // The operation is complete, so the counter opens: one slot each for primary,
+  // secondary and throwable at Medium, plus the Armor Pack card.
+  await page.locator('.climb .door').click()
+  const bargains = page.getByRole('dialog', { name: 'Brasch\'s Bargains' })
+  await expect(bargains.locator('.shelf .slot')).toHaveCount(3)
+  await expect(bargains.locator('.pack-card')).toBeVisible()
+  await expect(bargains.locator('.pack-card').getByRole('button', { name: /Open Armor Pack 1/ })).toBeDisabled()
+  await page.getByRole('button', { name: 'Close Brasch\'s Bargains' }).click()
   await expect(bargains).toBeHidden()
   await settleClimb(page)
   await page.getByRole('button', { name: /Start operation 2/ }).click()
