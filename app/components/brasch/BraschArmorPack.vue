@@ -42,17 +42,30 @@ const packName = computed(() =>
   >
     <template #stage>
       <span
-        class="mini one"
-        aria-hidden="true"
-      ><AppBrandMark :size="20" /></span>
+        class="pack-art"
+        role="img"
+        aria-label="Armor Pack card backs"
+      >
+        <span
+          class="mini one"
+          aria-hidden="true"
+        ><AppBrandMark :size="20" /></span>
+        <span
+          class="mini two"
+          aria-hidden="true"
+        ><AppBrandMark :size="20" /></span>
+        <span
+          class="mini three"
+          aria-hidden="true"
+        ><AppBrandMark :size="20" /></span>
+      </span>
+    </template>
+
+    <template #detail>
       <span
-        class="mini two"
-        aria-hidden="true"
-      ><AppBrandMark :size="20" /></span>
-      <span
-        class="mini three"
-        aria-hidden="true"
-      ><AppBrandMark :size="20" /></span>
+        v-if="!complete"
+        class="pack-price-note"
+      >Price rises with each pack · next {{ offer.nextPrice }} credits</span>
     </template>
 
     <template #overlay>
@@ -60,8 +73,8 @@ const packName = computed(() =>
         v-if="packs.length"
         class="pack-count disp"
         role="img"
-        :aria-label="`${packs.length} pack${packs.length === 1 ? '' : 's'} opened`"
-      >{{ packs.length }}</span>
+        :aria-label="`Packs bought: ${packs.length}`"
+      >Pack {{ packs.length }}</span>
       <button
         v-if="hasPull"
         class="pack-replay"
@@ -105,6 +118,10 @@ const packName = computed(() =>
   translate: -50% -50%;
   transition: rotate var(--dur-med) var(--ease-out), translate var(--dur-med) var(--ease-out);
 }
+.pack-art {
+  position: absolute;
+  inset: 0;
+}
 .mini::after {
   content: '';
   position: absolute;
@@ -136,15 +153,24 @@ const packName = computed(() =>
   z-index: 6;
   display: grid;
   place-items: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 4px;
+  min-height: 22px;
+  padding: 0 6px;
   border: 1px solid var(--gold);
   background: var(--ground);
   color: var(--gold);
-  font-size: 13px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   line-height: 1;
   box-shadow: 0 0 14px color-mix(in srgb, var(--gold) 25%, transparent);
+}
+.pack-price-note {
+  display: block;
+  min-height: 2.4em;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: center;
 }
 .pack-replay {
   position: absolute;

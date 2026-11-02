@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { DialogClose } from 'reka-ui'
+import { missionsPerOperation } from '~~/shared/engine/config'
 import { catchUpOpsBehind } from '~~/shared/engine/progression'
 import { armorPackOfferFor, armorPacksFor, armorPackItemsFor, bargainShelfFor, bargainsClosedReason, canBuyArmorPack, canBuyItem } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
@@ -20,6 +21,9 @@ const { bargainsOpen, closeBargains } = useDrawers()
 const credits = computed(() => props.self?.credits ?? 0)
 const opNumber = computed(() =>
   catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
+const operationComplete = computed(() => props.state.phase === 'complete'
+  || (props.state.phase === 'rewards'
+    && props.state.missionInOperation >= missionsPerOperation(props.state.difficulty)))
 const closed = computed(() => bargainsClosedReason(props.state))
 const shelf = computed(() => (props.self ? bargainShelfFor(props.state, props.self) : []))
 const pack = computed(() => (props.self ? armorPackOfferFor(props.state, props.self) : null))
@@ -53,6 +57,14 @@ watch(() => packs.value.length, (count, previous) => {
 watch(closed, (reason) => {
   if (reason) {
     packOpen.value = false
+    closeBargains()
+  }
+})
+
+watch(() => props.state.phase, (phase, previous) => {
+  if (phase !== previous) {
+    packOpen.value = false
+    pendingPack.value = false
     closeBargains()
   }
 })
@@ -116,7 +128,11 @@ function verdict(slotId: string): { allowed: boolean, reason: string | null } {
 
       <header class="shop-head">
         <div class="shop-sign">
-          <span class="shop-kicker">Operation {{ opNumber }} · Mission {{ state.missionInOperation }}</span>
+          <span class="shop-kicker">
+            Operation {{ opNumber }}
+            <template v-if="operationComplete">· Complete</template>
+            <template v-else>· Mission {{ state.missionInOperation }}</template>
+          </span>
           <h2 class="shop-title disp">
             Brasch's <b>Bargains</b>
           </h2>

@@ -714,6 +714,8 @@ export function canBuyItem(
 // operations included.
 export interface ArmorPackOffer {
   price: number
+  // What the following pack would cost at the current operation's difficulty.
+  nextPrice: number
   // How many packs the diver has opened this crusade.
   packsOpened: number
   // How many passives the pack would deal right now (3 unless the pool is thin).
@@ -749,6 +751,7 @@ export function armorPackOfferFor(state: DiveState, diver: DiverState): ArmorPac
         )
   return {
     price: armorPackPrice(state.difficulty, packsOpened),
+    nextPrice: armorPackPrice(state.difficulty, packsOpened + 1),
     packsOpened,
     size: Math.min(ARMOR_PACK_SIZE, pool.length),
     available: pool.length,

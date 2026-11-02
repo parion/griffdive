@@ -68,7 +68,9 @@
   at 360px without overflow). Solo drop asks for no name, so specs file one on the host tutorial
   with the `fileCallsign` helper (`e2e/helpers.ts`); once every draft is banked the squad lands on
   the climbs page, which `settleClimb` clears (rules held, honors winner named) before a spec clicks
-  the next drop (`e2e/climb.spec.ts` covers Held, Broke and Penance). Room creation is
+  the next drop (`e2e/climb.spec.ts` covers Held, Broke and Penance); the Armor Pack and
+  achievement specs cover escalation/reveal bounds, the compact recap and its Pardon gate.
+  Room creation is
   rate-limited per address (10/min in production) and the whole suite shares one address, as are WebSocket joins (20/min), so the e2e server runs with `ROOM_CREATE_LIMIT=200` and
   `ROOM_JOIN_LIMIT=400` (`playwright.config.ts`) — a capped join looks like a page stuck on
   "Loading dive…", since the client doesn't surface `rate-limited` — still prefer reusing a

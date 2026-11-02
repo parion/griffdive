@@ -293,11 +293,11 @@ describe('Brasch\'s Armor Pack (side stock)', () => {
   it('reads its price, guaranteed floor and live S chance off the operation band', () => {
     const low = opened(4)
     const lowOffer = armorPackOfferFor(low, { ...host(low), credits: 100_000 })
-    expect(lowOffer).toMatchObject({ price: 25, packsOpened: 0, size: 3, hitFloor: 'b', sChance: 0.01 })
+    expect(lowOffer).toMatchObject({ price: 25, nextPrice: 38, packsOpened: 0, size: 3, hitFloor: 'b', sChance: 0.01 })
 
     const high = opened(10)
     const highOffer = armorPackOfferFor(high, { ...host(high), credits: 100_000 })
-    expect(highOffer).toMatchObject({ price: 45, packsOpened: 0, size: 3, hitFloor: 'a', sChance: 0.08 })
+    expect(highOffer).toMatchObject({ price: 45, nextPrice: 68, packsOpened: 0, size: 3, hitFloor: 'a', sChance: 0.08 })
 
     // A pool of only S passives is a guaranteed S pack (and still one S).
     const onlyS = [...ITEMS_BY_ID.values()].filter(item => item.category === 'armorPassive' && item.tier === 's')
@@ -340,7 +340,7 @@ describe('Brasch\'s Armor Pack (side stock)', () => {
     expect(armorPackItemsFor(state, shopped).map(item => item.id)).toEqual(['extrapadding'])
     expect(armorPackFor(diver)).toBeNull()
     // The next pack costs 1.5x the last.
-    expect(armorPackOfferFor(state, shopped)).toMatchObject({ price: 38, packsOpened: 1 })
+    expect(armorPackOfferFor(state, shopped)).toMatchObject({ price: 38, nextPrice: 56, packsOpened: 1 })
     expect(canBuyArmorPack(state, { ...shopped, credits: 37 })).toEqual({ allowed: false, reason: 'Not enough credits' })
     expect(canBuyArmorPack(state, { ...shopped, credits: 38 })).toEqual({ allowed: true, reason: null })
   })

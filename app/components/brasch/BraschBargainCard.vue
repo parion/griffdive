@@ -99,6 +99,7 @@ watch(() => props.purchases, (next, previous) => {
     </div>
 
     <span class="card-name">{{ name }}</span>
+    <slot name="detail" />
 
     <span
       v-if="flashKey"

@@ -369,7 +369,7 @@ function onScreenKey(event: KeyboardEvent): void {
                 class="pack-cta cut"
                 type="button"
               >
-                To the shelf
+                Back to the shelf
               </button>
             </DialogClose>
           </footer>
@@ -934,7 +934,7 @@ function onScreenKey(event: KeyboardEvent): void {
   .pack-wrap { width: min(58vw, 230px); }
   .pack-fan {
     --card-w: min(44vw, 176px);
-    --spread: min(25vw, 100px);
+    --spread: min(18vw, 70px);
     --lift: 60px;
   }
   .pack-deck { --card-w: min(44vw, 176px); }

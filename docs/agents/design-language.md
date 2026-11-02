@@ -405,6 +405,10 @@ tier, and Brasch's counter is a **last call** (it restocks at the new altitude o
 operation starts). That backdrop is alive: two ray fields counter-rotate behind the emblem, a halo
 breathes, embers rise and the headline takes one pass of light — all stilled by reduced motion.
 
+The final **Griffdive Achieved** screen keeps that ladder/emblem hero and adds a compact run recap
+for missions, operations, reward items, squad credits and pact checks; it is not a second dashboard.
+The Ministry Pardon notice appears only when the run actually served Penance or paid a directive tax.
+
 #### ValorRoll — the one odds primitive
 
 `app/components/valor/ValorRoll.vue` draws the Valor odds line (labelled **Loot odds** on screen): tier zones whose widths are
@@ -453,18 +457,21 @@ footer, and nothing else: no explanatory paragraphs.
 The shelf is one centered grid of **requisition cards**. Every card — named stock and the Armor
 Pack alike — uses the same shell: a small kind label, the price in credits at the top right in the
 display face, a 1:1 stage lit by the item's tier accent (gold for the pack), and the product name
-under it. There is no tier badge, percentage or odds copy. The whole card is the buy target: hovering
-lifts the foil and brightens the accent, and a purchase strikes the card gold (a bought slot keeps its
-place under a rotated **Taken** stamp). A locked slot greys out under a tilted clock notice, "Next
+under it. There is no tier badge, percentage or odds copy: a quiet tier hint appears only while an
+item card is hovered or keyboard-focused, and its buy control names the tier for assistive tech. The
+Armor Pack labels its opened-pack count and keeps a short escalation note with the next price. The
+whole card is the buy target: hovering lifts the foil and brightens the accent, and a purchase strikes
+the card gold (a bought slot keeps its place under a rotated **Taken** stamp). A locked slot greys out under a tilted clock notice, "Next
 mission"; a kind bought this operation greys out under "Next operation". The Armor Pack is the last
 card in the same grid (`BraschArmorPack`): a foil-wrapped side-stock card with **three mini card backs
 fanned in the Griffdive mark**, a crusade pack count, and a replay control for the newest pull. On a
-phone every card, pack included, wraps into the same two-column shelf.
+phone every card, pack included, wraps into the same two-column shelf. A phase change closes the
+counter and its pack reveal before the squad moves on.
 
 Buying opens `BraschPackReveal` over the counter: on desktop a contained stage (the counter stays
 visible and inert underneath), on a phone the full screen. A sealed foil floats on a dark stage,
 tap/Enter tears it, a three-card deck appears, and each card flies out and flips into a hand fan.
-The draw is low-text — the pack label, the tier and name on each card, and one **To the shelf**
+The draw is low-text — the pack label, the tier and name on each card, and one **Back to the shelf**
 control — with tier-scaled pacing from `revealTimeline`; an S pull gets a gold burst and a holo
 wash. Reduced motion lands the settled fan at once. The rail's lamp and credit count are the only
 shop chrome outside the counter. The Armory still lists passives, with a note that they come only

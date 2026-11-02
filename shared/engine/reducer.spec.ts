@@ -798,6 +798,15 @@ describe('SET_WARBONDS (personal ownership)', () => {
 })
 
 describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
+  it('keeps a clean run clear and records a directive tax only when a success applies it', () => {
+    const clean = reduce(divingState(42), { type: 'REPORT_RESULT', outcome: 'success', stars: 2 })
+    expect(clean.debtSettled).not.toBe(true)
+
+    const taxed = { ...divingState(42), directiveTax: true }
+    const paid = reduce(taxed, { type: 'REPORT_RESULT', outcome: 'success', stars: 2 })
+    expect(paid.debtSettled).toBe(true)
+  })
+
   it('clamps stars to what the difficulty offers', () => {
     const state = divingState(42)
     const maxed = settleDebrief(reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 }))
@@ -2483,6 +2492,7 @@ describe('stats check after the draft', () => {
       state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 2 })
       const held = reduce(state, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'cleanHands' })
       expect(requireDiver(held).penance?.status).toBe('served')
+      expect(held.debtSettled).toBe(true)
       expect(held.personalInventories.p1).toContain(itemId)
     })
 

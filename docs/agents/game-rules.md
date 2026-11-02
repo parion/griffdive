@@ -485,12 +485,16 @@ difficulty emblem and the climb ladder ("The squad climbs").
   the field (`optionsLostFor`), and the wheel never draws a directive that would block one
   (`eligibleMisfortunes(inventories, penance)`). A debt carries across an operation boundary; it
   is replaced at `ADVANCE` by whatever that mission's own check leaves owing, and is
-  dropped when the crusade completes or the operation restarts after a failure. Penance is **purple** everywhere: purple skulls and a *Penance* tag
+  dropped when the crusade completes or the operation restarts after a failure. Serving an owed
+  Penance sets the optional run-level `DiveState.debtSettled` marker so the achievement screen can
+  show the Pardon notice; clean runs leave it absent. Penance is **purple** everywhere: purple skulls and a *Penance* tag
   in the Pacts sworn list, the owed strip on the pact screens (`PactPenance`) and the climbs-page
   row.
 - **A broken directive** (stats-verified, host-attested) costs nothing now: it sets
   `directiveTax`, and **every diver's next draft loses one option** (`OPTIONS_LOST_PER_FAILED_DIRECTIVE`,
-  floored at one). A directive broken in the field keeps its old rule (this draft, voided Valor).
+  floored at one). The successful report that applies that tax also sets `debtSettled`; a failed
+  mission has no reward draft to tax. A directive broken in the field keeps its old rule (this
+  draft, voided Valor).
 - **Squad Honors** live on the same page: a due contest rolls **by itself** a beat after the page
   opens (`HONORS_AUTO_ROLL_MS`; the host's client sends `SPIN_BONUS`, with a host-only *Roll now*
   fallback), the reel winds down, and the host names the winner(s) from the same page. A solo diver
@@ -1010,7 +1014,8 @@ session link is the identity. Crusade state includes: settings, difficulty, miss
 `achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, the host's custom
 `tierList` (optional and additive: an absent field is the default list, so it needed no schema bump
 or room normalization), inventories, per-diver warbond declarations,
-`completedCombos` (misfortune × front × strain), reroll tokens, action log (capped), RNG seed
+`completedCombos` (misfortune × front × strain), the optional additive `debtSettled` achievement
+marker (absent means false), reroll tokens, action log (capped), RNG seed
 history, legacy caches (earned gear) parked by departed divers, per-diver catch-up bookkeeping, credit
 purses and the mission's Brasch's Bargains seed and per-diver deals (the crusade's Armor Pack
 pulls included).
