@@ -447,7 +447,8 @@ breathes, embers rise and the headline takes one pass of light — all stilled b
 
 The final **Griffdive Achieved** screen keeps that ladder/emblem hero and adds a compact run recap
 for missions, operations, reward items, squad credits and pact checks; it is not a second dashboard.
-The Ministry Pardon notice appears only when the run actually served Penance or paid a directive tax.
+The Ministry Pardon notice appears only when the run actually served Penance or paid a directive tax
+and no debt is still owed.
 
 #### ValorRoll — the one odds primitive
 
