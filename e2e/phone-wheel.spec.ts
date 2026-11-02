@@ -108,7 +108,7 @@ test('desktop call: Deal and rerolls stay gated until the wheel lands', async ({
   await dismissWarbondIntro(page)
   await page.getByRole('button', { name: 'Spin the wheel' }).click()
 
-  const deal = page.locator('.decision-side .deal-row button')
+  const deal = page.locator('#dive-action-content').getByRole('button', { name: 'Deal the pacts' })
   const reroll = page.getByRole('button', { name: /Reroll directive/ })
   await expect(deal).toBeDisabled()
   await expect(deal).toHaveAttribute('title', 'Wait for the wheel reveal to finish')

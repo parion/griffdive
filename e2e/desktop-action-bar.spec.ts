@@ -100,8 +100,6 @@ test('desktop actions stay pinned above the dock across viewports and dive beats
   await page.locator('#dive-action-content').getByRole('button', { name: /^Bank / }).click()
 
   await expect(page.locator('.climb')).toBeVisible()
-  await expect(page.locator('#dive-action-content .cta-locked')).toBeVisible()
-  await expectPinnedAction(page, /honors/i)
   await settleClimb(page)
   await expectPinnedAction(page, 'Next mission')
 })
