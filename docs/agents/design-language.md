@@ -127,7 +127,7 @@ rail and bottom PhaseRail are gone. Each beat centres itself on the stage (`marg
 the stage inner, so a beat taller than the stage still scrolls from the top). A new beat always opens
 scrolled to its top.
 
-Desktop and landscape dive shells pin each beat's existing primary action in the action row between
+Desktop dive shells pin each beat's existing primary action in the action row between
 the stage and squad dock. `DiveActionBar` defers the control into the explicit `DiveFrame` target;
 the row takes its height in the shell grid, never overlays the dock or creates a second scroller.
 Call rerolls travel with their primary action, and report/forfeit/climb gates remain in the same
