@@ -291,36 +291,35 @@ function submit(): void {
       </div>
     </section>
 
-    <div
-      v-if="!phone"
-      class="report-actions"
-    >
-      <button
-        class="back"
-        type="button"
-        @click="emit('cancel')"
-      >
-        Back to the field
-      </button>
-      <button
-        class="cta cut cta-sweep"
-        type="button"
-        @click="submit"
-      >
-        {{ outcome === 'success' ? 'File report' : 'File failure' }}
-        <svg
-          width="22"
-          height="14"
-          viewBox="0 0 22 14"
-          aria-hidden="true"
+    <DiveActionBar v-if="!phone">
+      <div class="report-actions">
+        <button
+          class="back"
+          type="button"
+          @click="emit('cancel')"
         >
-          <path
-            d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
-            fill="currentColor"
-          />
-        </svg>
-      </button>
-    </div>
+          Back to the field
+        </button>
+        <button
+          class="cta cut cta-sweep"
+          type="button"
+          @click="submit"
+        >
+          {{ outcome === 'success' ? 'File report' : 'File failure' }}
+          <svg
+            width="22"
+            height="14"
+            viewBox="0 0 22 14"
+            aria-hidden="true"
+          >
+            <path
+              d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
+              fill="currentColor"
+            />
+          </svg>
+        </button>
+      </div>
+    </DiveActionBar>
 
     <PhoneActionBar v-else>
       <template #secondary>

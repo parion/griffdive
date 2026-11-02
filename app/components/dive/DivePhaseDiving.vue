@@ -164,7 +164,9 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         locked
         compact
       />
+    </div>
 
+    <DiveActionBar>
       <div
         v-if="canControl"
         class="outcomes"
@@ -201,7 +203,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
       >
         <span class="cap">Host reports after extraction</span>
       </div>
-    </div>
+    </DiveActionBar>
   </section>
 
   <MissionReport
@@ -337,6 +339,8 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   align-items: stretch;
   justify-content: flex-end;
   gap: 14px;
+  width: min(100%, 680px);
+  margin-inline: auto;
 }
 .fail {
   min-height: 60px;
@@ -372,7 +376,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 }
 .cta:hover { filter: brightness(1.06); }
 
-.waiting { display: flex; align-items: center; min-height: 48px; }
+.waiting { display: flex; align-items: center; min-height: 48px; width: min(100%, 680px); margin-inline: auto; }
 
 @media (max-width: 860px) {
   .field-title { font-size: 38px; }

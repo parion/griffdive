@@ -85,7 +85,9 @@ export async function expectJoinerLanded(page: Page): Promise<void> {
 export async function settleClimb(page: Page, { host = true }: { host?: boolean } = {}): Promise<void> {
   const climb = page.locator('.climb')
   await expect(climb).toBeVisible()
-  const advance = climb.locator('.cta:not([disabled])').or(page.locator('#phone-bar-primary .bar-cta'))
+  const advance = climb.locator('.cta:not([disabled])')
+    .or(page.locator('#phone-bar-primary .bar-cta'))
+    .or(page.locator('#dive-action-content .cta:not([disabled])'))
   for (let step = 0; step < 100; step++) {
     if (host && await advance.first().isVisible().catch(() => false)) {
       return

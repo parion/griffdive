@@ -244,39 +244,41 @@ function lockNow(): void {
       :locked="locked"
     />
 
-    <div class="pact-cta">
-      <button
-        v-if="!locked"
-        class="cta cut cta-sweep"
-        type="button"
-        :disabled="offer.length === 0"
-        @click="lockNow"
-      >
-        {{ ctaLabel }}
-        <svg
-          width="22"
-          height="14"
-          viewBox="0 0 22 14"
-          aria-hidden="true"
+    <DiveActionBar>
+      <div class="pact-cta">
+        <button
+          v-if="!locked"
+          class="cta cut cta-sweep"
+          type="button"
+          :disabled="offer.length === 0"
+          @click="lockNow"
         >
-          <path
-            d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
-            fill="currentColor"
-          />
-        </svg>
-      </button>
-      <div
-        v-else
-        class="locked-row"
-        role="status"
-      >
-        <span class="locked-stamp disp">Sworn</span>
-        <span class="locked-copy">
-          <b>{{ selectionNames || 'No pacts' }}</b>
-          <span>Waiting for the rest of the squad…</span>
-        </span>
+          {{ ctaLabel }}
+          <svg
+            width="22"
+            height="14"
+            viewBox="0 0 22 14"
+            aria-hidden="true"
+          >
+            <path
+              d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
+              fill="currentColor"
+            />
+          </svg>
+        </button>
+        <div
+          v-else
+          class="locked-row"
+          role="status"
+        >
+          <span class="locked-stamp disp">Sworn</span>
+          <span class="locked-copy">
+            <b>{{ selectionNames || 'No pacts' }}</b>
+            <span>Waiting for the rest of the squad…</span>
+          </span>
+        </div>
       </div>
-    </div>
+    </DiveActionBar>
   </section>
 </template>
 

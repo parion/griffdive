@@ -335,6 +335,7 @@ test('a failed mission labels the operation failed and removes an earned item', 
   // has chosen the forfeit restarts the operation at mission 1.
   await page.locator('.sur-tile:not([disabled])').first().click()
   await expect(page.locator('.sur-tile.on')).toContainText('Marked for removal')
+  await expect(page.locator('#dive-action-content').getByRole('button', { name: /^Remove / })).toBeVisible()
   await page.getByRole('button', { name: /^Remove / }).click()
   await expect(page.getByRole('img', { name: /Operation mission 1 of 2/i })).toBeVisible()
 })

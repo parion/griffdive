@@ -120,12 +120,21 @@ set; extracted references are git-ignored and presentation-only. Nothing here to
 
 #### Desktop shell — one lit stage
 
-`app/components/dive/DiveFrame.vue` is the no-rail dive shell: a three-row grid of **header ·
-stage · squad dock**, exactly one viewport tall on desktop. The stage is the only scroll area and
-holds one lit object per beat; the old climb strip, left squad rail, right Kit/Valor rail and bottom
-PhaseRail are gone. Each beat centres itself on the stage (`margin-block: auto` on the stage inner,
-so a beat taller than the stage still scrolls from the top), and the beats are sized to land their
-primary CTA above the fold on a 1440×900 desktop. A new beat always opens scrolled to its top.
+`app/components/dive/DiveFrame.vue` is the no-rail dive shell: a four-row grid of **header ·
+stage · desktop actions · squad dock**, exactly one viewport tall on desktop. The stage is the only
+scroll area and holds one lit object per beat; the old climb strip, left squad rail, right Kit/Valor
+rail and bottom PhaseRail are gone. Each beat centres itself on the stage (`margin-block: auto` on
+the stage inner, so a beat taller than the stage still scrolls from the top). A new beat always opens
+scrolled to its top.
+
+Desktop and landscape dive shells pin each beat's existing primary action in the action row between
+the stage and squad dock. `DiveActionBar` defers the control into the explicit `DiveFrame` target;
+the row takes its height in the shell grid, never overlays the dock or creates a second scroller.
+Call rerolls travel with their primary action, and report/forfeit/climb gates remain in the same
+pinned row as their live actions. Keep one source control per beat: do not duplicate an in-flow CTA
+for the pinned version. The target follows the stage and precedes the dock in DOM order, so keyboard
+focus reaches actions after the beat content. At 1020px and below the desktop row is absent; the
+phone shell continues to use its own `PhoneActionBar` and its deferred slots unchanged.
 Beat swaps never flash the previous screen: local UI (an open report form) stays mounted until
 the engine's phase change unmounts it, rather than closing itself first.
 
