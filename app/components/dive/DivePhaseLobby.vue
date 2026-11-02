@@ -147,7 +147,7 @@ function manage(action: 'transferHost' | 'kick'): void {
     return
   }
   if (action === 'kick') {
-    emit('kick', id)
+    nextTick(() => emit('kick', id))
   }
   else {
     emit('transferHost', id)

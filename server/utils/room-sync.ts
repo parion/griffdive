@@ -743,9 +743,8 @@ function liveFingerprint(
   return null
 }
 
-// A kick leaves a bar behind; a voluntary leave does not. The removed seat's
-// keyed address fingerprint moves into the bar so clearing site data does not
-// buy a way back in from the same network.
+// A kick always bars the seat id; its keyed address fingerprint is retained
+// only when the host opts into blocking fresh joiners from that network.
 function updateSeatPolicy(
   room: StoredRoom,
   peers: PeerDirectory,
@@ -761,8 +760,9 @@ function updateSeatPolicy(
     if (!removed) {
       return
     }
-    const fingerprint = room.seatIps?.[removed.id]
-      ?? liveFingerprint(room, peers, roomCode, removed.id)
+    const fingerprint = action.blockNetwork === true
+      ? room.seatIps?.[removed.id] ?? liveFingerprint(room, peers, roomCode, removed.id)
+      : null
     const bans = roomBansOf(room)
     if (!bans.some(ban => ban.playerId === removed.id)) {
       room.bans = [...bans, { playerId: removed.id, ip: fingerprint ?? null, at: Date.now() }]

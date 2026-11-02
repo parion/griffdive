@@ -98,6 +98,9 @@ const honorsAwarded = computed(() => Boolean(state.value?.bonusWinnerIds.length)
 const sessionMenuOpen = ref(false)
 const steamOpen = ref(false)
 const steamBarOpen = ref(false)
+const kickTargetId = ref<string | null>(null)
+const kickTarget = computed(() =>
+  state.value?.divers.find(diver => diver.id === kickTargetId.value) ?? null)
 
 // Warbonds are what each diver actually owns — declared per diver, any phase,
 // and driven by the global Warbonds drawer. A local save seeds the working list
@@ -584,10 +587,26 @@ function openSteam(): void {
   steamBarOpen.value = !steamBarOpen.value
 }
 
-// Host moderation.
-function kick(diverId: string): void {
-  dispatch({ type: 'KICK_DIVER', playerId: diverId })
-  pushToast('Diver removed — this dive will not seat them again')
+// Host moderation always confirms the target and makes network blocking an
+// explicit opt-in, so an ordinary kick cannot bar a household's fresh joiner.
+function requestKick(diverId: string): void {
+  const target = state.value?.divers.find(diver => diver.id === diverId)
+  if (!canControl.value || !target || target.id === state.value?.hostId) {
+    return
+  }
+  kickTargetId.value = diverId
+}
+
+function confirmKick(blockNetwork: boolean): void {
+  const diverId = kickTargetId.value
+  kickTargetId.value = null
+  if (!diverId || !canControl.value) {
+    return
+  }
+  dispatch({ type: 'KICK_DIVER', playerId: diverId, blockNetwork })
+  pushToast(blockNetwork
+    ? 'Diver removed — their network is blocked from new joins'
+    : 'Diver removed — this dive will not seat them again')
 }
 
 function transferHost(diverId: string): void {
@@ -708,7 +727,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @copy-invite="copyInvite"
       @open-menu="sessionMenuOpen = true"
       @transfer-host="transferHost"
-      @kick="kick"
+      @kick="requestKick"
       @dismiss-error="session.dismissError()"
     />
 
@@ -748,7 +767,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @award-bonus="awardBonus"
       @advance="advance"
       @forfeit="forfeit"
-      @kick="kick"
+      @kick="requestKick"
       @transfer-host="transferHost"
       @copy-invite="copyInvite"
       @open-steam="openSteam"
@@ -939,7 +958,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
             :honors-winners="honorsWinners"
             :honors-awarded="honorsAwarded"
             @transfer-host="transferHost"
-            @kick="kick"
+            @kick="requestKick"
             @copy-invite="copyInvite"
             @open-steam="openSteam"
           />
@@ -965,6 +984,13 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @new-session="newSessionOpen = true"
       @leave="leaveDive"
       @end="endDive"
+    />
+
+    <SquadKickDialog
+      v-if="kickTarget"
+      :diver="kickTarget"
+      @confirm="confirmKick"
+      @cancel="kickTargetId = null"
     />
 
     <AppDialog
