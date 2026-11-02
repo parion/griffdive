@@ -19,7 +19,7 @@
     {
       "mission": 1,
       "seed": 2654435761,
-      "misfortuneId": "noBoosters",
+      "misfortuneId": "noSentries",
       "misfortuneAccepted": false,
       "front": "automatons",
       "strainId": "jetBrigade",
@@ -49,7 +49,7 @@
     {
       "mission": 3,
       "seed": 3668339987,
-      "misfortuneId": "noOrbitals",
+      "misfortuneId": "fragileLiberty",
       "misfortuneAccepted": false,
       "front": "terminids",
       "strainId": "predatorStrain",
@@ -126,8 +126,8 @@
     {
       "mission": 8,
       "seed": 4055616904,
-      "misfortuneId": "heavyBurden",
-      "misfortuneAccepted": false,
+      "misfortuneId": "pacifist",
+      "misfortuneAccepted": true,
       "front": "terminids",
       "strainId": "predatorStrain",
       "strainAccepted": true,
@@ -171,7 +171,7 @@
     {
       "mission": 11,
       "seed": 3428989595,
-      "misfortuneId": "zeroDeaths",
+      "misfortuneId": "noReserves",
       "misfortuneAccepted": true,
       "front": "terminids",
       "strainId": "predatorStrain",
@@ -179,7 +179,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "eat12antitankemplacement",
+      "optionId": "md17antitankmines",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -211,7 +211,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "eat12antitankemplacement"
+      "forfeitedItemId": "ar32pacifier"
     },
     {
       "mission": 14,
@@ -224,14 +224,14 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "mg206heavymachinegun",
+      "optionId": "mg43machinegun",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
       "mission": 15,
       "seed": 1161830751,
-      "misfortuneId": "noBoosters",
+      "misfortuneId": "noSentries",
       "misfortuneAccepted": false,
       "front": "illuminate",
       "strainId": "mindlessMasses",
@@ -248,7 +248,7 @@
     {
       "mission": 16,
       "seed": 3816266512,
-      "misfortuneId": "zeroDeaths",
+      "misfortuneId": "noReserves",
       "misfortuneAccepted": true,
       "front": "illuminate",
       "strainId": "mindlessMasses",
@@ -288,7 +288,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "mg206heavymachinegun"
+      "forfeitedItemId": "mg43machinegun"
     },
     {
       "mission": 19,
@@ -325,13 +325,13 @@
     {
       "mission": 21,
       "seed": 4203543429,
-      "misfortuneId": "heavyBurden",
-      "misfortuneAccepted": false,
+      "misfortuneId": "stimShortage",
+      "misfortuneAccepted": true,
       "front": "illuminate",
       "strainId": "mindlessMasses",
       "strainAccepted": false,
       "pactIds": [
-        "stimAbstinent"
+        "loadoutLoyalist"
       ],
       "outcome": "success",
       "stars": 4,
@@ -387,8 +387,8 @@
     {
       "mission": 25,
       "seed": 1936384585,
-      "misfortuneId": "pacifist",
-      "misfortuneAccepted": true,
+      "misfortuneId": "heavyBurden",
+      "misfortuneAccepted": false,
       "front": "terminids",
       "strainId": "ruptureStrain",
       "strainAccepted": true,
@@ -556,8 +556,8 @@
     {
       "mission": 36,
       "seed": 1070406884,
-      "misfortuneId": "noResupplies",
-      "misfortuneAccepted": true,
+      "misfortuneId": "noEagles",
+      "misfortuneAccepted": false,
       "front": "terminids",
       "strainId": "ruptureStrain",
       "strainAccepted": true,
@@ -586,36 +586,35 @@
       "fragileLiberty:illuminate:mindlessMasses",
       "fragileLiberty:terminids:predatorStrain",
       "fragileLiberty:terminids:predatorStrain",
-      "heavyBurden:illuminate:mindlessMasses",
       "heavyBurden:terminids:predatorStrain",
+      "heavyBurden:terminids:ruptureStrain",
       "noBackpacks:illuminate:mindlessMasses",
       "noBackpacks:terminids:predatorStrain",
       "noBackpacks:terminids:ruptureStrain",
-      "noBoosters:automatons:jetBrigade",
-      "noBoosters:illuminate:mindlessMasses",
       "noBoosters:illuminate:mindlessMasses",
       "noBoosters:terminids:ruptureStrain",
+      "noEagles:terminids:ruptureStrain",
       "noReserves:illuminate:mindlessMasses",
       "noReserves:illuminate:mindlessMasses",
+      "noReserves:illuminate:mindlessMasses",
+      "noReserves:terminids:predatorStrain",
       "noReserves:terminids:predatorStrain",
       "noReserves:terminids:ruptureStrain",
       "noReserves:terminids:ruptureStrain",
       "noResupplies:illuminate:mindlessMasses",
-      "noResupplies:terminids:ruptureStrain",
+      "noSentries:automatons:jetBrigade",
+      "noSentries:illuminate:mindlessMasses",
       "noStratagems:terminids:predatorStrain",
       "oopsAllAirstrikes:illuminate:mindlessMasses",
       "oopsAllAirstrikes:terminids:ruptureStrain",
-      "pacifist:terminids:ruptureStrain",
       "primaryOnly:terminids:predatorStrain",
+      "stimShortage:illuminate:mindlessMasses",
       "zeroDeaths:illuminate:mindlessMasses",
-      "zeroDeaths:illuminate:mindlessMasses",
-      "zeroDeaths:terminids:predatorStrain",
       "zeroDeaths:terminids:ruptureStrain"
     ],
     "personalInventory": [
       "am23emsmortarsentry",
       "amg43machinegunsentry",
-      "ar32pacifier",
       "bflam80cremator",
       "cb9explodingcrossbow",
       "cqc19stunlance",
@@ -642,6 +641,7 @@
       "las7dagger",
       "lift850jumppack",
       "lift860hoverpack",
+      "md17antitankmines",
       "mls4xcommando",
       "orbitalemsstrike",
       "orbitalgasstrike",

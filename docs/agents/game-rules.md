@@ -214,8 +214,10 @@ the squad spends a reroll token — 1 token per operation (`REROLL_TOKENS_PER_OP
 `MAJOR_ORDER_REROLL_BONUS` (1) banked by each completed live Major Order operation, spendable on any wheel
 result. Never
 rerollable into the result it would replace — a reroll must actually move (`REROLL_WHEEL` refuses a
-same-result seed;
-only the immediately replaced result is excluded, not every prior draw this window). **The front
+same-result seed). Every directive already drawn **this operation** is also excluded — including
+draws that were rerolled or declined — so a squad sees each eligible rule at most once per
+operation. The pool falls back to the full eligible set only after every directive has been drawn.
+The history resets with the operation (and on a failure restart), never between missions. **The front
 and its strain lock in for the whole operation**: they can only be rerolled during the operation's
 first mission decision window (`missionInOperation === 1`, enforced in the reducer and
 `canRerollWheel`); a front reroll redraws the strain with it, and a strain reroll needs at least
@@ -630,6 +632,11 @@ option roll:   each option rolls a d100 face on the odds line. Zone width is
   and every client (and a reload) re-derives the same cards. `PICK_REWARD` refuses an item the diver
   has gained since the deal (a catch-up claim), so the frozen offer can't bank a duplicate. The
   snapshot resets with the pacts. A pre-snapshot save falls back to live holdings.
+- **The odds line is frozen at the report too.** `REPORT_RESULT` also snapshots the squad-size-weighted
+  team risk into `DiveState.offerTeamRisk`; the reward and forfeit windows read that value through
+  `teamRiskOf` instead of the live roster. A diver stepping away, rejoining or leaving cannot move
+  everyone else's Valor or reroll their cards mid-draft. The snapshot clears with the pacts; a
+  pre-snapshot save falls back to the live breakdown.
 - **Drafts are public.** Options, their rolled tiers and picks are derived state every client
   already holds, so the draft shows the squad's: `draftSummaryFor` (options, top rolled tier, status,
   the banked option — a Cross pick maps to the Cross slot) feeds the squad board. The displayed
@@ -1001,16 +1008,20 @@ build reads. In the browser the save, session, recent-room and seat keys moved t
 `app/plugins/purge-alpha-saves.client.ts` deletes the alpha keys on every boot; preferences (name,
 warbonds, intros) carry over. **Beta policy: the schema is frozen and saves migrate.** Every later
 breaking change bumps `SAVE_SCHEMA_VERSION` and adds a version-gated migration step to
-`normalizeSaveDoc` (replacing its strict version check), or is reverted. The first such step is
-v1 → v2 (`migrateV1toV2`, the Armor Pack's single `bargain.pack` folded into `bargain.packs`).
+`normalizeSaveDoc` (replacing its strict version check), or is reverted. v1 → v2 folded the Armor
+Pack's single `bargain.pack` into `bargain.packs`; v2 → v3 adds the operation's
+`misfortuneHistory` (empty for old saves) and the report-frozen `offerTeamRisk` (`null`, which
+keeps the live-risk fallback).
 Rooms carry no schema version, so the same change must also normalize stored rooms on read in `loadRoom` (idempotent:
-fill only absent fields, never overwrite) — they survive deploys on the volume. Normalization drops
+fill only absent fields, never overwrite) — they survive deploys on the volume. The v3 fields are
+filled there the same way: absent history reads as empty and absent offer risk as `null`. Normalization drops
 only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
 `achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, the host's custom
 `tierList` (optional and additive: an absent field is the default list, so it needed no schema bump
 or room normalization), inventories, per-diver warbond declarations,
-`completedCombos` (misfortune × front × strain), reroll tokens, action log (capped), RNG seed
+`completedCombos` (misfortune × front × strain), the operation's drawn-directive
+history, reroll tokens, action log (capped), RNG seed
 history, legacy caches (earned gear) parked by departed divers, per-diver catch-up bookkeeping, credit
 purses and the mission's Brasch's Bargains seed and per-diver deals (the crusade's Armor Pack
 pulls included).

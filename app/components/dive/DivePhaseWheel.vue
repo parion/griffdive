@@ -117,6 +117,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
       <WheelOfAdversity
         :difficulty="state.difficulty"
         :seed="state.wheel?.seed ?? null"
+        :result-id="state.wheel?.misfortuneId ?? null"
         :inventories="squadInventories(state)"
         :penance="squadPenances(state)"
         :can-control="canControl"
