@@ -555,6 +555,8 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (!diver || !statsPendingPactIds(state, diver).includes(action.pactId)) {
         return state
       }
+      const servesDebt = diver.penance?.status === 'owed'
+        && diver.penance.pactIds.every(id => id === action.pactId || diver.heldPactIds.includes(id))
       const divers = state.divers.map((candidate) => {
         if (candidate.id !== diver.id) {
           return candidate
@@ -569,7 +571,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           penance: served ? { ...debt, status: 'served' as const } : debt,
         }
       })
-      return commit(state, { divers }, action)
+      return commit(state, { divers, ...(servesDebt ? { debtSettled: true } : {}) }, action)
     }
 
     case 'FAIL_MISFORTUNE': {
@@ -672,6 +674,8 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           divers,
           offerTeamRisk: teamRiskOf(state),
           offerSeed: deriveSeed(state.wheel.seed, state.missionIndex),
+          // A directive tax is paid by the successful report's reduced draft.
+          ...(state.directiveTax ? { debtSettled: true } : {}),
           completedCombos: [
             ...state.completedCombos,
             comboKey(state.wheel.misfortuneId, state.frontId, state.strainId),

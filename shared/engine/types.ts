@@ -221,6 +221,9 @@ export interface DiveState {
   missionIndex: number
   missionInOperation: number
   achieved: boolean
+  // An actual Penance was served or a directive tax was applied during this
+  // crusade. Kept through completion for the achievement notice; absent in old saves.
+  debtSettled?: boolean
   settings: CrusadeSettings | null
   divers: DiverState[]
   hostId: string | null

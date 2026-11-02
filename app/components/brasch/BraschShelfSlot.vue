@@ -18,6 +18,9 @@ const price = computed(() => (item.value ? itemPrice(item.value) : null))
 const accent = computed(() => item.value?.tier ?? 'c')
 const name = computed(() => item.value?.displayName ?? 'No stock')
 const kindLabel = computed(() => (props.entry.kind === 'stratagem' ? 'Stratagem' : categoryLabel(props.entry.kind)))
+const buyAriaLabel = computed(() => item.value && price.value !== null
+  ? `Buy ${item.value.displayName}, ${item.value.tier.toUpperCase()} tier, for ${price.value} credits`
+  : undefined)
 </script>
 
 <template>
@@ -30,6 +33,7 @@ const kindLabel = computed(() => (props.entry.kind === 'stratagem' ? 'Stratagem'
     :accent="accent"
     :disabled="!verdict.allowed"
     :reason="verdict.reason"
+    :buy-aria-label="buyAriaLabel"
     @buy="emit('buy')"
   >
     <template #stage>
@@ -46,6 +50,14 @@ const kindLabel = computed(() => (props.entry.kind === 'stratagem' ? 'Stratagem'
         class="slot-none"
         aria-hidden="true"
       >—</span>
+    </template>
+
+    <template #overlay>
+      <span
+        v-if="item"
+        class="slot-tier-hint"
+        aria-hidden="true"
+      >{{ item.tier.toUpperCase() }} tier</span>
     </template>
   </BraschBargainCard>
 </template>
@@ -73,10 +85,31 @@ const kindLabel = computed(() => (props.entry.kind === 'stratagem' ? 'Stratagem'
   color: var(--ghost-ink);
   font-size: 28px;
 }
+.slot-tier-hint {
+  position: absolute;
+  inset: auto 6px 6px auto;
+  z-index: 6;
+  padding: 2px 5px;
+  border-left: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--ground) 82%, transparent);
+  color: var(--khaki);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  opacity: 0;
+  pointer-events: none;
+  translate: 0 3px;
+  transition: opacity var(--dur-fast), translate var(--dur-fast) var(--ease-out);
+}
+.slot.actionable:hover .slot-tier-hint,
+.slot:focus-within .slot-tier-hint {
+  opacity: 1;
+  translate: 0 0;
+}
 .slot.empty .slot-stage { opacity: 0.4; }
 
 @media (prefers-reduced-motion: reduce) {
-  .slot-art { transition: none; }
+  .slot-art,
+  .slot-tier-hint { transition: none; }
   .slot.actionable:hover .slot-art { scale: none; }
 }
 </style>
