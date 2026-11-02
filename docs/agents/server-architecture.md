@@ -272,14 +272,19 @@ self-service. Saved dives are outside the engine union: `save-dive` may be sent 
 diver, `unsave-dive` is host-only; the Steam lobby link is likewise outside the union and
 host-only (`set-steam`, blank clears).
 `FAIL_PACT` and `HOLD_PACT` are sent by the target diver or the host (server refuses everyone else; the squad-climbs page lets the host settle any diver's stats pact);
-`FAIL_MISFORTUNE` and `HOLD_MISFORTUNE` are host-only, since the directive binds the whole squad. Host disconnect →
-`TRANSFER_HOST` to the earliest joiner still connected; none left → room hibernates in storage
-with a TTL, and the first diver back takes the host role once the host is marked away. A host who
-is offline but not yet away (a restart dropped everyone at once) keeps the crown through the away
-grace; when `markAwayIfOffline` marks them away it hands the crown to the earliest connected diver. A diver whose last connection stays down
-for `AWAY_GRACE_MS` is marked away (`SET_AWAY`, issued by the server; also re-checked on every
-`hello` so divers dropped across a server restart are caught) — see Mid-crusade joining.
-Reconnect = re-`hello` with stored playerId → server replays snapshot.
+`FAIL_MISFORTUNE` and `HOLD_MISFORTUNE` are host-only, since the directive binds the whole squad. A
+host's last socket closing starts a process-local `HOST_RECONNECT_GRACE_MS` (90s): the host seat
+stays put through a refresh or brief network loss, and a `hello` with the same stored playerId
+cancels the pending timer. At the end of that window, `SET_AWAY` marks the host away and the
+earliest connected diver gets `TRANSFER_HOST`; if nobody is online, the room hibernates in storage
+with a TTL and the first diver back takes host once the seat is away. Other divers still use the
+ordinary `AWAY_GRACE_MS` (30s). An extra live tab prevents either timer from starting. These timers
+are not stored: during a server restart,
+`peers.draining` keeps the room record unchanged and the existing away-grace path hands over only
+after a returning peer marks the absent host away. A diver whose last connection stays down for
+`AWAY_GRACE_MS` is marked away (`SET_AWAY`, issued by the server; also re-checked on every `hello`
+so divers dropped across a server restart are caught) — see Mid-crusade joining. Reconnect =
+re-`hello` with stored playerId → server replays snapshot.
 `KICK_DIVER` (host, any phase, lobby included) removes a diver who left or is blocking the
 squad: their pending pact lock or reward pick stops gating progress, their personal inventory
 leaves with them, and the host can never be kicked. It is a bar for the rest of the dive, not a
