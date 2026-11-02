@@ -411,6 +411,14 @@ export async function loadRoom(kv: RoomKV, code: string): Promise<StoredRoom | n
   if (typeof raw.ipSalt !== 'string' || raw.ipSalt.length === 0) {
     raw.ipSalt = undefined
   }
+  // Rooms outlive schema bumps on the Fly volume; fill v3 fields without
+  // touching a state that already has them.
+  if (!Array.isArray(raw.state.misfortuneHistory)) {
+    raw.state.misfortuneHistory = []
+  }
+  if (typeof raw.state.offerTeamRisk !== 'number' || !Number.isFinite(raw.state.offerTeamRisk)) {
+    raw.state.offerTeamRisk = null
+  }
   return raw
 }
 

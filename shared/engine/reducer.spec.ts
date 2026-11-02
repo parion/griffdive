@@ -9,7 +9,7 @@ import { DIVERS_CHOICE_OPTION_ID, bargainKindOf, itemPrice, maxCeiling } from '.
 import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
-import { eligibleMisfortunes, deriveFront, deriveStrain } from './wheel'
+import { eligibleMisfortunes, deriveFront, deriveMisfortune, deriveStrain } from './wheel'
 import { activeMisfortune, allDiversPicked, armorPackOfferFor, availableCaches, awaitingDiverIds, bargainShelfFor, bargainSlotKinds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, setupRiskOf, pactRiskOf, promotionPending, rewardPoolFor, squadSize, climbBlockers, honorsDue, optionsLostFor, squadPenances, statsPendingMisfortune, statsPendingPactIds, statsRules, teamRiskOf } from './selectors'
 import type { DiveState, DiverState, EngineAction } from './types'
 
@@ -156,6 +156,17 @@ function twoDiverState(): DiveState {
   }
 }
 
+function twoDiverDivingState(seed = 42): DiveState {
+  let state = reduce(twoDiverState(), { type: 'SPIN_WHEEL', seed })
+  state = reduce(state, { type: 'ACCEPT_MISFORTUNE', accepted: true })
+  if (state.phase === 'strain') {
+    state = reduce(state, { type: 'ACCEPT_STRAIN', accepted: false })
+  }
+  state = reduce(state, { type: 'DEAL_PACTS' })
+  state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+  return reduce(state, { type: 'SET_PACTS', playerId: 'p2', pactIds: [] })
+}
+
 const skeletonActions: EngineAction[] = [
   { type: 'START_DIVE', settings: SETTINGS },
   { type: 'SPIN_WHEEL', seed: 1 },
@@ -254,9 +265,14 @@ describe('SPIN_WHEEL / REROLL_WHEEL', () => {
 
   it('refuses a reroll that would return the replaced result', () => {
     const state = spunState(42)
-    // Same seed, same derivation — the token is not spent on a no-op.
-    const sameRoll = reduce(state, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 42 })
-    expect(sameRoll).toBe(state)
+    // An exhausted pool falls back to the unfiltered derivation, so the same
+    // seed would be a no-op and must not spend the token.
+    const exhausted: DiveState = {
+      ...state,
+      misfortuneHistory: eligibleMisfortunes([startingItemIds('medium')]).map(misfortune => misfortune.id),
+    }
+    const sameRoll = reduce(exhausted, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed: 42 })
+    expect(sameRoll).toBe(exhausted)
     expect(sameRoll.rerollTokens).toBe(1)
     const sameFront = reduce(state, { type: 'REROLL_WHEEL', wheel: 'front', seed: 42 })
     expect(sameFront).toBe(state)
@@ -316,6 +332,80 @@ describe('SPIN_WHEEL / REROLL_WHEEL', () => {
     expect(canRerollWheel(state, 'front').allowed).toBe(true)
     const rerolled = reduce(state, { type: 'REROLL_WHEEL', wheel: 'front', seed: 43 })
     expect(rerolled.seedHistory).toEqual([42, 43])
+  })
+
+  it('rerolls away from every directive already drawn this operation', () => {
+    const state = spunState(42)
+    const inventories = [startingItemIds('medium')]
+    const current = state.wheel!.misfortuneId
+    let priorSeed = 1
+    while (deriveMisfortune(priorSeed, inventories).id === current) {
+      priorSeed++
+    }
+    const prior = deriveMisfortune(priorSeed, inventories).id
+    let seed = 100
+    while (deriveMisfortune(seed, inventories).id !== prior) {
+      seed++
+    }
+    const withHistory: DiveState = { ...state, misfortuneHistory: [current, prior] }
+    const rerolled = reduce(withHistory, { type: 'REROLL_WHEEL', wheel: 'misfortune', seed })
+    expect(rerolled.wheel?.misfortuneId).not.toBe(current)
+    expect(rerolled.wheel?.misfortuneId).not.toBe(prior)
+    expect(rerolled.misfortuneHistory).toEqual([current, prior, rerolled.wheel!.misfortuneId])
+  })
+
+  it('does not repeat a skipped directive between missions and resets for a new operation', () => {
+    const playSuccess = (from: DiveState): DiveState => {
+      let next = reduce(from, { type: 'ACCEPT_MISFORTUNE', accepted: false })
+      if (next.phase === 'strain') {
+        next = reduce(next, { type: 'ACCEPT_STRAIN', accepted: false })
+      }
+      next = reduce(next, { type: 'DEAL_PACTS' })
+      next = reduce(next, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+      next = settleDebrief(reduce(next, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 }))
+      next = reduce(next, {
+        type: 'PICK_REWARD',
+        playerId: 'p1',
+        optionId: diverOptions(next, requireDiver(next))[0]!.optionId,
+      })
+      return reduce(next, { type: 'ADVANCE' })
+    }
+
+    let state = spunState(11)
+    const first = state.wheel!.misfortuneId
+    expect(state.misfortuneHistory).toEqual([first])
+    state = playSuccess(state)
+    expect(state.misfortuneHistory).toEqual([first])
+
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 12 })
+    const second = state.wheel!.misfortuneId
+    expect(second).not.toBe(first)
+    expect(state.misfortuneHistory).toEqual([first, second])
+    state = playSuccess(state)
+    expect(state.missionInOperation).toBe(1)
+    expect(state.misfortuneHistory).toEqual([])
+
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 13 })
+    expect(state.misfortuneHistory).toEqual([state.wheel!.misfortuneId])
+  })
+
+  it('falls back to the full eligible pool only after every directive was drawn', () => {
+    const inventories = [startingItemIds('medium')]
+    const eligible = eligibleMisfortunes(inventories).map(misfortune => misfortune.id)
+    const exhausted: DiveState = { ...freshState(), misfortuneHistory: eligible }
+    const state = reduce(exhausted, { type: 'SPIN_WHEEL', seed: 42 })
+    expect(state.wheel?.misfortuneId).toBe(deriveMisfortune(42, inventories).id)
+    expect(state.misfortuneHistory).toEqual([...eligible, state.wheel!.misfortuneId])
+  })
+
+  it('resets directive history on a failure restart', () => {
+    const diving = divingState(42)
+    const first = diving.wheel!.misfortuneId
+    let state = reduce(diving, { type: 'REPORT_RESULT', outcome: 'failure', stars: 0 })
+    expect(state.phase).toBe('spin')
+    expect(state.misfortuneHistory).toEqual([])
+    state = reduce(state, { type: 'SPIN_WHEEL', seed: 42 })
+    expect(state.wheel?.misfortuneId).toBe(first)
   })
 })
 
@@ -840,6 +930,28 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
     expect(state.wheel).toBeNull()
     expect(state.frontId).not.toBeNull()
     expect(state.divers[0]?.pactIds).toEqual([])
+  })
+
+  it('freezes draft options and their odds when divers step away, rejoin or leave', () => {
+    const diving = twoDiverDivingState()
+    const reported = reduce(diving, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+    const options = reported.divers.map(diver => diverOptions(reported, diver))
+    expect(reported.offerTeamRisk).toBe(teamRiskOf(diving))
+
+    const away = reduce(reported, { type: 'SET_AWAY', playerId: 'p2', away: true })
+    expect(away.divers.map(diver => diverOptions(away, diver))).toEqual(options)
+    expect(teamRiskOf(away)).toBe(reported.offerTeamRisk)
+
+    const rejoined = reduce(away, { type: 'SET_AWAY', playerId: 'p2', away: false })
+    expect(rejoined.divers.map(diver => diverOptions(rejoined, diver))).toEqual(options)
+    expect(teamRiskOf(rejoined)).toBe(reported.offerTeamRisk)
+
+    const kicked = reduce(reported, { type: 'KICK_DIVER', playerId: 'p2' })
+    expect(diverOptions(kicked, kicked.divers[0]!)).toEqual(options[0])
+    expect(teamRiskOf(kicked)).toBe(reported.offerTeamRisk)
+
+    const legacy: DiveState = { ...away, offerTeamRisk: null }
+    expect(teamRiskOf(legacy)).toBeLessThan(reported.offerTeamRisk!)
   })
 
   it('re-spins only when the operation completes', () => {

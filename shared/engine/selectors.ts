@@ -247,7 +247,9 @@ export function teamRiskBreakdown(state: DiveState): TeamRiskBreakdown {
 }
 
 export function teamRiskOf(state: DiveState): number {
-  return teamRiskBreakdown(state).total
+  // The report freezes the squad-size-weighted term for the whole reward or
+  // forfeit window. Older saves have no snapshot and keep the live fallback.
+  return state.offerTeamRisk ?? teamRiskBreakdown(state).total
 }
 
 export interface StrainDecision {

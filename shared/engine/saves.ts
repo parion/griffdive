@@ -42,6 +42,21 @@ function migrateV1toV2(state: DiveState): DiveState {
   }
 }
 
+// v2 → v3: report-time offer risk and operation directive history are additive.
+// Null/empty defaults preserve the live-risk fallback and the old wheel pool;
+// a pre-v3 operation cannot reconstruct draws that were never recorded.
+function migrateV2toV3(state: DiveState): DiveState {
+  return {
+    ...state,
+    offerTeamRisk: typeof state.offerTeamRisk === 'number' && Number.isFinite(state.offerTeamRisk)
+      ? state.offerTeamRisk
+      : null,
+    misfortuneHistory: Array.isArray(state.misfortuneHistory)
+      ? state.misfortuneHistory.filter((id): id is string => typeof id === 'string')
+      : [],
+  }
+}
+
 // Beta restarted the save versions at 1 with no migration chain (see
 // game-rules.md, Save model), so an alpha save — no epoch stamp, or a schema
 // number that now means something else — is refused rather than misread. Each
@@ -53,7 +68,7 @@ export function normalizeSaveDoc(raw: unknown): SaveDoc | null {
   const doc = raw as Partial<SaveDoc>
   if (
     doc.epoch !== SAVE_EPOCH
-    || (doc.schemaVersion !== 1 && doc.schemaVersion !== SAVE_SCHEMA_VERSION)
+    || (doc.schemaVersion !== 1 && doc.schemaVersion !== 2 && doc.schemaVersion !== SAVE_SCHEMA_VERSION)
     || typeof doc.engineVersion !== 'number'
     || typeof doc.catalogVersion !== 'number'
     || typeof doc.savedAt !== 'string'
@@ -65,6 +80,12 @@ export function normalizeSaveDoc(raw: unknown): SaveDoc | null {
   ) {
     return null
   }
-  const state = doc.schemaVersion === 1 ? migrateV1toV2(doc.state as DiveState) : doc.state
+  let state = doc.state as DiveState
+  if (doc.schemaVersion === 1) {
+    state = migrateV1toV2(state)
+  }
+  if (doc.schemaVersion === 1 || doc.schemaVersion === 2) {
+    state = migrateV2toV3(state)
+  }
   return { ...doc, schemaVersion: SAVE_SCHEMA_VERSION, state } as SaveDoc
 }

@@ -6,6 +6,9 @@ import { WHEEL_SPIN_MS } from '~/utils/motion'
 const props = withDefaults(defineProps<{
   difficulty: number
   seed: number | null
+  // The live dive supplies the engine's landed id so the reveal and reducer
+  // always agree; standalone showcases leave it unset and derive from the seed.
+  resultId?: string | null
   canControl?: boolean
   spinning?: boolean
   // Every present diver's kit: directives someone can't field leave the wheel.
@@ -38,8 +41,15 @@ const segments = computed(() =>
 
 const step = computed(() => (segments.value.length ? 360 / segments.value.length : 360))
 
-const drawn = computed(() =>
-  props.seed === null ? null : deriveMisfortune(props.seed, props.inventories, props.penance))
+const drawn = computed(() => {
+  if (props.seed === null) {
+    return null
+  }
+  if (props.resultId) {
+    return segments.value.find(segment => segment.id === props.resultId) ?? null
+  }
+  return deriveMisfortune(props.seed, props.inventories, props.penance)
+})
 const drawnIndex = computed(() =>
   drawn.value ? segments.value.findIndex(segment => segment.id === drawn.value!.id) : -1)
 const drawnRisk = computed(() =>
@@ -134,7 +144,7 @@ watch(
       isSpinning.value = false
       return
     }
-    const index = segments.value.findIndex(segment => segment.id === deriveMisfortune(seed, props.inventories, props.penance).id)
+    const index = segments.value.findIndex(segment => segment.id === drawn.value?.id)
     if (index < 0) {
       return
     }

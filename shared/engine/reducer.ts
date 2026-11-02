@@ -7,7 +7,7 @@ import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver, resolveFrontPlan } from './room'
 import { deriveSeed, hashString } from './rng'
 import { rollSupportKit } from './support'
-import { activeDivers, activeMisfortune, allDiversPicked, armorPackPoolFor, availableCaches, bonusEligibleFor, canBuyArmorPack, canBuyItem, catchUpOptionsFor, climbSettled, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, isPenancePact, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, penanceIncurredBy, rewardPoolFor, squadInventories, squadPenances, squadSize, statsPendingMisfortune, statsPendingPactIds, strainDecision } from './selectors'
+import { activeDivers, activeMisfortune, allDiversPicked, armorPackPoolFor, availableCaches, bonusEligibleFor, canBuyArmorPack, canBuyItem, catchUpOptionsFor, climbSettled, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, isPenancePact, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, penanceIncurredBy, rewardPoolFor, squadInventories, squadPenances, squadSize, statsPendingMisfortune, statsPendingPactIds, strainDecision, teamRiskOf } from './selectors'
 import { bargainKindOf, itemPrice, missionHaul, rollArmorPack } from './rewards'
 import { normalizeTierList, tierListOf, tieredItem } from './tierList'
 import type { TierList } from './tierList'
@@ -70,6 +70,7 @@ function applyStart(
     difficulty: kit.startDifficulty,
     phase: 'spin',
     rerollTokens: REROLL_TOKENS_PER_OPERATION,
+    misfortuneHistory: [],
     frontId: null,
     strainId: null,
     strainAccepted: false,
@@ -128,6 +129,7 @@ function carryDebts(state: DiveState, next: Partial<DiveState>): Partial<DiveSta
 
 function resetForNextMission(state: DiveState): Partial<DiveState> {
   return {
+    offerTeamRisk: null,
     offerSeed: null,
     lastReport: null,
     bonusSeed: null,
@@ -144,6 +146,7 @@ export function resetOperation(state: DiveState): Partial<DiveState> {
     ...resetForNextMission(state),
     missionInOperation: 1,
     rerollTokens: REROLL_TOKENS_PER_OPERATION,
+    misfortuneHistory: [],
     // A restarted operation keeps its front and strain but draws a fresh
     // misfortune per mission, and the strain decision reopens — the retry
     // begins at the spin, like every mission.
@@ -276,8 +279,15 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // the front is the order, so no strain is drawn (or offered) for it.
       const frontId = state.frontId ?? deriveFront(action.seed, majorOrderFronts(state))
       const drawingOperation = state.frontId === null
+      const misfortune = deriveMisfortune(
+        action.seed,
+        squadInventories(state),
+        squadPenances(state),
+        state.misfortuneHistory ?? [],
+      )
       return commit(state, {
-        wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed, squadInventories(state), squadPenances(state)).id },
+        wheel: { seed: action.seed, misfortuneId: misfortune.id },
+        misfortuneHistory: [...(state.misfortuneHistory ?? []), misfortune.id],
         frontId,
         strainId: state.majorOrder
           ? null
@@ -395,9 +405,18 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }
       // "Spins are seeds", but a reroll must actually move: refuse a seed that
       // lands on the result it would replace, so a paid reroll never returns
-      // the same outcome. Only the immediately replaced result is excluded.
+      // the same outcome. Directive history normally excludes it already; the
+      // guard still applies when the exhausted pool falls back to every rule.
+      const nextMisfortuneId = action.wheel === 'misfortune'
+        ? deriveMisfortune(
+          action.seed,
+          squadInventories(state),
+          squadPenances(state),
+          state.misfortuneHistory ?? [],
+        ).id
+        : null
       const sameResult = action.wheel === 'misfortune'
-        ? deriveMisfortune(action.seed, squadInventories(state), squadPenances(state)).id === state.wheel.misfortuneId
+        ? nextMisfortuneId === state.wheel.misfortuneId
         : action.wheel === 'front'
           ? deriveFront(action.seed, majorOrderFronts(state)) === state.frontId
           : deriveStrain(action.seed, state.difficulty, state.frontId)?.id === state.strainId
@@ -417,7 +436,8 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       // decision — a new front brings a new subfaction.
       if (action.wheel === 'misfortune') {
         return commit(state, {
-          wheel: { seed: action.seed, misfortuneId: deriveMisfortune(action.seed, squadInventories(state), squadPenances(state)).id },
+          wheel: { seed: action.seed, misfortuneId: nextMisfortuneId! },
+          misfortuneHistory: [...(state.misfortuneHistory ?? []), nextMisfortuneId!],
           misfortuneAccepted: false,
           misfortuneFailed: false,
           misfortuneHeld: false,
@@ -650,6 +670,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           phase: 'rewards',
           lastReport: report,
           divers,
+          offerTeamRisk: teamRiskOf(state),
           offerSeed: deriveSeed(state.wheel.seed, state.missionIndex),
           completedCombos: [
             ...state.completedCombos,
@@ -672,6 +693,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         lastReport: report,
         personalInventories: voided.personalInventories,
         divers: settleHonors(voided.divers),
+        offerTeamRisk: teamRiskOf(state),
         offerSeed: deriveSeed(state.wheel.seed, state.missionIndex),
         ...honorsPatch,
       }, action)
@@ -849,6 +871,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
             phase: 'complete',
             achieved: true,
             ...resetForNextMission(state),
+            misfortuneHistory: [],
             wheel: null,
             frontId: null,
             strainId: null,
@@ -869,6 +892,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
             + (state.majorOrder?.live ? MAJOR_ORDER_REROLL_BONUS : 0),
           ...next,
           ...redealBargains(state, next.divers!, true),
+          misfortuneHistory: [],
           wheel: null,
           frontId: null,
           strainId: null,

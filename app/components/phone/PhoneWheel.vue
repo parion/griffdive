@@ -236,6 +236,7 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
       <WheelOfAdversity
         :difficulty="state.difficulty"
         :seed="state.wheel?.seed ?? null"
+        :result-id="state.wheel?.misfortuneId ?? null"
         :inventories="squadInventories(state)"
         :penance="squadPenances(state)"
         :can-control="canControl"

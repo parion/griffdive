@@ -262,11 +262,17 @@ export interface DiveState {
   tierList?: TierList | null
   rerollTokens: number
   completedCombos: string[]
+  // Directives drawn this operation, including draws later rerolled or declined.
+  // Reset at an operation start/restart; older rooms and saves read as empty.
+  misfortuneHistory: string[]
   personalInventories: Record<string, string[]>
   // Earned gear parked by departed divers (kicked, left, or left behind by a
   // new session), keyed by their playerId: a late joiner may claim one instead
   // of rolling their Field Promotion.
   legacyCaches: Record<string, LegacyCache>
+  // Team risk snapshotted at REPORT_RESULT for the reward/forfeit offer and its
+  // odds preview. Null before the report and in older saves (live fallback).
+  offerTeamRisk: number | null
   offerSeed: number | null
   lastReport: MissionReport | null
   // Bonus honors for the current mission's reward window: the host-spun
