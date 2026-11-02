@@ -78,6 +78,7 @@ const pactRisk = computed(() => (props.self ? pactRiskOf(props.self, props.state
     :pact-risk="pactRisk"
     :ready="ready"
     :can-control="canControl"
+    desktop-action-bar
     :advance-label="advanceLabel"
     @pick="(optionId, choiceItemId) => emit('pick', optionId, choiceItemId)"
     @reroll="emit('reroll')"

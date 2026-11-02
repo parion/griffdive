@@ -38,7 +38,10 @@
   star-rating keyboard navigation), phone host moderation
   (`phone.spec.ts`: a squadmate's hangar bay opens host actions; after launch the 390px Squad button
   opens the squad dialog with inline host actions), phone reward draft
-  (`phone-rewards.spec.ts`: a non-host phone diver banks their own pick), phone layout
+   (`phone-rewards.spec.ts`: a non-host phone diver banks their own pick), desktop dive actions
+   (`desktop-action-bar.spec.ts`: the primary action stays visible, above the dock and hit-testable
+   through the listed desktop/landscape viewports and across the call, pacts, field, report, loot and
+   climb beats), phone layout
   (`phone-layout.spec.ts`: no sideways overflow at 360px with a multi-front live Major Order, the
   hangar's four bays in one row with the live order as the default plan and the launch in reach, the
   live spin CTA, tapping the report's larger time cells), the phone action bar

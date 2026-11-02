@@ -116,27 +116,28 @@ const status = computed(() => {
       :divers="squad"
     />
 
-    <div
-      v-if="!phone"
-      class="ff-actions"
-      aria-live="polite"
-    >
-      <p
-        v-if="status"
-        class="ff-note"
+    <DiveActionBar v-if="!phone">
+      <div
+        class="ff-actions"
+        aria-live="polite"
       >
-        {{ status }}
-      </p>
-      <button
-        v-if="owes && !confirmed"
-        class="cta cut cta-sweep"
-        type="button"
-        :disabled="!canSurrender"
-        @click="remove"
-      >
-        {{ removeLabel }}
-      </button>
-    </div>
+        <p
+          v-if="status"
+          class="ff-note"
+        >
+          {{ status }}
+        </p>
+        <button
+          v-if="owes && !confirmed"
+          class="cta cut cta-sweep"
+          type="button"
+          :disabled="!canSurrender"
+          @click="remove"
+        >
+          {{ removeLabel }}
+        </button>
+      </div>
+    </DiveActionBar>
 
     <PhoneActionBar v-else>
       <template

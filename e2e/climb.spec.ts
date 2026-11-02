@@ -49,11 +49,12 @@ test('climbs page: the draft is never held up, and Held opens the next drop', as
   await expect(climb.getByLabel('Mission report')).toBeVisible()
   await expect(climb.getByLabel('Stats check')).toContainText('pact')
   // The call to drop is gated on the stats rule.
-  await expect(climb.locator('.cta')).toBeDisabled()
+  const advance = page.locator('#dive-action-content .cta')
+  await expect(advance).toBeDisabled()
 
   await climb.locator('.rule-act .held').click()
   await settleClimb(page)
-  await expect(climb.locator('.cta')).toBeEnabled()
+  await expect(advance).toBeEnabled()
   await page.context().close()
 })
 
@@ -69,7 +70,7 @@ test('climbs page: a broke mark takes two taps and is owed back as Penance next 
   await expect(climb.locator('.rule-row.broke')).toContainText('Penance next mission')
 
   await settleClimb(page)
-  await climb.locator('.cta').click()
+  await page.locator('#dive-action-content .cta').click()
 
   // Next mission: the broken pact is sworn again without a say.
   await page.getByRole('button', { name: 'Spin', exact: true }).click()

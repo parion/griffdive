@@ -251,72 +251,6 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
           :note="cardNote"
           compact
         />
-
-        <div
-          v-if="canControl"
-          class="deal-row"
-        >
-          <button
-            class="cta cut cta-sweep"
-            :class="{ live: canDeal }"
-            type="button"
-            :disabled="!canDeal"
-            @click="deal"
-          >
-            Deal the pacts
-            <svg
-              width="22"
-              height="14"
-              viewBox="0 0 22 14"
-              aria-hidden="true"
-            >
-              <path
-                d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
-                fill="currentColor"
-              />
-            </svg>
-          </button>
-          <div class="rerolls">
-            <button
-              class="reroll"
-              type="button"
-              :disabled="!rerollMisfortune.allowed"
-              :title="rerollMisfortune.reason ?? undefined"
-              @click="reroll('misfortune')"
-            >
-              <IconDice class="reroll-icon" />
-              Reroll directive{{ rerollMisfortune.allowed ? ' · 1 token' : '' }}
-            </button>
-            <button
-              v-if="state.missionInOperation === 1"
-              class="reroll"
-              type="button"
-              :disabled="!rerollFront.allowed"
-              :title="rerollFront.reason ?? undefined"
-              @click="reroll('front')"
-            >
-              <IconDice class="reroll-icon" />
-              Reroll front
-            </button>
-            <button
-              v-if="strain && state.missionInOperation === 1 && !strainCall.decided"
-              class="reroll"
-              type="button"
-              :disabled="!rerollStrain.allowed"
-              :title="rerollStrain.reason ?? undefined"
-              @click="reroll('strain')"
-            >
-              <IconDice class="reroll-icon" />
-              Reroll strain
-            </button>
-          </div>
-        </div>
-        <p
-          v-else
-          class="waiting"
-        >
-          {{ waitingForStrain ? 'Waiting on the strain call…' : 'Waiting for the host to deal the pacts…' }}
-        </p>
       </template>
 
       <template v-else>
@@ -344,27 +278,94 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
           note="Base odds"
           compact
         />
-
-        <div
-          v-if="canControl"
-          class="deal-row"
-        >
-          <button
-            class="cta cut"
-            :class="{ 'live': !drawing, 'cta-sweep': !drawing }"
-            type="button"
-            :disabled="drawing"
-            @click="emit('spin')"
-          >
-            {{ drawing ? 'Spinning…' : 'Spin the wheel' }}
-            <IconRefresh
-              class="cta-icon"
-              aria-hidden="true"
-            />
-          </button>
-        </div>
       </template>
     </div>
+
+    <DiveActionBar>
+      <div
+        v-if="state.wheel && misfortune && !drawing && canControl"
+        class="deal-row"
+      >
+        <button
+          class="cta cut cta-sweep"
+          :class="{ live: canDeal }"
+          type="button"
+          :disabled="!canDeal"
+          @click="deal"
+        >
+          Deal the pacts
+          <svg
+            width="22"
+            height="14"
+            viewBox="0 0 22 14"
+            aria-hidden="true"
+          >
+            <path
+              d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
+              fill="currentColor"
+            />
+          </svg>
+        </button>
+        <div class="rerolls">
+          <button
+            class="reroll"
+            type="button"
+            :disabled="!rerollMisfortune.allowed"
+            :title="rerollMisfortune.reason ?? undefined"
+            @click="reroll('misfortune')"
+          >
+            <IconDice class="reroll-icon" />
+            Reroll directive{{ rerollMisfortune.allowed ? ' · 1 token' : '' }}
+          </button>
+          <button
+            v-if="state.missionInOperation === 1"
+            class="reroll"
+            type="button"
+            :disabled="!rerollFront.allowed"
+            :title="rerollFront.reason ?? undefined"
+            @click="reroll('front')"
+          >
+            <IconDice class="reroll-icon" />
+            Reroll front
+          </button>
+          <button
+            v-if="strain && state.missionInOperation === 1 && !strainCall.decided"
+            class="reroll"
+            type="button"
+            :disabled="!rerollStrain.allowed"
+            :title="rerollStrain.reason ?? undefined"
+            @click="reroll('strain')"
+          >
+            <IconDice class="reroll-icon" />
+            Reroll strain
+          </button>
+        </div>
+      </div>
+      <div
+        v-else-if="canControl"
+        class="deal-row"
+      >
+        <button
+          class="cta cut"
+          :class="{ 'live': !drawing, 'cta-sweep': !drawing }"
+          type="button"
+          :disabled="drawing"
+          @click="emit('spin')"
+        >
+          {{ drawing ? 'Spinning…' : 'Spin the wheel' }}
+          <IconRefresh
+            class="cta-icon"
+            aria-hidden="true"
+          />
+        </button>
+      </div>
+      <p
+        v-else
+        class="waiting"
+      >
+        {{ waitingForStrain ? 'Waiting on the strain call…' : 'Waiting for the host to deal the pacts…' }}
+      </p>
+    </DiveActionBar>
   </section>
 </template>
 
@@ -518,7 +519,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
 .dc-waiting { color: var(--dim); font-size: 12px; }
 .dc-block { margin: 0; color: var(--red); font-size: 12px; }
 
-.deal-row { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.deal-row { display: flex; flex-direction: column; gap: 10px; width: min(100%, 560px); margin: 0 auto; }
 .cta {
   display: flex;
   align-items: center;
