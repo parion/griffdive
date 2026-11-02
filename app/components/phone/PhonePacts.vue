@@ -21,6 +21,7 @@ const emit = defineEmits<{
 
 const selection = ref<string[]>([])
 const hoveredId = ref<string | null>(null)
+const expandedPactId = ref<string | null>(null)
 
 // A new draw or directive invalidates the hand. Watch the sources themselves:
 // an array literal is a fresh object on every squad sync, which would wipe the
@@ -29,6 +30,7 @@ watch(
   [() => props.state.wheel?.seed, () => props.state.misfortuneAccepted],
   () => {
     selection.value = []
+    expandedPactId.value = null
   },
 )
 
@@ -47,6 +49,10 @@ function toggle(pactId: string): void {
     return
   }
   selection.value = applyPactToggle(offer.value.map(pact => pact.id), selection.value, pactId)
+}
+
+function toggleDetails(pactId: string): void {
+  expandedPactId.value = expandedPactId.value === pactId ? null : pactId
 }
 
 const coverage = computed<Record<string, string>>(() => {
@@ -196,13 +202,14 @@ function lockNow(): void {
         :note="bannedNote(pact.id)"
         :disabled="locked"
         :tilt="selection.includes(pact.id) ? 0 : index % 2 === 0 ? -0.8 : 0.8"
+        :open="expandedPactId === pact.id"
         compact
-        :open="false"
         @select="toggle(pact.id)"
+        @toggle-details="toggleDetails(pact.id)"
         @mouseenter="hoveredId = pact.id"
         @mouseleave="hoveredId = null"
-        @focus="hoveredId = pact.id"
-        @blur="hoveredId = null"
+        @focusin="hoveredId = pact.id"
+        @focusout="hoveredId = null"
       />
     </div>
 

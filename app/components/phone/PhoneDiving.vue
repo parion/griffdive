@@ -256,8 +256,10 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   font-size: 10px;
 }
 .mark {
-  min-height: 28px;
-  padding: 0 7px;
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  padding: 0 8px;
   border: 0;
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--line-4);
@@ -265,6 +267,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   font: 700 9px var(--font-body);
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 .mark.armed { color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
 .strain-line { display: flex; align-items: center; gap: 7px; color: var(--orange); font-size: 11px; }
