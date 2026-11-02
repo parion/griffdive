@@ -393,9 +393,9 @@ the fixed action bar.
 Deliberately bare, in the loot draft's grammar. A red kicker, the title and one line of copy sit over
 `ForfeitPicker`: the diver's offer as the same tier-edged art cards as `RewardDraft` (letterboxed
 4:3 well, tier letter, `fitWord` name, category line; a 104px thumb row on phones), staggered in.
-Unselected cards say **At stake** and carry a quiet red edge/wash; selecting one marks it **Marked
+Unselected cards say **At stake** and carry a quiet red wash; selecting one marks it **Marked
 for removal**. The final **Remove <item>** action is the explicit confirmation on desktop and in the
-pinned phone bar (no hold-to-confirm, no dialog). The removed card keeps its red edge with a
+pinned phone bar (no hold-to-confirm, no dialog). The removed card keeps its red well edge with a
 **Confiscated** stamp while the rest fade, like a banked reward. The stepper treats this as
 **Forfeit**, the failure branch of Loot, not Dive. Squadmates'
 forfeits sit below in `SquadForfeitBoard`, the `SquadDraftBoard` grammar: name, status, and each diver's dealt items as icon tiles with the removed one struck red and the rest faded. A short note says who is still choosing. SEAF Support Package
