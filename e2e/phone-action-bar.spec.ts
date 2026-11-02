@@ -65,8 +65,14 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'Deal the pacts' }).click()
 
   await expect(page.locator('.phone-pacts')).toBeVisible()
+  await expect(page.locator('.phone-pacts .directive')).toContainText('Directive skipped')
+  await expect(page.locator('.phone-pacts .directive')).toContainText('No squad directive this mission.')
   await expectPinnedBar(page, '5-pacts')
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'Dive with no pacts' }).click()
+  await expect(page.locator('.phone-field .directive .status')).toHaveText('Skipped')
+  await expect(page.locator('.phone-field .directive')).toContainText('Directive skipped')
+  await expect(page.locator('.phone-field .directive')).toContainText('No squad directive this mission.')
+  await expect(page.locator('.phone-field .directive')).not.toContainText('No directive this mission')
   await expectPinnedBar(page, '6-diving')
 
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'Extracted' }).click()

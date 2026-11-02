@@ -140,8 +140,13 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.locator('.directive-card .dc-actions')).toBeVisible()
   await page.locator('.directive-card').getByRole('button', { name: 'Skip' }).click()
   await page.getByRole('button', { name: 'Deal the pacts' }).click()
+  await expect(page.locator('.pact-screen .directive-strip')).toContainText('Directive skipped')
+  await expect(page.locator('.pact-screen .directive-strip')).toContainText('No squad directive this mission.')
   await page.locator('.condition:not([disabled])').first().click()
   await page.getByRole('button', { name: /^Swear 1 pact/ }).click()
+  await expect(page.locator('.field .directive-card .status')).toHaveText('Skipped')
+  await expect(page.locator('.field .directive-card')).toContainText('Directive skipped')
+  await expect(page.locator('.field .directive-card')).toContainText('No squad directive this mission.')
   await page.getByRole('button', { name: 'Extracted' }).click()
 
   // Honors aren't due on mission 2 (the solo cadence is every third mission),

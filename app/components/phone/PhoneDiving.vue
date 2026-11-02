@@ -3,6 +3,7 @@ import { missionsPerOperation } from '~~/shared/engine/config'
 import {
   activeMisfortune,
   activeStrain,
+  currentMisfortune,
 } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionReport } from '~~/shared/engine/types'
 
@@ -22,6 +23,8 @@ const emit = defineEmits<{
 }>()
 
 const misfortune = computed(() => activeMisfortune(props.state))
+const directiveSkipped = computed(() =>
+  Boolean(currentMisfortune(props.state) && !props.state.misfortuneAccepted))
 const strain = computed(() => activeStrain(props.state))
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const directiveFailed = computed(() => props.state.misfortuneFailed)
@@ -96,14 +99,14 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         <span class="cap">Squad directive</span>
         <span
           class="status"
-          :class="directiveFailed ? 'red' : 'teal'"
-        >{{ directiveFailed ? 'Broken' : 'Active' }}</span>
+          :class="directiveFailed ? 'red' : directiveSkipped ? 'skipped' : 'teal'"
+        >{{ directiveFailed ? 'Broken' : directiveSkipped ? 'Skipped' : 'Active' }}</span>
       </div>
       <h2
         class="disp dc-name"
-        :style="fitWord(misfortune?.name ?? 'Safe dive')"
+        :style="fitWord(misfortune?.name ?? (directiveSkipped ? 'Directive skipped' : 'Safe dive'))"
       >
-        {{ misfortune?.name ?? 'Safe dive' }}
+        {{ misfortune?.name ?? (directiveSkipped ? 'Directive skipped' : 'Safe dive') }}
       </h2>
       <p class="dc-rule">
         <ConditionRule
@@ -111,11 +114,12 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
           :condition="misfortune"
         />
         <template v-else>
-          No directive this mission.
+          No squad directive this mission.
         </template>
       </p>
       <div class="dc-foot">
-        <span>{{ directiveFailed ? 'Broken · everyone loses a loot option' : 'Boosting everyone’s loot' }}</span>
+        <span v-if="directiveFailed">Broken · everyone loses a loot option</span>
+        <span v-else-if="misfortune">Boosting everyone’s loot</span>
         <button
           v-if="canControl && misfortune && !directiveFailed"
           class="mark"
@@ -242,6 +246,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 .status { padding: 2px 7px; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
 .status.teal { background: var(--teal); color: var(--on-gold); }
 .status.red { color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
+.status.skipped { color: var(--khaki); box-shadow: inset 0 0 0 1px var(--line-4); }
 .dc-name { font-size: min(30px, 100cqi / var(--fit-len, 1)); color: var(--gold); }
 .broken .dc-name { color: var(--red); }
 .dc-rule { margin: 0; color: var(--khaki); font-size: 12px; }

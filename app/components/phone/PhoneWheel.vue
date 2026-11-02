@@ -4,6 +4,7 @@ import { tierZones } from '~~/shared/engine/rewards'
 import {
   canRerollWheel,
   currentMisfortune,
+  currentStrain,
   misfortuneDecision,
   misfortuneStrandedDivers,
   squadInventories,
@@ -32,6 +33,10 @@ const misfortune = computed(() => currentMisfortune(props.state))
 // Only the host's phone shows the wheel; squadmates have no spin to wait out.
 const drawing = useSpinReveal(() => props.state.wheel?.seed)
 const held = computed(() => drawing.value && props.canControl)
+const wheelOpen = ref(false)
+watch(() => props.state.wheel?.seed, () => {
+  wheelOpen.value = false
+})
 const decision = computed(() => misfortuneDecision(props.state))
 const strainCall = computed(() => strainDecision(props.state))
 const hostName = computed(() =>
@@ -46,7 +51,8 @@ const strandedReason = computed(() =>
     ? `${stranded.value.map(diver => upperName(diver.name)).join(', ')} can’t field this rule.`
     : '')
 const canDeal = computed(() =>
-  props.state.phase === 'deal' || (decision.value.decided && strainCall.value.decided))
+  !drawing.value
+  && (props.state.phase === 'deal' || (decision.value.decided && strainCall.value.decided)))
 
 const callValor = computed(() => teamRiskOf(props.state))
 const directiveShare = computed(() =>
@@ -95,6 +101,79 @@ const rollDeltas = computed<Partial<Record<RewardTier, number>>>(() =>
   showingPreview.value ? deltas.value : {})
 
 const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'))
+const rerollFront = computed(() => canRerollWheel(props.state, 'front'))
+const rerollStrain = computed(() => canRerollWheel(props.state, 'strain'))
+
+type WheelReroll = 'misfortune' | 'front' | 'strain'
+
+const rerolls = computed(() => {
+  if (!props.state.wheel) {
+    return []
+  }
+  const result: { wheel: WheelReroll, name: string, availability: ReturnType<typeof canRerollWheel> }[] = [
+    { wheel: 'misfortune', name: 'directive', availability: rerollMisfortune.value },
+  ]
+  if (props.state.missionInOperation === 1) {
+    result.push({ wheel: 'front', name: 'front', availability: rerollFront.value })
+    if (currentStrain(props.state) && !strainCall.value.decided) {
+      result.push({ wheel: 'strain', name: 'strain', availability: rerollStrain.value })
+    }
+  }
+  return result
+})
+
+const pendingReroll = ref<WheelReroll | null>(null)
+const rerollConfirmOpen = ref(false)
+watch(rerollConfirmOpen, (open) => {
+  if (!open) {
+    pendingReroll.value = null
+  }
+})
+const pendingRerollName = computed(() => ({
+  misfortune: 'directive',
+  front: 'front',
+  strain: 'strain',
+}[pendingReroll.value ?? 'misfortune']))
+const pendingRerollAvailability = computed(() =>
+  pendingReroll.value ? canRerollWheel(props.state, pendingReroll.value) : null)
+const rerollConfirmDescription = computed(() =>
+  pendingRerollAvailability.value?.free
+    ? `A free reroll is available for the ${pendingRerollName.value}.`
+    : `Rerolling the ${pendingRerollName.value} spends 1 token. You have ${props.state.rerollTokens}.`)
+
+function rerollLabel(option: { name: string, availability: ReturnType<typeof canRerollWheel> }): string {
+  const price = option.availability.free
+    ? 'free'
+    : `${props.state.rerollTokens} token${props.state.rerollTokens === 1 ? '' : 's'}`
+  return `Reroll ${option.name} · ${price}`
+}
+
+function requestReroll(wheel: WheelReroll): void {
+  if (drawing.value) {
+    return
+  }
+  const availability = canRerollWheel(props.state, wheel)
+  if (!availability.allowed) {
+    return
+  }
+  if (availability.free) {
+    emit('reroll', wheel)
+    return
+  }
+  pendingReroll.value = wheel
+  rerollConfirmOpen.value = true
+}
+
+function confirmReroll(): void {
+  const wheel = pendingReroll.value
+  if (!wheel || drawing.value) {
+    return
+  }
+  if (canRerollWheel(props.state, wheel).allowed) {
+    emit('reroll', wheel)
+  }
+  rerollConfirmOpen.value = false
+}
 </script>
 
 <template>
@@ -147,6 +226,9 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
       </h2>
       <p class="dc-rule">
         <ConditionRule :condition="misfortune" />.
+      </p>
+      <p class="risk-note">
+        Risk shown is for this difficulty; higher difficulties raise risk and offer more pacts.
       </p>
       <div
         v-if="!decision.decided && canControl"
@@ -230,7 +312,53 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
     />
 
     <div
+      v-if="canControl && state.wheel"
+      class="rerolls"
+      aria-label="Reroll options"
+      role="group"
+    >
+      <button
+        v-for="option in rerolls"
+        :key="option.wheel"
+        class="reroll"
+        type="button"
+        :disabled="drawing || !option.availability.allowed"
+        :title="drawing ? 'Wait for the wheel reveal to finish' : option.availability.reason ?? undefined"
+        @click="requestReroll(option.wheel)"
+      >
+        <IconDice class="reroll-icon" />
+        {{ rerollLabel(option) }}
+      </button>
+    </div>
+
+    <div
+      v-if="canControl && state.wheel && misfortune && !drawing"
+      class="wheel-result"
+    >
+      <div class="result-copy">
+        <span class="cap">Directive drawn</span>
+        <b class="disp result-name">{{ misfortune.name }}</b>
+      </div>
+      <RiskPips
+        :value="directiveRisk"
+        :max="directiveRisk"
+        tone="red"
+      />
+      <button
+        class="wheel-toggle"
+        type="button"
+        aria-controls="phone-wheel-reveal"
+        :aria-expanded="wheelOpen"
+        @click="wheelOpen = !wheelOpen"
+      >
+        {{ wheelOpen ? 'Hide wheel' : 'View wheel' }}
+      </button>
+    </div>
+
+    <div
       v-if="canControl"
+      v-show="!state.wheel || drawing || wheelOpen"
+      id="phone-wheel-reveal"
       class="wheel-wrap"
     >
       <WheelOfAdversity
@@ -273,21 +401,10 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
           class="bar-cta cta-sweep"
           type="button"
           :disabled="!canDeal"
+          :title="drawing ? 'Wait for the wheel reveal to finish' : undefined"
           @click="emit('deal')"
         >
           <span class="disp">Deal the pacts</span>
-        </button>
-      </template>
-      <template #secondary>
-        <button
-          v-if="state.wheel"
-          class="bar-alt"
-          type="button"
-          :disabled="!rerollMisfortune.allowed"
-          :title="rerollMisfortune.reason ?? undefined"
-          @click="emit('reroll', 'misfortune')"
-        >
-          Reroll
         </button>
       </template>
     </PhoneActionBar>
@@ -296,6 +413,33 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
         <span class="bar-gate">Waiting on host</span>
       </template>
     </PhoneActionBar>
+
+    <AppDialog
+      v-model:open="rerollConfirmOpen"
+      title="Spend a reroll token?"
+      :description="rerollConfirmDescription"
+      size="sm"
+    >
+      <template #footer>
+        <div class="confirm-actions">
+          <button
+            class="btn ghost"
+            type="button"
+            @click="rerollConfirmOpen = false"
+          >
+            Keep this draw
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+            :disabled="drawing || !pendingRerollAvailability?.allowed"
+            @click="confirmReroll"
+          >
+            {{ pendingRerollAvailability?.free ? 'Reroll for free' : 'Spend 1 token' }}
+          </button>
+        </div>
+      </template>
+    </AppDialog>
   </section>
 </template>
 
@@ -341,6 +485,7 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
 .dc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .dc-name { font-size: min(30px, 100cqi / var(--fit-len, 1)); color: var(--gold); }
 .dc-rule { margin: 0; color: var(--khaki); font-size: 12px; }
+.risk-note { margin: -3px 0 0; color: var(--muted); font-size: 11px; line-height: 1.35; }
 .dc-actions { display: flex; gap: 7px; }
 .take,
 .skip {
@@ -399,9 +544,20 @@ const rerollMisfortune = computed(() => canRerollWheel(props.state, 'misfortune'
 .dc-block { margin: 0; color: var(--red); font-size: 10px; }
 .dc-waiting { color: var(--dim); font-size: 11px; }
 
+.rerolls { display: flex; flex-wrap: wrap; gap: 3px 12px; justify-content: center; }
+.reroll { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 4px; border: 0; background: none; color: var(--muted); font: 600 12px var(--font-body); text-decoration: underline; text-decoration-color: var(--line-4); text-underline-offset: 3px; cursor: pointer; }
+.reroll:hover:not(:disabled) { color: var(--gold); text-decoration-color: currentColor; }
+.reroll:disabled { opacity: 0.4; cursor: not-allowed; text-decoration: none; }
+.reroll-icon { width: 13px; height: 13px; }
+.wheel-result { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 9px 10px; background: var(--panel); box-shadow: inset 2px 0 0 var(--gold), inset 0 0 0 1px var(--line-3); }
+.result-copy { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.result-name { overflow: hidden; color: var(--gold); font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.wheel-toggle { min-height: 44px; padding: 0 10px; border: 1px solid var(--line-4); background: var(--rail); color: var(--khaki); font: 700 11px var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
+.wheel-toggle:hover { color: var(--gold); border-color: var(--gold); }
 .wheel-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .phone-call :deep(.risk-legend) { display: none; }
 .wheel-wrap :deep(.wheel) { max-width: 360px; }
 .wait-note { display: flex; flex-direction: column; gap: 4px; }
 .wait-note p { margin: 0; color: var(--muted); font-size: 12px; }
+.confirm-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 </style>
