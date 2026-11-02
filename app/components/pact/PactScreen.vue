@@ -35,6 +35,10 @@ watch(
 const offer = computed(() =>
   props.selfId ? pactOfferFor(props.state, props.selfId) : [])
 
+const waitingOn = computed(() => props.state.divers
+  .filter(diver => !diver.away && !diver.pactsLocked)
+  .map(diver => diver.name)
+  .join(', '))
 const misfortune = computed(() => activeMisfortune(props.state))
 const directiveSkipped = computed(() =>
   Boolean(props.state.wheel && !props.state.misfortuneAccepted))
@@ -175,7 +179,7 @@ function lockNow(): void {
         Swear your pacts
       </h1>
       <p class="pact-sub">
-        Pacts only affect you. A broken pact costs a loot option, or Penance if only the stats screen can prove it.
+        Pacts only affect you. A broken pact costs you a loot option — or Penance, a debt to clear later, when the stats screen shows the break.
       </p>
       <p class="risk-note">
         Risk shown is for this difficulty; higher difficulties raise risk and offer more pacts.
@@ -274,7 +278,7 @@ function lockNow(): void {
           <span class="locked-stamp disp">Sworn</span>
           <span class="locked-copy">
             <b>{{ selectionNames || 'No pacts' }}</b>
-            <span>Waiting for the rest of the squad…</span>
+            <span>{{ waitingOn ? `Waiting on ${waitingOn}…` : 'Waiting for the rest of the squad…' }}</span>
           </span>
         </div>
       </div>

@@ -96,7 +96,7 @@ const honorsReason = computed(() => {
   if (untilHonors.value > 0) {
     return `Next Squad Honors ${untilHonors.value === 1 ? 'next mission' : `in ${untilHonors.value} missions`}.`
   }
-  return 'Squad Honors need a full-star clear.'
+  return `Squad Honors need a max-star clear (${maxStars.value} stars at this difficulty).`
 })
 
 const timeCells = Array.from({ length: 20 }, (_, index) => (index + 1) * 5)
@@ -116,7 +116,7 @@ function submit(): void {
       <span
         class="kick"
         :class="{ red: outcome === 'failure' }"
-      >{{ outcome === 'success' ? 'Extraction confirmed' : 'No extraction' }}</span>
+      >{{ outcome === 'success' ? 'Extraction confirmed — rewards below' : 'No extraction' }}</span>
       <h1 class="disp report-title">
         {{ outcome === 'success' ? 'Mission report' : 'Mission failed' }}
       </h1>

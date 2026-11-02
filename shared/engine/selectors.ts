@@ -920,7 +920,7 @@ export function bonusIneligibilityReason(state: DiveState): string | null {
     return null
   }
   if (report.stars < maxStarsFor(state.difficulty)) {
-    return 'Squad honors need a full-star clear.'
+    return `Squad honors need a max-star clear (${maxStarsFor(state.difficulty)} stars at this difficulty).`
   }
   const interval = bonusIntervalFor(squadSize(state))
   if (state.missionIndex % interval !== 0) {
