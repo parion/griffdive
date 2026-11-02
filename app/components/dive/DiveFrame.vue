@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The lit-pass dive shell: flat header, one stage, a pinned action row and one
+// The lit-pass dive shell: flat header, one stage and one
 // squad dock. The aside slot docks the tool sidebar (Kit, Codex, Warbonds,
 // Bargains) beside the stage.
 </script>
@@ -25,17 +25,6 @@
       <slot name="aside" />
     </div>
 
-    <div
-      class="desktop-action-bar"
-      role="group"
-      aria-label="Dive actions"
-    >
-      <div
-        id="dive-action-content"
-        class="desktop-action-content"
-      />
-    </div>
-
     <slot name="dock" />
   </div>
 </template>
@@ -44,7 +33,7 @@
 .shell {
   height: 100vh;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
   background: var(--ground);
 }
@@ -92,25 +81,8 @@
 }
 .stage-inner :deep(> *) { min-width: 0; }
 
-.desktop-action-bar {
-  z-index: 2;
-  min-width: 0;
-  background: var(--ground);
-}
-.desktop-action-bar:has(#dive-action-content:not(:empty)) {
-  padding: 8px var(--pad-page);
-  border-top: 1px solid var(--line-2);
-  background: linear-gradient(180deg, var(--ground), var(--rail));
-  box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.32);
-}
-.desktop-action-content {
-  width: min(100%, 1180px);
-  margin-inline: auto;
-}
-
 @media (max-width: 1020px) {
   .shell { height: auto; min-height: 100vh; grid-template-rows: auto minmax(0, 1fr) auto; overflow: visible; }
   .stage { overflow: visible; overflow-x: clip; }
-  .desktop-action-bar { display: none; }
 }
 </style>

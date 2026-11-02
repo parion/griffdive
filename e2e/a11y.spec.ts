@@ -44,12 +44,11 @@ test('the star rating is a keyboard-navigable radio group', async ({ page }) => 
   await page.getByRole('button', { name: /^Swear 1 pact/ }).click()
   await page.getByRole('button', { name: 'Extracted' }).click()
 
-  // The report opens on 1 star, so arrow navigation starts there.
-  const oneStar = page.getByRole('radio', { name: '1 star' })
-  await oneStar.focus()
-  await expect(oneStar).toHaveAttribute('aria-checked', 'true')
+  const threeStars = page.getByRole('radio', { name: '3 stars' })
+  await threeStars.focus()
+  await expect(threeStars).toHaveAttribute('aria-checked', 'true')
 
-  await page.keyboard.press('ArrowRight', { delay: 100 })
+  await page.keyboard.press('ArrowLeft', { delay: 100 })
   await expect(page.getByRole('radio', { name: '2 stars' })).toHaveAttribute('aria-checked', 'true')
-  await expect(oneStar).toHaveAttribute('aria-checked', 'false')
+  await expect(threeStars).toHaveAttribute('aria-checked', 'false')
 })

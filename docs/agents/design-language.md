@@ -127,14 +127,8 @@ rail and bottom PhaseRail are gone. Each beat centres itself on the stage (`marg
 the stage inner, so a beat taller than the stage still scrolls from the top). A new beat always opens
 scrolled to its top.
 
-Desktop dive shells pin each beat's existing primary action in the action row between
-the stage and squad dock. `DiveActionBar` defers the control into the explicit `DiveFrame` target;
-the row takes its height in the shell grid, never overlays the dock or creates a second scroller.
-Call rerolls travel with their primary action, and report/forfeit/climb gates remain in the same
-pinned row as their live actions. Keep one source control per beat: do not duplicate an in-flow CTA
-for the pinned version. The target follows the stage and precedes the dock in DOM order, so keyboard
-focus reaches actions after the beat content. At 1020px and below the desktop row is absent; the
-phone shell continues to use its own `PhoneActionBar` and its deferred slots unchanged.
+The desktop shell keeps each beat's primary action in the beat's own flow; only the phone shell pins
+its action in `PhoneActionBar`.
 Beat swaps never flash the previous screen: local UI (an open report form) stays mounted until
 the engine's phase change unmounts it, rather than closing itself first.
 
@@ -372,8 +366,8 @@ panel never opens by itself.
 
 The report window is a two-column lit form on desktop and one column on phones: mission stars,
 credit haul (sample tubes + time cells), and the **Squad Honors** eligibility card. A successful
-report starts at **1 star**; "Full-star clear" appears only after the host selects the difficulty's
-maximum. The star strip states **your** option count plus the present squad's min–max, since broken
+report opens at the difficulty's **maximum stars** (a full clear, "Full-star clear"); the host lowers it
+if the squad fell short. The star strip states **your** option count plus the present squad's min–max, since broken
 rules can cost different divers different options. Time remains at **0%** until entered; on phone
 its 20 values use 44px hit targets in a four-column grid.
 

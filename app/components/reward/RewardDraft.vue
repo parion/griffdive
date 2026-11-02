@@ -36,7 +36,6 @@ const props = withDefaults(defineProps<{
   ready?: boolean
   bonusUp?: boolean
   canControl?: boolean
-  desktopActionBar?: boolean
   kicker?: string
   variant?: 'reward' | 'promotion'
   title?: string
@@ -62,7 +61,6 @@ const props = withDefaults(defineProps<{
   ready: false,
   bonusUp: false,
   canControl: false,
-  desktopActionBar: false,
   kicker: '',
   variant: 'reward',
   title: 'Bank one item',
@@ -383,116 +381,114 @@ const kickerText = computed(() => {
       />
     </div>
 
-    <DiveActionBar
+    <div
       v-if="!promotion"
-      :inline="!desktopActionBar"
+      class="loot-actions"
     >
-      <div class="loot-actions">
-        <button
-          class="reroll"
-          type="button"
-          :disabled="!canReroll || resolved"
-          @click="reroll"
+      <button
+        class="reroll"
+        type="button"
+        :disabled="!canReroll || resolved"
+        @click="reroll"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            aria-hidden="true"
+          <rect
+            x="3.5"
+            y="3.5"
+            width="17"
+            height="17"
+            rx="4.5"
+          />
+          <g
+            fill="currentColor"
+            stroke="none"
           >
-            <rect
-              x="3.5"
-              y="3.5"
-              width="17"
-              height="17"
-              rx="4.5"
+            <circle
+              cx="8.3"
+              cy="8.3"
+              r="1.5"
             />
-            <g
-              fill="currentColor"
-              stroke="none"
-            >
-              <circle
-                cx="8.3"
-                cy="8.3"
-                r="1.5"
-              />
-              <circle
-                cx="15.7"
-                cy="8.3"
-                r="1.5"
-              />
-              <circle
-                cx="12"
-                cy="12"
-                r="1.5"
-              />
-              <circle
-                cx="8.3"
-                cy="15.7"
-                r="1.5"
-              />
-              <circle
-                cx="15.7"
-                cy="15.7"
-                r="1.5"
-              />
-            </g>
-          </svg>
-          {{ resolved ? 'Draft resolved' : `Reroll · ${tokenCount} token${tokenCount === 1 ? '' : 's'}` }}
-        </button>
+            <circle
+              cx="15.7"
+              cy="8.3"
+              r="1.5"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r="1.5"
+            />
+            <circle
+              cx="8.3"
+              cy="15.7"
+              r="1.5"
+            />
+            <circle
+              cx="15.7"
+              cy="15.7"
+              r="1.5"
+            />
+          </g>
+        </svg>
+        {{ resolved ? 'Draft resolved' : `Reroll · ${tokenCount} token${tokenCount === 1 ? '' : 's'}` }}
+      </button>
 
-        <button
-          v-if="!resolved"
-          class="cta cut cta-sweep"
-          type="button"
-          :disabled="!selectedId"
-          @click="bank"
+      <button
+        v-if="!resolved"
+        class="cta cut cta-sweep"
+        type="button"
+        :disabled="!selectedId"
+        @click="bank"
+      >
+        {{ selectedId ? `Bank ${chosenItemName()}` : 'Select an item' }}
+        <svg
+          width="22"
+          height="14"
+          viewBox="0 0 22 14"
+          aria-hidden="true"
         >
-          {{ selectedId ? `Bank ${chosenItemName()}` : 'Select an item' }}
-          <svg
-            width="22"
-            height="14"
-            viewBox="0 0 22 14"
-            aria-hidden="true"
-          >
-            <path
-              d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
-              fill="currentColor"
-            />
-          </svg>
-        </button>
-        <button
-          v-else-if="ready && canControl"
-          class="cta cut cta-sweep"
-          type="button"
-          @click="emit('advance')"
+          <path
+            d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
+      <button
+        v-else-if="ready && canControl"
+        class="cta cut cta-sweep"
+        type="button"
+        @click="emit('advance')"
+      >
+        {{ advanceLabel }}
+        <svg
+          width="22"
+          height="14"
+          viewBox="0 0 22 14"
+          aria-hidden="true"
         >
-          {{ advanceLabel }}
-          <svg
-            width="22"
-            height="14"
-            viewBox="0 0 22 14"
-            aria-hidden="true"
-          >
-            <path
-              d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
-              fill="currentColor"
-            />
-          </svg>
-        </button>
-        <span
-          v-else-if="resolved"
-          class="banked-note"
-        >
-          <template v-if="pickedName">Banked {{ pickedName }}.</template>
-          <template v-else>Draft resolved.</template>
-          <span v-if="!ready"> Waiting for the squad…</span>
-        </span>
-      </div>
-    </DiveActionBar>
+          <path
+            d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
+      <span
+        v-else-if="resolved"
+        class="banked-note"
+      >
+        <template v-if="pickedName">Banked {{ pickedName }}.</template>
+        <template v-else>Draft resolved.</template>
+        <span v-if="!ready"> Waiting for the squad…</span>
+      </span>
+    </div>
   </section>
 </template>
 

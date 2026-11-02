@@ -255,39 +255,40 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
         ><span class="bar-gate-word quiet">{{ canControl ? blockerLabel : waitingLabel }}</span></span>
       </template>
     </PhoneActionBar>
-    <DiveActionBar v-else>
-      <footer class="foot">
-        <button
-          v-if="canControl"
-          class="cta cut cta-sweep"
-          :class="{ 'cta-locked': !settled }"
-          type="button"
-          :disabled="!settled"
-          @click="emit('advance')"
+    <footer
+      v-else
+      class="foot"
+    >
+      <button
+        v-if="canControl"
+        class="cta cut cta-sweep"
+        :class="{ 'cta-locked': !settled }"
+        type="button"
+        :disabled="!settled"
+        @click="emit('advance')"
+      >
+        {{ ctaLabel }}
+        <svg
+          v-if="settled"
+          width="22"
+          height="14"
+          viewBox="0 0 22 14"
+          aria-hidden="true"
         >
-          {{ ctaLabel }}
-          <svg
-            v-if="settled"
-            width="22"
-            height="14"
-            viewBox="0 0 22 14"
-            aria-hidden="true"
-          >
-            <path
-              d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
-              fill="currentColor"
-            />
-          </svg>
-        </button>
-        <p
-          v-else
-          class="waiting"
-          role="status"
-        >
-          {{ settled ? `Waiting for ${hostName} to call the next drop.` : `${blockerLabel}.` }}{{ shopOpen ? ' Shop while you wait.' : '' }}
-        </p>
-      </footer>
-    </DiveActionBar>
+          <path
+            d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
+      <p
+        v-else
+        class="waiting"
+        role="status"
+      >
+        {{ settled ? `Waiting for ${hostName} to call the next drop.` : `${blockerLabel}.` }}{{ shopOpen ? ' Shop while you wait.' : '' }}
+      </p>
+    </footer>
   </section>
 </template>
 

@@ -166,44 +166,42 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
       />
     </div>
 
-    <DiveActionBar>
-      <div
-        v-if="canControl"
-        class="outcomes"
+    <div
+      v-if="canControl"
+      class="outcomes"
+    >
+      <button
+        class="fail"
+        type="button"
+        @click="openReport('failure')"
       >
-        <button
-          class="fail"
-          type="button"
-          @click="openReport('failure')"
-        >
-          Mission failed
-        </button>
-        <button
-          class="cta cut cta-sweep"
-          type="button"
-          @click="openReport('success')"
-        >
-          Extracted
-          <svg
-            width="22"
-            height="14"
-            viewBox="0 0 22 14"
-            aria-hidden="true"
-          >
-            <path
-              d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
-              fill="currentColor"
-            />
-          </svg>
-        </button>
-      </div>
-      <div
-        v-else
-        class="waiting"
+        Mission failed
+      </button>
+      <button
+        class="cta cut cta-sweep"
+        type="button"
+        @click="openReport('success')"
       >
-        <span class="cap">Host reports after extraction</span>
-      </div>
-    </DiveActionBar>
+        Extracted
+        <svg
+          width="22"
+          height="14"
+          viewBox="0 0 22 14"
+          aria-hidden="true"
+        >
+          <path
+            d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
+    </div>
+    <div
+      v-else
+      class="waiting"
+    >
+      <span class="cap">Host reports after extraction</span>
+    </div>
   </section>
 
   <MissionReport

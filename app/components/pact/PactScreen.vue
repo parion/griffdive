@@ -248,41 +248,39 @@ function lockNow(): void {
       :locked="locked"
     />
 
-    <DiveActionBar>
-      <div class="pact-cta">
-        <button
-          v-if="!locked"
-          class="cta cut cta-sweep"
-          type="button"
-          :disabled="offer.length === 0"
-          @click="lockNow"
+    <div class="pact-cta">
+      <button
+        v-if="!locked"
+        class="cta cut cta-sweep"
+        type="button"
+        :disabled="offer.length === 0"
+        @click="lockNow"
+      >
+        {{ ctaLabel }}
+        <svg
+          width="22"
+          height="14"
+          viewBox="0 0 22 14"
+          aria-hidden="true"
         >
-          {{ ctaLabel }}
-          <svg
-            width="22"
-            height="14"
-            viewBox="0 0 22 14"
-            aria-hidden="true"
-          >
-            <path
-              d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
-              fill="currentColor"
-            />
-          </svg>
-        </button>
-        <div
-          v-else
-          class="locked-row"
-          role="status"
-        >
-          <span class="locked-stamp disp">Sworn</span>
-          <span class="locked-copy">
-            <b>{{ selectionNames || 'No pacts' }}</b>
-            <span>{{ waitingOn ? `Waiting on ${waitingOn}…` : 'Waiting for the rest of the squad…' }}</span>
-          </span>
-        </div>
+          <path
+            d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
+      <div
+        v-else
+        class="locked-row"
+        role="status"
+      >
+        <span class="locked-stamp disp">Sworn</span>
+        <span class="locked-copy">
+          <b>{{ selectionNames || 'No pacts' }}</b>
+          <span>{{ waitingOn ? `Waiting on ${waitingOn}…` : 'Waiting for the rest of the squad…' }}</span>
+        </span>
       </div>
-    </DiveActionBar>
+    </div>
   </section>
 </template>
 

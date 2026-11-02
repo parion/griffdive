@@ -36,12 +36,12 @@ const maxStars = computed(() => maxStarsFor(props.state.difficulty))
 const sampleMax = computed(() => sampleReportCeiling(props.state.difficulty))
 const front = computed(() => currentFront(props.state))
 
-const stars = ref(Math.min(1, maxStars.value))
+const stars = ref(maxStars.value)
 const timePct = ref(0)
 const samples = ref<SampleCounts>({ common: 0, rare: 0, super: 0 })
 
 watch(maxStars, (value) => {
-  stars.value = Math.min(stars.value, value)
+  stars.value = value
 })
 
 const report = computed<MissionReport>(() => ({
@@ -290,35 +290,36 @@ function submit(): void {
       </div>
     </section>
 
-    <DiveActionBar v-if="!phone">
-      <div class="report-actions">
-        <button
-          class="back"
-          type="button"
-          @click="emit('cancel')"
+    <div
+      v-if="!phone"
+      class="report-actions"
+    >
+      <button
+        class="back"
+        type="button"
+        @click="emit('cancel')"
+      >
+        Back to the field
+      </button>
+      <button
+        class="cta cut cta-sweep"
+        type="button"
+        @click="submit"
+      >
+        {{ outcome === 'success' ? 'File report' : 'File failure' }}
+        <svg
+          width="22"
+          height="14"
+          viewBox="0 0 22 14"
+          aria-hidden="true"
         >
-          Back to the field
-        </button>
-        <button
-          class="cta cut cta-sweep"
-          type="button"
-          @click="submit"
-        >
-          {{ outcome === 'success' ? 'File report' : 'File failure' }}
-          <svg
-            width="22"
-            height="14"
-            viewBox="0 0 22 14"
-            aria-hidden="true"
-          >
-            <path
-              d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
-              fill="currentColor"
-            />
-          </svg>
-        </button>
-      </div>
-    </DiveActionBar>
+          <path
+            d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
+    </div>
 
     <PhoneActionBar v-else>
       <template #secondary>

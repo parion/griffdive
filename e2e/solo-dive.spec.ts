@@ -13,7 +13,7 @@ test('call: the CTA, odds line and front pin hold one layout across the draw', a
   await expect(call.locator('.directive-card.empty-call')).toBeVisible()
   await expect(call.locator('.roll-strip')).toBeVisible()
   await expect(call.locator('.roll-note')).toContainText('Base odds')
-  const spin = page.locator('#dive-action-content').getByRole('button', { name: 'Spin the wheel' })
+  const spin = page.getByRole('button', { name: 'Spin the wheel' })
   await expect(spin).toBeVisible()
   await spin.click()
 
@@ -93,12 +93,9 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('button', { name: /Brasch's Bargains.*Closed during the mission/ })).toBeDisabled()
 
   await page.getByRole('button', { name: 'Extracted' }).click()
-  // A report starts conservatively; the player records the result shown in HD2.
+  // The report form opens at the difficulty's best result — 3 stars at Medium.
   await expect(page.getByRole('heading', { name: 'Mission report' })).toBeVisible()
-  await expect(page.getByRole('radio', { name: '1 star' })).toHaveAttribute('aria-checked', 'true')
-  await expect(page.getByText('Full-star clear', { exact: true })).toHaveCount(0)
-  await expect(page.locator('.stars-foot')).toContainText('You draft 1 · squad 1')
-  await page.getByRole('radio', { name: '3 stars' }).click()
+  await expect(page.getByRole('radio', { name: '3 stars' })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByText('Full-star clear', { exact: true })).toBeVisible()
   const commonSamples = page.getByRole('slider', { name: 'Common samples' })
   await expect(commonSamples).toHaveAttribute('aria-valuenow', '0')
@@ -341,7 +338,7 @@ test('a failed mission labels the operation failed and removes an earned item', 
   // has chosen the forfeit restarts the operation at mission 1.
   await page.locator('.sur-tile:not([disabled])').first().click()
   await expect(page.locator('.sur-tile.on')).toContainText('Marked for removal')
-  await expect(page.locator('#dive-action-content').getByRole('button', { name: /^Remove / })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Remove / })).toBeVisible()
   await page.getByRole('button', { name: /^Remove / }).click()
   await expect(page.getByRole('img', { name: /Operation mission 1 of 2/i })).toBeVisible()
 })
@@ -359,7 +356,7 @@ test('a spinning wheel never changes the stage\'s scroll extent', async ({ page 
   await page.getByRole('button', { name: 'Spin', exact: true }).click({ force: true })
   // The pinned action row swaps from Spin to Deal + rerolls; let that beat
   // settle before measuring the rotating wheel's scroll box.
-  await expect(page.locator('#dive-action-content').getByRole('button', { name: 'Deal the pacts' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Deal the pacts' })).toBeVisible()
   const before = await extent()
   const seen = new Set<string>()
   for (let i = 0; i < 15; i++) {
