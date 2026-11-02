@@ -4,6 +4,7 @@ import { SQUAD_SIZE_MAX, MAX_NAME_LENGTH } from '~~/shared/engine/config'
 import { createLobbyState, forkCrusade, joinDiver, seatingBlocked } from '~~/shared/engine/room'
 import { reduce } from '~~/shared/engine/reducer'
 import { normalizeSaveDoc } from '~~/shared/engine/saves'
+import { forfeitOptionsFor } from '~~/shared/engine/selectors'
 import type { DiveState, DivePhase, EngineAction } from '~~/shared/engine/types'
 import { isEngineActionType, isHostOnlyAction } from '~~/shared/types/messages'
 import type { DiveSaveInfo, ServerMessage, SteamLobbyInfo } from '~~/shared/types/messages'
@@ -852,6 +853,18 @@ export async function processAction(
     }
 
     const enforced = enforceSelf(action, playerId)
+    if (enforced.type === 'FORFEIT_ITEM') {
+      const diver = room.state.divers.find(candidate => candidate.id === playerId)
+      if (
+        room.state.phase !== 'forfeit'
+        || !diver
+        || diver.forfeitedItemId
+        || !forfeitOptionsFor(room.state, diver).some(item => item.id === enforced.itemId)
+      ) {
+        sendError(peer, 'bad-action', 'That item is not in your current forfeit offer')
+        return
+      }
+    }
     let next: DiveState
     try {
       next = reduce(room.state, enforced)

@@ -88,11 +88,13 @@ watch([phaseKey, squadBanked], () => {
   window.scrollTo({ top: 0 })
 })
 
-// Squad Honors: the contest is spun when the report files and awarded from the
-// dock. The stat is held back until the report's reel has landed (the phase
-// moves on), so the dock never spoils the roll. The shell only reads the
-// derived state; the engine owns eligibility.
-const honors = computed(() => (state.value && state.value.phase !== 'diving' ? bonusFor(state.value) : null))
+// Filing the report spins Squad Honors. The climb page owns its reveal and
+// award flow; don't repeat its prompt in the dock during rewards.
+const honors = computed(() => (
+  state.value && state.value.phase !== 'diving' && state.value.phase !== 'rewards'
+    ? bonusFor(state.value)
+    : null
+))
 const honorsWinners = computed(() => (state.value ? bonusWinners(state.value).map(diver => upperName(diver.name)) : []))
 const honorsAwarded = computed(() => Boolean(state.value?.bonusWinnerIds.length))
 const sessionMenuOpen = ref(false)
@@ -353,6 +355,12 @@ function failDirective(): void {
 }
 
 function report(payload: MissionReport): void {
+  dispatch({
+    type: 'SPIN_BONUS',
+    seed: session.newSeed(),
+    outcome: payload.outcome,
+    stars: payload.stars,
+  })
   dispatch({ type: 'REPORT_RESULT', ...payload })
 }
 
@@ -400,8 +408,8 @@ function openPack(): void {
   }
 }
 
-// The climbs page rolls Squad Honors a beat after it opens; the seed is what
-// syncs, and the filed report supplies the stars and outcome.
+// A legacy in-progress report without a filed seed is recovered automatically
+// when the climbs page opens; only the seed syncs.
 function spinBonus(): void {
   dispatch({ type: 'SPIN_BONUS', seed: session.newSeed() })
 }

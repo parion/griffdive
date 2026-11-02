@@ -74,8 +74,8 @@ test('phone: the report time cells tap under a finger', async ({ browser }) => {
   const cell = page.getByRole('button', { name: 'Set time remaining to 60 percent' })
   await cell.scrollIntoViewIfNeeded()
   const box = (await cell.boundingBox())!
-  expect(box.width).toBeGreaterThanOrEqual(24)
-  expect(box.height).toBeGreaterThanOrEqual(24)
+  expect(box.width).toBeGreaterThanOrEqual(44)
+  expect(box.height).toBeGreaterThanOrEqual(44)
   await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
   await expect(page.locator('.time-value')).toContainText('60')
 

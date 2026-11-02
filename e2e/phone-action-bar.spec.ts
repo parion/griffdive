@@ -76,6 +76,22 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'File report' }).click()
 
   await expect(page.locator('.phone-loot .loot-card').first()).toBeVisible()
+  await expect(async () => {
+    const labels = await page.locator('.phone-loot .pin-flag').evaluateAll(nodes =>
+      nodes.map((node) => {
+        const { x, y, width, height } = node.getBoundingClientRect()
+        return { x, y, width, height }
+      }))
+    for (let i = 0; i < labels.length; i++) {
+      for (let j = i + 1; j < labels.length; j++) {
+        const a = labels[i]!
+        const b = labels[j]!
+        const overlaps = a.x < b.x + b.width && a.x + a.width > b.x
+          && a.y < b.y + b.height && a.y + a.height > b.y
+        expect(overlaps, `roll labels ${i} and ${j} overlap`).toBe(false)
+      }
+    }
+  }).toPass()
   await expectPinnedBar(page, '8-draft')
   await page.locator('.phone-loot .loot-card').first().click()
   await expectPinnedBar(page, '9-draft-banked')
@@ -131,10 +147,14 @@ test('phone: a failed mission lands on the pinned remove bar', async ({ browser 
   await expect(page.getByRole('heading', { name: 'Mission failed' }).first()).toBeVisible()
   await expectPinnedBar(page, '11-forfeit')
 
-  // Picking an item arms the remove.
+  // The offer is explicitly at stake; selecting marks it before the final remove.
+  await expect(page.locator('.sur-tile').first()).toContainText('At stake')
   await page.locator('.sur-tile').first().click()
+  await expect(page.locator('.sur-tile').first()).toContainText('Marked for removal')
   await expect(page.locator('#phone-bar-primary').getByRole('button', { name: /^Remove / })).toBeEnabled()
   await expectPinnedBar(page, '12-forfeit-armed')
+  await page.locator('#phone-bar-primary').getByRole('button', { name: /^Remove / }).click()
+  await expect(page.locator('.phone-call')).toBeVisible()
 
   await context.close()
 })

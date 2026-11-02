@@ -80,7 +80,7 @@ function gone(itemId: string): boolean {
         <span
           class="sur-mark"
           :class="{ empty: selected !== tile.item.id }"
-        >{{ gone(tile.item.id) ? 'Removed ✓' : selected === tile.item.id ? 'Marked for removal' : 'Select' }}</span>
+        >{{ gone(tile.item.id) ? 'Removed ✓' : selected === tile.item.id ? 'Marked for removal' : 'At stake' }}</span>
       </span>
 
       <span
@@ -101,7 +101,7 @@ function gone(itemId: string): boolean {
 }
 
 .sur-tile {
-  --edge: var(--line-3);
+  --edge: color-mix(in srgb, var(--red) 36%, var(--line-3));
   --tier: var(--tier-c);
   position: relative;
   display: flex;
@@ -110,7 +110,7 @@ function gone(itemId: string): boolean {
   min-width: 0;
   padding: var(--sp-4);
   border: 1px solid var(--edge);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--tier) 10%, var(--panel)), var(--panel) 55%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--red) 7%, color-mix(in srgb, var(--tier) 8%, var(--panel))), var(--panel) 62%);
   color: var(--text);
   text-align: left;
   font: inherit;
@@ -205,7 +205,7 @@ function gone(itemId: string): boolean {
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-.sur-mark.empty { color: var(--dim); }
+.sur-mark.empty { color: color-mix(in srgb, var(--red) 68%, var(--muted)); }
 
 .sur-stamp {
   position: absolute;

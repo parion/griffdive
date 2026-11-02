@@ -88,9 +88,13 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('button', { name: /Brasch's Bargains.*Closed during the mission/ })).toBeDisabled()
 
   await page.getByRole('button', { name: 'Extracted' }).click()
-  // The report form opens at the difficulty's best result — 3 stars at Medium.
+  // A report starts conservatively; the player records the result shown in HD2.
   await expect(page.getByRole('heading', { name: 'Mission report' })).toBeVisible()
-  await expect(page.getByRole('radio', { name: '3 stars' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByRole('radio', { name: '1 star' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByText('Full-star clear', { exact: true })).toHaveCount(0)
+  await expect(page.locator('.stars-foot')).toContainText('You draft 1 · squad 1')
+  await page.getByRole('radio', { name: '3 stars' }).click()
+  await expect(page.getByText('Full-star clear', { exact: true })).toBeVisible()
   const commonSamples = page.getByRole('slider', { name: 'Common samples' })
   await expect(commonSamples).toHaveAttribute('aria-valuenow', '0')
   // Medium spawns at most 18 commons; the Sample Scanner can double pickups,
@@ -102,9 +106,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.getByRole('button', { name: 'Set time remaining to 60 percent' }).click()
   await expect(page.locator('.time-value')).toContainText('60')
 
-  // Honors are due on this mission: there is no spin button, the reel rolls
-  // when the report files and the rewards screen follows it.
-  await expect(page.getByRole('button', { name: 'Spin the stat' })).toHaveCount(0)
+  // Honors are due on this mission: filing the report is the only spin trigger.
   await page.getByRole('button', { name: 'File report' }).click()
 
   await expect(page.getByRole('heading', { name: 'Bank one item' })).toBeVisible()
@@ -122,6 +124,8 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('article', { name: 'Your haul' }).locator('img')).toBeVisible()
   await expect(page.getByLabel('Mission report')).toBeVisible()
   await expect(page.getByRole('region', { name: 'Squad Honors' })).toBeVisible()
+  await expect(page.locator('.dock .honors')).toHaveCount(0)
+  await expect(page.locator('.climb .honors .roll')).toHaveCount(0)
 
   // Brasch's Bargains stays shut until the first operation is complete, so the
   // page hides the shelf entirely; credits keep banking toward the first buy.
@@ -317,10 +321,15 @@ test('a failed mission labels the operation failed and removes an earned item', 
   await page.getByRole('button', { name: 'File failure' }).click()
 
   await expect(page.getByRole('heading', { name: 'Mission failed' })).toBeVisible()
+  await expect(page.locator('.beats .current')).toContainText('Forfeit')
+  await expect(page.locator('.ff-kicker')).toContainText('Forfeit')
+  await expect(page.locator('.sur-tile').first()).toContainText('At stake')
+  await expect(page.locator('.sur-tile').first()).not.toContainText('Select')
 
   // Pick one item from the dealt offer, then remove it — once every diver
   // has chosen the forfeit restarts the operation at mission 1.
   await page.locator('.sur-tile:not([disabled])').first().click()
+  await expect(page.locator('.sur-tile.on')).toContainText('Marked for removal')
   await page.getByRole('button', { name: /^Remove / }).click()
   await expect(page.getByRole('img', { name: /Operation mission 1 of 2/i })).toBeVisible()
 })

@@ -3,7 +3,7 @@ import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { createDiveState, reduce } from '~~/shared/engine/reducer'
 import { joinDiver } from '~~/shared/engine/room'
 import { createSaveDoc } from '~~/shared/engine/saves'
-import { pactOfferFor } from '~~/shared/engine/selectors'
+import { forfeitOptionsFor, pactOfferFor } from '~~/shared/engine/selectors'
 import { AWAY_GRACE_MS, CRUSADE_TTL_MS, HOST_RECONNECT_GRACE_MS, InvalidSaveError, ROOM_TTL_MS, RoomLimitError, censusRooms, createPeerDirectory, createRoom, createRoomFromSave, drainPeers, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, reapSilentPeers, sweepRooms } from './room-sync'
 import type { PeerLike, RoomKV, StoredRoom } from './room-sync'
 import { PEER_SILENCE_MS } from './peer-presence'
@@ -841,6 +841,57 @@ describe('room-sync', () => {
     expect(stored?.state.phase).toBe('lobby')
     expect(stored?.state.settings).toBeNull()
     expect(stored?.state.divers).toHaveLength(1)
+  })
+
+  it('returns a clear error for a forfeit item outside the dealt offer', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+    const host = fakePeer('ws-forfeit')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    const hostId = welcomeOf(host).selfId
+
+    await processAction(kv, peers, host, {
+      action: { type: 'START_DIVE', settings: { variant: 'medium' }, seed: 1 },
+    })
+    await processAction(kv, peers, host, { action: { type: 'SPIN_WHEEL', seed: 42 } })
+    await processAction(kv, peers, host, { action: { type: 'ACCEPT_MISFORTUNE', accepted: false } })
+    await processAction(kv, peers, host, { action: { type: 'ACCEPT_STRAIN', accepted: false } })
+    await processAction(kv, peers, host, { action: { type: 'DEAL_PACTS' } })
+    await processAction(kv, peers, host, {
+      action: { type: 'SET_PACTS', playerId: hostId, pactIds: [] },
+    })
+
+    const diving = await lastSnapshot(host)
+    const earned = [...ITEMS_BY_ID.values()].find(item =>
+      !diving.personalInventories[hostId]?.includes(item.id))
+    if (!earned) {
+      throw new Error('no unowned catalog item')
+    }
+    await grantEarned(kv, code, hostId, [earned.id])
+    await processAction(kv, peers, host, {
+      action: { type: 'REPORT_RESULT', outcome: 'failure', stars: 0 },
+    })
+
+    const failed = await lastSnapshot(host)
+    const diver = failed.divers.find(candidate => candidate.id === hostId)
+    if (!diver || forfeitOptionsFor(failed, diver).length === 0) {
+      throw new Error('expected the diver to have a forfeit offer')
+    }
+
+    sent(host).length = 0
+    await processAction(kv, peers, host, {
+      action: { type: 'FORFEIT_ITEM', playerId: hostId, itemId: 'not-in-the-offer' },
+    })
+    expect(sent(host)).toContainEqual(expect.objectContaining({
+      type: 'error',
+      code: 'bad-action',
+      message: 'That item is not in your current forfeit offer',
+    }))
+    expect(sent(host).some(message => message.type === 'state')).toBe(false)
+    expect((await loadRoom(kv, code))?.state.divers.find(candidate => candidate.id === hostId)?.forfeitedItemId)
+      .toBeFalsy()
   })
 
   it('rate-limits join attempts per address', async () => {

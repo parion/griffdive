@@ -140,8 +140,6 @@ function nameOf(option: RewardOption): string {
 }
 
 const crossSelected = computed(() => crossOption.value !== null && selectedId.value === crossOption.value.optionId)
-const crossChosenName = computed(() =>
-  crossSelected.value && choiceItemId.value ? itemById(choiceItemId.value)?.displayName ?? null : null)
 
 function chosenItemName(): string {
   if (!selectedId.value) {
@@ -169,6 +167,15 @@ const pickedItem = computed(() => {
     return direct
   }
   return pickedOption.value && !pickedOption.value.choice ? pickedOption.value.item : null
+})
+const crossChosenItem = computed(() => {
+  if (crossSelected.value && choiceItemId.value) {
+    return itemById(choiceItemId.value) ?? null
+  }
+  if (bankedId.value === crossOption.value?.optionId && props.pickedId) {
+    return itemById(props.pickedId) ?? null
+  }
+  return null
 })
 const pickedName = computed(() => {
   if (pickedItem.value) {
@@ -291,7 +298,7 @@ const kickerText = computed(() => {
       :picked="crossSelected || bankedId === crossOption.optionId"
       :dimmed="resolved && bankedId !== crossOption.optionId"
       :stamp="resolved && bankedId === crossOption.optionId ? 'Banked' : null"
-      :chosen-name="crossChosenName"
+      :chosen-item="crossChosenItem"
       @choose="chooseCross"
     />
 

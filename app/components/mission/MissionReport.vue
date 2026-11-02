@@ -7,6 +7,7 @@ import {
 import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import { missionHaul, optionsForDiver, timeHaulMultiplier } from '~~/shared/engine/rewards'
 import {
+  activeDivers,
   bonusEligibleFor,
   currentFront,
   missionsUntilHonors,
@@ -35,12 +36,12 @@ const maxStars = computed(() => maxStarsFor(props.state.difficulty))
 const sampleMax = computed(() => sampleReportCeiling(props.state.difficulty))
 const front = computed(() => currentFront(props.state))
 
-const stars = ref(maxStars.value)
+const stars = ref(Math.min(1, maxStars.value))
 const timePct = ref(0)
 const samples = ref<SampleCounts>({ common: 0, rare: 0, super: 0 })
 
 watch(maxStars, (value) => {
-  stars.value = value
+  stars.value = Math.min(stars.value, value)
 })
 
 const report = computed<MissionReport>(() => ({
@@ -68,6 +69,14 @@ const opNumber = computed(() =>
 
 const optionCount = computed(() =>
   optionsForDiver(stars.value, props.self ? optionsLostFor(props.state, props.self) : 0))
+const squadOptionRange = computed(() => {
+  const counts = activeDivers(props.state).map(diver =>
+    optionsForDiver(stars.value, optionsLostFor(props.state, diver)))
+  return {
+    min: Math.min(...counts, optionCount.value),
+    max: Math.max(...counts, optionCount.value),
+  }
+})
 
 const honorsEligible = computed(() =>
   props.outcome === 'success'
@@ -139,9 +148,11 @@ function submit(): void {
             class="full-tag off"
           >{{ maxStars - stars }} star{{ maxStars - stars === 1 ? '' : 's' }} missed</span>
           <div class="stars-foot">
-            <span>Each diver drafts</span>
+            <span>You draft</span>
             <b class="disp">{{ optionCount }}</b>
-            <span>loot option{{ optionCount === 1 ? '' : 's' }}</span>
+            <span class="squad-count">
+              · squad {{ squadOptionRange.min }}{{ squadOptionRange.max === squadOptionRange.min ? '' : `–${squadOptionRange.max}` }}
+            </span>
           </div>
         </section>
 
@@ -174,7 +185,7 @@ function submit(): void {
             </div>
             <div class="time-row">
               <button
-                class="step"
+                class="step less"
                 type="button"
                 aria-label="Less time remaining"
                 @click="setTime(timePct - 5)"
@@ -208,7 +219,7 @@ function submit(): void {
                 />
               </div>
               <button
-                class="step"
+                class="step more"
                 type="button"
                 aria-label="More time remaining"
                 @click="setTime(timePct + 5)"
@@ -585,16 +596,25 @@ function submit(): void {
 
 @media (max-width: 800px) {
   .report-grid { grid-template-columns: minmax(0, 1fr); }
-  /* 20 time faces become seven-column rows instead of an 8px-tall sliver. */
+  /* 20 time values become four-column rows with phone-sized hit targets. */
   .time-cells {
+    grid-area: cells;
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    grid-auto-rows: 30px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: 44px;
     height: auto;
     gap: 3px;
   }
-  .time-cell { min-height: 30px; }
-  .step { height: auto; align-self: stretch; }
+  .time-cell { min-height: 44px; }
+  .time-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
+    grid-template-areas: 'cells cells cells' '. less more';
+    gap: 8px;
+  }
+  .step { width: 44px; height: 44px; }
+  .step.less { grid-area: less; }
+  .step.more { grid-area: more; }
   .stars-card { padding: 16px; }
   .stars-card :deep(.star) { width: 3.5rem; height: 3.5rem; }
   .stars-card :deep(.star-glyph) { width: 2.5rem; height: 2.5rem; }
