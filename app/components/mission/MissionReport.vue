@@ -148,8 +148,7 @@ function submit(): void {
             class="full-tag off"
           >{{ maxStars - stars }} star{{ maxStars - stars === 1 ? '' : 's' }} missed</span>
           <div class="stars-foot">
-            <span>You draft</span>
-            <b class="disp">{{ optionCount }}</b>
+            <span>You draft <b class="disp">{{ optionCount }}</b></span>
             <span class="squad-count">
               · squad {{ squadOptionRange.min }}{{ squadOptionRange.max === squadOptionRange.min ? '' : `–${squadOptionRange.max}` }}
             </span>

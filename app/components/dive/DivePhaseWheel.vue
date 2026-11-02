@@ -288,14 +288,15 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
 
     <DiveActionBar>
       <div
-        v-if="state.wheel && misfortune && !drawing && canControl"
+        v-if="state.wheel && misfortune && canControl"
         class="deal-row"
       >
         <button
           class="cta cut cta-sweep"
           :class="{ live: canDeal }"
           type="button"
-          :disabled="!canDeal"
+          :disabled="!canDeal || drawing"
+          :title="drawing ? 'Wait for the wheel reveal to finish' : undefined"
           @click="deal"
         >
           Deal the pacts
