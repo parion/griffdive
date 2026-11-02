@@ -378,7 +378,7 @@ function submit(): void {
   gap: 14px;
   padding: 20px 22px;
   background: var(--panel);
-  box-shadow: inset 0 0 0 1px var(--line-3);
+  box-shadow: inset 0 2px 0 var(--line-4);
   clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
   min-width: 0;
 }
@@ -390,6 +390,11 @@ function submit(): void {
   background:
     radial-gradient(ellipse 70% 60% at 50% 42%, rgba(255, 214, 66, 0.14), transparent 70%),
     var(--panel);
+  box-shadow: inset 0 3px 0 color-mix(in srgb, var(--gold) 70%, var(--line-3)), 0 0 24px rgba(255, 214, 66, 0.06);
+}
+.haul-card {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--teal) 7%, var(--panel)), var(--panel) 56%);
+  box-shadow: inset 0 3px 0 color-mix(in srgb, var(--teal) 62%, var(--line-3));
 }
 .stars-card :deep(.star) {
   border: 0;
@@ -403,7 +408,7 @@ function submit(): void {
   padding: 4px 9px;
   background: var(--gold);
   color: var(--on-gold);
-  font-size: 10px;
+  font-size: var(--fs-sm);
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -423,7 +428,7 @@ function submit(): void {
 .stars-foot b { color: var(--gold); font-size: 34px; line-height: 1; }
 
 .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.tiny { color: var(--dim); font-size: 11px; letter-spacing: 0.04em; }
+.tiny { color: var(--dim); font-size: max(12px, var(--fs-sm)); letter-spacing: 0.04em; }
 .teal-text { color: var(--teal); }
 .red-text { color: var(--red); }
 
@@ -442,8 +447,8 @@ function submit(): void {
 .step {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   flex: none;
   border: 0;
   background: var(--rail);
@@ -539,6 +544,7 @@ function submit(): void {
 }
 
 .fail-card { max-width: 720px; }
+.fail-card.card { box-shadow: inset 0 3px 0 color-mix(in srgb, var(--red) 64%, var(--line-3)); }
 .fail-copy { margin: 0; color: var(--khaki); font-size: 15px; line-height: 1.5; }
 .fail-line { color: var(--dim); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
 
@@ -583,17 +589,20 @@ function submit(): void {
   cursor: pointer;
 }
 
-@media (max-width: 800px) {
-  .report-grid { grid-template-columns: minmax(0, 1fr); }
-  /* 20 time faces become seven-column rows instead of an 8px-tall sliver. */
+@media (max-width: 1100px) {
+  .time-row { gap: 4px; }
   .time-cells {
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    grid-auto-rows: 30px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: 44px;
     height: auto;
-    gap: 3px;
+    gap: 4px;
   }
-  .time-cell { min-height: 30px; }
+  .time-cell { min-height: 44px; }
+}
+
+@media (max-width: 800px) {
+  .report-grid { grid-template-columns: minmax(0, 1fr); }
   .step { height: auto; align-self: stretch; }
   .stars-card { padding: 16px; }
   .stars-card :deep(.star) { width: 3.5rem; height: 3.5rem; }

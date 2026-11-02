@@ -515,7 +515,14 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
 }
 .pick-toggle.taken .pick-static { background: var(--gold); color: var(--on-gold); }
 .pick-toggle.skipped .pick-static { background: var(--raised); color: var(--muted); }
-.dc-waiting { color: var(--dim); font-size: 12px; }
+.dc-waiting {
+  padding: 9px 12px;
+  background: color-mix(in srgb, var(--teal) 8%, var(--panel));
+  box-shadow: inset 2px 0 0 var(--teal);
+  color: var(--khaki);
+  font-size: var(--fs-body);
+  line-height: 1.35;
+}
 .dc-block { margin: 0; color: var(--red); font-size: 12px; }
 
 .deal-row { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
@@ -556,7 +563,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 30px;
+  min-height: 44px;
   border: 0;
   background: none;
   color: var(--muted);

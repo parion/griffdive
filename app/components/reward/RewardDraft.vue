@@ -633,7 +633,7 @@ const kickerText = computed(() => {
 .banked .item-name { color: var(--text); }
 .selected-mark {
   color: var(--tier);
-  font-size: 10px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
