@@ -491,7 +491,7 @@ function confirmReroll(): void {
 .take,
 .skip {
   flex: 1;
-  min-height: 38px;
+  min-height: 44px;
   border: 0;
   font: 800 11px var(--font-body);
   letter-spacing: 0.08em;
@@ -513,7 +513,7 @@ function confirmReroll(): void {
   flex: 1;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 10px;
   border: 0;
   font: 800 11px var(--font-body);
@@ -543,7 +543,14 @@ function confirmReroll(): void {
 .pick-toggle.taken .pick-static { background: var(--gold); color: var(--on-gold); }
 .pick-toggle.skipped .pick-static { background: var(--raised); color: var(--muted); }
 .dc-block { margin: 0; color: var(--red); font-size: 10px; }
-.dc-waiting { color: var(--dim); font-size: 11px; }
+.dc-waiting {
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--teal) 8%, var(--panel));
+  box-shadow: inset 2px 0 0 var(--teal);
+  color: var(--khaki);
+  font-size: var(--fs-body);
+  line-height: 1.35;
+}
 
 .rerolls { display: flex; flex-wrap: wrap; gap: 3px 12px; justify-content: center; }
 .reroll { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 4px; border: 0; background: none; color: var(--muted); font: 600 12px var(--font-body); text-decoration: underline; text-decoration-color: var(--line-4); text-underline-offset: 3px; cursor: pointer; }

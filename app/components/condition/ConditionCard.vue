@@ -397,6 +397,8 @@ function choose(): void {
   padding-top: 10px;
   border-top: 1px solid var(--line-2);
   color: var(--dim);
+  font-size: var(--fs-sm);
+  line-height: 1.3;
   white-space: normal;
 }
 .watch {

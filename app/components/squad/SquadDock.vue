@@ -332,7 +332,7 @@ function kick(diverId: string): void {
 .honors-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .honors-copy i {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--fs-sm);
   font-style: normal;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -344,10 +344,10 @@ function kick(diverId: string): void {
   white-space: nowrap;
 }
 .honors-done {
-  min-height: 30px;
+  min-height: 44px;
   padding: 0 4px;
   color: var(--teal);
-  font: 700 10px var(--font-body);
+  font: 700 var(--fs-sm) var(--font-body);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -368,7 +368,7 @@ function kick(diverId: string): void {
 .seat-copy b { font-size: 14px; font-weight: 700; color: var(--text); }
 .seat-copy i {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-sm);
   font-style: normal;
   letter-spacing: 0.06em;
 }
@@ -387,8 +387,8 @@ function kick(diverId: string): void {
 .icon-mini {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border: 0;
   background: none;
   color: var(--dim);
@@ -451,7 +451,7 @@ function kick(diverId: string): void {
   margin-left: auto;
 }
 .manage-inline .manage-item {
-  min-height: 32px;
+  min-height: 44px;
   padding: 0 8px;
   border: 0;
   background: var(--panel);

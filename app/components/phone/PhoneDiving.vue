@@ -234,22 +234,22 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   display: flex;
   flex-direction: column;
   gap: 7px;
-  padding: 12px 13px;
+  padding: 15px 16px;
   background:
     radial-gradient(ellipse 80% 80% at 20% 0%, rgba(255, 214, 66, 0.11), transparent 70%),
     var(--panel);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, var(--line-3));
+  box-shadow: inset 0 3px 0 var(--teal), 0 0 22px rgba(74, 215, 200, 0.12);
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
-.directive.broken { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 50%, var(--line-3)); }
+.directive.broken { box-shadow: inset 0 3px 0 var(--red), 0 0 20px rgba(255, 75, 62, 0.12); }
 .dc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.status { padding: 2px 7px; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.status { padding: 4px 8px; font-size: var(--fs-sm); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .status.teal { background: var(--teal); color: var(--on-gold); }
 .status.red { color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
 .status.skipped { color: var(--khaki); box-shadow: inset 0 0 0 1px var(--line-4); }
-.dc-name { font-size: min(30px, 100cqi / var(--fit-len, 1)); color: var(--gold); }
+.dc-name { font-size: min(34px, 100cqi / var(--fit-len, 1)); color: var(--gold); }
 .broken .dc-name { color: var(--red); }
-.dc-rule { margin: 0; color: var(--khaki); font-size: 12px; }
+.dc-rule { margin: 0; color: var(--khaki); font-size: var(--fs-body); line-height: 1.4; }
 .dc-foot {
   display: flex;
   align-items: center;
@@ -258,7 +258,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   padding-top: 7px;
   border-top: 1px solid var(--line-2);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--fs-sm);
 }
 .mark {
   min-width: 44px;
@@ -269,15 +269,15 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--line-4);
   color: var(--khaki);
-  font: 700 9px var(--font-body);
+  font: 700 var(--fs-sm) var(--font-body);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 .mark.armed { color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
-.strain-line { display: flex; align-items: center; gap: 7px; color: var(--orange); font-size: 11px; }
-.strain-line span { color: var(--muted); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+.strain-line { display: flex; align-items: center; gap: 7px; color: var(--orange); font-size: var(--fs-sm); }
+.strain-line span { color: var(--muted); font-size: var(--fs-sm); letter-spacing: 0.06em; text-transform: uppercase; }
 .sworn { --ledger-pad: 12px; }
 .host-note { display: flex; flex-direction: column; gap: 3px; }
-.host-note p { margin: 0; color: var(--muted); font-size: 11px; }
+.host-note p { margin: 0; color: var(--muted); font-size: var(--fs-body); }
 </style>

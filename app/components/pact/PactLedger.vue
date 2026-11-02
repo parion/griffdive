@@ -158,8 +158,8 @@ function markPact(diverId: string, pactId: string): void {
   display: flex;
   flex-direction: column;
   padding: var(--ledger-pad) var(--ledger-pad) 8px;
-  background: var(--panel);
-  box-shadow: inset 0 0 0 1px var(--line-2);
+  background: linear-gradient(105deg, color-mix(in srgb, var(--gold) 5%, var(--panel)), var(--panel) 58%);
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--gold) 45%, var(--line-3));
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
   min-width: 0;
 }
@@ -241,14 +241,14 @@ function markPact(diverId: string, pactId: string): void {
 .pact-void { color: var(--red); font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
 
 .mark-pact {
-  min-height: 34px;
+  min-height: 44px;
   padding: 0 12px;
   border: 0;
   background: transparent;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 55%, var(--line-3));
   color: var(--red);
-  font: 700 10px var(--font-body);
-  letter-spacing: 0.12em;
+  font: 700 var(--fs-sm) var(--font-body);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
   transition: background-color var(--dur-fast), box-shadow var(--dur-fast);
@@ -278,7 +278,7 @@ function markPact(diverId: string, pactId: string): void {
   align-items: center;
   gap: 7px;
   color: var(--dim);
-  font-size: 10px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -298,11 +298,11 @@ function markPact(diverId: string, pactId: string): void {
 @container ledger (max-width: 420px) {
   .row { grid-template-columns: 52px minmax(0, 1fr) auto; column-gap: 8px; min-height: 44px; }
   .who b { font-size: 11px; }
-  .trigger { gap: 8px; min-height: 40px; }
+  .trigger { gap: 8px; min-height: 44px; }
   .trigger :deep(.pips i) { width: 11px; height: 11px; }
   .pact-name { font-size: 12px; }
-  .mark-pact { min-width: 44px; min-height: 44px; padding: 0 7px; font-size: 9px; letter-spacing: 0.06em; white-space: nowrap; }
+  .mark-pact { min-width: 44px; min-height: 44px; padding: 0 8px; font-size: var(--fs-sm); letter-spacing: 0.04em; white-space: nowrap; }
   .vow { font-size: 12px; }
-  .acct { font-size: 9px; }
+  .acct { font-size: var(--fs-sm); letter-spacing: 0.06em; }
 }
 </style>
