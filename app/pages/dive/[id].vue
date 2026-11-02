@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useIntervalFn } from '@vueuse/core'
+import { useIntervalFn, useMediaQuery } from '@vueuse/core'
 import { createSaveDoc } from '~~/shared/engine/saves'
 import { allDiversPicked, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending, squadInventories, squadPenances } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
@@ -18,6 +18,7 @@ const { hasSeenWarbondIntro, markWarbondIntroSeen } = useWarbondIntro()
 const { hasSeenDiveIntro, markDiveIntroSeen } = useDiveIntro()
 const { markJoinBriefingSeen } = useJoinBriefing()
 const { isPhone } = usePhoneShell()
+const spaciousDesktop = useMediaQuery('(min-width: 1200px) and (min-height: 800px)')
 
 const {
   state,
@@ -65,9 +66,10 @@ const pactPreviewIds = computed(() =>
 // its label to REPORT while the form is open.
 const reporting = ref(false)
 
-// The sidebar opens the Kit by itself for the field beat; the report form
-// takes the stage without it.
-const fieldKit = computed(() => phase.value === 'diving' && !reporting.value)
+// Spacious desktops open the Kit for the field beat; compact desktop viewports
+// and the report form leave the stage focused.
+const fieldKit = computed(() =>
+  phase.value === 'diving' && !reporting.value && spaciousDesktop.value)
 
 // Once the whole squad has banked, everyone regroups on the squad-climbs page
 // instead of idling on the draft: the stats check, Squad Honors and the shop, at

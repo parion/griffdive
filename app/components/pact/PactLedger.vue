@@ -301,7 +301,7 @@ function markPact(diverId: string, pactId: string): void {
   .trigger { gap: 8px; min-height: 40px; }
   .trigger :deep(.pips i) { width: 11px; height: 11px; }
   .pact-name { font-size: 12px; }
-  .mark-pact { min-height: 28px; padding: 0 7px; font-size: 9px; letter-spacing: 0.06em; }
+  .mark-pact { min-width: 44px; min-height: 44px; padding: 0 7px; font-size: 9px; letter-spacing: 0.06em; white-space: nowrap; }
   .vow { font-size: 12px; }
   .acct { font-size: 9px; }
 }

@@ -323,9 +323,15 @@ its lit risk skulls, the vow in quotes, any benched-kit note, the accountability
 inked SWORN stamp. There are no per-card odds words: hovering or picking previews the one odds
 strip under the hand. The CTA is
 "Swear N pacts" (or "Dive with no pacts"), and a locked diver sees the sworn stamp while the rest of
-the squad finishes. The hand is local: a squad sync leaves your picks alone — only a fresh draw or
-directive clears them. The **Kit** tab of the `DiveSidebar` shows the Kit everywhere, greying
-the items the pending pick would ban.
+the squad finishes. On phones, compact cards separate the two actions: the main button toggles the
+pact with `aria-pressed` and a visible swear/unswear hint; a sibling **Details / Less** button
+expands the rules, announces `Read <pact> rules` / `Hide <pact> rules`, and exposes
+`aria-expanded`. Details never selects the pact, the buttons are never nested, and only one card's
+rules are open at a time. Expanded rules scroll with the stage while the `PhoneActionBar` stays
+pinned. The SWORN stamp sits in the risk header rather than over the risk label.
+The hand is local: a squad sync leaves your picks alone — only a fresh draw or directive clears
+them. The **Kit** tab of the `DiveSidebar` shows the Kit everywhere, greying the items the pending
+pick would ban.
 
 #### Dive — `DivePhaseDiving`
 
@@ -335,9 +341,11 @@ confirm on the second tap). Each row is an accordion (`PactLedger`, shared with 
 opens on the vow and its accountability line, lit by a gold edge; your own pacts start open,
 everyone else's start shut. Hosts call **Extracted** or **Mission failed**; squadmates get a
 waiting gate. Beside the column the `DiveSidebar` opens its **Kit** panel for every diver on
-desktop (`fieldKit`), non-modal so the field screen stays live; the Hide control or the KIT tab
-folds it away. It closes again when the beat ends (or the report form opens) unless the diver
-picked a panel of their own meanwhile. On a phone the panel never opens by itself.
+spacious desktop (`fieldKit`, at least 1200px wide and 800px high), non-modal so the field screen
+stays live; the Hide control or the KIT tab folds it away. At landscape-tablet and small-laptop
+sizes the Kit starts closed and remains available from the rail. It closes again when the beat ends
+(or the report form opens) unless the diver picked a panel of their own meanwhile. On a phone the
+panel never opens by itself.
 
 #### Report — `MissionReport`
 
