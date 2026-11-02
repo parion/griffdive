@@ -151,8 +151,16 @@ function bank(): void {
 const bankedId = computed(() => bankedOptionId(options.value, props.self?.pickedOptionId ?? null))
 const pickedOption = computed(() =>
   options.value.find(option => option.optionId === bankedId.value) ?? null)
-const crossChosenName = computed(() =>
-  selectedOption.value?.choice && choiceItemId.value ? selectedName.value : null)
+const crossChosenItem = computed(() => {
+  if (selectedOption.value?.choice && choiceItemId.value) {
+    return rewardPool.value.find(item => item.id === choiceItemId.value) ?? null
+  }
+  const pickedId = props.self?.pickedOptionId
+  if (bankedId.value === crossOption.value?.optionId && pickedId) {
+    return rewardPool.value.find(item => item.id === pickedId) ?? null
+  }
+  return null
+})
 const pickedName = computed(() =>
   pickedOption.value ? nameOf(pickedOption.value) : (props.self?.pickedOptionId ? 'item' : ''))
 </script>
@@ -187,7 +195,7 @@ const pickedName = computed(() =>
       :picked="selectedId === crossOption.optionId || bankedId === crossOption.optionId"
       :dimmed="resolved && bankedId !== crossOption.optionId"
       :stamp="resolved && bankedId === crossOption.optionId ? 'Banked' : null"
-      :chosen-name="crossChosenName"
+      :chosen-item="crossChosenItem"
       @choose="chooseCross"
     />
 

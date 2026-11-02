@@ -212,6 +212,9 @@ room from a personal session save; `selfId` is the seeded owner seat, `null` for
 a `welcome` carries, so a REST caller cannot mistake a kept room record for a live squad.
 Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`,
 `SET_NAME`) are coerced to the sender — a client can never act as another diver.
+Before reducing `FORFEIT_ITEM`, the server checks the item against that diver's current
+`forfeitOptionsFor` offer; an invalid pick returns `bad-action` with a specific message instead of
+silently leaving the room unchanged.
 
 **Presence and liveness.** Presence is process memory, never storage: the peer directory
 (`server/utils/peers.ts`) holds one entry per live socket, and `online` in every `welcome`/`state` is

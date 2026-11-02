@@ -45,13 +45,8 @@ const offset = ref(IDLE_OFFSET)
 const reduced = import.meta.client
   && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 let timer: ReturnType<typeof setTimeout> | undefined
-// A stat already set at mount is a settled result, not a fresh spin.
-let first = true
-
 watch(() => props.stat, (stat) => {
   clearTimeout(timer)
-  const settled = first
-  first = false
   if (!stat) {
     landed.value = false
     spinning.value = false
@@ -60,7 +55,7 @@ watch(() => props.stat, (stat) => {
   }
   const win = Math.max(0, BONUS_STATS.findIndex(entry => entry.id === stat.id))
   const target = offsetFor(BONUS_STATS.length * 2 + win)
-  if (reduced || settled) {
+  if (reduced) {
     offset.value = target
     landed.value = true
     emit('landed')
@@ -111,7 +106,10 @@ onBeforeUnmount(() => clearTimeout(timer))
             stroke-linecap="round"
             stroke-linejoin="round"
           ><path :d="STAT_ICONS[entry.id] ?? ''" /></svg>
-          <span class="disp label">{{ entry.label }}</span>
+          <span
+            class="disp label"
+            :style="fitWord(entry.label)"
+          >{{ entry.label }}</span>
           <svg
             class="dir"
             width="12"
@@ -149,6 +147,7 @@ onBeforeUnmount(() => clearTimeout(timer))
   overflow: hidden;
   flex: 1 1 340px;
   min-width: 0;
+  container-type: inline-size;
   height: calc(var(--row-h) * 3);
   background: rgba(0, 0, 0, 0.32);
   box-shadow: inset 1px 0 0 var(--line-3);
@@ -178,11 +177,11 @@ onBeforeUnmount(() => clearTimeout(timer))
 .row svg { flex: none; }
 .row .dir { margin-left: auto; opacity: 0.7; }
 .label {
+  flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
-  font-size: 1.1rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: min(1.1rem, 100cqi / var(--fit-len, 1));
+  line-height: 1;
+  white-space: normal;
 }
 .band {
   position: absolute;

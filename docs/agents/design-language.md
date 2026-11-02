@@ -149,8 +149,9 @@ merge with them.
   Armory, Warbonds* below). Back to the Bridge lives
   in `DiveMenu`, because the global bridge header stands down on `/dive`.
 - **`SquadDock`** anchors the bottom: status lamps and names for every diver (`.seat` cards —
-  not the global `.chip` tag utility), open seats, Steam lobby and invite copy, and the
-  squad-honors token picker once a contest is spun. For the host the Steam control toggles a
+  not the global `.chip` tag utility), open seats, Steam lobby and invite copy, and a compact honors
+  readout outside the rewards beat. `ClimbHonors` owns the contest and winner prompt, so the dock
+  does not repeat it there or force an extra wrap at 1280px. For the host the Steam control toggles a
   **Steam lobby bar** docked just above the squad bar: pin or change the `steam://joinlobby/…`
   link, copy it, jump into the lobby, or remove it — removal closes the bar. A squadmate gets a
   direct **Join Game** link to the pinned lobby instead, and no Steam control at all while the
@@ -342,23 +343,33 @@ picked a panel of their own meanwhile. On a phone the panel never opens by itsel
 #### Report — `MissionReport`
 
 The report window is a two-column lit form on desktop and one column on phones: mission stars,
-credit haul (sample tubes + time cells), and the **Squad Honors** card. Honors are rolled by filing:
-no spin button — the card carries the **`HonorsReel`** slot reel, flush to its right edge and filling the width (full width under the title on phones), which winds down onto
-the seeded stat after **File report** is pressed (`HONORS_REEL_MS`, then a `HONORS_DWELL_MS` beat) before
-the rewards screen is brought in. When honors are not due the reel is replaced by a plain message
-naming the next mission they return. The filed report must still qualify or the engine strikes the
-spin and claws back an auto-banked solo token. Every Next mission / Start operation control locks
-until the host awards the honors; the locked control is a quiet dashed "Award honors first" (`.cta-locked` on desktop, the `.bar-gate` on phones), never a dimmed primary. Phone
-reports pin **File report / File failure** in the fixed action bar.
+credit haul (sample tubes + time cells), and the **Squad Honors** eligibility card. A successful
+report starts at **1 star**; "Full-star clear" appears only after the host selects the difficulty's
+maximum. The star strip states **your** option count plus the present squad's min–max, since broken
+rules can cost different divers different options. Time remains at **0%** until entered; on phone
+its 20 values use 44px hit targets in a four-column grid.
+
+Filing a report is the only normal spin trigger: if eligible, it sends the seed before filing the
+result. The contest's **`HonorsReel`** is revealed on the squad-climbs page after the draft, flush to
+its right edge and filling the width (full width under the title on phones). There is no manual
+"Roll now" control; an older in-progress report without a seed auto-rolls on entry as recovery.
+When honors are not due the reel is replaced by a plain message naming the next mission they
+return. The filed report must still qualify or the engine strikes the spin and claws back an
+auto-banked solo token. Every Next mission / Start operation control locks until the host awards the
+honors; the locked control is a quiet dashed "Award honors first" (`.cta-locked` on desktop, the
+`.bar-gate` on phones), never a dimmed primary. Phone reports pin **File report / File failure** in
+the fixed action bar.
 
 #### Mission failed — `DivePhaseForfeit`
 
 Deliberately bare, in the loot draft's grammar. A red kicker, the title and one line of copy sit over
 `ForfeitPicker`: the diver's offer as the same tier-edged art cards as `RewardDraft` (letterboxed
 4:3 well, tier letter, `fitWord` name, category line; a 104px thumb row on phones), staggered in.
-Marking a card lights its edge red; one plain click button under the cards — **Remove <item>**, in
-the pinned phone bar on phones — removes it (no hold-to-confirm, no container). The removed card
-keeps its red edge with a **Confiscated** stamp while the rest fade, like a banked reward. Squadmates'
+Unselected cards say **At stake** and carry a quiet red edge/wash; selecting one marks it **Marked
+for removal**. The final **Remove <item>** action is the explicit confirmation on desktop and in the
+pinned phone bar (no hold-to-confirm, no dialog). The removed card keeps its red edge with a
+**Confiscated** stamp while the rest fade, like a banked reward. The stepper treats this as
+**Forfeit**, the failure branch of Loot, not Dive. Squadmates'
 forfeits sit below in `SquadForfeitBoard`, the `SquadDraftBoard` grammar: name, status, and each diver's dealt items as icon tiles with the removed one struck red and the rest faded. A short note says who is still choosing. SEAF Support Package
 items count as at-stake gear, so a SEAF diver always has a pack item to surrender. The `.sur-tile`
 class is the e2e hook.
@@ -376,7 +387,8 @@ tiles and status — the phone reward draft renders the same board (compact, one
 status-only summary — and the reroll control spends a banked honors token. An S+ roll is **Liberty's Cross**, shown
 not as a card but as the full-width **`LibertyCrossBand`** above the cards (crest, lore line, "Claim
 any item" opening the armory picker). Naming an item selects the Cross and the CTA banks it; the
-band's claim button then shows the chosen name with "Change pick".
+band's claim button then shows the chosen item's art, fitted name and tier badge with "Change pick";
+a resolved Cross recovers the same item from the banked state, including after reload.
 
 **The reveal is the fanfare.** Each card is wrapped in `RewardReveal` and cards deal in **left to
 right** (`revealTimeline` in `app/utils/rewardReveal.ts`), with drama scaled by tier: C deals in, B
@@ -415,6 +427,8 @@ preview improves the line, each growing tier is labelled `+N` and lights one cle
 its leading edge; a shrinking tier keeps its settled odds label and no red block, since the bar
 already shows the narrower zone. The signed movement stays in the zone tooltip. It is presentation
 only and reads `tierZones` from the engine.
+At narrow widths, close loot-pin labels use separate vertical lanes while their needles remain on
+the exact d100 faces; the odds line itself never moves.
 
 #### Kit, Armory, Warbonds, and the Bargains counter
 

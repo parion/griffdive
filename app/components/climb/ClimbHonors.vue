@@ -8,9 +8,8 @@ import {
 import type { DiveState } from '~~/shared/engine/types'
 import { HONORS_AUTO_ROLL_MS } from '~/utils/motion'
 
-// Squad Honors on the climbs page: the stat is rolled by the host's client a
-// beat after the page lands, then the host names whoever leads it on HD2's
-// stats screen. The engine owns eligibility; this only presents the ceremony.
+// Squad Honors is seeded when the report is filed, then revealed here after
+// the draft. The host names whoever leads it on HD2's stats screen.
 const props = defineProps<{
   state: DiveState
   isHost: boolean
@@ -89,14 +88,6 @@ function award(): void {
           {{ awarded ? 'Token banked' : !due ? 'Not this mission' : needsRoll ? 'Rolling the stat…' : reelLanded ? 'Read the stats screen' : 'Stat drawn' }}
         </span>
       </span>
-      <button
-        v-if="isHost && needsRoll"
-        class="roll"
-        type="button"
-        @click="emit('spinBonus')"
-      >
-        Roll now
-      </button>
     </div>
 
     <div
@@ -193,7 +184,6 @@ function award(): void {
 .pick-note.done { color: var(--teal); }
 .pick-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .winner,
-.roll,
 .award {
   min-height: 40px;
   padding: 0 14px;
@@ -207,7 +197,6 @@ function award(): void {
   box-shadow: inset 0 0 0 1px var(--line-4);
 }
 .winner[aria-pressed='true'] { background: color-mix(in srgb, var(--gold) 18%, transparent); color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
-.roll { min-height: 30px; margin-left: auto; padding: 0 10px; font-size: 10px; }
 .award { background: var(--gold); color: var(--on-gold); box-shadow: none; }
 .award:disabled { background: var(--raised); color: var(--dim); box-shadow: inset 0 0 0 1px var(--line-3); cursor: not-allowed; }
 </style>

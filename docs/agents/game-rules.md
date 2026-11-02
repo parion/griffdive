@@ -491,10 +491,11 @@ difficulty emblem and the climb ladder ("The squad climbs").
 - **A broken directive** (stats-verified, host-attested) costs nothing now: it sets
   `directiveTax`, and **every diver's next draft loses one option** (`OPTIONS_LOST_PER_FAILED_DIRECTIVE`,
   floored at one). A directive broken in the field keeps its old rule (this draft, voided Valor).
-- **Squad Honors** live on the same page: a due contest rolls **by itself** a beat after the page
-  opens (`HONORS_AUTO_ROLL_MS`; the host's client sends `SPIN_BONUS`, with a host-only *Roll now*
-  fallback), the reel winds down, and the host names the winner(s) from the same page. A solo diver
-  (or a lone present diver) wins outright. The token it banks serves the **next** mission's draft.
+- **Squad Honors** live on the same page: filing an eligible report sends the `SPIN_BONUS` seed;
+  after the draft, the squad-climbs page reveals the seeded contest and the host names the winner(s).
+  There is no manual roll control. An older in-progress report with no seed auto-rolls on entry as
+  recovery. A solo diver (or a lone present diver) wins outright. The token it banks serves the
+  **next** mission's draft.
 - **The gate.** The draft is never gated. `ADVANCE` is refused until `climbSettled`: every stats rule
   attested (`climbBlockers().rules === 0`) and no honors contest due or unnamed
   (`honorsDue`). The page's CTA names what is left ("Settle 1 rule first", "Rolling Squad Honors",
@@ -871,26 +872,26 @@ never won, so it is never taken.
 
 ### Reward tokens & squad honors
 
-**Honors roll on the squad-climbs page.** On a **full-star clear**
+**Honors are seeded when the report is filed, then revealed on the squad-climbs page.** On a **full-star clear**
 (`stars === maxStarsFor(difficulty)`) the mission offers one **bonus honors** contest (a
 Mario-Party bonus star): a random stat from HD2's end-of-mission screen — kills, accuracy, deaths,
 stims, samples, friendly fire, … — with a winning direction (*most* or *least*), each entry in
 `BONUS_STATS` (`shared/engine/config.ts`). Honors are a **limited prize** (`bonusEligibleFor`): the
 token only lands when the **squad-size cadence** is due — `BONUS_TOKEN_INTERVAL` awards a
 four-diver squad every mission, a three- or two-diver squad every other mission, and a solo diver
-every third. The report form only says whether honors are due (or why not and when they return,
-`missionsUntilHonors`); it no longer rolls anything.
+every third. The report form says whether honors are due (or why not and when they return,
+`missionsUntilHonors`), and filing it sends the seed when the report qualifies.
 
-Once every draft is banked, the squad-climbs page (see above) rolls the contest by itself: `SPIN_BONUS{seed}`
-(host-only, read from the filed report in the `rewards` phase) and the slot reel winds down onto the
-seeded stat — the seed is what syncs (`rollBonus`, stream salt 4). **The app never captures the
+Once every draft is banked, the squad-climbs page (see above) reveals the contest seeded at report
+time: `SPIN_BONUS{seed, outcome, stars}` is host-only and runs before `REPORT_RESULT`; the seed is
+what syncs (`rollBonus`, stream salt 4). An older in-progress `rewards` state without a seed gets an
+automatic recovery spin on entry, with no manual button. **The app never captures the
 stats**: the host reads HD2's stats screen and names the winner(s) (`AWARD_BONUS{playerIds}`,
 host-only) on that page. Ties are common, so an award names **one or several** divers — every tied
 diver banks a token. Awarding banks each winner's **one flexible reward token** immediately (capped
 at `REWARD_TOKEN_CAP`, 3); there is no separate claim step. When only one diver can win (solo, or a
 squad where everyone else sat the draft out), selection is redundant: the spin resolves the ceremony
-and banks the token by itself. The engine still accepts a spin from the `diving` phase (and
-`REPORT_RESULT` strikes one whose report no longer qualifies); the UI no longer sends it.
+and banks the token by itself. `REPORT_RESULT` strikes a spin whose filed report no longer qualifies.
 
 A token is spent by its owner during a reward draft on a **Reroll** (`REROLL_REWARDS`): redraw the
 diver's own offer. A reroll must move (a seed that re-derives the same offer is refused, mirroring
@@ -899,9 +900,10 @@ diver's own offer. A reroll must move (a seed that re-derives the same offer is 
 offers it; the redesigned draft spends tokens on rerolls only.
 
 The ceremony is a **hard gate** on `ADVANCE` (`honorsDue`, via `climbSettled`), never on the draft:
-a token banked on the climbs page buys a reroll in the *next* mission's draft. The squad dock shows the rolled stat and the banked token but
-no longer carries award controls. Claimed tokens persist across missions; reroll seeds and the old ban flag
-reset with the pacts. Negative targeting (bans) did not violate "guarantee rarity class, never
+a token banked on the climbs page buys a reroll in the *next* mission's draft. The climb honors card
+shows the rolled stat and the banked token; the squad dock does not duplicate that prompt during
+rewards. Claimed tokens persist across missions; reroll seeds and the old ban flag reset with the
+pacts. Negative targeting (bans) did not violate "guarantee rarity class, never
 specific items" — it narrows a pool, it never names a reward.
 
 ### Inventory model
