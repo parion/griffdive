@@ -36,6 +36,8 @@ const offer = computed(() =>
   props.selfId ? pactOfferFor(props.state, props.selfId) : [])
 
 const misfortune = computed(() => activeMisfortune(props.state))
+const directiveSkipped = computed(() =>
+  Boolean(props.state.wheel && !props.state.misfortuneAccepted))
 const strain = computed(() => currentStrain(props.state))
 const locked = computed(() => Boolean(props.self?.pactsLocked))
 const teamRisk = computed(() => teamRiskOf(props.state))
@@ -175,6 +177,9 @@ function lockNow(): void {
       <p class="pact-sub">
         Pacts only affect you. A broken pact costs a loot option, or Penance if only the stats screen can prove it.
       </p>
+      <p class="risk-note">
+        Risk shown is for this difficulty; higher difficulties raise risk and offer more pacts.
+      </p>
     </header>
 
     <div
@@ -199,8 +204,8 @@ function lockNow(): void {
       class="directive-strip safe"
     >
       <span class="cap">Squad directive</span>
-      <b class="disp directive-name">Safe dive</b>
-      <span class="directive-rule">No directive this mission.</span>
+      <b class="disp directive-name">{{ directiveSkipped ? 'Directive skipped' : 'Safe dive' }}</b>
+      <span class="directive-rule">No squad directive this mission.</span>
     </div>
 
     <PactPenance
@@ -307,6 +312,7 @@ function lockNow(): void {
 }
 .pact-title { font-size: clamp(36px, 3.8vw, 52px); }
 .pact-sub { margin: 0; color: var(--muted); font-size: 14px; }
+.risk-note { margin: -4px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
 
 .directive-strip {
   width: auto;

@@ -5,6 +5,7 @@ import { tierZones } from '~~/shared/engine/rewards'
 import {
   activeMisfortune,
   activeStrain,
+  currentMisfortune,
   pactRiskOf,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
@@ -26,6 +27,8 @@ const emit = defineEmits<{
 }>()
 
 const misfortune = computed(() => activeMisfortune(props.state))
+const directiveSkipped = computed(() =>
+  Boolean(currentMisfortune(props.state) && !props.state.misfortuneAccepted))
 const strain = computed(() => activeStrain(props.state))
 const strainImage = computed(() => (strain.value ? strainImageUrl(strain.value.id) : undefined))
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
@@ -90,14 +93,14 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
             <span class="cap">Squad directive</span>
             <span
               class="status"
-              :class="directiveFailed ? 'red' : 'teal'"
-            >{{ directiveFailed ? 'Broken' : 'Active' }}</span>
+              :class="directiveFailed ? 'red' : directiveSkipped ? 'skipped' : 'teal'"
+            >{{ directiveFailed ? 'Broken' : directiveSkipped ? 'Skipped' : 'Active' }}</span>
           </div>
           <h2
             class="disp directive-name"
-            :style="fitWord(misfortune?.name ?? 'Safe dive')"
+            :style="fitWord(misfortune?.name ?? (directiveSkipped ? 'Directive skipped' : 'Safe dive'))"
           >
-            {{ misfortune?.name ?? 'Safe dive' }}
+            {{ misfortune?.name ?? (directiveSkipped ? 'Directive skipped' : 'Safe dive') }}
           </h2>
           <p class="directive-rule">
             <ConditionRule
@@ -105,7 +108,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
               :condition="misfortune"
             />
             <template v-else>
-              No directive this mission.
+              No squad directive this mission.
             </template>
           </p>
           <div class="directive-foot">
@@ -117,10 +120,6 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
               v-else-if="misfortune"
               class="gain"
             >Boosting everyone’s loot</span>
-            <span
-              v-else
-              class="gain"
-            >No directive this mission</span>
             <button
               v-if="canControl && misfortune && !directiveFailed"
               class="mark"
@@ -283,6 +282,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 }
 .status.teal { color: var(--on-gold); background: var(--teal); box-shadow: 0 0 12px rgba(74, 215, 200, 0.4); }
 .status.red { color: var(--red); background: var(--ground); box-shadow: inset 0 0 0 1px var(--red); }
+.status.skipped { color: var(--khaki); background: var(--ground); box-shadow: inset 0 0 0 1px var(--line-4); }
 .directive-name {
   font-size: min(clamp(32px, 3.6vw, 48px), 100cqi / var(--fit-len, 1));
   line-height: 0.95;

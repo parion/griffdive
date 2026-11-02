@@ -317,7 +317,14 @@ the tier's leading edge rather than painting every boundary a different color. T
 **Spin the wheel** before the draw and **Deal the pacts** (disabled until both calls are decided)
 after it. The front plan (Major Order / locked faction / rolled) is chosen at setup with
 `FrontPlanPicker`, never here; a pinned run shows its front card under the directive before the
-first spin as well as after it. Rerolls sit under the deal CTA as quiet secondary controls.
+first spin as well as after it. Rerolls sit under the deal CTA as quiet secondary controls. The
+reveal is not skippable: Deal and every available reroll stay disabled until `useSpinReveal` lands,
+with the wait reason available on the disabled control. The phone shows the full wheel for the
+reveal, then folds it into a compact directive-and-risk result with a **View wheel** toggle; opening
+it never changes the draw. Phone rerolls name the wheel and show the token count. Spending a token
+requires an `AppDialog` confirmation; free rerolls do not. Directive risk is the value at the current
+difficulty; one short note on the call and pact screens explains that higher difficulties raise risk
+and offer more pacts.
 
 #### Pacts — `PactScreen`
 
@@ -334,11 +341,13 @@ rules are open at a time. Expanded rules scroll with the stage while the `PhoneA
 pinned. The SWORN stamp sits in the risk header rather than over the risk label.
 The hand is local: a squad sync leaves your picks alone — only a fresh draw or directive clears
 them. The **Kit** tab of the `DiveSidebar` shows the Kit everywhere, greying the items the pending
-pick would ban.
+pick would ban. When the squad skipped its draw, show **Directive skipped** and **No squad
+directive this mission** once; never stamp that state Active.
 
 #### Dive — `DivePhaseDiving`
 
-The field screen is one column: the teal-lit directive card (ACTIVE / BROKEN) and accepted strain,
+The field screen is one column: the teal-lit directive card (ACTIVE / BROKEN, or SKIPPED when the
+squad declined the draw) and accepted strain,
 then a **Pacts sworn** ledger — one row per pact (diver, lit skulls, name, one-tap "Mark broken",
 confirm on the second tap). Each row is an accordion (`PactLedger`, shared with the phone) that
 opens on the vow and its accountability line, lit by a gold edge; your own pacts start open,
