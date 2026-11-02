@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_WARBOND_CODES, ITEMS_BY_ID } from '../data/catalog'
 import { startingItemIds } from './progression'
-import { createLobbyState, forkCrusade, joinDiver, seatingBlocked } from './room'
+import { awaySeatToFree, createLobbyState, forkCrusade, joinDiver, seatingBlocked } from './room'
 import { createDiveState, reduce } from './reducer'
 import { catchUpOptionsFor } from './selectors'
 import type { DiveState } from './types'
@@ -130,6 +130,12 @@ describe('joinDiver', () => {
       createLobbyState(),
     )
     expect(seatingBlocked(full)).toMatch(/full/)
+    const withAway = reduce(full, { type: 'SET_AWAY', playerId: 'p3', away: true })
+    expect(seatingBlocked(withAway)).toBeNull()
+    expect(awaySeatToFree(withAway)?.id).toBe('p3')
+    expect(joinDiver(withAway, 'p5', 'Five')).toBeNull()
+    const hostAway = reduce(reduce(full, { type: 'SET_AWAY', playerId: 'p2', away: true }), { type: 'SET_AWAY', playerId: 'p3', away: true })
+    expect(awaySeatToFree(hostAway)?.id).not.toBe(hostAway.hostId)
     let started = reduce(joinDiver(createLobbyState(), 'p1', 'Griffin')!, {
       type: 'START_DIVE',
       settings: { variant: 'medium' },

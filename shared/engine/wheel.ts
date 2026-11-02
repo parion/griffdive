@@ -45,9 +45,12 @@ export function deriveMisfortune(
   seed: number,
   inventories: readonly (readonly string[])[] = [],
   penance: readonly string[] = [],
+  history: readonly string[] = [],
 ): Misfortune {
+  const eligible = eligibleMisfortunes(inventories, penance)
+  const fresh = eligible.filter(misfortune => !history.includes(misfortune.id))
   const rng = mulberry32(deriveSeed(seed, 1))
-  return pickRandom(rng, eligibleMisfortunes(inventories, penance))
+  return pickRandom(rng, fresh.length > 0 ? fresh : eligible)
 }
 
 // The front pool is the whole roster by default; a Major Order narrows it to

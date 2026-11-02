@@ -15,16 +15,25 @@ const variant = computed(() => props.state.settings?.variant ?? 'medium')
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const opNumber = computed(() => catchUpOpsBehind(props.state.difficulty, variant.value) + 1)
 
-const itemsOwned = computed(() =>
-  Object.values(props.state.personalInventories).flat().length)
+const itemsBanked = computed(() =>
+  props.state.actionLog.filter(action => action.type === 'PICK_REWARD').length)
+const squadCredits = computed(() =>
+  props.state.divers.reduce((total, diver) => total + diver.credits, 0))
+const pactsHeld = computed(() =>
+  props.state.actionLog.filter(action => action.type === 'HOLD_PACT').length)
+const pactsBroken = computed(() =>
+  props.state.actionLog.filter(action => action.type === 'FAIL_PACT').length)
+const pardoned = computed(() =>
+  props.state.debtSettled === true
+  && !props.state.divers.some(diver => diver.penance?.status === 'owed'))
 
 const records = computed(() => [
-  { label: 'Difficulty', value: String(props.state.difficulty), unit: difficultyName(props.state.difficulty) },
   { label: 'Missions', value: String(props.state.missionIndex), unit: 'flown' },
   { label: 'Operations', value: String(opNumber.value), unit: 'cleared' },
-  { label: 'Combos', value: String(props.state.completedCombos.length), unit: 'cleared' },
-  { label: 'Divers', value: String(props.state.divers.length), unit: 'extracted' },
-  { label: 'Items', value: String(itemsOwned.value), unit: 'owned' },
+  { label: 'Items banked', value: String(itemsBanked.value), unit: 'rewards' },
+  { label: 'Squad credits', value: String(squadCredits.value), unit: 'in purses' },
+  { label: 'Pacts held', value: String(pactsHeld.value), unit: 'held' },
+  { label: 'Pacts broken', value: String(pactsBroken.value), unit: 'broken' },
 ])
 
 // The ascending ladder: difficulty 3 at the short end up to the 504px goal at
@@ -91,12 +100,14 @@ function exportCrusade(): void {
         <span class="ach-crusade-name">{{ crusadeLabel }}</span>
       </div>
 
-      <p class="ach-pardon rv-rise">
+      <p
+        v-if="pardoned"
+        class="ach-pardon rv-rise"
+      >
         <span class="lbl ach-pardon-lbl">Ministry notice<br>Pardon</span>
         <span class="ach-pardon-copy">
-          The Ministry has reviewed your file and finds your debt to liberty settled.
-          Griffdiver, you are pardoned — restored to the franchise you squandered. Do not
-          squander it again.
+          Your Penance was served or your directive tax paid. Your debt to Liberty is settled —
+          restored to the franchise you squandered. Do not squander it again.
         </span>
       </p>
 
@@ -226,7 +237,7 @@ function exportCrusade(): void {
 
       <section
         class="ach-record"
-        aria-label="Crusade record"
+        aria-label="Run recap"
       >
         <dl class="ach-stats">
           <div

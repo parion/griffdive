@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { createDiveState, reduce } from '~~/shared/engine/reducer'
 import { joinDiver } from '~~/shared/engine/room'
 import { createSaveDoc } from '~~/shared/engine/saves'
-import { pactOfferFor } from '~~/shared/engine/selectors'
-import { CRUSADE_TTL_MS, InvalidSaveError, ROOM_TTL_MS, RoomLimitError, censusRooms, createPeerDirectory, createRoom, createRoomFromSave, drainPeers, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, reapSilentPeers, sweepRooms } from './room-sync'
+import { forfeitOptionsFor, pactOfferFor } from '~~/shared/engine/selectors'
+import { AWAY_GRACE_MS, CRUSADE_TTL_MS, HOST_RECONNECT_GRACE_MS, InvalidSaveError, ROOM_TTL_MS, RoomLimitError, censusRooms, createPeerDirectory, createRoom, createRoomFromSave, drainPeers, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, reapSilentPeers, sweepRooms } from './room-sync'
 import type { PeerLike, RoomKV, StoredRoom } from './room-sync'
 import { PEER_SILENCE_MS } from './peer-presence'
 import { roomMetrics } from './metrics'
@@ -343,7 +343,9 @@ describe('room-sync', () => {
     await processHello(kv, peers, joiner, { name: 'B' })
     const joinerId = welcomeOf(joiner).selfId
 
-    await processAction(kv, peers, host, { action: { type: 'KICK_DIVER', playerId: joinerId } })
+    await processAction(kv, peers, host, {
+      action: { type: 'KICK_DIVER', playerId: joinerId, blockNetwork: true },
+    })
 
     // Site data cleared and a new network: the removed seat id is still barred.
     const stored = fakePeer('ws-c')
@@ -389,6 +391,44 @@ describe('room-sync', () => {
     expect(room.bans?.[0]?.ip).toBeTruthy()
     expect(room.seatIps?.[joinerId]).toBeUndefined()
     expect(room.state.divers).toHaveLength(2)
+  })
+
+  it('lets a fresh peer on the same network join after a kick without a network block', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    host.context.clientIp = '203.0.113.10'
+    await processHello(kv, peers, host, { name: 'Host' })
+
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    joiner.context.clientIp = '203.0.113.20'
+    await processHello(kv, peers, joiner, { name: 'B' })
+    const joinerId = welcomeOf(joiner).selfId
+
+    await processAction(kv, peers, host, {
+      action: { type: 'KICK_DIVER', playerId: joinerId, blockNetwork: false },
+    })
+
+    const room = await kv.getItem(code) as StoredRoom
+    expect(room.bans?.find(ban => ban.playerId === joinerId)?.ip).toBeNull()
+    expect(room.seatIps?.[joinerId]).toBeUndefined()
+
+    const sameNetwork = fakePeer('ws-c')
+    sameNetwork.context.roomCode = code
+    sameNetwork.context.clientIp = '203.0.113.20'
+    await processHello(kv, peers, sameNetwork, { name: 'Household friend' })
+    expect(welcomeOf(sameNetwork).selfId).toBeTruthy()
+
+    const kickedId = fakePeer('ws-d')
+    kickedId.context.roomCode = code
+    kickedId.context.clientIp = '198.51.100.9'
+    await processHello(kv, peers, kickedId, { playerId: joinerId, name: 'B' })
+    expect(sent(kickedId).some(message => message.type === 'error' && message.code === 'kicked')).toBe(true)
+    expect(sent(kickedId).some(message => message.type === 'welcome')).toBe(false)
   })
 
   it('does not bar a diver who leaves on their own', async () => {
@@ -440,7 +480,9 @@ describe('room-sync', () => {
     delete legacy.seatIps
     await kv.setItem(code, legacy)
 
-    await processAction(kv, peers, host, { action: { type: 'KICK_DIVER', playerId: guestId } })
+    await processAction(kv, peers, host, {
+      action: { type: 'KICK_DIVER', playerId: guestId, blockNetwork: true },
+    })
     const room = await kv.getItem(code) as StoredRoom
     expect(room.bans?.[0]?.playerId).toBe(guestId)
     expect(room.bans?.[0]?.ip).toBeTruthy()
@@ -594,38 +636,100 @@ describe('room-sync', () => {
     expect(sent(fifth).some(m => m.type === 'error' && m.code === 'room-full')).toBe(true)
   })
 
-  it('migrates the host on disconnect and survives reattachment', async () => {
-    const kv = fakeKV()
-    const peers = createPeerDirectory()
-    const code = await createRoom(kv)
+  it('keeps the host seat through reconnect grace, then migrates if they stay offline', async () => {
+    vi.useFakeTimers()
+    try {
+      const kv = fakeKV()
+      const peers = createPeerDirectory()
+      const code = await createRoom(kv)
 
-    const host = fakePeer('ws-a')
-    host.context.roomCode = code
-    await processHello(kv, peers, host, { name: 'Host' })
-    const hostWelcome = sent(host).find(m => m.type === 'welcome')
-    if (hostWelcome?.type !== 'welcome') {
-      throw new Error('no welcome')
+      const host = fakePeer('ws-a')
+      host.context.roomCode = code
+      await processHello(kv, peers, host, { name: 'Host' })
+      const hostId = welcomeOf(host).selfId
+
+      const joiner = fakePeer('ws-b')
+      joiner.context.roomCode = code
+      await processHello(kv, peers, joiner, { name: 'Earliest joiner' })
+      const joinerId = welcomeOf(joiner).selfId
+      sent(joiner).length = 0
+
+      // Closing the host socket immediately refreshes presence, but does not
+      // transfer the crown while the host can still reconnect.
+      await processClose(kv, peers, host)
+      expect(peers.hostReconnectTimers.size).toBe(1)
+      expect((await lastSnapshot(joiner)).hostId).toBe(hostId)
+      await vi.advanceTimersByTimeAsync(HOST_RECONNECT_GRACE_MS - 1)
+      expect(peers.hostReconnectTimers.size).toBe(1)
+      expect((await loadRoom(kv, code))?.state.hostId).toBe(hostId)
+
+      await vi.advanceTimersByTimeAsync(1)
+      const migrated = await loadRoom(kv, code)
+      expect(migrated?.state.hostId).toBe(joinerId)
+      expect(migrated?.state.divers.find(diver => diver.id === hostId)).toBeTruthy()
+      expect(migrated?.state.divers.find(diver => diver.id === hostId)?.away).toBe(true)
     }
-    const hostId = hostWelcome.selfId
+    finally {
+      vi.useRealTimers()
+    }
+  })
 
-    const joiner = fakePeer('ws-b')
-    joiner.context.roomCode = code
-    await processHello(kv, peers, joiner, { name: 'Earliest joiner' })
-    sent(joiner).length = 0
+  it('keeps a reconnecting host in the seat after the original grace timer would expire', async () => {
+    vi.useFakeTimers()
+    try {
+      const kv = fakeKV()
+      const peers = createPeerDirectory()
+      const code = await createRoom(kv)
 
-    // Host connection drops.
-    await processClose(kv, peers, host)
-    const migration = await lastSnapshot(joiner)
-    expect(migration.hostId).not.toBe(hostId)
-    expect(migration.divers.find(diver => diver.id === hostId)).toBeTruthy()
+      const host = fakePeer('ws-a')
+      host.context.roomCode = code
+      await processHello(kv, peers, host, { name: 'Host' })
+      const hostId = welcomeOf(host).selfId
 
-    // The departed host reconnects with their stored playerId.
-    const reborn = fakePeer('ws-a2')
-    reborn.context.roomCode = code
-    await processHello(kv, peers, reborn, { name: 'Host', playerId: hostId })
-    const reWelcome = welcomeOf(reborn)
-    expect(reWelcome.selfId).toBe(hostId)
-    expect(reWelcome.snapshot.divers).toHaveLength(2)
+      const joiner = fakePeer('ws-b')
+      joiner.context.roomCode = code
+      await processHello(kv, peers, joiner, { name: 'Earliest joiner' })
+
+      await processClose(kv, peers, host)
+      const reborn = fakePeer('ws-a2')
+      reborn.context.roomCode = code
+      await processHello(kv, peers, reborn, { name: 'Host', playerId: hostId })
+      expect(welcomeOf(reborn).selfId).toBe(hostId)
+      expect(welcomeOf(reborn).snapshot.hostId).toBe(hostId)
+
+      await vi.advanceTimersByTimeAsync(HOST_RECONNECT_GRACE_MS + 1)
+      expect((await loadRoom(kv, code))?.state.hostId).toBe(hostId)
+    }
+    finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not transfer the host seat when a non-host disconnects', async () => {
+    vi.useFakeTimers()
+    try {
+      const kv = fakeKV()
+      const peers = createPeerDirectory()
+      const code = await createRoom(kv)
+
+      const host = fakePeer('ws-a')
+      host.context.roomCode = code
+      await processHello(kv, peers, host, { name: 'Host' })
+      const hostId = welcomeOf(host).selfId
+
+      const joiner = fakePeer('ws-b')
+      joiner.context.roomCode = code
+      await processHello(kv, peers, joiner, { name: 'Joiner' })
+      await processClose(kv, peers, joiner)
+      await vi.advanceTimersByTimeAsync(AWAY_GRACE_MS + 1)
+
+      const room = await loadRoom(kv, code)
+      expect(room?.state.hostId).toBe(hostId)
+      expect(room?.state.divers.find(diver => diver.id === welcomeOf(joiner).selfId)?.away).toBe(true)
+    }
+    finally {
+      vi.useRealTimers()
+    }
   })
 
   it('does not seat a peer that closed while its hello waited for the room lock', async () => {
@@ -779,6 +883,57 @@ describe('room-sync', () => {
     expect(stored?.state.phase).toBe('lobby')
     expect(stored?.state.settings).toBeNull()
     expect(stored?.state.divers).toHaveLength(1)
+  })
+
+  it('returns a clear error for a forfeit item outside the dealt offer', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+    const host = fakePeer('ws-forfeit')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    const hostId = welcomeOf(host).selfId
+
+    await processAction(kv, peers, host, {
+      action: { type: 'START_DIVE', settings: { variant: 'medium' }, seed: 1 },
+    })
+    await processAction(kv, peers, host, { action: { type: 'SPIN_WHEEL', seed: 42 } })
+    await processAction(kv, peers, host, { action: { type: 'ACCEPT_MISFORTUNE', accepted: false } })
+    await processAction(kv, peers, host, { action: { type: 'ACCEPT_STRAIN', accepted: false } })
+    await processAction(kv, peers, host, { action: { type: 'DEAL_PACTS' } })
+    await processAction(kv, peers, host, {
+      action: { type: 'SET_PACTS', playerId: hostId, pactIds: [] },
+    })
+
+    const diving = await lastSnapshot(host)
+    const earned = [...ITEMS_BY_ID.values()].find(item =>
+      !diving.personalInventories[hostId]?.includes(item.id))
+    if (!earned) {
+      throw new Error('no unowned catalog item')
+    }
+    await grantEarned(kv, code, hostId, [earned.id])
+    await processAction(kv, peers, host, {
+      action: { type: 'REPORT_RESULT', outcome: 'failure', stars: 0 },
+    })
+
+    const failed = await lastSnapshot(host)
+    const diver = failed.divers.find(candidate => candidate.id === hostId)
+    if (!diver || forfeitOptionsFor(failed, diver).length === 0) {
+      throw new Error('expected the diver to have a forfeit offer')
+    }
+
+    sent(host).length = 0
+    await processAction(kv, peers, host, {
+      action: { type: 'FORFEIT_ITEM', playerId: hostId, itemId: 'not-in-the-offer' },
+    })
+    expect(sent(host)).toContainEqual(expect.objectContaining({
+      type: 'error',
+      code: 'bad-action',
+      message: 'That item is not in your current forfeit offer',
+    }))
+    expect(sent(host).some(message => message.type === 'state')).toBe(false)
+    expect((await loadRoom(kv, code))?.state.divers.find(candidate => candidate.id === hostId)?.forfeitedItemId)
+      .toBeFalsy()
   })
 
   it('rate-limits join attempts per address', async () => {

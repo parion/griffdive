@@ -13,7 +13,7 @@ test('call: the CTA, odds line and front pin hold one layout across the draw', a
   await expect(call.locator('.directive-card.empty-call')).toBeVisible()
   await expect(call.locator('.roll-strip')).toBeVisible()
   await expect(call.locator('.roll-note')).toContainText('Base odds')
-  const spin = call.getByRole('button', { name: 'Spin the wheel' })
+  const spin = page.getByRole('button', { name: 'Spin the wheel' })
   await expect(spin).toBeVisible()
   await spin.click()
 
@@ -78,12 +78,17 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // The tool sidebar opens the Kit beside the stage for the field, non-modal;
   // its tab folds it away and back.
   const side = page.getByRole('complementary', { name: 'Dive tools' })
-  await expect(side.getByRole('region', { name: 'Kit' })).toBeVisible()
+  const kitRegion = side.getByRole('region', { name: 'Kit' })
+  const kitTab = side.getByRole('button', { name: 'Kit', exact: true })
+  if (!(await kitRegion.isVisible().catch(() => false))) {
+    await kitTab.click()
+  }
+  await expect(kitRegion).toBeVisible()
   await expect(page.getByRole('dialog', { name: 'Kit' })).toBeHidden()
-  await side.getByRole('button', { name: 'Kit', exact: true }).click()
-  await expect(side.getByRole('region', { name: 'Kit' })).toBeHidden()
-  await side.getByRole('button', { name: 'Kit', exact: true }).click()
-  await expect(side.getByRole('region', { name: 'Kit' })).toBeVisible()
+  await kitTab.click()
+  await expect(kitRegion).toBeHidden()
+  await kitTab.click()
+  await expect(kitRegion).toBeVisible()
   // Brasch's Bargains shuts while the squad is in the field.
   await expect(page.getByRole('button', { name: /Brasch's Bargains.*Closed during the mission/ })).toBeDisabled()
 
@@ -91,6 +96,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   // The report form opens at the difficulty's best result — 3 stars at Medium.
   await expect(page.getByRole('heading', { name: 'Mission report' })).toBeVisible()
   await expect(page.getByRole('radio', { name: '3 stars' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByText('Full-star clear', { exact: true })).toBeVisible()
   const commonSamples = page.getByRole('slider', { name: 'Common samples' })
   await expect(commonSamples).toHaveAttribute('aria-valuenow', '0')
   // Medium spawns at most 18 commons; the Sample Scanner can double pickups,
@@ -102,9 +108,7 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.getByRole('button', { name: 'Set time remaining to 60 percent' }).click()
   await expect(page.locator('.time-value')).toContainText('60')
 
-  // Honors are due on this mission: there is no spin button, the reel rolls
-  // when the report files and the rewards screen follows it.
-  await expect(page.getByRole('button', { name: 'Spin the stat' })).toHaveCount(0)
+  // Honors are due on this mission: filing the report is the only spin trigger.
   await page.getByRole('button', { name: 'File report' }).click()
 
   await expect(page.getByRole('heading', { name: 'Bank one item' })).toBeVisible()
@@ -122,6 +126,8 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('article', { name: 'Your haul' }).locator('img')).toBeVisible()
   await expect(page.getByLabel('Mission report')).toBeVisible()
   await expect(page.getByRole('region', { name: 'Squad Honors' })).toBeVisible()
+  await expect(page.locator('.dock .honors')).toHaveCount(0)
+  await expect(page.locator('.climb .honors .roll')).toHaveCount(0)
 
   // Brasch's Bargains stays shut until the first operation is complete, so the
   // page hides the shelf entirely; credits keep banking toward the first buy.
@@ -140,13 +146,19 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.locator('.directive-card .dc-actions')).toBeVisible()
   await page.locator('.directive-card').getByRole('button', { name: 'Skip' }).click()
   await page.getByRole('button', { name: 'Deal the pacts' }).click()
+  await expect(page.locator('.pact-screen .directive-strip')).toContainText('Directive skipped')
+  await expect(page.locator('.pact-screen .directive-strip')).toContainText('No squad directive this mission.')
   await page.locator('.condition:not([disabled])').first().click()
   await page.getByRole('button', { name: /^Swear 1 pact/ }).click()
+  await expect(page.locator('.field .directive-card .status')).toHaveText('Skipped')
+  await expect(page.locator('.field .directive-card')).toContainText('Directive skipped')
+  await expect(page.locator('.field .directive-card')).toContainText('No squad directive this mission.')
   await page.getByRole('button', { name: 'Extracted' }).click()
 
   // Honors aren't due on mission 2 (the solo cadence is every third mission),
   // so the card says when the next spin lands instead of showing the reel.
   await expect(page.getByRole('region', { name: 'Squad Honors' })).toContainText('Next Squad Honors in 2 missions')
+  await page.getByRole('radio', { name: '3 stars' }).click()
   await page.getByRole('button', { name: 'File report' }).click()
 
   // The honors token banked on mission 1's climbs page buys a reroll of the whole draft.
@@ -317,10 +329,16 @@ test('a failed mission labels the operation failed and removes an earned item', 
   await page.getByRole('button', { name: 'File failure' }).click()
 
   await expect(page.getByRole('heading', { name: 'Mission failed' })).toBeVisible()
+  await expect(page.locator('.beats .current')).toContainText('Forfeit')
+  await expect(page.locator('.ff-kicker')).toContainText('Forfeit')
+  await expect(page.locator('.sur-tile').first()).toContainText('At stake')
+  await expect(page.locator('.sur-tile').first()).not.toContainText('Select')
 
   // Pick one item from the dealt offer, then remove it — once every diver
   // has chosen the forfeit restarts the operation at mission 1.
   await page.locator('.sur-tile:not([disabled])').first().click()
+  await expect(page.locator('.sur-tile.on')).toContainText('Marked for removal')
+  await expect(page.getByRole('button', { name: /^Remove / })).toBeVisible()
   await page.getByRole('button', { name: /^Remove / }).click()
   await expect(page.getByRole('img', { name: /Operation mission 1 of 2/i })).toBeVisible()
 })
@@ -335,8 +353,11 @@ test('a spinning wheel never changes the stage\'s scroll extent', async ({ page 
   await dismissWarbondIntro(page)
 
   const extent = () => page.locator('main.stage').evaluate(el => `${el.scrollWidth}x${el.scrollHeight}`)
-  const before = await extent()
   await page.getByRole('button', { name: 'Spin', exact: true }).click({ force: true })
+  // The pinned action row swaps from Spin to Deal + rerolls; let that beat
+  // settle before measuring the rotating wheel's scroll box.
+  await expect(page.getByRole('button', { name: 'Deal the pacts' })).toBeVisible()
+  const before = await extent()
   const seen = new Set<string>()
   for (let i = 0; i < 15; i++) {
     seen.add(await extent())

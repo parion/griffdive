@@ -120,12 +120,15 @@ set; extracted references are git-ignored and presentation-only. Nothing here to
 
 #### Desktop shell — one lit stage
 
-`app/components/dive/DiveFrame.vue` is the no-rail dive shell: a three-row grid of **header ·
-stage · squad dock**, exactly one viewport tall on desktop. The stage is the only scroll area and
-holds one lit object per beat; the old climb strip, left squad rail, right Kit/Valor rail and bottom
-PhaseRail are gone. Each beat centres itself on the stage (`margin-block: auto` on the stage inner,
-so a beat taller than the stage still scrolls from the top), and the beats are sized to land their
-primary CTA above the fold on a 1440×900 desktop. A new beat always opens scrolled to its top.
+`app/components/dive/DiveFrame.vue` is the no-rail dive shell: a four-row grid of **header ·
+stage · desktop actions · squad dock**, exactly one viewport tall on desktop. The stage is the only
+scroll area and holds one lit object per beat; the old climb strip, left squad rail, right Kit/Valor
+rail and bottom PhaseRail are gone. Each beat centres itself on the stage (`margin-block: auto` on
+the stage inner, so a beat taller than the stage still scrolls from the top). A new beat always opens
+scrolled to its top.
+
+The desktop shell keeps each beat's primary action in the beat's own flow; only the phone shell pins
+its action in `PhoneActionBar`.
 Beat swaps never flash the previous screen: local UI (an open report form) stays mounted until
 the engine's phase change unmounts it, rather than closing itself first.
 
@@ -149,8 +152,9 @@ merge with them.
   Armory, Warbonds* below). Back to the Bridge lives
   in `DiveMenu`, because the global bridge header stands down on `/dive`.
 - **`SquadDock`** anchors the bottom: status lamps and names for every diver (`.seat` cards —
-  not the global `.chip` tag utility), open seats, Steam lobby and invite copy, and the
-  squad-honors token picker once a contest is spun. For the host the Steam control toggles a
+  not the global `.chip` tag utility), open seats, Steam lobby and invite copy, and a compact honors
+  readout outside the rewards beat. `ClimbHonors` owns the contest and winner prompt, so the dock
+  does not repeat it there or force an extra wrap at 1280px. For the host the Steam control toggles a
   **Steam lobby bar** docked just above the squad bar: pin or change the `steam://joinlobby/…`
   link, copy it, jump into the lobby, or remove it — removal closes the bar. A squadmate gets a
   direct **Join Game** link to the pinned lobby instead, and no Steam control at all while the
@@ -158,7 +162,9 @@ merge with them.
   The host on a phone (which has no squad bar) gets the dialog instead. `DiveMenu` holds
   tutorial/field manual, Bridge, pin/unpin, new session, leave and end. On a phone the same dock
   lives in the **Squad** dialog, and host actions render inline there (a portalled dropdown would
-  land under the modal overlay).
+  land under the modal overlay). Every kick entry point opens an `AppDialog` naming the diver;
+  blocking their network is an unchecked opt-in with a warning that friends on the same Wi-Fi/LAN
+  may be refused. On phones, close the Squad dialog before opening this confirmation.
 - **`PhaseTabs`** replaced the old "whose move?" cue. The current beat is the lead; host-only
   controls are visibly absent for squadmates rather than disabled chrome. A non-host sees "Stand by"
   and the host's name on the call, but still swears their own pacts and banks their own loot.
@@ -314,7 +320,14 @@ the tier's leading edge rather than painting every boundary a different color. T
 **Spin the wheel** before the draw and **Deal the pacts** (disabled until both calls are decided)
 after it. The front plan (Major Order / locked faction / rolled) is chosen at setup with
 `FrontPlanPicker`, never here; a pinned run shows its front card under the directive before the
-first spin as well as after it. Rerolls sit under the deal CTA as quiet secondary controls.
+first spin as well as after it. Rerolls sit under the deal CTA as quiet secondary controls. The
+reveal is not skippable: Deal and every available reroll stay disabled until `useSpinReveal` lands,
+with the wait reason available on the disabled control. The phone shows the full wheel for the
+reveal, then folds it into a compact directive-and-risk result with a **View wheel** toggle; opening
+it never changes the draw. Phone rerolls name the wheel and show the token count. Spending a token
+requires an `AppDialog` confirmation; free rerolls do not. Directive risk is the value at the current
+difficulty; one short note on the call and pact screens explains that higher difficulties raise risk
+and offer more pacts.
 
 #### Pacts — `PactScreen`
 
@@ -323,42 +336,62 @@ its lit risk skulls, the vow in quotes, any benched-kit note, the accountability
 inked SWORN stamp. There are no per-card odds words: hovering or picking previews the one odds
 strip under the hand. The CTA is
 "Swear N pacts" (or "Dive with no pacts"), and a locked diver sees the sworn stamp while the rest of
-the squad finishes. The hand is local: a squad sync leaves your picks alone — only a fresh draw or
-directive clears them. The **Kit** tab of the `DiveSidebar` shows the Kit everywhere, greying
-the items the pending pick would ban.
+the squad finishes. On phones, compact cards separate the two actions: the main button toggles the
+pact with `aria-pressed` and a visible swear/unswear hint; a sibling **Details / Less** button
+expands the rules, announces `Read <pact> rules` / `Hide <pact> rules`, and exposes
+`aria-expanded`. Details never selects the pact, the buttons are never nested, and only one card's
+rules are open at a time. Expanded rules scroll with the stage while the `PhoneActionBar` stays
+pinned. The SWORN stamp sits in the risk header rather than over the risk label.
+The hand is local: a squad sync leaves your picks alone — only a fresh draw or directive clears
+them. The **Kit** tab of the `DiveSidebar` shows the Kit everywhere, greying the items the pending
+pick would ban. When the squad skipped its draw, show **Directive skipped** and **No squad
+directive this mission** once; never stamp that state Active.
 
 #### Dive — `DivePhaseDiving`
 
-The field screen is one column: the teal-lit directive card (ACTIVE / BROKEN) and accepted strain,
+The field screen is one column: the teal-lit directive card (ACTIVE / BROKEN, or SKIPPED when the
+squad declined the draw) and accepted strain,
 then a **Pacts sworn** ledger — one row per pact (diver, lit skulls, name, one-tap "Mark broken",
 confirm on the second tap). Each row is an accordion (`PactLedger`, shared with the phone) that
 opens on the vow and its accountability line, lit by a gold edge; your own pacts start open,
 everyone else's start shut. Hosts call **Extracted** or **Mission failed**; squadmates get a
 waiting gate. Beside the column the `DiveSidebar` opens its **Kit** panel for every diver on
-desktop (`fieldKit`), non-modal so the field screen stays live; the Hide control or the KIT tab
-folds it away. It closes again when the beat ends (or the report form opens) unless the diver
-picked a panel of their own meanwhile. On a phone the panel never opens by itself.
+spacious desktop (`fieldKit`, at least 1200px wide and 800px high), non-modal so the field screen
+stays live; the Hide control or the KIT tab folds it away. At landscape-tablet and small-laptop
+sizes the Kit starts closed and remains available from the rail. It closes again when the beat ends
+(or the report form opens) unless the diver picked a panel of their own meanwhile. On a phone the
+panel never opens by itself.
 
 #### Report — `MissionReport`
 
 The report window is a two-column lit form on desktop and one column on phones: mission stars,
-credit haul (sample tubes + time cells), and the **Squad Honors** card. Honors are rolled by filing:
-no spin button — the card carries the **`HonorsReel`** slot reel, flush to its right edge and filling the width (full width under the title on phones), which winds down onto
-the seeded stat after **File report** is pressed (`HONORS_REEL_MS`, then a `HONORS_DWELL_MS` beat) before
-the rewards screen is brought in. When honors are not due the reel is replaced by a plain message
-naming the next mission they return. The filed report must still qualify or the engine strikes the
-spin and claws back an auto-banked solo token. Every Next mission / Start operation control locks
-until the host awards the honors; the locked control is a quiet dashed "Award honors first" (`.cta-locked` on desktop, the `.bar-gate` on phones), never a dimmed primary. Phone
-reports pin **File report / File failure** in the fixed action bar.
+credit haul (sample tubes + time cells), and the **Squad Honors** eligibility card. A successful
+report opens at the difficulty's **maximum stars** (a full clear, "Full-star clear"); the host lowers it
+if the squad fell short. The star strip states **your** option count plus the present squad's min–max, since broken
+rules can cost different divers different options. Time remains at **0%** until entered; on phone
+its 20 values use 44px hit targets in a four-column grid.
+
+Filing a report is the only normal spin trigger: if eligible, it sends the seed before filing the
+result. The contest's **`HonorsReel`** is revealed on the squad-climbs page after the draft, flush to
+its right edge and filling the width (full width under the title on phones). There is no manual
+"Roll now" control; an older in-progress report without a seed auto-rolls on entry as recovery.
+When honors are not due the reel is replaced by a plain message naming the next mission they
+return. The filed report must still qualify or the engine strikes the spin and claws back an
+auto-banked solo token. Every Next mission / Start operation control locks until the host awards the
+honors; the locked control is a quiet dashed "Award honors first" (`.cta-locked` on desktop, the
+`.bar-gate` on phones), never a dimmed primary. Phone reports pin **File report / File failure** in
+the fixed action bar.
 
 #### Mission failed — `DivePhaseForfeit`
 
 Deliberately bare, in the loot draft's grammar. A red kicker, the title and one line of copy sit over
 `ForfeitPicker`: the diver's offer as the same tier-edged art cards as `RewardDraft` (letterboxed
 4:3 well, tier letter, `fitWord` name, category line; a 104px thumb row on phones), staggered in.
-Marking a card lights its edge red; one plain click button under the cards — **Remove <item>**, in
-the pinned phone bar on phones — removes it (no hold-to-confirm, no container). The removed card
-keeps its red edge with a **Confiscated** stamp while the rest fade, like a banked reward. Squadmates'
+Unselected cards say **At stake** and carry a quiet red wash; selecting one marks it **Marked
+for removal**. The final **Remove <item>** action is the explicit confirmation on desktop and in the
+pinned phone bar (no hold-to-confirm, no dialog). The removed card keeps its red well edge with a
+**Confiscated** stamp while the rest fade, like a banked reward. The stepper treats this as
+**Forfeit**, the failure branch of Loot, not Dive. Squadmates'
 forfeits sit below in `SquadForfeitBoard`, the `SquadDraftBoard` grammar: name, status, and each diver's dealt items as icon tiles with the removed one struck red and the rest faded. A short note says who is still choosing. SEAF Support Package
 items count as at-stake gear, so a SEAF diver always has a pack item to surrender. The `.sur-tile`
 class is the e2e hook.
@@ -376,7 +409,8 @@ tiles and status — the phone reward draft renders the same board (compact, one
 status-only summary — and the reroll control spends a banked honors token. An S+ roll is **Liberty's Cross**, shown
 not as a card but as the full-width **`LibertyCrossBand`** above the cards (crest, lore line, "Claim
 any item" opening the armory picker). Naming an item selects the Cross and the CTA banks it; the
-band's claim button then shows the chosen name with "Change pick".
+band's claim button then shows the chosen item's art, fitted name and tier badge with "Change pick";
+a resolved Cross recovers the same item from the banked state, including after reload.
 
 **The reveal is the fanfare.** Each card is wrapped in `RewardReveal` and cards deal in **left to
 right** (`revealTimeline` in `app/utils/rewardReveal.ts`), with drama scaled by tier: C deals in, B
@@ -405,6 +439,11 @@ tier, and Brasch's counter is a **last call** (it restocks at the new altitude o
 operation starts). That backdrop is alive: two ray fields counter-rotate behind the emblem, a halo
 breathes, embers rise and the headline takes one pass of light — all stilled by reduced motion.
 
+The final **Griffdive Achieved** screen keeps that ladder/emblem hero and adds a compact run recap
+for missions, operations, reward items, squad credits and pact checks; it is not a second dashboard.
+The Ministry Pardon notice appears only when the run actually served Penance or paid a directive tax
+and no debt is still owed.
+
 #### ValorRoll — the one odds primitive
 
 `app/components/valor/ValorRoll.vue` draws the Valor odds line (labelled **Loot odds** on screen): tier zones whose widths are
@@ -415,6 +454,8 @@ preview improves the line, each growing tier is labelled `+N` and lights one cle
 its leading edge; a shrinking tier keeps its settled odds label and no red block, since the bar
 already shows the narrower zone. The signed movement stays in the zone tooltip. It is presentation
 only and reads `tierZones` from the engine.
+At narrow widths, close loot-pin labels use separate vertical lanes while their needles remain on
+the exact d100 faces; the odds line itself never moves.
 
 #### Kit, Armory, Warbonds, and the Bargains counter
 
@@ -453,18 +494,21 @@ footer, and nothing else: no explanatory paragraphs.
 The shelf is one centered grid of **requisition cards**. Every card — named stock and the Armor
 Pack alike — uses the same shell: a small kind label, the price in credits at the top right in the
 display face, a 1:1 stage lit by the item's tier accent (gold for the pack), and the product name
-under it. There is no tier badge, percentage or odds copy. The whole card is the buy target: hovering
-lifts the foil and brightens the accent, and a purchase strikes the card gold (a bought slot keeps its
-place under a rotated **Taken** stamp). A locked slot greys out under a tilted clock notice, "Next
+under it. There is no tier badge, percentage or odds copy: a quiet tier hint appears only while an
+item card is hovered or keyboard-focused, and its buy control names the tier for assistive tech. The
+Armor Pack labels its opened-pack count and keeps a short escalation note with the next price. The
+whole card is the buy target: hovering lifts the foil and brightens the accent, and a purchase strikes
+the card gold (a bought slot keeps its place under a rotated **Taken** stamp). A locked slot greys out under a tilted clock notice, "Next
 mission"; a kind bought this operation greys out under "Next operation". The Armor Pack is the last
 card in the same grid (`BraschArmorPack`): a foil-wrapped side-stock card with **three mini card backs
 fanned in the Griffdive mark**, a crusade pack count, and a replay control for the newest pull. On a
-phone every card, pack included, wraps into the same two-column shelf.
+phone every card, pack included, wraps into the same two-column shelf. A phase change closes the
+counter and its pack reveal before the squad moves on.
 
 Buying opens `BraschPackReveal` over the counter: on desktop a contained stage (the counter stays
 visible and inert underneath), on a phone the full screen. A sealed foil floats on a dark stage,
 tap/Enter tears it, a three-card deck appears, and each card flies out and flips into a hand fan.
-The draw is low-text — the pack label, the tier and name on each card, and one **To the shelf**
+The draw is low-text — the pack label, the tier and name on each card, and one **Back to the shelf**
 control — with tier-scaled pacing from `revealTimeline`; an S pull gets a gold burst and a holo
 wash. Reduced motion lands the settled fan at once. The rail's lamp and credit count are the only
 shop chrome outside the counter. The Armory still lists passives, with a note that they come only

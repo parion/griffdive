@@ -38,7 +38,7 @@
   star-rating keyboard navigation), phone host moderation
   (`phone.spec.ts`: a squadmate's hangar bay opens host actions; after launch the 390px Squad button
   opens the squad dialog with inline host actions), phone reward draft
-  (`phone-rewards.spec.ts`: a non-host phone diver banks their own pick), phone layout
+   (`phone-rewards.spec.ts`: a non-host phone diver banks their own pick), phone layout
   (`phone-layout.spec.ts`: no sideways overflow at 360px with a multi-front live Major Order, the
   hangar's four bays in one row with the live order as the default plan and the launch in reach, the
   live spin CTA, tapping the report's larger time cells), the phone action bar
@@ -68,7 +68,9 @@
   at 360px without overflow). Solo drop asks for no name, so specs file one on the host tutorial
   with the `fileCallsign` helper (`e2e/helpers.ts`); once every draft is banked the squad lands on
   the climbs page, which `settleClimb` clears (rules held, honors winner named) before a spec clicks
-  the next drop (`e2e/climb.spec.ts` covers Held, Broke and Penance). Room creation is
+  the next drop (`e2e/climb.spec.ts` covers Held, Broke and Penance); the Armor Pack and
+  achievement specs cover escalation/reveal bounds, the compact recap and its Pardon gate.
+  Room creation is
   rate-limited per address (10/min in production) and the whole suite shares one address, as are WebSocket joins (20/min), so the e2e server runs with `ROOM_CREATE_LIMIT=200` and
   `ROOM_JOIN_LIMIT=400` (`playwright.config.ts`) — a capped join looks like a page stuck on
   "Loading dive…", since the client doesn't surface `rate-limited` — still prefer reusing a

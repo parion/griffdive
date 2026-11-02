@@ -18,7 +18,7 @@ const emit = defineEmits<{ forfeit: [itemId: string] }>()
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 
 const kicker = computed(() =>
-  `Report · ${difficultyName(props.state.difficulty)} · Mission ${props.state.missionInOperation} of ${opLength.value}`)
+  `Forfeit · ${difficultyName(props.state.difficulty)} · Mission ${props.state.missionInOperation} of ${opLength.value}`)
 
 // The diver's own dealt offer: derived state, so every client — and a reload —
 // sees the same one.

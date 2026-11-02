@@ -5,6 +5,7 @@ import { tierZones } from '~~/shared/engine/rewards'
 import {
   activeMisfortune,
   activeStrain,
+  currentMisfortune,
   pactRiskOf,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
@@ -26,6 +27,8 @@ const emit = defineEmits<{
 }>()
 
 const misfortune = computed(() => activeMisfortune(props.state))
+const directiveSkipped = computed(() =>
+  Boolean(currentMisfortune(props.state) && !props.state.misfortuneAccepted))
 const strain = computed(() => activeStrain(props.state))
 const strainImage = computed(() => (strain.value ? strainImageUrl(strain.value.id) : undefined))
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
@@ -90,14 +93,14 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
             <span class="cap">Squad directive</span>
             <span
               class="status"
-              :class="directiveFailed ? 'red' : 'teal'"
-            >{{ directiveFailed ? 'Broken' : 'Active' }}</span>
+              :class="directiveFailed ? 'red' : directiveSkipped ? 'skipped' : 'teal'"
+            >{{ directiveFailed ? 'Broken' : directiveSkipped ? 'Skipped' : 'Active' }}</span>
           </div>
           <h2
             class="disp directive-name"
-            :style="fitWord(misfortune?.name ?? 'Safe dive')"
+            :style="fitWord(misfortune?.name ?? (directiveSkipped ? 'Directive skipped' : 'Safe dive'))"
           >
-            {{ misfortune?.name ?? 'Safe dive' }}
+            {{ misfortune?.name ?? (directiveSkipped ? 'Directive skipped' : 'Safe dive') }}
           </h2>
           <p class="directive-rule">
             <ConditionRule
@@ -105,7 +108,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
               :condition="misfortune"
             />
             <template v-else>
-              No directive this mission.
+              No squad directive this mission.
             </template>
           </p>
           <div class="directive-foot">
@@ -117,10 +120,6 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
               v-else-if="misfortune"
               class="gain"
             >Boosting everyone’s loot</span>
-            <span
-              v-else
-              class="gain"
-            >No directive this mission</span>
             <button
               v-if="canControl && misfortune && !directiveFailed"
               class="mark"
@@ -165,43 +164,43 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         locked
         compact
       />
+    </div>
 
-      <div
-        v-if="canControl"
-        class="outcomes"
+    <div
+      v-if="canControl"
+      class="outcomes"
+    >
+      <button
+        class="fail"
+        type="button"
+        @click="openReport('failure')"
       >
-        <button
-          class="fail"
-          type="button"
-          @click="openReport('failure')"
-        >
-          Mission failed
-        </button>
-        <button
-          class="cta cut cta-sweep"
-          type="button"
-          @click="openReport('success')"
-        >
-          Extracted
-          <svg
-            width="22"
-            height="14"
-            viewBox="0 0 22 14"
-            aria-hidden="true"
-          >
-            <path
-              d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
-              fill="currentColor"
-            />
-          </svg>
-        </button>
-      </div>
-      <div
-        v-else
-        class="waiting"
+        Mission failed
+      </button>
+      <button
+        class="cta cut cta-sweep"
+        type="button"
+        @click="openReport('success')"
       >
-        <span class="cap">Host reports after extraction</span>
-      </div>
+        Extracted
+        <svg
+          width="22"
+          height="14"
+          viewBox="0 0 22 14"
+          aria-hidden="true"
+        >
+          <path
+            d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
+    </div>
+    <div
+      v-else
+      class="waiting"
+    >
+      <span class="cap">Host reports after extraction</span>
     </div>
   </section>
 
@@ -259,37 +258,41 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 22px 24px 18px;
+  padding: 26px 28px 22px;
   background:
     radial-gradient(ellipse 80% 80% at 20% 0%, rgba(74, 215, 200, 0.1), transparent 70%),
     var(--panel);
-  box-shadow: inset 0 0 0 2px var(--teal), 0 0 30px rgba(74, 215, 200, 0.12);
+  box-shadow: inset 0 3px 0 var(--teal), 0 0 36px rgba(74, 215, 200, 0.18);
   clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
 }
-.directive-card.safe { box-shadow: inset 0 0 0 1px var(--line-3); background: var(--panel); }
+.directive-card.safe {
+  background: radial-gradient(ellipse 80% 80% at 20% 0%, rgba(255, 214, 66, 0.08), transparent 70%), var(--panel);
+  box-shadow: inset 0 3px 0 var(--line-4), 0 0 24px rgba(255, 214, 66, 0.06);
+}
 .directive-card.broken {
   background:
     radial-gradient(ellipse 70% 70% at 20% 0%, rgba(255, 75, 62, 0.1), transparent 70%),
     var(--panel);
-  box-shadow: inset 0 0 0 2px var(--red), 0 0 30px rgba(255, 75, 62, 0.12);
+  box-shadow: inset 0 3px 0 var(--red), 0 0 30px rgba(255, 75, 62, 0.16);
 }
 .directive-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .status {
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: var(--fs-sm);
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 .status.teal { color: var(--on-gold); background: var(--teal); box-shadow: 0 0 12px rgba(74, 215, 200, 0.4); }
 .status.red { color: var(--red); background: var(--ground); box-shadow: inset 0 0 0 1px var(--red); }
+.status.skipped { color: var(--khaki); background: var(--ground); box-shadow: inset 0 0 0 1px var(--line-4); }
 .directive-name {
-  font-size: min(clamp(32px, 3.6vw, 48px), 100cqi / var(--fit-len, 1));
+  font-size: min(clamp(36px, 4vw, 52px), 100cqi / var(--fit-len, 1));
   line-height: 0.95;
   color: var(--gold);
 }
 .broken .directive-name { color: var(--red); text-decoration: line-through; text-decoration-thickness: 3px; }
-.directive-rule { margin: 0; color: var(--khaki); font-size: 15px; }
+.directive-rule { margin: 0; color: var(--khaki); font-size: 16px; line-height: 1.4; }
 .directive-foot {
   display: flex;
   flex-wrap: wrap;
@@ -301,13 +304,13 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 .gain { color: var(--muted); font-size: 12px; }
 .void { color: var(--red); font-size: 12px; }
 .mark {
-  min-height: 34px;
+  min-height: 44px;
   padding: 0 12px;
   border: 0;
   background: transparent;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 55%, var(--line-3));
   color: var(--red);
-  font: 700 10px var(--font-body);
+  font: 700 var(--fs-sm) var(--font-body);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
@@ -334,6 +337,8 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   align-items: stretch;
   justify-content: flex-end;
   gap: 14px;
+  width: min(100%, 680px);
+  margin-inline: auto;
 }
 .fail {
   min-height: 60px;
@@ -369,7 +374,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
 }
 .cta:hover { filter: brightness(1.06); }
 
-.waiting { display: flex; align-items: center; min-height: 48px; }
+.waiting { display: flex; align-items: center; min-height: 48px; width: min(100%, 680px); margin-inline: auto; }
 
 @media (max-width: 860px) {
   .field-title { font-size: 38px; }

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { dismissWarbondIntro, fileCallsign } from './helpers'
+import { dismissWarbondIntro, fileCallsign, lockMisfortune } from './helpers'
 
 // Tablet guards from the responsive audit. Just above the 1020px breakpoint the
 // three-rail terminal once squeezed the centre phase until the wheel's decision
@@ -74,6 +74,36 @@ test('landscape tablet: the terminal keeps every phase inside the centre column'
   await expectNoVerticalOverflow(page)
 
   await context.close()
+})
+
+test('landscape tablet and small laptop: Kit stays closed until requested', async ({ browser }) => {
+  for (const viewport of [LANDSCAPE_TABLET, { width: 1180, height: 820 }]) {
+    const context = await browser.newContext({ viewport, reducedMotion: 'reduce' })
+    const page = await context.newPage()
+
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Solo drop' }).click()
+    await fileCallsign(page, 'Griff')
+    await dismissWarbondIntro(page)
+    await page.getByRole('button', { name: 'Spin', exact: true }).click()
+    await lockMisfortune(page)
+    const strainSkip = page.locator('.strain-card').getByRole('button', { name: 'Skip' })
+    if (await strainSkip.isVisible().catch(() => false)) {
+      await strainSkip.click()
+    }
+    await page.getByRole('button', { name: 'Deal the pacts' }).click()
+    await page.getByRole('button', { name: 'Dive with no pacts' }).click()
+
+    const side = page.getByRole('complementary', { name: 'Dive tools' })
+    const kitTab = side.getByRole('button', { name: 'Kit', exact: true })
+    await expect(kitTab).toHaveAttribute('aria-expanded', 'false')
+    await expect(side.getByRole('region', { name: 'Kit' })).toHaveCount(0)
+
+    await kitTab.click()
+    await expect(kitTab).toHaveAttribute('aria-expanded', 'true')
+    await expect(side.getByRole('region', { name: 'Kit' })).toBeVisible()
+    await context.close()
+  }
 })
 
 test('portrait tablet: the phone shell widens to the tablet', async ({ browser }) => {

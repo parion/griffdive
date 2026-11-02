@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { POD_STAGGER } from '~/utils/motion'
+import { itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
+import type { RewardTier } from '~~/shared/engine/types'
 
 const props = withDefaults(defineProps<{
   pool: Item[]
@@ -17,9 +19,10 @@ const props = withDefaults(defineProps<{
   stamp?: string | null
   // Extra wait before the unfurl starts (ms).
   delay?: number
-  // The item named through the codex, pending the bank.
+  // The chosen item, pending the bank or recovered from a resolved draft.
+  chosenItem?: Item | null
   chosenName?: string | null
-}>(), { revealRank: 0, instant: false, canPick: true, picked: false, dimmed: false, banMode: false, stamp: null, delay: 0, chosenName: null })
+}>(), { revealRank: 0, instant: false, canPick: true, picked: false, dimmed: false, banMode: false, stamp: null, delay: 0, chosenItem: null, chosenName: null })
 
 const titleId = useId()
 
@@ -55,6 +58,10 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 const open = ref(false)
 const selectable = computed(() => props.canPick && landed.value && !props.dimmed && !props.banMode)
+const chosenTier = computed<RewardTier>(() =>
+  props.chosenItem ? props.chosenItem.tier.toUpperCase() as RewardTier : 'C')
+const chosenImage = computed(() => props.chosenItem ? itemImageUrl(props.chosenItem) : null)
+const chosenLabel = computed(() => props.chosenItem?.displayName ?? props.chosenName)
 
 function openPicker(): void {
   if (selectable.value) {
@@ -130,13 +137,41 @@ function onChoose(itemId: string): void {
           type="button"
           class="cross-claim cut"
           :class="{ 'cta-sweep': selectable }"
+          :aria-label="chosenLabel ? `Change Liberty’s Cross pick from ${chosenLabel}, tier ${chosenTier}` : 'Claim any item from the armory'"
           aria-haspopup="dialog"
           :disabled="!selectable"
           @click="openPicker"
         >
-          <span class="disp claim-word">{{ chosenName ?? 'Claim any item' }}</span>
+          <span
+            v-if="chosenItem"
+            class="cross-picked"
+          >
+            <span class="chosen-thumb">
+              <img
+                v-if="chosenImage"
+                :src="chosenImage"
+                alt=""
+                loading="lazy"
+                draggable="false"
+              >
+            </span>
+            <span class="cross-picked-copy">
+              <span
+                class="disp chosen-name"
+                :style="fitWord(chosenItem.displayName)"
+              >{{ chosenItem.displayName }}</span>
+              <ItemTierBadge
+                :tier="chosenTier"
+                size="sm"
+              />
+            </span>
+          </span>
+          <span
+            v-else
+            class="disp claim-word"
+          >{{ chosenLabel ?? 'Claim any item' }}</span>
           <span class="claim-sub">
-            {{ chosenName ? 'Change pick' : 'Search the armory' }}
+            {{ chosenLabel ? 'Change pick' : 'Search the armory' }}
             <svg
               width="14"
               height="14"
@@ -332,8 +367,11 @@ function onChoose(itemId: string): void {
   grid-area: claim;
   position: relative;
   display: grid;
+  container-type: inline-size;
   gap: 4px;
   justify-items: start;
+  /* Size containment gives the auto column no intrinsic width, so pin one. */
+  min-width: 15rem;
   padding: 12px 20px;
   border: 0;
   background: linear-gradient(95deg, var(--tier-s), var(--tier-splus));
@@ -344,6 +382,33 @@ function onChoose(itemId: string): void {
 }
 .cross-claim:disabled { cursor: default; filter: saturate(0.45) brightness(0.8); }
 .claim-word { font-size: 1rem; white-space: nowrap; }
+.cross-picked {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+}
+.chosen-thumb {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  overflow: hidden;
+  background: var(--ground);
+  border: 1px solid var(--line-3);
+}
+.chosen-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.cross-picked-copy {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  min-width: 0;
+}
+.chosen-name { font-size: min(15px, 100cqi / var(--fit-len, 1)); line-height: 1.05; }
 .claim-sub {
   display: inline-flex;
   align-items: center;

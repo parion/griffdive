@@ -240,14 +240,14 @@ onClickOutside(root, () => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
+  min-height: 44px;
   margin-left: auto;
   padding: 0 10px;
   border: 0;
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--line-3);
   color: var(--khaki);
-  font: 700 10px var(--font-body);
+  font: 700 var(--fs-sm) var(--font-body);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
@@ -281,8 +281,8 @@ onClickOutside(root, () => {
   border-bottom: 1px solid var(--line-1);
   background: transparent;
   color: var(--khaki);
-  font: 700 11px var(--font-body);
-  letter-spacing: 0.2em;
+  font: 700 var(--fs-sm) var(--font-body);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -359,8 +359,8 @@ onClickOutside(root, () => {
   padding: 6px 0;
   border-bottom: 0;
   border-left: 1px solid var(--line-1);
-  font-size: 9px;
-  letter-spacing: 0.08em;
+  font-size: var(--fs-sm);
+  letter-spacing: 0.06em;
 }
 .sheet .side-tab:first-child { border-left: 0; }
 .sheet .side-tab[aria-expanded='true'] { box-shadow: inset 0 2px 0 var(--gold); }

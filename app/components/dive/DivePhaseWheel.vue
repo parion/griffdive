@@ -76,8 +76,9 @@ const deltas = computed<Partial<Record<RewardTier, number>>>(() => {
 })
 
 const canDeal = computed(() =>
-  props.state.phase === 'deal'
-  || (decision.value.decided && strainCall.value.decided))
+  !drawing.value
+  && (props.state.phase === 'deal'
+    || (decision.value.decided && strainCall.value.decided)))
 const waitingForStrain = computed(() =>
   decision.value.decided && !strainCall.value.decided)
 
@@ -117,6 +118,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
       <WheelOfAdversity
         :difficulty="state.difficulty"
         :seed="state.wheel?.seed ?? null"
+        :result-id="state.wheel?.misfortuneId ?? null"
         :inventories="squadInventories(state)"
         :penance="squadPenances(state)"
         :can-control="canControl"
@@ -169,6 +171,9 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
           </h2>
           <p class="dc-rule">
             <ConditionRule :condition="misfortune" />.
+          </p>
+          <p class="risk-note">
+            Risk shown is for this difficulty; higher difficulties raise risk and offer more pacts.
           </p>
 
           <div
@@ -251,72 +256,6 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
           :note="cardNote"
           compact
         />
-
-        <div
-          v-if="canControl"
-          class="deal-row"
-        >
-          <button
-            class="cta cut cta-sweep"
-            :class="{ live: canDeal }"
-            type="button"
-            :disabled="!canDeal"
-            @click="deal"
-          >
-            Deal the pacts
-            <svg
-              width="22"
-              height="14"
-              viewBox="0 0 22 14"
-              aria-hidden="true"
-            >
-              <path
-                d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
-                fill="currentColor"
-              />
-            </svg>
-          </button>
-          <div class="rerolls">
-            <button
-              class="reroll"
-              type="button"
-              :disabled="!rerollMisfortune.allowed"
-              :title="rerollMisfortune.reason ?? undefined"
-              @click="reroll('misfortune')"
-            >
-              <IconDice class="reroll-icon" />
-              Reroll directive{{ rerollMisfortune.allowed ? ' · 1 token' : '' }}
-            </button>
-            <button
-              v-if="state.missionInOperation === 1"
-              class="reroll"
-              type="button"
-              :disabled="!rerollFront.allowed"
-              :title="rerollFront.reason ?? undefined"
-              @click="reroll('front')"
-            >
-              <IconDice class="reroll-icon" />
-              Reroll front
-            </button>
-            <button
-              v-if="strain && state.missionInOperation === 1 && !strainCall.decided"
-              class="reroll"
-              type="button"
-              :disabled="!rerollStrain.allowed"
-              :title="rerollStrain.reason ?? undefined"
-              @click="reroll('strain')"
-            >
-              <IconDice class="reroll-icon" />
-              Reroll strain
-            </button>
-          </div>
-        </div>
-        <p
-          v-else
-          class="waiting"
-        >
-          {{ waitingForStrain ? 'Waiting on the strain call…' : 'Waiting for the host to deal the pacts…' }}
-        </p>
       </template>
 
       <template v-else>
@@ -344,26 +283,92 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
           note="Base odds"
           compact
         />
+      </template>
 
-        <div
-          v-if="canControl"
-          class="deal-row"
+      <div
+        v-if="state.wheel && misfortune && canControl"
+        class="deal-row"
+      >
+        <button
+          class="cta cut cta-sweep"
+          :class="{ live: canDeal }"
+          type="button"
+          :disabled="!canDeal || drawing"
+          :title="drawing ? 'Wait for the wheel reveal to finish' : undefined"
+          @click="deal"
         >
-          <button
-            class="cta cut"
-            :class="{ 'live': !drawing, 'cta-sweep': !drawing }"
-            type="button"
-            :disabled="drawing"
-            @click="emit('spin')"
+          Deal the pacts
+          <svg
+            width="22"
+            height="14"
+            viewBox="0 0 22 14"
+            aria-hidden="true"
           >
-            {{ drawing ? 'Spinning…' : 'Spin the wheel' }}
-            <IconRefresh
-              class="cta-icon"
-              aria-hidden="true"
+            <path
+              d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
+              fill="currentColor"
             />
+          </svg>
+        </button>
+        <div class="rerolls">
+          <button
+            class="reroll"
+            type="button"
+            :disabled="drawing || !rerollMisfortune.allowed"
+            :title="drawing ? 'Wait for the wheel reveal to finish' : rerollMisfortune.reason ?? undefined"
+            @click="reroll('misfortune')"
+          >
+            <IconDice class="reroll-icon" />
+            Reroll directive{{ rerollMisfortune.allowed ? ' · 1 token' : '' }}
+          </button>
+          <button
+            v-if="state.missionInOperation === 1"
+            class="reroll"
+            type="button"
+            :disabled="drawing || !rerollFront.allowed"
+            :title="drawing ? 'Wait for the wheel reveal to finish' : rerollFront.reason ?? undefined"
+            @click="reroll('front')"
+          >
+            <IconDice class="reroll-icon" />
+            Reroll front
+          </button>
+          <button
+            v-if="strain && state.missionInOperation === 1 && !strainCall.decided"
+            class="reroll"
+            type="button"
+            :disabled="drawing || !rerollStrain.allowed"
+            :title="drawing ? 'Wait for the wheel reveal to finish' : rerollStrain.reason ?? undefined"
+            @click="reroll('strain')"
+          >
+            <IconDice class="reroll-icon" />
+            Reroll strain
           </button>
         </div>
-      </template>
+      </div>
+      <div
+        v-else-if="canControl"
+        class="deal-row"
+      >
+        <button
+          class="cta cut"
+          :class="{ 'live': !drawing, 'cta-sweep': !drawing }"
+          type="button"
+          :disabled="drawing"
+          @click="emit('spin')"
+        >
+          {{ drawing ? 'Spinning…' : 'Spin the wheel' }}
+          <IconRefresh
+            class="cta-icon"
+            aria-hidden="true"
+          />
+        </button>
+      </div>
+      <p
+        v-else
+        class="waiting"
+      >
+        {{ waitingForStrain ? 'Waiting on the strain call…' : 'Waiting for the host to deal the pacts…' }}
+      </p>
     </div>
   </section>
 </template>
@@ -446,6 +451,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   color: var(--gold);
 }
 .dc-rule { margin: 0; color: var(--khaki); font-size: 15px; line-height: 1.4; }
+.risk-note { margin: -2px 0 0; color: var(--muted); font-size: 11px; line-height: 1.35; }
 .dc-actions { display: flex; gap: 8px; padding-top: 6px; }
 .take,
 .skip {
@@ -515,10 +521,17 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
 }
 .pick-toggle.taken .pick-static { background: var(--gold); color: var(--on-gold); }
 .pick-toggle.skipped .pick-static { background: var(--raised); color: var(--muted); }
-.dc-waiting { color: var(--dim); font-size: 12px; }
+.dc-waiting {
+  padding: 9px 12px;
+  background: color-mix(in srgb, var(--teal) 8%, var(--panel));
+  box-shadow: inset 2px 0 0 var(--teal);
+  color: var(--khaki);
+  font-size: var(--fs-body);
+  line-height: 1.35;
+}
 .dc-block { margin: 0; color: var(--red); font-size: 12px; }
 
-.deal-row { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.deal-row { display: flex; flex-direction: column; gap: 10px; width: min(100%, 560px); margin: 0 auto; }
 .cta {
   display: flex;
   align-items: center;
@@ -556,7 +569,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 30px;
+  min-height: 44px;
   border: 0;
   background: none;
   color: var(--muted);

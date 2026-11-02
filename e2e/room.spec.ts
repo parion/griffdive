@@ -139,6 +139,9 @@ test('host kicks a stuck diver and the dive continues', async ({ browser }) => {
   // The dock's manage menu kicks the stalled diver.
   await pageA.getByRole('button', { name: 'Manage Sidekick' }).click()
   await pageA.getByRole('menuitem', { name: 'Kick diver' }).click()
+  const kickDialog = pageA.getByRole('dialog', { name: 'Kick Sidekick?' })
+  await expect(kickDialog).toBeVisible()
+  await kickDialog.getByRole('button', { name: 'Kick Sidekick' }).click()
   await expect(pageA.locator('.dock .seat')).toHaveCount(1)
 
   // The removed diver sees a removal notice…

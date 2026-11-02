@@ -25,9 +25,9 @@ const current = computed<'call' | 'pacts' | 'dive' | 'loot' | null>(() => {
     case 'strain':
     case 'deal': return 'call'
     case 'pacts': return 'pacts'
-    case 'diving':
-    case 'forfeit': return 'dive'
+    case 'diving': return 'dive'
     case 'rewards': return 'loot'
+    case 'forfeit': return 'loot'
     default: return null
   }
 })
@@ -48,6 +48,9 @@ function done(id: typeof order[number]): boolean {
 function label(beat: Beat): string {
   if (beat.id === 'dive' && current.value === 'dive' && props.reporting) {
     return 'Report'
+  }
+  if (beat.id === 'loot' && props.phase === 'forfeit') {
+    return 'Forfeit'
   }
   return beat.label
 }

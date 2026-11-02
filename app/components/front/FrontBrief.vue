@@ -310,7 +310,7 @@ const frontCard = computed<FrontCard | null>(() => {
 .strain-actions { display: flex; gap: 4px; }
 .take,
 .skip {
-  min-height: 40px;
+  min-height: 44px;
   border: 0;
   font: 800 11px var(--font-body);
   letter-spacing: 0.1em;
@@ -342,7 +342,7 @@ const frontCard = computed<FrontCard | null>(() => {
   flex: 1;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 12px;
   border: 0;
   font: 800 12px var(--font-body);
@@ -392,7 +392,7 @@ const frontCard = computed<FrontCard | null>(() => {
 .front-card.compact .strain-actions .skip { flex: 1; }
 .front-card.compact .strain-verdict { min-width: 0; }
 .front-card.compact .pick-choice,
-.front-card.compact .pick-static { min-height: 40px; }
+.front-card.compact .pick-static { min-height: 44px; }
 
 @keyframes stampFlat {
   0% { transform: scale(1.7); opacity: 0; }

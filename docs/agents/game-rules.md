@@ -214,8 +214,10 @@ the squad spends a reroll token — 1 token per operation (`REROLL_TOKENS_PER_OP
 `MAJOR_ORDER_REROLL_BONUS` (1) banked by each completed live Major Order operation, spendable on any wheel
 result. Never
 rerollable into the result it would replace — a reroll must actually move (`REROLL_WHEEL` refuses a
-same-result seed;
-only the immediately replaced result is excluded, not every prior draw this window). **The front
+same-result seed). Every directive already drawn **this operation** is also excluded — including
+draws that were rerolled or declined — so a squad sees each eligible rule at most once per
+operation. The pool falls back to the full eligible set only after every directive has been drawn.
+The history resets with the operation (and on a failure restart), never between missions. **The front
 and its strain lock in for the whole operation**: they can only be rerolled during the operation's
 first mission decision window (`missionInOperation === 1`, enforced in the reducer and
 `canRerollWheel`); a front reroll redraws the strain with it, and a strain reroll needs at least
@@ -485,16 +487,21 @@ difficulty emblem and the climb ladder ("The squad climbs").
   the field (`optionsLostFor`), and the wheel never draws a directive that would block one
   (`eligibleMisfortunes(inventories, penance)`). A debt carries across an operation boundary; it
   is replaced at `ADVANCE` by whatever that mission's own check leaves owing, and is
-  dropped when the crusade completes or the operation restarts after a failure. Penance is **purple** everywhere: purple skulls and a *Penance* tag
+  dropped when the crusade completes or the operation restarts after a failure. Serving an owed
+  Penance sets the optional run-level `DiveState.debtSettled` marker so the achievement screen can
+  show the Pardon notice; clean runs leave it absent. Penance is **purple** everywhere: purple skulls and a *Penance* tag
   in the Pacts sworn list, the owed strip on the pact screens (`PactPenance`) and the climbs-page
   row.
 - **A broken directive** (stats-verified, host-attested) costs nothing now: it sets
   `directiveTax`, and **every diver's next draft loses one option** (`OPTIONS_LOST_PER_FAILED_DIRECTIVE`,
-  floored at one). A directive broken in the field keeps its old rule (this draft, voided Valor).
-- **Squad Honors** live on the same page: a due contest rolls **by itself** a beat after the page
-  opens (`HONORS_AUTO_ROLL_MS`; the host's client sends `SPIN_BONUS`, with a host-only *Roll now*
-  fallback), the reel winds down, and the host names the winner(s) from the same page. A solo diver
-  (or a lone present diver) wins outright. The token it banks serves the **next** mission's draft.
+  floored at one). The successful report that applies that tax also sets `debtSettled`; a failed
+  mission has no reward draft to tax. A directive broken in the field keeps its old rule (this
+  draft, voided Valor).
+- **Squad Honors** live on the same page: filing an eligible report sends the `SPIN_BONUS` seed;
+  after the draft, the squad-climbs page reveals the seeded contest and the host names the winner(s).
+  There is no manual roll control. An older in-progress report with no seed auto-rolls on entry as
+  recovery. A solo diver (or a lone present diver) wins outright. The token it banks serves the
+  **next** mission's draft.
 - **The gate.** The draft is never gated. `ADVANCE` is refused until `climbSettled`: every stats rule
   attested (`climbBlockers().rules === 0`) and no honors contest due or unnamed
   (`honorsDue`). The page's CTA names what is left ("Settle 1 rule first", "Rolling Squad Honors",
@@ -630,6 +637,11 @@ option roll:   each option rolls a d100 face on the odds line. Zone width is
   and every client (and a reload) re-derives the same cards. `PICK_REWARD` refuses an item the diver
   has gained since the deal (a catch-up claim), so the frozen offer can't bank a duplicate. The
   snapshot resets with the pacts. A pre-snapshot save falls back to live holdings.
+- **The odds line is frozen at the report too.** `REPORT_RESULT` also snapshots the squad-size-weighted
+  team risk into `DiveState.offerTeamRisk`; the reward and forfeit windows read that value through
+  `teamRiskOf` instead of the live roster. A diver stepping away, rejoining or leaving cannot move
+  everyone else's Valor or reroll their cards mid-draft. The snapshot clears with the pacts; a
+  pre-snapshot save falls back to the live breakdown.
 - **Drafts are public.** Options, their rolled tiers and picks are derived state every client
   already holds, so the draft shows the squad's: `draftSummaryFor` (options, top rolled tier, status,
   the banked option — a Cross pick maps to the Cross slot) feeds the squad board. The displayed
@@ -871,26 +883,26 @@ never won, so it is never taken.
 
 ### Reward tokens & squad honors
 
-**Honors roll on the squad-climbs page.** On a **full-star clear**
+**Honors are seeded when the report is filed, then revealed on the squad-climbs page.** On a **full-star clear**
 (`stars === maxStarsFor(difficulty)`) the mission offers one **bonus honors** contest (a
 Mario-Party bonus star): a random stat from HD2's end-of-mission screen — kills, accuracy, deaths,
 stims, samples, friendly fire, … — with a winning direction (*most* or *least*), each entry in
 `BONUS_STATS` (`shared/engine/config.ts`). Honors are a **limited prize** (`bonusEligibleFor`): the
 token only lands when the **squad-size cadence** is due — `BONUS_TOKEN_INTERVAL` awards a
 four-diver squad every mission, a three- or two-diver squad every other mission, and a solo diver
-every third. The report form only says whether honors are due (or why not and when they return,
-`missionsUntilHonors`); it no longer rolls anything.
+every third. The report form says whether honors are due (or why not and when they return,
+`missionsUntilHonors`), and filing it sends the seed when the report qualifies.
 
-Once every draft is banked, the squad-climbs page (see above) rolls the contest by itself: `SPIN_BONUS{seed}`
-(host-only, read from the filed report in the `rewards` phase) and the slot reel winds down onto the
-seeded stat — the seed is what syncs (`rollBonus`, stream salt 4). **The app never captures the
+Once every draft is banked, the squad-climbs page (see above) reveals the contest seeded at report
+time: `SPIN_BONUS{seed, outcome, stars}` is host-only and runs before `REPORT_RESULT`; the seed is
+what syncs (`rollBonus`, stream salt 4). An older in-progress `rewards` state without a seed gets an
+automatic recovery spin on entry, with no manual button. **The app never captures the
 stats**: the host reads HD2's stats screen and names the winner(s) (`AWARD_BONUS{playerIds}`,
 host-only) on that page. Ties are common, so an award names **one or several** divers — every tied
 diver banks a token. Awarding banks each winner's **one flexible reward token** immediately (capped
 at `REWARD_TOKEN_CAP`, 3); there is no separate claim step. When only one diver can win (solo, or a
 squad where everyone else sat the draft out), selection is redundant: the spin resolves the ceremony
-and banks the token by itself. The engine still accepts a spin from the `diving` phase (and
-`REPORT_RESULT` strikes one whose report no longer qualifies); the UI no longer sends it.
+and banks the token by itself. `REPORT_RESULT` strikes a spin whose filed report no longer qualifies.
 
 A token is spent by its owner during a reward draft on a **Reroll** (`REROLL_REWARDS`): redraw the
 diver's own offer. A reroll must move (a seed that re-derives the same offer is refused, mirroring
@@ -899,9 +911,10 @@ diver's own offer. A reroll must move (a seed that re-derives the same offer is 
 offers it; the redesigned draft spends tokens on rerolls only.
 
 The ceremony is a **hard gate** on `ADVANCE` (`honorsDue`, via `climbSettled`), never on the draft:
-a token banked on the climbs page buys a reroll in the *next* mission's draft. The squad dock shows the rolled stat and the banked token but
-no longer carries award controls. Claimed tokens persist across missions; reroll seeds and the old ban flag
-reset with the pacts. Negative targeting (bans) did not violate "guarantee rarity class, never
+a token banked on the climbs page buys a reroll in the *next* mission's draft. The climb honors card
+shows the rolled stat and the banked token; the squad dock does not duplicate that prompt during
+rewards. Claimed tokens persist across missions; reroll seeds and the old ban flag reset with the
+pacts. Negative targeting (bans) did not violate "guarantee rarity class, never
 specific items" — it narrows a pool, it never names a reward.
 
 ### Inventory model
@@ -981,6 +994,9 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   away never advances on its own. Reconnecting clears the mark; the host role moves to a present
   diver when the host steps away, and whoever comes back to a room whose host has stepped away
   takes it. A host who merely dropped (a server restart) keeps the role through the away grace.
+- **Away seats yield to a full squad:** when four seats are held and a fresh join arrives, the first
+  away non-host diver's seat is freed (`awaySeatToFree`, a `LEAVE_DIVE` — not a kick, so no bar and
+  their earned gear parks as a reclaimable cache) so the newcomer seats without a host kick.
 - **A room is never abandoned:** the last seated diver cannot `LEAVE_DIVE` or be kicked, so a
   crusade is never reset — it waits for whoever comes back to it. Benching a diver for good is the
   host's `KICK_DIVER`: their earned gear parks as a legacy cache and the removed seat is barred
@@ -1001,16 +1017,21 @@ build reads. In the browser the save, session, recent-room and seat keys moved t
 `app/plugins/purge-alpha-saves.client.ts` deletes the alpha keys on every boot; preferences (name,
 warbonds, intros) carry over. **Beta policy: the schema is frozen and saves migrate.** Every later
 breaking change bumps `SAVE_SCHEMA_VERSION` and adds a version-gated migration step to
-`normalizeSaveDoc` (replacing its strict version check), or is reverted. The first such step is
-v1 → v2 (`migrateV1toV2`, the Armor Pack's single `bargain.pack` folded into `bargain.packs`).
+`normalizeSaveDoc` (replacing its strict version check), or is reverted. v1 → v2 folded the Armor
+Pack's single `bargain.pack` into `bargain.packs`; v2 → v3 adds the operation's
+`misfortuneHistory` (empty for old saves) and the report-frozen `offerTeamRisk` (`null`, which
+keeps the live-risk fallback).
 Rooms carry no schema version, so the same change must also normalize stored rooms on read in `loadRoom` (idempotent:
-fill only absent fields, never overwrite) — they survive deploys on the volume. Normalization drops
+fill only absent fields, never overwrite) — they survive deploys on the volume. The v3 fields are
+filled there the same way: absent history reads as empty and absent offer risk as `null`. Normalization drops
 only docs it cannot make sense of. No accounts in v1 —
 session link is the identity. Crusade state includes: settings, difficulty, mission index,
 `achieved` flag, `frontId`, `strainId`, the operation's `majorOrder`, the host's custom
 `tierList` (optional and additive: an absent field is the default list, so it needed no schema bump
 or room normalization), inventories, per-diver warbond declarations,
-`completedCombos` (misfortune × front × strain), reroll tokens, action log (capped), RNG seed
+`completedCombos` (misfortune × front × strain), the operation's drawn-directive history, the
+optional additive `debtSettled` achievement marker (absent means false), reroll tokens, action log
+(capped), RNG seed
 history, legacy caches (earned gear) parked by departed divers, per-diver catch-up bookkeeping, credit
 purses and the mission's Brasch's Bargains seed and per-diver deals (the crusade's Armor Pack
 pulls included).

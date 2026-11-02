@@ -221,6 +221,9 @@ export interface DiveState {
   missionIndex: number
   missionInOperation: number
   achieved: boolean
+  // An actual Penance was served or a directive tax was applied during this
+  // crusade. Kept through completion for the achievement notice; absent in old saves.
+  debtSettled?: boolean
   settings: CrusadeSettings | null
   divers: DiverState[]
   hostId: string | null
@@ -262,11 +265,17 @@ export interface DiveState {
   tierList?: TierList | null
   rerollTokens: number
   completedCombos: string[]
+  // Directives drawn this operation, including draws later rerolled or declined.
+  // Reset at an operation start/restart; older rooms and saves read as empty.
+  misfortuneHistory: string[]
   personalInventories: Record<string, string[]>
   // Earned gear parked by departed divers (kicked, left, or left behind by a
   // new session), keyed by their playerId: a late joiner may claim one instead
   // of rolling their Field Promotion.
   legacyCaches: Record<string, LegacyCache>
+  // Team risk snapshotted at REPORT_RESULT for the reward/forfeit offer and its
+  // odds preview. Null before the report and in older saves (live fallback).
+  offerTeamRisk: number | null
   offerSeed: number | null
   lastReport: MissionReport | null
   // Bonus honors for the current mission's reward window: the host-spun
@@ -313,6 +322,6 @@ export type EngineAction
     | { type: 'SET_AWAY', playerId: string, away: boolean }
     | { type: 'ADVANCE' }
     | { type: 'END_DIVE' }
-    | { type: 'KICK_DIVER', playerId: string }
+    | { type: 'KICK_DIVER', playerId: string, blockNetwork?: boolean }
     | { type: 'SET_NAME', playerId: string, name: string }
     | { type: 'TRANSFER_HOST', playerId: string }
