@@ -343,7 +343,9 @@ describe('room-sync', () => {
     await processHello(kv, peers, joiner, { name: 'B' })
     const joinerId = welcomeOf(joiner).selfId
 
-    await processAction(kv, peers, host, { action: { type: 'KICK_DIVER', playerId: joinerId } })
+    await processAction(kv, peers, host, {
+      action: { type: 'KICK_DIVER', playerId: joinerId, blockNetwork: true },
+    })
 
     // Site data cleared and a new network: the removed seat id is still barred.
     const stored = fakePeer('ws-c')
@@ -389,6 +391,44 @@ describe('room-sync', () => {
     expect(room.bans?.[0]?.ip).toBeTruthy()
     expect(room.seatIps?.[joinerId]).toBeUndefined()
     expect(room.state.divers).toHaveLength(2)
+  })
+
+  it('lets a fresh peer on the same network join after a kick without a network block', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    host.context.clientIp = '203.0.113.10'
+    await processHello(kv, peers, host, { name: 'Host' })
+
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    joiner.context.clientIp = '203.0.113.20'
+    await processHello(kv, peers, joiner, { name: 'B' })
+    const joinerId = welcomeOf(joiner).selfId
+
+    await processAction(kv, peers, host, {
+      action: { type: 'KICK_DIVER', playerId: joinerId, blockNetwork: false },
+    })
+
+    const room = await kv.getItem(code) as StoredRoom
+    expect(room.bans?.find(ban => ban.playerId === joinerId)?.ip).toBeNull()
+    expect(room.seatIps?.[joinerId]).toBeUndefined()
+
+    const sameNetwork = fakePeer('ws-c')
+    sameNetwork.context.roomCode = code
+    sameNetwork.context.clientIp = '203.0.113.20'
+    await processHello(kv, peers, sameNetwork, { name: 'Household friend' })
+    expect(welcomeOf(sameNetwork).selfId).toBeTruthy()
+
+    const kickedId = fakePeer('ws-d')
+    kickedId.context.roomCode = code
+    kickedId.context.clientIp = '198.51.100.9'
+    await processHello(kv, peers, kickedId, { playerId: joinerId, name: 'B' })
+    expect(sent(kickedId).some(message => message.type === 'error' && message.code === 'kicked')).toBe(true)
+    expect(sent(kickedId).some(message => message.type === 'welcome')).toBe(false)
   })
 
   it('does not bar a diver who leaves on their own', async () => {
@@ -440,7 +480,9 @@ describe('room-sync', () => {
     delete legacy.seatIps
     await kv.setItem(code, legacy)
 
-    await processAction(kv, peers, host, { action: { type: 'KICK_DIVER', playerId: guestId } })
+    await processAction(kv, peers, host, {
+      action: { type: 'KICK_DIVER', playerId: guestId, blockNetwork: true },
+    })
     const room = await kv.getItem(code) as StoredRoom
     expect(room.bans?.[0]?.playerId).toBe(guestId)
     expect(room.bans?.[0]?.ip).toBeTruthy()

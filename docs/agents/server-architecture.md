@@ -252,8 +252,9 @@ client address (20/min → `rate-limited`, `ROOM_JOIN_LIMIT` overrides it for th
 socket — behind Fly's proxy the socket address is the proxy's), actions per diver (120/10s, silently dropped), and room creation
 per address (10/min → 429; `ROOM_CREATE_LIMIT` overrides it, which only the e2e server does) with a `MAX_ROOMS` cap (503). `server/plugins/room-sweeper.ts` reaps idle
 rooms every 15 min so the `MAX_ROOMS` backstop rarely matters. The same address also feeds the
-per-room seat fingerprints and kick bars (see `KICK_DIVER`): only the keyed hash is stored, and
-only for a seated or removed seat — never logged, exported or attached to a metric label.
+per-room seat fingerprints and optional kick network bars (see `KICK_DIVER`): only the keyed hash
+is stored, and only for a seated or network-blocked removed seat — never logged, exported or
+attached to a metric label.
 
 Canonical engine actions (the reducer union; keep names stable):
 
@@ -263,7 +264,7 @@ Canonical engine actions (the reducer union; keep names stable):
 `BUY_ITEM{playerId,itemId}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
 `AWARD_BONUS{playerIds}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
-`LEAVE_DIVE{playerId}` `SET_AWAY{playerId,away}` `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
+`LEAVE_DIVE{playerId}` `SET_AWAY{playerId,away}` `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId,blockNetwork?}`
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
 Authority rules: host-only actions are `START_DIVE`, `SET_TIER_LIST` (lobby only; the reducer
@@ -290,12 +291,14 @@ so divers dropped across a server restart are caught) — see Mid-crusade joinin
 re-`hello` with stored playerId → server replays snapshot.
 `KICK_DIVER` (host, any phase, lobby included) removes a diver who left or is blocking the
 squad: their pending pact lock or reward pick stops gating progress, their personal inventory
-leaves with them, and the host can never be kicked. It is a bar for the rest of the dive, not a
-soft kick: the room record keeps the removed seat's id and a **keyed fingerprint of the client
-address** (`StoredRoom.bans`), so the invite link no longer reseats them. A hello presenting that
-id — including through `knownIds` as a cache reclaim — or an anonymous fresh join from that network
-is refused with `kicked`. Known seats are exempt: a squadmate behind the same address (a
-household) keeps reconnecting to their own seat. Fingerprints are HMACs under a per-room salt
+leaves with them, and the host can never be kicked. It always bars the removed seat id for the
+rest of the dive, so the invite link cannot reseat that browser (including through `knownIds` as a
+cache reclaim). The host confirms the kick and may opt into **Also block this diver's network**;
+`blockNetwork` defaults to false/omitted. Only when true does the room record also keep the removed
+seat's **keyed fingerprint of the client address** (`StoredRoom.bans`), refusing anonymous fresh
+joins from that network with `kicked`. A normal kick stores no fingerprint in the ban, so a fresh
+household/LAN joiner can take a seat. Known seats are exempt either way: a squadmate behind the
+same address keeps reconnecting to their own seat. Fingerprints are HMACs under a per-room salt
 (`StoredRoom.ipSalt`), never raw addresses, never sent to clients or metrics, and not comparable
 across rooms; the raw address stays transient for rate limiting. The bar list is bounded at
 `MAX_ROOM_BANS` (100). A different network (VPN, mobile data) is out of reach — this is host

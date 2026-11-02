@@ -322,6 +322,6 @@ export type EngineAction
     | { type: 'SET_AWAY', playerId: string, away: boolean }
     | { type: 'ADVANCE' }
     | { type: 'END_DIVE' }
-    | { type: 'KICK_DIVER', playerId: string }
+    | { type: 'KICK_DIVER', playerId: string, blockNetwork?: boolean }
     | { type: 'SET_NAME', playerId: string, name: string }
     | { type: 'TRANSFER_HOST', playerId: string }

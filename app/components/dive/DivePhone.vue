@@ -67,6 +67,11 @@ function openSteamFromSquad(): void {
   nextTick(() => emit('openSteam'))
 }
 
+function requestKick(diverId: string): void {
+  squadOpen.value = false
+  nextTick(() => emit('kick', diverId))
+}
+
 // Held back while the report's reel is still rolling.
 const honors = computed(() => (props.state.phase !== 'diving' ? bonusFor(props.state) : null))
 const honorsWinners = computed(() => bonusWinners(props.state).map(diver => upperName(diver.name)))
@@ -229,7 +234,7 @@ const squadBanked = computed(() => phase.value === 'rewards' && allDiversPicked(
       :honors-awarded="honorsAwarded"
       inline-manage
       @transfer-host="emit('transferHost', $event)"
-      @kick="emit('kick', $event)"
+      @kick="requestKick"
       @copy-invite="emit('copyInvite')"
       @open-steam="openSteamFromSquad"
     />

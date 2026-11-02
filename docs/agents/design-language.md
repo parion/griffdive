@@ -159,7 +159,9 @@ merge with them.
   The host on a phone (which has no squad bar) gets the dialog instead. `DiveMenu` holds
   tutorial/field manual, Bridge, pin/unpin, new session, leave and end. On a phone the same dock
   lives in the **Squad** dialog, and host actions render inline there (a portalled dropdown would
-  land under the modal overlay).
+  land under the modal overlay). Every kick entry point opens an `AppDialog` naming the diver;
+  blocking their network is an unchecked opt-in with a warning that friends on the same Wi-Fi/LAN
+  may be refused. On phones, close the Squad dialog before opening this confirmation.
 - **`PhaseTabs`** replaced the old "whose move?" cue. The current beat is the lead; host-only
   controls are visibly absent for squadmates rather than disabled chrome. A non-host sees "Stand by"
   and the host's name on the call, but still swears their own pacts and banks their own loot.
