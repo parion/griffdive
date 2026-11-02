@@ -370,7 +370,8 @@ function onChoose(itemId: string): void {
   container-type: inline-size;
   gap: 4px;
   justify-items: start;
-  min-width: 0;
+  /* Size containment gives the auto column no intrinsic width, so pin one. */
+  min-width: 15rem;
   padding: 12px 20px;
   border: 0;
   background: linear-gradient(95deg, var(--tier-s), var(--tier-splus));

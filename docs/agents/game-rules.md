@@ -994,6 +994,9 @@ useless at altitude — so the engine grants a **Field Promotion**: a one-time c
   away never advances on its own. Reconnecting clears the mark; the host role moves to a present
   diver when the host steps away, and whoever comes back to a room whose host has stepped away
   takes it. A host who merely dropped (a server restart) keeps the role through the away grace.
+- **Away seats yield to a full squad:** when four seats are held and a fresh join arrives, the first
+  away non-host diver's seat is freed (`awaySeatToFree`, a `LEAVE_DIVE` — not a kick, so no bar and
+  their earned gear parks as a reclaimable cache) so the newcomer seats without a host kick.
 - **A room is never abandoned:** the last seated diver cannot `LEAVE_DIVE` or be kicked, so a
   crusade is never reset — it waits for whoever comes back to it. Benching a diver for good is the
   host's `KICK_DIVER`: their earned gear parks as a legacy cache and the removed seat is barred

@@ -64,10 +64,17 @@ export function createLobbyState(): DiveState {
 // dove. Complete crusades have nothing left to join.
 const SEATABLE_PHASES: readonly DivePhase[] = ['lobby', 'spin', 'decision', 'strain', 'deal', 'pacts', 'diving']
 
+// A full squad still seats a newcomer when someone has stepped away: the
+// first away diver's seat is freed (their gear parks as a cache they can
+// reclaim on return) so a departed friend never needs a kick to make room.
+export function awaySeatToFree(state: DiveState): DiverState | null {
+  return state.divers.find(diver => diver.away && diver.id !== state.hostId) ?? null
+}
+
 // Human-readable reason a fresh join cannot seat right now, or null when it
 // can. The server sends this verbatim; joinDiver enforces the same rule.
 export function seatingBlocked(state: DiveState): string | null {
-  if (state.divers.length >= SQUAD_SIZE_MAX) {
+  if (state.divers.length >= SQUAD_SIZE_MAX && !awaySeatToFree(state)) {
     return 'Dive squad is full'
   }
   if (!SEATABLE_PHASES.includes(state.phase)) {
@@ -87,7 +94,7 @@ export function joinDiver(
   if (state.divers.some(diver => diver.id === playerId)) {
     return state
   }
-  if (seatingBlocked(state)) {
+  if (state.divers.length >= SQUAD_SIZE_MAX || seatingBlocked(state)) {
     return null
   }
   const isHost = state.divers.length === 0

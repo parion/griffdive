@@ -1,7 +1,7 @@
 import { createHmac, randomBytes } from 'node:crypto'
 import { customAlphabet, nanoid } from 'nanoid'
 import { SQUAD_SIZE_MAX, MAX_NAME_LENGTH } from '~~/shared/engine/config'
-import { createLobbyState, forkCrusade, joinDiver, seatingBlocked } from '~~/shared/engine/room'
+import { awaySeatToFree, createLobbyState, forkCrusade, joinDiver, seatingBlocked } from '~~/shared/engine/room'
 import { reduce } from '~~/shared/engine/reducer'
 import { normalizeSaveDoc } from '~~/shared/engine/saves'
 import { forfeitOptionsFor } from '~~/shared/engine/selectors'
@@ -628,6 +628,10 @@ export async function processHello(
         return
       }
       playerId = reclaimId ?? newPlayerId()
+      const awaySeat = room.state.divers.length >= SQUAD_SIZE_MAX ? awaySeatToFree(room.state) : null
+      if (awaySeat) {
+        room.state = reduce(room.state, { type: 'LEAVE_DIVE', playerId: awaySeat.id })
+      }
       const joined = joinDiver(room.state, playerId, sanitizeName(payload.name), warbondCodesOf(payload.warbondCodes))
       if (!joined) {
         roomMetrics.recordHello('full')
