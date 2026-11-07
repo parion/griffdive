@@ -555,7 +555,12 @@ const kickerText = computed(() => {
   clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
   transition: transform var(--dur-med) var(--ease-out), filter var(--dur-med), box-shadow var(--dur-med), opacity var(--dur-med);
 }
-.loot-slot { --reveal-cut: 12px; }
+.loot-slot {
+  --reveal-cut: 12px;
+  width: 100%;
+  max-width: 340px;
+  justify-self: center;
+}
 .loot-cross { --cross-gap: 18px; }
 .loot-card[data-tier='C'] { --tier: var(--tier-c); }
 .loot-card[data-tier='B'] { --tier: var(--tier-b); }

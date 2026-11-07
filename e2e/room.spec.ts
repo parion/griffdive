@@ -9,6 +9,62 @@ async function leaveDive(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/$/)
 }
 
+test('the host callsign survives a reload and reaches the squad before launch', async ({ browser }) => {
+  const contextA = await browser.newContext()
+  const contextB = await browser.newContext()
+  const pageA = await contextA.newPage()
+  const pageB = await contextB.newPage()
+
+  await pageA.goto('/')
+  await pageA.getByRole('button', { name: 'Host an online dive' }).click()
+  await expect(pageA).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
+
+  // A reload on the host tutorial keeps the callsign and the way in open.
+  await pageA.getByLabel('Your name').fill('Griffin')
+  await pageA.waitForTimeout(50)
+  await pageA.reload()
+  await expect(pageA.getByLabel('Your name')).toHaveValue('Griffin')
+  await expect(pageA.getByRole('button', { name: 'Start the dive' })).toBeEnabled()
+
+  // The debounced name reaches the room, so a joiner sees who is leading.
+  await pageA.waitForTimeout(400)
+  await pageB.goto(pageA.url())
+  await expect(pageB.locator('.jb-lede .jb-callsign')).toContainText('GRIFFIN')
+
+  await contextA.close()
+  await contextB.close()
+})
+
+test('an away diver is marked in the hangar before launch', async ({ browser }) => {
+  const contextA = await browser.newContext()
+  const contextB = await browser.newContext()
+  const pageA = await contextA.newPage()
+  const pageB = await contextB.newPage()
+
+  await pageA.goto('/')
+  await pageA.getByRole('button', { name: 'Host an online dive' }).click()
+  await pageA.getByLabel('Your name').fill('Host')
+  await pageA.getByRole('button', { name: 'Start the dive' }).click()
+  await expect(pageA.getByRole('heading', { name: 'Hellpod Bays' })).toBeVisible()
+
+  await pageB.goto(pageA.url())
+  await pageB.getByLabel('Your name').fill('Duo')
+  await pageB.getByRole('button', { name: 'Join the dive' }).click()
+  await expectJoinerLanded(pageB)
+  await expect(pageB.getByRole('heading', { name: 'Hellpod Bays' })).toBeVisible()
+  await expect(pageA.locator('.bay').filter({ hasText: 'Duo' })).toBeVisible()
+
+  // The guest steps away: the seat stays parked, but the hangar says so.
+  await pageB.getByRole('button', { name: 'Session menu' }).click()
+  await pageB.getByRole('dialog', { name: 'Session' })
+    .getByRole('button', { name: /Leave dive/ }).click()
+  await expect(pageA.locator('.bay.away')).toContainText('Away')
+  await expect(pageA.locator('.bay.away')).toContainText('Duo')
+
+  await contextA.close()
+  await contextB.close()
+})
+
 test('two divers sync one dive; late joiner gets the snapshot', async ({ browser }) => {
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()

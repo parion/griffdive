@@ -187,6 +187,16 @@ function closeBriefing(name: string): void {
   }
 }
 
+// The host's callsign is live before launch: a squadmate joining mid-setup sees
+// who is leading, and a reload keeps the name rather than falling back to DIVER.
+function fileHostName(name: string): void {
+  if (!name || name === self.value?.name) {
+    return
+  }
+  setNameDraft(name)
+  commitName()
+}
+
 function openBriefing(): void {
   if (session.selfIsHost.value) {
     hostReviewOpen.value = true
@@ -668,6 +678,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       :state="state"
       :room-code="session.slotName.value"
       :self-name="self?.name ?? ''"
+      @name="fileHostName"
       @close="closeBriefing"
     />
     <section

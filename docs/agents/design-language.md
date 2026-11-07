@@ -258,7 +258,9 @@ single responsive page (container queries on `.hangar`) for phone and desktop al
   the session menu.
 - **Four bays in one row at every width**, each a lit well with an SVG hellpod standing over
   hazard-striped doors. A seated pod shows the diver's initial in its window (gold for you, teal
-  well lamp for the squad); an open bay is a dashed ghost pod. Every bay is a big click target:
+  well lamp for the squad); an open bay is a dashed ghost pod. A diver who has stepped away keeps
+  their bay but is marked **Away** in orange and dimmed, matching the squad dock, so a parked seat
+  never reads as a present one. Every bay is a big click target:
   an open bay copies the invite, your own pod opens Warbonds, and the host's tap on a squadmate
   opens **Make host / Kick diver**. On launch the pods drop through the doors (`podDrop`).
 - The host gets **`CrusadeSetup`** (shared with the Bridge's setup dialog): on wide containers the
@@ -398,7 +400,9 @@ class is the e2e hook.
 
 #### Loot — `RewardDraft`
 
-The draft is "Bank one item": one card per option. **The item art is the
+The draft is "Bank one item": one card per option. Cards cap at 340px and centre when the grid
+holds fewer than three, so a one-option draft stays card-sized instead of stretching the art well
+across the stage. **The item art is the
 card**: a 4:3 well (a square thumb on phones) letterboxes the whole catalog image with
 `object-fit: contain` — never crop it — and the name is a quiet caption under it. Each card is
 stamped with its **rolled tier** only; the d100 faces live on the odds line above, one pin per option.
@@ -524,7 +528,9 @@ diver, is all we need."; the host's opens "You lead…") and the five step lines
 manual**.
 
 - **The card** holds the only required input, the name field (label kept for assistive tech only; focused on load, prefilled from a
-  saved name). Filing it (Enter, leaving the field, or a saved name after a beat) plays the
+  saved name). `BriefingHost` mirrors the callsign locally as it is typed and sends a debounced
+  `SET_NAME`, so a reload before launch keeps the name and the way in open, and a joiner sees who is
+  leading while the host is still setting up. Filing it (Enter, leaving the field, or a saved name after a beat) plays the
   **class strike**: A–D struck one by one, E lands in red, a GRIFFDIVER stamp and one line —
   "Helldivers are Class A. You're Class E: surplus gear, no arsenal." — then the **starting gear**
   unfolds beneath, grouped by kind (`kitGroups`: Stratagems, Primary, Secondary, Throwables, Armor
