@@ -247,7 +247,9 @@ export function teamRiskBreakdown(state: DiveState): TeamRiskBreakdown {
 }
 
 export function teamRiskOf(state: DiveState): number {
-  return teamRiskBreakdown(state).total
+  // The report freezes the squad-size-weighted term for the whole reward or
+  // forfeit window. Older saves have no snapshot and keep the live fallback.
+  return state.offerTeamRisk ?? teamRiskBreakdown(state).total
 }
 
 export interface StrainDecision {
@@ -714,6 +716,8 @@ export function canBuyItem(
 // operations included.
 export interface ArmorPackOffer {
   price: number
+  // What the following pack would cost at the current operation's difficulty.
+  nextPrice: number
   // How many packs the diver has opened this crusade.
   packsOpened: number
   // How many passives the pack would deal right now (3 unless the pool is thin).
@@ -749,6 +753,7 @@ export function armorPackOfferFor(state: DiveState, diver: DiverState): ArmorPac
         )
   return {
     price: armorPackPrice(state.difficulty, packsOpened),
+    nextPrice: armorPackPrice(state.difficulty, packsOpened + 1),
     packsOpened,
     size: Math.min(ARMOR_PACK_SIZE, pool.length),
     available: pool.length,
@@ -915,7 +920,7 @@ export function bonusIneligibilityReason(state: DiveState): string | null {
     return null
   }
   if (report.stars < maxStarsFor(state.difficulty)) {
-    return 'Squad honors need a full-star clear.'
+    return `Squad honors need a max-star clear (${maxStarsFor(state.difficulty)} stars at this difficulty).`
   }
   const interval = bonusIntervalFor(squadSize(state))
   if (state.missionIndex % interval !== 0) {

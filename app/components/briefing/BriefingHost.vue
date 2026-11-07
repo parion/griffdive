@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { startingItemIds } from '~~/shared/engine/progression'
 import type { DiveState } from '~~/shared/engine/types'
-import { storedDiverName } from '~/composables/useGameSocket'
+import { rememberDiverName, storedDiverName } from '~/composables/useGameSocket'
 import type { BriefingStep } from './BriefingLayout.vue'
 
 // The host's first-run page: a name, then the five beats of a mission with
@@ -14,12 +14,27 @@ const props = withDefaults(defineProps<{
   selfName?: string
 }>(), { review: false, selfName: '' })
 
-const emit = defineEmits<{ close: [name: string] }>()
+const emit = defineEmits<{ close: [name: string], name: [name: string] }>()
 
 // A host seats under the placeholder name before they type their own.
 const placeholder = (value: string): string => (value === 'Diver' ? '' : value)
 const name = ref(placeholder(props.selfName) || placeholder(storedDiverName()))
 const callsign = computed(() => name.value.trim())
+
+// The callsign is the host's identity, not a form field to lose on reload: keep
+// the local copy current as it is typed and let the room learn it once typing
+// settles. Launch still files the exact name in the same way.
+let nameTimer: ReturnType<typeof setTimeout> | undefined
+watch(name, (value) => {
+  const trimmed = value.trim()
+  if (props.review || !trimmed) {
+    return
+  }
+  rememberDiverName(trimmed)
+  clearTimeout(nameTimer)
+  nameTimer = setTimeout(() => emit('name', trimmed), 300)
+}, { immediate: true })
+onBeforeUnmount(() => clearTimeout(nameTimer))
 // The host's own seat reads the name as it is typed, not the placeholder.
 const divers = computed(() =>
   props.state.divers.map(diver => (diver.id === props.state.hostId && callsign.value ? { ...diver, name: callsign.value } : diver)))

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useIntervalFn } from '@vueuse/core'
+import { useIntervalFn, useMediaQuery } from '@vueuse/core'
 import { createSaveDoc } from '~~/shared/engine/saves'
 import { allDiversPicked, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending, squadInventories, squadPenances } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
@@ -18,6 +18,7 @@ const { hasSeenWarbondIntro, markWarbondIntroSeen } = useWarbondIntro()
 const { hasSeenDiveIntro, markDiveIntroSeen } = useDiveIntro()
 const { markJoinBriefingSeen } = useJoinBriefing()
 const { isPhone } = usePhoneShell()
+const spaciousDesktop = useMediaQuery('(min-width: 1200px) and (min-height: 800px)')
 
 const {
   state,
@@ -65,9 +66,10 @@ const pactPreviewIds = computed(() =>
 // its label to REPORT while the form is open.
 const reporting = ref(false)
 
-// The sidebar opens the Kit by itself for the field beat; the report form
-// takes the stage without it.
-const fieldKit = computed(() => phase.value === 'diving' && !reporting.value)
+// Spacious desktops open the Kit for the field beat; compact desktop viewports
+// and the report form leave the stage focused.
+const fieldKit = computed(() =>
+  phase.value === 'diving' && !reporting.value && spaciousDesktop.value)
 
 // Once the whole squad has banked, everyone regroups on the squad-climbs page
 // instead of idling on the draft: the stats check, Squad Honors and the shop, at
@@ -88,16 +90,21 @@ watch([phaseKey, squadBanked], () => {
   window.scrollTo({ top: 0 })
 })
 
-// Squad Honors: the contest is spun when the report files and awarded from the
-// dock. The stat is held back until the report's reel has landed (the phase
-// moves on), so the dock never spoils the roll. The shell only reads the
-// derived state; the engine owns eligibility.
-const honors = computed(() => (state.value && state.value.phase !== 'diving' ? bonusFor(state.value) : null))
+// Filing the report spins Squad Honors. The climb page owns its reveal and
+// award flow; don't repeat its prompt in the dock during rewards.
+const honors = computed(() => (
+  state.value && state.value.phase !== 'diving' && state.value.phase !== 'rewards'
+    ? bonusFor(state.value)
+    : null
+))
 const honorsWinners = computed(() => (state.value ? bonusWinners(state.value).map(diver => upperName(diver.name)) : []))
 const honorsAwarded = computed(() => Boolean(state.value?.bonusWinnerIds.length))
 const sessionMenuOpen = ref(false)
 const steamOpen = ref(false)
 const steamBarOpen = ref(false)
+const kickTargetId = ref<string | null>(null)
+const kickTarget = computed(() =>
+  state.value?.divers.find(diver => diver.id === kickTargetId.value) ?? null)
 
 // Warbonds are what each diver actually owns — declared per diver, any phase,
 // and driven by the global Warbonds drawer. A local save seeds the working list
@@ -178,6 +185,16 @@ function closeBriefing(name: string): void {
     setNameDraft(name)
     commitName()
   }
+}
+
+// The host's callsign is live before launch: a squadmate joining mid-setup sees
+// who is leading, and a reload keeps the name rather than falling back to DIVER.
+function fileHostName(name: string): void {
+  if (!name || name === self.value?.name) {
+    return
+  }
+  setNameDraft(name)
+  commitName()
 }
 
 function openBriefing(): void {
@@ -353,6 +370,12 @@ function failDirective(): void {
 }
 
 function report(payload: MissionReport): void {
+  dispatch({
+    type: 'SPIN_BONUS',
+    seed: session.newSeed(),
+    outcome: payload.outcome,
+    stars: payload.stars,
+  })
   dispatch({ type: 'REPORT_RESULT', ...payload })
 }
 
@@ -400,8 +423,8 @@ function openPack(): void {
   }
 }
 
-// The climbs page rolls Squad Honors a beat after it opens; the seed is what
-// syncs, and the filed report supplies the stars and outcome.
+// A legacy in-progress report without a filed seed is recovered automatically
+// when the climbs page opens; only the seed syncs.
 function spinBonus(): void {
   dispatch({ type: 'SPIN_BONUS', seed: session.newSeed() })
 }
@@ -584,10 +607,26 @@ function openSteam(): void {
   steamBarOpen.value = !steamBarOpen.value
 }
 
-// Host moderation.
-function kick(diverId: string): void {
-  dispatch({ type: 'KICK_DIVER', playerId: diverId })
-  pushToast('Diver removed — this dive will not seat them again')
+// Host moderation always confirms the target and makes network blocking an
+// explicit opt-in, so an ordinary kick cannot bar a household's fresh joiner.
+function requestKick(diverId: string): void {
+  const target = state.value?.divers.find(diver => diver.id === diverId)
+  if (!canControl.value || !target || target.id === state.value?.hostId) {
+    return
+  }
+  kickTargetId.value = diverId
+}
+
+function confirmKick(blockNetwork: boolean): void {
+  const diverId = kickTargetId.value
+  kickTargetId.value = null
+  if (!diverId || !canControl.value) {
+    return
+  }
+  dispatch({ type: 'KICK_DIVER', playerId: diverId, blockNetwork })
+  pushToast(blockNetwork
+    ? 'Diver removed — their network is blocked from new joins'
+    : 'Diver removed — this dive will not seat them again')
 }
 
 function transferHost(diverId: string): void {
@@ -639,6 +678,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       :state="state"
       :room-code="session.slotName.value"
       :self-name="self?.name ?? ''"
+      @name="fileHostName"
       @close="closeBriefing"
     />
     <section
@@ -708,7 +748,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @copy-invite="copyInvite"
       @open-menu="sessionMenuOpen = true"
       @transfer-host="transferHost"
-      @kick="kick"
+      @kick="requestKick"
       @dismiss-error="session.dismissError()"
     />
 
@@ -748,7 +788,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @award-bonus="awardBonus"
       @advance="advance"
       @forfeit="forfeit"
-      @kick="kick"
+      @kick="requestKick"
       @transfer-host="transferHost"
       @copy-invite="copyInvite"
       @open-steam="openSteam"
@@ -939,7 +979,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
             :honors-winners="honorsWinners"
             :honors-awarded="honorsAwarded"
             @transfer-host="transferHost"
-            @kick="kick"
+            @kick="requestKick"
             @copy-invite="copyInvite"
             @open-steam="openSteam"
           />
@@ -965,6 +1005,13 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @new-session="newSessionOpen = true"
       @leave="leaveDive"
       @end="endDive"
+    />
+
+    <SquadKickDialog
+      v-if="kickTarget"
+      :diver="kickTarget"
+      @confirm="confirmKick"
+      @cancel="kickTargetId = null"
     />
 
     <AppDialog

@@ -140,8 +140,6 @@ function nameOf(option: RewardOption): string {
 }
 
 const crossSelected = computed(() => crossOption.value !== null && selectedId.value === crossOption.value.optionId)
-const crossChosenName = computed(() =>
-  crossSelected.value && choiceItemId.value ? itemById(choiceItemId.value)?.displayName ?? null : null)
 
 function chosenItemName(): string {
   if (!selectedId.value) {
@@ -169,6 +167,15 @@ const pickedItem = computed(() => {
     return direct
   }
   return pickedOption.value && !pickedOption.value.choice ? pickedOption.value.item : null
+})
+const crossChosenItem = computed(() => {
+  if (crossSelected.value && choiceItemId.value) {
+    return itemById(choiceItemId.value) ?? null
+  }
+  if (bankedId.value === crossOption.value?.optionId && props.pickedId) {
+    return itemById(props.pickedId) ?? null
+  }
+  return null
 })
 const pickedName = computed(() => {
   if (pickedItem.value) {
@@ -291,7 +298,7 @@ const kickerText = computed(() => {
       :picked="crossSelected || bankedId === crossOption.optionId"
       :dimmed="resolved && bankedId !== crossOption.optionId"
       :stamp="resolved && bankedId === crossOption.optionId ? 'Banked' : null"
-      :chosen-name="crossChosenName"
+      :chosen-item="crossChosenItem"
       @choose="chooseCross"
     />
 
@@ -548,7 +555,12 @@ const kickerText = computed(() => {
   clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
   transition: transform var(--dur-med) var(--ease-out), filter var(--dur-med), box-shadow var(--dur-med), opacity var(--dur-med);
 }
-.loot-slot { --reveal-cut: 12px; }
+.loot-slot {
+  --reveal-cut: 12px;
+  width: 100%;
+  max-width: 340px;
+  justify-self: center;
+}
 .loot-cross { --cross-gap: 18px; }
 .loot-card[data-tier='C'] { --tier: var(--tier-c); }
 .loot-card[data-tier='B'] { --tier: var(--tier-b); }
@@ -633,7 +645,7 @@ const kickerText = computed(() => {
 .banked .item-name { color: var(--text); }
 .selected-mark {
   color: var(--tier);
-  font-size: 10px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;

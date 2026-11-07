@@ -28,7 +28,10 @@ const props = withDefaults(defineProps<{
   selectable: true,
 })
 
-const emit = defineEmits<{ select: [] }>()
+const emit = defineEmits<{
+  select: []
+  toggleDetails: []
+}>()
 
 const accountability = computed(() => {
   switch (props.condition.accountability) {
@@ -38,7 +41,8 @@ const accountability = computed(() => {
   }
 })
 
-const expanded = computed(() => !props.compact || props.selected || props.open)
+const expanded = computed(() => !props.compact || props.open)
+const detailsId = useId()
 
 function choose(): void {
   if (props.selectable && !props.disabled) {
@@ -48,14 +52,118 @@ function choose(): void {
 </script>
 
 <template>
+  <article
+    v-if="compact"
+    class="condition compact"
+    :class="{ selected, disabled, broken: stampTone === 'red' }"
+    :style="{ '--tilt': `${tilt}deg` }"
+  >
+    <button
+      v-if="selectable"
+      class="pick-area"
+      type="button"
+      :aria-label="`Swear ${condition.name} pact`"
+      :aria-pressed="selected"
+      :disabled="disabled || Boolean(blocked)"
+      @click="choose"
+    >
+      <span class="condition-head">
+        <RiskPips
+          :value="risk"
+          :max="risk"
+          :tone="selected ? 'gold' : 'red'"
+        />
+        <span class="risk-word cap">Risk {{ risk }}</span>
+        <span
+          v-if="stamp"
+          class="stamp compact-stamp disp"
+          :class="stampTone"
+          aria-hidden="true"
+        >{{ stamp }}</span>
+      </span>
+      <span class="media">
+        <ConditionSigil
+          :id="condition.id"
+          :size="54"
+        />
+      </span>
+      <span
+        class="condition-name disp"
+        :style="fitWord(condition.name)"
+      >{{ condition.name }}</span>
+      <span class="select-hint cap">{{ selected ? 'Tap to unswear' : 'Tap to swear' }}</span>
+    </button>
+    <div
+      v-else
+      class="compact-face"
+    >
+      <span class="condition-head">
+        <RiskPips
+          :value="risk"
+          :max="risk"
+          :tone="selected ? 'gold' : 'red'"
+        />
+        <span class="risk-word cap">Risk {{ risk }}</span>
+        <span
+          v-if="stamp"
+          class="stamp compact-stamp disp"
+          :class="stampTone"
+          aria-hidden="true"
+        >{{ stamp }}</span>
+      </span>
+      <span class="media">
+        <ConditionSigil
+          :id="condition.id"
+          :size="54"
+        />
+      </span>
+      <span
+        class="condition-name disp"
+        :style="fitWord(condition.name)"
+      >{{ condition.name }}</span>
+    </div>
+    <button
+      class="details-toggle cap"
+      type="button"
+      :aria-label="`${expanded ? 'Hide' : 'Read'} ${condition.name} rules`"
+      :aria-expanded="expanded"
+      :aria-controls="detailsId"
+      @click.stop="emit('toggleDetails')"
+    >
+      {{ expanded ? 'Less' : 'Details' }}
+    </button>
+    <div
+      v-show="expanded"
+      :id="detailsId"
+      class="details-content"
+    >
+      <span class="condition-rule">“<ConditionRule :condition="condition" />”</span>
+      <span
+        v-if="note"
+        class="note"
+      >{{ note }}</span>
+      <span class="accountability cap">
+        <span
+          class="watch"
+          aria-hidden="true"
+        />
+        {{ accountability }}
+      </span>
+      <span
+        v-if="blocked"
+        class="blocked"
+      >{{ blocked }}</span>
+    </div>
+  </article>
+
   <component
     :is="selectable ? 'button' : 'article'"
+    v-else
     class="condition"
-    :class="{ selected, disabled, compact, expanded, broken: stampTone === 'red' }"
+    :class="{ selected, disabled, expanded, broken: stampTone === 'red' }"
     :style="{ '--tilt': `${tilt}deg` }"
     :type="selectable ? 'button' : undefined"
     :aria-pressed="selectable ? selected : undefined"
-    :aria-expanded="compact ? expanded : undefined"
     :disabled="selectable ? disabled || Boolean(blocked) : undefined"
     @click="choose"
   >
@@ -78,7 +186,7 @@ function choose(): void {
     <span class="media">
       <ConditionSigil
         :id="condition.id"
-        :size="compact ? 54 : 78"
+        :size="78"
       />
     </span>
 
@@ -87,30 +195,22 @@ function choose(): void {
       :style="fitWord(condition.name)"
     >{{ condition.name }}</span>
 
-    <template v-if="expanded">
-      <span class="condition-rule">“<ConditionRule :condition="condition" />”</span>
-      <span
-        v-if="note"
-        class="note"
-      >{{ note }}</span>
-      <span class="accountability cap">
-        <span
-          class="watch"
-          aria-hidden="true"
-        />
-        {{ accountability }}
-      </span>
-      <span
-        v-if="blocked"
-        class="blocked"
-      >{{ blocked }}</span>
-    </template>
-
+    <span class="condition-rule">“<ConditionRule :condition="condition" />”</span>
     <span
-      v-if="compact && !expanded"
-      class="expand cap"
-      aria-hidden="true"
-    >More</span>
+      v-if="note"
+      class="note"
+    >{{ note }}</span>
+    <span class="accountability cap">
+      <span
+        class="watch"
+        aria-hidden="true"
+      />
+      {{ accountability }}
+    </span>
+    <span
+      v-if="blocked"
+      class="blocked"
+    >{{ blocked }}</span>
   </component>
 </template>
 
@@ -140,7 +240,7 @@ function choose(): void {
     filter var(--dur-med);
   clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
 }
-.condition:hover:not(:disabled) {
+.condition:not(.compact):hover:not(:disabled) {
   border-color: var(--line-5);
   filter: brightness(1.04);
 }
@@ -197,6 +297,58 @@ function choose(): void {
 .stamp.teal { color: var(--teal); }
 .stamp.red { color: var(--red); }
 
+.pick-area,
+.compact-face {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.pick-area { cursor: pointer; }
+.pick-area:hover:not(:disabled) .condition-name { color: var(--gold); }
+.pick-area:disabled { cursor: not-allowed; }
+.condition.compact { cursor: default; }
+.condition.compact:hover { border-color: var(--edge); filter: none; }
+.compact .condition-head { justify-content: flex-start; }
+.compact .risk-word { margin-right: auto; }
+.compact-stamp {
+  position: static;
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-width: 2px;
+  font-size: 12px;
+}
+.select-hint {
+  align-self: flex-end;
+  color: var(--dim);
+  font-size: 10px;
+  text-align: right;
+}
+.selected .select-hint { color: var(--gold); }
+.details-toggle {
+  align-self: flex-end;
+  min-width: 72px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line-3);
+  background: var(--ground);
+  color: var(--khaki);
+  font: 700 11px var(--font-body);
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.details-toggle:hover { border-color: var(--gold); color: var(--gold); }
+.details-content { display: flex; flex-direction: column; gap: 8px; }
+
 .media {
   display: grid;
   place-items: center;
@@ -245,6 +397,8 @@ function choose(): void {
   padding-top: 10px;
   border-top: 1px solid var(--line-2);
   color: var(--dim);
+  font-size: var(--fs-sm);
+  line-height: 1.3;
   white-space: normal;
 }
 .watch {
@@ -268,11 +422,6 @@ function choose(): void {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.expand {
-  color: var(--dim);
-  text-align: right;
-}
-
 .compact {
   padding: 12px 14px;
   gap: 8px;
@@ -282,6 +431,5 @@ function choose(): void {
   transform: none;
 }
 .compact .media { min-height: 70px; }
-.compact .stamp { top: 18px; right: 10px; }
 .compact .condition-rule { font-size: 13px; }
 </style>

@@ -98,6 +98,7 @@ interface Bay {
   initial: string
   host: boolean
   you: boolean
+  away: boolean
   warbonds: number
 }
 
@@ -112,6 +113,7 @@ const bays = computed<Bay[]>(() => Array.from({ length: 4 }, (_, i) => {
     initial: (diver?.name.trim()[0] ?? '?').toUpperCase(),
     host: diver?.id === props.state.hostId,
     you: Boolean(diver) && diver?.id === props.selfId,
+    away: diver?.away ?? false,
     warbonds: diver?.warbondCodes.length ?? 0,
   }
 }))
@@ -121,10 +123,11 @@ function bayLabel(bay: Bay): string {
     return `${bay.label} open — copy the invite link`
   }
   const role = bay.host ? ', host' : ''
+  const away = bay.away ? ', away' : ''
   if (bay.you) {
-    return `${bay.label}, you${role} — warbonds, ${bay.warbonds} declared`
+    return `${bay.label}, you${role}${away} — warbonds, ${bay.warbonds} declared`
   }
-  const label = `${bay.label}, ${bay.name}${role}, ${bay.warbonds} warbonds`
+  const label = `${bay.label}, ${bay.name}${role}${away}, ${bay.warbonds} warbonds`
   return props.canControl ? `${label} — manage` : label
 }
 
@@ -147,7 +150,7 @@ function manage(action: 'transferHost' | 'kick'): void {
     return
   }
   if (action === 'kick') {
-    emit('kick', id)
+    nextTick(() => emit('kick', id))
   }
   else {
     emit('transferHost', id)
@@ -280,7 +283,7 @@ function launch(): void {
             v-for="bay in bays"
             :key="bay.index"
             class="bay"
-            :class="{ seated: bay.seated, open: !bay.seated, you: bay.you }"
+            :class="{ seated: bay.seated, open: !bay.seated, you: bay.you, away: bay.away }"
             :type="interactive(bay) ? 'button' : undefined"
             :aria-label="bayLabel(bay)"
             @click="pressBay(bay)"
@@ -361,6 +364,10 @@ function launch(): void {
                 v-if="bay.seated"
                 class="tag-meta"
               >
+                <span
+                  v-if="bay.away"
+                  class="tag-away"
+                >Away</span>
                 <span
                   v-if="bay.host"
                   class="tag-host"
@@ -579,6 +586,9 @@ function launch(): void {
 button.bay { cursor: pointer; transition: border-color var(--dur-fast); }
 button.bay:hover { border-color: var(--gold); }
 .bay.you { border-color: var(--line-5); }
+.bay.away { border-color: var(--line-3); }
+.bay.away .tag-name,
+.bay.away .pod-face { opacity: 0.55; }
 .bay.open { border-style: dashed; border-color: var(--line-4); background: transparent; }
 
 .well {
@@ -681,6 +691,7 @@ button.bay.open:hover .tag-name { color: var(--gold); }
 }
 .tag-meta > span { display: inline-flex; align-items: center; gap: 4px; }
 .tag-host { color: var(--gold); }
+.tag-away { color: var(--orange); }
 .tag-wb { color: var(--gold); }
 .tag-wb-icon { width: 12px; height: 12px; }
 

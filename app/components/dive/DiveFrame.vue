@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// The lit-pass dive shell: flat header, one stage, one squad dock. No rails,
-// no persistent ladder. Each phase is a single lit object on the stage. The
-// aside slot docks the tool sidebar (Kit, Codex, Warbonds, Bargains) beside it.
+// The lit-pass dive shell: flat header, one stage and one
+// squad dock. The aside slot docks the tool sidebar (Kit, Codex, Warbonds,
+// Bargains) beside the stage.
 </script>
 
 <template>
