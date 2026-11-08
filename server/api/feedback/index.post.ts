@@ -3,6 +3,7 @@ import { roomMetrics } from '../../utils/metrics'
 import { feedbackKV } from '../../utils/feedback-storage'
 import { isHoneypot, newFeedbackId, sanitizeFeedback, saveFeedback } from '../../utils/feedback'
 import { createRateLimiter } from '../../utils/rate-limit'
+import { clientIpFromHeaders } from '../../utils/client-ip'
 
 // Eight notes per ten minutes is more than a squad of four ever needs, and it
 // keeps a script from filling the inbox. The e2e server raises it (FEEDBACK_LIMIT).
@@ -12,7 +13,7 @@ const feedbackLimiter = createRateLimiter(Number.parseInt(process.env.FEEDBACK_L
 const MAX_BODY_BYTES = 16 * 1024
 
 export default defineEventHandler(async (event) => {
-  const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'
+  const ip = clientIpFromHeaders(event.headers, event.node.req.socket?.remoteAddress) ?? 'unknown'
   if (!feedbackLimiter.take(ip)) {
     roomMetrics.recordFeedbackRejected('rate_limited')
     throw createError({ statusCode: 429, statusMessage: 'Too many notes from this connection — try again later.' })

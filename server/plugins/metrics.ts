@@ -1,5 +1,6 @@
 import { createServer } from 'node:http'
 import { roomMetrics } from '../utils/metrics'
+import { errorStatus, markHttpRequest, recordHttpRequestOnce, responseStatus } from '../utils/http-metrics'
 import { peers } from '../utils/peers'
 import { censusRooms } from '../utils/room-sync'
 import { roomKV } from '../utils/room-storage'
@@ -31,14 +32,21 @@ export default defineNitroPlugin((nitroApp) => {
 
   // Cold HTTP hits by route: client-side navigation and the PWA service worker
   // never reach the server, so this counts arrivals, not page views. The
-  // route bucket rides the request context into afterResponse.
+  // route bucket rides the request context into afterResponse; the error hook
+  // covers 4xx/5xx responses the error handler writes itself.
   nitroApp.hooks.hook('request', (event) => {
-    (event.context as Record<string, unknown>).griffdiveMetricsPath = event.path
+    markHttpRequest(event, event.path)
   })
   nitroApp.hooks.hook('afterResponse', (event) => {
-    const path = (event.context as Record<string, unknown>).griffdiveMetricsPath
-    if (typeof path === 'string') {
-      roomMetrics.recordHttpRequest(path, responseStatus(event))
+    recordHttpRequestOnce(event, responseStatus(event), (path, status) => {
+      roomMetrics.recordHttpRequest(path, status)
+    })
+  })
+  nitroApp.hooks.hook('error', (error, context) => {
+    if (context.event) {
+      recordHttpRequestOnce(context.event, errorStatus(error, context.event), (path, status) => {
+        roomMetrics.recordHttpRequest(path, status)
+      })
     }
   })
 
@@ -56,8 +64,3 @@ export default defineNitroPlugin((nitroApp) => {
   }, CENSUS_INTERVAL_MS)
   censusTimer.unref()
 })
-
-function responseStatus(event: unknown): number {
-  const node = (event as { node?: { res?: { statusCode?: number } } }).node
-  return node?.res?.statusCode ?? 0
-}

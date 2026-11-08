@@ -2,6 +2,7 @@ import { InvalidSaveError, RoomLimitError, createRoom, createRoomFromSave } from
 import { roomMetrics } from '../../utils/metrics'
 import { roomKV } from '../../utils/room-storage'
 import { createRateLimiter } from '../../utils/rate-limit'
+import { clientIpFromHeaders } from '../../utils/client-ip'
 
 // Ten new dives a minute per address is far more than a squad ever needs and
 // keeps a script from filling the single machine with rooms. The e2e server
@@ -12,7 +13,7 @@ const createLimiter = createRateLimiter(Number.parseInt(process.env.ROOM_CREATE_
 const MAX_SAVE_BODY_BYTES = 256 * 1024
 
 export default defineEventHandler(async (event) => {
-  const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'
+  const ip = clientIpFromHeaders(event.headers, event.node.req.socket?.remoteAddress) ?? 'unknown'
   if (!createLimiter.take(ip)) {
     roomMetrics.recordRoomCreateRejected('rate_limited')
     throw createError({ statusCode: 429, statusMessage: 'Too many dives started — try again shortly.' })
