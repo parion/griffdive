@@ -75,6 +75,12 @@ IDs are stable and append-only; do not renumber.
 | N43 | Starting variants: three difficulties + SEAF/Penance modes | Rules | L | Done | new |
 | N44 | Squad honors allow ties (multiple winners) | Rules/UX | S | Done | new |
 | N45 | Brasch's Bargains: price curve 35/100/280/450 + shut until the first operation completes | Balance/Rules | S | Done | beta review |
+| N46 | Crusade outcome + depth in the census | Observability | M | Batch E | beta metrics read |
+| N47 | Shareable run recap for both endings | Feature/UX | M | Batch E | beta metrics read |
+| N48 | Operation milestone + Bridge re-entry nudge | UX | M | Batch E | beta metrics read |
+| N49 | Brasch's Bargains d8–10 buy drop | Balance/Data | M | Batch E (data-gated) | beta review |
+| N50 | Heat ladders / bounties | Feature/Rules | L | Batch E (Phase 5 opener) | roadmap |
+| N51 | Low-end phone + Lighthouse pass | Infra/Perf | M | Batch E (launch gate) | marketing checklist |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -208,6 +214,30 @@ scripted crusade spends a token).
 N2, N10, N15, N17, N39. **N2 landed** (faction strains, below) and **N17 landed** (guide primer +
 persistent Help drawer + Valor/ceiling tooltips; presentation only, no engine bump). Remaining:
 N10 (crash semantics, DEC-9), N15 (repro), N39 (token economy).
+
+### Batch E — The climb (next)
+
+Written from the beta metrics read (2026-11-08): 28 divers peak, 52 rooms and 395 seated arrivals in
+24h, 25 crusades launched, 123 missions at a 92% reported success rate, 61 saved dives, and 0
+crusades achieved. Batch D's remaining items (N10, N15, N39) stay where they are — this batch is the
+post-launch arc, and it is deliberately ordered **measure → pay off → tune → extend**. No engine
+rules change until N46's panels have a week of live data.
+
+- **E0 — Launch gates.** N41, N42, N51, plus the Nitro `error`-hook fix in
+  `server/plugins/metrics.ts` (a 4xx/5xx written by the error handler never reaches
+  `afterResponse`, so the HTTP-error panel is blind). The marketing kit already gates the public
+  post on N41/N42; a 2,000-room ceiling on one 256 MB machine makes them real now.
+- **E1 — See the climb.** N46. `END_DIVE` and a real achievement both write `phase: 'complete'`, so
+  the census cannot tell a win from a quit and nothing records how deep an abandoned run got. Split
+  the bucket, add a run-depth histogram, and put "The climb" on the dashboard.
+- **E2 — Pay off the climb.** N47 + N48. The achieved ending already has `DiveAchievedOverlay`; the
+  abandoned ending gets the same ceremony, and both get a shareable recap card. The Bridge learns to
+  say when the squad last played and what is waiting.
+- **E3 — Tune the climb.** N49 + the existing N25 and N39. Altitude win rate, forfeit cost, and the
+  Brasch 8–10 buy drop; then the pact floor and token sources. Gated on E1's data.
+- **E4 — Extend the climb.** N50 heat ladders/bounties — the Phase 5 opener, because it reuses the
+  condition catalogue and gives summit squads a reason to keep playing. Endless mode follows;
+  Specialists stay later.
 
 ### Post-v1 / R&D
 
@@ -558,9 +588,75 @@ so the wheel pin reads "Front locked · Automatons · Fury". Covered by server n
 selector/E2E planet-pin assertions. (`MajorOrderCard` and its note retired when the front plan
 moved to crusade setup; the setup's Major Order card lists only the active fronts.)
 
-### Hardening backlog (deferred)
+### Batch E
 
-Recorded after the Fly-volume persistence swap; not scheduled.
+**N46 · Crusade outcome and depth in the census.** The beta read cannot tell a won crusade from a
+quit: `END_DIVE` writes the same `phase: 'complete'` as the difficulty-10 achievement
+(`reducer.ts`), and `RoomCensusEntry` carries only `code / phase / difficulty / saved`
+(`room-sync.ts`). So `griffdive_rooms_by_phase{phase="complete"}` (191 rooms at the read) is a mix
+of both, and no counter says how deep an abandoned run got. Add `achieved` and `missionIndex` to the
+census entry, a `griffdive_rooms_complete{result="achieved"|"abandoned"}` gauge, and a
+`griffdive_crusade_depth` histogram observed on the transition into `complete` (value
+`missionIndex` — missions advanced, with the winning mission already counted; label `result`) plus
+by the TTL sweeper for rooms that never reached `complete` (`result="expired"`). Add a dashboard row
+— **The climb** — with depth at end, end reasons, win rate by difficulty, time to the next
+difficulty; regenerate `pnpm dashboard:preview`, and update the metric table in
+[Deployment](./docs/agents/deployment.md) → Monitoring. Derived only: no state, no schema, no
+`ENGINE_VERSION` bump. Optional follow-on once it has data: a "crusade depth at last event" panel
+split by start variant, since the 3/5/7 starts are not equally long.
+
+**N47 · Shareable run recap for both endings.** The achieved ending already has
+`DiveAchievedOverlay` (ladder, squad tags, export). The abandoned ending still lands on the bare
+`DivePhaseComplete` panel, so the majority outcome reads like a failure screen. Give both endings
+the same ceremony language and a client-rendered recap card (`canvas` → PNG download, no server, no
+account): squad names, start and end difficulty, missions flown, operations cleared, combos, gear
+owned, and one signature stat. Achieved keeps the ladder; abandoned gets the Ministry-closes-your-file
+framing and names the rung reached. The card is the organic-growth loop — `public/og-image.png`
+proves the renderer works but is static, so this is a small canvas component, not a route.
+Presentation plus a client-side export; no rules, no `ENGINE_VERSION` bump. Only stats the state
+already carries — do not invent cumulative pact/forfeit totals without deciding on a schema change.
+
+**N48 · Operation milestone + Bridge re-entry nudge.** The operation boundary is the run's only long
+cadence, and `ADVANCE` currently jumps straight to the next spin (difficulty up, front cleared) with
+at most a toast. Add a short presentation-only milestone beat at the boundary — difficulty cleared,
+new front, what carries over (reroll tokens, purchased kinds reset) — then the host continues. On the
+other side, the Bridge's saved-dive cards should carry the human signal: "last played 3 days ago",
+the squad names, and a single **Continue** primary action (`DiveSaveInfo.updatedAt` already carries
+the timestamp). Neither change may gate the reducer; no engine, schema, or golden change. Pair it
+with N46's return-gap panel to see whether the nudge moves a second session.
+
+**N49 · Brasch's Bargains at altitude.** The marketing kit already flags it: buys drop sharply at
+difficulty 8–10 (0.1–0.6 per mission against 1.4 per operation through B/A) and the cause was never
+investigated. Three candidates, in order: the haul curve (samples × time multiplier) is too tight
+against the 280/450 rungs; the shelf is stocked with kinds the squad already owns; or the
+one-buy-per-mission and bought-kind rules starve a squad that only plays one mission an evening.
+Run `scripts/simulate-economy.mjs` at the d8–10 band, compare with live
+`griffdive_purchases_total` / `griffdive_samples_haul`, then make one change (haul, price, or stock
+rule) with the simulation before/after in the PR. Data-gated on N46 only for the difficulty split;
+the purchase panel already exists.
+
+**N50 · Heat ladders / bounties.** The Phase 5 opener. Reuse the existing condition catalogue and
+Valor math instead of inventing a second rules surface: a **bounty ladder** is a per-crusade set of
+ranked optional conditions, each rung adding its scaled team risk and unlocking a named reward
+(a tier upgrade or a guaranteed item) when the operation clears. The squad sees the next rung before
+committing; clearing it reveals the one above. This is the Hades heat shape — hand-picked ranked
+conditions that tax different strengths — and it gives summit squads a reason to keep playing
+without new art beyond badges. Engine: per-crusade bounty state, a selector for the next eligible
+rung, and accept/decline at the operation boundary; `SAVE_SCHEMA_VERSION` bump, goldens if the
+scripted crusade takes a rung. Land after N46/N49 have data and after E2's payoff, so the first
+retention read is not confounded by a new system.
+
+**N51 · Low-end phone + Lighthouse pass.** The remaining marketing-checklist blocker. Measure
+production on a throttled mid-range Android: LCP/INP/CLS on the Bridge and dive, install + offline
+shell, the wheel's frame rate (it is a real spinning SVG), and the 360×640 stage. Budgets: JS
+≤ 400 kB gzip (currently 333 kB), CSS ≤ 70 kB gzip (currently 61 kB), no long task over 200 ms on a
+phase swap. Fix only the top offenders; no redesign, no new runtime dependency. Record the numbers in
+the PR so the next pass has a baseline.
+
+### Hardening backlog (promoted into Batch E)
+
+Recorded after the Fly-volume persistence swap; **now scheduled as Batch E0** (with N51) after the
+2026-11-08 metrics read showed the traffic is no longer hypothetical.
 
 **N41 · Trusted client IP for rate limits.** `server/api/rooms/index.post.ts` keys the 10/min
 create limit on `getRequestIP(event, { xForwardedFor: true })`, which takes the **first**

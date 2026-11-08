@@ -69,6 +69,13 @@ version restarted at 1 and the migration chain starts empty; from here the schem
 saves migrate (see Save model). Staging is password-protected (see Deployment). See
 [Roadmap](#roadmap).
 
+**Beta metrics (2026-11-08).** First post-launch read: **28 divers peak**, 52 rooms and 395 seated
+arrivals in 24h, 25 crusades launched, 123 missions at a 92% reported success rate, 61 saved dives,
+and **0 crusades achieved** — expected for a run the code calls "weeks of evenings", but the census
+cannot yet tell a won crusade from a quit (`END_DIVE` also writes `complete`). Risk is landing
+(zero-Valor reports 0%, median Valor 7, two pacts per diver); the summit and retention read is the
+next gap. **Batch E** in [PLAN.md](../../PLAN.md) is written from this read.
+
 ## Beta-readiness review (2026-10-24)
 
 Pre-beta pass: dependencies upgraded, component tree reorganised to Nuxt's default naming, dead
@@ -152,5 +159,11 @@ Each phase lands shippable. Update the relevant `docs/agents/` files (commands, 
   separate Fly app (`deploy/fider/`). See [Deployment](./deployment.md) → Feedback inbox.
   Remaining: the final polish pass. *Done
   when: production URL serves a full multiplayer dive.*
-- **Phase 5 — Post-v1 backlog.** Specialists (PC parity), tier-maker custom rarity tables, heat
-  ladders/bounties (clear risk N to claim N+1), endless mode, accounts + cloud saves, i18n.
+- **Phase 4.5 — Batch E, the climb (next).** The 2026-11-08 metrics read set the order:
+  **E0** launch gates (N41, N42, N51 + the Nitro error-hook metric fix), **E1** make the census tell
+  a win from a quit (N46: achieved/abandoned split, run depth), **E2** pay off both endings with a
+  shareable recap and a re-entry nudge (N47, N48), **E3** tune altitude (N49 + N25/N39), **E4** pull
+  **heat ladders/bounties** forward as the Phase 5 opener (N50). No engine rules change until E1 has
+  a week of data. See [PLAN.md](../../PLAN.md) → Batch E.
+- **Phase 5 — Post-v1 backlog.** Specialists (PC parity), tier-maker custom rarity tables, endless
+  mode (follows Batch E's heat ladders/bounties, N50), accounts + cloud saves, i18n.
