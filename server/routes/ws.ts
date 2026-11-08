@@ -3,6 +3,7 @@ import type { PeerLike, RoomLimits } from '../utils/room-sync'
 import { roomKV } from '../utils/room-storage'
 import { peers as directory } from '../utils/peers'
 import { createRateLimiter } from '../utils/rate-limit'
+import { clientIpFromHeaders } from '../utils/client-ip'
 
 // Process-wide throttles: joins are the room-code brute-force surface, actions
 // the storage-write flood surface. Generous enough that real play never sees
@@ -22,11 +23,11 @@ export default defineWebSocketHandler({
     const url = new URL(request.url, 'http://localhost')
     ;(request.context as Record<string, unknown>).roomCode = url.searchParams.get('room') ?? ''
     // Behind Fly's proxy the socket address is the proxy's, so every diver
-    // would share one join budget. Fly-Client-IP is set by the proxy itself.
-    const forwarded = request.headers.get('fly-client-ip')
-      ?? request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    if (forwarded) {
-      ;(request.context as Record<string, unknown>).clientIp = forwarded
+    // would share one join budget. Fly-Client-IP is set by the proxy itself;
+    // without it the limiter falls back to peer.remoteAddress.
+    const clientIp = clientIpFromHeaders(request.headers)
+    if (clientIp) {
+      ;(request.context as Record<string, unknown>).clientIp = clientIp
     }
   },
 
