@@ -134,9 +134,9 @@ describe('room-metrics', () => {
     metrics.trackRoom('BBB222', 'lobby', 0)
     metrics.trackRoom('CCC333', 'diving', 0)
     metrics.census([
-      { code: 'AAA111', phase: 'lobby', difficulty: 3, saved: false },
-      { code: 'BBB222', phase: 'lobby', difficulty: 5, saved: true },
-      { code: 'CCC333', phase: 'diving', difficulty: 7, saved: false },
+      { code: 'AAA111', phase: 'lobby', difficulty: 3, saved: false, achieved: false, missionIndex: 0 },
+      { code: 'BBB222', phase: 'lobby', difficulty: 5, saved: true, achieved: false, missionIndex: 0 },
+      { code: 'CCC333', phase: 'diving', difficulty: 7, saved: false, achieved: false, missionIndex: 4 },
     ])
 
     const text = await metrics.registry.metrics()
@@ -144,11 +144,27 @@ describe('room-metrics', () => {
     expect(text).toMatch(/griffdive_rooms_by_phase\{phase="diving"\} 1/)
     expect(text).toMatch(/griffdive_rooms_by_phase\{phase="rewards"\} 0/)
     expect(text).toMatch(/griffdive_rooms_by_phase\{phase="complete"\} 0/)
+    expect(text).toMatch(/griffdive_rooms_complete\{result="achieved"\} 0/)
+    expect(text).toMatch(/griffdive_rooms_complete\{result="abandoned"\} 0/)
     expect(text).toMatch(/griffdive_room_difficulty\{difficulty="3"\} 1/)
     expect(text).toMatch(/griffdive_room_difficulty\{difficulty="7"\} 1/)
     expect(text).toMatch(/griffdive_room_difficulty\{difficulty="10"\} 0/)
     expect(text).toContain('griffdive_saved_dives 1')
     expect(text).toMatch(/griffdive_build_info\{engine="\d+",image="[^"]+"\} 1/)
+  })
+
+  it('splits completed rooms into achieved and abandoned', async () => {
+    const metrics = createRoomMetrics()
+    metrics.census([
+      { code: 'AAA111', phase: 'complete', difficulty: 10, saved: false, achieved: true, missionIndex: 22 },
+      { code: 'BBB222', phase: 'complete', difficulty: 8, saved: true, achieved: false, missionIndex: 9 },
+      { code: 'CCC333', phase: 'diving', difficulty: 5, saved: false, achieved: false, missionIndex: 4 },
+    ])
+
+    const text = await metrics.registry.metrics()
+    expect(text).toMatch(/griffdive_rooms_by_phase\{phase="complete"\} 2/)
+    expect(text).toMatch(/griffdive_rooms_complete\{result="achieved"\} 1/)
+    expect(text).toMatch(/griffdive_rooms_complete\{result="abandoned"\} 1/)
   })
 
   it('observes phase dwell once per transition, seeding unknown rooms silently', async () => {
@@ -267,6 +283,27 @@ describe('room-metrics', () => {
     expect(text).toMatch(/griffdive_operations_completed_total\{difficulty="10"\} 1/)
     expect(text).toContain('griffdive_crusades_achieved_total 1')
     expect(text).toMatch(/griffdive_missions_started_total\{difficulty="4"\} 1/)
+  })
+
+  it('observes crusade depth on the transition into complete', async () => {
+    const metrics = createRoomMetrics()
+    const before = createDiveState({ variant: 'medium' }, 'p1', 'Diver One')
+    const abandoned: DiveState = { ...before, phase: 'complete', achieved: false, missionIndex: 7 }
+    metrics.recordAction(before, abandoned, { type: 'END_DIVE' })
+    const achieved: DiveState = { ...before, phase: 'complete', achieved: true, missionIndex: 22 }
+    metrics.recordAction(before, achieved, { type: 'ADVANCE' })
+    // A room already complete is a no-op in the reducer, so it never passes the
+    // seam again; this mirrors that guarantee.
+    metrics.recordAction(abandoned, abandoned, { type: 'END_DIVE' })
+    metrics.recordCrusadeExpired(5)
+
+    const text = await metrics.registry.metrics()
+    expect(text).toMatch(/griffdive_crusade_depth_count\{result="abandoned"\} 1/)
+    expect(text).toMatch(/griffdive_crusade_depth_sum\{result="abandoned"\} 7/)
+    expect(text).toMatch(/griffdive_crusade_depth_count\{result="achieved"\} 1/)
+    expect(text).toMatch(/griffdive_crusade_depth_sum\{result="achieved"\} 22/)
+    expect(text).toMatch(/griffdive_crusade_depth_count\{result="expired"\} 1/)
+    expect(text).toMatch(/griffdive_crusade_depth_sum\{result="expired"\} 5/)
   })
 
   it('counts filed feedback by category and refusals by reason', async () => {
