@@ -1,7 +1,7 @@
 import type { Tier } from '../data/types'
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 1
+export const ENGINE_VERSION = 2
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -332,16 +332,19 @@ export const TIME_HAUL_FLOOR = 0.5
 
 // Brasch's Bargains prices: tier first, then type. Tier dominates (a C primary
 // is far cheaper than an S passive); the type multiplier is how a primary
-// out-prices an armor passive. The curve is steep through C/B/A (~2.8x per tier)
-// and flattens into S so the top stays in reach: C and B are a mission or two's
-// haul, A is a short save, and S, which only
-// stocks from difficulty 8, lands about once per 6-7 missions for a squad
-// filing a modest share of the map's samples (scripts/simulate-economy.mjs,
-// SAVER=1 models a diver who holds off small buys to afford a nearby S).
+// out-prices an armor passive. Every step is gentler than the one below it
+// (C→B 2.86x, B→A 2.2x, A→S 2.05x) because the haul's growth flattens with
+// altitude — the sample table saturates while the shelf's floor tier steps up at
+// each band edge, so a 2.8x B→A step left a casual squad with nothing affordable
+// on 90% of difficulty-8 missions. C and B are a mission or two's haul, A is a
+// short save, and S, which only stocks from difficulty 8, lands about once per
+// 5-7 missions for a squad filing a modest share of the map's samples
+// (scripts/simulate-economy.mjs, SAVER=1 models a diver who holds off small buys
+// to afford a nearby S).
 export const CREDIT_PRICE_TIER: Readonly<Record<'c' | 'b' | 'a' | 's', number>> = {
   c: 35,
   b: 100,
-  a: 280,
+  a: 220,
   s: 450,
 }
 
