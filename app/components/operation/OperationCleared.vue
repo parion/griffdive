@@ -4,6 +4,7 @@ import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
 import { draftSummaryFor, honorsPending } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
+import { operationMilestone } from '~/utils/operationMilestone'
 
 // The operation's last bank: the climb to the next difficulty, then the same
 // regroup as between missions — the diver's haul, the squad's picks and a last
@@ -25,6 +26,7 @@ const nextName = computed(() => difficultyName(nextDifficulty.value))
 const opNumber = computed(() =>
   catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
 const nextOp = computed(() => opNumber.value + 1)
+const milestone = computed(() => operationMilestone(props.state))
 const honorsLocked = computed(() => honorsPending(props.state))
 const startLabel = computed(() => (honorsLocked.value ? 'Award honors first' : `Start operation ${nextOp.value}`))
 const rungs = computed(() => Array.from({ length: MAX_DIFFICULTY - 2 }, (_, i) => {
@@ -97,6 +99,32 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
         Next drop: <b>Difficulty {{ nextDifficulty }} · {{ nextName }}</b>
       </p>
     </header>
+
+    <ol
+      v-if="milestone"
+      class="op-milestone"
+      aria-label="Operation milestone"
+    >
+      <li class="op-ms-cell">
+        <span class="lbl">Cleared</span>
+        <span class="op-ms-v">
+          <b class="disp">{{ milestone.clearedDifficulty }}</b>
+          {{ milestone.clearedName }}
+        </span>
+      </li>
+      <li class="op-ms-cell op-ms-front">
+        <span class="lbl">New front</span>
+        <span class="op-ms-v">{{ milestone.front }}</span>
+      </li>
+      <li
+        v-for="row in milestone.carries"
+        :key="row.label"
+        class="op-ms-cell"
+      >
+        <span class="lbl">{{ row.label }}</span>
+        <span class="op-ms-v">{{ row.value }}</span>
+      </li>
+    </ol>
 
     <ol
       class="ladder"
@@ -335,6 +363,39 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
 }
 .next-drop { margin: 0; color: var(--muted); font-size: 16px; }
 .next-drop b { color: var(--text); }
+
+/* The boundary beat: what was cleared, how the new front arrives, and what the
+   squad keeps. Presentation only — the host's Start operation still runs the
+   same ADVANCE. */
+.op-milestone {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: 1px;
+  margin: 2px 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line-2);
+  background: var(--line-1);
+}
+.op-ms-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 14px;
+  background: var(--rail);
+}
+.op-ms-cell .lbl { color: var(--gold); }
+.op-ms-v {
+  color: var(--khaki);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.op-ms-v b {
+  margin-right: 5px;
+  color: var(--gold);
+  font-size: 19px;
+}
+.op-ms-front .op-ms-v { color: var(--text); }
 
 .ladder {
   display: grid;
