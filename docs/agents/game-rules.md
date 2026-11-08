@@ -604,10 +604,13 @@ items):
     just played and every diver is dealt afresh.
   - **Seating mid-crusade:** the joiner is dealt the current mission's shelf.
 - **Prices:** tier first, then type: `itemPrice = CREDIT_PRICE_TIER[tier] × CREDIT_PRICE_TYPE[category]`.
-  C/B/A/S cost 35/100/280/450 — roughly 2.8× per tier through A, then a flatter step to S so the top
-  stays in reach — so C/B sit within a mission or two's haul, A is a short save, and S (stocked from difficulty 8) lands about once per 6–7
-  missions for a squad filing a modest share of the map's samples (`scripts/simulate-economy.mjs`;
-  `SAVER=1` models a diver who skips small buys to afford a nearby S). Primaries ×1.25, armor passives ×0.75, everything else ×1.
+  C/B/A/S cost 35/100/220/450 — every step is gentler than the one below it (C→B 2.86×, B→A 2.2×,
+  A→S 2.05×) because the haul's growth flattens with altitude: the sample table saturates while the
+  shelf's floor tier steps up at each band edge, so the price ladder has to flatten with it. C/B sit
+  within a mission or two's haul, A is a short save, and S (stocked from difficulty 8) lands about
+  once per 5–7 missions for a squad filing a modest share of the map's samples
+  (`scripts/simulate-economy.mjs`; `SAVER=1` models a diver who skips small buys to afford a nearby
+  S). Primaries ×1.25, armor passives ×0.75, everything else ×1.
 - **One buy per mission:** `BUY_ITEM` (self-service) deducts the price, banks the item in
   `personalInventories` and records it as `bargain.boughtItemId`. The shelf keeps its layout: the
   bought slot reads `bought` and every other slot `locked` until the next mission (`bargainShelfFor`
@@ -620,12 +623,12 @@ items):
 
 **Tuning check:** `node --experimental-strip-types scripts/simulate-economy.mjs` Monte-Carlos a
 full 3→10 climb (20 missions, 8 operations) for four collection profiles against the live
-`config.ts`, spending greedily one buy per mission. Targets: a casual squad (~35% of spawns) buys
-about one item per operation (~7 per climb, mostly C/B); a steady one (~60%) ~11; an eager collector
-(~85% plus Sample Scanner) ~15 — near a buy every mission through diff 7 but only every other
-mission at diff 8+, where A gear costs 400; the honor-system maxed haul (the 2× report ceiling) ~17
-and still reaches S only by saving. Re-run it after touching `SAMPLE_CREDITS`, `TIME_HAUL_FLOOR`,
-`CREDIT_PRICE_*` or `SAMPLE_AVAILABILITY`.
+`config.ts`, spending greedily one buy per mission. At the current curve it lands at roughly 7
+(casual, ~35% of spawns) / 12–13 (steady, ~60%) / 18 (eager, ~85% plus Sample Scanner) / 20 (the
+honor-system maxed haul, the 2× report ceiling) buys per climb — near a buy every mission through
+diff 7 but only every other mission at diff 8+, where A gear costs 220 — and S is still reached only
+by saving (`SAVER=1`: about one S per 5–7 missions for a modest share, 2–3 for an eager one). Re-run
+it after touching `SAMPLE_CREDITS`, `TIME_HAUL_FLOOR`, `CREDIT_PRICE_*` or `SAMPLE_AVAILABILITY`.
 
 ### Mission failure — the forfeit offer
 
