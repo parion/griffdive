@@ -17,5 +17,6 @@ export default defineEventHandler(async (event) => {
     state: room.state,
     saved: room.saved ?? null,
     online: onlineDiverIds(peers, room.code, room.state),
+    updatedAt: room.updatedAt,
   }
 })

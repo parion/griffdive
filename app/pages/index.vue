@@ -62,8 +62,8 @@ async function refreshOnlineDives(): Promise<void> {
   }
   const results = await Promise.all(rooms.map(async ({ code }): Promise<OnlineDive | null> => {
     try {
-      const res = await $fetch<{ code: string, state: DiveState, saved: DiveSaveInfo | null, online: string[] }>(`/api/rooms/${code}`)
-      return { code, state: res.state, saved: res.saved, online: res.online ?? [] }
+      const res = await $fetch<{ code: string, state: DiveState, saved: DiveSaveInfo | null, online: string[], updatedAt?: number }>(`/api/rooms/${code}`)
+      return { code, state: res.state, saved: res.saved, online: res.online ?? [], updatedAt: res.updatedAt ?? null }
     }
     catch (error) {
       const err = error as { status?: number, statusCode?: number }
@@ -72,7 +72,7 @@ async function refreshOnlineDives(): Promise<void> {
         recentRooms.forgetRoom(code)
         return null
       }
-      return { code, state: null, saved: null, online: [] }
+      return { code, state: null, saved: null, online: [], updatedAt: null }
     }
   }))
   onlineDives.value = results.filter((entry): entry is OnlineDive => {
