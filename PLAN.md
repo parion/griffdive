@@ -70,17 +70,17 @@ IDs are stable and append-only; do not renumber.
 | N37 | Oops, All Orbitals too narrow (rename to Airstrikes, include Eagles) | Rules | S | Done | new |
 | N38 | Bonus-stat squad honors (slot-machine stat → token prize) | Feature/Design | L | Done | new |
 | N39 | Team reroll-token economy (more sources for the shared pool) | Balance/Design | M | Todo (DEC-5 follow-on) | new |
-| N41 | Rate limits trust spoofable `X-Forwarded-For` | Infra/Security | S | Todo | new |
-| N42 | Session-abuse bounds: per-IP caps, fast lobby reaping, save TTL | Infra/Security | M | Todo | new |
+| N41 | Rate limits trust spoofable `X-Forwarded-For` | Infra/Security | S | Done | new |
+| N42 | Session-abuse bounds: per-IP caps, fast lobby reaping, save TTL | Infra/Security | M | Proposed (analysis only) | new |
 | N43 | Starting variants: three difficulties + SEAF/Penance modes | Rules | L | Done | new |
 | N44 | Squad honors allow ties (multiple winners) | Rules/UX | S | Done | new |
-| N45 | Brasch's Bargains: price curve 35/100/280/450 + shut until the first operation completes | Balance/Rules | S | Done | beta review |
-| N46 | Crusade outcome + depth in the census | Observability | M | Batch E | beta metrics read |
-| N47 | Shareable run recap for both endings | Feature/UX | M | Batch E | beta metrics read |
-| N48 | Operation milestone + Bridge re-entry nudge | UX | M | Batch E | beta metrics read |
-| N49 | Brasch's Bargains d8–10 buy drop | Balance/Data | M | Batch E (data-gated) | beta review |
-| N50 | Heat ladders / bounties | Feature/Rules | L | Batch E (Phase 5 opener) | roadmap |
-| N51 | Low-end phone + Lighthouse pass | Infra/Perf | M | Batch E (launch gate) | marketing checklist |
+| N45 | Brasch's Bargains: price curve 35/100/280/450 + shut until the first operation completes | Balance/Rules | S | Done (A retuned by N49) | beta review |
+| N46 | Crusade outcome + depth in the census | Observability | M | Done (monitor) | beta metrics read |
+| N47 | Shareable run recap for both endings | Feature/UX | M | Done | beta metrics read |
+| N48 | Operation milestone + Bridge re-entry nudge | UX | M | Done | beta metrics read |
+| N49 | Brasch's Bargains d8–10 buy drop | Balance/Data | M | Done (simulation-backed) | beta review |
+| N50 | Heat ladders / bounties | Feature/Rules | L | Spec'd, gated | roadmap |
+| N51 | Low-end phone + Lighthouse pass | Infra/Perf | M | Done (measured) | marketing checklist |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -215,29 +215,30 @@ N2, N10, N15, N17, N39. **N2 landed** (faction strains, below) and **N17 landed*
 persistent Help drawer + Valor/ceiling tooltips; presentation only, no engine bump). Remaining:
 N10 (crash semantics, DEC-9), N15 (repro), N39 (token economy).
 
-### Batch E — The climb (next)
+### Batch E — The climb (landed, 2026-11-08)
 
 Written from the beta metrics read (2026-11-08): 28 divers peak, 52 rooms and 395 seated arrivals in
 24h, 25 crusades launched, 123 missions at a 92% reported success rate, 61 saved dives, and 0
-crusades achieved. Batch D's remaining items (N10, N15, N39) stay where they are — this batch is the
-post-launch arc, and it is deliberately ordered **measure → pay off → tune → extend**. No engine
-rules change until N46's panels have a week of live data.
+crusades achieved. Batch D's remaining items (N10, N15, N39) stay where they are. The batch was
+ordered **measure → pay off → tune → extend** and landed the same day. No *new rules surface* until
+N46's panels have a week of live data; N49's price retune is a simulation-backed config change and
+can be reverted on its own.
 
-- **E0 — Launch gates.** N41, N42, N51, plus the Nitro `error`-hook fix in
-  `server/plugins/metrics.ts` (a 4xx/5xx written by the error handler never reaches
-  `afterResponse`, so the HTTP-error panel is blind). The marketing kit already gates the public
-  post on N41/N42; a 2,000-room ceiling on one 256 MB machine makes them real now.
-- **E1 — See the climb.** N46. `END_DIVE` and a real achievement both write `phase: 'complete'`, so
-  the census cannot tell a win from a quit and nothing records how deep an abandoned run got. Split
-  the bucket, add a run-depth histogram, and put "The climb" on the dashboard.
-- **E2 — Pay off the climb.** N47 + N48. The achieved ending already has `DiveAchievedOverlay`; the
-  abandoned ending gets the same ceremony, and both get a shareable recap card. The Bridge learns to
-  say when the squad last played and what is waiting.
-- **E3 — Tune the climb.** N49 + the existing N25 and N39. Altitude win rate, forfeit cost, and the
-  Brasch 8–10 buy drop; then the pact floor and token sources. Gated on E1's data.
-- **E4 — Extend the climb.** N50 heat ladders/bounties — the Phase 5 opener, because it reuses the
-  condition catalogue and gives summit squads a reason to keep playing. Endless mode follows;
-  Specialists stay later.
+- **E0 — Launch gates. Landed.** N41 (trusted `Fly-Client-IP` with a socket fallback, no
+  `X-Forwarded-For`) and the Nitro `error`-hook metric fix are in. N51 measured every budget green
+  (334.9 kB JS, 69.9 kB CSS, no phase-swap long tasks, 60 fps wheel, 0 px overflow at 360×640), so no
+  code changed; LCP 3.6 s on Slow-4G is the next watch item. N42's per-address caps / lobby
+  eviction / save TTL are written up as a recommendation, with no policy code.
+- **E1 — See the climb. Landed.** N46: `rooms_complete{result}` and `crusade_depth{result}`, with
+  expired lobbies excluded, plus **The climb** dashboard row.
+- **E2 — Pay off the climb. Landed.** N47/N48: one end-of-run ceremony for both outcomes with a
+  client-rendered PNG recap, the operation milestone band, and a Bridge whose cards show squad names,
+  last-played and one Continue primary.
+- **E3 — Tune the climb. Landed (N49).** The d8–10 buy drop was the A-price step, not haul or stock;
+  `CREDIT_PRICE_TIER.a` 280 → 220. N25/N39 remain memos for the owner, gated on live data.
+- **E4 — Extend the climb. Spec'd, gated.** N50's four-rung ladder, state shape, the `teamConditionIds`
+  widening and the save v1→v2 path are recorded below; no code until the summit-population threshold
+  clears. Endless mode follows; Specialists stay later.
 
 ### Post-v1 / R&D
 
@@ -605,6 +606,12 @@ difficulty; regenerate `pnpm dashboard:preview`, and update the metric table in
 `ENGINE_VERSION` bump. Optional follow-on once it has data: a "crusade depth at last event" panel
 split by start variant, since the 3/5/7 starts are not equally long.
 
+**Done (2026-11-08).** `RoomCensusEntry` carries `achieved`/`missionIndex`; the census publishes
+`griffdive_rooms_complete{result}`; `griffdive_crusade_depth{result}` observes the transition into
+`complete` (`achieved`/`abandoned`) and TTL expiry for launched rooms only — a room that never left
+`lobby` is excluded. The dashboard gained the **The climb** row and `deployment.md`'s metric table is
+updated. No engine, schema or version change.
+
 **N47 · Shareable run recap for both endings.** The achieved ending already has
 `DiveAchievedOverlay` (ladder, squad tags, export). The abandoned ending still lands on the bare
 `DivePhaseComplete` panel, so the majority outcome reads like a failure screen. Give both endings
@@ -616,6 +623,11 @@ proves the renderer works but is static, so this is a small canvas component, no
 Presentation plus a client-side export; no rules, no `ENGINE_VERSION` bump. Only stats the state
 already carries — do not invent cumulative pact/forfeit totals without deciding on a schema change.
 
+**Done (2026-11-08).** `DiveAchievedOverlay` became `DiveCompleteOverlay` and now serves both
+outcomes (the abandoned path gets the Ministry “file closed” notice and the rung reached on the same
+ladder). `DiveRecapCard.vue` + `recapCard.ts` paint the 1200×630 PNG client-side from
+`recap.ts`; the bare `DivePhaseComplete.vue` and the old JSON export are retired.
+
 **N48 · Operation milestone + Bridge re-entry nudge.** The operation boundary is the run's only long
 cadence, and `ADVANCE` currently jumps straight to the next spin (difficulty up, front cleared) with
 at most a toast. Add a short presentation-only milestone beat at the boundary — difficulty cleared,
@@ -624,6 +636,12 @@ other side, the Bridge's saved-dive cards should carry the human signal: "last p
 the squad names, and a single **Continue** primary action (`DiveSaveInfo.updatedAt` already carries
 the timestamp). Neither change may gate the reducer; no engine, schema, or golden change. Pair it
 with N46's return-gap panel to see whether the nudge moves a second session.
+
+**Done (2026-11-08).** `OperationCleared` carries the presentation-only milestone band
+(`operationMilestone.ts`); `BridgeRecord` shows last-played + squad names and a Continue primary on
+live, session and local cards (local saves keep their separate HOST action). `GET /api/rooms/:code`
+now returns the stored `updatedAt` so unpinned rooms can show it; `PRIVACY.md` and `/privacy` record
+that the timestamp is room-visible and carries no identity. No reducer, schema or version change.
 
 **N49 · Brasch's Bargains at altitude.** The marketing kit already flags it: buys drop sharply at
 difficulty 8–10 (0.1–0.6 per mission against 1.4 per operation through B/A) and the cause was never
@@ -634,6 +652,14 @@ Run `scripts/simulate-economy.mjs` at the d8–10 band, compare with live
 `griffdive_purchases_total` / `griffdive_samples_haul`, then make one change (haul, price, or stock
 rule) with the simulation before/after in the PR. Data-gated on N46 only for the difficulty split;
 the purchase panel already exists.
+
+**Done (2026-11-08, simulation-backed).** The cause was the **A rung**, not haul or stock: N45 raised
+A 170 → 280 before the beta read flagged the drop; the pre-N45 curve has no d8 dip. The one-buy and
+bought-kind rules block 0–3% of d8–10 missions, and the shelf excludes owned kinds by construction.
+`CREDIT_PRICE_TIER.a` is now **220** (ladder 2.86× / 2.2× / 2.05×), which lifts affordable-slot
+coverage at d8 from 10% to 22% for a casual diver and keeps the saver's S chase on target (one S per
+5.5 missions, was 6.7). `ENGINE_VERSION` 1 → 2, goldens unchanged (the scripted crusade never shops).
+This is a partial revert of N45; 240 is the softer cut if the owner prefers it.
 
 **N50 · Heat ladders / bounties.** The Phase 5 opener. Reuse the existing condition catalogue and
 Valor math instead of inventing a second rules surface: a **bounty ladder** is a per-crusade set of
@@ -671,10 +697,17 @@ shell, the wheel's frame rate (it is a real spinning SVG), and the 360×640 stag
 phase swap. Fix only the top offenders; no redesign, no new runtime dependency. Record the numbers in
 the PR so the next pass has a baseline.
 
-### Hardening backlog (promoted into Batch E)
+**Done (2026-11-08, measured; no code).** All stated budgets passed: 334.9 kB JS gzip, 69.9 kB CSS
+gzip (0.1 kB headroom), no >200 ms long task on any phase swap, 60 fps wheel at 4×/6× CPU, zero
+horizontal overflow at 360×640, and the offline shell installs. Production Lighthouse on Slow-4G/4×
+CPU: performance 0.84–0.86, a11y 0.93, best-practices 1.00, CLS 0, worst lab interaction 72 ms.
+**LCP 3.6–3.7 s** (3.0 s render delay on the SPA boot) is the next watch item; CSS headroom is
+effectively exhausted, so any new global style needs a matching removal.
 
-Recorded after the Fly-volume persistence swap; **now scheduled as Batch E0** (with N51) after the
-2026-11-08 metrics read showed the traffic is no longer hypothetical.
+### Hardening backlog (Batch E0)
+
+Recorded after the Fly-volume persistence swap. **N41 and the metric error hook landed 2026-11-08**;
+N42 remains the policy decision (recommendation recorded below). N51 was measured in the same pass.
 
 **N41 · Trusted client IP for rate limits.** `server/api/rooms/index.post.ts` keys the 10/min
 create limit on `getRequestIP(event, { xForwardedFor: true })`, which takes the **first**
@@ -686,6 +719,14 @@ keys on `peer.remoteAddress`, which behind Fly's proxy may be the proxy address 
 turning the 20/min join limit into a global one. Also note `withRoomLock` is **in-process only**;
 horizontal scale needs a distributed lock alongside the storage swap.
 
+**Done (2026-11-08).** `server/utils/client-ip.ts` is now the one source for the HTTP routes and the
+WS upgrade: `Fly-Client-IP` then the socket address, never `X-Forwarded-For`. Room create,
+feedback, and the join upgrade all use it; the sync core keys on the resulting
+`peer.context.clientIp` and falls back to `peer.remoteAddress`. Covered by `client-ip.spec.ts`.
+The same change extracted the take-once HTTP metric marker into `server/utils/http-metrics.ts`,
+shared by `afterResponse` and Nitro's `error` hook, so a 4xx/5xx written by the error handler is
+counted exactly once (`http-metrics.spec.ts`).
+
 **N42 · Session-abuse bounds.** Storage cost is already bounded (`MAX_ROOMS` 2000, `MAX_SAVED_DIVES`
 500; a save is the room's JSON, tens of KB), so the risks are availability and save-slot fairness,
 not bytes. A flood can fill `MAX_ROOMS` and 503 legitimate squads for up to the 12h `ROOM_TTL_MS`,
@@ -694,6 +735,14 @@ Candidate mitigations to decide between: per-IP caps on concurrent rooms and sav
 TTL (or eviction-first) for never-launched lobby rooms (`settings === null`); a long save TTL
 backstop so abandoned saves self-expire; and metrics/alerts for room/save counts and 429/503
 rejections so an attack is visible in Grafana. Policy decision first, then code.
+
+**Recommendation recorded (2026-11-08), no code.** The order in `server-architecture.md` is
+**evict before refusing** at the `createRoom` cap (reap expired rooms, then the oldest unsaved
+never-launched lobby with no live peer), per-address caps of 10 concurrent unsaved rooms / 5 saved
+dives in process memory, a `SAVED_TTL_MS` backstop (~180 days from `updatedAt`), and alerts on
+`room_create_rejected_total{reason="cap"}`, the save count, the lobby census and 4xx/5xx. Shared-NAT
+false positives, read-then-write races and the multi-machine Redis swap are called out. Needs the
+owner's policy call before implementation.
 
 ### Post-v1 / R&D
 

@@ -74,7 +74,11 @@ arrivals in 24h, 25 crusades launched, 123 missions at a 92% reported success ra
 and **0 crusades achieved** — expected for a run the code calls "weeks of evenings", but the census
 cannot yet tell a won crusade from a quit (`END_DIVE` also writes `complete`). Risk is landing
 (zero-Valor reports 0%, median Valor 7, two pacts per diver); the summit and retention read is the
-next gap. **Batch E** in [PLAN.md](../../PLAN.md) is written from this read.
+next gap. **Batch E** in [PLAN.md](../../PLAN.md) is written from this read and landed the same day:
+the census splits won from quit (N46), both endings share a recap (N47) with Bridge re-entry (N48),
+the d8–10 shop dip was traced and retuned (N49), launch rate limits trust Fly's header (N41), and
+the N51 phone pass came in under every stated budget. N50's heat ladder is spec'd and gated on the
+summit population.
 
 ## Beta-readiness review (2026-10-24)
 
@@ -91,16 +95,16 @@ Ban UI, the lobby/matchmaking. Not re-verified visually: pixel-level fidelity of
 
 **Game design (from `scripts/simulate-economy.mjs`, 4000 runs).**
 - Brasch's Bargains pace well through B/A tier: a steady squad buys ~11 items over 20 missions
-  (1.4 per operation), an eager one ~16. Buys per mission drop to 0.1-0.6 at difficulty 8-10 (cause not
-  investigated).
+  (1.4 per operation), an eager one ~16. Buys per mission drop to 0.1-0.6 at difficulty 8-10 (N49
+  later traced this to the A-price step; fixed 2026-11-08).
 - **Addressed after this review:** S-tier at 800 credits was effectively unreachable, and difficulty 3
-  had a dead shop (haul 4-8 vs a 25-credit floor). Prices now ride one curve, 35/100/280/450, and the
-  shop stays shut until the first operation completes, so early credits accumulate instead of
-  stranding. A steady squad (60% of samples filed) buys an S about once per 6.6 missions in
-  the S band (difficulty 8+) when it saves for one; a diver who always spends on the priciest
-  affordable item almost never reaches S (~1 per 590 missions), so the SAVER policy in
-  `scripts/simulate-economy.mjs` is the number to watch. Overall buys rose (steady ~11 per 20
-  missions, level with the old curve).
+  had a dead shop (haul 4-8 vs a 25-credit floor). Prices rode one curve, 35/100/280/450 at the time
+  (N49 retuned A to 220 on 2026-11-08 — see Batch E), and the shop stays shut until the first
+  operation completes, so early credits accumulate instead of stranding. A steady squad (60% of
+  samples filed) buys an S about once per 6.6 missions in the S band (difficulty 8+) when it saves
+  for one (5.5 after N49); a diver who always spends on the priciest affordable item almost never
+  reaches S (~1 per 590 missions), so the SAVER policy in `scripts/simulate-economy.mjs` is the
+  number to watch. Overall buys rose (steady ~11 per 20 missions, level with the old curve).
 - Open balance/design items still on the board in `PLAN.md`: N25 (pacts are strictly "take
   everything"), N39 (reroll-token sources), N13 (`fragileLiberty` early lock-out, blocked on DEC-6).
 
@@ -159,11 +163,14 @@ Each phase lands shippable. Update the relevant `docs/agents/` files (commands, 
   separate Fly app (`deploy/fider/`). See [Deployment](./deployment.md) → Feedback inbox.
   Remaining: the final polish pass. *Done
   when: production URL serves a full multiplayer dive.*
-- **Phase 4.5 — Batch E, the climb (next).** The 2026-11-08 metrics read set the order:
-  **E0** launch gates (N41, N42, N51 + the Nitro error-hook metric fix), **E1** make the census tell
-  a win from a quit (N46: achieved/abandoned split, run depth), **E2** pay off both endings with a
-  shareable recap and a re-entry nudge (N47, N48), **E3** tune altitude (N49 + N25/N39), **E4** pull
-  **heat ladders/bounties** forward as the Phase 5 opener (N50). No engine rules change until E1 has
-  a week of data. See [PLAN.md](../../PLAN.md) → Batch E.
+- **Phase 4.5 — Batch E, the climb (landed 2026-11-08).** The 2026-11-08 metrics read set the order,
+  and all of it landed: **E0** launch gates (N41 trusted client IP + the Nitro error-hook metric fix;
+  N51 measured under budget; N42 written up, no policy code), **E1** the census now tells a win from
+  a quit and records run depth (N46), **E2** both endings share a ceremony + PNG recap and the Bridge
+  shows last-played/squad/Continue (N47, N48), **E3** the d8–10 shop dip was traced to the A rung and
+  retuned 280 → 220 (N49; N25/N39 remain owner memos). **E4** heat ladders/bounties is spec'd (N50)
+  and gated on ≥30 achieved crusades in a 14-day window plus ≥10% of launches reaching difficulty 8+;
+  if that misses, fix the mid-climb and do not build N50 or endless yet. See
+  [PLAN.md](../../PLAN.md) → Batch E.
 - **Phase 5 — Post-v1 backlog.** Specialists (PC parity), tier-maker custom rarity tables, endless
   mode (follows Batch E's heat ladders/bounties, N50), accounts + cloud saves, i18n.
