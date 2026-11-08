@@ -24,10 +24,11 @@ app/
                    Call/Pacts/Dive/Loot beats, DiveMenu — Bridge, tutorial, pin, new session,
                    leave/end, DiveSidebar — the persistent tool rail (Kit, Codex, Warbonds and
                    Brasch's Bargains share one non-modal panel), DivePhaseLobby — the
-                   standalone Hellpod Bays setup page, DivePhaseWheel/Diving/Rewards/Forfeit/
-                   Complete — one panel per engine phase, each owning its local form state and
-                   emitting intents, DiveAchievedOverlay — the full-bleed achieved takeover,
-                   DivePhone — the phone-shell orchestrator),
+                   standalone Hellpod Bays setup page, DivePhaseWheel/Diving/Rewards/Forfeit —
+                   one panel per engine phase, each owning its local form state and
+                   emitting intents, DiveCompleteOverlay — the full-bleed end-of-run takeover
+                   shared by the achieved and abandoned endings, DivePhone — the phone-shell
+                   orchestrator),
                    phone/ (PhoneShell — the fixed frame, PhoneTopBar/PhoneWheel/PhonePacts/
                    PhoneDiving/PhoneRewardDraft — per-phase layouts, PhoneActionBar — the pinned
                    bottom bar every phase fills through deferred Teleports),

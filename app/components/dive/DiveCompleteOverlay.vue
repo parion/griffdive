@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { createSaveDoc } from '~~/shared/engine/saves'
 import { REWARD_TOKEN_CAP, baseTierFor, missionsPerOperation } from '~~/shared/engine/config'
 import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import type { DiveState } from '~~/shared/engine/types'
+import { operationsCleared } from '~/utils/recap'
 
 const props = defineProps<{
   state: DiveState
@@ -11,9 +11,13 @@ const props = defineProps<{
   slotName: string
 }>()
 
+const emit = defineEmits<{ abandonSlot: [] }>()
+
+const achieved = computed(() => props.state.achieved)
 const variant = computed(() => props.state.settings?.variant ?? 'medium')
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const opNumber = computed(() => catchUpOpsBehind(props.state.difficulty, variant.value) + 1)
+const stage = ref<HTMLElement | null>(null)
 
 const itemsOwned = computed(() =>
   Object.values(props.state.personalInventories).flat().length)
@@ -21,23 +25,39 @@ const itemsOwned = computed(() =>
 const records = computed(() => [
   { label: 'Difficulty', value: String(props.state.difficulty), unit: difficultyName(props.state.difficulty) },
   { label: 'Missions', value: String(props.state.missionIndex), unit: 'flown' },
-  { label: 'Operations', value: String(opNumber.value), unit: 'cleared' },
+  { label: 'Operations', value: String(operationsCleared(props.state)), unit: 'cleared' },
   { label: 'Combos', value: String(props.state.completedCombos.length), unit: 'cleared' },
-  { label: 'Divers', value: String(props.state.divers.length), unit: 'extracted' },
+  { label: 'Divers', value: String(props.state.divers.length), unit: achieved.value ? 'extracted' : 'on file' },
   { label: 'Items', value: String(itemsOwned.value), unit: 'owned' },
 ])
 
+const notice = computed(() => achieved.value
+  ? {
+      label: 'Ministry notice\nPardon',
+      copy: 'The Ministry has reviewed your file and finds your debt to liberty settled. Griffdiver, you are pardoned — restored to the franchise you squandered. Do not squander it again.',
+    }
+  : {
+      label: 'Ministry notice\nFile closed',
+      copy: `The Ministry closes your file at ${difficultyName(props.state.difficulty)}. Your service is recorded; the rung you reached stands. Report to the Bridge when liberty calls again.`,
+    })
+
 // The ascending ladder: difficulty 3 at the short end up to the 504px goal at
-// 10. Every rung below the peak reads cleared; 10 carries the goal flag.
+// 10. The achieved run fills every rung; an abandoned run stops at the rung it
+// reached.
 const rungs = computed(() => Array.from({ length: 8 }, (_, i) => {
   const n = i + 3
+  const state = n < props.state.difficulty
+    ? 'cleared'
+    : n === props.state.difficulty
+      ? achieved.value ? 'goal' : 'current'
+      : 'locked'
   return {
     n,
     name: difficultyName(n),
     tier: baseTierFor(n),
     pips: missionsPerOperation(n),
     height: 120 + (n - 3) * 55,
-    state: n < 10 ? 'cleared' : 'goal',
+    state,
     delay: `${0.75 + i * 0.16}s`,
   }
 }))
@@ -59,19 +79,9 @@ function replay(): void {
   revealKey.value += 1
 }
 
-function exportCrusade(): void {
-  if (!import.meta.client) {
-    return
-  }
-  const doc = createSaveDoc(props.state, props.slotName, new Date().toISOString())
-  const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = `griffdive-${props.slotName.replace(/[^a-z0-9_-]+/gi, '-')}.json`
-  anchor.click()
-  URL.revokeObjectURL(url)
-}
+onMounted(() => {
+  stage.value?.focus()
+})
 </script>
 
 <template>
@@ -92,12 +102,8 @@ function exportCrusade(): void {
       </div>
 
       <p class="ach-pardon rv-rise">
-        <span class="lbl ach-pardon-lbl">Ministry notice<br>Pardon</span>
-        <span class="ach-pardon-copy">
-          The Ministry has reviewed your file and finds your debt to liberty settled.
-          Griffdiver, you are pardoned — restored to the franchise you squandered. Do not
-          squander it again.
-        </span>
+        <span class="lbl ach-pardon-lbl">{{ notice.label }}</span>
+        <span class="ach-pardon-copy">{{ notice.copy }}</span>
       </p>
 
       <div
@@ -111,7 +117,7 @@ function exportCrusade(): void {
       <button
         type="button"
         class="icon-btn ach-replay"
-        aria-label="Replay the victory reveal"
+        :aria-label="achieved ? 'Replay the victory reveal' : 'Replay the final record'"
         @click="replay"
       >
         <svg
@@ -128,6 +134,7 @@ function exportCrusade(): void {
 
     <main
       id="main-content"
+      ref="stage"
       :key="revealKey"
       class="ach-stage scan rv-shake"
       tabindex="-1"
@@ -143,11 +150,11 @@ function exportCrusade(): void {
       >
         <div class="rv-band ach-band">
           <div class="ach-band-inner">
-            <span class="disp">Griffdive achieved</span>
+            <span class="disp">{{ achieved ? 'Griffdive achieved' : 'Ministry file closed' }}</span>
             <span class="ach-diamond" />
-            <span class="disp ach-band-ink">Difficulty {{ state.difficulty }} cleared</span>
+            <span class="disp ach-band-ink">{{ achieved ? 'Difficulty' : 'Rung reached' }} {{ state.difficulty }} · {{ difficultyName(state.difficulty) }}</span>
             <span class="ach-diamond" />
-            <span class="disp">Squad extracted</span>
+            <span class="disp">{{ achieved ? 'Squad extracted' : `${state.missionIndex} missions flown` }}</span>
             <span class="ach-diamond" />
           </div>
         </div>
@@ -156,19 +163,24 @@ function exportCrusade(): void {
       <div class="ach-top">
         <div class="ach-hero">
           <div class="rv-rise ach-chip-row">
-            <span class="ach-chip">CRUSADE COMPLETE</span>
+            <span class="ach-chip">{{ achieved ? 'CRUSADE COMPLETE' : 'CRUSADE ENDED' }}</span>
             <span class="lbl ach-op">
-              Operation {{ opNumber }} · {{ difficultyName(state.difficulty) }} · {{ opLength }}/{{ opLength }} missions
+              Operation {{ opNumber }} · {{ difficultyName(state.difficulty) }} ·
+              {{ achieved ? `${opLength}/${opLength} missions` : `${state.missionIndex} missions flown` }}
             </span>
           </div>
           <h1 class="ach-title">
-            <span class="disp rv-slam ach-line">Griffdive</span>
-            <span class="disp rv-slam ach-line gold">Achieved</span>
+            <span class="disp rv-slam ach-line">{{ achieved ? 'Griffdive' : 'File' }}</span>
+            <span
+              class="disp rv-slam ach-line"
+              :class="achieved ? 'gold' : 'ended'"
+            >{{ achieved ? 'Achieved' : 'Closed' }}</span>
           </h1>
         </div>
 
         <div class="ach-ladder-wrap">
           <div
+            v-if="achieved"
             class="ach-flag rv-flag"
             aria-hidden="true"
           >
@@ -180,14 +192,17 @@ function exportCrusade(): void {
           </div>
           <ol
             class="ach-ladder"
-            aria-label="Crusade ladder, all cleared"
+            :aria-label="achieved
+              ? 'Crusade ladder, all cleared'
+              : `Crusade ladder, stopped at difficulty ${state.difficulty}`"
           >
             <li
               v-for="r in rungs"
               :key="r.n"
               class="ach-rung"
+              :class="r.state"
               :style="{ height: `${r.height}px` }"
-              :aria-label="`${r.name}, difficulty ${r.n}, tier ${r.tier}, cleared`"
+              :aria-label="`${r.name}, difficulty ${r.n}, tier ${r.tier}, ${r.state}`"
             >
               <span
                 class="rv-rung ach-rung-fill"
@@ -247,6 +262,13 @@ function exportCrusade(): void {
         <div
           class="ach-divider"
           aria-hidden="true"
+        />
+
+        <DiveRecapCard
+          class="ach-recap"
+          :state="state"
+          :crusade-label="crusadeLabel"
+          :slot-name="slotName"
         />
 
         <ul
@@ -323,11 +345,12 @@ function exportCrusade(): void {
             ><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </NuxtLink>
           <button
+            v-if="mode === 'local'"
             type="button"
-            class="ghost ach-export"
-            @click="exportCrusade"
+            class="ghost ach-delete"
+            @click="emit('abandonSlot')"
           >
-            <span>EXPORT CRUSADE</span>
+            <span>DELETE SAVE</span>
             <svg
               width="18"
               height="18"
@@ -336,9 +359,10 @@ function exportCrusade(): void {
               stroke="currentColor"
               stroke-width="1.8"
               aria-hidden="true"
-            ><path d="M12 3v12M7 10l5 5 5-5M4 21h16" /></svg>
+            ><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14" /></svg>
           </button>
           <button
+            v-if="achieved"
             type="button"
             class="ghost ach-endless"
             disabled
@@ -429,6 +453,7 @@ function exportCrusade(): void {
   font-size: 9px;
   line-height: 1.3;
   color: var(--gold);
+  white-space: pre-line;
 }
 .ach-pardon-copy {
   font-size: 11.5px;
@@ -560,6 +585,11 @@ function exportCrusade(): void {
   text-shadow: 0 0 40px rgba(255, 214, 66, 0.25);
   animation-delay: 0.5s;
 }
+.ach-line.ended {
+  color: var(--khaki);
+  text-shadow: 0 0 40px rgba(184, 176, 141, 0.18);
+  animation-delay: 0.5s;
+}
 
 .ach-ladder-wrap {
   position: relative;
@@ -596,6 +626,19 @@ function exportCrusade(): void {
 .ach-rung-fill.goal {
   background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 40%, transparent), transparent 80%);
 }
+.ach-rung-fill.current {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--khaki) 26%, transparent), transparent 74%);
+  border-color: var(--khaki);
+}
+.ach-rung-fill.locked {
+  border-color: transparent;
+  border-top-width: 1px;
+  background: none;
+}
+.ach-rung.cleared .ach-rung-n { color: var(--ghost-ink); }
+.ach-rung.current .ach-rung-n { color: var(--gold); }
+.ach-rung.locked .ach-rung-n { color: var(--dim); }
+.ach-rung.locked .tier-badge { opacity: 0.4; }
 .ach-rung-top {
   position: absolute;
   left: 0;
@@ -673,7 +716,6 @@ function exportCrusade(): void {
   border-top: 1px solid var(--line-3);
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
-  grid-template-rows: auto auto;
   gap: var(--sp-6);
 }
 .ach-stats {
@@ -707,6 +749,8 @@ function exportCrusade(): void {
   height: 2px;
   background: repeating-linear-gradient(90deg, var(--line-5) 0 10px, transparent 10px 14px);
 }
+
+.ach-recap { grid-column: 1 / -1; }
 
 .ach-tags {
   grid-column: 1;
@@ -798,7 +842,6 @@ function exportCrusade(): void {
 
 .ach-actions {
   grid-column: 2;
-  grid-row: 2;
   align-self: start;
   display: flex;
   flex-direction: column;
@@ -815,7 +858,7 @@ function exportCrusade(): void {
   color: var(--on-gold);
 }
 .ach-next .disp { font-size: 18px; }
-.ach-export,
+.ach-delete,
 .ach-endless {
   display: flex;
   align-items: center;
@@ -827,6 +870,7 @@ function exportCrusade(): void {
   font-weight: 700;
   letter-spacing: 0.16em;
 }
+.ach-delete:hover { color: var(--red); border-color: var(--red); }
 .ach-endless { border-style: dashed; }
 .ach-endless:disabled { opacity: 0.5; cursor: not-allowed; }
 .ach-endless-l { display: flex; align-items: center; gap: 10px; }

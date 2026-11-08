@@ -52,7 +52,6 @@ const emit = defineEmits<{
   saveDive: []
   unsaveDive: []
   newSession: []
-  abandonSlot: []
   dismissError: []
 }>()
 
@@ -193,14 +192,6 @@ const operationClimbs = computed(() =>
           :self="self"
           phone
           @forfeit="emit('forfeit', $event)"
-        />
-
-        <DivePhaseComplete
-          v-else-if="phase === 'complete'"
-          :state="state"
-          :mode="mode"
-          phone
-          @abandon-slot="emit('abandonSlot')"
         />
       </template>
     </div>
