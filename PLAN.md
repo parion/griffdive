@@ -646,6 +646,24 @@ rung, and accept/decline at the operation boundary; `SAVE_SCHEMA_VERSION` bump, 
 scripted crusade takes a rung. Land after N46/N49 have data and after E2's payoff, so the first
 retention read is not confounded by a new system.
 
+**N50 design pass (2026-11-08, plan-only — no code).** A bounty is a team-scope condition made
+permanent for the crusade: its risk is paid on **every mission** (compounding) and it pays **once per
+operation** on the clearing draft. Shipped ladder is a four-rung prefix, ordered and disjoint:
+`noResupplies` (min 6), `noEagles` (6), `pacifist` (7), `zeroDeaths` (8); each taxes a different
+strength and inherits its catalogue accountability channel. Excluded: `noStratagems` (subsumed by
+`pacifist`), `meleeOnly` (contradicts it), `fragileLiberty` (no armour fieldability predicate exists).
+Reward: one guaranteed option at `baseTierFor(difficulty) + steps` on the clearing mission's draft,
+capped at **S, never S+**; no named items. State: `bountyRank`, `bountyPending`, `bountyDeclined`;
+host-only `ACCEPT_BOUNTY{accepted}` in `spin` at `missionInOperation === 1`; failure reopens the
+decision, rank never drops; no new phase. **Engine gap:** `hasLegalLoadout` / `stratagemBanReason` /
+`isPactSelectable` / `rollPactOffer` take one team id; widen them to `readonly string[]` behind a new
+`teamConditionIds(state)` (misfortune + earned bounties) — this is the largest edit. Save: first real
+migration v1→v2 (the pre-reset batch notes above are historical), plus room fill-if-absent and
+`comboKey` gaining the rank. Metrics: acceptance/clear by rank, guarantees by tier, census
+`bountyRank`. **Gate:** do not build until N46 has 14 days of data with ≥30 achieved crusades in the
+window and ≥10% of launches reaching difficulty ≥8, N49 is diagnosed, and E2's return-gap baseline
+has a week. If that misses, fix the mid-climb instead; heat ships before endless.
+
 **N51 · Low-end phone + Lighthouse pass.** The remaining marketing-checklist blocker. Measure
 production on a throttled mid-range Android: LCP/INP/CLS on the Bridge and dive, install + offline
 shell, the wheel's frame rate (it is a real spinning SVG), and the 360×640 stage. Budgets: JS
