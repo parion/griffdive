@@ -156,9 +156,11 @@ component. Top to bottom:
     checked): the service record as a gold-topped panel whose card list scrolls in place
     (`--rec-max`, about a viewport tall). Each card is a row — difficulty emblem; tags (live room
     code, saved, achieved, squad avatars), the crusade's name in caps (a solo save is named after
-    its diver as they are now), difficulty, op and mission, and a 3→10 ladder; then the actions:
-    the primary (Resume / Open / Host) full width over the secondary and the export/delete icons.
-    Live rooms carry a teal edge. A narrow record moves the actions under the card.
+    its diver as they are now), difficulty, op and mission, the squad's names, how long ago it was
+    last played ("Last played 3 days ago"), and a 3→10 ladder; then the actions: one **Continue**
+    primary full width — resume the live room, open the slot, or spin the save into a new session —
+    over the secondary and the export/delete icons. Live rooms carry a teal edge. A narrow record
+    moves the actions under the card.
   - Otherwise **`BridgeWheel`**: the dive's real `WheelOfAdversity`, spinning itself to a fresh
     seed every few seconds while in view (paused off-screen or in a hidden tab; one still draw
     under reduced motion), with a caption card naming the landed directive, its rule and its
@@ -337,7 +339,23 @@ to the next difficulty — the next in-game difficulty emblem slams in over rays
 chevron ladder underlined in each rung's base tier — then regroups like the mission beat: the haul, the squad's picks and Brasch's shelf as a **last
 call** (the shelf restocks at the new altitude only when the next operation starts). Its backdrop
 is alive: two ray fields counter-rotate behind the emblem, a halo breathes, embers rise and the
-headline takes one pass of light — all stilled by reduced motion.
+headline takes one pass of light — all stilled by reduced motion. The operation boundary also
+carries a **milestone band**: the rung cleared, how the next front arrives (a fresh roll or the
+run's pin), and what carries over — rerolls refresh, Brasch's kinds return, kit and purse stay.
+It is presentation only and reads `operationMilestone(state)`; the host's Start operation runs the
+same `ADVANCE`.
+
+#### Run complete — `DiveCompleteOverlay`
+
+Both endings share one screen. The achieved run keeps the ladder, flag and pardon; the abandoned
+run lands on the same ceremony with the Ministry's **file closed** notice, the rung reached lit on
+the same ladder, and the same record, squad tags and actions. `DivePhaseComplete` is retired — there
+is one end-of-run screen, not two. Its **`DiveRecapCard`** renders the run to a 1200×630 canvas
+(squad names, start → end rung, missions, operations, combos, gear, honors in hand) and downloads
+it as a PNG client-side; nothing is uploaded and no route or server exists for it. The canvas is
+painted only after `document.fonts.ready`, mirrors the terminal palette, and exposes the same
+numbers to assistive tech through its label. The old JSON export button is gone from this screen
+(the Bridge still exports saves).
 
 #### ValorRoll — the one odds primitive
 

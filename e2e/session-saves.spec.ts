@@ -64,12 +64,12 @@ test('a solo save hosts an online session from the home record', async ({ browse
   await dismissWarbondIntro(page)
   await expect(page).toHaveURL(/\/dive\/[0-9a-f-]{36}/)
 
-  // Back to the Bridge: the local save is on the record with a HOST action.
+  // Back to the Bridge: the local save is on the record with a Continue action.
   await page.getByRole('button', { name: 'Session menu' }).click()
   await page.getByRole('dialog', { name: 'Session' }).getByRole('link', { name: /Bridge/ }).click()
   const card = page.locator('.record-card').filter({ hasText: 'Griffon' })
   await expect(card).toBeVisible()
-  await card.getByRole('button', { name: 'HOST' }).click()
+  await card.getByRole('button', { name: /continue/i }).click()
 
   await expect(page).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
   await expect(page.locator('.dock .seat')).toHaveCount(1)

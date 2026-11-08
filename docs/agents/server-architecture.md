@@ -24,10 +24,11 @@ app/
                    Call/Pacts/Dive/Loot beats, DiveMenu — Bridge, tutorial, pin, new session,
                    leave/end, DiveSidebar — the persistent tool rail (Kit, Codex, Warbonds and
                    Brasch's Bargains share one non-modal panel), DivePhaseLobby — the
-                   standalone Hellpod Bays setup page, DivePhaseWheel/Diving/Rewards/Forfeit/
-                   Complete — one panel per engine phase, each owning its local form state and
-                   emitting intents, DiveAchievedOverlay — the full-bleed achieved takeover,
-                   DivePhone — the phone-shell orchestrator),
+                   standalone Hellpod Bays setup page, DivePhaseWheel/Diving/Rewards/Forfeit —
+                   one panel per engine phase, each owning its local form state and
+                   emitting intents, DiveCompleteOverlay — the full-bleed end-of-run takeover
+                   shared by the achieved and abandoned endings, DivePhone — the phone-shell
+                   orchestrator),
                    phone/ (PhoneShell — the fixed frame, PhoneTopBar/PhoneWheel/PhonePacts/
                    PhoneDiving/PhoneRewardDraft — per-phase layouts, PhoneActionBar — the pinned
                    bottom bar every phase fills through deferred Teleports),
@@ -194,8 +195,10 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 
 REST fallbacks: `POST /api/rooms` → `{ code, selfId }` (an optional `{ save, name }` body seeds the
 room from a personal session save; `selfId` is the seeded owner seat, `null` for a fresh lobby);
-`GET /api/rooms/:code` → `{ code, state, saved, online }` (404). `online` is the same seated-id list
-a `welcome` carries, so a REST caller cannot mistake a kept room record for a live squad.
+`GET /api/rooms/:code` → `{ code, state, saved, online, updatedAt }` (404). `online` is the same
+seated-id list a `welcome` carries, so a REST caller cannot mistake a kept room record for a live
+squad; `updatedAt` is the room's last event, which the Bridge turns into its "Last played N days
+ago" re-entry label. Neither carries a name, seat id or address beyond the room's own state.
 Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`,
 `SET_NAME`) are coerced to the sender — a client can never act as another diver.
 

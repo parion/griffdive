@@ -104,7 +104,7 @@ test('two divers sync one dive; late joiner gets the snapshot', async ({ browser
   const onlineSlot = pageB.locator('.record-card').filter({ hasText: roomCode })
   await expect(onlineSlot).toBeVisible()
   await expect(onlineSlot.locator('.rc-avatar')).toHaveCount(2)
-  await expect(onlineSlot.getByRole('link', { name: 'RESUME' })).toBeVisible()
+  await expect(onlineSlot.getByRole('link', { name: /continue/i })).toBeVisible()
 
   await contextA.close()
   await contextB.close()
@@ -304,7 +304,7 @@ async function squadAtTheWheel(browser: Browser) {
   return { contextA, contextB, pageA, pageB, code: pageA.url().split('/').pop()! }
 }
 
-test('when the whole squad leaves, the room waits and RESUME puts everyone back', async ({ browser }) => {
+test('when the whole squad leaves, the room waits and Continue puts everyone back', async ({ browser }) => {
   const { contextA, contextB, pageA, pageB, code } = await squadAtTheWheel(browser)
 
   await leaveDive(pageB)
@@ -320,13 +320,13 @@ test('when the whole squad leaves, the room waits and RESUME puts everyone back'
   }
 
   // The guest is back first and takes the helm; the host is still away.
-  await pageB.getByRole('link', { name: 'RESUME' }).click()
+  await pageB.getByRole('link', { name: /continue/i }).click()
   await expect(pageB.locator('.call')).toBeVisible()
   await expect(pageB.locator('.dock .seat')).toHaveCount(2)
   await expect(pageB.locator('.dock .seat.away')).toContainText('HOST')
   await expect(pageB.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled()
 
-  await pageA.getByRole('link', { name: 'RESUME' }).click()
+  await pageA.getByRole('link', { name: /continue/i }).click()
   await expect(pageA.locator('.call')).toBeVisible()
   await expect(pageB.locator('.dock .seat.away')).toHaveCount(0)
 

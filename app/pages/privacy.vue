@@ -32,6 +32,7 @@ const SECTIONS: Section[] = [
     list: [
       'Anyone with the room code (or the invite link) can join that dive: the code is the access control.',
       'Names, kits and the host\'s Steam link are visible to everyone seated in the room.',
+      'Anyone with the room code can see when the room was last active; the Bridge uses it to show how long the squad has been away. It carries no name, seat id or address.',
       'A kick bar is private: the removed browser (or a fresh browser on the same network) gets a refusal, while the squad only sees that the seat is gone.',
     ],
   },
