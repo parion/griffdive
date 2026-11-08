@@ -103,7 +103,7 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
     <ol
       v-if="milestone"
       class="op-milestone"
-      aria-label="Operation milestone"
+      :aria-label="milestone.accessibleLabel"
     >
       <li class="op-ms-cell">
         <span class="lbl">Cleared</span>
