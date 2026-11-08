@@ -49,6 +49,18 @@ function recordSessionEnded(room: StoredRoom): void {
   roomMetrics.recordSessionEnded(room.state.phase === 'lobby' ? 'lobby' : 'crusade', seconds)
 }
 
+// A room that ages out before reaching `complete` never had a transition to
+// observe, so its depth is recorded here instead. A completed room was already
+// observed when it entered `complete` and must not be counted again; a lobby
+// that never launched is not a crusade at all (lobbies already have their own
+// session-length series).
+function recordExpiredCrusade(room: StoredRoom): void {
+  if (room.state.phase === 'lobby' || room.state.phase === 'complete') {
+    return
+  }
+  roomMetrics.recordCrusadeExpired(room.state.missionIndex)
+}
+
 // A backstop against unbounded room growth on the single 256 MB machine, in
 // case rate-limited creation is still sustained. The sweeper below reaps
 // expired rooms so the ceiling rarely matters in normal play.
@@ -110,11 +122,15 @@ export interface StoredRoom {
 }
 
 // One room's scrape-time shape for the metrics census: no state, no payloads.
+// `achieved` and `missionIndex` separate a won crusade from a quit and say how
+// deep the run got when it ended.
 export interface RoomCensusEntry {
   code: string
   phase: DivePhase
   difficulty: number
   saved: boolean
+  achieved: boolean
+  missionIndex: number
 }
 
 // Storage abstraction so the sync core stays unit-testable without Nitro.
@@ -358,6 +374,7 @@ export async function sweepRooms(kv: RoomKV, now: number = Date.now()): Promise<
     if (isStoredRoom(raw) && roomExpired(raw, now)) {
       await kv.removeItem(code)
       recordSessionEnded(raw)
+      recordExpiredCrusade(raw)
       removed += 1
     }
   }
@@ -377,6 +394,8 @@ export async function censusRooms(kv: RoomKV): Promise<RoomCensusEntry[]> {
         phase: raw.state.phase,
         difficulty: raw.state.difficulty,
         saved: !!raw.saved,
+        achieved: raw.state.achieved,
+        missionIndex: raw.state.missionIndex,
       })
     }
   }
@@ -391,6 +410,7 @@ export async function loadRoom(kv: RoomKV, code: string): Promise<StoredRoom | n
   if (roomExpired(raw, Date.now())) {
     await kv.removeItem(code)
     recordSessionEnded(raw)
+    recordExpiredCrusade(raw)
     return null
   }
   raw.bans = roomBansOf(raw)
