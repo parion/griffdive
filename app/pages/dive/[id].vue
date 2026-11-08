@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { useIntervalFn } from '@vueuse/core'
-import { MAX_DIFFICULTY } from '~~/shared/engine/config'
+import { useIntervalFn, useMediaQuery } from '@vueuse/core'
 import { createSaveDoc } from '~~/shared/engine/saves'
-import { allDiversPicked, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending } from '~~/shared/engine/selectors'
+import { allDiversPicked, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending, squadInventories, squadPenances } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
-import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionOutcome, MissionReport } from '~~/shared/engine/types'
+import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
 import { rememberDiverName, storeSeat } from '~/composables/useGameSocket'
 
 const route = useRoute()
@@ -19,6 +18,7 @@ const { hasSeenWarbondIntro, markWarbondIntroSeen } = useWarbondIntro()
 const { hasSeenDiveIntro, markDiveIntroSeen } = useDiveIntro()
 const { markJoinBriefingSeen } = useJoinBriefing()
 const { isPhone } = usePhoneShell()
+const spaciousDesktop = useMediaQuery('(min-width: 1200px) and (min-height: 800px)')
 
 const {
   state,
@@ -33,6 +33,8 @@ const {
   setNameDraft,
   commitName,
 } = useDiveView(session)
+
+useActiveTierList(() => state.value?.tierList)
 
 const dispatch = (action: EngineAction) => session.dispatch(action)
 
@@ -64,20 +66,18 @@ const pactPreviewIds = computed(() =>
 // its label to REPORT while the form is open.
 const reporting = ref(false)
 
-// The sidebar opens the Kit by itself for the field beat; the report form
-// takes the stage without it.
-const fieldKit = computed(() => phase.value === 'diving' && !reporting.value)
+// Spacious desktops open the Kit for the field beat; compact desktop viewports
+// and the report form leave the stage focused.
+const fieldKit = computed(() =>
+  phase.value === 'diving' && !reporting.value && spaciousDesktop.value)
 
-// Once the whole squad has banked, everyone regroups on an interstitial instead
-// of idling on the draft: a mission-cleared beat mid-operation, the climb at
-// its end. It is derived from synced state, so every diver sees the same beat;
-// the engine stays in rewards and the host's ADVANCE is the only way on.
+// Once the whole squad has banked, everyone regroups on the squad-climbs page
+// instead of idling on the draft: the stats check, Squad Honors and the shop, at
+// the end of every mission and operation. It is derived from synced state, so
+// every diver sees the same beat; the engine stays in rewards and the host's
+// ADVANCE is the only way on.
 const squadBanked = computed(() =>
   state.value?.phase === 'rewards' && allDiversPicked(state.value))
-const operationClimbs = computed(() =>
-  Boolean(state.value)
-  && state.value!.missionInOperation >= opLength.value
-  && state.value!.difficulty < MAX_DIFFICULTY)
 
 // A new beat starts at its top. Without this the stage keeps the scroll the
 // last beat left behind — banking from the bottom of the draft would open the
@@ -90,16 +90,21 @@ watch([phaseKey, squadBanked], () => {
   window.scrollTo({ top: 0 })
 })
 
-// Squad Honors: the contest is spun when the report files and awarded from the
-// dock. The stat is held back until the report's reel has landed (the phase
-// moves on), so the dock never spoils the roll. The shell only reads the
-// derived state; the engine owns eligibility.
-const honors = computed(() => (state.value && state.value.phase !== 'diving' ? bonusFor(state.value) : null))
+// Filing the report spins Squad Honors. The climb page owns its reveal and
+// award flow; don't repeat its prompt in the dock during rewards.
+const honors = computed(() => (
+  state.value && state.value.phase !== 'diving' && state.value.phase !== 'rewards'
+    ? bonusFor(state.value)
+    : null
+))
 const honorsWinners = computed(() => (state.value ? bonusWinners(state.value).map(diver => upperName(diver.name)) : []))
 const honorsAwarded = computed(() => Boolean(state.value?.bonusWinnerIds.length))
 const sessionMenuOpen = ref(false)
 const steamOpen = ref(false)
 const steamBarOpen = ref(false)
+const kickTargetId = ref<string | null>(null)
+const kickTarget = computed(() =>
+  state.value?.divers.find(diver => diver.id === kickTargetId.value) ?? null)
 
 // Warbonds are what each diver actually owns — declared per diver, any phase,
 // and driven by the global Warbonds drawer. A local save seeds the working list
@@ -182,6 +187,16 @@ function closeBriefing(name: string): void {
   }
 }
 
+// The host's callsign is live before launch: a squadmate joining mid-setup sees
+// who is leading, and a reload keeps the name rather than falling back to DIVER.
+function fileHostName(name: string): void {
+  if (!name || name === self.value?.name) {
+    return
+  }
+  setNameDraft(name)
+  commitName()
+}
+
 function openBriefing(): void {
   if (session.selfIsHost.value) {
     hostReviewOpen.value = true
@@ -256,18 +271,27 @@ watch(() => session.selfIsHost.value, (isHost) => {
 })
 
 // A dropped socket silently pauses sync and re-seats host — say so, but only
-// once per outage so auto-reconnect churn doesn't spam the stack.
+// once per outage so auto-reconnect churn doesn't spam the stack. A server
+// restart has its own standing banner instead of the alarm.
 let wasConnected = false
 let reportedLost = false
+let rodeOutRestart = false
 watch(
   () => session.status.value,
   (status) => {
     if (status === 'connected') {
-      if (reportedLost) {
+      if (rodeOutRestart) {
+        pushToast('Back online — your dive picked up right where it left off.')
+      }
+      else if (reportedLost) {
         pushToast('Reconnected.')
       }
       wasConnected = true
       reportedLost = false
+      rodeOutRestart = false
+    }
+    else if (status === 'disconnected' && wasConnected && session.restarting.value) {
+      rodeOutRestart = true
     }
     else if (status === 'disconnected' && wasConnected && !reportedLost) {
       pushToast('Connection lost — reconnecting…', 'warn')
@@ -275,6 +299,8 @@ watch(
     }
   },
 )
+const restartBanner = computed(() =>
+  session.restarting.value && session.status.value !== 'connected' && !session.connectionFailed.value)
 
 function spin(): void {
   dispatch({ type: 'SPIN_WHEEL', seed: session.newSeed() })
@@ -291,7 +317,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   let seed = session.newSeed()
   for (let attempt = 0; attempt < 32; attempt++) {
     const same = wheel === 'misfortune'
-      ? deriveMisfortune(seed).id === current.wheel.misfortuneId
+      ? deriveMisfortune(seed, squadInventories(current), squadPenances(current)).id === current.wheel.misfortuneId
       : wheel === 'front'
         ? deriveFront(seed, majorOrderFronts(current)) === current.frontId
         : deriveStrain(seed, current.difficulty, current.frontId!)?.id === current.strainId
@@ -328,6 +354,15 @@ function failPact(playerId: string, pactId: string): void {
   dispatch({ type: 'FAIL_PACT', playerId, pactId })
 }
 
+// The stats check before the draft: held or broke, once the stats screen is up.
+function holdPact(playerId: string, pactId: string): void {
+  dispatch({ type: 'HOLD_PACT', playerId, pactId })
+}
+
+function holdDirective(): void {
+  dispatch({ type: 'HOLD_MISFORTUNE' })
+}
+
 // The host referees the squad's team directive: mark it broken in the field and
 // its shared risk is voided for everyone.
 function failDirective(): void {
@@ -335,6 +370,12 @@ function failDirective(): void {
 }
 
 function report(payload: MissionReport): void {
+  dispatch({
+    type: 'SPIN_BONUS',
+    seed: session.newSeed(),
+    outcome: payload.outcome,
+    stars: payload.stars,
+  })
   dispatch({ type: 'REPORT_RESULT', ...payload })
 }
 
@@ -368,20 +409,24 @@ function rerollRewards(): void {
   dispatch({ type: 'REROLL_REWARDS', playerId: diver.id, seed })
 }
 
-// Brasch's Bargains: one shelf item per operation, paid in credits (self-service).
+// Brasch's Bargains: one shelf item per mission, paid in credits (self-service).
 function buyItem(itemId: string): void {
   if (selfId.value) {
     dispatch({ type: 'BUY_ITEM', playerId: selfId.value, itemId })
   }
 }
 
-function spinBonus(payload?: { stars: number, outcome: MissionOutcome }): void {
-  dispatch({
-    type: 'SPIN_BONUS',
-    seed: session.newSeed(),
-    stars: payload?.stars,
-    outcome: payload?.outcome,
-  })
+// The Armor Pack is side stock: repeatable, at a rising price, from the same purse.
+function openPack(): void {
+  if (selfId.value) {
+    dispatch({ type: 'BUY_ARMOR_PACK', playerId: selfId.value })
+  }
+}
+
+// A legacy in-progress report without a filed seed is recovered automatically
+// when the climbs page opens; only the seed syncs.
+function spinBonus(): void {
+  dispatch({ type: 'SPIN_BONUS', seed: session.newSeed() })
 }
 
 function awardBonus(playerIds: string[]): void {
@@ -562,10 +607,26 @@ function openSteam(): void {
   steamBarOpen.value = !steamBarOpen.value
 }
 
-// Host moderation.
-function kick(diverId: string): void {
-  dispatch({ type: 'KICK_DIVER', playerId: diverId })
-  pushToast('Diver removed — this dive will not seat them again')
+// Host moderation always confirms the target and makes network blocking an
+// explicit opt-in, so an ordinary kick cannot bar a household's fresh joiner.
+function requestKick(diverId: string): void {
+  const target = state.value?.divers.find(diver => diver.id === diverId)
+  if (!canControl.value || !target || target.id === state.value?.hostId) {
+    return
+  }
+  kickTargetId.value = diverId
+}
+
+function confirmKick(blockNetwork: boolean): void {
+  const diverId = kickTargetId.value
+  kickTargetId.value = null
+  if (!diverId || !canControl.value) {
+    return
+  }
+  dispatch({ type: 'KICK_DIVER', playerId: diverId, blockNetwork })
+  pushToast(blockNetwork
+    ? 'Diver removed — their network is blocked from new joins'
+    : 'Diver removed — this dive will not seat them again')
 }
 
 function transferHost(diverId: string): void {
@@ -595,6 +656,14 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
 
 <template>
   <div class="dive-page">
+    <AppBanner
+      v-if="restartBanner"
+      floating
+      live
+      title="Griffdive is doing a quick restart."
+    >
+      Your dive is saved and picks up right where it left off — hang tight.
+    </AppBanner>
     <template v-if="session.awaitingJoin.value">
       <BriefingJoin
         v-if="joinRole === 'joiner'"
@@ -609,6 +678,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       :state="state"
       :room-code="session.slotName.value"
       :self-name="self?.name ?? ''"
+      @name="fileHostName"
       @close="closeBriefing"
     />
     <section
@@ -675,10 +745,11 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       :room-code="session.slotName.value"
       :last-error="session.lastError.value?.message ?? null"
       @start="launchCrusade"
+      @set-tier-list="dispatch({ type: 'SET_TIER_LIST', tierList: $event })"
       @copy-invite="copyInvite"
       @open-menu="sessionMenuOpen = true"
       @transfer-host="transferHost"
-      @kick="kick"
+      @kick="requestKick"
       @dismiss-error="session.dismissError()"
     />
 
@@ -710,14 +781,15 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @report="report"
       @fail-pact="failPact"
       @fail-directive="failDirective"
+      @hold-pact="holdPact"
+      @hold-directive="holdDirective"
       @pick="pick"
       @reroll-rewards="rerollRewards"
       @spin-bonus="spinBonus"
       @award-bonus="awardBonus"
       @advance="advance"
-      @buy="buyItem"
       @forfeit="forfeit"
-      @kick="kick"
+      @kick="requestKick"
       @transfer-host="transferHost"
       @copy-invite="copyInvite"
       @open-steam="openSteam"
@@ -747,27 +819,36 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         />
       </template>
 
-      <p
+      <AppBanner
         v-if="kicked"
-        class="panel kicked"
+        tone="error"
       >
         You were removed from this dive by the host. This dive will not seat you again.
-        <NuxtLink to="/">Back to base</NuxtLink>
-      </p>
+        <template #actions>
+          <NuxtLink
+            class="btn tiny ghost"
+            to="/"
+          >
+            Back to base
+          </NuxtLink>
+        </template>
+      </AppBanner>
 
-      <p
+      <AppBanner
         v-if="session.lastError.value"
-        class="panel error-banner"
+        tone="error"
       >
         {{ session.lastError.value.message }}
-        <button
-          class="btn tiny ghost"
-          type="button"
-          @click="session.dismissError()"
-        >
-          Dismiss
-        </button>
-      </p>
+        <template #actions>
+          <button
+            class="btn tiny ghost"
+            type="button"
+            @click="session.dismissError()"
+          >
+            Dismiss
+          </button>
+        </template>
+      </AppBanner>
 
       <Transition
         v-if="!kicked"
@@ -812,7 +893,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
             @fail="failPact"
             @fail-directive="failDirective"
             @reporting="reporting = $event"
-            @spin-bonus="spinBonus"
           />
 
           <Transition
@@ -820,24 +900,20 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
             name="phase"
             mode="out-in"
           >
-            <OperationCleared
-              v-if="squadBanked && operationClimbs"
-              :state="state"
-              :self="self"
-              :self-id="selfId"
-              :can-control="canControl"
-              @start="advance"
-              @buy="buyItem"
-            />
-            <MissionCleared
-              v-else-if="squadBanked"
+            <ClimbCleared
+              v-if="squadBanked"
               :state="state"
               :self="self"
               :self-id="selfId"
               :can-control="canControl"
               :op-length="opLength"
               @advance="advance"
-              @buy="buyItem"
+              @hold-pact="holdPact"
+              @fail-pact="failPact"
+              @hold-directive="holdDirective"
+              @fail-directive="failDirective"
+              @spin-bonus="spinBonus"
+              @award-bonus="awardBonus"
             />
             <DivePhaseRewards
               v-else
@@ -869,7 +945,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
           :self="self"
           :preview-pact-ids="pactPreviewIds"
           :field-kit="fieldKit"
-          @buy="buyItem"
         />
       </template>
 
@@ -897,10 +972,9 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
             :honors-winners="honorsWinners"
             :honors-awarded="honorsAwarded"
             @transfer-host="transferHost"
-            @kick="kick"
+            @kick="requestKick"
             @copy-invite="copyInvite"
             @open-steam="openSteam"
-            @award-bonus="awardBonus"
           />
         </div>
       </template>
@@ -924,6 +998,13 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @new-session="newSessionOpen = true"
       @leave="leaveDive"
       @end="endDive"
+    />
+
+    <SquadKickDialog
+      v-if="kickTarget"
+      :diver="kickTarget"
+      @confirm="confirmKick"
+      @cancel="kickTargetId = null"
     />
 
     <AppDialog
@@ -1012,6 +1093,14 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         </button>
       </div>
     </AppDialog>
+
+    <BraschBargains
+      v-if="state"
+      :state="state"
+      :self="self"
+      @buy="buyItem"
+      @open-pack="openPack"
+    />
   </div>
 </template>
 
@@ -1034,16 +1123,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
   opacity: 0;
   translate: 0 10px;
 }
-
-.error-banner {
-  border-color: var(--red);
-  color: var(--red);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.kicked { border-color: var(--red); }
 
 /* Everything below the squad list is bottom-anchored in the left rail. */
 .rail-lower {

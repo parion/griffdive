@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { sortKitItems } from '~~/shared/data/ordering'
 import type { Item } from '~~/shared/data/types'
 import { SEAF_SUPPORT_TIER } from '~~/shared/engine/config'
@@ -21,6 +20,7 @@ const props = withDefaults(defineProps<{
   // Show only the pack's own slots, leaving the surplus out.
   supportOnly?: boolean
 }>(), { mode: undefined, support: null, shown: undefined, compact: false, supportOnly: false })
+const { itemById } = useTierCatalog()
 
 interface Slot {
   key: string
@@ -31,11 +31,11 @@ interface Slot {
 const tierLabel = SEAF_SUPPORT_TIER.toUpperCase()
 const rolls = computed(() => supportRollsFor(props.variant, props.mode))
 const base = computed(() => startingItemIds(props.variant)
-  .map(id => ITEMS_BY_ID.get(id))
+  .map(id => itemById(id))
   .filter((item): item is Item => !!item))
 
 const dealt = computed(() => (props.support ?? [])
-  .map(id => ITEMS_BY_ID.get(id))
+  .map(id => itemById(id))
   .filter((item): item is Item => !!item))
 
 const sections = computed(() => {

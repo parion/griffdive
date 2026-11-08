@@ -2,6 +2,7 @@
 import { AccordionContent, AccordionHeader, AccordionItem, AccordionRoot, AccordionTrigger } from 'reka-ui'
 import { conditionRiskAt } from '~~/shared/engine/config'
 import { pactById, pactName } from '~~/shared/data/pacts'
+import { isPenancePact } from '~~/shared/engine/selectors'
 import type { DiveState } from '~~/shared/engine/types'
 
 // The field's "Pacts sworn" ledger, shared by the desktop and phone screens.
@@ -25,10 +26,11 @@ const pactsByDiver = computed(() =>
         id,
         key: `${diver.id}:${id}`,
         name: pactName(id),
-        rule: pact?.rule ?? '',
+        pact: pact ?? null,
         accountability: pact ? ACCOUNTABILITY_LABELS[pact.accountability] : '',
         risk: conditionRiskAt(id, props.state.difficulty),
-        failed: diver.failedPactIds.includes(id),
+        failed: diver.failedPactIds.includes(id) || diver.brokenPactIds.includes(id),
+        penance: isPenancePact(diver, id),
       }
     }),
   })))
@@ -84,7 +86,7 @@ function markPact(diverId: string, pactId: string): void {
           :key="pact.key"
           :value="pact.key"
           class="row"
-          :class="{ failed: pact.failed, cont: index > 0, own: diver.id === selfId }"
+          :class="{ failed: pact.failed, penance: pact.penance, cont: index > 0, own: diver.id === selfId }"
         >
           <span class="who"><b v-if="index === 0">{{ diver.name }}</b></span>
           <AccordionHeader
@@ -95,9 +97,13 @@ function markPact(diverId: string, pactId: string): void {
               <RiskPips
                 :value="pact.risk"
                 :max="pact.risk"
-                :tone="pact.risk >= 3 ? 'red' : 'gold'"
+                :tone="pact.penance ? 'purple' : pact.risk >= 3 ? 'red' : 'gold'"
               />
               <span class="pact-name">{{ pact.name }}</span>
+              <span
+                v-if="pact.penance"
+                class="penance-tag"
+              >Penance</span>
               <svg
                 class="row-chev"
                 width="12"
@@ -129,7 +135,10 @@ function markPact(diverId: string, pactId: string): void {
           <AccordionContent class="body">
             <div class="body-inner">
               <p class="vow">
-                “{{ pact.rule }}”
+                “<ConditionRule
+                  v-if="pact.pact"
+                  :condition="pact.pact"
+                />”
               </p>
               <span class="acct">
                 <i aria-hidden="true" />{{ pact.accountability }}
@@ -149,8 +158,8 @@ function markPact(diverId: string, pactId: string): void {
   display: flex;
   flex-direction: column;
   padding: var(--ledger-pad) var(--ledger-pad) 8px;
-  background: var(--panel);
-  box-shadow: inset 0 0 0 1px var(--line-2);
+  background: linear-gradient(105deg, color-mix(in srgb, var(--gold) 5%, var(--panel)), var(--panel) 58%);
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--gold) 45%, var(--line-3));
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
   min-width: 0;
 }
@@ -181,6 +190,18 @@ function markPact(diverId: string, pactId: string): void {
 }
 .row[data-state='open']::before { opacity: 1; }
 .row.failed::before { background: var(--red); box-shadow: none; }
+.row.penance::before { background: var(--purple); box-shadow: 0 0 10px color-mix(in srgb, var(--purple) 50%, transparent); }
+.row.penance.failed::before { box-shadow: none; }
+.penance-tag {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  color: var(--purple);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--purple) 60%, transparent);
+}
 
 .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .who b { font-size: 15px; font-weight: 700; }
@@ -220,14 +241,14 @@ function markPact(diverId: string, pactId: string): void {
 .pact-void { color: var(--red); font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
 
 .mark-pact {
-  min-height: 34px;
+  min-height: 44px;
   padding: 0 12px;
   border: 0;
   background: transparent;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 55%, var(--line-3));
   color: var(--red);
-  font: 700 10px var(--font-body);
-  letter-spacing: 0.12em;
+  font: 700 var(--fs-sm) var(--font-body);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
   transition: background-color var(--dur-fast), box-shadow var(--dur-fast);
@@ -257,12 +278,13 @@ function markPact(diverId: string, pactId: string): void {
   align-items: center;
   gap: 7px;
   color: var(--dim);
-  font-size: 10px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 .acct i { width: 5px; height: 5px; background: var(--teal); box-shadow: 0 0 6px var(--teal); }
+.row.penance .acct i { background: var(--purple); box-shadow: 0 0 6px var(--purple); }
 
 @keyframes ledger-open {
   from { height: 0; opacity: 0; }
@@ -276,11 +298,11 @@ function markPact(diverId: string, pactId: string): void {
 @container ledger (max-width: 420px) {
   .row { grid-template-columns: 52px minmax(0, 1fr) auto; column-gap: 8px; min-height: 44px; }
   .who b { font-size: 11px; }
-  .trigger { gap: 8px; min-height: 40px; }
+  .trigger { gap: 8px; min-height: 44px; }
   .trigger :deep(.pips i) { width: 11px; height: 11px; }
   .pact-name { font-size: 12px; }
-  .mark-pact { min-height: 28px; padding: 0 7px; font-size: 9px; letter-spacing: 0.06em; }
+  .mark-pact { min-width: 44px; min-height: 44px; padding: 0 8px; font-size: var(--fs-sm); letter-spacing: 0.04em; white-space: nowrap; }
   .vow { font-size: 12px; }
-  .acct { font-size: 9px; }
+  .acct { font-size: var(--fs-sm); letter-spacing: 0.06em; }
 }
 </style>

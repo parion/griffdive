@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID, TIER_RANK } from '~~/shared/data/catalog'
+import { TIER_RANK } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
 import { baseTierFor } from '~~/shared/engine/config'
@@ -11,6 +11,7 @@ const props = defineProps<{
   state: DiveState
   diver: DiverState
 }>()
+const { itemById } = useTierCatalog()
 
 const emit = defineEmits<{
   claimOption: [optionId: string]
@@ -33,7 +34,7 @@ function byTier(a: Item, b: Item): number {
 const caches = computed(() => untouched.value
   ? availableCaches(props.state).map((cache) => {
       const items = cache.itemIds
-        .map(id => ITEMS_BY_ID.get(id))
+        .map(id => itemById(id))
         .filter((item): item is Item => item !== undefined)
         .sort(byTier)
       return {

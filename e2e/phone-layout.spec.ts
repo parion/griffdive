@@ -74,10 +74,70 @@ test('phone: the report time cells tap under a finger', async ({ browser }) => {
   const cell = page.getByRole('button', { name: 'Set time remaining to 60 percent' })
   await cell.scrollIntoViewIfNeeded()
   const box = (await cell.boundingBox())!
-  expect(box.width).toBeGreaterThanOrEqual(24)
-  expect(box.height).toBeGreaterThanOrEqual(24)
+  expect(box.width).toBeGreaterThanOrEqual(44)
+  expect(box.height).toBeGreaterThanOrEqual(44)
   await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
   await expect(page.locator('.time-value')).toContainText('60')
+
+  await context.close()
+})
+
+test('phone: reading pact rules does not swear them', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    reducedMotion: 'reduce',
+    hasTouch: true,
+    isMobile: true,
+  })
+  const page = await context.newPage()
+
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griff')
+  await dismissWarbondIntro(page)
+  await page.getByRole('button', { name: 'Spin the wheel' }).click()
+  await page.locator('.directive .skip').click()
+  const strainSkip = page.locator('.strain .skip')
+  if (await strainSkip.isVisible().catch(() => false)) {
+    await strainSkip.click()
+  }
+  await page.getByRole('button', { name: 'Deal the pacts' }).click()
+
+  const card = page.locator('.phone-pacts .condition').first()
+  const select = card.locator('.pick-area')
+  const details = card.locator('.details-toggle')
+  await expect(card.locator('button button')).toHaveCount(0)
+  await expect(select).toHaveAttribute('aria-pressed', 'false')
+  await expect(details).toHaveAttribute('aria-label', /^Read .+ rules$/)
+  await expect(details).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('button', { name: 'Dive with no pacts' })).toBeVisible()
+
+  await details.click()
+  await expect(details).toHaveAttribute('aria-expanded', 'true')
+  await expect(card.locator('.condition-rule')).toBeVisible()
+  await expect(select).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByRole('button', { name: 'Dive with no pacts' })).toBeVisible()
+
+  await select.click()
+  await expect(select).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Swear 1 pact' })).toBeVisible()
+
+  const risk = await card.locator('.risk-word').boundingBox()
+  const stamp = await card.locator('.stamp').boundingBox()
+  expect(risk).not.toBeNull()
+  expect(stamp).not.toBeNull()
+  expect(stamp!.x).toBeGreaterThanOrEqual(risk!.x + risk!.width)
+
+  await page.getByRole('button', { name: 'Swear 1 pact' }).click()
+  const markBroken = page.locator('.sworn .mark-pact')
+  await expect(markBroken).toBeVisible()
+  const markBox = await markBroken.boundingBox()
+  expect(markBox?.width).toBeGreaterThanOrEqual(44)
+  expect(markBox?.height).toBeGreaterThanOrEqual(44)
+  await markBroken.click()
+  await expect(markBroken).toHaveText('Confirm?')
+  await markBroken.click()
+  await expect(page.locator('.sworn .pact-void')).toContainText('Broken')
 
   await context.close()
 })
@@ -97,7 +157,6 @@ test('phone: the hangar keeps four bays in a row and the launch in reach', async
   await page.getByRole('button', { name: 'Host an online dive' }).click()
   await expect(page).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
   await page.getByLabel('Your name').fill('Host')
-  await page.getByLabel('Your name').press('Enter')
   await page.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(page)
 

@@ -2,7 +2,8 @@ import { expect, test, type Page } from '@playwright/test'
 import { fileCallsign } from './helpers'
 
 // The host tutorial is a full page. On a phone the squad box's two actions
-// must fit the viewport width and the page must never scroll sideways.
+// must fit the viewport width, the start must be in the first screen, and the
+// page must never scroll sideways.
 const PHONE = { viewport: { width: 390, height: 844 } }
 
 async function openBriefing(page: Page): Promise<void> {
@@ -23,7 +24,8 @@ test('mobile host tutorial: no sideways scroll, both squad-box actions show', as
 
   await expect(page.getByRole('button', { name: 'Set warbonds' })).toBeVisible()
   const start = page.getByRole('button', { name: 'Start the dive' })
-  await expect(start).toBeVisible()
+  // The page is one screen's worth: the way in sits in the first viewport.
+  await expect(start).toBeInViewport()
   await start.click()
   await expect(page.getByRole('heading', { name: 'You hold the wheel.' })).toBeHidden()
   await context.close()

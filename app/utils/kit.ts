@@ -1,7 +1,8 @@
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
-import type { Item, ItemCategory } from '~~/shared/data/types'
+import type { Item } from '~~/shared/data/types'
 import type { SupportRolls } from '~~/shared/engine/config'
 import { startingItemIds } from '~~/shared/engine/progression'
+import { tieredItem } from '~~/shared/engine/tierList'
+import type { TierList } from '~~/shared/engine/tierList'
 import type { DiveState } from '~~/shared/engine/types'
 
 export type KitSectionId = 'primary' | 'secondary' | 'throwables' | 'armor' | 'boosters' | 'eagle' | 'orbital' | 'supply' | 'defense'
@@ -9,6 +10,9 @@ export type KitSectionId = 'primary' | 'secondary' | 'throwables' | 'armor' | 'b
 // gear: transparent weapon renders, shown in a lit well. icon: the square
 // in-game icons (stratagems, armor passives, boosters) that carry their own frame.
 export type KitArt = 'gear' | 'icon'
+
+// The Tier Maker's tile sizes, a diver's display preference.
+export type TileSize = 's' | 'm' | 'l'
 
 export interface KitSectionDef {
   id: KitSectionId
@@ -28,6 +32,14 @@ export const KIT_SECTIONS: readonly KitSectionDef[] = [
   { id: 'orbital', label: 'Orbital stratagems', nav: 'Orbital', accent: 'var(--red)', art: 'icon' },
   { id: 'supply', label: 'Supply stratagems', nav: 'Supply', accent: 'var(--cat-supply)', art: 'icon' },
   { id: 'defense', label: 'Defense stratagems', nav: 'Defense', accent: 'var(--cat-defense)', art: 'icon' },
+]
+
+// The Tier Maker's reading order: weapons and stratagems lead every row,
+// armor passives and boosters trail it.
+const TRAILING_SECTIONS: ReadonlySet<KitSectionId> = new Set(['armor', 'boosters'])
+export const TIER_MAKER_SECTIONS: readonly KitSectionDef[] = [
+  ...KIT_SECTIONS.filter(section => !TRAILING_SECTIONS.has(section.id)),
+  ...KIT_SECTIONS.filter(section => TRAILING_SECTIONS.has(section.id)),
 ]
 
 export function kitSectionOf(item: Item): KitSectionId {
@@ -61,7 +73,7 @@ export function kitSectionOf(item: Item): KitSectionId {
 // are most of the stratagem loadout, so hiding them reads as a missing kit.
 export function ownedKitItems(state: DiveState, diverId: string | null): Item[] {
   return (diverId ? state.personalInventories[diverId] ?? [] : [])
-    .map(id => ITEMS_BY_ID.get(id))
+    .map(id => tieredItem(id, state.tierList))
     .filter((item): item is Item => item !== undefined)
 }
 
@@ -77,26 +89,25 @@ export function earnedKitItems(state: DiveState, diverId: string | null): Item[]
   return items.filter(item => !starting.has(item.id))
 }
 
-// How an issued kit reads at a glance: stratagems, weapons, armor, boosters.
-const KIT_GROUPS: readonly { label: string, categories: readonly ItemCategory[] }[] = [
-  { label: 'Stratagems', categories: ['Supply', 'Eagle', 'Orbital', 'Defense'] },
-  { label: 'Weapons', categories: ['primary', 'secondary', 'throwable'] },
-  { label: 'Armor', categories: ['armorPassive'] },
-  { label: 'Boosters', categories: ['booster'] },
-]
+// How an issued kit reads at a glance: one group per kind of gear, in the
+// Starting Kit's own sections, stratagems first.
+const KIT_GROUP_ORDER: readonly StartKind[] = ['stratagem', 'primary', 'secondary', 'throwable', 'armorPassive', 'booster']
 
 export interface KitGroup {
   label: string
+  accent: string
   items: Item[]
 }
 
-export function kitGroups(itemIds: readonly string[]): KitGroup[] {
+export function kitGroups(itemIds: readonly string[], tierList?: TierList | null): KitGroup[] {
   const items = itemIds
-    .map(id => ITEMS_BY_ID.get(id))
+    .map(id => tieredItem(id, tierList))
     .filter((item): item is Item => !!item)
-  return KIT_GROUPS
-    .map(group => ({ label: group.label, items: items.filter(item => group.categories.includes(item.category)) }))
-    .filter(group => group.items.length > 0)
+  return KIT_GROUP_ORDER.flatMap((kind) => {
+    const section = START_SECTIONS.find(entry => entry.kind === kind)
+    const members = items.filter(item => startKindOf(item) === kind)
+    return section && members.length ? [{ label: section.label, accent: section.accent, items: members }] : []
+  })
 }
 
 const SUPPORT_ROLL_LABELS: Readonly<Record<keyof SupportRolls, readonly [string, string]>> = {

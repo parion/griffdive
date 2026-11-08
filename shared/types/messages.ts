@@ -29,9 +29,11 @@ export type ServerMessage
   = | { type: 'welcome', selfId: string, hostId: string | null, roomCode: string, snapshot: DiveState, online: string[], saved: DiveSaveInfo | null, steam: SteamLobbyInfo | null }
     | { type: 'state', snapshot: DiveState, applied: EngineAction | null, online: string[], saved: DiveSaveInfo | null, steam: SteamLobbyInfo | null }
     | { type: 'error', code: string, message: string }
+    | { type: 'restarting' }
 
 export const HOST_ONLY_ACTIONS = [
   'START_DIVE',
+  'SET_TIER_LIST',
   'SPIN_WHEEL',
   'ACCEPT_MISFORTUNE',
   'ACCEPT_STRAIN',
@@ -39,6 +41,7 @@ export const HOST_ONLY_ACTIONS = [
   'REROLL_WHEEL',
   'REPORT_RESULT',
   'FAIL_MISFORTUNE',
+  'HOLD_MISFORTUNE',
   'SPIN_BONUS',
   'AWARD_BONUS',
   'ADVANCE',
@@ -58,6 +61,7 @@ export function isHostOnlyAction(type: string): boolean {
 // reducer has no case for it) or persisted.
 export const ENGINE_ACTION_TYPES = [
   'START_DIVE',
+  'SET_TIER_LIST',
   'SPIN_WHEEL',
   'ACCEPT_MISFORTUNE',
   'ACCEPT_STRAIN',
@@ -65,12 +69,15 @@ export const ENGINE_ACTION_TYPES = [
   'REROLL_WHEEL',
   'SET_PACTS',
   'FAIL_PACT',
+  'HOLD_PACT',
   'FAIL_MISFORTUNE',
+  'HOLD_MISFORTUNE',
   'SET_WARBONDS',
   'REPORT_RESULT',
   'FORFEIT_ITEM',
   'PICK_REWARD',
   'BUY_ITEM',
+  'BUY_ARMOR_PACK',
   'CLAIM_CATCHUP_OPTION',
   'CLAIM_CACHE',
   'REROLL_REWARDS',

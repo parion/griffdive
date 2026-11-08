@@ -45,20 +45,12 @@ const emit = defineEmits<{
   kick: [diverId: string]
   copyInvite: []
   openSteam: []
-  awardBonus: [playerIds: string[]]
 }>()
 
-const selectedWinners = ref<string[]>([])
 const acting = computed(() => new Set(actingDiverIds(props.state)))
 const roomCode = computed(() => (props.slotName || '').toUpperCase())
 const openSeats = computed(() => Math.max(0, 4 - props.state.divers.length))
 const host = computed(() => props.state.hostId)
-const canAward = computed(() =>
-  props.canControl
-  && Boolean(props.honors)
-  && !props.honorsAwarded
-  && props.state.bonusSeed !== null)
-
 function isSelf(diver: DiverState): boolean {
   return diver.id === props.selfId
 }
@@ -93,23 +85,6 @@ function lampClass(diver: DiverState): string {
   return acting.value.has(diver.id) ? 'gold pulse' : 'teal'
 }
 
-function toggleWinner(diverId: string): void {
-  if (!canAward.value) {
-    return
-  }
-  selectedWinners.value = selectedWinners.value.includes(diverId)
-    ? selectedWinners.value.filter(id => id !== diverId)
-    : [...selectedWinners.value, diverId]
-}
-
-function award(): void {
-  if (selectedWinners.value.length === 0) {
-    return
-  }
-  emit('awardBonus', selectedWinners.value)
-  selectedWinners.value = []
-}
-
 function transfer(diverId: string): void {
   emit('transferHost', diverId)
 }
@@ -137,17 +112,8 @@ function kick(diverId: string): void {
           <i>Squad Honors</i>
           <b class="disp">{{ honors.label }}</b>
         </span>
-        <button
-          v-if="canAward"
-          class="honors-award"
-          type="button"
-          :disabled="selectedWinners.length === 0"
-          @click="award"
-        >
-          Award{{ selectedWinners.length > 1 ? ` ${selectedWinners.length}` : '' }}
-        </button>
         <span
-          v-else-if="honorsAwarded"
+          v-if="honorsAwarded"
           class="honors-done"
         >Token banked</span>
       </div>
@@ -169,29 +135,6 @@ function kick(diverId: string): void {
           <b>{{ upperName(diver.name) }}</b>
           <i>{{ statusOf(diver) }}</i>
         </span>
-        <button
-          v-if="canAward"
-          class="honor-token"
-          type="button"
-          :aria-pressed="selectedWinners.includes(diver.id)"
-          :aria-label="`Award Squad Honors token to ${diver.name}`"
-          @click="toggleWinner(diver.id)"
-        >
-          <svg
-            width="20"
-            height="22"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              d="M12 2.5 20.5 7.3v9.4L12 21.5l-8.5-4.8V7.3z"
-              :fill="selectedWinners.includes(diver.id) ? 'var(--gold)' : 'none'"
-              stroke="var(--gold)"
-              stroke-width="1.8"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </button>
         <span
           v-if="canControl && !isSelf(diver) && inlineManage"
           class="manage-inline"
@@ -389,7 +332,7 @@ function kick(diverId: string): void {
 .honors-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .honors-copy i {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--fs-sm);
   font-style: normal;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -400,20 +343,14 @@ function kick(diverId: string): void {
   line-height: 1;
   white-space: nowrap;
 }
-.honors-award,
 .honors-done {
-  min-height: 30px;
-  padding: 0 9px;
-  border: 0;
-  background: var(--gold);
-  color: var(--on-gold);
-  font: 700 10px var(--font-body);
+  min-height: 44px;
+  padding: 0 4px;
+  color: var(--teal);
+  font: 700 var(--fs-sm) var(--font-body);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  cursor: pointer;
 }
-.honors-award:disabled { opacity: 0.35; cursor: not-allowed; }
-.honors-done { background: transparent; color: var(--teal); padding: 0 4px; }
 
 .seat {
   display: flex;
@@ -431,7 +368,7 @@ function kick(diverId: string): void {
 .seat-copy b { font-size: 14px; font-weight: 700; color: var(--text); }
 .seat-copy i {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-sm);
   font-style: normal;
   letter-spacing: 0.06em;
 }
@@ -447,19 +384,16 @@ function kick(diverId: string): void {
 .pulse { animation: lamp-pulse 1.6s ease-in-out infinite; }
 @keyframes lamp-pulse { 50% { opacity: 0.45; } }
 
-.honor-token,
 .icon-mini {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border: 0;
   background: none;
   color: var(--dim);
   cursor: pointer;
 }
-.honor-token { color: var(--gold); }
-.honor-token:hover svg { filter: drop-shadow(0 0 5px var(--gold)); }
 .icon-mini:disabled { opacity: 0.3; cursor: not-allowed; }
 .icon-mini:hover:not(:disabled) { color: var(--text); }
 
@@ -517,7 +451,7 @@ function kick(diverId: string): void {
   margin-left: auto;
 }
 .manage-inline .manage-item {
-  min-height: 32px;
+  min-height: 44px;
   padding: 0 8px;
   border: 0;
   background: var(--panel);

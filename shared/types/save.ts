@@ -6,7 +6,8 @@ import type { DiveState } from '../engine/types'
 // for a current one. From here on every shape change adds a version-gated
 // migration in shared/engine/saves.ts (see game-rules.md, Save model).
 export const SAVE_EPOCH = 'beta'
-export const SAVE_SCHEMA_VERSION = 1
+// v3: report-frozen offer risk and the operation's directive history.
+export const SAVE_SCHEMA_VERSION = 3
 
 export interface SaveDoc {
   epoch: typeof SAVE_EPOCH

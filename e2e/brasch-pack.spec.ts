@@ -1,0 +1,168 @@
+import { expect, test, type Page } from '@playwright/test'
+import { dismissWarbondIntro, fileCallsign } from './helpers'
+
+// The shop only opens after the first operation, and the first pack is cheap
+// enough that a funded test account can buy several and watch the price climb.
+// Seed the save's purse and altitude through localStorage so the test exercises
+// the live purchase/reveal rather than a mocked engine.
+async function stockedDive(page: Page): Promise<void> {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Solo drop' }).click()
+  await fileCallsign(page, 'Griffon')
+  await dismissWarbondIntro(page)
+  await page.waitForFunction(() => localStorage.getItem('griffdive:saves:v2'))
+  await page.evaluate(() => {
+    const key = 'griffdive:saves:v2'
+    const index = JSON.parse(localStorage.getItem(key) || '{}')
+    const id = Object.keys(index)[0]!
+    const doc = index[id]
+    doc.state.difficulty = 4
+    for (const diver of doc.state.divers) {
+      diver.credits = 1000
+    }
+    localStorage.setItem(key, JSON.stringify(index))
+  })
+  await page.reload()
+  await expect(page.getByRole('button', { name: /Brasch's Bargains, 1000 credits/ })).toBeEnabled()
+}
+
+const counter = (page: Page) => page.getByRole('dialog', { name: 'Brasch\'s Bargains' })
+const reveal = (page: Page) => page.getByRole('dialog', { name: 'Armor Pack' })
+
+test('the Armor Pack is a card in the shelf row and opens over the counter', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await stockedDive(page)
+
+  await page.getByRole('button', { name: /Brasch's Bargains, 1000 credits/ }).click()
+  const shop = counter(page)
+  await expect(shop).toBeVisible()
+  await expect(shop.locator('.shelf .slot')).toHaveCount(3)
+
+  // The pack is side stock in the row, not a banner below it.
+  const pack = shop.locator('.pack-card')
+  await expect(pack).toContainText('Armor Pack')
+  await expect(pack).toContainText('3 armor passives')
+  await expect(pack.locator('.card-price')).toContainText('25')
+  await expect(pack).toContainText('Price rises with each pack · next 38 credits')
+  await expect(pack.locator('.mini')).toHaveCount(3)
+  await expect(pack.getByRole('img', { name: 'Armor Pack card backs' })).toBeVisible()
+
+  await pack.getByRole('button', { name: 'Open Armor Pack 1 for 25 credits' }).click()
+  const fan = reveal(page)
+  await expect(fan).toBeVisible()
+  // A contained stage over the counter, not a viewport takeover. The counter
+  // stays painted underneath but is inert while the pack has focus.
+  const box = await fan.boundingBox()
+  expect(box!.x).toBeGreaterThan(0)
+  expect(box!.y).toBeGreaterThan(0)
+  expect(box!.width).toBeLessThan(1440)
+  expect(box!.height).toBeLessThan(900)
+  await expect(page.locator('.brasch-dialog')).toBeVisible()
+  await expect(fan.locator('.card-slot')).toHaveCount(3)
+  await fan.getByRole('button', { name: 'Back to the shelf' }).click()
+  await expect(fan).toBeHidden()
+
+  // The counter never closed; it shows the opened pack and the next price.
+  await expect(shop).toBeVisible()
+  await expect(pack.locator('.pack-count')).toHaveText('Pack 1')
+  await expect(pack.getByRole('img', { name: 'Packs bought: 1' })).toBeVisible()
+  await expect(pack.getByRole('button', { name: 'Open Armor Pack 2 for 38 credits' })).toBeVisible()
+  await expect(pack.getByRole('button', { name: 'View the newest Armor Pack pull' })).toBeVisible()
+})
+
+test('a second pack costs more and the replay opens the settled fan', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await stockedDive(page)
+
+  await page.getByRole('button', { name: /Brasch's Bargains, 1000 credits/ }).click()
+  const shop = counter(page)
+  const pack = shop.locator('.pack-card')
+
+  await pack.getByRole('button', { name: 'Open Armor Pack 1 for 25 credits' }).click()
+  const first = reveal(page)
+  await expect(first).toBeVisible()
+  await first.getByRole('button', { name: 'Back to the shelf' }).click()
+  await expect(first).toBeHidden()
+
+  await pack.getByRole('button', { name: 'Open Armor Pack 2 for 38 credits' }).click()
+  const second = reveal(page)
+  await expect(second).toBeVisible()
+  await second.getByRole('button', { name: 'Back to the shelf' }).click()
+  await expect(second).toBeHidden()
+  await expect(pack.locator('.pack-count')).toHaveText('Pack 2')
+  await expect(pack.getByRole('button', { name: 'Open Armor Pack 3 for 56 credits' })).toBeVisible()
+
+  // The replay is instant and still shows the newest pull.
+  await pack.getByRole('button', { name: 'View the newest Armor Pack pull' }).click()
+  const replay = reveal(page)
+  await expect(replay).toBeVisible()
+  await expect(replay).toHaveClass(/settled/)
+  await expect(replay.locator('.card-slot')).toHaveCount(3)
+  await replay.getByRole('button', { name: 'Back to the shelf' }).click()
+  await expect(replay).toBeHidden()
+})
+
+test('the whole shelf card is the buy target', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await stockedDive(page)
+
+  await page.getByRole('button', { name: /Brasch's Bargains, 1000 credits/ }).click()
+  const shop = counter(page)
+  const slot = shop.locator('.shelf .slot').first()
+  await expect(slot).toHaveClass(/open/)
+  await slot.locator('.card-hit').focus()
+  await expect(slot.locator('.slot-tier-hint')).toBeVisible()
+  await expect(slot.locator('.card-hit')).toHaveAttribute('aria-label', /tier/)
+  const itemName = await slot.locator('.card-name').innerText()
+
+  await slot.click()
+
+  await expect(slot).toHaveClass(/bought/)
+  await expect(slot.locator('.card-veil.stamp')).toHaveText('Taken')
+  await expect(slot.locator('.card-name')).toHaveText(itemName)
+  await expect(shop.locator('.shelf .slot.open')).toHaveCount(0)
+
+  // The rest of the shelf greys out under the tilted next-mission notice.
+  const locked = shop.locator('.shelf .slot.locked').first()
+  const notice = locked.locator('.card-veil.notice')
+  await expect(notice).toContainText('Next mission')
+  await expect(notice.locator('svg')).toBeVisible()
+})
+
+test('the phone opens the counter and the pack fullscreen', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+    reducedMotion: 'reduce',
+  })
+  const page = await context.newPage()
+  await stockedDive(page)
+
+  await page.getByRole('button', { name: /Brasch's Bargains, 1000 credits/ }).tap()
+  const shop = counter(page)
+  await expect(shop).toBeVisible()
+  await expect(await shop.boundingBox()).toMatchObject({ x: 0, y: 0, width: 390, height: 844 })
+
+  const pack = shop.locator('.pack-card')
+  await pack.getByRole('button', { name: 'Open Armor Pack 1 for 25 credits' }).tap()
+  const fan = reveal(page)
+  await expect(fan).toBeVisible()
+  await expect(await fan.boundingBox()).toMatchObject({ x: 0, y: 0, width: 390, height: 844 })
+  await expect(fan.locator('.card-slot')).toHaveCount(3)
+  const slots = fan.locator('.card-slot')
+  for (let i = 0; i < await slots.count(); i++) {
+    const box = await slots.nth(i).boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.x).toBeGreaterThanOrEqual(0)
+    expect(box!.x + box!.width).toBeLessThanOrEqual(390)
+  }
+  await fan.getByRole('button', { name: 'Back to the shelf' }).tap()
+  await expect(fan).toBeHidden()
+
+  // The phone counter stays open under the stage and shows the pull count.
+  await expect(shop).toBeVisible()
+  await expect(pack.locator('.pack-count')).toHaveText('Pack 1')
+
+  await context.close()
+})

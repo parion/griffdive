@@ -2,7 +2,6 @@
 import { REWARD_TOKEN_CAP, baseTierFor, missionsPerOperation } from '~~/shared/engine/config'
 import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import type { DiveState } from '~~/shared/engine/types'
-import { operationsCleared } from '~/utils/recap'
 
 const props = defineProps<{
   state: DiveState
@@ -19,22 +18,31 @@ const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const opNumber = computed(() => catchUpOpsBehind(props.state.difficulty, variant.value) + 1)
 const stage = ref<HTMLElement | null>(null)
 
-const itemsOwned = computed(() =>
-  Object.values(props.state.personalInventories).flat().length)
+const itemsBanked = computed(() =>
+  props.state.actionLog.filter(action => action.type === 'PICK_REWARD').length)
+const squadCredits = computed(() =>
+  props.state.divers.reduce((total, diver) => total + diver.credits, 0))
+const pactsHeld = computed(() =>
+  props.state.actionLog.filter(action => action.type === 'HOLD_PACT').length)
+const pactsBroken = computed(() =>
+  props.state.actionLog.filter(action => action.type === 'FAIL_PACT').length)
+const pardoned = computed(() =>
+  props.state.debtSettled === true
+  && !props.state.divers.some(diver => diver.penance?.status === 'owed'))
 
 const records = computed(() => [
-  { label: 'Difficulty', value: String(props.state.difficulty), unit: difficultyName(props.state.difficulty) },
   { label: 'Missions', value: String(props.state.missionIndex), unit: 'flown' },
-  { label: 'Operations', value: String(operationsCleared(props.state)), unit: 'cleared' },
-  { label: 'Combos', value: String(props.state.completedCombos.length), unit: 'cleared' },
-  { label: 'Divers', value: String(props.state.divers.length), unit: achieved.value ? 'extracted' : 'on file' },
-  { label: 'Items', value: String(itemsOwned.value), unit: 'owned' },
+  { label: 'Operations', value: String(opNumber.value), unit: 'cleared' },
+  { label: 'Items banked', value: String(itemsBanked.value), unit: 'rewards' },
+  { label: 'Squad credits', value: String(squadCredits.value), unit: 'in purses' },
+  { label: 'Pacts held', value: String(pactsHeld.value), unit: 'held' },
+  { label: 'Pacts broken', value: String(pactsBroken.value), unit: 'broken' },
 ])
 
 const notice = computed(() => achieved.value
   ? {
       label: 'Ministry notice\nPardon',
-      copy: 'The Ministry has reviewed your file and finds your debt to liberty settled. Griffdiver, you are pardoned — restored to the franchise you squandered. Do not squander it again.',
+      copy: 'Your Penance was served or your directive tax paid. Your debt to Liberty is settled — restored to the franchise you squandered. Do not squander it again.',
     }
   : {
       label: 'Ministry notice\nFile closed',
@@ -101,7 +109,10 @@ onMounted(() => {
         <span class="ach-crusade-name">{{ crusadeLabel }}</span>
       </div>
 
-      <p class="ach-pardon rv-rise">
+      <p
+        v-if="!achieved || pardoned"
+        class="ach-pardon rv-rise"
+      >
         <span class="lbl ach-pardon-lbl">{{ notice.label }}</span>
         <span class="ach-pardon-copy">{{ notice.copy }}</span>
       </p>
@@ -168,6 +179,7 @@ onMounted(() => {
               Operation {{ opNumber }} · {{ difficultyName(state.difficulty) }} ·
               {{ achieved ? `${opLength}/${opLength} missions` : `${state.missionIndex} missions flown` }}
             </span>
+            <TierListTag :list="state.tierList" />
           </div>
           <h1 class="ach-title">
             <span class="disp rv-slam ach-line">{{ achieved ? 'Griffdive' : 'File' }}</span>
@@ -240,7 +252,7 @@ onMounted(() => {
 
       <section
         class="ach-record"
-        aria-label="Crusade record"
+        aria-label="Run recap"
       >
         <dl class="ach-stats">
           <div
@@ -582,7 +594,6 @@ onMounted(() => {
 }
 .ach-line.gold {
   color: var(--gold);
-  text-shadow: 0 0 40px rgba(255, 214, 66, 0.25);
   animation-delay: 0.5s;
 }
 .ach-line.ended {

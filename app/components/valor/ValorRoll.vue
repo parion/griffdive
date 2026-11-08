@@ -25,13 +25,36 @@ const props = withDefaults(defineProps<{
 }>(), {
   markers: () => [],
   deltas: () => ({}),
-  label: 'Valor roll',
+  label: 'Loot odds',
   note: '',
   locked: false,
   compact: false,
 })
 
 const inspected = ref<string | null>(null)
+
+// On phone, close d100 faces need separate label lanes. Keep lane assignment
+// based on the rolled position rather than option order, so colliding pins
+// never land on the same row.
+const markerLayout = computed(() => {
+  const lanes = Array.from({ length: props.markers.length }, () => 0)
+  const laneLastRolls: number[] = []
+  const ordered = props.markers
+    .map((marker, index) => ({ roll: marker.roll, index }))
+    .sort((a, b) => a.roll - b.roll)
+
+  for (const marker of ordered) {
+    let lane = laneLastRolls.findIndex(lastRoll => marker.roll - lastRoll >= 12.5)
+    if (lane < 0) {
+      lane = laneLastRolls.length
+    }
+    laneLastRolls[lane] = marker.roll
+    lanes[marker.index] = lane
+  }
+
+  return { lanes, rows: Math.max(1, laneLastRolls.length) }
+})
+const pinHeadroom = computed(() => `${Math.max(30, markerLayout.value.rows * 24)}px`)
 
 function pct(value: number): string {
   if (value > 0 && value < 0.5) {
@@ -168,6 +191,7 @@ function markerTone(marker: ValorMarker): RewardTier {
     <div
       class="roll-stage"
       :class="{ pinned: markers.length > 0 }"
+      :style="{ '--pin-headroom': pinHeadroom }"
     >
       <div
         class="roll-pins"
@@ -178,7 +202,11 @@ function markerTone(marker: ValorMarker): RewardTier {
           :key="marker.key ?? `${marker.roll}-${index}`"
           class="pin"
           :data-tier="markerTone(marker)"
-          :style="{ 'left': `${marker.roll}%`, '--pin-delay': `${marker.delay ?? index * 180}ms` }"
+          :style="{
+            'left': `${marker.roll}%`,
+            '--pin-delay': `${marker.delay ?? index * 180}ms`,
+            '--pin-offset': `${(markerLayout.lanes[index] ?? 0) * 24}px`,
+          }"
         >
           <span class="pin-flag disp">{{ marker.roll }}</span>
           <span class="pin-needle" />
@@ -407,7 +435,7 @@ function markerTone(marker: ValorMarker): RewardTier {
   opacity: 0.6;
 }
 .zone-label .letter { font-size: 17px; line-height: 1; }
-.zone-label.gain .letter { color: var(--gold-bright); text-shadow: 0 0 12px rgba(255, 214, 66, 0.5); }
+.zone-label.gain .letter { color: var(--gold-bright); }
 .zone-label.loss .letter { opacity: 0.75; }
 .zone-label.silent { opacity: 0; }
 
@@ -471,6 +499,12 @@ function markerTone(marker: ValorMarker): RewardTier {
 @keyframes pin-flare {
   0% { scale: 1.5; box-shadow: inset 0 0 0 1px var(--pin), 0 0 34px 6px var(--pin); }
   100% { scale: 1; }
+}
+
+@media (max-width: 720px) {
+  .roll-stage.pinned,
+  .roll.compact .roll-stage.pinned { padding-top: var(--pin-headroom); }
+  .pin-flag { margin-top: var(--pin-offset, 0px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

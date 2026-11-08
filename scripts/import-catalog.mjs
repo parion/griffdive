@@ -218,4 +218,15 @@ emitFile(
   ],
 )
 
+// Tier-list share codes address items by their slot in tierSlots.ts: new ids
+// are appended, existing slots never move, retired ids keep theirs.
+const slotsFile = join(outDir, 'tierSlots.ts')
+const slotsSource = readFileSync(slotsFile, 'utf8')
+const slotted = new Set([...slotsSource.matchAll(/^ {2}'([^']+)',$/gm)].map(match => match[1]))
+const newSlots = converted.flatMap(({ items }) => items.map(item => item.id)).filter(id => !slotted.has(id))
+if (newSlots.length > 0) {
+  writeFileSync(slotsFile, slotsSource.replace(/\n\]\n$/, `\n${newSlots.map(id => `  '${id}',`).join('\n')}\n]\n`))
+}
+
 console.log(`\nWrote equipment.ts, stratagems.ts, warbonds.ts to ${outDir}`)
+console.log(`Appended ${newSlots.length} new tier-list slots to tierSlots.ts`)

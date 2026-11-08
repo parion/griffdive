@@ -16,6 +16,7 @@ const sessions = useSessionSaves()
 const recentRooms = useRecentRooms()
 const { push: pushToast } = useToasts()
 const { ownedWarbonds: myWarbonds, setOwned: setMyWarbonds } = useOwnedWarbonds()
+const { picked: pickedTierList } = useTierLists()
 const { openCodex } = useDrawers()
 const { openFeedback, hasBoard, boardUrl } = useFeedback()
 
@@ -183,6 +184,7 @@ function createCrusade(plan: FrontPlan): void {
     [...myWarbonds.value],
     crypto.getRandomValues(new Uint32Array(1))[0],
     frontPinFor(plan, lockedFront.value, liveOrder.value),
+    pickedTierList.value.list,
   )
   const variantName = VARIANTS_LABELS[variant.value] ?? 'Crusade'
   const id = saves.createSlot(state, `${name} · ${variantName}`)
@@ -281,7 +283,7 @@ const facts = [
         <p class="hero-lede rise">
           Griffdive wraps your Helldivers 2 missions in a roguelike crusade. Start on
           Medium with surplus gear, spin the <b>Wheel of Adversity</b> before every
-          drop, swear <b>pacts</b> for rarer loot and climb all the way to
+          drop, swear personal <b>pacts</b> for rarer loot and climb all the way to
           <b>Super Helldive</b>.
         </p>
         <nav
@@ -379,7 +381,7 @@ const facts = [
     >
       <p>
         Every diver is dealt a hand of <b>personal pacts</b>: no stims, no backpack, never
-        die. Swear as many as you dare — each one adds skulls to <b>your</b> odds only.
+        die. Swear as many as you dare. Each one adds skulls to <b>your</b> odds only.
       </p>
       <p>
         Every pact is checked where the squad can see it: the loadout screen, the field or

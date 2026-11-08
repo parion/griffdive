@@ -151,7 +151,7 @@ function pick(value: unknown): void {
         >
           <span class="fp-radio" />
           <span class="fp-alt-body">
-            <span class="fp-title">Lock a faction</span>
+            <span class="fp-title">Pick one enemy</span>
             <span class="fp-alt-note">Same enemy all run · no risk</span>
           </span>
         </RadioGroupItem>
@@ -169,7 +169,7 @@ function pick(value: unknown): void {
             <div
               class="fp-lock"
               role="group"
-              aria-label="Locked faction"
+              aria-label="Enemy"
             >
               <button
                 v-for="front in FRONTS"

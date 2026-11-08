@@ -333,8 +333,10 @@ p { margin: 0.25rem 0; }
 /* ============================================================================
    Shape motifs
    ========================================================================== */
-.cut { clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
-.cut-sm { clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); }
+/* The straight edges overshoot by 1px: a box whose edge lands on a fractional
+   pixel would otherwise have its 1px border antialiased away by the clip. */
+.cut { clip-path: polygon(10px -1px, calc(100% + 1px) -1px, calc(100% + 1px) calc(100% - 10px), calc(100% - 10px) calc(100% + 1px), -1px calc(100% + 1px), -1px 10px); }
+.cut-sm { clip-path: polygon(6px -1px, calc(100% + 1px) -1px, calc(100% + 1px) calc(100% - 6px), calc(100% - 6px) calc(100% + 1px), -1px calc(100% + 1px), -1px 6px); }
 .chev { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%, 14px 50%); }
 .chev-first { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%); }
 .hex { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
@@ -883,6 +885,12 @@ input[type='radio'] { accent-color: var(--gold); width: 1rem; height: 1rem; }
 .phase-enter-from { opacity: 0; transform: translateY(12px); }
 .phase-leave-to { opacity: 0; transform: translateY(-8px); }
 
+/* Route swaps (nuxt.config `app.pageTransition`) */
+.page-enter-active { transition: opacity var(--dur-med) var(--ease-out); }
+.page-leave-active { transition: opacity var(--dur-fast) ease-in; }
+.page-enter-from,
+.page-leave-to { opacity: 0; }
+
 /* Sheet/slide helpers for mobile rail sheets */
 .sheet-enter-active { transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-med) var(--ease-out); }
 .sheet-leave-active { transition: transform var(--dur-fast) ease-in, opacity var(--dur-fast) ease-in; }
@@ -902,7 +910,7 @@ input[type='radio'] { accent-color: var(--gold); width: 1rem; height: 1rem; }
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background: linear-gradient(100deg, transparent 28%, var(--sweep, rgba(255, 255, 255, 0.45)) 50%, transparent 72%);
+  background: linear-gradient(100deg, transparent 28%, var(--sweep, rgba(255, 255, 255, 0.2)) 50%, transparent 72%);
   transform: translateX(-130%);
   animation: ctaSweep 2.8s var(--ease-out) infinite;
 }

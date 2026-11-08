@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { pactName } from '~~/shared/data/pacts'
 import { conditionRiskAt } from '~~/shared/engine/config'
 import { PACT_BANS_STRATAGEM, applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
@@ -13,6 +12,7 @@ const props = defineProps<{
   self: DiverState | null
   canControl: boolean
 }>()
+const { itemById } = useTierCatalog()
 
 const emit = defineEmits<{
   lock: [pactIds: string[]]
@@ -21,6 +21,7 @@ const emit = defineEmits<{
 
 const selection = ref<string[]>([])
 const hoveredId = ref<string | null>(null)
+const expandedPactId = ref<string | null>(null)
 
 // A new draw or directive invalidates the hand. Watch the sources themselves:
 // an array literal is a fresh object on every squad sync, which would wipe the
@@ -29,12 +30,19 @@ watch(
   [() => props.state.wheel?.seed, () => props.state.misfortuneAccepted],
   () => {
     selection.value = []
+    expandedPactId.value = null
   },
 )
 
 const offer = computed(() =>
   props.selfId ? pactOfferFor(props.state, props.selfId) : [])
+const waitingOn = computed(() => props.state.divers
+  .filter(diver => !diver.away && !diver.pactsLocked)
+  .map(diver => diver.name)
+  .join(', '))
 const misfortune = computed(() => activeMisfortune(props.state))
+const directiveSkipped = computed(() =>
+  Boolean(props.state.wheel && !props.state.misfortuneAccepted))
 const strain = computed(() => currentStrain(props.state))
 const locked = computed(() => Boolean(props.self?.pactsLocked))
 const teamRisk = computed(() => teamRiskOf(props.state))
@@ -47,6 +55,10 @@ function toggle(pactId: string): void {
     return
   }
   selection.value = applyPactToggle(offer.value.map(pact => pact.id), selection.value, pactId)
+}
+
+function toggleDetails(pactId: string): void {
+  expandedPactId.value = expandedPactId.value === pactId ? null : pactId
 }
 
 const coverage = computed<Record<string, string>>(() => {
@@ -119,14 +131,14 @@ function bannedNote(pactId: string): string {
     return ''
   }
   const names = owned.value
-    .map(id => ITEMS_BY_ID.get(id))
+    .map(id => itemById(id))
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
     .filter(item => predicate(item))
     .map(item => item.displayName)
   if (names.length === 0) {
     return ''
   }
-  return `Benches ${names.slice(0, 2).join(', ')}${names.length > 2 ? '…' : ''}`
+  return `Bans ${names.slice(0, 2).join(', ')}${names.length > 2 ? '…' : ''}`
 }
 
 const ctaLabel = computed(() => {
@@ -149,7 +161,10 @@ function lockNow(): void {
         Swear your pacts
       </h1>
       <p class="lede">
-        Only you carry them. Break one in the field and it costs you a loot option.
+        Pacts only affect you. A broken pact costs you a loot option — or Penance, a debt to clear later, when the stats screen shows the break.
+      </p>
+      <p class="risk-note">
+        Risk shown is for this difficulty; higher difficulties raise risk and offer more pacts.
       </p>
     </header>
 
@@ -164,7 +179,7 @@ function lockNow(): void {
         tone="gold"
       />
       <b class="disp">{{ misfortune.name }}</b>
-      <span class="dir-rule">{{ misfortune.rule }}</span>
+      <span class="dir-rule"><ConditionRule :condition="misfortune" /></span>
       <span
         v-if="strain"
         class="strain"
@@ -175,9 +190,14 @@ function lockNow(): void {
       class="directive"
     >
       <span class="cap">Squad directive</span>
-      <b class="disp">Safe dive</b>
-      <span class="dir-rule">No team rule accepted.</span>
+      <b class="disp">{{ directiveSkipped ? 'Directive skipped' : 'Safe dive' }}</b>
+      <span class="dir-rule">No squad directive this mission.</span>
     </div>
+
+    <PactPenance
+      :self="self"
+      :difficulty="state.difficulty"
+    />
 
     <div class="hand">
       <ConditionCard
@@ -191,13 +211,14 @@ function lockNow(): void {
         :note="bannedNote(pact.id)"
         :disabled="locked"
         :tilt="selection.includes(pact.id) ? 0 : index % 2 === 0 ? -0.8 : 0.8"
+        :open="expandedPactId === pact.id"
         compact
-        :open="false"
         @select="toggle(pact.id)"
+        @toggle-details="toggleDetails(pact.id)"
         @mouseenter="hoveredId = pact.id"
         @mouseleave="hoveredId = null"
-        @focus="hoveredId = pact.id"
-        @blur="hoveredId = null"
+        @focusin="hoveredId = pact.id"
+        @focusout="hoveredId = null"
       />
     </div>
 
@@ -223,7 +244,7 @@ function lockNow(): void {
         <span
           v-else
           class="bar-gate"
-        >Waiting on squad</span>
+        >{{ waitingOn ? `Waiting on ${waitingOn}` : 'Waiting on squad' }}</span>
       </template>
     </PhoneActionBar>
   </section>
@@ -241,6 +262,7 @@ function lockNow(): void {
 }
 .title { font-size: 34px; }
 .lede { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.risk-note { margin: -5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.35; }
 .directive {
   display: flex;
   flex-wrap: wrap;

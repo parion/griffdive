@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_ITEMS } from '../data/catalog'
 import type { Item, ItemCategory, Tier } from '../data/types'
-import { BARGAIN_SLOTS, CREDIT_PRICE_TIER, CREDIT_PRICE_TYPE, SAMPLE_CREDITS, TIME_HAUL_FLOOR, VALOR_METER_MAX, sPlusValorFloorFor, sValorFloorFor } from './config'
-import { bankedOptionId, ceilingOddsPercent, DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, haulValue, itemPrice, maxCeiling, missionHaul, oddsToReach, optionsForDiver, optionsForStars, rollCeiling, rollBargainShelf, rollRewardOffer, rollRewardOptions, tierForRoll, tierWeight, tierZones, topTierOf, timeHaulMultiplier, valorOf } from './rewards'
+import { ARMOR_PACK_SIZE, BARGAIN_SLOTS, CREDIT_PRICE_TIER, SAMPLE_CREDITS, TIME_HAUL_FLOOR, VALOR_METER_MAX, sPlusValorFloorFor, sValorFloorFor } from './config'
+import { bankedOptionId, ceilingOddsPercent, DIVERS_CHOICE_ITEM, DIVERS_CHOICE_OPTION_ID, haulValue, itemPrice, maxCeiling, missionHaul, oddsToReach, optionsForDiver, optionsForStars, rollArmorPack, rollCeiling, rollBargainShelf, rollRewardOffer, rollRewardOptions, tierForRoll, tierWeight, tierZones, topTierOf, timeHaulMultiplier, valorOf } from './rewards'
 import { mulberry32 } from './rng'
 import type { RewardTier } from './types'
 
@@ -54,10 +54,10 @@ describe('itemPrice', () => {
     // The tiers climb ~2.8x each through A, then flatten into S; S is a
     // one-in-six-or-seven-missions treat, not a long saving goal.
     expect(CREDIT_PRICE_TIER.s).toBeGreaterThan(CREDIT_PRICE_TIER.a)
-    expect(itemPrice(makeItem('c', 'armorPassive'))).toBe(Math.round(35 * (CREDIT_PRICE_TYPE.armorPassive ?? 1)))
+    expect(itemPrice(makeItem('c', 'armorPassive'))).toBe(CREDIT_PRICE_TIER.c)
     expect(itemPrice(makeItem('c', 'primary'))).toBe(Math.round(35 * 1.25))
-    // A primary always out-prices an armor passive at the same tier.
-    expect(itemPrice(makeItem('s', 'primary'))).toBeGreaterThan(itemPrice(makeItem('s', 'armorPassive')))
+    // A primary always out-prices a stratagem at the same tier.
+    expect(itemPrice(makeItem('s', 'primary'))).toBeGreaterThan(itemPrice(makeItem('s', 'Orbital')))
     // Unknown categories fall back to the default multiplier.
     expect(itemPrice(makeItem('b', 'Orbital'))).toBe(CREDIT_PRICE_TIER.b)
   })
@@ -80,12 +80,12 @@ describe('rollBargainShelf', () => {
   it('is deterministic, one item of each slot kind', () => {
     const a = rollBargainShelf(1234, 7, kinds, pool, none)
     expect(rollBargainShelf(1234, 7, kinds, pool, none)).toEqual(a)
-    expect(a.map(slot => slot.slotId)).toEqual(['primary', 'secondary', 'throwable', 'armorPassive', 'stratagem', 'stratagem-2'])
-    for (const slot of a.slice(0, 4)) {
+    expect(a.map(slot => slot.slotId)).toEqual(['primary', 'secondary', 'throwable', 'stratagem', 'stratagem-2'])
+    for (const slot of a.slice(0, 3)) {
       expect(slot.item?.category).toBe(slot.kind)
     }
-    expect(a.slice(4).every(slot => slot.item?.type === 'stratagem')).toBe(true)
-    expect(a[4]!.item!.id).not.toBe(a[5]!.item!.id)
+    expect(a.slice(3).every(slot => slot.item?.type === 'stratagem')).toBe(true)
+    expect(a[3]!.item!.id).not.toBe(a[4]!.item!.id)
   })
 
   it('stocks the base tier up to one tier above it', () => {
@@ -114,6 +114,78 @@ describe('rollBargainShelf', () => {
     const shelf = rollBargainShelf(7, 5, kinds, pool, throwables)
     expect(shelf.find(slot => slot.kind === 'throwable')?.item).toBeNull()
     expect(shelf.filter(slot => slot.kind !== 'throwable').every(slot => slot.item !== null)).toBe(true)
+  })
+})
+
+describe('rollArmorPack', () => {
+  const passives = ALL_ITEMS.filter(item => item.category === 'armorPassive')
+  const none = new Set<string>()
+
+  it('deals three distinct, deterministic passives', () => {
+    const first = rollArmorPack(1234, 7, passives, none)
+    expect(first).toHaveLength(ARMOR_PACK_SIZE)
+    expect(new Set(first.map(item => item.id)).size).toBe(ARMOR_PACK_SIZE)
+    expect(first.every(item => item.category === 'armorPassive')).toBe(true)
+    expect(rollArmorPack(1234, 7, passives, none).map(item => item.id)).toEqual(first.map(item => item.id))
+  })
+
+  it('never repeats a card the diver holds or banned', () => {
+    const excluded = new Set(passives.slice(0, 20).map(item => item.id))
+    for (let seed = 0; seed < 50; seed++) {
+      const pack = rollArmorPack(seed, 7, passives, excluded)
+      expect(pack.every(item => !excluded.has(item.id))).toBe(true)
+    }
+  })
+
+  it('keeps the hit card at the band floor or above', () => {
+    for (let seed = 0; seed < 100; seed++) {
+      const [hit] = rollArmorPack(seed, 4, passives, none)
+      expect(['b', 'a', 's']).toContain(hit!.tier)
+    }
+    for (let seed = 0; seed < 100; seed++) {
+      const pack = rollArmorPack(seed, 10, passives, none)
+      expect(pack.every(item => item.tier === 'a' || item.tier === 's')).toBe(true)
+    }
+  })
+
+  it('caps the pack at one S pull and never mints one from an empty S pool', () => {
+    for (let seed = 0; seed < 300; seed++) {
+      const pack = rollArmorPack(seed, 10, passives, none)
+      expect(pack.filter(item => item.tier === 's').length).toBeLessThanOrEqual(1)
+    }
+    const noS = passives.filter(item => item.tier !== 's')
+    for (let seed = 0; seed < 100; seed++) {
+      expect(rollArmorPack(seed, 10, noS, none).some(item => item.tier === 's')).toBe(false)
+    }
+  })
+
+  it('never treats an exhausted A pool as a free S upgrade', () => {
+    // No A passives remain. The hit card rolled A, so it must degrade to B/C;
+    // S can only arrive through the pack's one S roll.
+    const thin = passives.filter(item => item.tier !== 'a')
+    let sPacks = 0
+    for (let seed = 0; seed < 300; seed++) {
+      if (rollArmorPack(seed, 10, thin, none).some(item => item.tier === 's')) {
+        sPacks++
+      }
+    }
+    expect(sPacks).toBeGreaterThan(0)
+    expect(sPacks).toBeLessThan(90)
+  })
+
+  it('never deals more than one S, even when the pool is only S', () => {
+    const onlyS = passives.filter(item => item.tier === 's')
+    for (let seed = 0; seed < 100; seed++) {
+      const pack = rollArmorPack(seed, 10, onlyS, none)
+      expect(pack.length).toBeLessThanOrEqual(1)
+      expect(pack.every(item => item.tier === 's')).toBe(true)
+    }
+  })
+
+  it('deals a smaller pack when the pool is thin, and nothing when it is empty', () => {
+    const one = passives.slice(0, 1)
+    expect(rollArmorPack(1, 7, one, none)).toHaveLength(1)
+    expect(rollArmorPack(1, 7, passives, new Set(passives.map(item => item.id)))).toEqual([])
   })
 })
 

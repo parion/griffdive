@@ -50,14 +50,25 @@ describe('isPactSelectable', () => {
 })
 
 describe('pact subsumption', () => {
-  it('has no subsuming pacts after Barebones was removed', () => {
-    expect(Object.keys(PACT_SUBSUMES)).toHaveLength(0)
+  it('lets only behavioral pacts subsume, never a loadout-checked one', () => {
+    for (const [covering, covered] of Object.entries(PACT_SUBSUMES)) {
+      expect(pactById(covering)?.accountability).not.toBe('loadout')
+      for (const id of covered) {
+        expect(pactById(id)).not.toBeNull()
+      }
+    }
   })
 
-  it('never reports a pact as covered by another', () => {
-    for (const pact of PACTS) {
-      expect(pactSubsumedBy(pact.id, PACTS.map(entry => entry.id))).toBeNull()
-    }
+  it('reports a pact as covered only by the pact that implies it', () => {
+    expect(pactSubsumedBy('thirsty', ['radioSilence'])).toBe('radioSilence')
+    expect(pactSubsumedBy('radioSilence', ['thirsty'])).toBeNull()
+    expect(pactSubsumedBy('packLight', ['radioSilence'])).toBeNull()
+  })
+
+  it('swaps a covered pick for its coverer and refuses the reverse', () => {
+    const offer = ['thirsty', 'radioSilence']
+    expect(applyPactToggle(offer, ['thirsty'], 'radioSilence')).toEqual(['radioSilence'])
+    expect(applyPactToggle(offer, ['radioSilence'], 'thirsty')).toEqual(['radioSilence'])
   })
 
   it('keeps a toggle a pure membership change', () => {
@@ -88,6 +99,36 @@ describe('pact exclusivity', () => {
     expect(pactConflictsWith('packLight', ['grounded'])).toBeNull()
     expect(applyPactToggle(offer, ['grounded'], 'shipSilent')).toEqual(['grounded'])
     expect(applyPactToggle(offer, [], 'shipSilent')).toEqual(['shipSilent'])
+  })
+})
+
+describe('armor weight', () => {
+  it('never offers or lets a diver pick both armor weights', () => {
+    expect(pactConflictsWith('ironbound', ['featherweight'])).toBe('featherweight')
+    expect(pactConflictsWith('featherweight', ['ironbound'])).toBe('ironbound')
+  })
+
+  it('treats the armor pacts as redundant or impossible under a squad armor rule', () => {
+    for (const misfortune of ['fragileLiberty', 'heavyBurden']) {
+      expect(isPactSelectable('featherweight', misfortune)).toBe(false)
+      expect(isPactSelectable('ironbound', misfortune)).toBe(false)
+    }
+  })
+})
+
+describe('defense bans', () => {
+  const byName = (name: string) => {
+    const item = ALL_ITEMS.find(entry => entry.displayName === name)
+    if (!item) {
+      throw new Error(`expected catalog item ${name}`)
+    }
+    return item
+  }
+
+  it('leaves the Shield Generator Relay legal under Open Field, but bans lethal defenses', () => {
+    expect(stratagemBanReason(null, ['openField'], byName('Shield Generator Relay'))).toBeNull()
+    expect(stratagemBanReason(null, ['openField'], byName('Gas Mines'))).toEqual({ source: 'pact', id: 'openField' })
+    expect(stratagemBanReason(null, ['openField'], byName('Tesla Tower'))).toEqual({ source: 'pact', id: 'openField' })
   })
 })
 
@@ -142,8 +183,15 @@ describe('reserve and loadout legality', () => {
     }
   })
 
-  it('keeps No Stratagems behavioral — four slots still equip', () => {
+  it('keeps Deserted behavioral (four slots still equip)', () => {
     expect(hasLegalLoadout('noStratagems', [], baseKit)).toBe(true)
+  })
+
+  it('leaves the loadout pacts open under Deserted, since stratagems still drop in the first minute', () => {
+    for (const pactId of ['packLight', 'primaryConcern', 'grounded', 'radioSilence']) {
+      expect(isPactSelectable(pactId, 'noStratagems')).toBe(true)
+    }
+    expect(isPactSelectable('thirsty', 'noStratagems')).toBe(false)
   })
 
   it('flags a genuine anti-tank weapon but not the Eruptor, an explosive primary', () => {

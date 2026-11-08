@@ -42,7 +42,7 @@ deploy on production, and on staging mostly an idle-stop cold start (`fly.stagin
 | `griffdive_dives_started_total`, `griffdive_missions_started_total{difficulty}`, `griffdive_operation_restarts_total{difficulty}`, `griffdive_operations_completed_total{difficulty}`, `griffdive_crusades_achieved_total`, `griffdive_crusades_ended_total`, `griffdive_reports_total{outcome,difficulty}` | The play funnel: crusades launched → missions begun → operations climbed → achieved, plus restarts and honor-system outcomes |
 | `griffdive_crusade_depth{result}` (histogram) | How deep a run got when it ended: missions advanced at the transition into `complete` (`achieved`, `abandoned`) and when the TTL sweeper expires a launched room that never completed (`expired`); the winning mission is already counted, and a lobby that never launched is excluded |
 | `griffdive_directive_decisions_total{decision,condition,difficulty}`, `griffdive_directive_refusals_total`, `griffdive_strain_decisions_total`, `griffdive_major_order_total{kind}` (front plan at launch: `live`/`manual`/`rolled`), `griffdive_wheel_rerolls_total{kind}`, `griffdive_pacts_picked_total{condition}`, `griffdive_pacts_failed_total{condition}`, `griffdive_directives_failed_total{condition}`, `griffdive_ceiling_total{tier}`, `griffdive_valor_at_report`, `griffdive_pact_picks` | Risk & balance: is chosen risk real, which rules land or misfire, what loot tiers the economy actually rolls |
-| `griffdive_rewards_picked_total`, `griffdive_purchases_total`, `griffdive_forfeits_total` (tier + category), `griffdive_samples_haul{rarity}`, `griffdive_report_time_pct`, `griffdive_mission_stars{difficulty}`, `griffdive_reward_rerolls_total`, `griffdive_reward_bans_total`, `griffdive_honors_spun_total`, `griffdive_honors_awarded_total`, `griffdive_warbond_edits_total` | Economy & outcomes: loot by tier, shelf affordability, forfeit cost, sample hauls, tokens and honors usage |
+| `griffdive_rewards_picked_total`, `griffdive_purchases_total`, `griffdive_forfeits_total` (tier + category), `griffdive_armor_packs_opened_total{difficulty}`, `griffdive_armor_pack_pulls_total{tier}`, `griffdive_samples_haul{rarity}`, `griffdive_report_time_pct`, `griffdive_mission_stars{difficulty}`, `griffdive_reward_rerolls_total`, `griffdive_reward_bans_total`, `griffdive_honors_spun_total`, `griffdive_honors_awarded_total`, `griffdive_warbond_edits_total` | Economy & outcomes: loot by tier, shelf affordability, Armor Pack pulls, forfeit cost, sample hauls, tokens and honors usage |
 | `griffdive_phase_dwell_seconds{phase}`, `griffdive_squad_size`, `griffdive_build_info{engine,image}` | Friction and identity: how long rooms spend in each phase (lobby dwell = onboarding), squad sizes at mission start, which build is live |
 | `griffdive_feedback_total{category}`, `griffdive_feedback_rejected_total{reason}` | The feedback inbox: what kind of notes arrive, and how many submissions the limiter or validation refused (never the text) |
 
@@ -74,6 +74,16 @@ and certificate). It is never contacted by the game app: the only coupling is th
 board lives at `https://feedback.griffdive.com` (sign-in email via Resend); staging and production set the URL in
 `fly.staging.toml` / `fly.toml` `[env]`. Fider requires an email or OAuth sign-in to post, which is exactly why
 it cannot be embedded — see `PRIVACY.md` → Feedback.
+
+The **standalone Tier Maker** at `https://tiers.griffdive.com` is the same `griffdive` app under a
+second hostname — no separate deploy. The client and `server/plugins/tiers-site.ts` switch on the
+`tiers.` host (see design-language.md, *Standalone site*). To bring it up, give the production app
+a certificate and point DNS at it:
+
+```sh
+fly certs add tiers.griffdive.com --app griffdive
+# then add the records it prints (`fly certs setup tiers.griffdive.com --app griffdive`)
+```
 
 The in-app changelog is served by `/api/changelog`, which fetches GitHub server-side and caches it
 for 10 minutes for every client. It works unauthenticated (60 GitHub requests/hr per machine, ~12
@@ -140,5 +150,13 @@ runs `node .output/server/index.mjs` on internal port 8080. `fly.toml` pins one 
 `/app/.data`: a volume binds to one machine, and live peers live in an in-process directory — more
 than one machine splits squads across processes. Room state persists across deploys (the volume), so
 restarts no longer wipe in-flight rooms; don't touch those two settings until storage and the peer
-directory both move to Redis. Create the volume once before the first deploy that declares the
+directory both move to Redis.
+
+**Deploys cost a short outage, not progress.** The volume binds to one machine, so a deploy stops
+the old machine before starting the new one, and the gap is unavoidable while production runs on a
+single machine. Divers ride it out: the server warns every live connection on shutdown (`restarting`
++ close code `1012`), the dive page shows a "quick restart" banner instead of the connection-lost
+alarm, and the client keeps retrying for about three minutes before giving up (see
+[server architecture → Restarts](./server-architecture.md)). A truly zero-gap deploy needs a
+second machine, which needs Redis for room storage, the room lock and the peer directory first. Create the volume once before the first deploy that declares the
 mount: `fly volumes create griffdive_data --region ams --size 1`.

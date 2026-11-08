@@ -9,7 +9,6 @@ import {
   canRerollRewards,
   diverOptions,
   draftSummaryFor,
-  honorsPending,
   pactRiskOf,
   rewardPoolFor,
   teamRiskOf,
@@ -41,7 +40,7 @@ const rewardPool = computed(() => {
     return []
   }
   const banned = new Set(props.self.bannedItemIds)
-  return rewardPoolFor(props.self.warbondCodes ?? ALL_WARBOND_CODES)
+  return rewardPoolFor(props.self.warbondCodes ?? ALL_WARBOND_CODES, props.state.tierList)
     .filter(item => !banned.has(item.id))
 })
 const ownedIds = computed(() => props.state.personalInventories[props.selfId ?? ''] ?? [])
@@ -98,7 +97,6 @@ const markers = computed(() =>
       }]
     : []))
 
-const honorsLocked = computed(() => honorsPending(props.state))
 const advanceLabel = computed(() =>
   props.state.missionInOperation >= props.opLength
     ? `Start operation ${Math.min(props.state.difficulty + 1, MAX_DIFFICULTY)}`
@@ -153,8 +151,16 @@ function bank(): void {
 const bankedId = computed(() => bankedOptionId(options.value, props.self?.pickedOptionId ?? null))
 const pickedOption = computed(() =>
   options.value.find(option => option.optionId === bankedId.value) ?? null)
-const crossChosenName = computed(() =>
-  selectedOption.value?.choice && choiceItemId.value ? selectedName.value : null)
+const crossChosenItem = computed(() => {
+  if (selectedOption.value?.choice && choiceItemId.value) {
+    return rewardPool.value.find(item => item.id === choiceItemId.value) ?? null
+  }
+  const pickedId = props.self?.pickedOptionId
+  if (bankedId.value === crossOption.value?.optionId && pickedId) {
+    return rewardPool.value.find(item => item.id === pickedId) ?? null
+  }
+  return null
+})
 const pickedName = computed(() =>
   pickedOption.value ? nameOf(pickedOption.value) : (props.self?.pickedOptionId ? 'item' : ''))
 </script>
@@ -162,7 +168,7 @@ const pickedName = computed(() =>
 <template>
   <section class="phone-loot">
     <header class="head">
-      <span class="kick">Liberty provides · {{ '★'.repeat(state.lastReport?.stars ?? 0) }}</span>
+      <span class="kick">Mission reward · {{ '★'.repeat(state.lastReport?.stars ?? 0) }}</span>
       <h1 class="disp title">
         Bank one item
       </h1>
@@ -172,7 +178,7 @@ const pickedName = computed(() =>
       v-if="options.length"
       :zones="zones"
       :markers="markers"
-      label="Your Valor rolls"
+      label="Your loot rolls"
       :note="`Best ${bestTier ?? '—'}`"
       compact
     />
@@ -189,7 +195,7 @@ const pickedName = computed(() =>
       :picked="selectedId === crossOption.optionId || bankedId === crossOption.optionId"
       :dimmed="resolved && bankedId !== crossOption.optionId"
       :stamp="resolved && bankedId === crossOption.optionId ? 'Banked' : null"
-      :chosen-name="crossChosenName"
+      :chosen-item="crossChosenItem"
       @choose="chooseCross"
     />
 
@@ -267,17 +273,13 @@ const pickedName = computed(() =>
           <span class="disp">{{ selectedId ? `Bank ${selectedName}` : 'Select an item' }}</span>
         </button>
         <button
-          v-else-if="ready && canControl && !honorsLocked"
+          v-else-if="ready && canControl"
           class="bar-cta cta-sweep"
           type="button"
           @click="emit('advance')"
         >
           <span class="disp">{{ advanceLabel }}</span>
         </button>
-        <span
-          v-else-if="ready && canControl"
-          class="bar-gate"
-        ><span class="bar-gate-word quiet">Award honors first</span></span>
         <span
           v-else
           class="bar-gate"
@@ -354,7 +356,6 @@ const pickedName = computed(() =>
   color: var(--tier);
   font-size: 34px;
   line-height: 1;
-  text-shadow: 0 0 14px color-mix(in srgb, var(--tier) 40%, transparent);
 }
 .loot-card:not([data-tier='C']) .tier { animation: slamIn 0.45s var(--ease-impact) var(--impact, 0ms) backwards; }
 .squad-row {

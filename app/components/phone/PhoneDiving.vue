@@ -3,8 +3,9 @@ import { missionsPerOperation } from '~~/shared/engine/config'
 import {
   activeMisfortune,
   activeStrain,
+  currentMisfortune,
 } from '~~/shared/engine/selectors'
-import type { DiverState, DiveState, MissionOutcome, MissionReport } from '~~/shared/engine/types'
+import type { DiverState, DiveState, MissionReport } from '~~/shared/engine/types'
 
 const props = defineProps<{
   state: DiveState
@@ -19,10 +20,11 @@ const emit = defineEmits<{
   fail: [playerId: string, pactId: string]
   failDirective: []
   reporting: [open: boolean]
-  spinBonus: [payload: { stars: number, outcome: MissionOutcome }]
 }>()
 
 const misfortune = computed(() => activeMisfortune(props.state))
+const directiveSkipped = computed(() =>
+  Boolean(currentMisfortune(props.state) && !props.state.misfortuneAccepted))
 const strain = computed(() => activeStrain(props.state))
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 const directiveFailed = computed(() => props.state.misfortuneFailed)
@@ -80,7 +82,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
     class="phone-field"
   >
     <header class="head">
-      <span class="kick">In the field</span>
+      <span class="kick">On mission</span>
       <h1 class="disp title">
         Hold the line
       </h1>
@@ -97,20 +99,27 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         <span class="cap">Squad directive</span>
         <span
           class="status"
-          :class="directiveFailed ? 'red' : 'teal'"
-        >{{ directiveFailed ? 'Broken' : 'Holding' }}</span>
+          :class="directiveFailed ? 'red' : directiveSkipped ? 'skipped' : 'teal'"
+        >{{ directiveFailed ? 'Broken' : directiveSkipped ? 'Skipped' : 'Active' }}</span>
       </div>
       <h2
         class="disp dc-name"
-        :style="fitWord(misfortune?.name ?? 'Safe dive')"
+        :style="fitWord(misfortune?.name ?? (directiveSkipped ? 'Directive skipped' : 'Safe dive'))"
       >
-        {{ misfortune?.name ?? 'Safe dive' }}
+        {{ misfortune?.name ?? (directiveSkipped ? 'Directive skipped' : 'Safe dive') }}
       </h2>
       <p class="dc-rule">
-        {{ misfortune?.rule ?? 'No team rule was accepted this mission.' }}
+        <ConditionRule
+          v-if="misfortune"
+          :condition="misfortune"
+        />
+        <template v-else>
+          No squad directive this mission.
+        </template>
       </p>
       <div class="dc-foot">
-        <span>{{ directiveFailed ? 'Risk voided' : 'Raising everyone’s loot' }}</span>
+        <span v-if="directiveFailed">Broken · everyone loses a loot option</span>
+        <span v-else-if="misfortune">Boosting everyone’s loot</span>
         <button
           v-if="canControl && misfortune && !directiveFailed"
           class="mark"
@@ -204,7 +213,6 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
     phone
     @submit="submit"
     @cancel="cancelReport"
-    @spin-bonus="emit('spinBonus', $event)"
   />
 </template>
 
@@ -226,21 +234,22 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   display: flex;
   flex-direction: column;
   gap: 7px;
-  padding: 12px 13px;
+  padding: 15px 16px;
   background:
     radial-gradient(ellipse 80% 80% at 20% 0%, rgba(255, 214, 66, 0.11), transparent 70%),
     var(--panel);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, var(--line-3));
+  box-shadow: inset 0 3px 0 var(--teal), 0 0 22px rgba(74, 215, 200, 0.12);
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
-.directive.broken { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 50%, var(--line-3)); }
+.directive.broken { box-shadow: inset 0 3px 0 var(--red), 0 0 20px rgba(255, 75, 62, 0.12); }
 .dc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.status { padding: 2px 7px; font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.status { padding: 4px 8px; font-size: var(--fs-sm); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .status.teal { background: var(--teal); color: var(--on-gold); }
 .status.red { color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
-.dc-name { font-size: min(30px, 100cqi / var(--fit-len, 1)); color: var(--gold); }
+.status.skipped { color: var(--khaki); box-shadow: inset 0 0 0 1px var(--line-4); }
+.dc-name { font-size: min(34px, 100cqi / var(--fit-len, 1)); color: var(--gold); }
 .broken .dc-name { color: var(--red); }
-.dc-rule { margin: 0; color: var(--khaki); font-size: 12px; }
+.dc-rule { margin: 0; color: var(--khaki); font-size: var(--fs-body); line-height: 1.4; }
 .dc-foot {
   display: flex;
   align-items: center;
@@ -249,23 +258,26 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
   padding-top: 7px;
   border-top: 1px solid var(--line-2);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--fs-sm);
 }
 .mark {
-  min-height: 28px;
-  padding: 0 7px;
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  padding: 0 8px;
   border: 0;
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--line-4);
   color: var(--khaki);
-  font: 700 9px var(--font-body);
+  font: 700 var(--fs-sm) var(--font-body);
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 .mark.armed { color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
-.strain-line { display: flex; align-items: center; gap: 7px; color: var(--orange); font-size: 11px; }
-.strain-line span { color: var(--muted); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+.strain-line { display: flex; align-items: center; gap: 7px; color: var(--orange); font-size: var(--fs-sm); }
+.strain-line span { color: var(--muted); font-size: var(--fs-sm); letter-spacing: 0.06em; text-transform: uppercase; }
 .sworn { --ledger-pad: 12px; }
 .host-note { display: flex; flex-direction: column; gap: 3px; }
-.host-note p { margin: 0; color: var(--muted); font-size: 11px; }
+.host-note p { margin: 0; color: var(--muted); font-size: var(--fs-body); }
 </style>

@@ -15,6 +15,8 @@ app/
   pages/           index (Bridge home — new crusade / host / join / continue), dive/[id] (solo +
                    room flow — thin orchestrator: session driver + action handlers; the
                    lit-stage shell and per-phase UI live in components/dive/), codex,
+                   tiers (the Tier Maker: browser-local tier-list library + share links/JSON;
+                   also the home page of the standalone tiers. host via app/router.options.ts),
                    kit (hidden, unlinked foundations route — see Destroyer Terminal design language)
   components/      one folder per domain; the folder path is the component-name prefix
                    (Nuxt's default naming — `kit/KitPanel.vue` registers `KitPanel`,
@@ -22,8 +24,9 @@ app/
                    dive/ (the lit-pass shell and per-phase panels: DiveFrame — header · one
                    scrolling stage · squad dock, DiveTopBar + DivePhaseTabs — identity and the
                    Call/Pacts/Dive/Loot beats, DiveMenu — Bridge, tutorial, pin, new session,
-                   leave/end, DiveSidebar — the persistent tool rail (Kit, Codex, Warbonds and
-                   Brasch's Bargains share one non-modal panel), DivePhaseLobby — the
+                   leave/end, DiveSidebar — the persistent tool rail (Kit, Armory and Warbonds
+                   share one non-modal panel; Brasch's Bargains opens its own counter dialog),
+                   DivePhaseLobby — the
                    standalone Hellpod Bays setup page, DivePhaseWheel/Diving/Rewards/Forfeit —
                    one panel per engine phase, each owning its local form state and
                    emitting intents, DiveCompleteOverlay — the full-bleed end-of-run takeover
@@ -38,11 +41,13 @@ app/
                    BridgeDirectives/BridgePacts/BridgeOdds — the beat visuals, BridgeMajorOrder
                    — the live Major Order, teleported into app.vue's #header-mid or pinned to
                    the bottom on phones),
-                   briefing/ (BriefingJoin — the joiner's one-page briefing, also replayed as
-                   the squadmate's Field manual; BriefingHost — the host's tutorial fork),
+                   briefing/ (BriefingLayout — the shared first-run page; BriefingPreview — the
+                   looping scene under each mission box; BriefingJoin
+                   — the joiner's wrapper, also replayed as the squadmate's Field manual;
+                   BriefingHost — the host's tutorial wrapper),
                    wheel/ (WheelOfAdversity — the seeded spinning SVG wheel),
                    condition/ (ConditionCard/ConditionSigil — directive and pact cards),
-                   pact/ (PactScreen — the self-service pacts hand, PactLedger),
+                   pact/ (PactScreen — the self-service pacts hand, PactLedger, PactPenance),
                    valor/ (ValorRoll — the shared d100 odds line, ValorFigure),
                    risk/ (RiskPips — risk dots, rolling while a wheel draw reels; RiskSetup —
                    the setup skull total via setupRiskOf),
@@ -51,22 +56,27 @@ app/
                    and the lobby, CrusadeLadder — the 3→10 ladder, CrusadeStrip),
                    kit/ (KitPanel — the lean Kit, KitStarting — the issued starting kit,
                    KitSection/KitTile/KitSnapshot/KitReveal),
-                   mission/ (MissionReport — stars, haul, time cells, honors; MissionCleared,
+                   mission/ (MissionReport — stars, haul, time cells, honors; MissionTrack,
                    MissionBankedHaul, MissionSampleCanister — the report's tinted sample tubes),
-                   operation/ (OperationCleared — the climb screen after the last mission),
+                   climb/ (ClimbCleared — the squad-climbs page after every draft: report strip,
+                   stats check with Penance rows, Squad Honors, Brasch, the next-drop CTA;
+                   ClimbReport/ClimbStats/ClimbHonors),
                    honors/ (HonorsReel), reward/ (RewardDraft, RewardReveal,
                    RewardDiversChoicePicker), liberty-cross/ (LibertyCrossBand/Emblem),
                    squad/ (SquadDock — seats, presence, honors tokens, Steam/invite;
                    SquadDraftBoard, SquadForfeitBoard), forfeit/ (ForfeitPicker),
                    field-promotion/ (FieldPromotionGate — the mid-crusade catch-up gate),
-                   brasch/ (BraschBargains — the per-mission shop), credit/ (CreditAmount),
+                   brasch/ (BraschBargains — the counter modal/fullscreen shop, BraschShopDoor —
+                   the regroup-beat entry, BraschShelfSlot/BraschArmorPack — the shelf cards,
+                   BraschPackReveal — the sealed-pack fan), credit/ (CreditAmount),
                    feedback/ (FeedbackSheet — the no-account feedback form, see Feedback inbox),
                    steam/ (SteamLobbyBar/Box), codex/ (CodexBrowser, CodexDrawer), warbond/
                    (WarbondBrowser, WarbondDrawer, WarbondPicker), item/ (ItemCard,
                    ItemTierBadge), icon/ (Icon* glyphs),
-                   app/ (themed Reka primitives and app chrome: AppDialog, AppDrawer — the
+                   app/ (themed Reka primitives and app chrome: AppDialog — the modal shell,
+                   `size` plus a `fullscreen` mode for phone takeovers, AppDrawer — the
                    right-hand slide-over shell that keeps the dive mounted,
-                   AppTooltip, AppToastStack, AppHoldButton — press-and-hold confirm,
+                   AppTooltip, AppToastStack, AppHoldButton — press-and-hold confirm (early releases shake and nudge; keyboard/AT confirm directly),
                    AppStarRating, AppBrandMark — the griffin mark rendered from
                    utils/brandMark.ts, AppBootScreen, AppChangelogModal — GitHub release log
                    shown from the release chip in the header (Beta), which also carries the channel description from utils/release.ts, shaped by shared/utils/changelog.ts),
@@ -77,7 +87,8 @@ app/
                    mirrors: list/mirror/delete/export),
                    useDrawers (the one open sidebar panel; `codexOpen`/`warbondsOpen` are
                    flags over it, so the dive can open Warbonds without unmounting — the
-                   global drawers in `app.vue` only render where no sidebar is mounted), useWarbondIntro (one-shot
+                   global drawers in `app.vue` only render where no sidebar is mounted;
+                   `bargainsOpen` is its own flag for the counter modal), useWarbondIntro (one-shot
                    dive-start Warbonds prompt memory), useDiveIntro (one-shot dive-start
                    "How a dive works" primer memory), useOwnedWarbonds (localStorage-backed
                    warbond declaration shared by the Warbonds drawer, the home setup and every
@@ -119,7 +130,8 @@ server/
                    (password-gates every page and API call when STAGING_AUTH is set —
                    staging only, see Deployment)
   plugins/         metrics.ts (binds the gauges, serves /metrics on internal :9091),
-                   room-sweeper.ts (reaps idle rooms every 15 min)
+                   room-sweeper.ts (reaps idle rooms every 15 min), tiers-site.ts (swaps the
+                   shell's title and card text on the standalone tiers. host)
   api/             rooms/index.post.ts (create; an optional save body seeds a new session), rooms/[code].get.ts (snapshot),
                    war/major-order.get.ts (cached live MO proxy),
                    changelog.get.ts (10-min shared cache of the GitHub release log; serves
@@ -128,15 +140,16 @@ server/
 deploy/fider/      separate Fly app + Postgres for the public board (see Deployment)
 shared/
   engine/          config.ts, types.ts, reducer.ts, rng.ts, wheel.ts, pacts.ts,
-                   rewards.ts, progression.ts, selectors.ts, saves.ts, room.ts
+                   rewards.ts, progression.ts, selectors.ts, saves.ts, room.ts,
+                   tierList.ts (custom tier lists: normalize, resolve, share codes, JSON)
   types/           save.ts (SaveDoc + SessionSave + SAVE_EPOCH + SAVE_SCHEMA_VERSION), messages.ts (WS contracts,
                    host-only action list)
   utils/           room-code.ts (room-code alphabet + validator), changelog.ts (pure GitHub
                    deployment/commit → release-card shaping behind /api/changelog, unit-tested)
   data/            items (equipment.ts, stratagems.ts), warbonds.ts, fronts.ts,
-                   conditions.ts (the unified team + personal condition catalogue;
+                   glossary.ts (the rules glossary + rule-markup parser), conditions.ts (the unified team + personal condition catalogue;
                    misfortunes.ts / pacts.ts are its scope views), strains.ts,
-                   catalog.ts (aggregation + CATALOG_VERSION),
+                   catalog.ts (aggregation + CATALOG_VERSION), tierLists.ts (featured tier lists), tierSlots.ts (append-only share-code slots),
                    ordering.ts (kit presentation order: stratagem role → tier → name),
                    images.ts (imageURL filename → /images/<dir> URL resolver,
                    difficultyImageUrl for the 1–10 difficulty emblems)
@@ -192,6 +205,7 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 | S→C | `welcome` | `{ selfId, hostId, roomCode, snapshot, online, saved, steam }` |
 | S→C | `state` | `{ snapshot, applied (EngineAction \| null), online, saved, steam }` — after each applied change; also an `applied: null` presence refresh the moment a seated diver's last connection drops; `online` = diver ids with live connections |
 | S→C | `error` | `{ code, message }` — `room-not-found`, `room-full`, `dive-locked`, `kicked`, `not-host`, `not-in-room`, `bad-action`, `bad-room`, `bad-message`, `rate-limited` |
+| S→C | `restarting` | `{}` — the process is shutting down (a deploy); sent to every live peer just before the socket closes with `1012` (see Restarts) |
 
 REST fallbacks: `POST /api/rooms` → `{ code, selfId }` (an optional `{ save, name }` body seeds the
 room from a personal session save; `selfId` is the seeded owner seat, `null` for a fresh lobby);
@@ -201,6 +215,9 @@ squad; `updatedAt` is the room's last event, which the Bridge turns into its "La
 ago" re-entry label. Neither carries a name, seat id or address beyond the room's own state.
 Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`,
 `SET_NAME`) are coerced to the sender — a client can never act as another diver.
+Before reducing `FORFEIT_ITEM`, the server checks the item against that diver's current
+`forfeitOptionsFor` offer; an invalid pick returns `bad-action` with a specific message instead of
+silently leaving the room unchanged.
 
 **Presence and liveness.** Presence is process memory, never storage: the peer directory
 (`server/utils/peers.ts`) holds one entry per live socket, and `online` in every `welcome`/`state` is
@@ -214,8 +231,21 @@ lock: `processClose` flags `peer.context.closed` first, and `processHello` refus
 socket — without that, the peer was added after the close and could never be removed, keeping a
 diver "online" and their squad waiting on them forever. Reaped peers are counted in
 `griffdive_presence_reaped_total`. The scrape-time presence gauges use the same silence threshold,
-so a silent socket stops counting before the sweep removes it. A browser that comes back to a reaped socket reopens from
-`visibilitychange` (`useGameSocket`), because the retry budget alone gives up after a few seconds.
+so a silent socket stops counting before the sweep removes it. A browser whose socket is down
+reopens immediately on `visibilitychange` or `online` (`useGameSocket`) instead of waiting out the
+retry backoff.
+
+**Restarts.** A deploy stops the only machine, so every squad drops at once (see
+[deployment](./deployment.md)). The client retries with jittered backoff (1 s growing to a 10 s
+ceiling, 22 tries ≈ 3 minutes) so it outlasts a deploy before showing "Can't reach the dive
+server". On `SIGTERM`/`SIGINT`, `server/plugins/graceful-restart.ts` runs `drainPeers` before
+Nitro's own shutdown destroys the upgraded sockets: it sets `peers.draining`, sends every live peer
+`restarting` and closes it with `1012` (Service Restart). While draining, `processClose` only
+drops the peer from the directory — no away timer, no host migration — so the room record stays
+exactly as it was and the crown does not land on whoever closed last. A client that saw
+`restarting` (or a `1012` close) shows a floating, live `AppBanner` instead of the "Connection lost" toast,
+then "Back online" once the `welcome` arrives. Dev servers skip the plugin (a signal listener
+would keep the process alive).
 
 **Transport hardening:** the server whitelists `action.type` against the reducer union and guards
 `reduce`, so an unknown or malformed action is rejected (`bad-action`) instead of persisting
@@ -230,9 +260,9 @@ on it lets an attacker choose a fresh limiter bucket per request. `server/utils/
 one source for the HTTP routes and the join upgrade; the sync core keys on the resulting
 `peer.context.clientIp` and falls back to `peer.remoteAddress`. `server/plugins/room-sweeper.ts`
 reaps idle rooms every 15 min so the `MAX_ROOMS` backstop rarely matters. The same address also
-feeds the per-room seat fingerprints and kick bars (see `KICK_DIVER`): only the keyed hash is
-stored, and only for a seated or removed seat — never logged, exported or attached to a metric
-label.
+feeds the per-room seat fingerprints and optional kick network bars (see `KICK_DIVER`): only the
+keyed hash is stored, and only for a seated or network-blocked removed seat — never logged, exported
+or attached to a metric label.
 
 **Abuse bounds (N42 — recommendation, no policy change yet).** Storage is bounded (`MAX_ROOMS`
 2000, `MAX_SAVED_DIVES` 500), but availability is not: rotating addresses at 10 rooms/min can fill
@@ -263,37 +293,47 @@ saves to churn the 500-slot saved set. The recommended order is:
 
 Canonical engine actions (the reducer union; keep names stable):
 
-`START_DIVE{settings,seed?,majorOrder?}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
-`DEAL_PACTS{}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
+`START_DIVE{settings,seed?,majorOrder?}` `SET_TIER_LIST{tierList}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
+`DEAL_PACTS{}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `HOLD_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `HOLD_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?,samples?}` `FORFEIT_ITEM{playerId,itemId}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `BUY_ITEM{playerId,itemId}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
 `AWARD_BONUS{playerIds}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
-`LEAVE_DIVE{playerId}` `SET_AWAY{playerId,away}` `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId}`
+`LEAVE_DIVE{playerId}` `SET_AWAY{playerId,away}` `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId,blockNetwork?}`
 `SET_NAME{playerId,name}` `TRANSFER_HOST{playerId}`
 
-Authority rules: host-only actions are `START_DIVE`, `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
-`ACCEPT_STRAIN`, `DEAL_PACTS`, `REROLL_WHEEL`, `REPORT_RESULT`, `FAIL_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
+Authority rules: host-only actions are `START_DIVE`, `SET_TIER_LIST` (lobby only; the reducer
+refuses it after launch), `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
+`ACCEPT_STRAIN`, `DEAL_PACTS`, `REROLL_WHEEL`, `REPORT_RESULT`, `FAIL_MISFORTUNE`, `HOLD_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE`, `SET_AWAY` are
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated
 diver, `unsave-dive` is host-only; the Steam lobby link is likewise outside the union and
 host-only (`set-steam`, blank clears).
-`FAIL_PACT` is sent by the target diver or the host (server refuses everyone else); `FAIL_MISFORTUNE`
-is host-only, since the directive binds the whole squad. Host disconnect →
-`TRANSFER_HOST` to the earliest joiner still connected; none left → room hibernates in storage
-with a TTL, and the first diver back takes the host role. A diver whose last connection stays down
-for `AWAY_GRACE_MS` is marked away (`SET_AWAY`, issued by the server; also re-checked on every
-`hello` so divers dropped across a server restart are caught) — see Mid-crusade joining.
-Reconnect = re-`hello` with stored playerId → server replays snapshot.
+`FAIL_PACT` and `HOLD_PACT` are sent by the target diver or the host (server refuses everyone else; the squad-climbs page lets the host settle any diver's stats pact);
+`FAIL_MISFORTUNE` and `HOLD_MISFORTUNE` are host-only, since the directive binds the whole squad. A
+host's last socket closing starts a process-local `HOST_RECONNECT_GRACE_MS` (90s): the host seat
+stays put through a refresh or brief network loss, and a `hello` with the same stored playerId
+cancels the pending timer. At the end of that window, `SET_AWAY` marks the host away and the
+earliest connected diver gets `TRANSFER_HOST`; if nobody is online, the room hibernates in storage
+with a TTL and the first diver back takes host once the seat is away. Other divers still use the
+ordinary `AWAY_GRACE_MS` (30s). An extra live tab prevents either timer from starting. These timers
+are not stored: during a server restart,
+`peers.draining` keeps the room record unchanged and the existing away-grace path hands over only
+after a returning peer marks the absent host away. A diver whose last connection stays down for
+`AWAY_GRACE_MS` is marked away (`SET_AWAY`, issued by the server; also re-checked on every `hello`
+so divers dropped across a server restart are caught) — see Mid-crusade joining. Reconnect =
+re-`hello` with stored playerId → server replays snapshot.
 `KICK_DIVER` (host, any phase, lobby included) removes a diver who left or is blocking the
 squad: their pending pact lock or reward pick stops gating progress, their personal inventory
-leaves with them, and the host can never be kicked. It is a bar for the rest of the dive, not a
-soft kick: the room record keeps the removed seat's id and a **keyed fingerprint of the client
-address** (`StoredRoom.bans`), so the invite link no longer reseats them. A hello presenting that
-id — including through `knownIds` as a cache reclaim — or an anonymous fresh join from that network
-is refused with `kicked`. Known seats are exempt: a squadmate behind the same address (a
-household) keeps reconnecting to their own seat. Fingerprints are HMACs under a per-room salt
+leaves with them, and the host can never be kicked. It always bars the removed seat id for the
+rest of the dive, so the invite link cannot reseat that browser (including through `knownIds` as a
+cache reclaim). The host confirms the kick and may opt into **Also block this diver's network**;
+`blockNetwork` defaults to false/omitted. Only when true does the room record also keep the removed
+seat's **keyed fingerprint of the client address** (`StoredRoom.bans`), refusing anonymous fresh
+joins from that network with `kicked`. A normal kick stores no fingerprint in the ban, so a fresh
+household/LAN joiner can take a seat. Known seats are exempt either way: a squadmate behind the
+same address keeps reconnecting to their own seat. Fingerprints are HMACs under a per-room salt
 (`StoredRoom.ipSalt`), never raw addresses, never sent to clients or metrics, and not comparable
 across rooms; the raw address stays transient for rate limiting. The bar list is bounded at
 `MAX_ROOM_BANS` (100). A different network (VPN, mobile data) is out of reach — this is host

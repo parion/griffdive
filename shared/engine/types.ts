@@ -1,4 +1,5 @@
 import type { FrontId } from '../data/fronts'
+import type { TierList } from './tierList'
 
 export type BargainSlotKind = 'primary' | 'secondary' | 'throwable' | 'armorPassive' | 'stratagem'
 
@@ -55,6 +56,17 @@ export interface DiverState {
   // Pacts broken in the field and marked failed: their risk is voided and
   // each costs a reward option. Reset with the pacts every mission.
   failedPactIds: string[]
+  // Stats-verified pacts the diver attested held on the squad-climbs page,
+  // after the draft. One-way, like a failed mark; reset with the pacts every
+  // mission.
+  heldPactIds: string[]
+  // Stats-verified pacts attested broken there. Kept apart from failedPactIds:
+  // the draft is already banked, so the offer must not re-derive. A broken one
+  // is owed back next mission as Penance. Reset with the pacts every mission.
+  brokenPactIds: string[]
+  // The debt this diver carries into the mission: the pacts they broke last
+  // mission, sworn again for no Valor. null when nothing is owed.
+  penance: PenanceDebt | null
   pickedOptionId: string | null
   // The item this diver chose to lose from their forfeit offer after a failed
   // mission. Held until every diver owing one has chosen, then all are removed
@@ -106,6 +118,27 @@ export interface DiverState {
   away: boolean
 }
 
+// Penance: a stats-verified pact broken after the draft is re-sworn next mission
+// as a forced pact that stakes no Valor. The reward banked in the mission it
+// was broken in rides on it: holding the pact keeps the reward, breaking it
+// again (or failing the mission) voids the reward.
+export interface PenanceDebt {
+  pactIds: string[]
+  // The reward banked in the mission the pacts were broken in; null when that
+  // draft banked none.
+  itemId: string | null
+  status: 'owed' | 'served' | 'voided'
+}
+
+// The Armor Packs a diver opened this crusade, in purchase order. The seed is
+// the derivation that dealt each one (for audit and a replayed reveal); the item
+// ids are what it dealt. Stored, not re-derived: a pack is a purchase, and its
+// pull must never reshuffle under the diver.
+export interface ArmorPackDeal {
+  seed: number
+  itemIds: string[]
+}
+
 // What a diver's Brasch's Bargains shelf was dealt against. Frozen for the
 // mission so a draft pick or a ban never reshuffles the shelf.
 export interface BargainDeal {
@@ -115,6 +148,10 @@ export interface BargainDeal {
   boughtItemId: string | null
   // Slot kinds bought this operation: not rolled again until the next one.
   boughtKinds: BargainSlotKind[]
+  // The Armor Packs opened this crusade, in purchase order. Kept through a new
+  // operation and a failure restart, so the price keeps climbing across rounds;
+  // each pack's price is derived from how many precede it (see armorPackPrice).
+  packs: ArmorPackDeal[]
 }
 
 export interface WheelResult {
@@ -184,6 +221,9 @@ export interface DiveState {
   missionIndex: number
   missionInOperation: number
   achieved: boolean
+  // An actual Penance was served or a directive tax was applied during this
+  // crusade. Kept through completion for the achievement notice; absent in old saves.
+  debtSettled?: boolean
   settings: CrusadeSettings | null
   divers: DiverState[]
   hostId: string | null
@@ -196,6 +236,14 @@ export interface DiveState {
   // host while diving: its shared risk is voided for the whole squad and every
   // diver forfeits one reward option. Reset with the pacts every mission.
   misfortuneFailed: boolean
+  // A stats-verified directive the host attested held on the squad-climbs page.
+  misfortuneHeld: boolean
+  // ...or broke there, after the draft. The squad takes the draft tax next
+  // mission instead of losing options now.
+  misfortuneBroken: boolean
+  // Every diver loses a reward option from this mission's draft: last
+  // mission's stats-verified directive was broken.
+  directiveTax: boolean
   // The strain is a subfaction rolled with the front and persisting with it.
   // It is optional: the squad accepts or declines it on the operation's first
   // mission (phase 'strain'), and an accepted strain adds its team risk to
@@ -211,13 +259,23 @@ export interface DiveState {
   // live order banks an extra reroll token on each completion. null = the
   // front rolls every operation.
   majorOrder: MajorOrderSelection | null
+  // The host's custom tier list, chosen in the lobby where the whole squad can
+  // read it and frozen at launch. Absent or null = the community default tiers
+  // (rooms and saves from before custom lists carry no field).
+  tierList?: TierList | null
   rerollTokens: number
   completedCombos: string[]
+  // Directives drawn this operation, including draws later rerolled or declined.
+  // Reset at an operation start/restart; older rooms and saves read as empty.
+  misfortuneHistory: string[]
   personalInventories: Record<string, string[]>
   // Earned gear parked by departed divers (kicked, left, or left behind by a
   // new session), keyed by their playerId: a late joiner may claim one instead
   // of rolling their Field Promotion.
   legacyCaches: Record<string, LegacyCache>
+  // Team risk snapshotted at REPORT_RESULT for the reward/forfeit offer and its
+  // odds preview. Null before the report and in older saves (live fallback).
+  offerTeamRisk: number | null
   offerSeed: number | null
   lastReport: MissionReport | null
   // Bonus honors for the current mission's reward window: the host-spun
@@ -237,6 +295,7 @@ export interface DiveState {
 
 export type EngineAction
   = | { type: 'START_DIVE', settings: CrusadeSettings, seed?: number, majorOrder?: MajorOrderSelection | null }
+    | { type: 'SET_TIER_LIST', tierList: TierList | null }
     | { type: 'SPIN_WHEEL', seed: number }
     | { type: 'ACCEPT_MISFORTUNE', accepted: boolean }
     | { type: 'ACCEPT_STRAIN', accepted: boolean }
@@ -244,12 +303,15 @@ export type EngineAction
     | { type: 'REROLL_WHEEL', wheel: 'misfortune' | 'front' | 'strain', seed: number }
     | { type: 'SET_PACTS', playerId: string, pactIds: string[] }
     | { type: 'FAIL_PACT', playerId: string, pactId: string }
+    | { type: 'HOLD_PACT', playerId: string, pactId: string }
     | { type: 'FAIL_MISFORTUNE' }
+    | { type: 'HOLD_MISFORTUNE' }
     | { type: 'SET_WARBONDS', playerId: string, warbondCodes: string[] }
     | { type: 'REPORT_RESULT', outcome: MissionOutcome, stars: number, timePct?: number, samples?: SampleCounts }
     | { type: 'FORFEIT_ITEM', playerId: string, itemId: string }
     | { type: 'PICK_REWARD', playerId: string, optionId: string, choiceItemId?: string }
     | { type: 'BUY_ITEM', playerId: string, itemId: string }
+    | { type: 'BUY_ARMOR_PACK', playerId: string }
     | { type: 'CLAIM_CATCHUP_OPTION', playerId: string, optionId: string }
     | { type: 'CLAIM_CACHE', playerId: string, cacheOwnerId: string }
     | { type: 'REROLL_REWARDS', playerId: string, seed: number }
@@ -260,6 +322,6 @@ export type EngineAction
     | { type: 'SET_AWAY', playerId: string, away: boolean }
     | { type: 'ADVANCE' }
     | { type: 'END_DIVE' }
-    | { type: 'KICK_DIVER', playerId: string }
+    | { type: 'KICK_DIVER', playerId: string, blockNetwork?: boolean }
     | { type: 'SET_NAME', playerId: string, name: string }
     | { type: 'TRANSFER_HOST', playerId: string }

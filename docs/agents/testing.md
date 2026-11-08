@@ -33,24 +33,28 @@
   production build (`pnpm build` + Nitro server, port 3173, WebSocket included). Specs: solo dive
   flow (spin → pacts → report → rewards → advance), two-browser room sync (late joiner, host
   authority, pact lock-in; a squad that all leaves finds its room waiting and RESUME reseats
-  everyone; the squad never waits on a diver who left), Codex in the dive sidebar (opens beside the dive without dropping the session), sidebar panels (desktop rail, phone bottom dock),
+  everyone; the squad never waits on a diver who left), Armory (Codex component) in the dive sidebar (opens beside the dive without dropping the session), sidebar panels (desktop rail, phone bottom dock),
   accessibility foundation (`a11y.spec.ts`: skip link, dialog focus trap/Escape/focus restore,
   star-rating keyboard navigation), phone host moderation
   (`phone.spec.ts`: a squadmate's hangar bay opens host actions; after launch the 390px Squad button
   opens the squad dialog with inline host actions), phone reward draft
-  (`phone-rewards.spec.ts`: a non-host phone diver banks their own pick), phone layout
+   (`phone-rewards.spec.ts`: a non-host phone diver banks their own pick), phone layout
   (`phone-layout.spec.ts`: no sideways overflow at 360px with a multi-front live Major Order, the
   hangar's four bays in one row with the live order as the default plan and the launch in reach, the
   live spin CTA, tapping the report's larger time cells), the phone action bar
-  (`phone-action-bar.spec.ts`: the bar is pinned to the bottom edge with a live primary action on every
+  (`phone-action-bar.spec.ts`: a tap on Launch crusade only nudges and a held press launches; the bar is pinned to the bottom edge with a live primary action on every
   dive screen from the wheel to loot (the standalone hangar pins its own launch CTA), plus confirm-failure and the surrender bar), tablet layout (`tablet-layout.spec.ts`: at
   1024×768 every phase fits the centre stage without the page scrolling vertically, and the drawn
    directive's Take it is in view; at
   768×1024 the phone shell widens to the tablet), the join briefing (`join-briefing.spec.ts`: a
-  named host skips every gate and gets the tutorial, a squadmate reads the one-page briefing — callsign
-  focused on load, Enter files it and opens the squad card, issued kit, Codex drawer, the dial's
-  scroll-in sweep — lands with no tutorial or Warbonds panel, and replays it as the
-  Field manual; the spec uses one room because creation is rate-limited per IP), the SEAF launch
+  named host skips every gate and gets the tutorial, a squadmate reads the briefing — name focused on
+  load, five mission boxes with the first open and a box switching its panel and preview, Join
+  disabled until named, Enter filing the name into Class E and unfolding the grouped starting gear,
+  a second Enter joining, a saved name filing itself — lands with no tutorial or Warbonds panel, and replays it as the
+  Field manual; the spec uses one room because creation is rate-limited per IP),
+  custom tier lists (`tier-lists.spec.ts`: the ship nav opens the Tier Maker, which moves an item by mouse drag, keyboard (D undoes) and the inspector, then saves and reloads the list; armor passives and boosters close out every row; the names and tile-size toggles apply and persist; a 390px touch phone taps an item into the bottom-bar inspector with no sideways overflow; a JSON file imports a list and flags the items it leaves out as New; Ctrl-click gathers two items that one drag, the group inspector and D move together; a Tier Maker opened from a lobby offers Back to lobby, closes its tab and the lobby picks the list; the standalone `tiers.localhost` host serves the maker at `/` and Play it in Griffdive lands the list saved on the main site; a share
+  link imports a list, Host a crusade with this list opens a lobby already on it, the squadmate reads the whole list and its Vs default tab before launch and
+  sees it follow the host's switches, and the launched Armory reads the squad's list), the SEAF launch
   reveal (`kit-reveal.spec.ts`: the setup kit's "?" boxes, a solo and an online launch dealing the
   pack in a modal over the wheel that stays until dismissed, a late joiner's own deal, no replay on reload), personal session saves
   (`session-saves.spec.ts`: a seated diver forks the live room into a new session, a solo save hosts
@@ -62,7 +66,11 @@
   Suit up link returns focus to the drop console; a saved run replaces the hero's wheel with the
   service record; a three-front Major Order docks in the header at 1024px and pins to the bottom
   at 360px without overflow). Solo drop asks for no name, so specs file one on the host tutorial
-  with the `fileCallsign` helper (`e2e/helpers.ts`). Room creation is
+  with the `fileCallsign` helper (`e2e/helpers.ts`); once every draft is banked the squad lands on
+  the climbs page, which `settleClimb` clears (rules held, honors winner named) before a spec clicks
+  the next drop (`e2e/climb.spec.ts` covers Held, Broke and Penance); the Armor Pack and
+  achievement specs cover escalation/reveal bounds, the compact recap and its Pardon gate.
+  Room creation is
   rate-limited per address (10/min in production) and the whole suite shares one address, as are WebSocket joins (20/min), so the e2e server runs with `ROOM_CREATE_LIMIT=200` and
   `ROOM_JOIN_LIMIT=400` (`playwright.config.ts`) — a capped join looks like a page stuck on
   "Loading dive…", since the client doesn't surface `rate-limited` — still prefer reusing a

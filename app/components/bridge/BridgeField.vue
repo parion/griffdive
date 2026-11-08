@@ -42,7 +42,11 @@ const lineY = ref<HTMLElement | null>(null)
 const beamX = ref<HTMLElement | null>(null)
 const beamY = ref<HTMLElement | null>(null)
 const rings = ref<HTMLElement[]>([])
-const corners = ref<HTMLElement[]>([])
+const frame = ref<HTMLElement | null>(null)
+
+// v-for refs carry no order guarantee, and each corner's bracket shape is tied
+// to its DOM position.
+const corners = (): HTMLElement[] => Array.from(frame.value?.children ?? []) as HTMLElement[]
 
 const sector = ref('')
 const locked = ref(false)
@@ -218,7 +222,7 @@ function arm(el: Element | null): void {
   }
   const to = frameCorners(el)
   const from = `translate3d(${target.x}px, ${target.y}px, 0)`
-  corners.value.forEach((corner, i) => {
+  corners().forEach((corner, i) => {
     corner.style.transform = to[i]!
     if (reduced.value !== 'reduce') {
       corner.animate(
@@ -280,7 +284,7 @@ useEventListener(document, 'pointerover', (event: PointerEvent) => {
 useEventListener(window, 'scroll', () => {
   if (armedEl) {
     const to = frameCorners(armedEl)
-    corners.value.forEach((corner, i) => {
+    corners().forEach((corner, i) => {
       corner.style.transform = to[i]!
     })
   }
@@ -408,6 +412,7 @@ onBeforeUnmount(() => {
          opaque panel or the header. -->
     <Teleport to="body">
       <div
+        ref="frame"
         class="bf-frame"
         :class="{ 'is-armed': armed }"
         aria-hidden="true"
@@ -415,7 +420,6 @@ onBeforeUnmount(() => {
         <i
           v-for="n in 4"
           :key="n"
-          ref="corners"
           class="bf-corner"
         />
       </div>

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { missionsPerOperation } from '~~/shared/engine/config'
 import { difficultyName } from '~~/shared/engine/progression'
 import { awaitingDiverIds, forfeitOptionsFor } from '~~/shared/engine/selectors'
@@ -12,20 +11,21 @@ const props = defineProps<{
   // Phone shell: the remove call lives in the pinned action bar.
   phone?: boolean
 }>()
+const { itemById } = useTierCatalog()
 
 const emit = defineEmits<{ forfeit: [itemId: string] }>()
 
 const opLength = computed(() => missionsPerOperation(props.state.difficulty))
 
 const kicker = computed(() =>
-  `Report · ${difficultyName(props.state.difficulty)} · Mission ${props.state.missionInOperation} of ${opLength.value}`)
+  `Forfeit · ${difficultyName(props.state.difficulty)} · Mission ${props.state.missionInOperation} of ${opLength.value}`)
 
 // The diver's own dealt offer: derived state, so every client — and a reload —
 // sees the same one.
 const offer = computed(() => (props.self ? forfeitOptionsFor(props.state, props.self) : []))
 const surrendered = computed(() => {
   const id = props.self?.forfeitedItemId
-  return id ? ITEMS_BY_ID.get(id) ?? null : null
+  return id ? itemById(id) ?? null : null
 })
 const owes = computed(() => props.self !== null && offer.value.length > 0)
 
@@ -59,7 +59,7 @@ function remove(): void {
 }
 
 const removeLabel = computed(() => {
-  const item = selected.value ? ITEMS_BY_ID.get(selected.value) : null
+  const item = selected.value ? itemById(selected.value) : null
   return item ? `Remove ${item.displayName}` : 'Select an item'
 })
 const status = computed(() => {

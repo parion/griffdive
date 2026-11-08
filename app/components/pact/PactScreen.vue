@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { pactName } from '~~/shared/data/pacts'
 import { conditionRiskAt } from '~~/shared/engine/config'
 import { PACT_BANS_STRATAGEM, applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
@@ -13,6 +12,7 @@ const props = withDefaults(defineProps<{
   self: DiverState | null
   canControl?: boolean
 }>(), { canControl: true })
+const { itemById } = useTierCatalog()
 
 const emit = defineEmits<{
   lock: [pactIds: string[]]
@@ -35,7 +35,13 @@ watch(
 const offer = computed(() =>
   props.selfId ? pactOfferFor(props.state, props.selfId) : [])
 
+const waitingOn = computed(() => props.state.divers
+  .filter(diver => !diver.away && !diver.pactsLocked)
+  .map(diver => diver.name)
+  .join(', '))
 const misfortune = computed(() => activeMisfortune(props.state))
+const directiveSkipped = computed(() =>
+  Boolean(props.state.wheel && !props.state.misfortuneAccepted))
 const strain = computed(() => currentStrain(props.state))
 const locked = computed(() => Boolean(props.self?.pactsLocked))
 const teamRisk = computed(() => teamRiskOf(props.state))
@@ -140,14 +146,14 @@ function bannedNote(pactId: string): string {
     return ''
   }
   const names = owned.value
-    .map(id => ITEMS_BY_ID.get(id))
+    .map(id => itemById(id))
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
     .filter(item => predicate(item))
     .map(item => item.displayName)
   if (names.length === 0) {
     return ''
   }
-  return `Benches ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}`
+  return `Bans ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}`
 }
 
 const ctaLabel = computed(() => {
@@ -173,7 +179,10 @@ function lockNow(): void {
         Swear your pacts
       </h1>
       <p class="pact-sub">
-        Only you carry them. Break one in the field and it costs you a loot option.
+        Pacts only affect you. A broken pact costs you a loot option — or Penance, a debt to clear later, when the stats screen shows the break.
+      </p>
+      <p class="risk-note">
+        Risk shown is for this difficulty; higher difficulties raise risk and offer more pacts.
       </p>
     </header>
 
@@ -188,7 +197,7 @@ function lockNow(): void {
         tone="red"
       />
       <b class="disp directive-name">{{ misfortune.name }}</b>
-      <span class="directive-rule">{{ misfortune.rule }}</span>
+      <span class="directive-rule"><ConditionRule :condition="misfortune" /></span>
       <span
         v-if="strain"
         class="strain-note"
@@ -199,9 +208,14 @@ function lockNow(): void {
       class="directive-strip safe"
     >
       <span class="cap">Squad directive</span>
-      <b class="disp directive-name">Safe dive</b>
-      <span class="directive-rule">No team rule accepted. The squad carries only its pacts.</span>
+      <b class="disp directive-name">{{ directiveSkipped ? 'Directive skipped' : 'Safe dive' }}</b>
+      <span class="directive-rule">No squad directive this mission.</span>
     </div>
+
+    <PactPenance
+      :self="self"
+      :difficulty="state.difficulty"
+    />
 
     <div
       class="hand"
@@ -263,7 +277,7 @@ function lockNow(): void {
         <span class="locked-stamp disp">Sworn</span>
         <span class="locked-copy">
           <b>{{ selectionNames || 'No pacts' }}</b>
-          <span>Waiting for the rest of the squad…</span>
+          <span>{{ waitingOn ? `Waiting on ${waitingOn}…` : 'Waiting for the rest of the squad…' }}</span>
         </span>
       </div>
     </div>
@@ -302,6 +316,7 @@ function lockNow(): void {
 }
 .pact-title { font-size: clamp(36px, 3.8vw, 52px); }
 .pact-sub { margin: 0; color: var(--muted); font-size: 14px; }
+.risk-note { margin: -4px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
 
 .directive-strip {
   width: auto;
@@ -318,7 +333,7 @@ function lockNow(): void {
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
 }
 .directive-strip.safe { background: var(--panel); }
-.directive-name { font-size: 18px; color: var(--gold); text-shadow: 0 0 16px rgba(255, 214, 66, 0.3); }
+.directive-name { font-size: 18px; color: var(--gold); }
 .directive-rule { color: var(--khaki); font-size: 13px; }
 .strain-note {
   color: var(--orange);

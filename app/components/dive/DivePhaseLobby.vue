@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { FRONTS } from '~~/shared/data/fronts'
 import { STARTING_KITS, VARIANTS } from '~~/shared/engine/progression'
+import { sameTierList } from '~~/shared/engine/tierList'
+import type { TierList } from '~~/shared/engine/tierList'
 import type { CrusadeMode, CrusadeSettings, CrusadeVariant, DiveState, MajorOrderSelection } from '~~/shared/engine/types'
 
 // The room's setup screen. It stands alone — no dive header or squad dock,
@@ -17,6 +19,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   start: [settings: CrusadeSettings, majorOrder: MajorOrderSelection | null]
+  setTierList: [tierList: TierList | null]
   copyInvite: []
   openMenu: []
   transferHost: [playerId: string]
@@ -26,6 +29,7 @@ const emit = defineEmits<{
 
 const { ownedWarbonds } = useOwnedWarbonds()
 const { openWarbonds } = useDrawers()
+const { picked: pickedTierList } = useTierLists()
 
 const variant = ref<CrusadeVariant>('medium')
 const mode = ref<CrusadeMode>('seaf')
@@ -43,6 +47,19 @@ const {
 const launched = ref(false)
 let launchTimer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(launchTimer))
+
+// Unlike the rest of the setup, the tier list syncs before launch: it changes
+// what every diver can roll, so the squad reads it while the host decides.
+watch([() => pickedTierList.value.list, () => props.canControl], ([list, control]) => {
+  if (control && !launched.value && !sameTierList(list, props.state.tierList)) {
+    emit('setTierList', list)
+  }
+}, { immediate: true })
+
+// While the host can still change the list, a Tier Maker tab can find this
+// lobby and send the diver back to it.
+const route = useRoute()
+useLobbyBeacon(() => (props.canControl && !launched.value ? route.path : null))
 
 const hostName = computed(() =>
   upperName(props.state.divers.find(diver => diver.id === props.state.hostId)?.name) ?? 'The host')
@@ -81,6 +98,7 @@ interface Bay {
   initial: string
   host: boolean
   you: boolean
+  away: boolean
   warbonds: number
 }
 
@@ -95,6 +113,7 @@ const bays = computed<Bay[]>(() => Array.from({ length: 4 }, (_, i) => {
     initial: (diver?.name.trim()[0] ?? '?').toUpperCase(),
     host: diver?.id === props.state.hostId,
     you: Boolean(diver) && diver?.id === props.selfId,
+    away: diver?.away ?? false,
     warbonds: diver?.warbondCodes.length ?? 0,
   }
 }))
@@ -104,10 +123,11 @@ function bayLabel(bay: Bay): string {
     return `${bay.label} open — copy the invite link`
   }
   const role = bay.host ? ', host' : ''
+  const away = bay.away ? ', away' : ''
   if (bay.you) {
-    return `${bay.label}, you${role} — warbonds, ${bay.warbonds} declared`
+    return `${bay.label}, you${role}${away} — warbonds, ${bay.warbonds} declared`
   }
-  const label = `${bay.label}, ${bay.name}${role}, ${bay.warbonds} warbonds`
+  const label = `${bay.label}, ${bay.name}${role}${away}, ${bay.warbonds} warbonds`
   return props.canControl ? `${label} — manage` : label
 }
 
@@ -130,7 +150,7 @@ function manage(action: 'transferHost' | 'kick'): void {
     return
   }
   if (action === 'kick') {
-    emit('kick', id)
+    nextTick(() => emit('kick', id))
   }
   else {
     emit('transferHost', id)
@@ -238,20 +258,21 @@ function launch(): void {
       tabindex="-1"
     >
       <div class="inner">
-        <p
+        <AppBanner
           v-if="lastError"
-          class="error"
-          role="alert"
+          tone="error"
         >
           {{ lastError }}
-          <button
-            class="btn tiny ghost"
-            type="button"
-            @click="emit('dismissError')"
-          >
-            Dismiss
-          </button>
-        </p>
+          <template #actions>
+            <button
+              class="btn tiny ghost"
+              type="button"
+              @click="emit('dismissError')"
+            >
+              Dismiss
+            </button>
+          </template>
+        </AppBanner>
 
         <section
           class="bays"
@@ -262,7 +283,7 @@ function launch(): void {
             v-for="bay in bays"
             :key="bay.index"
             class="bay"
-            :class="{ seated: bay.seated, open: !bay.seated, you: bay.you }"
+            :class="{ seated: bay.seated, open: !bay.seated, you: bay.you, away: bay.away }"
             :type="interactive(bay) ? 'button' : undefined"
             :aria-label="bayLabel(bay)"
             @click="pressBay(bay)"
@@ -344,6 +365,10 @@ function launch(): void {
                 class="tag-meta"
               >
                 <span
+                  v-if="bay.away"
+                  class="tag-away"
+                >Away</span>
+                <span
                   v-if="bay.host"
                   class="tag-host"
                 >Host</span>
@@ -384,11 +409,18 @@ function launch(): void {
             id="standby-h"
             class="disp standby-title"
           >
-            {{ hostName }} is setting the crusade
+            {{ hostName }} is setting up the run
           </h2>
           <p class="standby-copy">
             The host picks where the squad fights and where it starts, then launches everyone together.
-            Rewards roll from the warbonds you own — declare them before the drop.
+            Rewards only come from warbonds you own, so set yours before launch.
+          </p>
+          <p class="standby-tiers">
+            <span class="lbl">Tier list</span>
+            <TierListTag
+              :list="state.tierList"
+              show-default
+            />
           </p>
           <button
             class="btn ghost cut-sm standby-cta"
@@ -396,7 +428,7 @@ function launch(): void {
             @click="openWarbonds()"
           >
             <IconWarbond aria-hidden="true" />
-            Declare warbonds · {{ ownedWarbonds.length }}
+            Your warbonds · {{ ownedWarbonds.length }}
           </button>
         </section>
       </div>
@@ -537,17 +569,6 @@ function launch(): void {
   padding: clamp(14px, 2.4vh, 28px) var(--pad-page) 24px;
   min-width: 0;
 }
-.error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--red);
-  color: var(--text);
-}
-
 /* Bays: four lit wells, a pod standing in each ------------------------- */
 .bays { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(6px, 1.4cqi, 14px); }
 .bay {
@@ -565,6 +586,9 @@ function launch(): void {
 button.bay { cursor: pointer; transition: border-color var(--dur-fast); }
 button.bay:hover { border-color: var(--gold); }
 .bay.you { border-color: var(--line-5); }
+.bay.away { border-color: var(--line-3); }
+.bay.away .tag-name,
+.bay.away .pod-face { opacity: 0.55; }
 .bay.open { border-style: dashed; border-color: var(--line-4); background: transparent; }
 
 .well {
@@ -667,6 +691,7 @@ button.bay.open:hover .tag-name { color: var(--gold); }
 }
 .tag-meta > span { display: inline-flex; align-items: center; gap: 4px; }
 .tag-host { color: var(--gold); }
+.tag-away { color: var(--orange); }
 .tag-wb { color: var(--gold); }
 .tag-wb-icon { width: 12px; height: 12px; }
 
@@ -688,6 +713,7 @@ button.bay.open:hover .tag-name { color: var(--gold); }
 }
 .standby-title { margin: 0; font-size: clamp(1.2rem, 4cqi, 1.9rem); color: var(--text); }
 .standby-copy { margin: 0; max-width: 56ch; color: var(--khaki); line-height: 1.45; }
+.standby-tiers { display: flex; align-items: center; gap: 10px; margin: 0; min-width: 0; }
 .standby-cta { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; }
 .standby-cta svg { width: 18px; height: 18px; }
 

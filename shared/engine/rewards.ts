@@ -1,5 +1,7 @@
 import type { Item, Tier } from '../data/types'
 import {
+  ARMOR_PACK_ODDS,
+  ARMOR_PACK_SIZE,
   BARGAIN_TIER_REACH,
   BONUS_STATS,
   MAX_OPTIONS,
@@ -19,6 +21,7 @@ import {
   TIME_HAUL_FLOOR,
   CEILING_PREVIEW_FLOOR,
   VALOR_METER_MAX,
+  armorPackBandFor,
   bandPosition,
   baseTierFor,
   sPlusUpgradeCapFor,
@@ -118,8 +121,8 @@ export function missionHaul(report: MissionReport | null): number {
   return Math.floor(haulValue(report.samples) * timeHaulMultiplier(report.timePct))
 }
 
-// Brasch's Bargains price: tier first, then type (a primary out-prices an
-// armor passive). Unknown categories cost the default multiplier.
+// Brasch's Bargains price: tier first, then type (a primary out-prices a
+// stratagem). Unknown categories cost the default multiplier.
 export function itemPrice(item: Item): number {
   const base = CREDIT_PRICE_TIER[item.tier]
   const multiplier = CREDIT_PRICE_TYPE[item.category] ?? CREDIT_PRICE_TYPE_DEFAULT
@@ -507,4 +510,104 @@ function pickBargain(rng: Rng, candidates: readonly Item[], floorIndex: number, 
   const nearest = Math.min(...candidates.map(distance))
   const stocked = candidates.filter(item => distance(item) === nearest)
   return stocked[pickIndex(rng, stocked.length)]!
+}
+
+// Brasch's Armor Pack: three duplicate-free armor passives from the diver's
+// unowned pool. Two cards roll the band's ordinary ladder; the first is the
+// guaranteed hit, and one pack-wide roll can lift it to S. A tier whose pool
+// is empty steps to the nearest stocked tier — the hit looks up first, so its
+// floor survives while any ordinary B/A passive remains. The result is a
+// purchase, so the caller stores it; the seed is kept only to replay the deal.
+export function rollArmorPack(
+  seed: number,
+  difficulty: number,
+  pool: readonly Item[],
+  excludeIds: ReadonlySet<string>,
+): Item[] {
+  const available = pool.filter(
+    item => item.category === 'armorPassive' && !excludeIds.has(item.id),
+  )
+  if (available.length === 0) {
+    return []
+  }
+  const rng = mulberry32(seed)
+  const odds = ARMOR_PACK_ODDS[armorPackBandFor(difficulty)]
+  const sAvailable = available.some(item => item.tier === 's')
+  const sHit = sAvailable && rng() < odds.sChance
+  const taken = new Set<string>()
+  const picked: Item[] = []
+  const count = Math.min(ARMOR_PACK_SIZE, available.length)
+  let sTaken = false
+
+  for (let index = 0; index < count; index++) {
+    const hit = index === 0
+    const tier = hit && sHit
+      ? 's'
+      : pickWeighted(
+          rng,
+          (hit ? odds.hit : odds.standard).map(entry => ({ value: entry.tier, weight: entry.weight })),
+        )
+    const item = pickPackItem(rng, available, taken, tier, hit, sTaken)
+    if (!item) {
+      break
+    }
+    taken.add(item.id)
+    picked.push(item)
+    if (item.tier === 's') {
+      sTaken = true
+    }
+  }
+  return picked
+}
+
+function pickPackItem(
+  rng: Rng,
+  candidates: readonly Item[],
+  taken: ReadonlySet<string>,
+  tier: Tier,
+  hit: boolean,
+  sTaken: boolean,
+): Item | null {
+  const remaining = candidates.filter(item => !taken.has(item.id))
+  if (remaining.length === 0) {
+    return null
+  }
+  // Only the S roll (or a pool that has nothing else left) can deal an S, and
+  // never more than one per pack.
+  const preferred = tier === 's'
+    ? remaining
+    : remaining.filter(item => item.tier !== 's')
+  const stock = preferred.length > 0
+    ? preferred
+    : remaining.filter(item => item.tier === 's' && !sTaken)
+  if (stock.length === 0) {
+    return null
+  }
+  const exact = stock.filter(item => item.tier === tier)
+  if (exact.length > 0) {
+    return exact[pickIndex(rng, exact.length)]!
+  }
+  // The hit card prefers at-or-above its target (and only degrades when the
+  // pool has nothing better); ordinary cards prefer at-or-below, so an
+  // exhausted tier never mints a rarer card than the roll asked for. The hit's
+  // upward fallback stops at A: S is only ever the pack's one S roll, never an
+  // exhaustion upgrade.
+  const targetIndex = TIER_INDEX[tier]
+  const ceilingIndex = TIER_INDEX.a
+  const distance = (item: Item): number => {
+    const index = TIER_INDEX[item.tier]
+    if (hit) {
+      if (index >= targetIndex && index <= ceilingIndex) {
+        return index - targetIndex
+      }
+      if (index > ceilingIndex) {
+        return 20 + (index - ceilingIndex)
+      }
+      return targetIndex - index + 10
+    }
+    return index <= targetIndex ? targetIndex - index : index - targetIndex + 10
+  }
+  const nearest = Math.min(...stock.map(distance))
+  const band = stock.filter(item => distance(item) === nearest)
+  return band[pickIndex(rng, band.length)]!
 }

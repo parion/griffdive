@@ -4,6 +4,9 @@ export default defineNuxtConfig({
   ssr: false,
   devtools: { enabled: true },
   app: {
+    // Opacity only: a transform here would capture the fixed Bridge field,
+    // boot screen and pinned bars mid-swap. Each page brings its own entrance.
+    pageTransition: { name: 'page', mode: 'out-in' },
     head: {
       htmlAttrs: { lang: 'en' },
       title: 'Griffdive',

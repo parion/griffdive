@@ -60,7 +60,7 @@ interface FrontCard {
 const frontCard = computed<FrontCard | null>(() => {
   if (front.value && !props.drawing) {
     return {
-      cap: 'Front locked',
+      cap: 'Front',
       name: front.value.displayName,
       planets: frontPlanetsLabel.value,
       accent: front.value.accent,
@@ -70,7 +70,7 @@ const frontCard = computed<FrontCard | null>(() => {
   if (props.state.majorOrder && pinnedFronts.value.length) {
     const fronts = pinnedFronts.value
     return {
-      cap: props.state.majorOrder.live ? 'Major Order pinned' : 'Faction locked',
+      cap: props.state.majorOrder.live ? 'Major Order' : 'Front',
       name: fronts.map(entry => entry.displayName).join(' · '),
       planets: pinnedPlanetsLabel.value,
       accent: fronts.length === 1 ? fronts[0]?.accent ?? 'var(--gold)' : 'var(--gold)',
@@ -257,7 +257,6 @@ const frontCard = computed<FrontCard | null>(() => {
   font-size: min(clamp(20px, 2.1vw, 27px), 100cqi / var(--fit-len, 1));
   line-height: 1;
   color: var(--front-accent);
-  text-shadow: 0 0 22px color-mix(in srgb, var(--front-accent) 28%, transparent);
 }
 .front-planet {
   color: var(--gold);
@@ -311,7 +310,7 @@ const frontCard = computed<FrontCard | null>(() => {
 .strain-actions { display: flex; gap: 4px; }
 .take,
 .skip {
-  min-height: 40px;
+  min-height: 44px;
   border: 0;
   font: 800 11px var(--font-body);
   letter-spacing: 0.1em;
@@ -343,7 +342,7 @@ const frontCard = computed<FrontCard | null>(() => {
   flex: 1;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 12px;
   border: 0;
   font: 800 12px var(--font-body);
@@ -393,7 +392,7 @@ const frontCard = computed<FrontCard | null>(() => {
 .front-card.compact .strain-actions .skip { flex: 1; }
 .front-card.compact .strain-verdict { min-width: 0; }
 .front-card.compact .pick-choice,
-.front-card.compact .pick-static { min-height: 40px; }
+.front-card.compact .pick-static { min-height: 44px; }
 
 @keyframes stampFlat {
   0% { transform: scale(1.7); opacity: 0; }

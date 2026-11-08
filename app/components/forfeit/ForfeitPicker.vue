@@ -80,7 +80,7 @@ function gone(itemId: string): boolean {
         <span
           class="sur-mark"
           :class="{ empty: selected !== tile.item.id }"
-        >{{ gone(tile.item.id) ? 'Removed ✓' : selected === tile.item.id ? 'Marked for removal' : 'Select' }}</span>
+        >{{ gone(tile.item.id) ? 'Removed ✓' : selected === tile.item.id ? 'Marked for removal' : 'At stake' }}</span>
       </span>
 
       <span
@@ -101,7 +101,6 @@ function gone(itemId: string): boolean {
 }
 
 .sur-tile {
-  --edge: var(--line-3);
   --tier: var(--tier-c);
   position: relative;
   display: flex;
@@ -109,8 +108,8 @@ function gone(itemId: string): boolean {
   gap: var(--sp-3);
   min-width: 0;
   padding: var(--sp-4);
-  border: 1px solid var(--edge);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--tier) 10%, var(--panel)), var(--panel) 55%);
+  border: 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--red) 7%, color-mix(in srgb, var(--tier) 8%, var(--panel))), var(--panel) 62%);
   color: var(--text);
   text-align: left;
   font: inherit;
@@ -118,6 +117,7 @@ function gone(itemId: string): boolean {
   animation: riseIn 0.45s var(--ease-out) backwards;
   clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
   transition: transform var(--dur-med) var(--ease-out), filter var(--dur-med), box-shadow var(--dur-med), opacity var(--dur-med);
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tier) 65%, var(--line-3));
 }
 .sur-tile[data-tier='C'] { --tier: var(--tier-c); }
 .sur-tile[data-tier='B'] { --tier: var(--tier-b); }
@@ -127,10 +127,9 @@ function gone(itemId: string): boolean {
 .sur-tile:disabled { cursor: default; }
 .sur-tile:hover:not(:disabled):not(.on) { transform: translateY(-4px); filter: brightness(1.08); }
 .sur-tile.on {
-  --edge: var(--red);
   transform: translateY(-6px);
   background: linear-gradient(180deg, color-mix(in srgb, var(--red) 16%, var(--panel)), var(--panel) 70%);
-  box-shadow: inset 0 0 0 2px var(--red), 0 0 30px color-mix(in srgb, var(--red) 30%, transparent);
+  box-shadow: inset 0 3px 0 var(--red), inset 3px 0 0 var(--red), 0 0 30px color-mix(in srgb, var(--red) 30%, transparent);
 }
 .sur-tile.faded { opacity: 0.38; filter: saturate(0.4); }
 
@@ -144,7 +143,7 @@ function gone(itemId: string): boolean {
 .sur-cat {
   min-width: 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -156,7 +155,6 @@ function gone(itemId: string): boolean {
   color: var(--tier);
   font-size: 34px;
   line-height: 0.8;
-  text-shadow: 0 0 18px color-mix(in srgb, var(--tier) 45%, transparent);
 }
 
 /* The art is the card, same letterboxed well as the loot draft. */
@@ -201,12 +199,12 @@ function gone(itemId: string): boolean {
 .sur-tile.on .sur-item-name { color: var(--text); }
 .sur-mark {
   color: var(--red);
-  font-size: 10px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-.sur-mark.empty { color: var(--dim); }
+.sur-mark.empty { color: color-mix(in srgb, var(--red) 68%, var(--muted)); }
 
 .sur-stamp {
   position: absolute;

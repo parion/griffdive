@@ -1,9 +1,10 @@
 import { createHmac, randomBytes } from 'node:crypto'
 import { customAlphabet, nanoid } from 'nanoid'
 import { SQUAD_SIZE_MAX, MAX_NAME_LENGTH } from '~~/shared/engine/config'
-import { createLobbyState, forkCrusade, joinDiver, seatingBlocked } from '~~/shared/engine/room'
+import { awaySeatToFree, createLobbyState, forkCrusade, joinDiver, seatingBlocked } from '~~/shared/engine/room'
 import { reduce } from '~~/shared/engine/reducer'
 import { normalizeSaveDoc } from '~~/shared/engine/saves'
+import { forfeitOptionsFor } from '~~/shared/engine/selectors'
 import type { DiveState, DivePhase, EngineAction } from '~~/shared/engine/types'
 import { isEngineActionType, isHostOnlyAction } from '~~/shared/types/messages'
 import type { DiveSaveInfo, ServerMessage, SteamLobbyInfo } from '~~/shared/types/messages'
@@ -24,9 +25,13 @@ export const ROOM_TTL_MS = 12 * 60 * 60 * 1000
 // Personal session saves cover anything older (AGENTS.md: Personal session saves).
 export const CRUSADE_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
-// How long a dropped diver keeps gating the squad before they are marked away:
-// long enough to ride out a reconnect or a page refresh.
+// How long a dropped non-host keeps gating the squad before they are marked
+// away. Hosts use their longer reconnect window below.
 export const AWAY_GRACE_MS = 30 * 1000
+
+// A host gets longer to recover from a refresh or brief connection loss before
+// the room hands the crown to another diver.
+export const HOST_RECONNECT_GRACE_MS = 90 * 1000
 
 function roomExpired(room: StoredRoom, now: number): boolean {
   if (room.saved) {
@@ -161,13 +166,19 @@ export interface PeerLike {
   send(text: string): void
   // The transport's own close, so reaping a silent peer goes through the normal
   // close path (crossws peers have it; test doubles may not).
-  close?(): void
+  close?(code?: number, reason?: string): void
 }
 
 // Live connections are process memory; room state lives in storage. crossws
 // topics are global to the process, so routing goes through this directory
 // instead of pub/sub.
 export interface PeerDirectory {
+  // Set once the process is shutting down (see drainPeers).
+  draining: boolean
+  // Presence grace timers are process-local; a server restart uses the away
+  // grace after peers reconnect rather than persisting timers in room records.
+  awayTimers: Map<string, ReturnType<typeof setTimeout>>
+  hostReconnectTimers: Map<string, ReturnType<typeof setTimeout>>
   add(roomCode: string, peer: PeerLike): void
   remove(peer: PeerLike): void
   list(roomCode: string): PeerLike[]
@@ -178,6 +189,9 @@ export interface PeerDirectory {
 export function createPeerDirectory(): PeerDirectory {
   const byRoom = new Map<string, Set<PeerLike>>()
   return {
+    draining: false,
+    awayTimers: new Map(),
+    hostReconnectTimers: new Map(),
     add(roomCode, peer) {
       let set = byRoom.get(roomCode)
       if (!set) {
@@ -418,6 +432,14 @@ export async function loadRoom(kv: RoomKV, code: string): Promise<StoredRoom | n
   if (typeof raw.ipSalt !== 'string' || raw.ipSalt.length === 0) {
     raw.ipSalt = undefined
   }
+  // Rooms outlive schema bumps on the Fly volume; fill v3 fields without
+  // touching a state that already has them.
+  if (!Array.isArray(raw.state.misfortuneHistory)) {
+    raw.state.misfortuneHistory = []
+  }
+  if (typeof raw.state.offerTeamRisk !== 'number' || !Number.isFinite(raw.state.offerTeamRisk)) {
+    raw.state.offerTeamRisk = null
+  }
   return raw
 }
 
@@ -626,6 +648,10 @@ export async function processHello(
         return
       }
       playerId = reclaimId ?? newPlayerId()
+      const awaySeat = room.state.divers.length >= SQUAD_SIZE_MAX ? awaySeatToFree(room.state) : null
+      if (awaySeat) {
+        room.state = reduce(room.state, { type: 'LEAVE_DIVE', playerId: awaySeat.id })
+      }
       const joined = joinDiver(room.state, playerId, sanitizeName(payload.name), warbondCodesOf(payload.warbondCodes))
       if (!joined) {
         roomMetrics.recordHello('full')
@@ -637,6 +663,9 @@ export async function processHello(
       changed = true
       roomMetrics.recordJoin(reclaiming ? 'reclaim' : seated && seated.catchUpGranted > 0 ? 'mid_crusade' : 'new')
     }
+
+    clearHostReconnectTimer(peers, requested, playerId)
+    clearAwayTimer(peers, requested, playerId)
 
     // Arrival bookkeeping: the hello's kind, and how long the room had been
     // quiet. The gap reads updatedAt before any write below moves it.
@@ -659,8 +688,12 @@ export async function processHello(
     }
 
     // Whoever comes back to a room whose host is gone takes the helm — a
-    // crusade never waits on one particular diver.
-    if (room.state.hostId !== playerId && !hostOnline) {
+    // crusade never waits on one particular diver. A host who is merely
+    // offline (a server restart dropped everyone at once) keeps the crown for
+    // the away grace; markAwayIfOffline hands it on if they don't return.
+    const host = room.state.divers.find(diver => diver.id === room.state.hostId)
+    if (room.state.hostId !== playerId && !hostOnline && (!host || host.away)
+      && !hasHostReconnectTimer(peers, requested, room.state.hostId)) {
       room.state = reduce(room.state, { type: 'TRANSFER_HOST', playerId })
       roomMetrics.recordHostTransfer('offline_host')
       changed = true
@@ -691,6 +724,9 @@ export async function processHello(
     // them the same grace, then stop waiting on them.
     for (const diver of room.state.divers) {
       if (!diver.away && !isOnline(peers, requested, diver.id)) {
+        if (diver.id === room.state.hostId && hasHostReconnectTimer(peers, requested, diver.id)) {
+          continue
+        }
         scheduleAway(kv, peers, requested, diver.id)
       }
     }
@@ -724,6 +760,7 @@ function enforceSelf(action: EngineAction, playerId: string): EngineAction {
     || action.type === 'PICK_REWARD'
     || action.type === 'FORFEIT_ITEM'
     || action.type === 'BUY_ITEM'
+    || action.type === 'BUY_ARMOR_PACK'
     || action.type === 'SET_NAME'
     || action.type === 'CLAIM_CATCHUP_OPTION'
     || action.type === 'CLAIM_CACHE'
@@ -756,9 +793,8 @@ function liveFingerprint(
   return null
 }
 
-// A kick leaves a bar behind; a voluntary leave does not. The removed seat's
-// keyed address fingerprint moves into the bar so clearing site data does not
-// buy a way back in from the same network.
+// A kick always bars the seat id; its keyed address fingerprint is retained
+// only when the host opts into blocking fresh joiners from that network.
 function updateSeatPolicy(
   room: StoredRoom,
   peers: PeerDirectory,
@@ -774,8 +810,9 @@ function updateSeatPolicy(
     if (!removed) {
       return
     }
-    const fingerprint = room.seatIps?.[removed.id]
-      ?? liveFingerprint(room, peers, roomCode, removed.id)
+    const fingerprint = action.blockNetwork === true
+      ? room.seatIps?.[removed.id] ?? liveFingerprint(room, peers, roomCode, removed.id)
+      : null
     const bans = roomBansOf(room)
     if (!bans.some(ban => ban.playerId === removed.id)) {
       room.bans = [...bans, { playerId: removed.id, ip: fingerprint ?? null, at: Date.now() }]
@@ -828,14 +865,30 @@ export async function processAction(
       sendError(peer, 'not-host', 'Only the host can do that')
       return
     }
-    // FAIL_PACT is neither host-only nor self-service: the diver owns their
-    // pact, but the host referees the squad — so sender = target or host.
-    if (action.type === 'FAIL_PACT' && action.playerId !== playerId && room.state.hostId !== playerId) {
-      sendError(peer, 'bad-action', 'Only the diver or the host can mark a pact failed')
+    // FAIL_PACT and HOLD_PACT are neither host-only nor self-service: the diver
+    // owns their pact, but the host referees the squad — so sender = target or host.
+    if (
+      (action.type === 'FAIL_PACT' || action.type === 'HOLD_PACT')
+      && action.playerId !== playerId
+      && room.state.hostId !== playerId
+    ) {
+      sendError(peer, 'bad-action', 'Only the diver or the host can settle a pact')
       return
     }
 
     const enforced = enforceSelf(action, playerId)
+    if (enforced.type === 'FORFEIT_ITEM') {
+      const diver = room.state.divers.find(candidate => candidate.id === playerId)
+      if (
+        room.state.phase !== 'forfeit'
+        || !diver
+        || diver.forfeitedItemId
+        || !forfeitOptionsFor(room.state, diver).some(item => item.id === enforced.itemId)
+      ) {
+        sendError(peer, 'bad-action', 'That item is not in your current forfeit offer')
+        return
+      }
+    }
     let next: DiveState
     try {
       next = reduce(room.state, enforced)
@@ -1017,7 +1070,10 @@ export async function processClose(kv: RoomKV, peers: PeerDirectory, peer: PeerL
   const roomCode = peer.context.roomCode
   const playerId = peer.context.playerId
   peers.remove(peer)
-  if (!roomCode || !playerId) {
+  // A restart drops every socket at once: handing the crown down the line as
+  // each one closes would leave it with whoever happened to close last. The
+  // squad is coming straight back, so the room record stays as it was.
+  if (!roomCode || !playerId || peers.draining) {
     return
   }
   await withRoomLock(roomCode, async () => {
@@ -1032,21 +1088,30 @@ export async function processClose(kv: RoomKV, peers: PeerDirectory, peer: PeerL
     if (stillConnected || !room.state.divers.some(diver => diver.id === playerId)) {
       return
     }
+    clearAwayTimer(peers, roomCode, playerId)
+    clearHostReconnectTimer(peers, roomCode, playerId)
 
-    scheduleAway(kv, peers, roomCode, playerId)
-
-    // Host connection dropped: transfer to the earliest joiner still connected
-    // (AGENTS.md: host migration). The diver stays seated for reconnect.
+    // Keep the crown available for a reconnect first. The host's away mark and
+    // any migration happen together at the end of the longer grace.
     if (room.state.hostId === playerId) {
-      const earliest = room.state.divers.find(diver => diver.id !== playerId && isOnline(peers, roomCode, diver.id))
-      if (earliest) {
-        const action: EngineAction = { type: 'TRANSFER_HOST', playerId: earliest.id }
-        room.state = reduce(room.state, action)
-        roomMetrics.recordHostTransfer('disconnect')
-        await saveRoom(kv, room)
-        broadcastState(peers, roomCode, room.state, action, room.saved ?? null, room.steam ?? null)
-        return
+      const host = room.state.divers.find(diver => diver.id === playerId)
+      if (host?.away) {
+        const earliest = room.state.divers.find(diver => diver.id !== playerId && isOnline(peers, roomCode, diver.id))
+        if (earliest) {
+          const action: EngineAction = { type: 'TRANSFER_HOST', playerId: earliest.id }
+          room.state = reduce(room.state, action)
+          roomMetrics.recordHostTransfer('disconnect')
+          await saveRoom(kv, room)
+          broadcastState(peers, roomCode, room.state, action, room.saved ?? null, room.steam ?? null)
+          return
+        }
       }
+      else {
+        scheduleHostReconnect(kv, peers, roomCode, playerId)
+      }
+    }
+    else {
+      scheduleAway(kv, peers, roomCode, playerId)
     }
 
     // Presence-only refresh: remaining peers must drop the departed diver from
@@ -1059,30 +1124,119 @@ function isOnline(peers: PeerDirectory, roomCode: string, playerId: string | nul
   return !!playerId && peers.list(roomCode).some(peer => peer.context.playerId === playerId)
 }
 
-// A diver whose connection stays down past the grace window steps away: their
+// A diver whose connection stays down past their grace window steps away: their
 // seat and kit stay, but the squad stops waiting on them (AGENTS.md:
 // Mid-crusade joining — stepping away).
 export async function markAwayIfOffline(kv: RoomKV, peers: PeerDirectory, roomCode: string, playerId: string): Promise<void> {
   await withRoomLock(roomCode, async () => {
+    if (peers.draining) {
+      return
+    }
+    clearAwayTimer(peers, roomCode, playerId)
     const room = await loadRoom(kv, roomCode)
     const diver = room?.state.divers.find(entry => entry.id === playerId)
     if (!room || !diver || diver.away || isOnline(peers, roomCode, playerId)) {
       return
     }
-    const action: EngineAction = { type: 'SET_AWAY', playerId, away: true }
+    const wasHost = room.state.hostId === playerId
+    let action: EngineAction = { type: 'SET_AWAY', playerId, away: true }
     room.state = reduce(room.state, action)
     roomMetrics.recordPresence('away')
+    if (wasHost) {
+      const earliest = room.state.divers.find(entry => entry.id !== playerId && isOnline(peers, roomCode, entry.id))
+      const nextHostId = earliest?.id ?? playerId
+      if (room.state.hostId !== nextHostId) {
+        action = { type: 'TRANSFER_HOST', playerId: nextHostId }
+        room.state = reduce(room.state, action)
+      }
+      if (nextHostId !== playerId) {
+        roomMetrics.recordHostTransfer('offline_host')
+      }
+    }
     await saveRoom(kv, room)
     broadcastState(peers, roomCode, room.state, action, room.saved ?? null, room.steam ?? null)
   })
 }
 
+// Graceful shutdown (a deploy): tell every live diver the server is restarting
+// rather than gone, so the client can wait it out calmly, then close with
+// 1012 (Service Restart). Room state is already in storage.
+export function drainPeers(peers: PeerDirectory): number {
+  peers.draining = true
+  for (const timer of peers.awayTimers.values()) {
+    clearTimeout(timer)
+  }
+  peers.awayTimers.clear()
+  for (const timer of peers.hostReconnectTimers.values()) {
+    clearTimeout(timer)
+  }
+  peers.hostReconnectTimers.clear()
+  const live = peers.all()
+  const notice = JSON.stringify({ type: 'restarting' } satisfies ServerMessage)
+  for (const peer of live) {
+    peer.send(notice)
+    peer.close?.(1012, 'Server restarting')
+  }
+  return live.length
+}
+
 function scheduleAway(kv: RoomKV, peers: PeerDirectory, roomCode: string, playerId: string): void {
+  const key = roomPlayerTimerKey(roomCode, playerId)
+  if (peers.awayTimers.has(key)) {
+    return
+  }
   const timer = setTimeout(() => {
+    if (peers.awayTimers.get(key) !== timer) {
+      return
+    }
+    peers.awayTimers.delete(key)
     markAwayIfOffline(kv, peers, roomCode, playerId).catch(() => {})
   }, AWAY_GRACE_MS)
   // Never hold the process open for a presence check.
   timer.unref?.()
+  peers.awayTimers.set(key, timer)
+}
+
+function roomPlayerTimerKey(roomCode: string, playerId: string): string {
+  return JSON.stringify([roomCode, playerId])
+}
+
+function hasHostReconnectTimer(peers: PeerDirectory, roomCode: string, playerId: string | null): boolean {
+  return !!playerId && peers.hostReconnectTimers.has(roomPlayerTimerKey(roomCode, playerId))
+}
+
+function clearAwayTimer(peers: PeerDirectory, roomCode: string, playerId: string): void {
+  const key = roomPlayerTimerKey(roomCode, playerId)
+  const timer = peers.awayTimers.get(key)
+  if (timer) {
+    clearTimeout(timer)
+    peers.awayTimers.delete(key)
+  }
+}
+
+function clearHostReconnectTimer(peers: PeerDirectory, roomCode: string, playerId: string): void {
+  const key = roomPlayerTimerKey(roomCode, playerId)
+  const timer = peers.hostReconnectTimers.get(key)
+  if (timer) {
+    clearTimeout(timer)
+    peers.hostReconnectTimers.delete(key)
+  }
+}
+
+function scheduleHostReconnect(kv: RoomKV, peers: PeerDirectory, roomCode: string, playerId: string): void {
+  clearHostReconnectTimer(peers, roomCode, playerId)
+  const key = roomPlayerTimerKey(roomCode, playerId)
+  const timer = setTimeout(() => {
+    if (peers.hostReconnectTimers.get(key) !== timer) {
+      return
+    }
+    peers.hostReconnectTimers.delete(key)
+    if (!peers.draining) {
+      markAwayIfOffline(kv, peers, roomCode, playerId).catch(() => {})
+    }
+  }, HOST_RECONNECT_GRACE_MS)
+  timer.unref?.()
+  peers.hostReconnectTimers.set(key, timer)
 }
 
 // Reaping goes through processClose so away marking, host migration and the

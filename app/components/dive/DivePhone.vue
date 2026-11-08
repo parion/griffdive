@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
-import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { allDiversPicked, bonusFor, bonusWinners } from '~~/shared/engine/selectors'
-import type { DiverState, DiveState, MissionOutcome, MissionReport } from '~~/shared/engine/types'
+import type { DiverState, DiveState, MissionReport } from '~~/shared/engine/types'
 import type { SteamLobbyInfo } from '~~/shared/types/messages'
 
 const props = defineProps<{
@@ -35,12 +34,13 @@ const emit = defineEmits<{
   report: [payload: MissionReport]
   failPact: [playerId: string, pactId: string]
   failDirective: []
+  holdPact: [playerId: string, pactId: string]
+  holdDirective: []
   pick: [optionId: string, choiceItemId?: string]
   rerollRewards: []
-  spinBonus: [payload?: { stars: number, outcome: MissionOutcome }]
+  spinBonus: []
   awardBonus: [playerIds: string[]]
   advance: []
-  buy: [itemId: string]
   forfeit: [itemId: string]
   kick: [diverId: string]
   transferHost: [diverId: string]
@@ -66,15 +66,18 @@ function openSteamFromSquad(): void {
   nextTick(() => emit('openSteam'))
 }
 
+function requestKick(diverId: string): void {
+  squadOpen.value = false
+  nextTick(() => emit('kick', diverId))
+}
+
 // Held back while the report's reel is still rolling.
 const honors = computed(() => (props.state.phase !== 'diving' ? bonusFor(props.state) : null))
 const honorsWinners = computed(() => bonusWinners(props.state).map(diver => upperName(diver.name)))
 const honorsAwarded = computed(() => Boolean(props.state.bonusWinnerIds.length))
 
-// Same regroup beats as the desktop shell, derived from synced state.
+// Same squad-climbs beat as the desktop shell, derived from synced state.
 const squadBanked = computed(() => phase.value === 'rewards' && allDiversPicked(props.state))
-const operationClimbs = computed(() =>
-  props.state.missionInOperation >= props.opLength && props.state.difficulty < MAX_DIFFICULTY)
 </script>
 
 <template>
@@ -92,26 +95,28 @@ const operationClimbs = computed(() =>
     </template>
 
     <div class="phone-scroll">
-      <p
+      <AppBanner
         v-if="kicked"
-        class="phone-banner kicked"
+        tone="error"
       >
         You were removed from this dive by the host. This dive will not seat you again.
-      </p>
+      </AppBanner>
 
-      <p
+      <AppBanner
         v-if="lastError"
-        class="phone-banner error"
+        tone="error"
       >
         {{ lastError }}
-        <button
-          class="btn tiny ghost"
-          type="button"
-          @click="emit('dismissError')"
-        >
-          Dismiss
-        </button>
-      </p>
+        <template #actions>
+          <button
+            class="btn tiny ghost"
+            type="button"
+            @click="emit('dismissError')"
+          >
+            Dismiss
+          </button>
+        </template>
+      </AppBanner>
 
       <template v-if="!kicked">
         <PhoneWheel
@@ -147,21 +152,9 @@ const operationClimbs = computed(() =>
           @report="emit('report', $event)"
           @fail="(playerId, pactId) => emit('failPact', playerId, pactId)"
           @fail-directive="emit('failDirective')"
-          @spin-bonus="emit('spinBonus', $event)"
         />
 
-        <OperationCleared
-          v-else-if="squadBanked && operationClimbs"
-          :state="state"
-          :self="self"
-          :self-id="selfId"
-          :can-control="canControl"
-          phone
-          @start="emit('advance')"
-          @buy="emit('buy', $event)"
-        />
-
-        <MissionCleared
+        <ClimbCleared
           v-else-if="squadBanked"
           :state="state"
           :self="self"
@@ -170,7 +163,12 @@ const operationClimbs = computed(() =>
           :op-length="opLength"
           phone
           @advance="emit('advance')"
-          @buy="emit('buy', $event)"
+          @hold-pact="(playerId, pactId) => emit('holdPact', playerId, pactId)"
+          @fail-pact="(playerId, pactId) => emit('failPact', playerId, pactId)"
+          @hold-directive="emit('holdDirective')"
+          @fail-directive="emit('failDirective')"
+          @spin-bonus="emit('spinBonus')"
+          @award-bonus="emit('awardBonus', $event)"
         />
 
         <PhoneRewardDraft
@@ -203,7 +201,6 @@ const operationClimbs = computed(() =>
         :self="self"
         :preview-pact-ids="pactPreviewIds"
         sheet
-        @buy="emit('buy', $event)"
       />
     </template>
   </PhoneShell>
@@ -228,10 +225,9 @@ const operationClimbs = computed(() =>
       :honors-awarded="honorsAwarded"
       inline-manage
       @transfer-host="emit('transferHost', $event)"
-      @kick="emit('kick', $event)"
+      @kick="requestKick"
       @copy-invite="emit('copyInvite')"
       @open-steam="openSteamFromSquad"
-      @award-bonus="emit('awardBonus', $event)"
     />
   </AppDialog>
 
@@ -264,16 +260,4 @@ const operationClimbs = computed(() =>
   overflow-y: auto;
   padding: 12px 12px 0;
 }
-.phone-banner {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--line-2);
-  font-size: 12px;
-}
-.phone-banner.kicked { border-color: var(--red); }
-.phone-banner.error { border-color: var(--red); color: var(--red); }
 </style>

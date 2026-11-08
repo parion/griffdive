@@ -5,7 +5,7 @@
 ## Status
 
 Phase 0 (foundation), Phase 1 (solo core) and Phase 2 (realtime squads) are
-complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (510 tests incl. a deterministic golden
+complete: `pnpm lint`, `pnpm test`, `pnpm typecheck` green (532 tests incl. a deterministic golden
 crusade replay 3→10 and the server sync suite); playable solo UI with named localStorage saves +
 JSON export/import; realtime rooms with join links, presence, host authority + migration,
 reconnection — verified by a live two-peer smoke test and the Playwright E2E suite (solo flow,
@@ -54,10 +54,13 @@ tiers drawn from the difficulty band — lets them buy named items, priced by ti
 team-performance Valor term is gone; chosen risk is the only thing that moves the odds line.
 **Brasch's Bargains became a shop paid in credits:** samples now bank as credits, and
 the shop opens from the dive header (phone: a credit tile on the action bar) in every phase but the
-mission itself, once the first operation is complete. Every mission restocks one random slot per primary, secondary, throwable and armor
-passive (base tier up to one above), plus a stratagem slot per star past the third. A diver buys at
-most one item per mission, and a bought kind isn't stocked again until the next operation (see
-Brasch's Bargains — credits).
+mission itself, once the first operation is complete. Every mission restocks one random slot per
+primary, secondary and throwable (base tier up to one above), plus a stratagem slot per star past
+the third. A diver buys at most one shelf item per mission, and a bought kind isn't stocked again
+until the next operation. **Armor passives left the draft:** they are sold only in Brasch's **Armor
+Pack** — three duplicate-free passives from the diver's unowned warbonds, one B+ pull guaranteed,
+one difficulty-scaled S roll, repeatable as side stock at a rising price (the counter's last card),
+opened in a card-draw reveal (see Brasch's Bargains — credits).
 **Starting variants are now three difficulties:** squad size no longer gates a start (it fluctuates
 all crusade), so the five squad-size/kit variants collapsed into Medium (3), Hard (5) and Suicide
 Mission (7); the hard/suicide starts choose one of two mutually exclusive modes — the assisted
@@ -74,16 +77,17 @@ arrivals in 24h, 25 crusades launched, 123 missions at a 92% reported success ra
 and **0 crusades achieved** — expected for a run the code calls "weeks of evenings", but the census
 cannot yet tell a won crusade from a quit (`END_DIVE` also writes `complete`). Risk is landing
 (zero-Valor reports 0%, median Valor 7, two pacts per diver); the summit and retention read is the
-next gap. **Batch E** in [PLAN.md](../../PLAN.md) is written from this read and landed the same day:
-the census splits won from quit (N46), both endings share a recap (N47) with Bridge re-entry (N48),
-the d8–10 shop dip was traced and retuned (N49), launch rate limits trust Fly's header (N41), and
-the N51 phone pass came in under every stated budget. N50's heat ladder is spec'd and gated on the
+next gap. **Batch E** in [PLAN.md](../../PLAN.md) is written from this read, and most of it landed
+the same day: the census splits won from quit (N47), both endings share a recap (N48) with Bridge
+re-entry (N49), the d8–10 shelf dip was investigated but its price retune was dropped when the
+Armor Pack redesign landed (N50, re-run pending), launch rate limits trust Fly's header (N41), and
+the N52 phone pass came in under every stated budget. N51's heat ladder is spec'd and gated on the
 summit population.
 
 ## Beta-readiness review (2026-10-24)
 
 Pre-beta pass: dependencies upgraded, component tree reorganised to Nuxt's default naming, dead
-code removed, docs audited against the code. Gate: lint, typecheck, 510 unit tests and 45 e2e
+code removed, docs audited against the code. Gate: lint, typecheck, 532 unit tests and 52 e2e
 specs green on the upgraded stack.
 
 **Spec relevance.** Every identifier and path the `docs/agents/` files cite was checked against the
@@ -94,17 +98,35 @@ Hellpod Bays, ValorRoll) are still current and are pinned by the `phone-*`, `tab
 Ban UI, the lobby/matchmaking. Not re-verified visually: pixel-level fidelity of each section.
 
 **Game design (from `scripts/simulate-economy.mjs`, 4000 runs).**
-- Brasch's Bargains pace well through B/A tier: a steady squad buys ~11 items over 20 missions
-  (1.4 per operation), an eager one ~16. Buys per mission drop to 0.1-0.6 at difficulty 8-10 (N49
-  later traced this to the A-price step; fixed 2026-11-08).
+- **2026-10-30 pack pass:** Armor Packs became repeatable side stock at a rising price — 25/35/45
+  credits by band, ×1.5 per pack opened in the operation. A modest difficulty 5–7 operation now
+  banks 1–3 packs. With the shelf-first greedy policy, a casual squad buys ~2 shelf items and ~10
+  packs per 20-mission climb, steady ~8 shelf and ~10 packs, eager ~14 and ~10, maxed ~16 and ~10
+  (the pack count is the sim's passive-pool ceiling, since it does not model duplicates). Re-ran
+  after the counter redesign.
+- **2026-10-31 pack price carry-over:** the ×1.5 tally now survives a new operation instead of
+  resetting to the band's base, so shop rounds no longer offer a fresh 25-credit pack. Re-ran the
+  sim (superseding the pack counts in the 10-30 pass): the crusade tally, not the passive pool, is
+  the cap — a shelf-first diver ends a 20-mission climb with ~5 packs (casual ~4.9, steady and eager
+  ~5.0, maxed ~5.1), while a passive-first collector (`PACKFIRST=1`) buys ~5–7 (casual 5.0, steady
+  5.9, eager 6.1, maxed 6.7) and fewer shelf items.
+- Brasch's Bargains pace well through B/A tier: a steady squad buys ~11 shelf items over 20 missions
+  (~1.3 per operation), an eager one ~15. Buys per mission drop to 0.1-0.6 at difficulty 8-10 (cause not
+  investigated). At this review the Armor Pack was a one-per-operation sink: a shelf-first diver bought
+  almost none, while a passive-first collector (`PACKFIRST=1`) bought ~1 pack per climb as steady, ~4
+  as eager and ~5 as maxed, with an S pack roughly every 11/4/4 climbs. The 2026-10-30 pack pass
+  above supersedes those pack numbers.
 - **Addressed after this review:** S-tier at 800 credits was effectively unreachable, and difficulty 3
-  had a dead shop (haul 4-8 vs a 25-credit floor). Prices rode one curve, 35/100/280/450 at the time
-  (N49 retuned A to 220 on 2026-11-08 — see Batch E), and the shop stays shut until the first
-  operation completes, so early credits accumulate instead of stranding. A steady squad (60% of
-  samples filed) buys an S about once per 6.6 missions in the S band (difficulty 8+) when it saves
-  for one (5.5 after N49); a diver who always spends on the priciest affordable item almost never
-  reaches S (~1 per 590 missions), so the SAVER policy in `scripts/simulate-economy.mjs` is the
-  number to watch. Overall buys rose (steady ~11 per 20 missions, level with the old curve).
+  had a dead shop (haul 4-8 vs a 25-credit floor). Prices now ride one curve, 35/100/280/450, and the
+  shop stays shut until the first operation completes, so early credits accumulate instead of
+  stranding. A steady squad (60% of samples filed) buys an S about once per 5 missions in
+  the S band (difficulty 8+) when it saves for one; a diver who always spends on the priciest
+  affordable item almost never reaches S (~1 per 180 missions), so the SAVER policy in
+  `scripts/simulate-economy.mjs` is the number to watch. Shelf buys landed near the old curve
+  (steady ~11 per 20 missions) after the passive slot moved to the Armor Pack.
+- **N50 re-run pending:** the 2026-11-08 analysis traced the d8–10 shelf dip to the A-price step, but
+  it was simulated against the pre-Armor-Pack shop. The 220 retune was **not** landed; re-run
+  `simulate-economy.mjs` against the pack economy before touching `CREDIT_PRICE_TIER`.
 - Open balance/design items still on the board in `PLAN.md`: N25 (pacts are strictly "take
   everything"), N39 (reroll-token sources), N13 (`fragileLiberty` early lock-out, blocked on DEC-6).
 
@@ -163,14 +185,19 @@ Each phase lands shippable. Update the relevant `docs/agents/` files (commands, 
   separate Fly app (`deploy/fider/`). See [Deployment](./deployment.md) → Feedback inbox.
   Remaining: the final polish pass. *Done
   when: production URL serves a full multiplayer dive.*
-- **Phase 4.5 — Batch E, the climb (landed 2026-11-08).** The 2026-11-08 metrics read set the order,
-  and all of it landed: **E0** launch gates (N41 trusted client IP + the Nitro error-hook metric fix;
-  N51 measured under budget; N42 written up, no policy code), **E1** the census now tells a win from
-  a quit and records run depth (N46), **E2** both endings share a ceremony + PNG recap and the Bridge
-  shows last-played/squad/Continue (N47, N48), **E3** the d8–10 shop dip was traced to the A rung and
-  retuned 280 → 220 (N49; N25/N39 remain owner memos). **E4** heat ladders/bounties is spec'd (N50)
-  and gated on ≥30 achieved crusades in a 14-day window plus ≥10% of launches reaching difficulty 8+;
-  if that misses, fix the mid-climb and do not build N50 or endless yet. See
-  [PLAN.md](../../PLAN.md) → Batch E.
-- **Phase 5 — Post-v1 backlog.** Specialists (PC parity), tier-maker custom rarity tables, endless
-  mode (follows Batch E's heat ladders/bounties, N50), accounts + cloud saves, i18n.
+- **Phase 4.5 — Batch E, the climb (landed 2026-11-08).** The 2026-11-08 metrics read set the order.
+  **E0** launch gates landed (N41 trusted client IP + the Nitro error-hook metric fix; N52 measured
+  under budget; N42 written up, no policy code). **E1** the census now tells a win from a quit and
+  records run depth (N47). **E2** both endings share a ceremony + PNG recap and the Bridge shows
+  last-played/squad/Continue (N48, N49). **E3** investigated the d8–10 shop dip (N50) but **did not
+  land the price change** — the analysis predates the Armor Pack redesign; re-run it against the new
+  shop. **E4** heat ladders/bounties is spec'd (N51) and gated on ≥30 achieved crusades in a 14-day
+  window plus ≥10% of launches reaching difficulty 8+; if that misses, fix the mid-climb and do not
+  build N51 or endless yet. See [PLAN.md](../../PLAN.md) → Batch E.
+- **Phase 5 — Post-v1 backlog.** Specialists (PC parity), heat
+  ladders/bounties (N51; spec'd and gated), endless mode, accounts + cloud saves, i18n, and a
+  hosted tier-list marketplace (publish, browse and rank community lists) as a feature of the
+  optional account. **Custom tier lists shipped without it:** the host's list syncs from the lobby
+  and is frozen at launch; the Tier Maker (`/tiers`) keeps a browser-local library of complete,
+  self-standing lists; lists travel as short share links or JSON files; featured lists ship in the
+  repo (see game-rules.md, Custom tier lists).

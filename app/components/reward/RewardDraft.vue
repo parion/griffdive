@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
 import type { RewardOption } from '~~/shared/engine/rewards'
@@ -44,8 +43,6 @@ const props = withDefaults(defineProps<{
   picksTotal?: number
   baseTier?: RewardTier | null
   advanceLabel?: string
-  // Squad Honors still need a winner: the host cannot move the squad on.
-  advanceLocked?: boolean
 }>(), {
   optionsLost: 0,
   squadDrafts: () => [],
@@ -71,8 +68,8 @@ const props = withDefaults(defineProps<{
   picksTotal: 0,
   baseTier: null,
   advanceLabel: 'Next mission',
-  advanceLocked: false,
 })
+const { itemById } = useTierCatalog()
 
 const emit = defineEmits<{
   pick: [optionId: string, choiceItemId?: string]
@@ -143,8 +140,6 @@ function nameOf(option: RewardOption): string {
 }
 
 const crossSelected = computed(() => crossOption.value !== null && selectedId.value === crossOption.value.optionId)
-const crossChosenName = computed(() =>
-  crossSelected.value && choiceItemId.value ? ITEMS_BY_ID.get(choiceItemId.value)?.displayName ?? null : null)
 
 function chosenItemName(): string {
   if (!selectedId.value) {
@@ -155,7 +150,7 @@ function chosenItemName(): string {
     return ''
   }
   if (option.choice && choiceItemId.value) {
-    return ITEMS_BY_ID.get(choiceItemId.value)?.displayName ?? 'Liberty’s Cross'
+    return itemById(choiceItemId.value)?.displayName ?? 'Liberty’s Cross'
   }
   return nameOf(option)
 }
@@ -167,11 +162,20 @@ const pickedItem = computed(() => {
   if (!props.pickedId) {
     return null
   }
-  const direct = ITEMS_BY_ID.get(props.pickedId)
+  const direct = itemById(props.pickedId)
   if (direct) {
     return direct
   }
   return pickedOption.value && !pickedOption.value.choice ? pickedOption.value.item : null
+})
+const crossChosenItem = computed(() => {
+  if (crossSelected.value && choiceItemId.value) {
+    return itemById(choiceItemId.value) ?? null
+  }
+  if (bankedId.value === crossOption.value?.optionId && props.pickedId) {
+    return itemById(props.pickedId) ?? null
+  }
+  return null
 })
 const pickedName = computed(() => {
   if (pickedItem.value) {
@@ -224,7 +228,7 @@ const kickerText = computed(() => {
     return props.kicker
   }
   const stars = '★'.repeat(Math.max(0, props.stars))
-  return `Liberty provides · ${stars}`
+  return `Mission reward · ${stars}`
 })
 </script>
 
@@ -252,7 +256,7 @@ const kickerText = computed(() => {
           v-else-if="optionsLost > 0"
           class="loot-sub red-text"
         >
-          {{ optionsLost }} option{{ optionsLost === 1 ? '' : 's' }} forfeited by broken pacts.
+          {{ optionsLost }} option{{ optionsLost === 1 ? '' : 's' }} forfeited by broken rules.
         </p>
       </div>
       <div class="head-actions">
@@ -277,7 +281,7 @@ const kickerText = computed(() => {
       v-if="!promotion && options.length"
       :zones="zones"
       :markers="markers"
-      label="Your Valor rolls"
+      label="Your loot rolls"
       :note="`One roll per option · best ${bestTier ?? '—'}`"
       compact
     />
@@ -294,7 +298,7 @@ const kickerText = computed(() => {
       :picked="crossSelected || bankedId === crossOption.optionId"
       :dimmed="resolved && bankedId !== crossOption.optionId"
       :stamp="resolved && bankedId === crossOption.optionId ? 'Banked' : null"
-      :chosen-name="crossChosenName"
+      :chosen-item="crossChosenItem"
       @choose="chooseCross"
     />
 
@@ -460,12 +464,10 @@ const kickerText = computed(() => {
       <button
         v-else-if="ready && canControl"
         class="cta cut cta-sweep"
-        :class="{ 'cta-locked': advanceLocked }"
         type="button"
-        :disabled="advanceLocked"
         @click="emit('advance')"
       >
-        {{ advanceLocked ? 'Award honors first' : advanceLabel }}
+        {{ advanceLabel }}
         <svg
           width="22"
           height="14"
@@ -553,7 +555,12 @@ const kickerText = computed(() => {
   clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
   transition: transform var(--dur-med) var(--ease-out), filter var(--dur-med), box-shadow var(--dur-med), opacity var(--dur-med);
 }
-.loot-slot { --reveal-cut: 12px; }
+.loot-slot {
+  --reveal-cut: 12px;
+  width: 100%;
+  max-width: 340px;
+  justify-self: center;
+}
 .loot-cross { --cross-gap: 18px; }
 .loot-card[data-tier='C'] { --tier: var(--tier-c); }
 .loot-card[data-tier='B'] { --tier: var(--tier-b); }
@@ -584,7 +591,6 @@ const kickerText = computed(() => {
   color: var(--tier);
   font-size: 40px;
   line-height: 0.8;
-  text-shadow: 0 0 20px color-mix(in srgb, var(--tier) 50%, transparent);
 }
 .loot-card:not([data-tier='C']) .tier-letter { animation: slamIn 0.45s var(--ease-impact) var(--impact, 0ms) backwards; }
 .loot-card.selected .tier-letter,
@@ -639,7 +645,7 @@ const kickerText = computed(() => {
 .banked .item-name { color: var(--text); }
 .selected-mark {
   color: var(--tier);
-  font-size: 10px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { dismissWarbondIntro } from './helpers'
+import { dismissWarbondIntro, settleClimb } from './helpers'
 
 const VIEWPORT = { width: 390, height: 844 }
 
@@ -17,8 +17,11 @@ async function expectPinnedBar(page: Page, label: string): Promise<void> {
   expect(box, label).not.toBeNull()
   expect(box!.y + box!.height, `${label}: bar sits at the bottom edge`).toBeCloseTo(VIEWPORT.height, 0)
   expect(box!.width, `${label}: bar spans the column`).toBeGreaterThanOrEqual(VIEWPORT.width - 4)
-  const primary = await page.locator('#phone-bar-primary > *').first().boundingBox()
-  expect(primary!.height, `${label}: primary hit area`).toBeGreaterThanOrEqual(54)
+  // A phase swap can replace the bar's content between the visibility check and the measure.
+  await expect(async () => {
+    const primary = await page.locator('#phone-bar-primary > *').first().boundingBox()
+    expect(primary?.height, `${label}: primary hit area`).toBeGreaterThanOrEqual(54)
+  }).toPass()
   if (process.env.SHOTS) {
     await page.screenshot({ path: `${process.env.SHOTS}/${label}.png` })
   }
@@ -32,7 +35,6 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
   await page.getByRole('button', { name: 'Host an online dive' }).click()
   await expect(page).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
   await page.getByLabel('Your name').fill('Host')
-  await page.getByLabel('Your name').press('Enter')
   await page.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(page)
 
@@ -41,7 +43,14 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
   const launchBox = await launch.boundingBox()
   expect(launchBox!.y + launchBox!.height).toBeGreaterThan(VIEWPORT.height - 40)
   expect(launchBox!.height).toBeGreaterThanOrEqual(54)
+  // Hold to launch means hold: a tap only nudges, a held press drops.
   await launch.click()
+  await expect(launch).toContainText('KEEP HOLDING')
+  await expect(page.locator('.phone-call')).toBeHidden()
+  await launch.hover()
+  await page.mouse.down()
+  await page.waitForTimeout(900)
+  await page.mouse.up()
   await expect(page.locator('.phone-call')).toBeVisible()
 
   await expectPinnedBar(page, '2-wheel-spin')
@@ -56,22 +65,47 @@ test('phone: the action bar is pinned on every screen of a dive', async ({ brows
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'Deal the pacts' }).click()
 
   await expect(page.locator('.phone-pacts')).toBeVisible()
+  await expect(page.locator('.phone-pacts .directive')).toContainText('Directive skipped')
+  await expect(page.locator('.phone-pacts .directive')).toContainText('No squad directive this mission.')
   await expectPinnedBar(page, '5-pacts')
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'Dive with no pacts' }).click()
+  await expect(page.locator('.phone-field .directive .status')).toHaveText('Skipped')
+  await expect(page.locator('.phone-field .directive')).toContainText('Directive skipped')
+  await expect(page.locator('.phone-field .directive')).toContainText('No squad directive this mission.')
+  await expect(page.locator('.phone-field .directive')).not.toContainText('No directive this mission')
   await expectPinnedBar(page, '6-diving')
 
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'Extracted' }).click()
   await expect(page.getByRole('heading', { name: 'Mission report' })).toBeVisible()
   await expectPinnedBar(page, '7-report')
 
-  // Filing rolls the honors reel first, then brings in the rewards screen.
   await page.locator('#phone-bar-primary').getByRole('button', { name: 'File report' }).click()
 
   await expect(page.locator('.phone-loot .loot-card').first()).toBeVisible()
+  await expect(async () => {
+    const labels = await page.locator('.phone-loot .pin-flag').evaluateAll(nodes =>
+      nodes.map((node) => {
+        const { x, y, width, height } = node.getBoundingClientRect()
+        return { x, y, width, height }
+      }))
+    for (let i = 0; i < labels.length; i++) {
+      for (let j = i + 1; j < labels.length; j++) {
+        const a = labels[i]!
+        const b = labels[j]!
+        const overlaps = a.x < b.x + b.width && a.x + a.width > b.x
+          && a.y < b.y + b.height && a.y + a.height > b.y
+        expect(overlaps, `roll labels ${i} and ${j} overlap`).toBe(false)
+      }
+    }
+  }).toPass()
   await expectPinnedBar(page, '8-draft')
   await page.locator('.phone-loot .loot-card').first().click()
   await expectPinnedBar(page, '9-draft-banked')
   await page.locator('#phone-bar-primary').getByRole('button', { name: /^Bank / }).click()
+  // Banking lands on the climbs page; its bar gates on the stats check and honors.
+  await expect(page.locator('.climb')).toBeVisible()
+  await expectPinnedBar(page, '9b-climb')
+  await settleClimb(page)
   await expect(page.locator('#phone-bar-primary').getByRole('button', { name: 'Next mission' })).toBeVisible()
 
   await context.close()
@@ -85,7 +119,6 @@ test('phone: a failed mission lands on the pinned remove bar', async ({ browser 
   await page.getByRole('button', { name: 'Host an online dive' }).click()
   await expect(page).toHaveURL(/\/dive\/[A-Z0-9]{6}/)
   await page.getByLabel('Your name').fill('Host')
-  await page.getByLabel('Your name').press('Enter')
   await page.getByRole('button', { name: 'Start the dive' }).click()
   await dismissWarbondIntro(page)
 
@@ -101,7 +134,7 @@ test('phone: a failed mission lands on the pinned remove bar', async ({ browser 
     await primary.getByRole('button', { name: 'Dive with no pacts' }).click()
   }
 
-  await page.getByRole('button', { name: 'Launch crusade' }).click()
+  await page.getByRole('button', { name: 'Launch crusade' }).press('Enter')
   await diveToPacts(true)
 
   // Failure only takes earned gear, so clear mission 1 and bank a reward first.
@@ -109,6 +142,7 @@ test('phone: a failed mission lands on the pinned remove bar', async ({ browser 
   await primary.getByRole('button', { name: 'File report' }).click()
   await page.locator('.phone-loot .loot-card').first().click()
   await primary.getByRole('button', { name: /^Bank / }).click()
+  await settleClimb(page)
   await primary.getByRole('button', { name: /Next mission/ }).click()
   await diveToPacts(false)
 
@@ -119,10 +153,14 @@ test('phone: a failed mission lands on the pinned remove bar', async ({ browser 
   await expect(page.getByRole('heading', { name: 'Mission failed' }).first()).toBeVisible()
   await expectPinnedBar(page, '11-forfeit')
 
-  // Picking an item arms the remove.
+  // The offer is explicitly at stake; selecting marks it before the final remove.
+  await expect(page.locator('.sur-tile').first()).toContainText('At stake')
   await page.locator('.sur-tile').first().click()
+  await expect(page.locator('.sur-tile').first()).toContainText('Marked for removal')
   await expect(page.locator('#phone-bar-primary').getByRole('button', { name: /^Remove / })).toBeEnabled()
   await expectPinnedBar(page, '12-forfeit-armed')
+  await page.locator('#phone-bar-primary').getByRole('button', { name: /^Remove / }).click()
+  await expect(page.locator('.phone-call')).toBeVisible()
 
   await context.close()
 })

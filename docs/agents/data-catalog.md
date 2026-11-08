@@ -3,12 +3,20 @@
 > Part of the Griffdive docs set. Index: [`AGENTS.md`](../AGENTS.md).
 
 - **Schema:** items are `{ id, displayName, type: 'equipment'|'stratagem', category, tags[],
-  warbondCode, antitank?, tier }` with `tier ∈ 'c'|'b'|'a'|'s'` (community default tier list;
-  tier-maker customization is post-v1). Optional fields: `index?` (upstream ordering), `imageURL?`
+  warbondCode, antitank?, tier }` with `tier ∈ 'c'|'b'|'a'|'s'` (the default tiers; a host can
+  replace them per crusade with a custom tier list, see `game-rules.md`, *Custom tier lists*.
+  Lists never touch the catalog: `tieredCatalog` maps items to re-tiered copies). Every item also
+  has a permanent slot in `shared/data/tierSlots.ts`, the address tier-list share codes use:
+  `scripts/import-catalog.mjs` appends new ids on each refresh and never reorders the file, and
+  `tierList.spec.ts` fails if a catalog item has no slot. Optional fields: `index?` (upstream ordering), `imageURL?`
   (bare filename; resolved to `public/images/<dir>/` by `shared/data/images.ts`), and armor-passive
   extra `passive?`. The catalog has no armor pieces or armor stats — only passives matter. Categories: `primary secondary throwable booster armorPassive` (equipment) and
   stratagem categories (`Supply Eagle Orbital Defense` etc.). Warbonds are `{ code, displayName,
   internalName?, imageURL? }` — they carry no overall tier; only individual items are ranked.
+  **Armor passives are a Brasch-exclusive reward channel:** the catalog still carries them (the
+  Armory lists them, and the starting kit and SEAF Support Package issue them), but
+  `rewardPoolFor` excludes `armorPassive`, so drafts, Liberty's Cross and Field Promotions never
+  draw one. They are earned through Brasch's Armor Pack (see game-rules.md).
 - **Seed source:** constants from [Selenestica/hd2-random-strat](https://github.com/Selenestica/hd2-random-strat)
   (MIT) — vendored at `scripts/upstream/` (snapshot commit recorded there), converted to our
   schema by `node scripts/import-catalog.mjs` (re-run after every upstream refresh), attributed in

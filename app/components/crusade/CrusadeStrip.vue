@@ -174,7 +174,6 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
 
 /* Difficulty 10 is the summit: a slow gold breath and a light sweep, nothing louder. */
 .rung[data-apex] { animation: apexBreath 3.6s ease-in-out infinite; }
-.rung[data-apex] .n { animation: apexNumber 3.6s ease-in-out infinite; }
 .rung[data-apex]::before {
   content: '';
   position: absolute;
@@ -188,10 +187,6 @@ const rows = computed(() => Array.from({ length: 8 }, (_, i) => {
 @keyframes apexBreath {
   0%, 100% { box-shadow: 0 0 0 0 rgba(255, 214, 66, 0); }
   50% { box-shadow: 0 0 14px 0 rgba(255, 214, 66, 0.28); }
-}
-@keyframes apexNumber {
-  0%, 100% { text-shadow: 0 0 0 rgba(255, 214, 66, 0); }
-  50% { text-shadow: 0 0 10px rgba(255, 214, 66, 0.55); }
 }
 @keyframes apexSweep {
   0%, 35% { transform: translateX(-120%); }

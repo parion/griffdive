@@ -23,47 +23,45 @@ test('squadmates read one briefing page; the host keeps the tutorial', async ({ 
   await expect(host.getByRole('heading', { name: 'You\'ve been drafted.' })).toBeHidden()
   await dismissBriefing(host)
 
-  // A fresh browser on the invite link gets the briefing page with the cursor
-  // already in the registry's callsign field; the squad card waits for it.
+  // A fresh browser on the invite link gets the briefing with the cursor
+  // already in the name field, and the squad and the way in on show.
   const joiner = await namedPage(browser, null)
   await joiner.goto(host.url())
   await expect(joiner.getByRole('heading', { name: 'You\'ve been drafted.' })).toBeVisible()
   await expect(joiner.getByRole('heading', { name: 'You hold the wheel.' })).toBeHidden()
-  const callsign = joiner.getByRole('textbox', { name: /^Callsign/ })
+  const callsign = joiner.getByRole('textbox', { name: 'Your name' })
   await expect(callsign).toBeFocused()
-  await expect(joiner.getByLabel('The squad')).toBeHidden()
-
-  // Joining waits on a callsign: both squad-box actions fade in only once it is filed.
-  const join = joiner.getByRole('button', { name: 'Join the dive' })
-  await expect(join).toBeHidden()
-
-  // Filing the callsign (Enter) stamps the registry and opens the squad card.
-  await callsign.fill('Duo')
-  await callsign.press('Enter')
   await expect(joiner.getByLabel('The squad').getByText('CAPTAIN', { exact: true })).toBeVisible()
-  await expect(join).toBeEnabled()
+
+  // The mission is five boxes with the first open: its line and live scene
+  // drop beneath it, and picking another box swaps them.
+  const steps = joiner.getByRole('tablist', { name: 'Mission steps' }).getByRole('tab')
+  await expect(steps).toHaveCount(5)
+  await expect(steps.first()).toHaveAttribute('aria-selected', 'true')
+  await expect(joiner.getByRole('tabpanel', { name: 'Spin' })).toContainText('The host spins')
+  await steps.filter({ hasText: 'Swear' }).click()
+  await expect(joiner.getByRole('tabpanel', { name: 'Swear' })).toContainText('Swear any of your pacts')
+  await expect(joiner.getByRole('tabpanel', { name: 'Swear' }).locator('.pv')).toBeVisible()
+
+  // Joining waits on a name only: the button is there from the start, shut.
+  const join = joiner.getByRole('button', { name: 'Join the dive' })
+  await expect(join).toBeDisabled()
   await expect(joiner.getByRole('button', { name: 'Set warbonds' })).toBeVisible()
+  await callsign.fill('Duo')
+  await expect(join).toBeEnabled()
+  await expect(joiner.getByLabel('The squad').getByText('DUO', { exact: true })).toBeVisible()
 
-  // The surplus kit is laid out beside the Class E copy.
-  await expect(joiner.getByRole('group', { name: 'Issued kit · surplus' }).getByRole('img').first()).toBeVisible()
+  // Filing the name (Enter) strikes the classes down to E, then unfolds the
+  // surplus kit beneath it, grouped by kind.
+  const gear = joiner.getByRole('group', { name: 'Starting gear' })
+  await expect(gear).toBeHidden()
+  await callsign.press('Enter')
+  await expect(joiner.getByText(/You're Class E/)).toBeVisible()
+  await expect(gear.getByText('Stratagems', { exact: true })).toBeVisible()
+  await expect(gear.getByRole('img').first()).toBeVisible()
 
-  // The gear legend opens the real Codex over the page.
-  await joiner.getByRole('button', { name: 'Open the Codex' }).click()
-  const codex = joiner.getByRole('dialog', { name: 'Codex' })
-  await expect(codex).toBeVisible()
-  await codex.getByRole('button', { name: 'Close codex' }).click()
-  await expect(codex).toBeHidden()
-
-  // Scrolled into view, the dial sweeps to Valor 6 at difficulty 5; both stay
-  // hand-adjustable and read the engine's real ceiling odds.
-  const valor = joiner.getByLabel('Chosen risk', { exact: true })
-  await valor.scrollIntoViewIfNeeded()
-  await expect(valor).toHaveValue('6')
-  await expect(joiner.getByRole('slider', { name: 'Difficulty' })).toHaveValue('5')
-  await valor.fill('0')
-  await expect(joiner.getByLabel(/^Tier odds/).getByText('Base')).toBeVisible()
-
-  await join.click()
+  // Once filed, Enter joins like the button.
+  await callsign.press('Enter')
   await expectJoinerLanded(joiner)
   await expect(host.locator('.bays .bay').filter({ hasText: 'Duo' })).toBeVisible()
 
@@ -85,10 +83,11 @@ test('squadmates read one briefing page; the host keeps the tutorial', async ({ 
   await dismissBriefing(host)
 
   // A diver with a saved name still reads the briefing before their first
-  // join: the callsign is filled in and files itself, opening the squad card.
+  // join: the name is filled in and files itself, unfolding the kit.
   const veteran = await namedPage(browser, 'Veteran')
   await veteran.goto(host.url())
-  await expect(veteran.getByRole('textbox', { name: /^Callsign/ })).toHaveValue('Veteran')
+  await expect(veteran.getByRole('textbox', { name: 'Your name' })).toHaveValue('Veteran')
+  await expect(veteran.getByRole('group', { name: 'Starting gear' }).getByRole('img').first()).toBeVisible()
   await expect(veteran.getByLabel('The squad').getByText('DUO', { exact: true })).toBeVisible()
   await veteran.getByRole('button', { name: 'Join the dive' }).click()
   await expectJoinerLanded(veteran)

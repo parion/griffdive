@@ -3,6 +3,7 @@ import { FRONTS } from '../data/fronts'
 import { MISFORTUNES } from '../data/misfortunes'
 import { STRAINS } from '../data/strains'
 import type { FrontId } from '../data/fronts'
+import { startingItemIds } from './progression'
 import { MIN_DIFFICULTY, STRAIN_MIN_DIFFICULTY, STRAIN_RISK, conditionRiskAt } from './config'
 import { deriveFront, deriveMisfortune, deriveStrain, eligibleMisfortunes, eligibleStrains } from './wheel'
 
@@ -19,8 +20,8 @@ describe('condition catalog integrity', () => {
 
   it('scales each condition\'s risk with difficulty', () => {
     // A team rule that grows into the top band at altitude.
-    expect(conditionRiskAt('noStratagems', MIN_DIFFICULTY)).toBeLessThan(conditionRiskAt('noStratagems', 10))
-    expect(conditionRiskAt('noStratagems', 10)).toBe(5)
+    expect(conditionRiskAt('zeroDeaths', MIN_DIFFICULTY)).toBeLessThan(conditionRiskAt('zeroDeaths', 10))
+    expect(conditionRiskAt('zeroDeaths', 10)).toBe(5)
     // Survival pacts cost more where the enemy hits harder.
     for (const id of ['stimAbstinent', 'untouchable', 'antiTankAbstinent']) {
       expect(conditionRiskAt(id, 10)).toBeGreaterThan(conditionRiskAt(id, MIN_DIFFICULTY))
@@ -48,6 +49,24 @@ describe('eligibleMisfortunes', () => {
     expect(ids).toContain('noBackpacks')
     expect(ids).toContain('pacifist')
     expect(ids).toContain('meleeOnly')
+  })
+
+  it('keeps Oops, All Airstrikes off the wheel until every diver can field four', () => {
+    const thin = [...startingItemIds('medium')]
+    expect(eligibleMisfortunes([thin]).map(misfortune => misfortune.id)).not.toContain('oopsAllAirstrikes')
+    expect(eligibleMisfortunes([thin]).length).toBe(MISFORTUNES.length - 1)
+
+    const stocked = [...thin, 'eagle500kgbomb']
+    expect(eligibleMisfortunes([stocked]).map(misfortune => misfortune.id)).toContain('oopsAllAirstrikes')
+    // One thin kit is enough to pull it for the whole squad.
+    expect(eligibleMisfortunes([stocked, thin]).map(misfortune => misfortune.id)).not.toContain('oopsAllAirstrikes')
+  })
+
+  it('never draws a directive that is off the wheel', () => {
+    const thin = [startingItemIds('medium')]
+    for (let seed = 1; seed <= 400; seed++) {
+      expect(deriveMisfortune(seed, thin).id).not.toBe('oopsAllAirstrikes')
+    }
   })
 })
 

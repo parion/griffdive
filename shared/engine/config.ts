@@ -1,7 +1,7 @@
 import type { Tier } from '../data/types'
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 2
+export const ENGINE_VERSION = 3
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -200,6 +200,11 @@ export const CATCHUP_CAP = 4
 export const TIER_ROLL_WEIGHT_BASE = 2
 export const MAX_NAME_LENGTH = 32
 
+// Custom tier lists: the name a list carries into the lobby and onto the run,
+// and how many lists one browser keeps in its library.
+export const TIER_LIST_NAME_MAX = 40
+export const TIER_LIST_LIBRARY_MAX = 24
+
 // Helldivers 2 requires four equipped stratagems to ready up. Every diver must
 // always be able to field this many, so a pact can never strand them below it.
 export const STRATAGEM_SLOTS_REQUIRED = 4
@@ -214,6 +219,10 @@ export const RESERVE_STRATAGEMS = [
   'eaglesmokestrike',
   'am23emsmortarsentry',
 ] as const
+// Defensive stratagems that never hurt anyone. They sit outside the reserve
+// (a squad directive may still ban them, and not every diver owns one), but a
+// rule that bans "offensive" defenses leaves them legal.
+export const NON_LETHAL_DEFENSES = ['fx12shieldgeneratorrelay'] as const
 
 // Reward scale-back: difficulty alone buys a base tier — C on diffs 3–5,
 // B on 6–7, A on 8+. S and S+ are reachable only through chosen risk
@@ -331,26 +340,22 @@ export const SAMPLE_CREDITS: Readonly<Record<'common' | 'rare' | 'super', number
 export const TIME_HAUL_FLOOR = 0.5
 
 // Brasch's Bargains prices: tier first, then type. Tier dominates (a C primary
-// is far cheaper than an S passive); the type multiplier is how a primary
-// out-prices an armor passive. Every step is gentler than the one below it
-// (C→B 2.86x, B→A 2.2x, A→S 2.05x) because the haul's growth flattens with
-// altitude — the sample table saturates while the shelf's floor tier steps up at
-// each band edge, so a 2.8x B→A step left a casual squad with nothing affordable
-// on 90% of difficulty-8 missions. C and B are a mission or two's haul, A is a
-// short save, and S, which only stocks from difficulty 8, lands about once per
-// 5-7 missions for a squad filing a modest share of the map's samples
-// (scripts/simulate-economy.mjs, SAVER=1 models a diver who holds off small buys
-// to afford a nearby S).
+// is far cheaper than an S stratagem); the type multiplier is how a primary
+// out-prices a stratagem. The curve is steep through C/B/A (~2.8x per tier)
+// and flattens into S so the top stays in reach: C and B are a mission or two's
+// haul, A is a short save, and S, which only
+// stocks from difficulty 8, lands about once per 6-7 missions for a squad
+// filing a modest share of the map's samples (scripts/simulate-economy.mjs,
+// SAVER=1 models a diver who holds off small buys to afford a nearby S).
 export const CREDIT_PRICE_TIER: Readonly<Record<'c' | 'b' | 'a' | 's', number>> = {
   c: 35,
   b: 100,
-  a: 220,
+  a: 280,
   s: 450,
 }
 
 export const CREDIT_PRICE_TYPE: Readonly<Record<string, number>> = {
   primary: 1.25,
-  armorPassive: 0.75,
 }
 
 export const CREDIT_PRICE_TYPE_DEFAULT = 1
@@ -359,7 +364,7 @@ export const CREDIT_PRICE_TYPE_DEFAULT = 1
 // Difficulties whose missions can award more than BARGAIN_BASE_STARS stars add
 // one random stratagem slot per extra star (4 stars → one, 5 → two). Stock
 // spans the difficulty's base tier up to BARGAIN_TIER_REACH tiers above it.
-export const BARGAIN_SLOTS = ['primary', 'secondary', 'throwable', 'armorPassive'] as const
+export const BARGAIN_SLOTS = ['primary', 'secondary', 'throwable'] as const
 export const BARGAIN_BASE_STARS = 3
 export const BARGAIN_TIER_REACH = 1
 
@@ -369,6 +374,77 @@ export function bargainStratagemSlotsFor(difficulty: number): number {
 
 // Stream salt 5 off the mission's bargain seed.
 export const BARGAIN_STREAM = 5
+
+// Brasch's Armor Pack: three armor passives sold on the side of the shelf.
+// The pack is the only way to earn new passives — they never enter reward
+// drafts, Liberty's Cross, or Field Promotions — so its odds are tuned to make
+// the S passives a genuine chase: one hit card is guaranteed at the band's
+// floor, the other two fill the same band, and a single S roll (never more than
+// one S per pack) sits on top. The pool is finite and duplicate-free, so the
+// pack naturally gets humbler as a diver completes their warbond passives.
+//
+// A diver can open more than one pack. Each purchase raises the next one's
+// price by ARMOR_PACK_PRICE_STEP for the rest of the crusade — operations
+// included — so a modest haul buys a couple and a big one never turns the shelf
+// into a bulk order: the escalation is the cap, alongside the finite passive
+// pool.
+export interface ArmorPackTierWeight {
+  tier: Tier
+  weight: number
+}
+
+export type ArmorPackBand = 'C' | 'B' | 'A'
+
+export interface ArmorPackOdds {
+  // The two ordinary cards.
+  standard: readonly ArmorPackTierWeight[]
+  // The guaranteed hit card; its lowest tier is the pack's floor.
+  hit: readonly ArmorPackTierWeight[]
+  // One roll per pack, applied to the hit card. Zero when no S passive is
+  // left in the diver's pool (the selector reads the live pool).
+  sChance: number
+}
+
+export const ARMOR_PACK_SIZE = 3
+export const ARMOR_PACK_STREAM = 7
+// Base prices by the operation's band; the first pack of a crusade costs this,
+// then each further pack multiplies by ARMOR_PACK_PRICE_STEP. A crusade that
+// climbs bands keeps the step but reprices against the new band's base. These
+// are deliberately cheap next to the shelf: a pack is the repeatable, gambling
+// purchase, and a modest sample hunt should buy a few. The step keeps the tenth
+// pack from being pocket change without closing the shelf.
+export const ARMOR_PACK_PRICES: Readonly<Record<ArmorPackBand, number>> = {
+  C: 25,
+  B: 35,
+  A: 45,
+}
+export const ARMOR_PACK_PRICE_STEP = 1.5
+
+export const ARMOR_PACK_ODDS: Readonly<Record<ArmorPackBand, ArmorPackOdds>> = {
+  C: {
+    standard: [{ tier: 'c', weight: 30 }, { tier: 'b', weight: 50 }, { tier: 'a', weight: 20 }],
+    hit: [{ tier: 'b', weight: 70 }, { tier: 'a', weight: 30 }],
+    sChance: 0.01,
+  },
+  B: {
+    standard: [{ tier: 'b', weight: 45 }, { tier: 'a', weight: 55 }],
+    hit: [{ tier: 'b', weight: 30 }, { tier: 'a', weight: 70 }],
+    sChance: 0.04,
+  },
+  A: {
+    standard: [{ tier: 'a', weight: 100 }],
+    hit: [{ tier: 'a', weight: 100 }],
+    sChance: 0.08,
+  },
+}
+
+export function armorPackBandFor(difficulty: number): ArmorPackBand {
+  return baseTierFor(difficulty) as ArmorPackBand
+}
+
+export function armorPackPrice(difficulty: number, packsBought = 0): number {
+  return Math.round(ARMOR_PACK_PRICES[armorPackBandFor(difficulty)] * ARMOR_PACK_PRICE_STEP ** packsBought)
+}
 
 // A failed mission's forfeit offer: a seeded handful of the diver's own items
 // (one per star the difficulty can award) to choose the one they lose, capped
@@ -473,9 +549,11 @@ export const CONDITION_RISK: Readonly<Record<string, ConditionRiskCurve>> = {
   oopsAllAirstrikes: { base: 2, slope: 0.2 },
   zeroDeaths: { base: 3, slope: 0.3 },
   noReserves: { base: 2, slope: 0.35 },
-  noStratagems: { base: 3, slope: 0.3 },
+  noStratagems: { base: 2, slope: 0.3 },
   meleeOnly: { base: 2, slope: 0.35 },
   pacifist: { base: 3, slope: 0.3 },
+  heavyBurden: { base: 1, slope: 0.1 },
+  stimShortage: { base: 3, slope: 0.15 },
 
   // Personal rules — pacts. Most rise with altitude: losing healing, anti-tank
   // or your life costs more where the enemy hits harder. Dead Weight stays flat
@@ -493,6 +571,11 @@ export const CONDITION_RISK: Readonly<Record<string, ConditionRiskCurve>> = {
   shipSilent: { base: 2, slope: 0 },
   openField: { base: 2, slope: 0 },
   untouchable: { base: 2.5, slope: 0.25 },
+  featherweight: { base: 1, slope: 0.15 },
+  ironbound: { base: 1, slope: 0 },
+  radioSilence: { base: 3, slope: 0.2 },
+  coldSteel: { base: 2, slope: 0.15 },
+  cleanHands: { base: 1, slope: 0.2 },
 }
 
 // A condition's risk at a difficulty, clamped to the 1–5 scale. Unknown ids

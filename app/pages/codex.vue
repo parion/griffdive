@@ -6,7 +6,7 @@
   >
     <header class="page-header">
       <div>
-        <h1>Codex</h1>
+        <h1>Armory</h1>
       </div>
     </header>
     <CodexBrowser />
