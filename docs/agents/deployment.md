@@ -37,7 +37,7 @@ deploy on production, and on staging mostly an idle-stop cold start (`fly.stagin
 | --- | --- |
 | `griffdive_online_players`, `griffdive_active_rooms` (gauges, scrape-time) | Presence now — seated divers with a live (non-silent) connection, rooms with at least one |
 | `griffdive_rooms_by_phase{phase}`, `griffdive_room_difficulty{difficulty}`, `griffdive_saved_dives` (gauges, 2-minute census) | Where stored rooms sit: stuck phases, ladder distribution, pin pressure against the save cap |
-| `griffdive_rooms_created_total{source}`, `griffdive_room_create_rejected_total{reason}`, `griffdive_room_lookups_total{result}`, `griffdive_http_requests_total{route,status}` | Arrival: fresh vs resumed rooms, dead invite links, growth limits, cold hits (PWA/browser navigation never reaches the server) |
+| `griffdive_rooms_created_total{source}`, `griffdive_room_create_rejected_total{reason}`, `griffdive_room_lookups_total{result}`, `griffdive_http_requests_total{route,status}` | Arrival: fresh vs resumed rooms, dead invite links, growth limits, cold hits (PWA/browser navigation never reaches the server; `4xx`/`5xx` now include responses the error handler writes) |
 | `griffdive_ws_hello_total{result}`, `griffdive_rejoins_total{gap}`, `griffdive_divers_joined_total{kind}`, `griffdive_divers_departed_total{kind}`, `griffdive_presence_changes_total{direction}`, `griffdive_presence_reaped_total`, `griffdive_host_transfers_total{reason}`, `griffdive_rooms_swept_total`, `griffdive_session_duration_seconds{kind}` | Seating and retention: join failures, returning divers by silence gap (the no-accounts retention proxy), squad churn, host fragility, silent sockets reaped by the presence sweeper, TTL reaps, and how long rooms actually stay active (`lobby` vs `crusade`, observed when the room ages out) |
 | `griffdive_dives_started_total`, `griffdive_missions_started_total{difficulty}`, `griffdive_operation_restarts_total{difficulty}`, `griffdive_operations_completed_total{difficulty}`, `griffdive_crusades_achieved_total`, `griffdive_crusades_ended_total`, `griffdive_reports_total{outcome,difficulty}` | The play funnel: crusades launched → missions begun → operations climbed → achieved, plus restarts and honor-system outcomes |
 | `griffdive_directive_decisions_total{decision,condition,difficulty}`, `griffdive_directive_refusals_total`, `griffdive_strain_decisions_total`, `griffdive_major_order_total{kind}` (front plan at launch: `live`/`manual`/`rolled`), `griffdive_wheel_rerolls_total{kind}`, `griffdive_pacts_picked_total{condition}`, `griffdive_pacts_failed_total{condition}`, `griffdive_directives_failed_total{condition}`, `griffdive_ceiling_total{tier}`, `griffdive_valor_at_report`, `griffdive_pact_picks` | Risk & balance: is chosen risk real, which rules land or misfire, what loot tiers the economy actually rolls |
@@ -51,6 +51,11 @@ selectors, it never re-derives rules. Label cardinality is bounded by design (co
 item tiers/categories, difficulties); never label by room code, player id or IP. Known blind spots:
 solo play started from the Bridge runs entirely in the browser (`useDiveEngine` + localStorage) and
 is invisible, and `REPORT_RESULT` is honor-system — treat outcomes as directional.
+
+Abuse is visible in the same families: any `griffdive_room_create_rejected_total{reason="cap"}`
+increase, `griffdive_saved_dives` near its 500 cap, `griffdive_rooms_by_phase{phase="lobby"}`
+climbing against `griffdive_active_rooms`, and a `4xx`/`5xx` spike in
+`griffdive_http_requests_total` make a fill or save-churn attempt show up in Grafana.
 
 **Feedback inbox.** `POST /api/feedback` writes a single JSON array to
 `useStorage('feedback')` (`./.data/feedback/inbox`, same `griffdive_data` volume as rooms), capped
