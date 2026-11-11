@@ -2,6 +2,7 @@ import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from '@pro
 import { ENGINE_VERSION, MAX_DIFFICULTY, MIN_DIFFICULTY } from '~~/shared/engine/config'
 import { activeDivers, diverOptions, diverRolledCeiling, diverValor, squadSize } from '~~/shared/engine/selectors'
 import { topTierOf } from '~~/shared/engine/rewards'
+import { specialistRankOf } from '~~/shared/engine/specialists'
 import { tieredItem } from '~~/shared/engine/tierList'
 import { DIVE_PHASES } from '~~/shared/engine/types'
 import type { DivePhase, DiveState, EngineAction } from '~~/shared/engine/types'
@@ -453,6 +454,26 @@ export function createRoomMetrics(): RoomMetrics {
     registers: [registry],
   })
 
+  const specialistsIssued = new Counter({
+    name: 'griffdive_specialists_issued_total',
+    help: 'Specialist kits issued (launch, enlisting mid-crusade, a mantle taken up), by specialist',
+    labelNames: ['specialist'] as const,
+    registers: [registry],
+  })
+
+  const ordersBroken = new Counter({
+    name: 'griffdive_orders_broken_total',
+    help: 'Specialist standing orders marked broken in the field',
+    registers: [registry],
+  })
+
+  const specialistPromotions = new Counter({
+    name: 'griffdive_specialist_promotions_total',
+    help: 'Specialist promotions banked, by the rank reached (1 Specialist, 2 Sergeant, 3 Commissioned)',
+    labelNames: ['rank'] as const,
+    registers: [registry],
+  })
+
   const ceilingRolled = new Counter({
     name: 'griffdive_ceiling_total',
     help: 'Top rolled loot tier per diver at report, by tier — the risk economy realized',
@@ -709,6 +730,23 @@ export function createRoomMetrics(): RoomMetrics {
     }
     if (after.achieved && !before.achieved) {
       crusadesAchieved.inc()
+    }
+    for (const diver of after.divers) {
+      const commission = diver.commission
+      if (!commission) {
+        continue
+      }
+      const previous = before.divers.find(entry => entry.id === diver.id)?.commission
+      if (commission.issuedKit.length > 0 && !previous?.issuedKit.length) {
+        specialistsIssued.inc({ specialist: commission.specialistId })
+      }
+      if (commission.ordersBroken && !previous?.ordersBroken) {
+        ordersBroken.inc()
+      }
+      const rank = specialistRankOf(commission.merits)
+      if (previous && rank > specialistRankOf(previous.merits)) {
+        specialistPromotions.inc({ rank: String(rank) })
+      }
     }
 
     const condition = after.wheel?.misfortuneId ?? 'unknown'

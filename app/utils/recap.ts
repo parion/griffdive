@@ -1,5 +1,6 @@
 import { missionsPerOperation } from '~~/shared/engine/config'
 import { STARTING_KITS, difficultyName, earnedKit } from '~~/shared/engine/progression'
+import { handedKitOf } from '~~/shared/engine/specialists'
 import type { DiveState } from '~~/shared/engine/types'
 import { upperName } from './upperName'
 
@@ -54,7 +55,7 @@ export function buildRecap(state: DiveState, crusadeLabel = ''): Recap {
     id: diver.id,
     name: upperName(diver.name),
     isHost: diver.id === state.hostId,
-    gearEarned: earnedKit(state.personalInventories[diver.id] ?? [], variant, diver.supportKit ?? []).length,
+    gearEarned: earnedKit(state.personalInventories[diver.id] ?? [], variant, handedKitOf(diver)).length,
     tokens: diver.rewardTokens,
     credits: diver.credits,
   }))

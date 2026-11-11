@@ -33,6 +33,8 @@ const emit = defineEmits<{
   preview: [pactIds: string[]]
   report: [payload: MissionReport]
   failPact: [playerId: string, pactId: string]
+  breakOrders: [playerId: string]
+  enlist: [specialistId: string]
   failDirective: []
   holdPact: [playerId: string, pactId: string]
   holdDirective: []
@@ -117,6 +119,11 @@ const squadBanked = computed(() => phase.value === 'rewards' && allDiversPicked(
           </button>
         </template>
       </AppBanner>
+      <SpecialistEnlist
+        :state="state"
+        :self="self"
+        @enlist="emit('enlist', $event)"
+      />
 
       <template v-if="!kicked">
         <PhoneWheel
@@ -151,6 +158,7 @@ const squadBanked = computed(() => phase.value === 'rewards' && allDiversPicked(
           :is-host="isHost"
           @report="emit('report', $event)"
           @fail="(playerId, pactId) => emit('failPact', playerId, pactId)"
+          @break-orders="emit('breakOrders', $event)"
           @fail-directive="emit('failDirective')"
         />
 

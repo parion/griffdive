@@ -2,7 +2,8 @@
 import { AccordionContent, AccordionHeader, AccordionItem, AccordionRoot, AccordionTrigger } from 'reka-ui'
 import { conditionRiskAt } from '~~/shared/engine/config'
 import { pactById, pactName } from '~~/shared/data/pacts'
-import { isPenancePact } from '~~/shared/engine/selectors'
+import { activeMisfortune, isPenancePact } from '~~/shared/engine/selectors'
+import { specialistOf, standingOrdersFor } from '~~/shared/engine/specialists'
 import type { DiveState } from '~~/shared/engine/types'
 
 // The field's "Pacts sworn" ledger, shared by the desktop and phone screens.
@@ -14,7 +15,12 @@ const props = defineProps<{
   isHost: boolean
 }>()
 
-const emit = defineEmits<{ fail: [playerId: string, pactId: string] }>()
+const emit = defineEmits<{
+  fail: [playerId: string, pactId: string]
+  breakOrders: [playerId: string]
+}>()
+
+const ORDERS = 'orders'
 
 const pactsByDiver = computed(() =>
   props.state.divers.map(diver => ({
@@ -33,11 +39,23 @@ const pactsByDiver = computed(() =>
         penance: isPenancePact(diver, id),
       }
     }),
+    // A specialist's orders ride beside their pacts: a loadout rule judged in
+    // the field, marked broken the same way.
+    orders: diver.commission
+      ? {
+          key: `${diver.id}:${ORDERS}`,
+          specialist: specialistOf(diver)?.name ?? 'Specialist',
+          items: standingOrdersFor(activeMisfortune(props.state)?.id ?? null, diver),
+          broken: diver.commission.ordersBroken,
+        }
+      : null,
   })))
 
-const ownKeys = pactsByDiver.value
-  .find(diver => diver.id === props.selfId)
-  ?.pacts.map(pact => pact.key) ?? []
+const ownDiver = pactsByDiver.value.find(diver => diver.id === props.selfId)
+const ownKeys = [
+  ...(ownDiver?.pacts.map(pact => pact.key) ?? []),
+  ...(ownDiver?.orders ? [ownDiver.orders.key] : []),
+]
 
 const armedPact = ref<string | null>(null)
 
@@ -55,6 +73,10 @@ function markPact(diverId: string, pactId: string): void {
     return
   }
   armedPact.value = null
+  if (pactId === ORDERS) {
+    emit('breakOrders', diverId)
+    return
+  }
   emit('fail', diverId, pactId)
 }
 </script>
@@ -75,7 +97,7 @@ function markPact(diverId: string, pactId: string): void {
         :key="diver.id"
       >
         <div
-          v-if="diver.pacts.length === 0"
+          v-if="diver.pacts.length === 0 && !diver.orders"
           class="row empty"
         >
           <span class="who"><b>{{ diver.name }}</b></span>
@@ -146,6 +168,71 @@ function markPact(diverId: string, pactId: string): void {
             </div>
           </AccordionContent>
         </AccordionItem>
+        <AccordionItem
+          v-if="diver.orders"
+          :value="diver.orders.key"
+          class="row orders"
+          :class="{ failed: diver.orders.broken, cont: diver.pacts.length > 0, own: diver.id === selfId }"
+        >
+          <span class="who"><b v-if="diver.pacts.length === 0">{{ diver.name }}</b></span>
+          <AccordionHeader
+            as="div"
+            class="head"
+          >
+            <AccordionTrigger class="trigger">
+              <span class="orders-tag">Orders</span>
+              <span class="pact-name">{{ diver.orders.specialist }}</span>
+              <svg
+                class="row-chev"
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                aria-hidden="true"
+              ><path
+                d="M2 4l4 4 4-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              /></svg>
+            </AccordionTrigger>
+          </AccordionHeader>
+          <span
+            v-if="diver.orders.broken"
+            class="pact-void"
+          >Broken</span>
+          <button
+            v-else-if="canMark(diver.id)"
+            class="mark-pact"
+            :class="{ armed: armedPact === diver.orders.key, own: diver.id === selfId }"
+            type="button"
+            @click="markPact(diver.id, ORDERS)"
+          >
+            {{ armedPact === diver.orders.key ? 'Confirm?' : 'Mark broken' }}
+          </button>
+          <span v-else />
+          <AccordionContent class="body">
+            <div class="body-inner">
+              <p class="vow">
+                Start the mission with your issued kit:
+                <template
+                  v-for="(order, i) in diver.orders.items"
+                  :key="order.item.id"
+                >
+                  <span :class="{ suspended: order.suspendedBy }">{{ order.item.displayName }}</span>{{ i < diver.orders.items.length - 1 ? ', ' : '.' }}
+                </template>
+              </p>
+              <p
+                v-if="diver.orders.items.some(order => order.suspendedBy)"
+                class="suspended-note"
+              >
+                Crossed-out items are banned by the squad directive, so leaving them behind is fine.
+              </p>
+              <span class="acct">
+                <i aria-hidden="true" />Loadout screen · breaking orders costs a loot option
+              </span>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
       </template>
     </AccordionRoot>
   </section>
@@ -202,6 +289,21 @@ function markPact(diverId: string, pactId: string): void {
   text-transform: uppercase;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--purple) 60%, transparent);
 }
+
+.orders-tag {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  color: var(--teal);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--teal) 60%, transparent);
+}
+.row.orders::before { background: var(--teal); box-shadow: 0 0 10px color-mix(in srgb, var(--teal) 50%, transparent); }
+.row.orders.failed::before { background: var(--red); box-shadow: none; }
+.suspended { color: var(--dim); text-decoration: line-through; }
+.suspended-note { margin: 0; color: var(--dim); font-size: var(--fs-sm); font-style: italic; }
 
 .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .who b { font-size: 15px; font-weight: 700; }

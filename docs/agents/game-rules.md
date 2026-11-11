@@ -852,6 +852,68 @@ an S about once per 5 missions at the top band). Re-run it after touching `SAMPL
 `TIME_HAUL_FLOOR`, `CREDIT_PRICE_*`, `ARMOR_PACK_PRICES`, `ARMOR_PACK_PRICE_STEP` or
 `ARMOR_PACK_ODDS`.
 
+### Specialists — commissions
+
+An evolution of Penitent Crusade's specialists. A diver may take a **commission** instead of
+playing as a **Freelancer** (the default): an issued kit, standing orders to start every mission in
+it, and a service record that climbs through four ranks. The roster is `SPECIALISTS` in
+`shared/data/specialists.ts` (10 specialists across six roles: Assault, Heavy, Demolitions,
+Support, Recon, Engineer; the Zealous Martyr and the two ground coordinators are PC ports); the
+rules are `shared/engine/specialists.ts`; the numbers are in `config.ts`.
+
+- **Choosing.** `SET_SPECIALIST{playerId,specialistId|null}`, self-service. Anyone in the lobby
+  may take, change or drop one; solo crusades pass it to `createDiveState`, which applies it after
+  the warbonds and before `START_DIVE`. **One commission per squad** (`specialistHolder`), and only
+  with every warbond the kit comes from (`specialistUnavailableReason`). It is frozen at launch,
+  except for a diver seated mid-crusade: `joinDiver` sets `enlistOpen`, and that diver may enlist
+  once, before locking pacts, until their first mission ends (`canEnlist`; `resetDivers` clears
+  it). Custom tier lists need no ordering rule: a commission removes item types and stratagem
+  categories, never tiers.
+- **The issued kit** (`DiverState.commission.issuedKit`, stored like `supportKit`). `START_DIVE`
+  issues it, re-checking availability (a commission whose warbonds were dropped stands down to
+  Freelancer). It **replaces the SEAF pack** — crate or commission: a commissioned diver rolls no
+  pack, and enlisting mid-crusade swaps the joiner's pack out. Issued gear is never at stake in a
+  forfeit (`earnedItemsOf`) and never parks in a cache (`handedKitOf` → `earnedKit`).
+- **Issued types never drop** (PC parity). Every equipment category in the kit (primary,
+  secondary, throwable, booster, armor passive) leaves the diver's reward pool
+  (`rewardPoolForDiver`, used by the draft, Liberty's Cross and the Field Promotion), Brasch's
+  shelf (the slot reads **Issued**, `BargainSlotStatus 'issued'`) and, for an issued passive, the
+  Armor Pack. Stratagems are one wide kind, so an issued stratagem only bars itself.
+- **Doctrine.** Some specialists narrow which stratagems their pools offer (`SpecialistDoctrine`:
+  Eagle, Orbital, Defense, or demolition = anti-tank or explosive-tagged), until they make
+  Sergeant. A doctrine narrows a pool, never names an item.
+- **The service tax.** A commissioned diver drafts `SPECIALIST_OPTION_TAX` (1) fewer option until
+  they are Commissioned (`serviceTaxOf`, folded into `optionsLostFor`, floored at one like every
+  other loss). The draft header names it apart from broken rules.
+- **Standing orders.** Start every mission in the issued kit (loadout-accountable). The orders
+  ride the Pacts sworn ledger as an *Orders* row; a break is marked in the field with
+  `BREAK_ORDERS{playerId}` (diving only, by the diver or the host, once per mission), costs
+  `OPTIONS_LOST_PER_BROKEN_ORDERS` (1) more option and spoils the operation's clean record. An
+  accepted directive that bans an issued item **suspends** that item (`standingOrdersFor`); a
+  pact that would forbid it is refused (`ordersConflictFor` in `SET_PACTS`, greyed "Your orders
+  require …" on the pact screens).
+- **Ranks.** Recruit → Specialist → Sergeant → Commissioned, derived from merits
+  (`SPECIALIST_RANK_MERITS` 2 / 4 / 6; never stored). A **clean operation** (orders never broken)
+  earns `MERITS_PER_CLEAN_OPERATION` (2) when it completes; a **commendation** — winning Squad
+  Honors on the specialist's **calling** (a `BONUS_STATS` id, e.g. the Medic's fewest deaths) —
+  earns `MERITS_PER_COMMENDATION` (1). Both bank at `ADVANCE` (`advanceCommission`), the final
+  summit included; the squad-climbs page announces them first (`meritsEarnedBy`, `promotionsDue`,
+  `ClimbService`). A failure restart keeps the operation's record; a new operation starts clean.
+  **Sergeant lifts the doctrine; Commissioned lifts the service tax.** Issued types stay barred.
+- **Dispatches.** Each promotion shows a one-line dispatch (`PROMOTION_DISPATCHES`), and a
+  commission taken up from a cache names its predecessor (`SUCCESSION_DISPATCH`). Copy only.
+- **The mantle.** A departing specialist's cache carries the commission (`LegacyCache.commission`
+  `{specialistId, merits}`), parked even when no gear was earned, and `availableCaches` offers it.
+  A Freelancer who claims it (`CLAIM_CACHE`) takes up the mantle — rank included, issued kit in
+  place of their pack, `predecessor` recorded. A mantle the claimant can't carry (already
+  commissioned, the specialist taken, warbonds missing) retires with the claim. A cache that would
+  hand over nothing (no gear and a mantle that can't pass) is refused, so it never spends a
+  promotion. The same diver
+  rejoining resumes their own commission; a fork keeps the owner's and parks everyone else's.
+- **Save model.** `commission`, `enlistOpen` and `LegacyCache.commission` are optional and
+  additive (absent = Freelancer), so they needed no schema bump; `sanitizeDiver` validates them on
+  a fork.
+
 ### Mission failure — the forfeit offer
 
 A failed mission costs every diver one item, and the diver never picks freely (that made the loss a

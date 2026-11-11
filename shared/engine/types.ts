@@ -111,11 +111,34 @@ export interface DiverState {
   // squad has already seen. Absent (older saves) falls back to live holdings.
   // Reset with the pacts every mission.
   draftExcludedIds?: string[] | null
+  // The diver's specialist commission, or null/absent for a Freelancer.
+  // Chosen in the lobby and issued at launch; a diver seated mid-crusade may
+  // enlist until their first mission ends (enlistOpen).
+  commission?: Commission | null
+  enlistOpen?: boolean
   // The diver stepped away (Leave, or their connection stayed down past the
   // server's grace window). Their seat, kit and purse stay put, but the squad
   // never waits on them: pact lock-in, reward picks and squad size count only
   // divers who are present. Cleared the moment they reconnect.
   away: boolean
+}
+
+// A specialist commission (shared/data/specialists.ts). The rank is derived
+// from merits (specialistRankOf), never stored.
+export interface Commission {
+  specialistId: string
+  // What launch (or enlisting, or taking up a mantle) issued. Reported in at
+  // every mission start; never at stake in a forfeit and never parked in a
+  // cache. Empty in the lobby, before anything is issued.
+  issuedKit: string[]
+  merits: number
+  // Standing orders broken this mission: costs an option. Reset every mission.
+  ordersBroken: boolean
+  // Orders held all operation so far; a clean operation earns merits when it
+  // completes. Reset when a new operation begins (a failure restart keeps it).
+  cleanOperation: boolean
+  // Who held this commission before, when it was taken up from their cache.
+  predecessor?: string
 }
 
 // Penance: a stats-verified pact broken after the draft is re-sworn next mission
@@ -213,6 +236,9 @@ export interface MissionReport {
 export interface LegacyCache {
   name: string
   itemIds: string[]
+  // The departed diver's commission: a joiner who claims the cache takes up
+  // the mantle, rank included. Absent for a Freelancer.
+  commission?: { specialistId: string, merits: number }
 }
 
 export interface DiveState {
@@ -307,6 +333,8 @@ export type EngineAction
     | { type: 'FAIL_MISFORTUNE' }
     | { type: 'HOLD_MISFORTUNE' }
     | { type: 'SET_WARBONDS', playerId: string, warbondCodes: string[] }
+    | { type: 'SET_SPECIALIST', playerId: string, specialistId: string | null }
+    | { type: 'BREAK_ORDERS', playerId: string }
     | { type: 'REPORT_RESULT', outcome: MissionOutcome, stars: number, timePct?: number, samples?: SampleCounts }
     | { type: 'FORFEIT_ITEM', playerId: string, itemId: string }
     | { type: 'PICK_REWARD', playerId: string, optionId: string, choiceItemId?: string }

@@ -1,6 +1,7 @@
 import type { Item } from '~~/shared/data/types'
 import type { SupportRolls } from '~~/shared/engine/config'
 import { startingItemIds } from '~~/shared/engine/progression'
+import { handedKitOf } from '~~/shared/engine/specialists'
 import { tieredItem } from '~~/shared/engine/tierList'
 import type { TierList } from '~~/shared/engine/tierList'
 import type { DiveState } from '~~/shared/engine/types'
@@ -78,14 +79,14 @@ export function ownedKitItems(state: DiveState, diverId: string | null): Item[] 
 }
 
 // Items the diver gained after launch (rewards, purchases, caches): everything
-// outside the variant's starting kit and the support pack they were dealt.
+// outside the variant's starting kit, the support pack and any issued kit.
 export function earnedKitItems(state: DiveState, diverId: string | null): Item[] {
   const items = ownedKitItems(state, diverId)
   if (!state.settings) {
     return items
   }
-  const support = state.divers.find(diver => diver.id === diverId)?.supportKit ?? []
-  const starting = new Set([...startingItemIds(state.settings.variant), ...support])
+  const diver = state.divers.find(entry => entry.id === diverId)
+  const starting = new Set([...startingItemIds(state.settings.variant), ...(diver ? handedKitOf(diver) : [])])
   return items.filter(item => !starting.has(item.id))
 }
 

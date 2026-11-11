@@ -3,7 +3,9 @@ import { kitAllowedOnHost } from '~~/shared/kit-access'
 import { MAX_DIFFICULTY, MIN_DIFFICULTY, SQUAD_SIZE_MAX } from '~~/shared/engine/config'
 import { STARTING_KITS } from '~~/shared/engine/progression'
 import { createDiveState } from '~~/shared/engine/reducer'
+import { specialistWarbondReason } from '~~/shared/engine/specialists'
 import { createSaveDoc } from '~~/shared/engine/saves'
+import { specialistById } from '~~/shared/data/specialists'
 import { MISFORTUNES, PACTS } from '~~/shared/data/conditions'
 import type { CrusadeMode, CrusadeSettings, CrusadeVariant, DiveState, FrontPlan } from '~~/shared/engine/types'
 import type { DiveSaveInfo } from '~~/shared/types/messages'
@@ -16,6 +18,16 @@ const sessions = useSessionSaves()
 const recentRooms = useRecentRooms()
 const { push: pushToast } = useToasts()
 const { ownedWarbonds: myWarbonds, setOwned: setMyWarbonds } = useOwnedWarbonds()
+
+// The solo diver's specialist, issued at launch. A warbond change that takes
+// away part of its kit drops the choice back to Freelancer.
+const specialistId = ref<string | null>(null)
+watch(myWarbonds, (codes) => {
+  const chosen = specialistById(specialistId.value)
+  if (chosen && specialistWarbondReason(chosen, codes)) {
+    specialistId.value = null
+  }
+})
 const { picked: pickedTierList } = useTierLists()
 const { openCodex } = useDrawers()
 const { openFeedback, hasBoard, boardUrl } = useFeedback()
@@ -185,6 +197,7 @@ function createCrusade(plan: FrontPlan): void {
     crypto.getRandomValues(new Uint32Array(1))[0],
     frontPinFor(plan, lockedFront.value, liveOrder.value),
     pickedTierList.value.list,
+    specialistId.value,
   )
   const variantName = VARIANTS_LABELS[variant.value] ?? 'Crusade'
   const id = saves.createSlot(state, `${name} · ${variantName}`)
@@ -515,6 +528,12 @@ const facts = [
         @update:front-plan="chooseFrontPlan"
         @refresh-order="refreshOrder"
       />
+      <SpecialistPicker
+        class="setup-specialist"
+        :selected="specialistId"
+        :warbond-codes="myWarbonds"
+        @update:selected="specialistId = $event"
+      />
       <WarbondPicker
         class="setup-warbonds"
         :warbond-codes="myWarbonds"
@@ -685,6 +704,7 @@ const facts = [
 }
 .close-cta .disp { font-size: 18px; }
 
+.setup-specialist,
 .setup-warbonds { margin-top: 20px; }
 
 .bridge-foot {

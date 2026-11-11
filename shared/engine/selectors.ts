@@ -50,6 +50,7 @@ import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, bargainKindOf, rol
 import type { BargainSlot, RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
 import type { ArmorPackDeal, BargainDeal, BargainSlotKind, CrusadeMode, CrusadeSettings, DiveState, DivePhase, DiverState, FrontPlan, MajorOrderPlanet, MissionOutcome, PenanceDebt, RewardTier } from './types'
+import { commissionAllows, commissionOptionsLost, issuedBargainKinds, issuedCategories } from './specialists'
 import { eligibleMisfortunes, eligibleStrains, frontById, strainById } from './wheel'
 
 // A completed run is tracked by its full draw — misfortune, front and strain —
@@ -287,13 +288,15 @@ export function isPenancePact(diver: DiverState, pactId: string): boolean {
 
 // Reward options a diver's draft has lost: each pact marked failed in the
 // field (Penance pacts excepted: their price is the voided reward), a
-// directive broken in the field, and the tax left by last mission's directive
-// broken at the stats check.
+// directive broken in the field, the tax left by last mission's directive
+// broken at the stats check, and a specialist's commission (its service tax
+// and any broken standing orders).
 export function optionsLostFor(state: DiveState, diver: DiverState): number {
   const failed = diver.failedPactIds.filter(id => !isPenancePact(diver, id)).length
   return failed * OPTIONS_LOST_PER_FAILED_PACT
     + (state.misfortuneFailed ? OPTIONS_LOST_PER_FAILED_DIRECTIVE : 0)
     + (state.directiveTax ? OPTIONS_LOST_PER_FAILED_DIRECTIVE : 0)
+    + commissionOptionsLost(diver)
 }
 
 // Chosen risk lives on the diver and the team; it is the diver's Valor. Samples
@@ -438,6 +441,14 @@ export function rewardPoolFor(codes: readonly string[], tierList?: TierList | nu
   return catalogPoolFor(codes, tierList).filter(item => item.category !== 'armorPassive')
 }
 
+// One diver's reward-eligible pool: their warbonds, minus whatever their
+// commission keeps out (issued kinds, and stratagems outside its doctrine).
+// Drafts, Liberty's Cross and the Field Promotion all roll from it.
+export function rewardPoolForDiver(state: DiveState, diver: DiverState): Item[] {
+  return rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state))
+    .filter(item => commissionAllows(diver, item))
+}
+
 export function armorPassivePoolFor(codes: readonly string[], tierList?: TierList | null): Item[] {
   return catalogPoolFor(codes, tierList).filter(item => item.category === 'armorPassive')
 }
@@ -449,7 +460,7 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   const seed = diverOfferSeed(state, diver)
   // The pool is the diver's own: warbonds are personal purchases, so each
   // diver rolls offers against the catalog they can actually use.
-  const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state))
+  const pool = rewardPoolForDiver(state, diver)
   // Banned items never come back: a ban removes them from every future offer.
   // The deal's snapshot wins over live holdings so the offer never shifts.
   const exclude = new Set(diver.draftExcludedIds
@@ -476,9 +487,11 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
 // never won, so it is never taken; the support pack is an assist the squad
 // opted into, so it is, even before a first reward is banked.
 export function earnedItemsOf(state: DiveState, diver: DiverState): Item[] {
-  const starting = new Set(state.settings
-    ? startingItemIds(state.settings.variant)
-    : [])
+  // A commission's issued kit is the specialist's, never theirs to lose.
+  const starting = new Set([
+    ...(state.settings ? startingItemIds(state.settings.variant) : []),
+    ...(diver.commission?.issuedKit ?? []),
+  ])
   return (state.personalInventories[diver.id] ?? [])
     .filter(id => !starting.has(id))
     .map(id => tieredItem(id, tierListOf(state)))
@@ -597,7 +610,8 @@ export function bargainSlotKinds(difficulty: number): BargainSlotKind[] {
 // A shelf slot as the diver sees it: still for sale, the one they bought this
 // mission, shut for the rest of the mission by that buy, or held back until
 // the next operation because its kind was bought earlier in this one.
-export type BargainSlotStatus = 'open' | 'bought' | 'locked' | 'heldBack'
+// 'issued': the diver's commission issues this kind, so Brasch never stocks it.
+export type BargainSlotStatus = 'open' | 'bought' | 'locked' | 'heldBack' | 'issued'
 
 export interface BargainShelfSlot extends BargainSlot {
   status: BargainSlotStatus
@@ -619,12 +633,14 @@ export function bargainShelfFor(state: DiveState, diver: DiverState): BargainShe
   const boughtNow = boughtItemId ? tieredItem(boughtItemId, tierListOf(state)) : undefined
   const nowKind = boughtNow ? bargainKindOf(boughtNow) : null
   const heldBack = new Set(deal.boughtKinds.filter(kind => kind !== nowKind))
+  const issued = issuedBargainKinds(diver)
   const kinds = bargainSlotKinds(state.difficulty)
   const rolled = rollBargainShelf(
     deriveSeed(deriveSeed(state.bargainSeed, BARGAIN_STREAM), hashString(diver.id)),
     state.difficulty,
-    kinds.filter(kind => !heldBack.has(kind)),
-    catalogPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state)),
+    kinds.filter(kind => !heldBack.has(kind) && !issued.has(kind)),
+    catalogPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state))
+      .filter(item => commissionAllows(diver, item)),
     new Set(deal.excludedIds),
   )
   const counts = new Map<BargainSlotKind, number>()
@@ -632,6 +648,9 @@ export function bargainShelfFor(state: DiveState, diver: DiverState): BargainShe
   return kinds.map((kind) => {
     const nth = (counts.get(kind) ?? 0) + 1
     counts.set(kind, nth)
+    if (issued.has(kind)) {
+      return { slotId: nth === 1 ? kind : `${kind}-${nth}`, kind, item: null, status: 'issued' as const }
+    }
     if (heldBack.has(kind)) {
       return { slotId: nth === 1 ? kind : `${kind}-${nth}`, kind, item: null, status: 'heldBack' as const }
     }
@@ -772,6 +791,9 @@ export function armorPackPoolFor(state: DiveState, diver: DiverState): Item[] {
     ...(state.personalInventories[diver.id] ?? []),
     ...diver.bannedItemIds,
   ])
+  if (issuedCategories(diver).has('armorPassive')) {
+    return []
+  }
   return armorPassivePoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state))
     .filter(item => !excluded.has(item.id))
 }
@@ -808,6 +830,9 @@ export function canBuyArmorPack(
   }
   if (!diver.bargain) {
     return { allowed: false, reason: 'Brasch has not dealt your shelf' }
+  }
+  if (issuedCategories(diver).has('armorPassive')) {
+    return { allowed: false, reason: 'Your commission issues your armor passive' }
   }
   if (armorPackPoolFor(state, diver).length === 0) {
     return { allowed: false, reason: 'You own every armor passive in your warbonds' }
@@ -855,7 +880,7 @@ export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOp
   }
   const claimed = diver.catchUpGranted - diver.catchUpOwed
   const seed = deriveSeed(hashString(`${diver.id}:catchup`), claimed)
-  const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state))
+  const pool = rewardPoolForDiver(state, diver)
   // Bans are personal and crusade-long, so a promotion never re-offers a
   // banned item either.
   const exclude = new Set([
@@ -1255,13 +1280,26 @@ export function actingDiverIds(state: DiveState): string[] {
 // Fallen divers' kits a joiner may claim instead of their Field Promotion.
 // Caches only open once the squad has completed an operation — before that a
 // joiner is at the start altitude and owes no promotion to trade.
-export function availableCaches(state: DiveState): { ownerId: string, name: string, itemIds: string[] }[] {
+export interface AvailableCache {
+  ownerId: string
+  name: string
+  itemIds: string[]
+  commission?: { specialistId: string, merits: number }
+}
+
+// A cache is worth claiming for its gear or for the mantle it carries.
+export function availableCaches(state: DiveState): AvailableCache[] {
   if (!state.settings || catchUpOpsBehind(state.difficulty, state.settings.variant) < 1) {
     return []
   }
   return Object.entries(state.legacyCaches)
-    .filter(([, cache]) => cache.itemIds.length > 0)
-    .map(([ownerId, cache]) => ({ ownerId, name: cache.name, itemIds: cache.itemIds }))
+    .filter(([, cache]) => cache.itemIds.length > 0 || cache.commission)
+    .map(([ownerId, cache]) => ({
+      ownerId,
+      name: cache.name,
+      itemIds: cache.itemIds,
+      ...(cache.commission ? { commission: cache.commission } : {}),
+    }))
 }
 
 // Whether the diver still has a Field Promotion to settle: picks owed and

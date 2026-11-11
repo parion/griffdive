@@ -194,7 +194,15 @@ Each phase lands shippable. Update the relevant `docs/agents/` files (commands, 
   shop. **E4** heat ladders/bounties is spec'd (N51) and gated on ≥30 achieved crusades in a 14-day
   window plus ≥10% of launches reaching difficulty 8+; if that misses, fix the mid-climb and do not
   build N51 or endless yet. See [PLAN.md](../../PLAN.md) → Batch E.
-- **Phase 5 — Post-v1 backlog.** Specialists (PC parity), heat
+- **Specialists — prototype (2026-11-11), targeted at the next beta update.** Commissions with an
+  issued kit (in place of the SEAF pack), standing orders, a service tax lifted at Commissioned,
+  doctrine lifted at Sergeant, ranks from clean operations and honors commendations, promotion
+  dispatches, the one-commission-per-squad rule, mid-crusade enlisting and the mantle passed through
+  legacy caches. Ten specialists. See [game-rules.md](./game-rules.md) → Specialists. Next: a
+  balance read from `griffdive_specialists_issued_total` / `griffdive_specialist_promotions_total`,
+  the fireteam role bonuses, bonds between specialists, summit citations, e2e coverage, and
+  portrait art (the old PC art stays out).
+- **Phase 5 — Post-v1 backlog.** Heat
   ladders/bounties (N51; spec'd and gated), endless mode, accounts + cloud saves, i18n, and a
   hosted tier-list marketplace (publish, browse and rank community lists) as a feature of the
   optional account. **Custom tier lists shipped without it:** the host's list syncs from the lobby

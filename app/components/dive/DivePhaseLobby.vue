@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { FRONTS } from '~~/shared/data/fronts'
+import { specialistById } from '~~/shared/data/specialists'
 import { STARTING_KITS, VARIANTS } from '~~/shared/engine/progression'
 import { sameTierList } from '~~/shared/engine/tierList'
 import type { TierList } from '~~/shared/engine/tierList'
@@ -20,6 +21,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   start: [settings: CrusadeSettings, majorOrder: MajorOrderSelection | null]
   setTierList: [tierList: TierList | null]
+  setSpecialist: [specialistId: string | null]
   copyInvite: []
   openMenu: []
   transferHost: [playerId: string]
@@ -61,6 +63,8 @@ watch([() => pickedTierList.value.list, () => props.canControl], ([list, control
 const route = useRoute()
 useLobbyBeacon(() => (props.canControl && !launched.value ? route.path : null))
 
+const self = computed(() => props.state.divers.find(diver => diver.id === props.selfId) ?? null)
+
 const hostName = computed(() =>
   upperName(props.state.divers.find(diver => diver.id === props.state.hostId)?.name) ?? 'The host')
 
@@ -100,6 +104,7 @@ interface Bay {
   you: boolean
   away: boolean
   warbonds: number
+  specialist: string | null
 }
 
 const bays = computed<Bay[]>(() => Array.from({ length: 4 }, (_, i) => {
@@ -115,6 +120,7 @@ const bays = computed<Bay[]>(() => Array.from({ length: 4 }, (_, i) => {
     you: Boolean(diver) && diver?.id === props.selfId,
     away: diver?.away ?? false,
     warbonds: diver?.warbondCodes.length ?? 0,
+    specialist: specialistById(diver?.commission?.specialistId)?.name ?? null,
   }
 }))
 
@@ -380,6 +386,10 @@ function launch(): void {
                 v-else
                 class="tag-meta"
               >Invite</span>
+              <span
+                v-if="bay.specialist"
+                class="tag-spec"
+              >{{ bay.specialist }}</span>
             </span>
           </component>
         </section>
@@ -431,6 +441,17 @@ function launch(): void {
             Your warbonds · {{ ownedWarbonds.length }}
           </button>
         </section>
+
+        <SpecialistPicker
+          v-if="self"
+          class="specialist cut"
+          :selected="self.commission?.specialistId ?? null"
+          :warbond-codes="self.warbondCodes"
+          :state="state"
+          :self="self"
+          :disabled="launched"
+          @update:selected="emit('setSpecialist', $event)"
+        />
       </div>
     </main>
 
@@ -694,6 +715,23 @@ button.bay.open:hover .tag-name { color: var(--gold); }
 .tag-away { color: var(--orange); }
 .tag-wb { color: var(--gold); }
 .tag-wb-icon { width: 12px; height: 12px; }
+.tag-spec {
+  overflow: hidden;
+  color: var(--teal);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Specialist -------------------------------------------------------------- */
+.specialist {
+  padding: clamp(14px, 2.4vw, 22px);
+  border: 1px solid var(--line-3);
+  background: var(--panel);
+}
 
 .launched .bay.seated .pod { animation: podDrop 0.6s cubic-bezier(0.5, 0, 0.85, 0.25) both; }
 .launched .bay.seated .streak { animation: streak 0.6s ease-out both; }

@@ -5,7 +5,7 @@ cookies, no analytics and no advertising. This page is a plain-language descript
 the code stores, where, for how long, and how to get rid of it. It is mirrored in the app at
 [`/privacy`](./app/pages/privacy.vue).
 
-_Last updated: 29 October 2026._
+_Last updated: 11 November 2026._
 
 ## What is stored
 
@@ -25,8 +25,9 @@ Clearing site data in your browser deletes all of it.
 
 **On the server** — only when you create or join a dive, and only what the dive needs:
 
-- The room code, the seated divers' names (as typed, at most 32 characters), their inventories, the
-  host's custom tier list if they chose one (its name and the tier it gives each item), and the crusade's
+- The room code, the seated divers' names (as typed, at most 32 characters), their inventories and
+  specialist commissions (a commission taken up from a departed diver's cache keeps that diver's
+  name as its predecessor), the host's custom tier list if they chose one (its name and the tier it gives each item), and the crusade's
   progress and audit log.
 - When the room was created and last active. These timestamps drive idle-room cleanup and the
   aggregate session-length metric; they are never attached to a name, seat id or room code in

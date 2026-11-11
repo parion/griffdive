@@ -22,6 +22,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   report: [payload: MissionReport]
   fail: [playerId: string, pactId: string]
+  breakOrders: [playerId: string]
   failDirective: []
   reporting: [open: boolean]
 }>()
@@ -154,6 +155,7 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
         :self-id="selfId"
         :is-host="isHost"
         @fail="(diverId, pactId) => emit('fail', diverId, pactId)"
+        @break-orders="emit('breakOrders', $event)"
       />
 
       <ValorRoll

@@ -244,6 +244,10 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
           @spin-bonus="emit('spinBonus')"
           @award-bonus="emit('awardBonus', $event)"
         />
+        <ClimbService
+          :state="state"
+          :self-id="selfId"
+        />
       </article>
     </div>
 

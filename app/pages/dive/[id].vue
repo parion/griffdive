@@ -354,6 +354,20 @@ function failPact(playerId: string, pactId: string): void {
   dispatch({ type: 'FAIL_PACT', playerId, pactId })
 }
 
+// A specialist is chosen in the lobby, or by a joiner before their first
+// mission ends.
+function setSpecialist(specialistId: string | null): void {
+  if (selfId.value) {
+    dispatch({ type: 'SET_SPECIALIST', playerId: selfId.value, specialistId })
+  }
+}
+
+// A specialist's standing orders break like a pact: marked by the diver or the
+// host refereeing the squad.
+function breakOrders(playerId: string): void {
+  dispatch({ type: 'BREAK_ORDERS', playerId })
+}
+
 // The stats check before the draft: held or broke, once the stats screen is up.
 function holdPact(playerId: string, pactId: string): void {
   dispatch({ type: 'HOLD_PACT', playerId, pactId })
@@ -746,6 +760,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       :last-error="session.lastError.value?.message ?? null"
       @start="launchCrusade"
       @set-tier-list="dispatch({ type: 'SET_TIER_LIST', tierList: $event })"
+      @set-specialist="setSpecialist"
       @copy-invite="copyInvite"
       @open-menu="sessionMenuOpen = true"
       @transfer-host="transferHost"
@@ -780,6 +795,8 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @preview="pactPreview = $event"
       @report="report"
       @fail-pact="failPact"
+      @break-orders="breakOrders"
+      @enlist="setSpecialist"
       @fail-directive="failDirective"
       @hold-pact="holdPact"
       @hold-directive="holdDirective"
@@ -850,6 +867,12 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
         </template>
       </AppBanner>
 
+      <SpecialistEnlist
+        :state="state"
+        :self="self"
+        @enlist="setSpecialist"
+      />
+
       <Transition
         v-if="!kicked"
         name="phase"
@@ -891,6 +914,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
             :is-host="session.selfIsHost.value"
             @report="report"
             @fail="failPact"
+            @break-orders="breakOrders"
             @fail-directive="failDirective"
             @reporting="reporting = $event"
           />

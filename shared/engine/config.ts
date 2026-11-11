@@ -130,6 +130,22 @@ export const OPTIONS_LOST_PER_FAILED_PACT = 1
 // every diver this many of their reward options.
 export const OPTIONS_LOST_PER_FAILED_DIRECTIVE = 1
 
+// Specialists (Penitent Crusade parity): the issued kit is a strong start, paid
+// for with one reward option per draft until the commission is earned.
+export const SPECIALIST_OPTION_TAX = 1
+// Reporting out of the issued kit breaks standing orders: an option, like a
+// failed pact.
+export const OPTIONS_LOST_PER_BROKEN_ORDERS = 1
+// Merits a commission needs for each rank past Recruit: Specialist, Sergeant,
+// Commissioned. A clean operation (orders never broken) and a commendation
+// (Squad Honors won on the specialist's calling) earn them.
+export const SPECIALIST_RANK_MERITS = [2, 4, 6] as const
+export const MERITS_PER_CLEAN_OPERATION = 2
+export const MERITS_PER_COMMENDATION = 1
+// Sergeant lifts the doctrine; Commissioned lifts the option tax.
+export const SPECIALIST_SERGEANT_RANK = 2
+export const SPECIALIST_COMMISSIONED_RANK = 3
+
 // Team directives bind the whole squad (and share the failure), so a point of
 // their risk is worth more Valor than a point of personal pact risk — and more
 // the more divers must hold the rule together. A solo diver's directive is

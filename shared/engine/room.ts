@@ -15,9 +15,11 @@ import {
   missionsPerOperation,
 } from './config'
 import { VARIANTS, catchUpOpsBehind, earnedKit, mergeKit, startingItemIds } from './progression'
+import { specialistById } from '../data/specialists'
+import { handedKitOf, issueCommission, newCommission, specialistUnavailableReason } from './specialists'
 import { rollSupportKit } from './support'
 import { normalizeTierList } from './tierList'
-import type { ArmorPackDeal, BargainDeal, BargainSlotKind, DivePhase, DiveState, DiverState, FrontPlan, LegacyCache, MajorOrderSelection, PenanceDebt, WheelResult } from './types'
+import type { ArmorPackDeal, BargainDeal, BargainSlotKind, Commission, DivePhase, DiveState, DiverState, FrontPlan, LegacyCache, MajorOrderSelection, PenanceDebt, WheelResult } from './types'
 
 // A freshly created room: no settings, no divers. The first joiner becomes
 // host; START_DIVE applies the variant kit to everyone present.
@@ -110,8 +112,17 @@ export function joinDiver(
   const warbondCodes = declaredWarbonds
     ? [...new Set(declaredWarbonds.filter(code => ALL_WARBOND_CODES.includes(code)))]
     : [...ALL_WARBOND_CODES]
-  const supportKit = state.settings ? rollSupportKit(state.settings, playerId, warbondCodes, state.tierList) : []
-  const startingKit = state.settings ? mergeKit(startingItemIds(state.settings.variant), supportKit) : []
+  // A returning specialist resumes their commission, rank and issued kit (in
+  // place of a pack) — unless someone took the commission while they were gone.
+  const parked = restoredCache?.commission
+  const resumed = parked && state.settings
+    && specialistUnavailableReason(state, { id: playerId, warbondCodes }, parked.specialistId) === null
+    ? issueCommission(newCommission(parked.specialistId, parked.merits))
+    : null
+  const supportKit = state.settings && !resumed ? rollSupportKit(state.settings, playerId, warbondCodes, state.tierList) : []
+  const startingKit = state.settings
+    ? mergeKit(startingItemIds(state.settings.variant), resumed?.issuedKit ?? supportKit)
+    : []
   // A cache holds only earned gear: the returning diver is reissued the
   // starting kit and gets their winnings back on top, with no promotion owed.
   const inventory = restoredCache ? mergeKit(startingKit, restoredCache.itemIds) : startingKit
@@ -133,6 +144,10 @@ export function joinDiver(
     // (self-service SET_WARBONDS); the app defaults to all.
     warbondCodes,
     ...(state.settings ? { supportKit } : {}),
+    ...(resumed ? { commission: resumed } : {}),
+    // A fresh joiner into a running crusade may still take a commission
+    // before their first mission ends.
+    ...(state.settings && !restoredCache ? { enlistOpen: true } : {}),
     catchUpGranted,
     catchUpOwed: catchUpGranted,
     rewardTokens: 0,
@@ -227,7 +242,29 @@ function sanitizeDiver(raw: unknown): DiverState | null {
       : null,
     rewardBanned: diver.rewardBanned === true,
     draftExcludedIds: Array.isArray(diver.draftExcludedIds) ? stringArray(diver.draftExcludedIds, 2000) : null,
+    ...(diver.commission ? { commission: sanitizeCommission(diver.commission) } : {}),
+    ...(diver.enlistOpen === true ? { enlistOpen: true } : {}),
     away: false,
+  }
+}
+
+function sanitizeCommission(raw: unknown): Commission | null {
+  if (!raw || typeof raw !== 'object') {
+    return null
+  }
+  const commission = raw as Partial<Commission>
+  if (typeof commission.specialistId !== 'string' || !specialistById(commission.specialistId)) {
+    return null
+  }
+  return {
+    specialistId: commission.specialistId,
+    issuedKit: stringArray(commission.issuedKit, 10).filter(id => ITEMS_BY_ID.has(id)),
+    merits: clampInt(commission.merits, 0, 1000, 0),
+    ordersBroken: commission.ordersBroken === true,
+    cleanOperation: commission.cleanOperation !== false,
+    ...(typeof commission.predecessor === 'string'
+      ? { predecessor: commission.predecessor.slice(0, MAX_NAME_LENGTH) }
+      : {}),
   }
 }
 
@@ -479,9 +516,12 @@ export function forkCrusade(
   // nothing worth claiming.
   const legacyCaches: Record<string, LegacyCache> = {}
   for (const diver of divers) {
-    const earned = earnedKit(stringArray(state.personalInventories?.[diver.id], 1000), variant, diver.supportKit)
-    if (diver.id !== owner.id && earned.length > 0) {
-      legacyCaches[diver.id] = { name: diver.name, itemIds: earned }
+    const earned = earnedKit(stringArray(state.personalInventories?.[diver.id], 1000), variant, handedKitOf(diver))
+    const commission = diver.commission
+      ? { specialistId: diver.commission.specialistId, merits: diver.commission.merits }
+      : undefined
+    if (diver.id !== owner.id && (earned.length > 0 || commission)) {
+      legacyCaches[diver.id] = { name: diver.name, itemIds: earned, ...(commission ? { commission } : {}) }
     }
   }
 
