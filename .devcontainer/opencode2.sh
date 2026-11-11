@@ -3,9 +3,9 @@
 #
 # v2 is the native binary from the official curl installer (~/.opencode/bin/opencode, inside
 # the home volume so it persists and self-updates in place). OpenCode keeps config/data/cache/
-# state in XDG dirs shared by every version, so v2 would otherwise read the v1 CLI's config
-# and session database. Redirect all four roots into the dedicated volume (see
-# devcontainer.json) — the CLAUDE_CONFIG_DIR analogue.
+# state in XDG dirs under $HOME; redirect all four roots into the dedicated volume (see
+# devcontainer.json) so that state survives rebuilds on its own — the CLAUDE_CONFIG_DIR
+# analogue.
 set -eu
 
 OPENCODE_V2_HOME="${OPENCODE_V2_HOME:-$HOME/.opencode2}"

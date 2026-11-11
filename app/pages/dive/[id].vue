@@ -728,12 +728,13 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       </div>
     </section>
 
-    <DiveAchievedOverlay
-      v-else-if="state && state.phase === 'complete' && state.achieved"
+    <DiveCompleteOverlay
+      v-else-if="state && state.phase === 'complete'"
       :state="state"
       :crusade-label="crusadeLabel"
       :mode="session.mode"
       :slot-name="session.slotName.value"
+      @abandon-slot="abandonSlot"
     />
 
     <DivePhaseLobby
@@ -798,7 +799,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @save-dive="saveDive"
       @unsave-dive="unsaveDive"
       @new-session="newSessionOpen = true"
-      @abandon-slot="abandonSlot"
       @dismiss-error="session.dismissError()"
     />
 
@@ -934,13 +934,6 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
             :self-id="selfId"
             :self="self"
             @forfeit="forfeit"
-          />
-
-          <DivePhaseComplete
-            v-if="phase === 'complete'"
-            :state="state"
-            :mode="session.mode"
-            @abandon-slot="abandonSlot"
           />
         </div>
       </Transition>

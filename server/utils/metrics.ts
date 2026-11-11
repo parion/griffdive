@@ -48,6 +48,10 @@ export interface RoomMetrics {
   recordPeersReaped(count: number): void
   recordSessionEnded(kind: 'lobby' | 'crusade', seconds: number): void
 
+  // Crusades that aged out before reaching `complete` (the transition seam
+  // observes achieved/abandoned runs).
+  recordCrusadeExpired(missionIndex: number): void
+
   // Feedback inbox (aggregate only: category and refusal reason, never text).
   recordFeedback(category: FeedbackCategory): void
   recordFeedbackRejected(reason: FeedbackRejection): void
@@ -76,6 +80,7 @@ const SQUAD_SIZE_BUCKETS = [1, 2, 3, 4]
 const SAMPLE_BUCKETS = [0, 1, 2, 3, 5, 8, 12, 18, 25, 35, 50, 75, 100]
 const TIME_PCT_BUCKETS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 const STAR_BUCKETS = [1, 2, 3, 4, 5]
+const CRUSADE_DEPTH_BUCKETS = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 25, 30, 40, 50, 75, 100]
 const SESSION_SECONDS_BUCKETS = [
   60,
   5 * 60,
@@ -509,6 +514,16 @@ export function createRoomMetrics(): RoomMetrics {
     registers: [registry],
   })
 
+  // Missions advanced when the run ended, so an abandoned run is not just a
+  // smaller complete bucket: the winning mission is already in `missionIndex`.
+  const crusadeDepth = new Histogram({
+    name: 'griffdive_crusade_depth',
+    help: 'Missions advanced when a crusade ended, by result',
+    labelNames: ['result'],
+    buckets: CRUSADE_DEPTH_BUCKETS,
+    registers: [registry],
+  })
+
   // -- scrape-time state -----------------------------------------------------
 
   let censusEntries: readonly RoomCensusEntry[] = []
@@ -537,7 +552,7 @@ export function createRoomMetrics(): RoomMetrics {
   // instead of vanishing from the graph.
   new Gauge({
     name: 'griffdive_rooms_by_phase',
-    help: 'Stored rooms in each phase, from the last census pass',
+    help: 'Stored rooms in each phase, from the last census pass (complete includes achieved and abandoned runs; split with griffdive_rooms_complete)',
     labelNames: ['phase'],
     registers: [registry],
     collect() {
@@ -549,6 +564,31 @@ export function createRoomMetrics(): RoomMetrics {
       for (const phase of DIVE_PHASES) {
         this.set({ phase }, counts.get(phase) ?? 0)
       }
+    },
+  })
+
+  new Gauge({
+    name: 'griffdive_rooms_complete',
+    help: 'Stored rooms in the complete phase, split into achieved crusades and abandoned runs',
+    labelNames: ['result'],
+    registers: [registry],
+    collect() {
+      this.reset()
+      let achieved = 0
+      let abandoned = 0
+      for (const entry of censusEntries) {
+        if (entry.phase !== 'complete') {
+          continue
+        }
+        if (entry.achieved) {
+          achieved += 1
+        }
+        else {
+          abandoned += 1
+        }
+      }
+      this.set({ result: 'achieved' }, achieved)
+      this.set({ result: 'abandoned' }, abandoned)
     },
   })
 
@@ -658,6 +698,14 @@ export function createRoomMetrics(): RoomMetrics {
     // spin — from FORFEIT_ITEM, but also from a leave/kick/step-away.
     if (before.phase === 'forfeit' && after.phase === 'spin') {
       operationRestarts.inc({ difficulty: String(after.difficulty) })
+    }
+    // The one transition into `complete`: END_DIVE writes an abandoned run,
+    // the difficulty-10 ADVANCE writes an achieved one.
+    if (after.phase === 'complete' && before.phase !== 'complete') {
+      crusadeDepth.observe(
+        { result: after.achieved ? 'achieved' : 'abandoned' },
+        after.missionIndex,
+      )
     }
     if (after.achieved && !before.achieved) {
       crusadesAchieved.inc()
@@ -873,6 +921,9 @@ export function createRoomMetrics(): RoomMetrics {
       if (Number.isFinite(seconds) && seconds >= 0) {
         sessionDuration.observe({ kind }, seconds)
       }
+    },
+    recordCrusadeExpired(missionIndex) {
+      crusadeDepth.observe({ result: 'expired' }, Math.max(0, missionIndex))
     },
     recordFeedback(category) {
       feedback.inc({ category })

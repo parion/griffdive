@@ -72,6 +72,18 @@ version restarted at 1 and the migration chain starts empty; from here the schem
 saves migrate (see Save model). Staging is password-protected (see Deployment). See
 [Roadmap](#roadmap).
 
+**Beta metrics (2026-11-08).** First post-launch read: **28 divers peak**, 52 rooms and 395 seated
+arrivals in 24h, 25 crusades launched, 123 missions at a 92% reported success rate, 61 saved dives,
+and **0 crusades achieved** — expected for a run the code calls "weeks of evenings", but the census
+cannot yet tell a won crusade from a quit (`END_DIVE` also writes `complete`). Risk is landing
+(zero-Valor reports 0%, median Valor 7, two pacts per diver); the summit and retention read is the
+next gap. **Batch E** in [PLAN.md](../../PLAN.md) is written from this read, and most of it landed
+the same day: the census splits won from quit (N47), both endings share a recap (N48) with Bridge
+re-entry (N49), the d8–10 shelf dip was investigated but its price retune was dropped when the
+Armor Pack redesign landed (N50, re-run pending), launch rate limits trust Fly's header (N41), and
+the N52 phone pass came in under every stated budget. N51's heat ladder is spec'd and gated on the
+summit population.
+
 ## Beta-readiness review (2026-10-24)
 
 Pre-beta pass: dependencies upgraded, component tree reorganised to Nuxt's default naming, dead
@@ -112,6 +124,9 @@ Ban UI, the lobby/matchmaking. Not re-verified visually: pixel-level fidelity of
   affordable item almost never reaches S (~1 per 180 missions), so the SAVER policy in
   `scripts/simulate-economy.mjs` is the number to watch. Shelf buys landed near the old curve
   (steady ~11 per 20 missions) after the passive slot moved to the Armor Pack.
+- **N50 re-run pending:** the 2026-11-08 analysis traced the d8–10 shelf dip to the A-price step, but
+  it was simulated against the pre-Armor-Pack shop. The 220 retune was **not** landed; re-run
+  `simulate-economy.mjs` against the pack economy before touching `CREDIT_PRICE_TIER`.
 - Open balance/design items still on the board in `PLAN.md`: N25 (pacts are strictly "take
   everything"), N39 (reroll-token sources), N13 (`fragileLiberty` early lock-out, blocked on DEC-6).
 
@@ -170,8 +185,17 @@ Each phase lands shippable. Update the relevant `docs/agents/` files (commands, 
   separate Fly app (`deploy/fider/`). See [Deployment](./deployment.md) → Feedback inbox.
   Remaining: the final polish pass. *Done
   when: production URL serves a full multiplayer dive.*
+- **Phase 4.5 — Batch E, the climb (landed 2026-11-08).** The 2026-11-08 metrics read set the order.
+  **E0** launch gates landed (N41 trusted client IP + the Nitro error-hook metric fix; N52 measured
+  under budget; N42 written up, no policy code). **E1** the census now tells a win from a quit and
+  records run depth (N47). **E2** both endings share a ceremony + PNG recap and the Bridge shows
+  last-played/squad/Continue (N48, N49). **E3** investigated the d8–10 shop dip (N50) but **did not
+  land the price change** — the analysis predates the Armor Pack redesign; re-run it against the new
+  shop. **E4** heat ladders/bounties is spec'd (N51) and gated on ≥30 achieved crusades in a 14-day
+  window plus ≥10% of launches reaching difficulty 8+; if that misses, fix the mid-climb and do not
+  build N51 or endless yet. See [PLAN.md](../../PLAN.md) → Batch E.
 - **Phase 5 — Post-v1 backlog.** Specialists (PC parity), heat
-  ladders/bounties (clear risk N to claim N+1), endless mode, accounts + cloud saves, i18n, and a
+  ladders/bounties (N51; spec'd and gated), endless mode, accounts + cloud saves, i18n, and a
   hosted tier-list marketplace (publish, browse and rank community lists) as a feature of the
   optional account. **Custom tier lists shipped without it:** the host's list syncs from the lobby
   and is frozen at launch; the Tier Maker (`/tiers`) keeps a browser-local library of complete,

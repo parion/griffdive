@@ -4,6 +4,7 @@ import { createDiveState, reduce } from '~~/shared/engine/reducer'
 import { joinDiver } from '~~/shared/engine/room'
 import { createSaveDoc } from '~~/shared/engine/saves'
 import { forfeitOptionsFor, pactOfferFor } from '~~/shared/engine/selectors'
+import type { DiveState } from '~~/shared/engine/types'
 import { AWAY_GRACE_MS, CRUSADE_TTL_MS, HOST_RECONNECT_GRACE_MS, InvalidSaveError, ROOM_TTL_MS, RoomLimitError, censusRooms, createPeerDirectory, createRoom, createRoomFromSave, drainPeers, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, reapSilentPeers, sweepRooms } from './room-sync'
 import type { PeerLike, RoomKV, StoredRoom } from './room-sync'
 import { PEER_SILENCE_MS } from './peer-presence'
@@ -1431,6 +1432,71 @@ describe('room-sync observability', () => {
     expect(seriesValue(after, 'griffdive_phase_dwell_seconds_count{phase="lobby"}') - seriesValue(before, 'griffdive_phase_dwell_seconds_count{phase="lobby"}')).toBe(1)
   })
 
+  it('records crusade depth and the end result through processAction', async () => {
+    const base = createDiveState({ variant: 'medium' }, 'p1', 'Host')
+
+    const abandonedKv = fakeKV()
+    const abandonedCode = await createRoom(abandonedKv, undefined, {
+      ...base,
+      phase: 'spin',
+      missionIndex: 7,
+    })
+    const abandonedPeers = createPeerDirectory()
+    const abandonedHost = fakePeer('ws-a')
+    abandonedHost.context.roomCode = abandonedCode
+    await processHello(abandonedKv, abandonedPeers, abandonedHost, { name: 'Host', playerId: 'p1' })
+
+    const achievedKv = fakeKV()
+    const finalMission: DiveState = {
+      ...base,
+      phase: 'rewards',
+      difficulty: 10,
+      missionIndex: 21,
+      missionInOperation: 3,
+      divers: base.divers.map(diver => ({ ...diver, pickedOptionId: 'test-item' })),
+    }
+    const achievedCode = await createRoom(achievedKv, undefined, finalMission)
+    const achievedPeers = createPeerDirectory()
+    const achievedHost = fakePeer('ws-b')
+    achievedHost.context.roomCode = achievedCode
+    await processHello(achievedKv, achievedPeers, achievedHost, { name: 'Host', playerId: 'p1' })
+
+    const before = await roomMetrics.registry.metrics()
+    await processAction(abandonedKv, abandonedPeers, abandonedHost, { action: { type: 'END_DIVE' } })
+    await processAction(achievedKv, achievedPeers, achievedHost, { action: { type: 'ADVANCE' } })
+    const after = await roomMetrics.registry.metrics()
+
+    expect(seriesValue(after, 'griffdive_crusade_depth_count{result="abandoned"}') - seriesValue(before, 'griffdive_crusade_depth_count{result="abandoned"}')).toBe(1)
+    expect(seriesValue(after, 'griffdive_crusade_depth_sum{result="abandoned"}') - seriesValue(before, 'griffdive_crusade_depth_sum{result="abandoned"}')).toBe(7)
+    expect(seriesValue(after, 'griffdive_crusade_depth_count{result="achieved"}') - seriesValue(before, 'griffdive_crusade_depth_count{result="achieved"}')).toBe(1)
+    expect(seriesValue(after, 'griffdive_crusade_depth_sum{result="achieved"}') - seriesValue(before, 'griffdive_crusade_depth_sum{result="achieved"}')).toBe(22)
+  })
+
+  it('records an expired launched crusade once, never a lobby or completed room', async () => {
+    const kv = fakeKV()
+    const base = createDiveState({ variant: 'medium' }, 'p1', 'Host')
+    const unfinishedCode = await createRoom(kv, undefined, { ...base, phase: 'diving', missionIndex: 9 })
+    const completeCode = await createRoom(kv, undefined, { ...base, phase: 'complete', missionIndex: 14 })
+    const lobbyCode = await createRoom(kv, undefined, { ...base, phase: 'lobby', missionIndex: 0 })
+    const expiries = [
+      [unfinishedCode, CRUSADE_TTL_MS],
+      [completeCode, CRUSADE_TTL_MS],
+      [lobbyCode, ROOM_TTL_MS],
+    ] as const
+    for (const [code, ttl] of expiries) {
+      const raw = await kv.getItem(code) as StoredRoom
+      raw.updatedAt = Date.now() - ttl - 1
+      await kv.setItem(code, raw)
+    }
+
+    const before = await roomMetrics.registry.metrics()
+    expect(await sweepRooms(kv)).toBe(3)
+    const after = await roomMetrics.registry.metrics()
+
+    expect(seriesValue(after, 'griffdive_crusade_depth_count{result="expired"}') - seriesValue(before, 'griffdive_crusade_depth_count{result="expired"}')).toBe(1)
+    expect(seriesValue(after, 'griffdive_crusade_depth_sum{result="expired"}') - seriesValue(before, 'griffdive_crusade_depth_sum{result="expired"}')).toBe(9)
+  })
+
   it('records the active session length when a room ages out', async () => {
     const kv = fakeKV()
     const code = await createRoom(kv)
@@ -1457,6 +1523,13 @@ describe('room-sync observability', () => {
 
     const entries = await censusRooms(kv)
     expect(entries).toHaveLength(1)
-    expect(entries[0]).toMatchObject({ code, phase: 'lobby', difficulty: 3, saved: true })
+    expect(entries[0]).toMatchObject({
+      code,
+      phase: 'lobby',
+      difficulty: 3,
+      saved: true,
+      achieved: false,
+      missionIndex: 0,
+    })
   })
 })

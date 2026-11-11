@@ -4,6 +4,7 @@ import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
 import { bargainsClosedReason, climbBlockers, currentFront, draftSummaryFor } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
+import { operationMilestone } from '~/utils/operationMilestone'
 
 // The squad-climbs page: where the squad regroups once every draft is banked,
 // at the end of every mission and operation. HD2 shows its stats screen only
@@ -40,9 +41,9 @@ const nextName = computed(() => difficultyName(nextDifficulty.value))
 const opNumber = computed(() =>
   catchUpOpsBehind(props.state.difficulty, props.state.settings?.variant ?? 'medium') + 1)
 const nextOp = computed(() => opNumber.value + 1)
+const milestone = computed(() => operationMilestone(props.state))
 const hostName = computed(() =>
   upperName(props.state.divers.find(diver => diver.id === props.state.hostId)?.name) ?? 'the host')
-
 const rungs = computed(() => Array.from({ length: MAX_DIFFICULTY - 2 }, (_, i) => {
   const n = i + 3
   return {
@@ -60,11 +61,8 @@ const squadDrafts = computed(() =>
     .map(diver => ({ id: diver.id, name: upperName(diver.name), summary: draftSummaryFor(props.state, diver) })))
 
 const blockers = computed(() => climbBlockers(props.state))
-const settled = computed(() => !blockers.value.honors && blockers.value.rules === 0)
+const settled = computed(() => !blockers.value.honors)
 const blockerLabel = computed(() => {
-  if (blockers.value.rules > 0) {
-    return `Settle ${blockers.value.rules} rule${blockers.value.rules === 1 ? '' : 's'} first`
-  }
   if (blockers.value.honors) {
     return props.state.bonusSeed === null ? 'Rolling Squad Honors' : 'Award honors first'
   }
@@ -159,6 +157,32 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
     </header>
 
     <ol
+      v-if="milestone"
+      class="op-milestone"
+      :aria-label="milestone.accessibleLabel"
+    >
+      <li class="op-ms-cell">
+        <span class="lbl">Cleared</span>
+        <span class="op-ms-v">
+          <b class="disp">{{ milestone.clearedDifficulty }}</b>
+          {{ milestone.clearedName }}
+        </span>
+      </li>
+      <li class="op-ms-cell op-ms-front">
+        <span class="lbl">New front</span>
+        <span class="op-ms-v">{{ milestone.front }}</span>
+      </li>
+      <li
+        v-for="row in milestone.carries"
+        :key="row.label"
+        class="op-ms-cell"
+      >
+        <span class="lbl">{{ row.label }}</span>
+        <span class="op-ms-v">{{ row.value }}</span>
+      </li>
+    </ol>
+
+    <ol
       v-if="climbs"
       class="ladder"
       :aria-label="`Crusade ladder, next drop difficulty ${nextDifficulty} of ${MAX_DIFFICULTY}`"
@@ -189,12 +213,20 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
     />
 
     <div class="board">
-      <MissionBankedHaul
-        class="haul-card"
-        :state="state"
-        :self="self"
-        :phone="phone"
-      />
+      <div class="haul-stack">
+        <MissionBankedHaul
+          class="haul-card"
+          :state="state"
+          :self="self"
+          :phone="phone"
+        />
+        <SquadDraftBoard
+          v-if="squadDrafts.length"
+          class="squad-under-haul"
+          :drafts="squadDrafts"
+          compact
+        />
+      </div>
 
       <article class="check">
         <ClimbStats
@@ -231,13 +263,6 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
         :self="self"
       />
     </section>
-
-    <SquadDraftBoard
-      v-if="squadDrafts.length"
-      class="squad"
-      :drafts="squadDrafts"
-      compact
-    />
 
     <PhoneActionBar v-if="phone">
       <template #primary>
@@ -430,6 +455,39 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
 .next-drop { margin: 0; color: var(--muted); font-size: 16px; }
 .next-drop b { color: var(--text); }
 
+/* The boundary beat: what was cleared, how the new front arrives, and what the
+   squad keeps. Presentation only — the host's Start operation still runs the
+   same ADVANCE. */
+.op-milestone {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: 1px;
+  margin: 2px 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line-2);
+  background: var(--line-1);
+}
+.op-ms-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 14px;
+  background: var(--rail);
+}
+.op-ms-cell .lbl { color: var(--gold); }
+.op-ms-v {
+  color: var(--khaki);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.op-ms-v b {
+  margin-right: 5px;
+  color: var(--gold);
+  font-size: 19px;
+}
+.op-ms-front .op-ms-v { color: var(--text); }
+
 .ladder {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
@@ -481,6 +539,9 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
   /* A wider art well keeps the climb, the haul and the CTA on one desktop screen. */
   --haul-aspect: 16 / 10;
 }
+.haul-stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.squad-under-haul :deep(.board-grid) { display: flex; flex-wrap: wrap; gap: 8px; }
+.squad-under-haul :deep(.squad-pick) { flex: 1 1 180px; }
 .check {
   display: flex;
   flex-direction: column;

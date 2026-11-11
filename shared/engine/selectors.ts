@@ -1187,24 +1187,19 @@ export function statsRules(state: DiveState): StatsRule[] {
   return rules
 }
 
-// Everything between the banked drafts and the next drop: rules still to
-// attest and Squad Honors still to roll and name. ADVANCE refuses until both
-// are clear, so a penalty can never be skipped by moving on.
+// Everything between the banked drafts and the next drop. A stats-checked rule
+// is **held by default** — the check is an attestation of a break, not a chore
+// to confirm — so only a due/unnamed Squad Honors contest still gates the drop.
 export interface ClimbBlockers {
-  rules: number
   honors: boolean
 }
 
 export function climbBlockers(state: DiveState): ClimbBlockers {
-  return {
-    rules: statsRules(state).filter(rule => rule.status === 'pending').length,
-    honors: honorsDue(state),
-  }
+  return { honors: honorsDue(state) }
 }
 
 export function climbSettled(state: DiveState): boolean {
-  const blockers = climbBlockers(state)
-  return blockers.rules === 0 && !blockers.honors
+  return !climbBlockers(state).honors
 }
 
 // What a diver stands to lose next mission for what they broke at this check:

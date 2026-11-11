@@ -40,18 +40,18 @@ async function fileSuccessAndBank(page: Page): Promise<void> {
   await expect(page.locator('.climb')).toBeVisible()
 }
 
-test('climbs page: the draft is never held up, and Held opens the next drop', async ({ browser }) => {
+test('climbs page: stats rules are held by default, so the next drop is open', async ({ browser }) => {
   const page = await diveWithStatsPact(browser)
   await fileSuccessAndBank(page)
 
   const climb = page.locator('.climb')
   await expect(climb.getByRole('heading', { name: 'Mission secured' })).toBeVisible()
   await expect(climb.getByLabel('Mission report')).toBeVisible()
-  await expect(climb.getByLabel('Stats check')).toContainText('pact')
-  // The call to drop is gated on the stats rule.
-  await expect(climb.locator('.cta')).toBeDisabled()
+  await expect(climb.getByLabel('Stats check')).toContainText('Held by default')
+  // HELD is preselected; the call to drop is not gated on a manual attestation.
+  await expect(climb.locator('.rule-act .held')).toHaveAttribute('aria-pressed', 'true')
+  await expect(climb.locator('.cta')).toBeEnabled()
 
-  await climb.locator('.rule-act .held').click()
   await settleClimb(page)
   await expect(climb.locator('.cta')).toBeEnabled()
   await page.context().close()

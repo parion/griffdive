@@ -5,8 +5,9 @@ import { difficultyImageUrl } from '~~/shared/data/images'
 import type { CrusadeVariant, DiveState } from '~~/shared/engine/types'
 import type { DiveSaveInfo } from '~~/shared/types/messages'
 import type { SaveDoc, SessionSave } from '~~/shared/types/save'
+import { lastPlayedLabel } from '~/utils/lastPlayed'
 
-export interface OnlineDive { code: string, state: DiveState | null, saved: DiveSaveInfo | null, online: string[] }
+export interface OnlineDive { code: string, state: DiveState | null, saved: DiveSaveInfo | null, online: string[], updatedAt: number | null }
 
 // The service record: every crusade this browser can pick back up — live rooms,
 // session mirrors whose room is gone, and local solo saves. It takes the hero's
@@ -56,6 +57,12 @@ function ladderCells(difficulty: number): ('cleared' | 'current' | 'locked')[] {
     if (n < difficulty) return 'cleared'
     return n === difficulty ? 'current' : 'locked'
   })
+}
+function squadNames(state: DiveState): string {
+  return state.divers.map(diver => upperName(diver.name)).join(' · ')
+}
+function played(value: number | string | null | undefined): string {
+  return lastPlayedLabel(value)
 }
 // "Live" is presence, not persistence: a room record outlives its squad by up
 // to 30 days, so the label follows the connected-seat list from the server.
@@ -152,6 +159,13 @@ function presenceLabel(dive: OnlineDive): string {
             </div>
             <span class="rc-name">{{ crusadeName(dive.state) }}</span>
             <span class="rc-diff"><b class="disp">{{ dive.state.difficulty }}</b>{{ difficultyName(dive.state.difficulty) }}<i>{{ opLine(dive.state) }}</i></span>
+            <span class="rc-reentry">
+              <span
+                v-if="played(dive.updatedAt ?? dive.saved?.savedAt)"
+                class="rc-played"
+              >{{ played(dive.updatedAt ?? dive.saved?.savedAt) }}</span>
+              <span class="rc-crew">{{ squadNames(dive.state) }}</span>
+            </span>
             <span
               class="rc-ladder"
               role="img"
@@ -166,7 +180,8 @@ function presenceLabel(dive: OnlineDive): string {
             <NuxtLink
               class="btn primary cut-sm rc-btn"
               :to="`/dive/${dive.code}`"
-            >RESUME</NuxtLink>
+              :aria-label="`Continue ${crusadeName(dive.state)}`"
+            >CONTINUE</NuxtLink>
             <button
               v-if="mirroredCodes.has(dive.code)"
               class="btn ghost rc-btn"
@@ -216,6 +231,10 @@ function presenceLabel(dive: OnlineDive): string {
           </div>
           <span class="rc-name">{{ save.slotName }}</span>
           <span class="rc-diff"><b class="disp">{{ save.state.difficulty }}</b>{{ difficultyName(save.state.difficulty) }}<i>{{ opLine(save.state) }}</i></span>
+          <span class="rc-reentry">
+            <span class="rc-played">{{ played(save.savedAt) }}</span>
+            <span class="rc-crew">{{ squadNames(save.state) }}</span>
+          </span>
           <span
             class="rc-ladder"
             role="img"
@@ -231,9 +250,10 @@ function presenceLabel(dive: OnlineDive): string {
             class="btn primary cut-sm rc-btn"
             type="button"
             :disabled="hosting"
+            :aria-label="`Continue ${save.slotName}`"
             @click="emit('hostSession', save)"
           >
-            HOST
+            CONTINUE
           </button>
           <span class="rc-icons">
             <button
@@ -298,6 +318,10 @@ function presenceLabel(dive: OnlineDive): string {
           </div>
           <span class="rc-name">{{ crusadeName(doc.state) }}</span>
           <span class="rc-diff"><b class="disp">{{ doc.state.difficulty }}</b>{{ difficultyName(doc.state.difficulty) }}<i>{{ opLine(doc.state) }}</i></span>
+          <span class="rc-reentry">
+            <span class="rc-played">{{ played(doc.savedAt) }}</span>
+            <span class="rc-crew">{{ squadNames(doc.state) }}</span>
+          </span>
           <span
             class="rc-ladder"
             role="img"
@@ -312,7 +336,8 @@ function presenceLabel(dive: OnlineDive): string {
           <NuxtLink
             class="btn primary cut-sm rc-btn"
             :to="`/dive/${id}`"
-          >OPEN</NuxtLink>
+            :aria-label="`Continue ${doc.slotName}`"
+          >CONTINUE</NuxtLink>
           <button
             class="btn ghost rc-btn"
             type="button"
@@ -479,6 +504,24 @@ function presenceLabel(dive: OnlineDive): string {
 }
 .rc-diff b { font-size: 16px; }
 .rc-diff i { font-style: normal; color: var(--khaki); }
+.rc-reentry {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.rc-played { color: var(--gold); font-weight: 600; white-space: nowrap; }
+.rc-crew {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 .rc-ladder { display: flex; gap: 3px; max-width: 220px; margin-top: 2px; }
 .rc-ladder i { flex: 1 1 0; height: 4px; background: var(--line-2); }
 .rc-ladder i.cleared { background: var(--khaki); }

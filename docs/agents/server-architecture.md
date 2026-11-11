@@ -27,10 +27,11 @@ app/
                    leave/end, DiveSidebar — the persistent tool rail (Kit, Armory and Warbonds
                    share one non-modal panel; Brasch's Bargains opens its own counter dialog),
                    DivePhaseLobby — the
-                   standalone Hellpod Bays setup page, DivePhaseWheel/Diving/Rewards/Forfeit/
-                   Complete — one panel per engine phase, each owning its local form state and
-                   emitting intents, DiveAchievedOverlay — the full-bleed achieved takeover,
-                   DivePhone — the phone-shell orchestrator),
+                   standalone Hellpod Bays setup page, DivePhaseWheel/Diving/Rewards/Forfeit —
+                   one panel per engine phase, each owning its local form state and
+                   emitting intents, DiveCompleteOverlay — the full-bleed end-of-run takeover
+                   shared by the achieved and abandoned endings, DivePhone — the phone-shell
+                   orchestrator),
                    phone/ (PhoneShell — the fixed frame, PhoneTopBar/PhoneWheel/PhonePacts/
                    PhoneDiving/PhoneRewardDraft — per-phase layouts, PhoneActionBar — the pinned
                    bottom bar every phase fills through deferred Teleports),
@@ -208,8 +209,10 @@ unused); horizontal scale later means a Redis-backed directory or sticky session
 
 REST fallbacks: `POST /api/rooms` → `{ code, selfId }` (an optional `{ save, name }` body seeds the
 room from a personal session save; `selfId` is the seeded owner seat, `null` for a fresh lobby);
-`GET /api/rooms/:code` → `{ code, state, saved, online }` (404). `online` is the same seated-id list
-a `welcome` carries, so a REST caller cannot mistake a kept room record for a live squad.
+`GET /api/rooms/:code` → `{ code, state, saved, online, updatedAt }` (404). `online` is the same
+seated-id list a `welcome` carries, so a REST caller cannot mistake a kept room record for a live
+squad; `updatedAt` is the room's last event, which the Bridge turns into its "Last played N days
+ago" re-entry label. Neither carries a name, seat id or address beyond the room's own state.
 Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`,
 `SET_NAME`) are coerced to the sender — a client can never act as another diver.
 Before reducing `FORFEIT_ITEM`, the server checks the item against that diver's current
@@ -248,13 +251,45 @@ would keep the process alive).
 `reduce`, so an unknown or malformed action is rejected (`bad-action`) instead of persisting
 `undefined` state; the reducer defaults unknown actions to a no-op and the WS handler catches
 anything else, so one bad message never stops the process-wide server. Joins are rate-limited per
-client address (20/min → `rate-limited`, `ROOM_JOIN_LIMIT` overrides it for the e2e server; keyed on `Fly-Client-IP`, then `X-Forwarded-For`, then the
-socket — behind Fly's proxy the socket address is the proxy's), actions per diver (120/10s, silently dropped), and room creation
-per address (10/min → 429; `ROOM_CREATE_LIMIT` overrides it, which only the e2e server does) with a `MAX_ROOMS` cap (503). `server/plugins/room-sweeper.ts` reaps idle
-rooms every 15 min so the `MAX_ROOMS` backstop rarely matters. The same address also feeds the
-per-room seat fingerprints and optional kick network bars (see `KICK_DIVER`): only the keyed hash
-is stored, and only for a seated or network-blocked removed seat — never logged, exported or
-attached to a metric label.
+trusted client address (20/min → `rate-limited`, `ROOM_JOIN_LIMIT` overrides it for the e2e server),
+actions per diver (120/10s, silently dropped), and room creation per address (10/min → 429;
+`ROOM_CREATE_LIMIT` overrides it, which only the e2e server does) with a `MAX_ROOMS` cap (503). The
+trusted address is Fly's proxy-set `Fly-Client-IP`, falling back to the socket (`peer.remoteAddress`
+for a join) in dev/e2e; a client-supplied `X-Forwarded-For` is deliberately ignored, because keying
+on it lets an attacker choose a fresh limiter bucket per request. `server/utils/client-ip.ts` is the
+one source for the HTTP routes and the join upgrade; the sync core keys on the resulting
+`peer.context.clientIp` and falls back to `peer.remoteAddress`. `server/plugins/room-sweeper.ts`
+reaps idle rooms every 15 min so the `MAX_ROOMS` backstop rarely matters. The same address also
+feeds the per-room seat fingerprints and optional kick network bars (see `KICK_DIVER`): only the
+keyed hash is stored, and only for a seated or network-blocked removed seat — never logged, exported
+or attached to a metric label.
+
+**Abuse bounds (N42 — recommendation, no policy change yet).** Storage is bounded (`MAX_ROOMS`
+2000, `MAX_SAVED_DIVES` 500), but availability is not: rotating addresses at 10 rooms/min can fill
+the room cap and 503 legitimate squads for up to `ROOM_TTL_MS` (12h), and a seated attacker can pin
+saves to churn the 500-slot saved set. The recommended order is:
+
+- **Evict before refusing.** In `createRoom` (the `getKeys().length >= maxRooms` branch), reap
+  expired rooms, then evict the oldest unsaved never-launched lobby (`state.settings === null`)
+  whose room has no live peer in the directory; only then throw `RoomLimitError` (503). This keeps
+  legitimate creation working under a flood without punishing shared NAT. Exempt rooms with live
+  peers — an idle-only TTL would otherwise kill a squad sitting in the lobby — so the sweeper needs
+  the peer directory (it already imports `peers` in `server/plugins/room-sweeper.ts`). This is
+  admission policy and needs owner approval before code. A short lobby TTL (e.g. 1h) is the
+  alternative, but only with the same live-peer exemption.
+- **Per-address caps.** Ten concurrent unsaved rooms and five saved dives per trusted address,
+  enforced in process memory at `createRoom`/`createRoomFromSave` and `processSave` with a
+  `Map<address, Set<code>>`, pruned by the `sweepRooms`/`loadRoom` removal paths. In-memory matches
+  the existing room lock and peer directory; a restart loses the index, but the global caps remain
+  the backstop, and multi-machine needs the same Redis swap as storage. Keep the room cap generous:
+  carrier-grade NAT can put many legitimate squads behind one address.
+- **Save backstop.** A long `SAVED_TTL_MS` (e.g. 180 days) measured from `updatedAt` — the last
+  event, so a returning squad refreshes it — so abandoned pins eventually free their slots. Saves
+  remain exempt from the ordinary idle TTL.
+- **Visibility.** Alert on any `griffdive_room_create_rejected_total{reason="cap"}`,
+  `griffdive_saved_dives` near 500, `griffdive_rooms_by_phase{phase="lobby"}` climbing against
+  `griffdive_active_rooms`, and a `4xx`/`5xx` spike in `griffdive_http_requests_total` (the error
+  hook now counts responses the error handler writes).
 
 Canonical engine actions (the reducer union; keep names stable):
 

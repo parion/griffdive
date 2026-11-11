@@ -2,7 +2,7 @@
 
 # Griffdive dev container. Stays on the official Paseo image (node:22-bookworm-slim, non-root
 # `paseo` uid 1000) so the Paseo daemon runs as designed; post-start.sh owns service startup.
-# Agent CLIs: opencode (v1, npm), opencode2 (v2, native), claude (native).
+# Agent CLIs: opencode2 (v2, native), claude (native).
 FROM ghcr.io/getpaseo/paseo:latest
 
 USER root
@@ -19,30 +19,28 @@ RUN printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d \
     && echo 'paseo ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/paseo \
     && chmod 440 /etc/sudoers.d/paseo
 
-# pnpm for the project (packageManager pins the version); OpenCode v1 as the npm agent CLI.
-# The pin is deliberate: an unpinned `npm install -g` only re-resolves when this layer
-# rebuilds, so it silently freezes rather than upgrading. Neither Claude Code nor OpenCode v2
-# installs here — npm would make them root-owned, which is what broke `claude upgrade`; both
-# install natively into the home volume at runtime instead (see post-start.sh).
+# pnpm for the project (packageManager pins the version). The pin is deliberate: an unpinned
+# resolve only happens when this layer rebuilds, so it silently freezes rather than upgrading.
+# No agent CLI installs here — npm would make them root-owned, which is what broke
+# `claude upgrade`; Claude Code and OpenCode v2 install natively into the home volume at
+# runtime instead (see post-start.sh).
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable \
-    && corepack prepare pnpm@11.18.0 --activate \
-    && npm install -g opencode-ai@1.18.33 \
-    && npm cache clean --force
+    && corepack prepare pnpm@11.18.0 --activate
 
-# v1 (opencode-ai) keeps the `opencode` bin. v2 is the native curl-installer binary, which
-# lives in the home volume ($HOME/.opencode/bin/opencode) and self-updates in place; this
-# launcher fronts it under the `opencode2` name, because v1 and v2 both declare an `opencode`
-# bin and share their XDG config/data/cache/state dirs (the launcher redirects v2's roots into
-# the persisted ~/.opencode2 volume). Installed to lib/ then linked — a COPY onto a stale npm
-# bin/opencode2 symlink would write through it. The launcher resolves the native binary at
-# runtime, so this layer exists before post-start.sh installs the binary.
+# v2 is the native curl-installer binary, which lives in the home volume
+# ($HOME/.opencode/bin/opencode) and self-updates in place. This launcher fronts it under the
+# `opencode2` name (matching the Paseo provider id) and redirects v2's XDG
+# config/data/cache/state roots into the persisted ~/.opencode2 volume. Installed to lib/ then
+# linked — a COPY onto a stale bin/opencode2 symlink would write through it. The launcher
+# resolves the native binary at runtime, so this layer exists before post-start.sh installs it.
+# The `opencode` name is deliberately left empty: OpenCode v1 is no longer installed, and an
+# image or older layer that still carries its bin would otherwise shadow v2.
 COPY opencode2.sh /usr/local/lib/opencode2-launch.sh
 RUN chmod 0755 /usr/local/lib/opencode2-launch.sh \
     && rm -f /usr/local/bin/opencode2 \
     && ln -sfn ../lib/opencode2-launch.sh /usr/local/bin/opencode2 \
-    && ln -sfn ../lib/node_modules/opencode-ai/bin/opencode.exe /usr/local/bin/opencode \
-    && readlink -f /usr/local/bin/opencode | grep -q opencode-ai
+    && rm -f /usr/local/bin/opencode
 
 # Claude Code installs natively into ~/.local/bin (inside the home volume), so it
 # self-updates in place and survives rebuilds; post-start.sh installs the binary, since the

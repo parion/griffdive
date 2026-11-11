@@ -127,6 +127,28 @@ function carryDebts(state: DiveState, next: Partial<DiveState>): Partial<DiveSta
   }
 }
 
+// Stats rules are held by default, so an owed Penance whose pacts were not
+// marked broke is served when the squad moves on — no HOLD_PACT click needed.
+function settleHeldPenance(state: DiveState): DiveState {
+  let served = false
+  const divers = state.divers.map((diver) => {
+    const debt = diver.penance
+    if (!debt || debt.status !== 'owed') {
+      return diver
+    }
+    const held = debt.pactIds.every(id =>
+      diver.pactIds.includes(id)
+      && !diver.failedPactIds.includes(id)
+      && !diver.brokenPactIds.includes(id))
+    if (!held) {
+      return diver
+    }
+    served = true
+    return { ...diver, penance: { ...debt, status: 'served' as const } }
+  })
+  return served ? { ...state, divers, debtSettled: true } : state
+}
+
 function resetForNextMission(state: DiveState): Partial<DiveState> {
   return {
     offerTeamRisk: null,
@@ -859,22 +881,26 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
     }
 
     case 'ADVANCE': {
-      // The squad moves on once every draft is banked and the stats check and
-      // Squad Honors on the climbs page are settled.
+      // The squad moves on once every draft is banked and the Squad Honors
+      // contest on the climbs page is settled. Stats-checked rules are held by
+      // default; only a break has to be attested.
       if (state.phase !== 'rewards' || !allDiversPicked(state) || !climbSettled(state)) {
         return state
       }
-      const missionIndex = state.missionIndex + 1
-      const missionInOperation = state.missionInOperation + 1
-      if (missionInOperation > missionsPerOperation(state.difficulty)) {
-        const nextDifficulty = state.difficulty + 1
+      // An unmarked stats rule is held, so serve any owed Penance before the
+      // next mission replaces the debt with whatever this check leaves owing.
+      const settled = settleHeldPenance(state)
+      const missionIndex = settled.missionIndex + 1
+      const missionInOperation = settled.missionInOperation + 1
+      if (missionInOperation > missionsPerOperation(settled.difficulty)) {
+        const nextDifficulty = settled.difficulty + 1
         if (nextDifficulty > MAX_DIFFICULTY) {
-          return commit(state, {
+          return commit(settled, {
             missionIndex,
             difficulty: MAX_DIFFICULTY,
             phase: 'complete',
             achieved: true,
-            ...resetForNextMission(state),
+            ...resetForNextMission(settled),
             misfortuneHistory: [],
             wheel: null,
             frontId: null,
@@ -887,15 +913,15 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         // first spin. The setup's front pin is a run-long commitment, so it
         // stays pinned and every operation played toward a live order banks
         // its extra reroll token.
-        const next = carryDebts(state, resetForNextMission(state))
-        return commit(state, {
+        const next = carryDebts(settled, resetForNextMission(settled))
+        return commit(settled, {
           missionIndex,
           difficulty: nextDifficulty,
           missionInOperation: 1,
           rerollTokens: REROLL_TOKENS_PER_OPERATION
-            + (state.majorOrder?.live ? MAJOR_ORDER_REROLL_BONUS : 0),
+            + (settled.majorOrder?.live ? MAJOR_ORDER_REROLL_BONUS : 0),
           ...next,
-          ...redealBargains(state, next.divers!, true),
+          ...redealBargains(settled, next.divers!, true),
           misfortuneHistory: [],
           wheel: null,
           frontId: null,
@@ -908,12 +934,12 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       }
       // Same operation: the front and its strain persist, but every mission
       // draws a fresh misfortune — the next mission begins at the spin.
-      const next = carryDebts(state, resetForNextMission(state))
-      return commit(state, {
+      const next = carryDebts(settled, resetForNextMission(settled))
+      return commit(settled, {
         missionIndex,
         missionInOperation,
         ...next,
-        ...redealBargains(state, next.divers!, false),
+        ...redealBargains(settled, next.divers!, false),
         wheel: null,
         misfortuneAccepted: false,
         phase: 'spin',

@@ -76,9 +76,11 @@ set; extracted references are git-ignored and presentation-only. Nothing here to
   use brackets for extra detail, never an em dash.
 - **Squad climbs**: the page after the draft (`ClimbCleared`, in `components/climb/`). The Stats
   check (`ClimbStats`) and Squad Honors (`ClimbHonors`) share one panel beside the haul card; the
-  report is a slim strip (`ClimbReport`) above them. The honors reel is built for a flex *row*
-  (`flex: 1 1 340px`), so in a column it must sit in a plain block slot or it turns 340px tall.
-  Never name a local class `.row` or `.rule` — `main.css` owns both (`.row` carries
+  squad's drafts (`SquadDraftBoard`, compact) flex beneath **Your haul**, and the report is a slim
+  strip (`ClimbReport`) above them. The stats check is a side-by-side HELD/BROKE button group with
+  **HELD preselected** — an unmarked rule is held, so only a break costs a tap. The honors reel is
+  built for a flex *row* (`flex: 1 1 340px`), so in a column it must sit in a plain block slot or it
+  turns 340px tall. Never name a local class `.row` or `.rule` — `main.css` owns both (`.row` carries
   `flex-wrap: wrap`, which wrapped the reel's labels until `HonorsReel` set `nowrap`).
 - **Penance is purple.** `--purple` is reserved for it: purple skulls (`RiskPips tone="purple"`) and
   a *Penance* tag on the Pacts sworn row, the owed strip on the pact screens (`PactPenance`), and a
@@ -212,9 +214,11 @@ component. Top to bottom:
     checked): the service record as a gold-topped panel whose card list scrolls in place
     (`--rec-max`, about a viewport tall). Each card is a row — difficulty emblem; tags (live room
     code, saved, achieved, squad avatars), the crusade's name in caps (a solo save is named after
-    its diver as they are now), difficulty, op and mission, and a 3→10 ladder; then the actions:
-    the primary (Resume / Open / Host) full width over the secondary and the export/delete icons.
-    Live rooms carry a teal edge. A narrow record moves the actions under the card.
+    its diver as they are now), difficulty, op and mission, the squad's names, how long ago it was
+    last played ("Last played 3 days ago"), and a 3→10 ladder; then the actions: one **Continue**
+    primary full width — resume the live room, open the slot, or spin the save into a new session —
+    over the secondary and the export/delete icons. Live rooms carry a teal edge. A narrow record
+    moves the actions under the card.
   - Otherwise **`BridgeWheel`**: the dive's real `WheelOfAdversity`, spinning itself to a fresh
     seed every few seconds while in view (paused off-screen or in a hidden tab; one still draw
     under reduced motion), with a caption card naming the landed directive, its rule and its
@@ -443,10 +447,42 @@ tier, and Brasch's counter is a **last call** (it restocks at the new altitude o
 operation starts). That backdrop is alive: two ray fields counter-rotate behind the emblem, a halo
 breathes, embers rise and the headline takes one pass of light — all stilled by reduced motion.
 
-The final **Griffdive Achieved** screen keeps that ladder/emblem hero and adds a compact run recap
-for missions, operations, reward items, squad credits and pact checks; it is not a second dashboard.
-The Ministry Pardon notice appears only when the run actually served Penance or paid a directive tax
-and no debt is still owed.
+The operation boundary also carries a **milestone band**: the rung cleared, how the next front
+arrives (a fresh roll or the run's pin), and what carries over — rerolls refresh, Brasch's kinds
+return, kit and purse stay. It is presentation only and reads `operationMilestone(state)`; the
+host's Start operation runs the same `ADVANCE`.
+
+#### Run complete — `DiveCompleteOverlay`
+
+The end of a days-long run, built as the Bridge's answer. Both endings share one page (it scrolls
+like the Bridge, over the same living **`BridgeField`**); `DivePhaseComplete` is retired. Nothing is
+slanted or marqueed, and "Griffdive achieved" appears once, as the kicker.
+
+- **Hero** — the Bridge hero's frame. The creed comes back in the same three-line stack:
+  **"Freedom / was / earned."** for an achieved run, **"Service / is / recorded."** for an ended one
+  (khaki, not gold). A one-line lede names the squad and the climb ("… climbed from Medium to Super
+  Helldive in 24 missions"). The Ministry notice sits under it as an edged note: the **Pardon**
+  only when Penance was served or a directive tax paid and no debt is still owed; **File closed**
+  on every ended run. Actions: Back to bridge (primary), Delete save (local saves), the locked
+  Endless teaser (achieved only).
+- **Summit** — where the Bridge shows its wheel: the in-game emblem of the last difficulty slams in
+  over two counter-rotating ray fields and a breathing halo, with embers rising on an achieved run.
+  Under the number and name, the climb is a 3→10 **staircase**: steps fill in turn, each underlined
+  in its base tier; on loop a light runs up the climbed steps; a flag waves on the summit step. An
+  ended run lights the steps it reached (the last one pulsing) and leaves the rest dashed.
+- **Record** — the Bridge's facts strip, filled in: missions flown, operations cleared,
+  difficulty climbed, gear earned, honors held. Every number reads from state that survives a
+  full run (never from the action log, which is capped at `ACTION_LOG_CAP`).
+- **The squad** — one dossier per diver: their best earned gear (rarest first, four tiles and a
+  `+N`), gear earned, honors chits and purse.
+- **Post the record** — **`DiveRecapCard`** previews the 1200×630 share card at a card's size,
+  not the page's, and downloads it as a PNG client-side; nothing is uploaded and no route exists
+  for it. The canvas mirrors the hero (hazard rail, creed stack with tier rules in the expanded
+  display face, summit emblem over rays, staircase, stats, squad), paints only after
+  `document.fonts.ready` and the emblem decode, and exposes the same numbers through its label.
+- A closing line and a second Back to bridge end the page, like the Bridge's closing call.
+
+Reduced motion stills every loop (rays, halo, embers, glint, flag); the page lands settled.
 
 #### ValorRoll — the one odds primitive
 

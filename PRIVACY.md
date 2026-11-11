@@ -83,6 +83,8 @@ Nothing is archived or sold. A room that a squad leaves is simply left to age ou
   the only access control, so treat it like a password for the squad.
 - Divers' names, their kit and the host's Steam lobby link are visible to everyone seated in the
   room. Don't type a name you don't want strangers with the link to see.
+- Anyone who has the room code can see when the room was last active (the Bridge uses it to say how
+  long the squad has been away). It carries no name, seat id or address.
 - A kick bar is private to the server. The removed browser (or a fresh browser on the same network)
   sees a refusal; other divers only see that the seat is gone.
 - Feedback notes are readable by the operators — that is what they are for. They never enter

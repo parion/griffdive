@@ -469,7 +469,9 @@ difficulty emblem and the climb ladder ("The squad climbs").
 - **Rules.** Every rule on the `stats` accountability channel in force (Stim Abstinent, Cold
   Steel, Clean Hands; Peacekeepers and Stim Shortage among directives) is listed with its owner
   (`statsRules`) and attested **Held** (`HOLD_PACT`, `HOLD_MISFORTUNE`) or **Broke** (`FAIL_PACT`,
-  `FAIL_MISFORTUNE`, a second confirming tap) — both one-way. A diver settles their own pacts, the
+  `FAIL_MISFORTUNE`, a second confirming tap). **Held is preselected**: an unmarked rule is held by
+  default, so the squad can move on without attesting it; the HELD button is an explicit
+  confirmation and BROKE is the only mark a diver has to make. A diver settles their own pacts, the
   host settles any diver's (as with field marks) and the squad directive. The `FAIL_PACT` window
   reopens in `rewards` for stats-channel pacts only (it is otherwise `diving`-only); field and
   loadout rules are judged live and never gate. Attestations (`DiverState.heldPactIds` /
@@ -487,7 +489,9 @@ difficulty emblem and the climb ladder ("The squad climbs").
   the field (`optionsLostFor`), and the wheel never draws a directive that would block one
   (`eligibleMisfortunes(inventories, penance)`). A debt carries across an operation boundary; it
   is replaced at `ADVANCE` by whatever that mission's own check leaves owing, and is
-  dropped when the crusade completes or the operation restarts after a failure. Serving an owed
+  dropped when the crusade completes or the operation restarts after a failure. An **unmarked**
+  Penance pact is held by default: `ADVANCE` serves the debt before it is replaced by the next
+  mission's check, so the explicit HELD click is only a confirmation. Serving an owed
   Penance sets the optional run-level `DiveState.debtSettled` marker so the achievement screen can
   show the Pardon notice; clean runs leave it absent. Penance is **purple** everywhere: purple skulls and a *Penance* tag
   in the Pacts sworn list, the owed strip on the pact screens (`PactPenance`) and the climbs-page
@@ -502,10 +506,10 @@ difficulty emblem and the climb ladder ("The squad climbs").
   There is no manual roll control. An older in-progress report with no seed auto-rolls on entry as
   recovery. A solo diver (or a lone present diver) wins outright. The token it banks serves the
   **next** mission's draft.
-- **The gate.** The draft is never gated. `ADVANCE` is refused until `climbSettled`: every stats rule
-  attested (`climbBlockers().rules === 0`) and no honors contest due or unnamed
-  (`honorsDue`). The page's CTA names what is left ("Settle 1 rule first", "Rolling Squad Honors",
-  "Award honors first"); the engine, not the button, enforces it.
+- **The gate.** The draft is never gated. `ADVANCE` is refused only while a Squad Honors contest is
+  due or unnamed (`honorsDue`); unmarked stats rules default to held, so `climbBlockers` no longer
+  counts them. The page's CTA names what is left ("Rolling Squad Honors", "Award honors first");
+  the engine, not the button, enforces it.
 - Failed missions skip the page (there is no draft): the forfeit follows, and any Penance in
   progress is voided first.
 
