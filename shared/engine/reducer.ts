@@ -1,4 +1,4 @@
-import { ALL_WARBOND_CODES, WARBONDS } from '../data/catalog'
+import { WARBONDS } from '../data/catalog'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection } from './types'
 import { ACTION_LOG_CAP, ARMOR_PACK_STREAM, MAJOR_ORDER_REROLL_BONUS, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, REWARD_TOKEN_CAP, armorPackPrice, maxStarsFor, missionsPerOperation } from './config'
 import { STARTING_KITS, earnedKit, mergeKit, startingItemIds } from './progression'
@@ -6,8 +6,9 @@ import { pactById } from '../data/pacts'
 import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver, resolveFrontPlan } from './room'
 import { deriveSeed, hashString } from './rng'
+import { advanceCommission, canEnlist, handedKitOf, issueCommission, newCommission, ordersConflictFor, specialistUnavailableReason } from './specialists'
 import { rollSupportKit } from './support'
-import { activeDivers, activeMisfortune, allDiversPicked, armorPackPoolFor, availableCaches, bonusEligibleFor, canBuyArmorPack, canBuyItem, catchUpOptionsFor, climbSettled, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, isPenancePact, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, penanceIncurredBy, rewardPoolFor, squadInventories, squadPenances, squadSize, statsPendingMisfortune, statsPendingPactIds, strainDecision, teamRiskOf } from './selectors'
+import { activeDivers, activeMisfortune, allDiversPicked, armorPackPoolFor, availableCaches, bonusEligibleFor, canBuyArmorPack, canBuyItem, catchUpOptionsFor, climbSettled, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, isPenancePact, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, penanceIncurredBy, rewardPoolForDiver, squadInventories, squadPenances, squadSize, statsPendingMisfortune, statsPendingPactIds, strainDecision, teamRiskOf } from './selectors'
 import { bargainKindOf, itemPrice, missionHaul, rollArmorPack } from './rewards'
 import { normalizeTierList, tierListOf, tieredItem } from './tierList'
 import type { TierList } from './tierList'
@@ -21,6 +22,7 @@ export function createDiveState(
   seed?: number,
   majorOrder?: MajorOrderSelection | null,
   tierList?: TierList | null,
+  specialistId?: string | null,
 ): DiveState {
   const lobby = joinDiver(createLobbyState(), hostId, hostName) ?? createLobbyState()
   // The host's own warbond selection, applied like any self-service action so
@@ -31,7 +33,11 @@ export function createDiveState(
   const tiered = tierList
     ? reduce(seated, { type: 'SET_TIER_LIST', tierList })
     : seated
-  return reduce(tiered, { type: 'START_DIVE', settings, seed, majorOrder })
+  // Warbonds first: the commission is checked against what the diver owns.
+  const enlisted = specialistId
+    ? reduce(tiered, { type: 'SET_SPECIALIST', playerId: hostId, specialistId })
+    : tiered
+  return reduce(enlisted, { type: 'START_DIVE', settings, seed, majorOrder })
 }
 
 function commit(state: DiveState, patch: Partial<DiveState>, action: EngineAction): DiveState {
@@ -52,12 +58,18 @@ function applyStart(
   const settings: CrusadeSettings = front ? { ...requested, front } : requested
   const kit = STARTING_KITS[settings.variant]
   // Every seated diver rolls their own SEAF Support Package against the
-  // warbonds they have declared by launch.
+  // warbonds they have declared by launch — unless they took a commission:
+  // the issued kit replaces the pack (crate or commission). A commission the
+  // diver can no longer field (warbonds changed since they chose) stands down.
   const personalInventories: Record<string, string[]> = {}
   const supported = state.divers.map((diver) => {
-    const supportKit = rollSupportKit(settings, diver.id, diver.warbondCodes, state.tierList)
-    personalInventories[diver.id] = mergeKit(startingItemIds(settings.variant), supportKit)
-    return { ...diver, supportKit }
+    const commission = diver.commission
+      && specialistUnavailableReason(state, diver, diver.commission.specialistId) === null
+      ? issueCommission(newCommission(diver.commission.specialistId))
+      : null
+    const supportKit = commission ? [] : rollSupportKit(settings, diver.id, diver.warbondCodes, state.tierList)
+    personalInventories[diver.id] = mergeKit(startingItemIds(settings.variant), commission?.issuedKit ?? supportKit)
+    return { ...diver, supportKit, ...(diver.commission ? { commission } : {}) }
   })
   // The first mission's Brasch's Bargains deal. A caller that injects no seed
   // still gets a deterministic shelf, keyed to the host.
@@ -94,7 +106,18 @@ function resetDivers(state: DiveState): DiverState[] {
     rewardRerollSeed: null,
     rewardBanned: false,
     draftExcludedIds: null,
+    ...(diver.commission ? { commission: { ...diver.commission, ordersBroken: false } } : {}),
+    ...(diver.enlistOpen ? { enlistOpen: false } : {}),
   }))
+}
+
+// Banks each commission's merits for the mission just cleared (a clean
+// operation, a commendation) into the divers the next mission starts with.
+function bankMerits(state: DiveState, divers: DiverState[], newOperation: boolean): DiverState[] {
+  return divers.map((diver) => {
+    const before = state.divers.find(entry => entry.id === diver.id)
+    return before?.commission ? { ...diver, commission: advanceCommission(state, before, newOperation) } : diver
+  })
 }
 
 // A broken Penance pact (or a failed mission) voids the reward it was
@@ -238,10 +261,14 @@ function removeDiver(state: DiveState, diverId: string, action: EngineAction): D
     return state
   }
   const earned = state.settings
-    ? earnedKit(state.personalInventories[diver.id] ?? [], state.settings.variant, diver.supportKit)
+    ? earnedKit(state.personalInventories[diver.id] ?? [], state.settings.variant, handedKitOf(diver))
     : []
-  const legacyCaches = earned.length > 0
-    ? { ...state.legacyCaches, [diver.id]: { name: diver.name, itemIds: earned } }
+  // A commission parks with the cache: whoever claims it takes up the mantle.
+  const commission = state.settings && diver.commission
+    ? { specialistId: diver.commission.specialistId, merits: diver.commission.merits }
+    : undefined
+  const legacyCaches = earned.length > 0 || commission
+    ? { ...state.legacyCaches, [diver.id]: { name: diver.name, itemIds: earned, ...(commission ? { commission } : {}) } }
     : state.legacyCaches
   const personalInventories = Object.fromEntries(
     Object.entries(state.personalInventories).filter(([id]) => id !== diver.id),
@@ -520,6 +547,10 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (pactIds.some(id => pactConflictsWith(id, pactIds))) {
         return state
       }
+      // A specialist can't swear away the kit their standing orders require.
+      if (action.pactIds.some(id => ordersConflictFor(id, diver))) {
+        return state
+      }
       // HD2 requires four equipped stratagems: never accept a pick that leaves
       // the diver unable to ready up. A misfortune that already strands the
       // loadout on its own is not a pact's fault — fix that at the wheel.
@@ -634,6 +665,50 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         divers: state.divers.map(candidate =>
           candidate.id === diver.id ? { ...candidate, warbondCodes: codes } : candidate,
         ),
+      }, action)
+    }
+
+    case 'SET_SPECIALIST': {
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      if (!diver || !canEnlist(state, diver)) {
+        return state
+      }
+      const update = (patch: Partial<DiverState>, inventory?: string[]): DiveState => commit(state, {
+        divers: state.divers.map(candidate => candidate.id === diver.id ? { ...candidate, ...patch } : candidate),
+        ...(inventory ? { personalInventories: { ...state.personalInventories, [diver.id]: inventory } } : {}),
+      }, action)
+      if (action.specialistId === null) {
+        return state.phase === 'lobby' && diver.commission ? update({ commission: null }) : state
+      }
+      if (diver.commission?.specialistId === action.specialistId
+        || specialistUnavailableReason(state, diver, action.specialistId) !== null) {
+        return state
+      }
+      if (state.phase === 'lobby') {
+        return update({ commission: newCommission(action.specialistId) })
+      }
+      // Enlisting mid-crusade, before the first mission ends: the issued kit
+      // replaces the SEAF pack the joiner was seated with.
+      const commission = issueCommission(newCommission(action.specialistId))
+      const pack = new Set(diver.supportKit ?? [])
+      const inventory = mergeKit(
+        (state.personalInventories[diver.id] ?? []).filter(id => !pack.has(id)),
+        commission.issuedKit,
+      )
+      return update({ commission, supportKit: [], enlistOpen: false }, inventory)
+    }
+
+    case 'BREAK_ORDERS': {
+      // Standing orders are a loadout rule, judged in the field like a pact:
+      // the diver or the host marks the break, once, while the mission runs.
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      if (state.phase !== 'diving' || !diver?.commission || diver.commission.ordersBroken) {
+        return state
+      }
+      return commit(state, {
+        divers: state.divers.map(candidate => candidate.id === diver.id
+          ? { ...candidate, commission: { ...diver.commission!, ordersBroken: true, cleanOperation: false } }
+          : candidate),
       }, action)
     }
 
@@ -779,7 +854,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         // The free pick still honors the personal-catalog rules: only items
         // from the diver's own warbonds, nothing owned or banned.
         const owned = new Set(state.personalInventories[diver.id] ?? [])
-        const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state))
+        const pool = rewardPoolForDiver(state, diver)
         if (
           owned.has(item.id)
           || diver.bannedItemIds.includes(item.id)
@@ -895,12 +970,14 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
       if (missionInOperation > missionsPerOperation(settled.difficulty)) {
         const nextDifficulty = settled.difficulty + 1
         if (nextDifficulty > MAX_DIFFICULTY) {
+          const summit = resetForNextMission(settled)
           return commit(settled, {
             missionIndex,
             difficulty: MAX_DIFFICULTY,
             phase: 'complete',
             achieved: true,
-            ...resetForNextMission(settled),
+            ...summit,
+            divers: bankMerits(settled, summit.divers!, true),
             misfortuneHistory: [],
             wheel: null,
             frontId: null,
@@ -921,7 +998,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
           rerollTokens: REROLL_TOKENS_PER_OPERATION
             + (settled.majorOrder?.live ? MAJOR_ORDER_REROLL_BONUS : 0),
           ...next,
-          ...redealBargains(settled, next.divers!, true),
+          ...redealBargains(settled, bankMerits(settled, next.divers!, true), true),
           misfortuneHistory: [],
           wheel: null,
           frontId: null,
@@ -939,7 +1016,7 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         missionIndex,
         missionInOperation,
         ...next,
-        ...redealBargains(settled, next.divers!, false),
+        ...redealBargains(settled, bankMerits(settled, next.divers!, false), false),
         wheel: null,
         misfortuneAccepted: false,
         phase: 'spin',
@@ -993,26 +1070,52 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
 
     case 'CLAIM_CACHE': {
       const diver = state.divers.find(candidate => candidate.id === action.playerId)
-      const cache = availableCaches(state).find(entry => entry.ownerId === action.cacheOwnerId)?.itemIds
+      const entry = availableCaches(state).find(candidate => candidate.ownerId === action.cacheOwnerId)
       // The cache replaces the promotion wholesale: claiming after rolling
       // options would stack both, so only an untouched promotion allows it.
       if (
         !diver
         || diver.catchUpOwed <= 0
         || diver.catchUpOwed !== diver.catchUpGranted
-        || !cache
+        || !entry
       ) {
         return state
       }
       const legacyCaches = Object.fromEntries(
         Object.entries(state.legacyCaches).filter(([id]) => id !== action.cacheOwnerId),
       )
+      // Taking up the mantle: a Freelancer claiming a commissioned diver's
+      // cache inherits the commission and its rank, and the issued kit replaces
+      // their SEAF pack. A mantle nobody can carry (already commissioned, the
+      // specialist taken, the warbonds missing) is retired with the claim.
+      const mantle = entry.commission && !diver.commission
+        && specialistUnavailableReason(state, diver, entry.commission.specialistId) === null
+        ? {
+            ...issueCommission(newCommission(entry.commission.specialistId, entry.commission.merits)),
+            predecessor: entry.name,
+          }
+        : null
+      // A cache with nothing the claimant can take would spend the promotion
+      // on nothing.
+      if (!mantle && entry.itemIds.length === 0) {
+        return state
+      }
+      const pack = new Set(mantle ? diver.supportKit ?? [] : [])
       const divers = state.divers.map(candidate =>
-        candidate.id === diver.id ? { ...candidate, catchUpOwed: 0 } : candidate,
+        candidate.id === diver.id
+          ? {
+              ...candidate,
+              catchUpOwed: 0,
+              ...(mantle ? { commission: mantle, supportKit: [], enlistOpen: false } : {}),
+            }
+          : candidate,
       )
       const personalInventories = {
         ...state.personalInventories,
-        [diver.id]: mergeKit(state.personalInventories[diver.id] ?? [], cache),
+        [diver.id]: mergeKit(
+          (state.personalInventories[diver.id] ?? []).filter(id => !pack.has(id)),
+          [...entry.itemIds, ...(mantle?.issuedKit ?? [])],
+        ),
       }
       return commit(state, { divers, legacyCaches, personalInventories }, action)
     }

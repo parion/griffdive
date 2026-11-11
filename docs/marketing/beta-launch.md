@@ -119,6 +119,6 @@ Flagged in `docs/agents/status-roadmap.md`, not marketing's to fix:
 ## Claims to avoid
 
 - Don't say "official", or imply Arrowhead/Sony endorsement.
-- Don't promise Specialists, accounts, cloud saves, endless mode (Phase 5, not built).
+- Don't promise accounts, cloud saves, endless mode (Phase 5, not built). Specialists are a prototype: don't announce them until the beta update ships.
 - Don't say matchmaking/public lobbies exist; rooms are link-only by design.
 - Don't present balance as final; it's beta.

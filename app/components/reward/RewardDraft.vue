@@ -20,6 +20,8 @@ const props = withDefaults(defineProps<{
   pool: Item[]
   ownedIds: string[]
   optionsLost?: number
+  // The part of optionsLost that is a specialist's service tax, not a break.
+  serviceTax?: number
   squadDrafts?: SquadDraft[]
   tokenCount?: number
   canReroll?: boolean
@@ -45,6 +47,7 @@ const props = withDefaults(defineProps<{
   advanceLabel?: string
 }>(), {
   optionsLost: 0,
+  serviceTax: 0,
   squadDrafts: () => [],
   tokenCount: 0,
   canReroll: false,
@@ -253,10 +256,16 @@ const kickerText = computed(() => {
           Pick {{ picksLeft }} of {{ picksTotal }} promotion options. Every claim rerolls the offer.
         </p>
         <p
-          v-else-if="optionsLost > 0"
+          v-else-if="optionsLost > serviceTax"
           class="loot-sub red-text"
         >
-          {{ optionsLost }} option{{ optionsLost === 1 ? '' : 's' }} forfeited by broken rules.
+          {{ optionsLost - serviceTax }} option{{ optionsLost - serviceTax === 1 ? '' : 's' }} forfeited by broken rules{{ serviceTax ? `, ${serviceTax} to your specialist's service tax` : '' }}.
+        </p>
+        <p
+          v-else-if="serviceTax > 0"
+          class="loot-sub"
+        >
+          {{ serviceTax }} option{{ serviceTax === 1 ? '' : 's' }} to your specialist's service tax, until you are Commissioned.
         </p>
       </div>
       <div class="head-actions">

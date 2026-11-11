@@ -3,7 +3,9 @@ import { TIER_RANK } from '~~/shared/data/catalog'
 import { itemImageUrl } from '~~/shared/data/images'
 import type { Item } from '~~/shared/data/types'
 import { baseTierFor } from '~~/shared/engine/config'
+import { SPECIALIST_RANK_TITLES, specialistById } from '~~/shared/data/specialists'
 import { availableCaches, catchUpOptionsFor } from '~~/shared/engine/selectors'
+import { specialistRankOf, specialistUnavailableReason } from '~~/shared/engine/specialists'
 import type { DiveState, DiverState } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -37,13 +39,27 @@ const caches = computed(() => untouched.value
         .map(id => itemById(id))
         .filter((item): item is Item => item !== undefined)
         .sort(byTier)
+      const specialist = specialistById(cache.commission?.specialistId)
+      // A mantle passes only to a Freelancer who can field its kit; otherwise
+      // it is retired with the claim.
+      const blocked = specialist
+        ? props.diver.commission
+          ? 'You already hold a commission'
+          : specialistUnavailableReason(props.state, props.diver, specialist.id)
+        : null
       return {
         ownerId: cache.ownerId,
         name: cache.name,
         items,
         topTier: items[0]?.tier.toUpperCase() ?? 'C',
+        mantle: specialist
+          ? {
+              label: `${SPECIALIST_RANK_TITLES[specialistRankOf(cache.commission!.merits)]} · ${specialist.name}`,
+              blocked,
+            }
+          : null,
       }
-    })
+    }).filter(cache => cache.items.length > 0 || (cache.mantle && !cache.mantle.blocked))
   : [])
 
 // Calling in the promotion is final: the choice never comes back, and the
@@ -167,6 +183,18 @@ function tileLabel(item: Item): string {
                   <span class="kit-name">{{ upperName(cache.name) }}</span>
                 </span>
               </div>
+              <p
+                v-if="cache.mantle"
+                class="kit-mantle"
+              >
+                <span class="cap">Mantle</span>
+                {{ cache.mantle.label }}
+                <span
+                  v-if="cache.mantle.blocked"
+                  class="kit-mantle-blocked"
+                >· {{ cache.mantle.blocked }}, so it retires</span>
+                <span v-else>· yours with the kit, rank included</span>
+              </p>
               <ul
                 class="tiles"
                 :aria-label="`${cache.name}'s kit`"
@@ -302,6 +330,9 @@ function tileLabel(item: Item): string {
 </template>
 
 <style scoped>
+.kit-mantle { grid-column: 1 / -1; margin: 0; color: var(--teal); font-size: 12px; line-height: 1.35; }
+.kit-mantle .cap { margin-right: 6px; }
+.kit-mantle-blocked { color: var(--orange); }
 /* Header: rank chevrons (one per pick granted) beside a display-font title. */
 .promo-title { display: flex; align-items: center; gap: 0.75rem; }
 .promo-rank { width: 1.9rem; height: 2.2rem; flex-shrink: 0; overflow: visible; }

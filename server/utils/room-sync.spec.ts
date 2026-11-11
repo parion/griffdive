@@ -291,6 +291,47 @@ describe('room-sync', () => {
     expect(snapshot.divers.find(diver => diver.id === joinerId)?.failedPactIds).toEqual(offer)
   })
 
+  it('takes specialists self-service and lets only the diver or host break orders', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    const hostId = welcomeOf(host).selfId
+
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    await processHello(kv, peers, joiner, { name: 'B' })
+    const joinerId = welcomeOf(joiner).selfId
+
+    // A specialist is always taken for the sender, whoever the action names.
+    await processAction(kv, peers, joiner, { action: { type: 'SET_SPECIALIST', playerId: hostId, specialistId: 'eagleCoordinator' } })
+    let snapshot = await lastSnapshot(joiner)
+    expect(snapshot.divers.find(diver => diver.id === joinerId)?.commission?.specialistId).toBe('eagleCoordinator')
+    expect(snapshot.divers.find(diver => diver.id === hostId)?.commission ?? null).toBeNull()
+    await processAction(kv, peers, host, { action: { type: 'SET_SPECIALIST', playerId: hostId, specialistId: 'orbitalCoordinator' } })
+
+    await processAction(kv, peers, host, { action: { type: 'START_DIVE', settings: { variant: 'medium' } } })
+    await processAction(kv, peers, host, { action: { type: 'SPIN_WHEEL', seed: 42 } })
+    await processAction(kv, peers, host, { action: { type: 'ACCEPT_MISFORTUNE', accepted: false } })
+    await processAction(kv, peers, host, { action: { type: 'ACCEPT_STRAIN', accepted: false } })
+    await processAction(kv, peers, host, { action: { type: 'DEAL_PACTS' } })
+    await processAction(kv, peers, joiner, { action: { type: 'SET_PACTS', playerId: joinerId, pactIds: [] } })
+    await processAction(kv, peers, host, { action: { type: 'SET_PACTS', playerId: hostId, pactIds: [] } })
+    expect((await lastSnapshot(joiner)).phase).toBe('diving')
+    sent(joiner).length = 0
+
+    await processAction(kv, peers, joiner, { action: { type: 'BREAK_ORDERS', playerId: hostId } })
+    expect(sent(joiner).some(m => m.type === 'error' && m.code === 'bad-action')).toBe(true)
+
+    await processAction(kv, peers, host, { action: { type: 'BREAK_ORDERS', playerId: joinerId } })
+    snapshot = await lastSnapshot(joiner)
+    expect(snapshot.divers.find(diver => diver.id === joinerId)?.commission?.ordersBroken).toBe(true)
+    expect(snapshot.divers.find(diver => diver.id === hostId)?.commission?.ordersBroken).toBe(false)
+  })
+
   it('lets the host kick a diver and silences the kicked diver', async () => {
     const kv = fakeKV()
     const peers = createPeerDirectory()

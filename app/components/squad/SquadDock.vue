@@ -6,7 +6,9 @@ import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
 } from 'reka-ui'
+import { SPECIALIST_RANK_TITLES, specialistById } from '~~/shared/data/specialists'
 import { actingDiverIds } from '~~/shared/engine/selectors'
+import { commissionRankOf } from '~~/shared/engine/specialists'
 import type { BonusStat } from '~~/shared/engine/config'
 import type { DiveState, DiverState } from '~~/shared/engine/types'
 import type { SteamLobbyInfo } from '~~/shared/types/messages'
@@ -53,6 +55,11 @@ const openSeats = computed(() => Math.max(0, 4 - props.state.divers.length))
 const host = computed(() => props.state.hostId)
 function isSelf(diver: DiverState): boolean {
   return diver.id === props.selfId
+}
+
+function specialistOf(diver: DiverState): string | null {
+  const specialist = specialistById(diver.commission?.specialistId)
+  return specialist ? `${SPECIALIST_RANK_TITLES[commissionRankOf(diver)]} · ${specialist.name}` : null
 }
 
 function statusOf(diver: DiverState): string {
@@ -133,6 +140,10 @@ function kick(diverId: string): void {
         />
         <span class="seat-copy">
           <b>{{ upperName(diver.name) }}</b>
+          <i
+            v-if="specialistOf(diver)"
+            class="seat-spec"
+          >{{ specialistOf(diver) }}</i>
           <i>{{ statusOf(diver) }}</i>
         </span>
         <span
@@ -372,6 +383,7 @@ function kick(diverId: string): void {
   font-style: normal;
   letter-spacing: 0.06em;
 }
+.seat-copy i.seat-spec { color: var(--teal); }
 .lamp {
   width: 8px;
   height: 8px;

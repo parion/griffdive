@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ALL_WARBOND_CODES } from '~~/shared/data/catalog'
 import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import {
   allDiversPicked,
@@ -8,9 +7,10 @@ import {
   draftSummaryFor,
   optionsLostFor,
   pactRiskOf,
-  rewardPoolFor,
+  rewardPoolForDiver,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
+import { serviceTaxOf } from '~~/shared/engine/specialists'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -34,7 +34,7 @@ const rewardPool = computed(() => {
     return []
   }
   const banned = new Set(props.self.bannedItemIds)
-  return rewardPoolFor(props.self.warbondCodes ?? ALL_WARBOND_CODES, props.state.tierList)
+  return rewardPoolForDiver(props.state, props.self)
     .filter(item => !banned.has(item.id))
 })
 const ownedIds = computed(() => props.state.personalInventories[props.selfId ?? ''] ?? [])
@@ -68,6 +68,7 @@ const pactRisk = computed(() => (props.self ? pactRiskOf(props.self, props.state
     :pool="rewardPool"
     :owned-ids="ownedIds"
     :options-lost="self ? optionsLostFor(state, self) : 0"
+    :service-tax="self ? serviceTaxOf(self) : 0"
     :squad-drafts="squadDrafts"
     :token-count="rewardTokens"
     :can-reroll="canReroll"

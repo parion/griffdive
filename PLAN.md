@@ -242,7 +242,7 @@ economy.
   N25/N39 remain memos for the owner, gated on live data.
 - **E4 — Extend the climb. Spec'd, gated.** N51's four-rung ladder, state shape, the `teamConditionIds`
   widening and the save v1→v2 path are recorded below; no code until the summit-population threshold
-  clears. Endless mode follows; Specialists stay later.
+  clears. Endless mode follows.
 
 ### Post-v1 / R&D
 
@@ -252,6 +252,7 @@ N3.
 
 N31, N32 — owner-requested changes landed after Batch A.
 **Stats check defaults to held (2026-11-11)** — HELD is preselected; the squad's drafts sit under Your haul.
+**Specialists prototype (2026-11-11)** — owner-requested for the next beta update; see game-rules.md → Specialists.
 
 ## Item details
 

@@ -60,7 +60,10 @@ app/
                    MissionBankedHaul, MissionSampleCanister — the report's tinted sample tubes),
                    climb/ (ClimbCleared — the squad-climbs page after every draft: report strip,
                    stats check with Penance rows, Squad Honors, Brasch, the next-drop CTA;
-                   ClimbReport/ClimbStats/ClimbHonors),
+                   ClimbReport/ClimbStats/ClimbHonors, ClimbService — specialists' rank,
+                   merits and promotion dispatches),
+                   specialist/ (SpecialistPicker — Freelancer or a commission, used by the
+                   Bridge setup, the lobby and SpecialistEnlist — a joiner's one-time enlist),
                    honors/ (HonorsReel), reward/ (RewardDraft, RewardReveal,
                    RewardDiversChoicePicker), liberty-cross/ (LibertyCrossBand/Emblem),
                    squad/ (SquadDock — seats, presence, honors tokens, Steam/invite;
@@ -213,7 +216,7 @@ room from a personal session save; `selfId` is the seeded owner seat, `null` for
 seated-id list a `welcome` carries, so a REST caller cannot mistake a kept room record for a live
 squad; `updatedAt` is the room's last event, which the Bridge turns into its "Last played N days
 ago" re-entry label. Neither carries a name, seat id or address beyond the room's own state.
-Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`,
+Self-service actions (`SET_PACTS`, `SET_WARBONDS`, `SET_SPECIALIST`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`,
 `SET_NAME`) are coerced to the sender — a client can never act as another diver.
 Before reducing `FORFEIT_ITEM`, the server checks the item against that diver's current
 `forfeitOptionsFor` offer; an invalid pick returns `bad-action` with a specific message instead of
@@ -295,6 +298,7 @@ Canonical engine actions (the reducer union; keep names stable):
 
 `START_DIVE{settings,seed?,majorOrder?}` `SET_TIER_LIST{tierList}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
 `DEAL_PACTS{}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `HOLD_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `HOLD_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
+`SET_SPECIALIST{playerId,specialistId}` `BREAK_ORDERS{playerId}`
 `REPORT_RESULT{outcome,stars,timePct?,samples?}` `FORFEIT_ITEM{playerId,itemId}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `BUY_ITEM{playerId,itemId}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
@@ -305,12 +309,12 @@ Canonical engine actions (the reducer union; keep names stable):
 Authority rules: host-only actions are `START_DIVE`, `SET_TIER_LIST` (lobby only; the reducer
 refuses it after launch), `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
 `ACCEPT_STRAIN`, `DEAL_PACTS`, `REROLL_WHEEL`, `REPORT_RESULT`, `FAIL_MISFORTUNE`, `HOLD_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
-`KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`, `SET_NAME`,
+`KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `SET_SPECIALIST`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE`, `SET_AWAY` are
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated
 diver, `unsave-dive` is host-only; the Steam lobby link is likewise outside the union and
 host-only (`set-steam`, blank clears).
-`FAIL_PACT` and `HOLD_PACT` are sent by the target diver or the host (server refuses everyone else; the squad-climbs page lets the host settle any diver's stats pact);
+`FAIL_PACT`, `HOLD_PACT` and `BREAK_ORDERS` are sent by the target diver or the host (server refuses everyone else; the squad-climbs page lets the host settle any diver's stats pact);
 `FAIL_MISFORTUNE` and `HOLD_MISFORTUNE` are host-only, since the directive binds the whole squad. A
 host's last socket closing starts a process-local `HOST_RECONNECT_GRACE_MS` (90s): the host seat
 stays put through a refresh or brief network loss, and a `hello` with the same stored playerId

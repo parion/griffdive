@@ -9,7 +9,11 @@
   departure parking, seating window). Catch-up spans sessions, so `room.spec.ts` also runs the
   whole join → claim → fork → join → claim lifecycle and checks **invariants after every step**
   (kits are sets; caches are non-empty earned gear) — single-step tests with toy caches once
-  hid caches that stacked the starting kit.
+  hid caches that stacked the starting kit. Specialists (`specialists.spec.ts`) cover the roster's
+  catalog ids and callings, one commission per squad, warbond gating, the kit replacing the SEAF
+  pack, issued types out of every pool and the shelf, doctrine until Sergeant, the service tax,
+  broken and suspended orders, merits and promotions at `ADVANCE`, the mantle through a cache, a
+  rejoin and a fork, and mid-crusade enlisting.
 - **Golden tests:** seeded runs (`mulberry32`) recorded as JSON snapshots — spin results, reward
   option sets, full crusade replays. Goldens live in `shared/engine/__goldens__/`; regenerate with
   `GRIFFDIVE_UPDATE_GOLDENS=1 pnpm test`. From beta on, a reducer change that breaks goldens must
@@ -58,7 +62,9 @@
   reveal (`kit-reveal.spec.ts`: the setup kit's "?" boxes, a solo and an online launch dealing the
   pack in a modal over the wheel that stays until dismissed, a late joiner's own deal, no replay on reload), personal session saves
   (`session-saves.spec.ts`: a seated diver forks the live room into a new session, a solo save hosts
-  an online session from the home record), the Field Promotion gate (`field-promotion.spec.ts`: a
+  an online session from the home record), specialists (`specialists.spec.ts`: a commission picked in the Bridge
+  setup shows on the seat, rides the field ledger as an Orders row, and the draft names the service
+  tax and deals one fewer option), the Field Promotion gate (`field-promotion.spec.ts`: a
   forked session seeded through `POST /api/rooms` — a forked-out diver reclaims their own kit, a
   new joiner claims a fallen diver's kit, the next takes promotion picks), the Bridge home
   (`bridge.spec.ts`: the odds console's four fixed dice land all C at difficulty 3 with no skulls

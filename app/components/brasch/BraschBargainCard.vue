@@ -2,7 +2,7 @@
 interface Props {
   kind: string
   name: string
-  status: 'open' | 'bought' | 'locked' | 'heldBack' | 'empty' | 'complete'
+  status: 'open' | 'bought' | 'locked' | 'heldBack' | 'issued' | 'empty' | 'complete'
   price?: number | null
   accent?: 'c' | 'b' | 'a' | 's' | 'gold'
   disabled?: boolean
@@ -32,6 +32,7 @@ const statusWord = computed(() => {
     case 'bought': return 'Taken'
     case 'locked': return 'Next mission'
     case 'heldBack': return 'Next operation'
+    case 'issued': return 'Issued'
     case 'empty': return 'No stock'
     default: return ''
   }
@@ -89,7 +90,7 @@ watch(() => props.purchases, (next, previous) => {
       <span
         v-if="showVeil"
         class="card-veil"
-        :class="{ stamp: status === 'bought', notice: status === 'locked' || status === 'heldBack' }"
+        :class="{ stamp: status === 'bought', notice: status === 'locked' || status === 'heldBack' || status === 'issued' }"
       >
         <IconClock v-if="status === 'locked' || status === 'heldBack'" />
         {{ statusWord }}
@@ -197,7 +198,8 @@ watch(() => props.purchases, (next, previous) => {
 }
 .bargain-card.bought .card-price,
 .bargain-card.locked .card-price,
-.bargain-card.heldBack .card-price {
+.bargain-card.heldBack .card-price,
+.bargain-card.issued .card-price {
   color: var(--dim);
   opacity: 0.55;
   text-shadow: none;
@@ -206,7 +208,8 @@ watch(() => props.purchases, (next, previous) => {
 /* Locked stock keeps its place but reads as disabled: a dashed grey wrap, a
    neutral stage and dimmed copy, with the notice stamped across the art. */
 .bargain-card.locked::before,
-.bargain-card.heldBack::before {
+.bargain-card.heldBack::before,
+.bargain-card.issued::before {
   border-color: color-mix(in srgb, var(--line-4) 65%, transparent);
   border-style: dashed;
   background:
@@ -214,23 +217,28 @@ watch(() => props.purchases, (next, previous) => {
     color-mix(in srgb, var(--line-1) 30%, var(--rail));
 }
 .bargain-card.locked .card-head,
-.bargain-card.heldBack .card-head {
+.bargain-card.heldBack .card-head,
+.bargain-card.issued .card-head {
   border-bottom-color: var(--line-2);
 }
 .bargain-card.locked .card-kind,
 .bargain-card.heldBack .card-kind,
+.bargain-card.issued .card-kind,
 .bargain-card.locked .card-name,
-.bargain-card.heldBack .card-name {
+.bargain-card.heldBack .card-name,
+.bargain-card.issued .card-name {
   color: var(--dim);
 }
 .bargain-card.locked .card-stage,
-.bargain-card.heldBack .card-stage {
+.bargain-card.heldBack .card-stage,
+.bargain-card.issued .card-stage {
   background:
     radial-gradient(ellipse 62% 58% at 50% 54%, color-mix(in srgb, var(--line-3) 12%, transparent), transparent 74%),
     linear-gradient(180deg, color-mix(in srgb, var(--line-2) 18%, transparent), transparent 70%);
 }
 .bargain-card.locked .card-glow,
-.bargain-card.heldBack .card-glow {
+.bargain-card.heldBack .card-glow,
+.bargain-card.issued .card-glow {
   background: color-mix(in srgb, var(--line-3) 22%, transparent);
   opacity: 0.35;
 }

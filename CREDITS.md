@@ -10,6 +10,8 @@ Griffdive stands on the work of the Helldivers community. Thank you.
   `a9c580acef6ce99a920b9375f1e6252c82e8b1c8`.
 - Converted to the Griffdive schema by `scripts/import-catalog.mjs` into `shared/data/`.
   Regenerate with: `node scripts/import-catalog.mjs`.
+- Specialists (`shared/data/specialists.ts`) evolve Penitent Crusade's specialists; the Zealous
+  Martyr and the Eagle/Orbital Ground Coordinators are adapted from its roster.
 
 ## Live war data (Major Orders)
 

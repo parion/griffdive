@@ -16,7 +16,7 @@ const emit = defineEmits<{ buy: [] }>()
 const item = computed(() => props.entry.item)
 const price = computed(() => (item.value ? itemPrice(item.value) : null))
 const accent = computed(() => item.value?.tier ?? 'c')
-const name = computed(() => item.value?.displayName ?? 'No stock')
+const name = computed(() => item.value?.displayName ?? (props.entry.status === 'issued' ? 'Your specialist kit' : 'No stock'))
 const kindLabel = computed(() => (props.entry.kind === 'stratagem' ? 'Stratagem' : categoryLabel(props.entry.kind)))
 const buyAriaLabel = computed(() => item.value && price.value !== null
   ? `Buy ${item.value.displayName}, ${item.value.tier.toUpperCase()} tier, for ${price.value} credits`
@@ -77,7 +77,8 @@ const buyAriaLabel = computed(() => item.value && price.value !== null
 }
 .slot.bought .slot-art { filter: grayscale(0.35) brightness(0.72); }
 .slot.locked .slot-art,
-.slot.heldBack .slot-art {
+.slot.heldBack .slot-art,
+.slot.issued .slot-art {
   filter: grayscale(1) brightness(0.55);
   opacity: 0.55;
 }

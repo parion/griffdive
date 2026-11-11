@@ -4,6 +4,7 @@ import { conditionRiskAt } from '~~/shared/engine/config'
 import { PACT_BANS_STRATAGEM, applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
 import { tierZones } from '~~/shared/engine/rewards'
 import { activeMisfortune, currentStrain, pactOfferFor, teamRiskOf } from '~~/shared/engine/selectors'
+import { ordersConflictFor } from '~~/shared/engine/specialists'
 import type { DiverState, DiveState, RewardTier } from '~~/shared/engine/types'
 
 const props = withDefaults(defineProps<{
@@ -86,6 +87,11 @@ const coverage = computed<Record<string, string>>(() => {
     const conflict = pactConflictsWith(pact.id, selection.value)
     if (conflict) {
       blocked[pact.id] = `Conflicts with ${pactName(conflict)}`
+      continue
+    }
+    const issued = props.self ? ordersConflictFor(pact.id, props.self) : null
+    if (issued) {
+      blocked[pact.id] = `Your orders require ${issued.displayName}`
       continue
     }
     if (baseLegal && !hasLegalLoadout(misfortuneId, [...selection.value, pact.id], kit)) {

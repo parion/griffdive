@@ -757,6 +757,7 @@ function enforceSelf(action: EngineAction, playerId: string): EngineAction {
   if (
     action.type === 'SET_PACTS'
     || action.type === 'SET_WARBONDS'
+    || action.type === 'SET_SPECIALIST'
     || action.type === 'PICK_REWARD'
     || action.type === 'FORFEIT_ITEM'
     || action.type === 'BUY_ITEM'
@@ -865,10 +866,11 @@ export async function processAction(
       sendError(peer, 'not-host', 'Only the host can do that')
       return
     }
-    // FAIL_PACT and HOLD_PACT are neither host-only nor self-service: the diver
-    // owns their pact, but the host referees the squad — so sender = target or host.
+    // FAIL_PACT, HOLD_PACT and BREAK_ORDERS are neither host-only nor
+    // self-service: the diver owns their pact (and their standing orders), but
+    // the host referees the squad — so sender = target or host.
     if (
-      (action.type === 'FAIL_PACT' || action.type === 'HOLD_PACT')
+      (action.type === 'FAIL_PACT' || action.type === 'HOLD_PACT' || action.type === 'BREAK_ORDERS')
       && action.playerId !== playerId
       && room.state.hostId !== playerId
     ) {
