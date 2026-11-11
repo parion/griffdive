@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildRecap, operationsCleared, recapFilename } from './recap'
+import { startingItemIds } from '~~/shared/engine/progression'
 import { createDiveState } from '~~/shared/engine/reducer'
 import type { DiveState } from '~~/shared/engine/types'
 
@@ -40,7 +41,7 @@ describe('run recap', () => {
     expect(recap.missionsFlown).toBe(9)
     expect(recap.operationsCleared).toBe(3)
     expect(recap.combos).toBe(2)
-    expect(recap.gearOwned).toBe(4)
+    expect(recap.gearEarned).toBe(4)
     expect(recap.honorsHeld).toBe(3)
     expect(recap.squad.map(member => member.name)).toEqual(['GRIFFIN', 'NOVA'])
     expect(recap.crusadeLabel).toBe('GRIFFIN · MEDIUM')
@@ -56,7 +57,7 @@ describe('run recap', () => {
       achieved: true,
     }
     expect(operationsCleared(state)).toBe(8)
-    expect(buildRecap(state).title).toEqual(['Griffdive', 'Achieved'])
+    expect(buildRecap(state).creed).toEqual(['Freedom', 'was', 'earned.'])
   })
 
   it('counts the operation in hand when the run ends on a cleared mission', () => {
@@ -68,7 +69,7 @@ describe('run recap', () => {
       lastReport: { outcome: 'success' as const, stars: 3 },
     }
     expect(operationsCleared(state)).toBe(2)
-    expect(buildRecap(state).title).toEqual(['File', 'Closed'])
+    expect(buildRecap(state).creed).toEqual(['Service', 'is', 'recorded.'])
   })
 
   it('does not count a failed or unfinished operation', () => {
@@ -80,6 +81,17 @@ describe('run recap', () => {
       lastReport: { outcome: 'failure' as const, stars: 0 },
     }
     expect(operationsCleared(failed)).toBe(1)
+  })
+
+  it('counts only gear earned after launch, per diver', () => {
+    const state = baseState()
+    const host = state.divers[0]!
+    const recap = buildRecap({
+      ...state,
+      personalInventories: { [host.id]: [...startingItemIds('medium'), 'ar2coyote', 'ar2coyote'] },
+    })
+    expect(recap.squad[0]?.gearEarned).toBe(1)
+    expect(recap.gearEarned).toBe(1)
   })
 
   it('writes a filesystem-safe PNG name', () => {

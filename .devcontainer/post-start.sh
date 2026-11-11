@@ -70,7 +70,7 @@ fi
 # self-updates in place; /usr/local/bin/opencode2 is the launcher that keeps its XDG roots in
 # ~/.opencode2. Guarded self-heal, since the volume can be recreated independently of the
 # image. --no-modify-path: the launcher and /usr/local/bin already cover every shell, and the
-# installer's own ~/.profile line would put v2's binary ahead of v1's `opencode` in login
+# installer's own ~/.profile line would put v2's native binary ahead of the launcher in login
 # shells (v2 answers to `opencode2` here).
 OPENCODE_V2_BIN="$HOME/.opencode/bin/opencode"
 if [ ! -x "$OPENCODE_V2_BIN" ]; then
@@ -84,8 +84,8 @@ if [ ! -x "$OPENCODE_V2_BIN" ]; then
   fi
 fi
 
-# Neutralize a legacy installer PATH edit from an older volume: it prepends ~/.opencode/bin,
-# shadowing v1's `opencode` with v2's native binary in login shells. The launcher owns the
+# Neutralize a legacy installer PATH edit from an older volume: it prepends ~/.opencode/bin, so
+# v2's native binary would shadow the launcher in login shells. The launcher owns the
 # `opencode2` name instead, so drop the installer's two-line block (its `# opencode` marker
 # plus the export). Buffer the marker so it is printed back when it isn't that pair.
 if grep -q '^export PATH=.*\.opencode/bin:' "$HOME/.profile" 2>/dev/null; then
@@ -135,11 +135,11 @@ if [ -n "$PASEO_CLI" ]; then
   "$PASEO_CLI" daemon config set daemon.listen "${PASEO_LISTEN:-0.0.0.0:6767}" \
     --home "$PASEO_HOME" >/dev/null 2>&1 || true
 
-  # Expose OpenCode v2 as its own Paseo provider. Paseo ships ONE 'opencode' provider and
-  # picks its v1/v2 client from the version of the binary it launches, so the stock config
-  # only ever sees v1 (our `opencode`) and v2 is invisible. A derived provider extends
-  # 'opencode' (same client/factory) but runs the opencode2 launcher, which reports 2.x and
-  # keeps v2's XDG roots in ~/.opencode2. Create-only: an edited/removed entry is respected.
+  # Expose OpenCode v2 as its own Paseo provider. Paseo ships ONE 'opencode' provider that
+  # launches a binary of that name, and this image no longer installs v1 (see Dockerfile), so
+  # v2 — which answers to `opencode2` via the launcher — needs a derived entry. It extends
+  # 'opencode' (same client/factory), runs the opencode2 launcher, and keeps v2's XDG roots in
+  # ~/.opencode2. Create-only: an edited/removed entry is respected.
   PASEO_HOME="$PASEO_HOME" node -e '
     const fs = require("fs");
     const path = process.env.PASEO_HOME + "/config.json";
@@ -155,6 +155,27 @@ if [ -n "$PASEO_CLI" ]; then
       };
       fs.writeFileSync(path, JSON.stringify(c, null, 2) + "\n");
       console.log("Configured Paseo provider: OpenCode v2 (opencode2)");
+    }
+  '
+
+  # Hide the providers this container has no use for: the stock 'opencode' entry (v1's binary
+  # is gone — see Dockerfile) plus the agent CLIs that aren't installed, which otherwise fill
+  # the model picker with errors. Create-only per entry: an explicit re-enable wins.
+  PASEO_HOME="$PASEO_HOME" node -e '
+    const fs = require("fs");
+    const path = process.env.PASEO_HOME + "/config.json";
+    const c = JSON.parse(fs.existsSync(path) ? fs.readFileSync(path, "utf8") || "{}" : "{}");
+    c.agents = c.agents ?? {};
+    c.agents.providers = c.agents.providers ?? {};
+    const disabled = ["opencode", "codex", "copilot", "pi", "antigravity", "muse", "omp"];
+    const added = disabled.filter((id) => {
+      if (c.agents.providers[id]) return false;
+      c.agents.providers[id] = { enabled: false };
+      return true;
+    });
+    if (added.length > 0) {
+      fs.writeFileSync(path, JSON.stringify(c, null, 2) + "\n");
+      console.log("Disabled Paseo providers: " + added.join(", "));
     }
   '
 
@@ -185,6 +206,6 @@ if [ -n "$PASEO_CLI" ]; then
 fi
 
 echo
-echo "Agents: opencode (v1, npm) · opencode2 (v2, native, self-updating) · claude (native, self-updating)"
-echo "Paseo providers: OpenCode (v1) · OpenCode v2 · Claude"
+echo "Agents: opencode2 (v2, native, self-updating) · claude (native, self-updating)"
+echo "Paseo providers: OpenCode v2 · Claude (unused providers disabled)"
 echo "Paseo daemon: http://localhost:6767 · pair a device: paseo daemon pair"

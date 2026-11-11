@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { difficultyImageUrl } from '~~/shared/data/images'
 import type { DiveState } from '~~/shared/engine/types'
 import { buildRecap, recapFilename } from '~/utils/recap'
 import { RECAP_CARD_HEIGHT, RECAP_CARD_WIDTH, drawRecapCard } from '~/utils/recapCard'
@@ -12,6 +13,7 @@ const props = defineProps<{
 const recap = computed(() => buildRecap(props.state, props.crusadeLabel ?? ''))
 const canvas = ref<HTMLCanvasElement | null>(null)
 const announcement = ref('')
+let emblem: HTMLImageElement | null = null
 
 async function ensureFonts(): Promise<void> {
   if (!import.meta.client || !document.fonts) {
@@ -25,26 +27,43 @@ async function ensureFonts(): Promise<void> {
   await document.fonts.ready
 }
 
+// The card still renders without the emblem if the image never arrives.
+async function ensureEmblem(): Promise<void> {
+  if (!import.meta.client || emblem?.src.endsWith(difficultyImageUrl(props.state.difficulty))) {
+    return
+  }
+  const image = new Image()
+  image.src = difficultyImageUrl(props.state.difficulty)
+  try {
+    await image.decode()
+    emblem = image
+  }
+  catch {
+    emblem = null
+  }
+}
+
 function paint(): void {
   const ctx = canvas.value?.getContext('2d')
   if (!ctx) {
     return
   }
-  drawRecapCard(ctx, recap.value)
+  drawRecapCard(ctx, recap.value, emblem)
 }
 
-onMounted(async () => {
-  await ensureFonts()
+async function render(): Promise<void> {
+  await Promise.all([ensureFonts(), ensureEmblem()])
   paint()
-})
+}
+
+onMounted(render)
 
 async function download(): Promise<void> {
   const element = canvas.value
   if (!element || !import.meta.client) {
     return
   }
-  await ensureFonts()
-  paint()
+  await render()
   const blob = await new Promise<Blob | null>(resolve => element.toBlob(resolve, 'image/png'))
   if (!blob) {
     announcement.value = 'Could not render the recap card.'
@@ -61,19 +80,8 @@ async function download(): Promise<void> {
 </script>
 
 <template>
-  <section
-    class="recap"
-    aria-label="Run recap card"
-  >
-    <header class="recap-head">
-      <h2 class="lbl">
-        Run recap
-      </h2>
-      <span class="dash" />
-      <span class="cap">Canvas-rendered · no upload</span>
-    </header>
-
-    <div class="recap-frame">
+  <div class="recap">
+    <div class="recap-frame ticks">
       <canvas
         ref="canvas"
         :width="RECAP_CARD_WIDTH"
@@ -82,51 +90,42 @@ async function download(): Promise<void> {
         :aria-label="recap.accessibleLabel"
       >{{ recap.accessibleLabel }}</canvas>
     </div>
-
-    <div class="recap-foot">
-      <button
-        type="button"
-        class="btn ghost recap-dl"
-        @click="download"
-      >
-        Download recap (PNG)
-        <svg
-          width="17"
-          height="17"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          aria-hidden="true"
-        ><path d="M12 3v12M7 10l5 5 5-5M4 21h16" /></svg>
-      </button>
-      <span
-        class="sr-only"
-        role="status"
-        aria-live="polite"
-      >{{ announcement }}</span>
-    </div>
-  </section>
+    <button
+      type="button"
+      class="btn recap-dl"
+      @click="download"
+    >
+      Download recap (PNG)
+      <svg
+        width="17"
+        height="17"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        aria-hidden="true"
+      ><path d="M12 3v12M7 10l5 5 5-5M4 21h16" /></svg>
+    </button>
+    <span
+      class="sr-only"
+      role="status"
+      aria-live="polite"
+    >{{ announcement }}</span>
+  </div>
 </template>
 
 <style scoped>
 .recap {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-4);
   min-width: 0;
 }
-.recap-head {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-4);
-}
-.recap-head h2 { margin: 0; color: var(--gold); }
-.recap-head .dash { flex: 1 1 auto; min-width: 12px; }
 .recap-frame {
-  border: 1px solid var(--line-2);
+  width: 100%;
+  border: 1px solid var(--line-3);
   background: var(--ground);
-  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
 }
 .recap-frame canvas {
   display: block;
@@ -134,14 +133,12 @@ async function download(): Promise<void> {
   height: auto;
   aspect-ratio: 1200 / 630;
 }
-.recap-foot { display: flex; justify-content: flex-end; }
 .recap-dl {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   min-height: 44px;
-  padding: 0 16px;
-  color: var(--text);
+  padding: 0 18px;
   font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.12em;

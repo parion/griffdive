@@ -454,17 +454,35 @@ host's Start operation runs the same `ADVANCE`.
 
 #### Run complete — `DiveCompleteOverlay`
 
-Both endings share one screen. The achieved run keeps the ladder, flag and the Ministry Pardon
-notice (shown only when Penance was served or a directive tax paid and no debt is still owed); the
-abandoned run lands on the same ceremony with the Ministry's **file closed** notice, the rung
-reached lit on the same ladder, and the same record, squad tags and actions. `DivePhaseComplete` is
-retired — there is one end-of-run screen, not two. The record is compact: missions, operations,
-reward items, squad credits, pacts held and broken. Its **`DiveRecapCard`** renders the run to a
-1200×630 canvas (squad names, start → end rung, missions, operations, combos, gear, honors in hand)
-and downloads it as a PNG client-side; nothing is uploaded and no route or server exists for it.
-The canvas is painted only after `document.fonts.ready`, mirrors the terminal palette, and exposes
-the same numbers to assistive tech through its label. The old JSON export button is gone from this
-screen (the Bridge still exports saves).
+The end of a days-long run, built as the Bridge's answer. Both endings share one page (it scrolls
+like the Bridge, over the same living **`BridgeField`**); `DivePhaseComplete` is retired. Nothing is
+slanted or marqueed, and "Griffdive achieved" appears once, as the kicker.
+
+- **Hero** — the Bridge hero's frame. The creed comes back in the same three-line stack:
+  **"Freedom / was / earned."** for an achieved run, **"Service / is / recorded."** for an ended one
+  (khaki, not gold). A one-line lede names the squad and the climb ("… climbed from Medium to Super
+  Helldive in 24 missions"). The Ministry notice sits under it as an edged note: the **Pardon**
+  only when Penance was served or a directive tax paid and no debt is still owed; **File closed**
+  on every ended run. Actions: Back to bridge (primary), Delete save (local saves), the locked
+  Endless teaser (achieved only).
+- **Summit** — where the Bridge shows its wheel: the in-game emblem of the last difficulty slams in
+  over two counter-rotating ray fields and a breathing halo, with embers rising on an achieved run.
+  Under the number and name, the climb is a 3→10 **staircase**: steps fill in turn, each underlined
+  in its base tier; on loop a light runs up the climbed steps; a flag waves on the summit step. An
+  ended run lights the steps it reached (the last one pulsing) and leaves the rest dashed.
+- **Record** — the Bridge's facts strip, filled in: missions flown, operations cleared,
+  difficulty climbed, gear earned, honors held. Every number reads from state that survives a
+  full run (never from the action log, which is capped at `ACTION_LOG_CAP`).
+- **The squad** — one dossier per diver: their best earned gear (rarest first, four tiles and a
+  `+N`), gear earned, honors chits and purse.
+- **Post the record** — **`DiveRecapCard`** previews the 1200×630 share card at a card's size,
+  not the page's, and downloads it as a PNG client-side; nothing is uploaded and no route exists
+  for it. The canvas mirrors the hero (hazard rail, creed stack with tier rules in the expanded
+  display face, summit emblem over rays, staircase, stats, squad), paints only after
+  `document.fonts.ready` and the emblem decode, and exposes the same numbers through its label.
+- A closing line and a second Back to bridge end the page, like the Bridge's closing call.
+
+Reduced motion stills every loop (rays, halo, embers, glint, flag); the page lands settled.
 
 #### ValorRoll — the one odds primitive
 

@@ -1,19 +1,23 @@
 import { missionsPerOperation } from '~~/shared/engine/config'
-import { STARTING_KITS, difficultyName } from '~~/shared/engine/progression'
+import { STARTING_KITS, difficultyName, earnedKit } from '~~/shared/engine/progression'
 import type { DiveState } from '~~/shared/engine/types'
 import { upperName } from './upperName'
 
 export interface RecapSquadMember {
+  id: string
   name: string
   isHost: boolean
-  items: number
+  gearEarned: number
   tokens: number
+  credits: number
 }
 
 export interface Recap {
   outcome: 'achieved' | 'abandoned'
   kicker: string
-  title: [string, string]
+  // The Bridge's creed, answered: `Freedom / is / earned.` becomes a
+  // three-line stack whose small middle word sits between tier rules.
+  creed: [string, string, string]
   crusadeLabel: string
   startDifficulty: number
   endDifficulty: number
@@ -22,7 +26,7 @@ export interface Recap {
   missionsFlown: number
   operationsCleared: number
   combos: number
-  gearOwned: number
+  gearEarned: number
   honorsHeld: number
   squad: RecapSquadMember[]
   accessibleLabel: string
@@ -44,25 +48,28 @@ export function operationsCleared(state: DiveState): number {
 export function buildRecap(state: DiveState, crusadeLabel = ''): Recap {
   const variant = state.settings?.variant ?? 'medium'
   const startDifficulty = STARTING_KITS[variant].startDifficulty
+  // Earned gear, not the action log: the log is capped, so a long crusade's
+  // early picks have scrolled out of it by the summit.
   const squad = state.divers.map(diver => ({
+    id: diver.id,
     name: upperName(diver.name),
     isHost: diver.id === state.hostId,
-    items: (state.personalInventories[diver.id] ?? []).length,
+    gearEarned: earnedKit(state.personalInventories[diver.id] ?? [], variant, diver.supportKit ?? []).length,
     tokens: diver.rewardTokens,
+    credits: diver.credits,
   }))
-  const gearOwned = Object.values(state.personalInventories)
-    .reduce((total, items) => total + items.length, 0)
+  const gearEarned = squad.reduce((total, member) => total + member.gearEarned, 0)
   const operations = operationsCleared(state)
   const honorsHeld = state.divers.reduce((total, diver) => total + diver.rewardTokens, 0)
   const achieved = state.achieved
   const labels = achieved
-    ? { kicker: 'Crusade complete', title: ['Griffdive', 'Achieved'] as [string, string] }
-    : { kicker: 'Ministry notice · file closed', title: ['File', 'Closed'] as [string, string] }
+    ? { kicker: 'Griffdive achieved', creed: ['Freedom', 'was', 'earned.'] as [string, string, string] }
+    : { kicker: 'Crusade ended', creed: ['Service', 'is', 'recorded.'] as [string, string, string] }
 
   const recap: Recap = {
     outcome: achieved ? 'achieved' : 'abandoned',
     kicker: labels.kicker,
-    title: labels.title,
+    creed: labels.creed,
     crusadeLabel,
     startDifficulty,
     endDifficulty: state.difficulty,
@@ -71,16 +78,16 @@ export function buildRecap(state: DiveState, crusadeLabel = ''): Recap {
     missionsFlown: state.missionIndex,
     operationsCleared: operations,
     combos: state.completedCombos.length,
-    gearOwned,
+    gearEarned,
     honorsHeld,
     squad,
     accessibleLabel: '',
   }
   recap.accessibleLabel = [
-    `${labels.title.join(' ')} recap.`,
+    `${labels.kicker}. ${labels.creed.join(' ')}`,
     `Climbed from ${recap.startName} ${recap.startDifficulty} to ${recap.endName} ${recap.endDifficulty}.`,
     `${recap.missionsFlown} missions flown, ${recap.operationsCleared} operations cleared,`,
-    `${recap.combos} combos, ${recap.gearOwned} items owned, ${recap.honorsHeld} honors in hand.`,
+    `${recap.combos} combos, ${recap.gearEarned} items earned, ${recap.honorsHeld} honors in hand.`,
     `Squad: ${squad.map(member => member.name).join(', ')}.`,
   ].join(' ')
   return recap
