@@ -61,11 +61,8 @@ const squadDrafts = computed(() =>
     .map(diver => ({ id: diver.id, name: upperName(diver.name), summary: draftSummaryFor(props.state, diver) })))
 
 const blockers = computed(() => climbBlockers(props.state))
-const settled = computed(() => !blockers.value.honors && blockers.value.rules === 0)
+const settled = computed(() => !blockers.value.honors)
 const blockerLabel = computed(() => {
-  if (blockers.value.rules > 0) {
-    return `Settle ${blockers.value.rules} rule${blockers.value.rules === 1 ? '' : 's'} first`
-  }
   if (blockers.value.honors) {
     return props.state.bonusSeed === null ? 'Rolling Squad Honors' : 'Award honors first'
   }
@@ -216,12 +213,20 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
     />
 
     <div class="board">
-      <MissionBankedHaul
-        class="haul-card"
-        :state="state"
-        :self="self"
-        :phone="phone"
-      />
+      <div class="haul-stack">
+        <MissionBankedHaul
+          class="haul-card"
+          :state="state"
+          :self="self"
+          :phone="phone"
+        />
+        <SquadDraftBoard
+          v-if="squadDrafts.length"
+          class="squad-under-haul"
+          :drafts="squadDrafts"
+          compact
+        />
+      </div>
 
       <article class="check">
         <ClimbStats
@@ -258,13 +263,6 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
         :self="self"
       />
     </section>
-
-    <SquadDraftBoard
-      v-if="squadDrafts.length"
-      class="squad"
-      :drafts="squadDrafts"
-      compact
-    />
 
     <PhoneActionBar v-if="phone">
       <template #primary>
@@ -541,6 +539,9 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
   /* A wider art well keeps the climb, the haul and the CTA on one desktop screen. */
   --haul-aspect: 16 / 10;
 }
+.haul-stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.squad-under-haul :deep(.board-grid) { display: flex; flex-wrap: wrap; gap: 8px; }
+.squad-under-haul :deep(.squad-pick) { flex: 1 1 180px; }
 .check {
   display: flex;
   flex-direction: column;

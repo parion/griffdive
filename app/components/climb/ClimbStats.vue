@@ -32,7 +32,6 @@ interface RuleRow extends StatsRule {
   condition: NonNullable<ReturnType<typeof conditionById>>
   risk: number
   canSettle: boolean
-  waitingOn: string
   stake: string | null
   outcome: string
 }
@@ -69,7 +68,6 @@ const rows = computed<RuleRow[]>(() => statsRules(props.state).flatMap((rule) =>
     canSettle: rule.scope === 'directive'
       ? props.isHost
       : props.isHost || rule.diverId === props.selfId,
-    waitingOn: rule.scope === 'directive' ? hostName.value : ownerName,
     stake,
     outcome,
   }]
@@ -116,7 +114,7 @@ function broke(rule: StatsRule): void {
       <span
         class="tiny"
         :class="{ clear: pending === 0 && rows.length > 0 }"
-      >{{ rows.length === 0 ? 'Nothing rides on the stats screen' : pending === 0 ? 'All settled' : `${pending} to settle` }}</span>
+      >{{ rows.length === 0 ? 'Nothing rides on the stats screen' : pending === 0 ? 'All settled' : 'Held by default — mark any you broke' }}</span>
     </header>
 
     <ul
@@ -152,10 +150,13 @@ function broke(rule: StatsRule): void {
         <div
           v-if="row.status === 'pending' && row.canSettle"
           class="rule-act"
+          role="group"
+          :aria-label="`${row.name} outcome`"
         >
           <button
-            class="act held"
+            class="act held selected"
             type="button"
+            aria-pressed="true"
             :aria-label="`${row.name} held`"
             @click="hold(row)"
           >
@@ -165,6 +166,7 @@ function broke(rule: StatsRule): void {
             class="act broke"
             :class="{ armed: armed === keyOf(row) }"
             type="button"
+            aria-pressed="false"
             :aria-label="`${row.name} broke`"
             @click="broke(row)"
           >
@@ -173,8 +175,8 @@ function broke(rule: StatsRule): void {
         </div>
         <span
           v-else-if="row.status === 'pending'"
-          class="chip wait"
-        >Waiting on {{ row.waitingOn }}</span>
+          class="chip held"
+        >Held</span>
         <span
           v-else
           class="chip"
@@ -215,7 +217,7 @@ function broke(rule: StatsRule): void {
 .rule-name .disp { font-size: 18px; }
 .rule-body { color: var(--khaki); font-size: var(--fs-sm); }
 .rule-stake { color: var(--purple); font-size: 12px; }
-.rule-act { display: flex; gap: 8px; }
+.rule-act { display: inline-flex; }
 .act {
   min-width: 88px;
   min-height: 40px;
@@ -229,11 +231,11 @@ function broke(rule: StatsRule): void {
   cursor: pointer;
   box-shadow: inset 0 0 0 1px var(--line-4);
 }
+.act + .act { border-left: 1px solid var(--line-4); }
 .act.held { background: var(--gold); color: var(--on-gold); box-shadow: none; }
 .act.broke.armed { color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
 .chip { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
 .chip.held { color: var(--teal); }
 .chip.broke { color: var(--red); }
 .chip.broke.owes { color: var(--purple); }
-.chip.wait { color: var(--muted); font-weight: 600; }
 </style>

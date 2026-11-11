@@ -76,9 +76,11 @@ set; extracted references are git-ignored and presentation-only. Nothing here to
   use brackets for extra detail, never an em dash.
 - **Squad climbs**: the page after the draft (`ClimbCleared`, in `components/climb/`). The Stats
   check (`ClimbStats`) and Squad Honors (`ClimbHonors`) share one panel beside the haul card; the
-  report is a slim strip (`ClimbReport`) above them. The honors reel is built for a flex *row*
-  (`flex: 1 1 340px`), so in a column it must sit in a plain block slot or it turns 340px tall.
-  Never name a local class `.row` or `.rule` — `main.css` owns both (`.row` carries
+  squad's drafts (`SquadDraftBoard`, compact) flex beneath **Your haul**, and the report is a slim
+  strip (`ClimbReport`) above them. The stats check is a side-by-side HELD/BROKE button group with
+  **HELD preselected** — an unmarked rule is held, so only a break costs a tap. The honors reel is
+  built for a flex *row* (`flex: 1 1 340px`), so in a column it must sit in a plain block slot or it
+  turns 340px tall. Never name a local class `.row` or `.rule` — `main.css` owns both (`.row` carries
   `flex-wrap: wrap`, which wrapped the reel's labels until `HonorsReel` set `nowrap`).
 - **Penance is purple.** `--purple` is reserved for it: purple skulls (`RiskPips tone="purple"`) and
   a *Penance* tag on the Pacts sworn row, the owed strip on the pact screens (`PactPenance`), and a

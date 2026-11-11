@@ -251,6 +251,7 @@ N3.
 ### Shipped outside the batches
 
 N31, N32 — owner-requested changes landed after Batch A.
+**Stats check defaults to held (2026-11-11)** — HELD is preselected; the squad's drafts sit under Your haul.
 
 ## Item details
 
@@ -802,6 +803,11 @@ reducer tie/empty-award tests and the v14→v15 migration tests.
 
 ## Accepted / notes
 
+- **Stats check defaults to held (2026-11-11).** `ClimbStats` renders HELD/BROKE as a side-by-side
+  group with HELD preselected; `climbBlockers` only gates Squad Honors, and `ADVANCE` serves an
+  unmarked Penance debt before carrying the next one. The climbs page flexes the squad's drafts
+  under **Your haul**. Rules and the gate are documented in `game-rules.md`; the design note is in
+  `design-language.md`.
 - **N28 (`F1`) · `holdingsEmpty` is unreachable.** Needs ~19 failures per diver; fine as a safety
   net. No action.
 - **N30 (`F4`) · Failure cannot lower difficulty or set `achieved`.** Verified by inspection; a

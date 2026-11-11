@@ -2471,12 +2471,11 @@ describe('stats check after the draft', () => {
     expect(pickFor(state).divers[0]?.pickedOptionId).not.toBeNull()
   })
 
-  it('holds the next drop until every stats rule is settled', () => {
+  it('advances with unmarked stats rules held by default', () => {
     const drafted = pickFor(banked(['cleanHands']))
-    expect(climbBlockers(drafted)).toEqual({ rules: 1, honors: false })
-    expect(reduce(drafted, { type: 'ADVANCE' })).toBe(drafted)
+    expect(climbBlockers(drafted)).toEqual({ honors: false })
+    expect(reduce(drafted, { type: 'ADVANCE' }).phase).toBe('spin')
     const held = reduce(drafted, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'cleanHands' })
-    expect(climbBlockers(held).rules).toBe(0)
     expect(reduce(held, { type: 'ADVANCE' }).phase).toBe('spin')
   })
 
@@ -2488,7 +2487,7 @@ describe('stats check after the draft', () => {
     expect(requireDiver(broke).failedPactIds).toEqual([])
     expect(diverOptions(broke, requireDiver(broke)).map(option => option.optionId)).toEqual(before)
     expect(broke.divers[0]?.pickedOptionId).toBe(drafted.divers[0]?.pickedOptionId)
-    expect(climbBlockers(broke).rules).toBe(0)
+    expect(climbBlockers(broke)).toEqual({ honors: false })
   })
 
   it('leaves loadout and field pacts out of the check', () => {
@@ -2511,10 +2510,10 @@ describe('stats check after the draft', () => {
     expect(reduce(diving, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'cleanHands' })).toBe(diving)
   })
 
-  it('holds the next drop behind a stats-verified directive until it is settled', () => {
+  it('advances with a stats-verified directive held by default', () => {
     const drafted = pickFor(banked([], 'stimShortage'))
     expect(statsPendingMisfortune(drafted)?.id).toBe('stimShortage')
-    expect(reduce(drafted, { type: 'ADVANCE' })).toBe(drafted)
+    expect(reduce(drafted, { type: 'ADVANCE' }).phase).toBe('spin')
 
     const held = reduce(drafted, { type: 'HOLD_MISFORTUNE' })
     expect(held.misfortuneHeld).toBe(true)
@@ -2606,6 +2605,24 @@ describe('stats check after the draft', () => {
       expect(requireDiver(held).penance?.status).toBe('served')
       expect(held.debtSettled).toBe(true)
       expect(held.personalInventories.p1).toContain(itemId)
+    })
+
+    it('serves an unmarked penance pact by default when the squad moves on', () => {
+      const { owedAt, itemId } = owing()
+      let state = reduce(nextMission(owedAt), { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
+      state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 2 })
+      state = pickFor(state)
+      if (honorsDue(state)) {
+        state = reduce(state, { type: 'SPIN_BONUS', seed: 4242 })
+        if (honorsDue(state)) {
+          state = reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1'] })
+        }
+      }
+      const next = reduce(state, { type: 'ADVANCE' })
+      expect(next.phase).toBe('spin')
+      expect(next.debtSettled).toBe(true)
+      expect(next.personalInventories.p1).toContain(itemId)
+      expect(requireDiver(next).penance).toBeNull()
     })
 
     it('voids the reward when the penance pact breaks again, with no second debt', () => {
