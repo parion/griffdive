@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useIntervalFn, useMediaQuery } from '@vueuse/core'
 import { createSaveDoc } from '~~/shared/engine/saves'
-import { allDiversPicked, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending, squadInventories, squadPenances } from '~~/shared/engine/selectors'
+import { allDiversPicked, bonusFor, bonusWinners, debriefOpen, diverOptions, majorOrderFronts, promotionPending, squadInventories } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
@@ -71,18 +71,20 @@ const reporting = ref(false)
 const fieldKit = computed(() =>
   phase.value === 'diving' && !reporting.value && spaciousDesktop.value)
 
-// Once the whole squad has banked, everyone regroups on the squad-climbs page
-// instead of idling on the draft: the stats check, Squad Honors and the shop, at
-// the end of every mission and operation. It is derived from synced state, so
-// every diver sees the same beat; the engine stays in rewards and the host's
-// ADVANCE is the only way on.
+// The report opens the debrief, a squad-wide beat for Squad Honors and the
+// stats check; the host's DEAL_REWARDS closes it and opens the draft. Once the
+// whole squad has banked, everyone regroups on the squad-climbs page instead of
+// idling on the draft. Both are derived from synced state, so every diver sees
+// the same beat; the engine stays in rewards and the host's ADVANCE is the only
+// way on.
+const debriefing = computed(() => Boolean(state.value && debriefOpen(state.value)))
 const squadBanked = computed(() =>
   state.value?.phase === 'rewards' && allDiversPicked(state.value))
 
 // A new beat starts at its top. Without this the stage keeps the scroll the
 // last beat left behind — banking from the bottom of the draft would open the
 // next screen halfway down. Narrow desktops scroll the window instead.
-watch([phaseKey, squadBanked], () => {
+watch([phaseKey, debriefing, squadBanked], () => {
   if (!import.meta.client) {
     return
   }
@@ -90,8 +92,8 @@ watch([phaseKey, squadBanked], () => {
   window.scrollTo({ top: 0 })
 })
 
-// Filing the report spins Squad Honors. The climb page owns its reveal and
-// award flow; don't repeat its prompt in the dock during rewards.
+// Filing the report seeds Squad Honors. The debrief owns its reveal and award
+// flow; don't repeat its prompt in the dock during rewards.
 const honors = computed(() => (
   state.value && state.value.phase !== 'diving' && state.value.phase !== 'rewards'
     ? bonusFor(state.value)
@@ -317,7 +319,7 @@ function reroll(wheel: 'misfortune' | 'front' | 'strain'): void {
   let seed = session.newSeed()
   for (let attempt = 0; attempt < 32; attempt++) {
     const same = wheel === 'misfortune'
-      ? deriveMisfortune(seed, squadInventories(current), squadPenances(current)).id === current.wheel.misfortuneId
+      ? deriveMisfortune(seed, squadInventories(current)).id === current.wheel.misfortuneId
       : wheel === 'front'
         ? deriveFront(seed, majorOrderFronts(current)) === current.frontId
         : deriveStrain(seed, current.difficulty, current.frontId!)?.id === current.strainId
@@ -354,13 +356,8 @@ function failPact(playerId: string, pactId: string): void {
   dispatch({ type: 'FAIL_PACT', playerId, pactId })
 }
 
-// The stats check before the draft: held or broke, once the stats screen is up.
-function holdPact(playerId: string, pactId: string): void {
-  dispatch({ type: 'HOLD_PACT', playerId, pactId })
-}
-
-function holdDirective(): void {
-  dispatch({ type: 'HOLD_MISFORTUNE' })
+function dealRewards(): void {
+  dispatch({ type: 'DEAL_REWARDS' })
 }
 
 // The host referees the squad's team directive: mark it broken in the field and
@@ -781,8 +778,7 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @report="report"
       @fail-pact="failPact"
       @fail-directive="failDirective"
-      @hold-pact="holdPact"
-      @hold-directive="holdDirective"
+      @deal-rewards="dealRewards"
       @pick="pick"
       @reroll-rewards="rerollRewards"
       @spin-bonus="spinBonus"
@@ -900,20 +896,26 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
             name="phase"
             mode="out-in"
           >
+            <DebriefStage
+              v-if="debriefing"
+              :state="state"
+              :self="self"
+              :self-id="selfId"
+              :can-control="canControl"
+              @fail-pact="failPact"
+              @fail-directive="failDirective"
+              @spin-bonus="spinBonus"
+              @award-bonus="awardBonus"
+              @deal="dealRewards"
+            />
             <ClimbCleared
-              v-if="squadBanked"
+              v-else-if="squadBanked"
               :state="state"
               :self="self"
               :self-id="selfId"
               :can-control="canControl"
               :op-length="opLength"
               @advance="advance"
-              @hold-pact="holdPact"
-              @fail-pact="failPact"
-              @hold-directive="holdDirective"
-              @fail-directive="failDirective"
-              @spin-bonus="spinBonus"
-              @award-bonus="awardBonus"
             />
             <DivePhaseRewards
               v-else

@@ -160,6 +160,15 @@ export const MISFORTUNE_BANS_STRATAGEM: Readonly<Record<string, (item: Item) => 
   primaryOnly: isSupportWeaponStratagem,
 }
 
+// The names a pact would strip from a kit. Reserve utility is exempt for pacts,
+// so the pact screen never lists EMS or Smoke Strikes as banned.
+export function pactBannedNames(pactId: string, ownedIds: readonly string[]): string[] {
+  return ownedIds
+    .map(id => stratagems.find(item => item.id === id))
+    .filter((item): item is Item => item !== undefined && stratagemBanReason(null, [pactId], item) !== null)
+    .map(item => item.displayName)
+}
+
 export interface StratagemBanSource {
   source: 'misfortune' | 'pact'
   id: string
@@ -233,17 +242,14 @@ export function hasLegalLoadout(
 // another diver's reinforce, so a solo diver would simply stay dead.
 export const SQUAD_ONLY_PACTS: readonly string[] = ['deadWeight']
 
-// `sworn` are pacts the diver already carries (Penance): never offered again.
 export function rollPactOffer(
   seed: number,
   misfortuneId: string | null,
   difficulty: number,
   squadSize: number,
-  sworn: readonly string[] = [],
 ): Pact[] {
   const pool = PACTS.filter(pact =>
     isPactSelectable(pact.id, misfortuneId)
-    && !sworn.includes(pact.id)
     && (squadSize > 1 || !SQUAD_ONLY_PACTS.includes(pact.id)))
   const rng = mulberry32(deriveSeed(seed, 3))
   const remaining = [...pool]

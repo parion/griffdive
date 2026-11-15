@@ -17,7 +17,7 @@ import {
 import { VARIANTS, catchUpOpsBehind, earnedKit, mergeKit, startingItemIds } from './progression'
 import { rollSupportKit } from './support'
 import { normalizeTierList } from './tierList'
-import type { ArmorPackDeal, BargainDeal, BargainSlotKind, DivePhase, DiveState, DiverState, FrontPlan, LegacyCache, MajorOrderSelection, PenanceDebt, WheelResult } from './types'
+import type { ArmorPackDeal, BargainDeal, BargainSlotKind, DivePhase, DiveState, DiverState, FrontPlan, LegacyCache, MajorOrderSelection, WheelResult } from './types'
 
 // A freshly created room: no settings, no divers. The first joiner becomes
 // host; START_DIVE applies the variant kit to everyone present.
@@ -35,9 +35,6 @@ export function createLobbyState(): DiveState {
     frontId: null,
     misfortuneAccepted: false,
     misfortuneFailed: false,
-    misfortuneHeld: false,
-    misfortuneBroken: false,
-    directiveTax: false,
     strainId: null,
     strainAccepted: false,
     strainDecided: false,
@@ -125,9 +122,6 @@ export function joinDiver(
     pactsLocked: false,
     pactIds: [],
     failedPactIds: [],
-    heldPactIds: [],
-    brokenPactIds: [],
-    penance: null,
     pickedOptionId: null,
     // Warbonds are personal purchases — every diver declares their own set
     // (self-service SET_WARBONDS); the app defaults to all.
@@ -175,22 +169,6 @@ function stringArray(value: unknown, cap = 300): string[] {
   return value.filter((entry): entry is string => typeof entry === 'string').slice(0, cap)
 }
 
-function sanitizePenance(raw: unknown): PenanceDebt | null {
-  if (!raw || typeof raw !== 'object') {
-    return null
-  }
-  const debt = raw as Partial<PenanceDebt>
-  const pactIds = stringArray(debt.pactIds, 20)
-  if (pactIds.length === 0) {
-    return null
-  }
-  return {
-    pactIds,
-    itemId: typeof debt.itemId === 'string' ? debt.itemId : null,
-    status: debt.status === 'served' || debt.status === 'voided' ? debt.status : 'owed',
-  }
-}
-
 // A forked save is client-supplied: normalizeSaveDoc only validates the outer
 // dive, so every diver field is defaulted here. A malformed snapshot must
 // never seat a half-shaped diver or smuggle an unbounded list into storage.
@@ -209,9 +187,6 @@ function sanitizeDiver(raw: unknown): DiverState | null {
     pactsLocked: diver.pactsLocked === true,
     pactIds: stringArray(diver.pactIds),
     failedPactIds: stringArray(diver.failedPactIds),
-    heldPactIds: stringArray(diver.heldPactIds),
-    brokenPactIds: stringArray(diver.brokenPactIds),
-    penance: sanitizePenance(diver.penance),
     pickedOptionId: typeof diver.pickedOptionId === 'string' ? diver.pickedOptionId : null,
     forfeitedItemId: typeof diver.forfeitedItemId === 'string' ? diver.forfeitedItemId : null,
     warbondCodes: stringArray(diver.warbondCodes),
@@ -393,9 +368,6 @@ function resolveStrandedForfeit(state: DiveState): DiveState {
     wheel: null,
     misfortuneAccepted: false,
     misfortuneFailed: false,
-    misfortuneHeld: false,
-    misfortuneBroken: false,
-    directiveTax: false,
     strainAccepted: false,
     strainDecided: false,
     misfortuneHistory: [],
@@ -409,9 +381,6 @@ function resolveStrandedForfeit(state: DiveState): DiveState {
       pactsLocked: false,
       pactIds: [],
       failedPactIds: [],
-      heldPactIds: [],
-      brokenPactIds: [],
-      penance: null,
       pickedOptionId: null,
       forfeitedItemId: null,
       rewardRerollSeed: null,
@@ -513,9 +482,6 @@ export function forkCrusade(
     frontId,
     misfortuneAccepted: state.misfortuneAccepted === true,
     misfortuneFailed: state.misfortuneFailed === true,
-    misfortuneHeld: state.misfortuneHeld === true,
-    misfortuneBroken: state.misfortuneBroken === true,
-    directiveTax: state.directiveTax === true,
     strainId,
     strainAccepted: state.strainAccepted === true,
     strainDecided: state.strainDecided === true,

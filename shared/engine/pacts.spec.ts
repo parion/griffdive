@@ -12,6 +12,7 @@ import {
   stratagemBanReason,
   isPactSelectable,
   legalStratagemCount,
+  pactBannedNames,
   pactConflictsWith,
   pactRiskTotal,
   pactSubsumedBy,
@@ -267,5 +268,23 @@ describe('rollPactOffer', () => {
     for (const misfortuneId of Object.keys(BLOCKED_UNDER_MISFORTUNE)) {
       expect(rollPactOffer(7, misfortuneId, 10, 4).length).toBeGreaterThanOrEqual(2)
     }
+  })
+})
+
+describe('pactBannedNames', () => {
+  it('never lists the reserve a pact cannot take', () => {
+    const kit = startingItemIds('medium')
+    expect(pactBannedNames('shipSilent', kit)).toEqual([])
+    expect(pactBannedNames('grounded', kit)).toEqual([])
+  })
+
+  it('lists owned stratagems the pact does ban', () => {
+    expect(pactBannedNames('shipSilent', ['orbitalsmokestrike', 'orbital380mmhebarrage'])).toHaveLength(1)
+  })
+})
+
+describe('starting kit', () => {
+  it('issues the Combat Hatchet', () => {
+    expect(startingItemIds('medium')).toContain('cqc5combathatchet')
   })
 })

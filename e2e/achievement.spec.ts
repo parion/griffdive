@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { dismissWarbondIntro, fileCallsign } from './helpers'
 
-test('Griffdive Achieved shows the run record and gates the Pardon on settled debt', async ({ page }) => {
+test('Griffdive Achieved shows the run record', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Solo drop' }).click()
   await fileCallsign(page, 'Griffon')
@@ -39,17 +39,6 @@ test('Griffdive Achieved shows the run record and gates the Pardon on settled de
   await expect(squad.getByRole('img', { name: '77 credits' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Download recap (PNG)' })).toBeVisible()
   await expect(page.getByText('Ministry notice')).toHaveCount(0)
-
-  await page.evaluate(() => {
-    const key = 'griffdive:saves:v2'
-    const index = JSON.parse(localStorage.getItem(key) || '{}')
-    const save = index[Object.keys(index)[0]!]
-    save.state.debtSettled = true
-    localStorage.setItem(key, JSON.stringify(index))
-  })
-  await page.reload()
-  await expect(page.getByText('Ministry notice')).toBeVisible()
-  await expect(page.getByText(/Penance was served or your directive tax paid/)).toBeVisible()
 })
 
 test('an ended crusade lands on the same record with the file closed', async ({ page }) => {

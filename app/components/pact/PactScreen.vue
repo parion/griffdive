@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { pactName } from '~~/shared/data/pacts'
 import { conditionRiskAt } from '~~/shared/engine/config'
-import { PACT_BANS_STRATAGEM, applyPactToggle, hasLegalLoadout, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
+import { applyPactToggle, hasLegalLoadout, pactBannedNames, pactConflictsWith, pactRiskTotal, pactSubsumedBy } from '~~/shared/engine/pacts'
 import { tierZones } from '~~/shared/engine/rewards'
 import { activeMisfortune, currentStrain, pactOfferFor, teamRiskOf } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, RewardTier } from '~~/shared/engine/types'
@@ -12,7 +12,6 @@ const props = withDefaults(defineProps<{
   self: DiverState | null
   canControl?: boolean
 }>(), { canControl: true })
-const { itemById } = useTierCatalog()
 
 const emit = defineEmits<{
   lock: [pactIds: string[]]
@@ -141,19 +140,8 @@ const selectionNames = computed(() =>
   selection.value.map(id => pactName(id)).join(' · '))
 
 function bannedNote(pactId: string): string {
-  const predicate = PACT_BANS_STRATAGEM[pactId]
-  if (!predicate) {
-    return ''
-  }
-  const names = owned.value
-    .map(id => itemById(id))
-    .filter((item): item is NonNullable<typeof item> => Boolean(item))
-    .filter(item => predicate(item))
-    .map(item => item.displayName)
-  if (names.length === 0) {
-    return ''
-  }
-  return `Bans ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}`
+  const names = pactBannedNames(pactId, owned.value)
+  return names.length === 0 ? '' : `Bans ${names.slice(0, 3).join(', ')}${names.length > 3 ? '…' : ''}`
 }
 
 const ctaLabel = computed(() => {
@@ -179,7 +167,7 @@ function lockNow(): void {
         Swear your pacts
       </h1>
       <p class="pact-sub">
-        Pacts only affect you. A broken pact costs you a loot option — or Penance, a debt to clear later, when the stats screen shows the break.
+        Pacts only affect you. A broken pact costs you a loot option, even one only the stats screen can prove.
       </p>
       <p class="risk-note">
         Risk shown is for this difficulty; higher difficulties raise risk and offer more pacts.
@@ -211,11 +199,6 @@ function lockNow(): void {
       <b class="disp directive-name">{{ directiveSkipped ? 'Directive skipped' : 'Safe dive' }}</b>
       <span class="directive-rule">No squad directive this mission.</span>
     </div>
-
-    <PactPenance
-      :self="self"
-      :difficulty="state.difficulty"
-    />
 
     <div
       class="hand"

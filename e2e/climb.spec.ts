@@ -1,8 +1,8 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
-import { dismissWarbondIntro, fileCallsign, settleClimb } from './helpers'
+import { dismissWarbondIntro, fileCallsign, settleClimb, settleDebrief } from './helpers'
 
-// The stats screen comes up after the report and the draft, so a rule only it
-// can prove is settled on the climbs page. The pact hand is random: redeal fresh
+// HD2's stats screen is up right after the report, so a rule only it can prove
+// is settled in the debrief, before the roll. The pact hand is random: redeal fresh
 // solo dives until a hand offers a stats-verified pact, then swear it.
 async function diveWithStatsPact(browser: Browser): Promise<Page> {
   for (let attempt = 0; attempt < 14; attempt++) {
@@ -30,62 +30,60 @@ async function diveWithStatsPact(browser: Browser): Promise<Page> {
   throw new Error('no hand offered a stats-verified pact')
 }
 
-async function fileSuccessAndBank(page: Page): Promise<void> {
+async function fileSuccess(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Extracted' }).click()
   await page.getByRole('button', { name: 'File report' }).click()
-  // The draft opens at once; the stats check waits for the climbs page.
+  // The debrief opens first; the draft waits for the host's roll.
+  await expect(page.getByRole('heading', { name: 'Read the stats screen' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Bank one item' })).toBeHidden()
+}
+
+async function bank(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Bank one item' })).toBeVisible()
   await page.locator('.loot-card').first().click()
   await page.getByRole('button', { name: /^Bank / }).click()
   await expect(page.locator('.climb')).toBeVisible()
 }
 
-test('climbs page: stats rules are held by default, so the next drop is open', async ({ browser }) => {
+test('debrief: stats rules are held by default, so the roll is open', async ({ browser }) => {
   const page = await diveWithStatsPact(browser)
-  await fileSuccessAndBank(page)
+  await fileSuccess(page)
 
-  const climb = page.locator('.climb')
-  await expect(climb.getByRole('heading', { name: 'Mission secured' })).toBeVisible()
-  await expect(climb.getByLabel('Mission report')).toBeVisible()
-  await expect(climb.getByLabel('Stats check')).toContainText('Held by default')
-  // HELD is preselected; the call to drop is not gated on a manual attestation.
-  await expect(climb.locator('.rule-act .held')).toHaveAttribute('aria-pressed', 'true')
-  await expect(climb.locator('.cta')).toBeEnabled()
+  const debrief = page.locator('.debrief')
+  await expect(debrief.getByLabel('Mission report')).toBeVisible()
+  await expect(debrief.getByLabel('Stats check')).toContainText('Held by default')
+  await expect(debrief.locator('.rule-row.held')).toBeVisible()
+  await expect(debrief.locator('.cta')).toBeEnabled()
 
+  await settleDebrief(page)
+  await bank(page)
   await settleClimb(page)
-  await expect(climb.locator('.cta')).toBeEnabled()
+  await expect(page.locator('.climb').getByLabel('Stats check')).toHaveCount(0)
   await page.context().close()
 })
 
-test('climbs page: a broke mark takes two taps and is owed back as Penance next mission', async ({ browser }) => {
+test('debrief: a broke mark takes two taps and costs this draft an option', async ({ browser }) => {
   const page = await diveWithStatsPact(browser)
-  await fileSuccessAndBank(page)
+  await fileSuccess(page)
 
-  const climb = page.locator('.climb')
-  await climb.locator('.rule-act .broke').click()
+  const debrief = page.locator('.debrief')
+  await debrief.locator('.act.broke').click()
   // The mark is one-way: the first tap only arms it.
-  await expect(climb.locator('.rule-act .broke')).toContainText('Confirm?')
-  await climb.locator('.rule-act .broke').click()
-  await expect(climb.locator('.rule-row.broke')).toContainText('Penance next mission')
+  await expect(debrief.locator('.act.broke')).toContainText('Confirm?')
+  await debrief.locator('.act.broke').click()
+  await expect(debrief.locator('.rule-row.broke')).toContainText('loot option lost')
 
+  await settleDebrief(page)
+  // A full-star clear deals three options; the broken pact costs one.
+  await expect(page.locator('.loot-card')).toHaveCount(2)
+  await bank(page)
+
+  // Nothing is owed: the next mission swears no forced pact.
   await settleClimb(page)
-  await climb.locator('.cta').click()
-
-  // Next mission: the broken pact is sworn again without a say.
+  await page.locator('.climb .cta').click()
   await page.getByRole('button', { name: 'Spin', exact: true }).click()
   await page.locator('.directive-card').getByRole('button', { name: 'Skip' }).click()
   await page.getByRole('button', { name: 'Deal the pacts' }).click()
-  const owed = page.getByRole('region', { name: 'Penance owed' })
-  await expect(owed).toBeVisible()
-  await expect(owed).toContainText('Hold it and keep')
-  await page.getByRole('button', { name: 'Dive with no pacts' }).click()
-  await expect(page.getByRole('region', { name: 'Pacts sworn' }).locator('.penance-tag')).toBeVisible()
-
-  // Holding it on the next climbs page keeps the reward.
-  await fileSuccessAndBank(page)
-  const row = page.locator('.climb .rule-row.penance')
-  await expect(row).toBeVisible()
-  await row.locator('.held').click()
-  await expect(row).toContainText('kept')
+  await expect(page.getByRole('region', { name: 'Penance owed' })).toHaveCount(0)
   await page.context().close()
 })

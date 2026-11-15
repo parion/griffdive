@@ -6,7 +6,7 @@ import { ALL_WARBOND_CODES } from '../data/catalog'
 import { STRAIN_RISK, conditionRiskAt } from './config'
 import { createDiveState, reduce } from './reducer'
 import { deriveSeed } from './rng'
-import { diverOptions, forfeitOptionsFor, pactOfferFor, honorsDue, rewardPoolFor, statsPendingPactIds } from './selectors'
+import { diverOptions, forfeitOptionsFor, pactOfferFor, honorsDue, catalogPoolFor } from './selectors'
 import type { DiveState } from './types'
 
 const UPDATE = process.env.GRIFFDIVE_UPDATE_GOLDENS === '1'
@@ -123,12 +123,6 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
       if (!diver) {
         throw new Error('golden: no host diver')
       }
-      // An honest squad attests its stats rules held at the debrief; the draft
-      // stays shut until they do.
-      for (const pactId of statsPendingPactIds(state, diver)) {
-        state = reduce(state, { type: 'HOLD_PACT', playerId: 'host', pactId })
-      }
-      state = reduce(state, { type: 'HOLD_MISFORTUNE' })
       // Squad Honors read the same stats screen: roll the contest and name the
       // host before anyone drafts.
       if (honorsDue(state)) {
@@ -137,6 +131,8 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
           state = reduce(state, { type: 'AWARD_BONUS', playerIds: ['host'] })
         }
       }
+      // An honest squad holds every stats rule, so the debrief closes at once.
+      state = reduce(state, { type: 'DEAL_REWARDS' })
       const options = diverOptions(state, diver)
       if (!firstRecorded) {
         firstOptions = options.map(option => option.optionId)
@@ -148,7 +144,7 @@ function playCrusade(): { state: DiveState, records: MissionRecord[], firstOptio
         // Liberty's Cross banks a deterministic free pick: the first item in
         // the diver's own pool they don't own (stable catalog order).
         const owned = new Set(state.personalInventories.host ?? [])
-        const itemId = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES)
+        const itemId = catalogPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, undefined, state.difficulty)
           .find(item => !owned.has(item.id))?.id ?? null
         record.choiceItemId = itemId
         if (itemId) {

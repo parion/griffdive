@@ -43,7 +43,9 @@ function rewardsState(tierList: TierList | null): DiveState {
   }
   state = reduce(state, { type: 'DEAL_PACTS' })
   state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
-  return reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5, timePct: 100 })
+  state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5, timePct: 100 })
+  state = reduce(state, { type: 'SPIN_BONUS', seed: 1 })
+  return reduce(state, { type: 'DEAL_REWARDS' })
 }
 
 describe('normalizeTierList', () => {

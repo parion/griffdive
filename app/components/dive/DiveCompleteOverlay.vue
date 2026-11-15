@@ -22,17 +22,8 @@ const recap = computed(() => buildRecap(props.state, props.crusadeLabel))
 const achieved = computed(() => props.state.achieved)
 const stage = ref<HTMLElement | null>(null)
 
-const pardoned = computed(() =>
-  props.state.debtSettled === true
-  && !props.state.divers.some(diver => diver.penance?.status === 'owed'))
-
 const notice = computed(() => achieved.value
-  ? pardoned.value
-    ? {
-        label: 'Ministry notice · Pardon',
-        copy: 'Your Penance was served or your directive tax paid. Your debt to Liberty is settled — restored to the franchise you squandered. Do not squander it again.',
-      }
-    : null
+  ? null
   : {
       label: 'Ministry notice · File closed',
       copy: `The Ministry closes your file at ${difficultyName(props.state.difficulty)}. Your service is recorded; the rung you reached stands. Report to the Bridge when liberty calls again.`,

@@ -8,8 +8,9 @@ import {
 import type { DiveState } from '~~/shared/engine/types'
 import { HONORS_AUTO_ROLL_MS } from '~/utils/motion'
 
-// Squad Honors is seeded when the report is filed, then revealed here after
-// the draft. The host names whoever leads it on HD2's stats screen.
+// Squad Honors is seeded when the report is filed, then revealed in the
+// debrief, before the roll. The host names whoever leads it on HD2's stats
+// screen, and the token it banks can reroll this very draft.
 const props = defineProps<{
   state: DiveState
   isHost: boolean

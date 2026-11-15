@@ -27,7 +27,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "samplescanner",
+      "optionId": "tx41sterilizer",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -42,7 +42,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "flexiblereinforcementbudget",
+      "optionId": "firebombhellpods",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -74,7 +74,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "sh51directionalshield",
+      "optionId": "eagle110mmrocketpods",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -89,14 +89,14 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "las7dagger",
+      "optionId": "g109urchin",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
     {
       "mission": 6,
       "seed": 3041712678,
-      "misfortuneId": "fragileLiberty",
+      "misfortuneId": "noOrbitals",
       "misfortuneAccepted": false,
       "front": "terminids",
       "strainId": "predatorStrain",
@@ -104,7 +104,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "eagle110mmrocketpods",
+      "optionId": "sh51directionalshield",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -119,7 +119,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "tx41sterilizer",
+      "optionId": "aflam40flamesentry",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -136,7 +136,7 @@
       "stars": 0,
       "optionId": null,
       "choiceItemId": null,
-      "forfeitedItemId": "flexiblereinforcementbudget"
+      "forfeitedItemId": "firebombhellpods"
     },
     {
       "mission": 9,
@@ -164,7 +164,7 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 3,
-      "optionId": "cqc5combathatchet",
+      "optionId": "p35reeducator",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -241,7 +241,7 @@
       ],
       "outcome": "success",
       "stars": 3,
-      "optionId": "exo55breakthroughexosuit",
+      "optionId": "bflam80cremator",
       "choiceItemId": null,
       "forfeitedItemId": null
     },
@@ -564,15 +564,15 @@
       "pactIds": [],
       "outcome": "success",
       "stars": 4,
-      "optionId": "bflam80cremator",
+      "optionId": "exo55breakthroughexosuit",
       "choiceItemId": null,
       "forfeitedItemId": null
     }
   ],
   "firstOptions": [
     "surpluseatallocation",
-    "cqc5combathatchet",
-    "expertextractionpilot"
+    "p35reeducator",
+    "flexiblereinforcementbudget"
   ],
   "final": {
     "phase": "complete",
@@ -585,7 +585,6 @@
       "fragileLiberty:illuminate:mindlessMasses",
       "fragileLiberty:illuminate:mindlessMasses",
       "fragileLiberty:terminids:predatorStrain",
-      "fragileLiberty:terminids:predatorStrain",
       "heavyBurden:terminids:predatorStrain",
       "heavyBurden:terminids:ruptureStrain",
       "noBackpacks:illuminate:mindlessMasses",
@@ -594,6 +593,7 @@
       "noBoosters:illuminate:mindlessMasses",
       "noBoosters:terminids:ruptureStrain",
       "noEagles:terminids:ruptureStrain",
+      "noOrbitals:terminids:predatorStrain",
       "noReserves:illuminate:mindlessMasses",
       "noReserves:illuminate:mindlessMasses",
       "noReserves:illuminate:mindlessMasses",
@@ -613,6 +613,7 @@
       "zeroDeaths:terminids:ruptureStrain"
     ],
     "personalInventory": [
+      "aflam40flamesentry",
       "am23emsmortarsentry",
       "amg43machinegunsentry",
       "bflam80cremator",
@@ -631,6 +632,7 @@
       "exo55breakthroughexosuit",
       "extrapadding",
       "fx12shieldgeneratorrelay",
+      "g109urchin",
       "g12highexplosivegrenade",
       "g3smokegrenade",
       "g48giga",
@@ -638,7 +640,6 @@
       "gl15evictor",
       "k2throwingknife",
       "las44nova",
-      "las7dagger",
       "lift850jumppack",
       "lift860hoverpack",
       "md17antitankmines",
@@ -647,9 +648,9 @@
       "orbitalgasstrike",
       "orbitalsmokestrike",
       "p2peacemaker",
+      "p35reeducator",
       "r2124constitution",
       "r2amendment",
-      "samplescanner",
       "sh32shieldgeneratorpack",
       "sh51directionalshield",
       "smg203gallant",

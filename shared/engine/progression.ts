@@ -75,6 +75,7 @@ const BASE_KIT = {
     'cqc30stunbaton',
     'cqc2saber',
     'cqc42machete',
+    'cqc5combathatchet',
     'cqc73entrenchmenttool',
   ],
   throwables: ['g3smokegrenade', 'k2throwingknife', 'g12highexplosivegrenade', 'g89smokescreen'],

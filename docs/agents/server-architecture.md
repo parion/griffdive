@@ -47,7 +47,7 @@ app/
                    BriefingHost — the host's tutorial wrapper),
                    wheel/ (WheelOfAdversity — the seeded spinning SVG wheel),
                    condition/ (ConditionCard/ConditionSigil — directive and pact cards),
-                   pact/ (PactScreen — the self-service pacts hand, PactLedger, PactPenance),
+                   pact/ (PactScreen — the self-service pacts hand, PactLedger),
                    valor/ (ValorRoll — the shared d100 odds line, ValorFigure),
                    risk/ (RiskPips — risk dots, rolling while a wheel draw reels; RiskSetup —
                    the setup skull total via setupRiskOf),
@@ -58,9 +58,11 @@ app/
                    KitSection/KitTile/KitSnapshot/KitReveal),
                    mission/ (MissionReport — stars, haul, time cells, honors; MissionTrack,
                    MissionBankedHaul, MissionSampleCanister — the report's tinted sample tubes),
+                   debrief/ (DebriefStage — the squad-wide beat between the report and the roll:
+                   report strip, Squad Honors, stats check, the host's Roll the loot;
+                   DebriefHonors/DebriefStats),
                    climb/ (ClimbCleared — the squad-climbs page after every draft: report strip,
-                   stats check with Penance rows, Squad Honors, Brasch, the next-drop CTA;
-                   ClimbReport/ClimbStats/ClimbHonors),
+                   haul, Brasch, the next-drop CTA; ClimbReport, ClimbFoot — the shared host CTA),
                    honors/ (HonorsReel), reward/ (RewardDraft, RewardReveal,
                    RewardDiversChoicePicker), liberty-cross/ (LibertyCrossBand/Emblem),
                    squad/ (SquadDock — seats, presence, honors tokens, Steam/invite;
@@ -294,9 +296,9 @@ saves to churn the 500-slot saved set. The recommended order is:
 Canonical engine actions (the reducer union; keep names stable):
 
 `START_DIVE{settings,seed?,majorOrder?}` `SET_TIER_LIST{tierList}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
-`DEAL_PACTS{}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `HOLD_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `HOLD_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
+`DEAL_PACTS{}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
 `REPORT_RESULT{outcome,stars,timePct?,samples?}` `FORFEIT_ITEM{playerId,itemId}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
-`BUY_ITEM{playerId,itemId}`
+`BUY_ITEM{playerId,itemId}` `DEAL_REWARDS{}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
 `AWARD_BONUS{playerIds}` `CLAIM_CATCHUP_OPTION{playerId,optionId}` `CLAIM_CACHE{playerId,cacheOwnerId}`
 `LEAVE_DIVE{playerId}` `SET_AWAY{playerId,away}` `ADVANCE{}` `END_DIVE{}` `KICK_DIVER{playerId,blockNetwork?}`
@@ -304,14 +306,14 @@ Canonical engine actions (the reducer union; keep names stable):
 
 Authority rules: host-only actions are `START_DIVE`, `SET_TIER_LIST` (lobby only; the reducer
 refuses it after launch), `SPIN_WHEEL`, `ACCEPT_MISFORTUNE`,
-`ACCEPT_STRAIN`, `DEAL_PACTS`, `REROLL_WHEEL`, `REPORT_RESULT`, `FAIL_MISFORTUNE`, `HOLD_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `ADVANCE`, `END_DIVE`,
+`ACCEPT_STRAIN`, `DEAL_PACTS`, `REROLL_WHEEL`, `REPORT_RESULT`, `FAIL_MISFORTUNE`, `SPIN_BONUS`, `AWARD_BONUS`, `DEAL_REWARDS`, `ADVANCE`, `END_DIVE`,
 `KICK_DIVER`, `TRANSFER_HOST`. `SET_PACTS`, `SET_WARBONDS`, `PICK_REWARD`, `FORFEIT_ITEM`, `BUY_ITEM`, `SET_NAME`,
 `REROLL_REWARDS`, `BAN_REWARDS`, `CLAIM_CATCHUP_OPTION`, `CLAIM_CACHE`, `LEAVE_DIVE`, `SET_AWAY` are
 self-service. Saved dives are outside the engine union: `save-dive` may be sent by any seated
 diver, `unsave-dive` is host-only; the Steam lobby link is likewise outside the union and
 host-only (`set-steam`, blank clears).
-`FAIL_PACT` and `HOLD_PACT` are sent by the target diver or the host (server refuses everyone else; the squad-climbs page lets the host settle any diver's stats pact);
-`FAIL_MISFORTUNE` and `HOLD_MISFORTUNE` are host-only, since the directive binds the whole squad. A
+`FAIL_PACT` is sent by the target diver or the host (server refuses everyone else; the debrief lets the host mark any diver's stats pact);
+`FAIL_MISFORTUNE` is host-only, since the directive binds the whole squad. A
 host's last socket closing starts a process-local `HOST_RECONNECT_GRACE_MS` (90s): the host seat
 stays put through a refresh or brief network loss, and a `hello` with the same stored playerId
 cancels the pending timer. At the end of that window, `SET_AWAY` marks the host away and the

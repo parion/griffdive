@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { dismissWarbondIntro, fileCallsign, lockMisfortune, settleClimb } from './helpers'
+import { dismissWarbondIntro, fileCallsign, lockMisfortune, settleClimb, settleDebrief } from './helpers'
 
 test('call: the CTA, odds line and front pin hold one layout across the draw', async ({ page }) => {
   await page.goto('/')
@@ -108,8 +108,15 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.getByRole('button', { name: 'Set time remaining to 60 percent' }).click()
   await expect(page.locator('.time-value')).toContainText('60')
 
-  // Honors are due on this mission: filing the report is the only spin trigger.
+  // Honors are due on this mission: filing the report seeds the contest, the
+  // debrief reveals it, and the host's roll opens the draft.
   await page.getByRole('button', { name: 'File report' }).click()
+  await expect(page.getByRole('heading', { name: 'Read the stats screen' })).toBeVisible()
+  await expect(page.getByLabel('Mission report')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Squad Honors' })).toBeVisible()
+  await expect(page.locator('.dock .honors')).toHaveCount(0)
+  await expect(page.locator('.debrief .honors .roll')).toHaveCount(0)
+  await settleDebrief(page)
 
   await expect(page.getByRole('heading', { name: 'Bank one item' })).toBeVisible()
   // Every option carries its own d100 roll on the same odds line.
@@ -120,14 +127,11 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await page.locator('.loot-card').first().click()
   await page.getByRole('button', { name: /^Bank / }).click()
   // With the whole squad banked, the dive regroups on the climbs page: the
-  // report, the banked haul, the stats check and Squad Honors, then the host's
-  // call to drop again.
+  // report, the banked haul, then the host's call to drop again.
   await expect(page.getByRole('heading', { name: 'Mission secured' })).toBeVisible()
   await expect(page.getByRole('article', { name: 'Your haul' }).locator('img')).toBeVisible()
   await expect(page.getByLabel('Mission report')).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Squad Honors' })).toBeVisible()
-  await expect(page.locator('.dock .honors')).toHaveCount(0)
-  await expect(page.locator('.climb .honors .roll')).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Squad Honors' })).toHaveCount(0)
 
   // Brasch's Bargains stays shut until the first operation is complete, so the
   // page hides the shelf entirely; credits keep banking toward the first buy.
@@ -160,8 +164,9 @@ test('solo dive flow: spin → pacts → report → rewards → advance', async 
   await expect(page.getByRole('region', { name: 'Squad Honors' })).toContainText('Next Squad Honors in 2 missions')
   await page.getByRole('radio', { name: '3 stars' }).click()
   await page.getByRole('button', { name: 'File report' }).click()
+  await settleDebrief(page)
 
-  // The honors token banked on mission 1's climbs page buys a reroll of the whole draft.
+  // The honors token banked in mission 1's debrief buys a reroll of the whole draft.
   await expect(page.locator('.roll-pins .pin')).toHaveCount(3)
   await page.getByRole('button', { name: /^Reroll · 1 token/ }).click()
   await expect(page.getByRole('button', { name: /^Reroll · 0 tokens/ })).toBeDisabled()
@@ -316,6 +321,7 @@ test('a failed mission labels the operation failed and removes an earned item', 
   // Failure only takes earned gear, so clear mission 1 and bank a reward first.
   await page.getByRole('button', { name: 'Extracted' }).click()
   await page.getByRole('button', { name: 'File report' }).click()
+  await settleDebrief(page)
   await page.locator('.loot-card').first().click()
   await page.getByRole('button', { name: /^Bank / }).click()
   await settleClimb(page)
