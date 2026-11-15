@@ -4,11 +4,11 @@ import { MAX_DIFFICULTY } from '~~/shared/engine/config'
 import {
   allDiversPicked,
   canRerollRewards,
+  catalogPoolFor,
   diverOptions,
   draftSummaryFor,
   optionsLostFor,
   pactRiskOf,
-  rewardPoolFor,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
@@ -34,7 +34,7 @@ const rewardPool = computed(() => {
     return []
   }
   const banned = new Set(props.self.bannedItemIds)
-  return rewardPoolFor(props.self.warbondCodes ?? ALL_WARBOND_CODES, props.state.tierList)
+  return catalogPoolFor(props.self.warbondCodes ?? ALL_WARBOND_CODES, props.state.tierList, props.state.difficulty)
     .filter(item => !banned.has(item.id))
 })
 const ownedIds = computed(() => props.state.personalInventories[props.selfId ?? ''] ?? [])

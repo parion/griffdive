@@ -33,6 +33,7 @@ import {
   pactOptionsFor,
   penanceValorAt,
   seafSupportValorAt,
+  VEHICLE_UNLOCK_DIFFICULTY,
 } from './config'
 import type { BonusStat } from './config'
 import {
@@ -49,7 +50,7 @@ import { STARTING_KITS, catchUpOpsBehind, startingItemIds } from './progression'
 import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, bargainKindOf, rollBargainShelf, rollBonus, rollCeiling, rollRewardOffer, rollRewardOptions, topTierOf, valorOf } from './rewards'
 import type { BargainSlot, RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
-import type { ArmorPackDeal, BargainDeal, BargainSlotKind, CrusadeMode, CrusadeSettings, DiveState, DivePhase, DiverState, FrontPlan, MajorOrderPlanet, MissionOutcome, PenanceDebt, RewardTier } from './types'
+import type { ArmorPackDeal, BargainDeal, BargainSlotKind, CrusadeMode, CrusadeSettings, DiveState, DivePhase, DiverState, FrontPlan, MajorOrderPlanet, MissionOutcome, RewardTier } from './types'
 import { eligibleMisfortunes, eligibleStrains, frontById, strainById } from './wheel'
 
 // A completed run is tracked by its full draw — misfortune, front and strain —
@@ -144,12 +145,6 @@ export function squadSize(state: DiveState): number {
 // wheel may draw (see eligibleMisfortunes).
 export function squadInventories(state: DiveState): string[][] {
   return activeDivers(state).map(diver => state.personalInventories[diver.id] ?? [])
-}
-
-// The pacts the squad owes back as Penance: a directive that blocks one never
-// reaches the wheel (see eligibleMisfortunes).
-export function squadPenances(state: DiveState): string[] {
-  return state.divers.flatMap(diver => diver.penance?.pactIds ?? [])
 }
 
 // Pact lock-in completes once every present diver has locked. A room where
@@ -269,31 +264,17 @@ export function strainDecision(state: DiveState): StrainDecision {
 }
 
 // A failed pact is voided: it no longer stakes risk, so its share of the
-// diver's Valor disappears from previews and from the rolled offer alike. A
-// Penance pact never staked any: it is a debt, not a bet. Each surviving
-// pact's risk is scaled by the operation's difficulty.
+// diver's Valor disappears from previews and from the rolled offer alike. Each
+// surviving pact's risk is scaled by the operation's difficulty.
 export function pactRiskOf(diver: DiverState, difficulty: number): number {
-  const owed = diver.penance?.pactIds ?? []
-  return pactRiskTotal(
-    diver.pactIds.filter(id => !diver.failedPactIds.includes(id) && !owed.includes(id)),
-    difficulty,
-  )
+  return pactRiskTotal(diver.pactIds.filter(id => !diver.failedPactIds.includes(id)), difficulty)
 }
 
-// Whether a pact is one the diver swore for Penance rather than chose.
-export function isPenancePact(diver: DiverState, pactId: string): boolean {
-  return diver.penance?.pactIds.includes(pactId) ?? false
-}
-
-// Reward options a diver's draft has lost: each pact marked failed in the
-// field (Penance pacts excepted: their price is the voided reward), a
-// directive broken in the field, and the tax left by last mission's directive
-// broken at the stats check.
+// Reward options a diver's draft has lost: each pact marked failed (in the
+// field or at the debrief) and a directive broken either way.
 export function optionsLostFor(state: DiveState, diver: DiverState): number {
-  const failed = diver.failedPactIds.filter(id => !isPenancePact(diver, id)).length
-  return failed * OPTIONS_LOST_PER_FAILED_PACT
+  return diver.failedPactIds.length * OPTIONS_LOST_PER_FAILED_PACT
     + (state.misfortuneFailed ? OPTIONS_LOST_PER_FAILED_DIRECTIVE : 0)
-    + (state.directiveTax ? OPTIONS_LOST_PER_FAILED_DIRECTIVE : 0)
 }
 
 // Chosen risk lives on the diver and the team; it is the diver's Valor. Samples
@@ -423,23 +404,25 @@ export function itemBannedInArmory(
 
 // The catalog a diver can roll from: their own warbonds, tiered by the
 // crusade's tier list when the host chose one.
-export function catalogPoolFor(codes: readonly string[], tierList?: TierList | null): Item[] {
+export function catalogPoolFor(codes: readonly string[], tierList: TierList | null | undefined, difficulty: number): Item[] {
   const owned = new Set(codes)
+  const vehiclesOpen = difficulty >= VEHICLE_UNLOCK_DIFFICULTY
   return tieredCatalog(tierList).items.filter(
     item =>
-      item.warbondCode === 'none' || owned.has(item.warbondCode),
+      (item.warbondCode === 'none' || owned.has(item.warbondCode))
+      && (vehiclesOpen || !item.tags.includes('Vehicles')),
   )
 }
 
-// The reward-eligible pool: armor passives are Brasch exclusives now, so they
-// never enter a draft, a Liberty's Cross claim, or a Field Promotion. They
-// still roll in the SEAF Support Package (which uses the full catalog pool).
-export function rewardPoolFor(codes: readonly string[], tierList?: TierList | null): Item[] {
-  return catalogPoolFor(codes, tierList).filter(item => item.category !== 'armorPassive')
+// The draft and Field Promotion pool: armor passives are Brasch exclusives, so
+// they never roll here. Liberty's Cross and the SEAF Support Package use the
+// full catalog pool, passives included.
+export function rewardPoolFor(codes: readonly string[], tierList: TierList | null | undefined, difficulty: number): Item[] {
+  return catalogPoolFor(codes, tierList, difficulty).filter(item => item.category !== 'armorPassive')
 }
 
-export function armorPassivePoolFor(codes: readonly string[], tierList?: TierList | null): Item[] {
-  return catalogPoolFor(codes, tierList).filter(item => item.category === 'armorPassive')
+export function armorPassivePoolFor(codes: readonly string[], tierList: TierList | null | undefined, difficulty: number): Item[] {
+  return catalogPoolFor(codes, tierList, difficulty).filter(item => item.category === 'armorPassive')
 }
 
 export function diverOptions(state: DiveState, diver: DiverState): RewardOption[] {
@@ -449,7 +432,7 @@ export function diverOptions(state: DiveState, diver: DiverState): RewardOption[
   const seed = diverOfferSeed(state, diver)
   // The pool is the diver's own: warbonds are personal purchases, so each
   // diver rolls offers against the catalog they can actually use.
-  const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state))
+  const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state), state.difficulty)
   // Banned items never come back: a ban removes them from every future offer.
   // The deal's snapshot wins over live holdings so the offer never shifts.
   const exclude = new Set(diver.draftExcludedIds
@@ -624,7 +607,7 @@ export function bargainShelfFor(state: DiveState, diver: DiverState): BargainShe
     deriveSeed(deriveSeed(state.bargainSeed, BARGAIN_STREAM), hashString(diver.id)),
     state.difficulty,
     kinds.filter(kind => !heldBack.has(kind)),
-    catalogPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state)),
+    catalogPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state), state.difficulty),
     new Set(deal.excludedIds),
   )
   const counts = new Map<BargainSlotKind, number>()
@@ -772,7 +755,7 @@ export function armorPackPoolFor(state: DiveState, diver: DiverState): Item[] {
     ...(state.personalInventories[diver.id] ?? []),
     ...diver.bannedItemIds,
   ])
-  return armorPassivePoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state))
+  return armorPassivePoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state), state.difficulty)
     .filter(item => !excluded.has(item.id))
 }
 
@@ -855,7 +838,7 @@ export function catchUpOptionsFor(state: DiveState, diver: DiverState): RewardOp
   }
   const claimed = diver.catchUpGranted - diver.catchUpOwed
   const seed = deriveSeed(hashString(`${diver.id}:catchup`), claimed)
-  const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state))
+  const pool = rewardPoolFor(diver.warbondCodes ?? ALL_WARBOND_CODES, tierListOf(state), state.difficulty)
   // Bans are personal and crusade-long, so a promotion never re-offers a
   // banned item either.
   const exclude = new Set([
@@ -1099,118 +1082,75 @@ export function canFailMisfortune(state: DiveState): boolean {
   return state.phase === 'diving' && state.misfortuneAccepted && !state.misfortuneFailed
 }
 
-// The stats check: rules only the end-of-mission stats screen can prove (the
-// 'stats' accountability channel). HD2 shows that screen after the report, so
-// they are settled on the squad-climbs page once the squad has banked its
-// drafts: each is attested held or broke. A broken pact is owed back as Penance
-// next mission; the draft itself is never touched.
+// The debrief: the beat between the report and the roll. HD2's stats screen is
+// up, so everything it proves is settled here, before any offer exists: Squad
+// Honors, then the stats-checked rules. The report banks the haul but leaves
+// `offerSeed` unset; the host's DEAL_REWARDS seeds it and opens the draft.
+export function debriefOpen(state: DiveState): boolean {
+  return state.phase === 'rewards' && state.offerSeed === null
+}
+
+// Stats-checked pacts (the 'stats' accountability channel) whose break can
+// still be marked. A break is an ordinary failed pact: it costs the draft an
+// option, so the mark must land before the deal. Unmarked means held.
 export function statsPendingPactIds(state: DiveState, diver: DiverState): string[] {
-  if (state.phase !== 'rewards') {
+  if (!debriefOpen(state)) {
     return []
   }
   return diver.pactIds.filter(id =>
-    pactById(id)?.accountability === 'stats'
-    && !diver.failedPactIds.includes(id)
-    && !diver.brokenPactIds.includes(id)
-    && !diver.heldPactIds.includes(id))
+    pactById(id)?.accountability === 'stats' && !diver.failedPactIds.includes(id))
 }
 
-// The accepted directive, when it is stats-verified and not yet settled. It is
-// the squad's, so the host settles it.
+// The accepted directive, when it is stats-verified and not yet marked broke.
+// It is the squad's, so the host marks it.
 export function statsPendingMisfortune(state: DiveState): Misfortune | null {
-  if (state.phase !== 'rewards' || state.misfortuneFailed || state.misfortuneBroken || state.misfortuneHeld) {
+  if (!debriefOpen(state) || state.misfortuneFailed) {
     return null
   }
   const misfortune = activeMisfortune(state)
   return misfortune?.accountability === 'stats' ? misfortune : null
 }
 
-// Squad Honors read the same stats screen, so they are part of the climb: a due
-// contest (rolled or not yet) with nobody named is a gate on moving on.
+// A due Squad Honors contest (rolled or not yet) with nobody named holds the
+// deal: its token pays into this very draft.
 export function honorsDue(state: DiveState): boolean {
-  return state.phase === 'rewards'
+  return debriefOpen(state)
     && state.bonusWinnerIds.length === 0
     && bonusEligible(state)
 }
 
-// One line of the climb's stats-checked section: a rule only the stats screen
-// can prove, and where it stands.
-export type StatsRuleStatus = 'pending' | 'held' | 'broke'
+// The host may deal once Squad Honors has no open contest left.
+export function debriefReady(state: DiveState): boolean {
+  return debriefOpen(state) && !honorsDue(state)
+}
 
+// One line of the debrief's stats check: a rule only the stats screen can
+// prove, and whether it was marked broke.
 export interface StatsRule {
   // The squad directive has no diver; a pact belongs to one.
   scope: 'directive' | 'pact'
   diverId: string | null
   conditionId: string
-  status: StatsRuleStatus
-  // A pact the diver swore as Penance: held keeps last mission's reward, broke
-  // voids it.
-  penance: boolean
-  // Broke at this check, after the draft (it is owed next mission), rather
-  // than marked in the field (it already cost its draft option).
-  afterDraft: boolean
+  broke: boolean
 }
 
 export function statsRules(state: DiveState): StatsRule[] {
-  if (state.phase !== 'rewards') {
+  if (!debriefOpen(state)) {
     return []
   }
   const rules: StatsRule[] = []
   const directive = activeMisfortune(state)
   if (directive?.accountability === 'stats') {
-    rules.push({
-      scope: 'directive',
-      diverId: null,
-      conditionId: directive.id,
-      status: state.misfortuneFailed || state.misfortuneBroken ? 'broke' : state.misfortuneHeld ? 'held' : 'pending',
-      penance: false,
-      afterDraft: state.misfortuneBroken,
-    })
+    rules.push({ scope: 'directive', diverId: null, conditionId: directive.id, broke: state.misfortuneFailed })
   }
   for (const diver of state.divers) {
     for (const id of diver.pactIds) {
-      if (pactById(id)?.accountability !== 'stats') {
-        continue
+      if (pactById(id)?.accountability === 'stats') {
+        rules.push({ scope: 'pact', diverId: diver.id, conditionId: id, broke: diver.failedPactIds.includes(id) })
       }
-      rules.push({
-        scope: 'pact',
-        diverId: diver.id,
-        conditionId: id,
-        status: diver.failedPactIds.includes(id) || diver.brokenPactIds.includes(id)
-          ? 'broke'
-          : diver.heldPactIds.includes(id) ? 'held' : 'pending',
-        penance: isPenancePact(diver, id),
-        afterDraft: diver.brokenPactIds.includes(id),
-      })
     }
   }
   return rules
-}
-
-// Everything between the banked drafts and the next drop. A stats-checked rule
-// is **held by default** — the check is an attestation of a break, not a chore
-// to confirm — so only a due/unnamed Squad Honors contest still gates the drop.
-export interface ClimbBlockers {
-  honors: boolean
-}
-
-export function climbBlockers(state: DiveState): ClimbBlockers {
-  return { honors: honorsDue(state) }
-}
-
-export function climbSettled(state: DiveState): boolean {
-  return !climbBlockers(state).honors
-}
-
-// What a diver stands to lose next mission for what they broke at this check:
-// the pacts they owe back and the reward that rides on them.
-export function penanceIncurredBy(diver: DiverState): PenanceDebt | null {
-  const owed = diver.penance?.pactIds ?? []
-  const fresh = diver.brokenPactIds.filter(id => !owed.includes(id))
-  if (fresh.length === 0) {
-    return null
-  }
-  return { pactIds: fresh, itemId: diver.pickedOptionId, status: 'owed' }
 }
 
 export function allDiversPicked(state: DiveState): boolean {
@@ -1301,6 +1241,5 @@ export function pactOfferFor(state: DiveState, diverId: string): Pact[] {
     active?.id ?? null,
     state.difficulty,
     squadSize(state),
-    state.divers.find(diver => diver.id === diverId)?.penance?.pactIds ?? [],
   )
 }

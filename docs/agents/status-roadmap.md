@@ -27,7 +27,7 @@ the live Major Order docks in the header, or pins to the bottom on phones), the 
 the Kit (UI name of the Armory) opens from the header and marks directive/pact bans per tile from
 engine selectors, and an interactive six-beat Griffdiver Briefing onboards first-time divers.
 Reward drafts now roll **one d100 per option** on the shared `ValorRoll` line (no ceiling-first
-draft, no Ban UI), and Squad Honors rolls on a reel when the report files and is awarded from the dock (Next stays locked until it is). See
+draft, no Ban UI), and Squad Honors plus the stats check settle in a squad-wide **debrief** before the roll (see N53 in PLAN.md) — the host's Roll the loot deals the draft once honors are named, and Penance is retired. See
 [Destroyer Terminal design language](./design-language.md#destroyer-terminal-design-language---the-lit-pass). Hybrid **saved
 dives** have landed: any seated diver can pin a room server-side so it outlives the idle TTL and a
 browser clearing its storage, resuming through the existing rejoin path (see Saved dives).

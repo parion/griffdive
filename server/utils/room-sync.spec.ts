@@ -1450,6 +1450,7 @@ describe('room-sync observability', () => {
     const finalMission: DiveState = {
       ...base,
       phase: 'rewards',
+      offerSeed: 1,
       difficulty: 10,
       missionIndex: 21,
       missionInOperation: 3,

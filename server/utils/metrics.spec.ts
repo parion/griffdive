@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createDiveState, reduce } from '~~/shared/engine/reducer'
 import { createLobbyState, joinDiver } from '~~/shared/engine/room'
-import { diverOptions, forfeitOptionsFor, honorsDue, pactOfferFor, statsPendingPactIds } from '~~/shared/engine/selectors'
+import { diverOptions, forfeitOptionsFor, honorsDue, pactOfferFor } from '~~/shared/engine/selectors'
 import type { DiveState, EngineAction } from '~~/shared/engine/types'
 import { createRoomMetrics, gapBucket, routeKey, statusClass } from './metrics'
 import { PEER_SILENCE_MS } from './peer-presence'
@@ -214,14 +214,11 @@ describe('room-metrics', () => {
       samples: { common: 12, rare: 3, super: 0 },
     })
     expect(state.phase).toBe('rewards')
-    // The sworn pact may be stats-verified: attest it held to open the draft.
-    for (const pactId of statsPendingPactIds(state, state.divers[0]!)) {
-      state = apply(metrics, state, { type: 'HOLD_PACT', playerId: 'p1', pactId })
-    }
     // Mission 1 is due for honors; a solo diver wins the roll outright.
     if (honorsDue(state)) {
       state = apply(metrics, state, { type: 'SPIN_BONUS', seed: 5 })
     }
+    state = apply(metrics, state, { type: 'DEAL_REWARDS' })
     const option = diverOptions(state, state.divers[0]!)[0]!
     state = apply(metrics, state, { type: 'PICK_REWARD', playerId: 'p1', optionId: option.optionId })
     state = apply(metrics, state, { type: 'ADVANCE' })

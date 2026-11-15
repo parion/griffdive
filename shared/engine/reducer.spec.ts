@@ -10,7 +10,7 @@ import { createDiveState, reduce } from './reducer'
 import { createLobbyState, joinDiver } from './room'
 import { BLOCKED_UNDER_MISFORTUNE } from './pacts'
 import { eligibleMisfortunes, deriveFront, deriveMisfortune, deriveStrain } from './wheel'
-import { activeMisfortune, allDiversPicked, armorPackOfferFor, availableCaches, awaitingDiverIds, bargainShelfFor, bargainSlotKinds, bonusEligible, bonusFor, canRerollWheel, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, setupRiskOf, pactRiskOf, promotionPending, rewardPoolFor, squadSize, climbBlockers, honorsDue, optionsLostFor, squadPenances, statsPendingMisfortune, statsPendingPactIds, statsRules, teamRiskOf } from './selectors'
+import { activeMisfortune, allDiversPicked, armorPackOfferFor, availableCaches, awaitingDiverIds, bargainShelfFor, bargainSlotKinds, bonusEligible, bonusFor, canRerollWheel, catalogPoolFor, catchUpOptionsFor, comboKey, diverCeiling, diverRolledCeiling, draftSummaryFor, diverValor, diverOptions, forfeitOptionsFor, modeValorOf, pactOfferFor, setupRiskOf, pactRiskOf, promotionPending, rewardPoolFor, squadSize, debriefOpen, debriefReady, honorsDue, statsPendingMisfortune, statsPendingPactIds, statsRules, teamRiskOf } from './selectors'
 import type { DiveState, DiverState, EngineAction } from './types'
 
 const SETTINGS = { variant: 'medium' as const }
@@ -61,24 +61,27 @@ function divingState(seed = 42, pactIds: string[] = []): DiveState {
   })
 }
 
-// Settles the whole debrief the way an honest squad does: every stats rule held,
-// and the honors contest rolled and awarded to the first diver — so a test can
-// reach the draft.
+// Settles the debrief the way an honest squad does: the honors contest rolled
+// and awarded to the first diver, then the host deals the draft — so a test can
+// reach it. Stats rules are held by default.
 function settleDebrief(state: DiveState): DiveState {
   let next = state
-  for (const diver of state.divers) {
-    for (const pactId of statsPendingPactIds(next, diver)) {
-      next = reduce(next, { type: 'HOLD_PACT', playerId: diver.id, pactId })
-    }
-  }
-  next = reduce(next, { type: 'HOLD_MISFORTUNE' })
   if (honorsDue(next)) {
     next = reduce(next, { type: 'SPIN_BONUS', seed: 4242 })
     if (honorsDue(next)) {
       next = reduce(next, { type: 'AWARD_BONUS', playerIds: [state.divers[0]!.id] })
     }
   }
-  return next
+  return reduce(next, { type: 'DEAL_REWARDS' })
+}
+
+function withTokens(state: DiveState, playerId: string, tokens: number): DiveState {
+  return {
+    ...state,
+    divers: state.divers.map(diver =>
+      diver.id === playerId ? { ...diver, rewardTokens: tokens } : diver,
+    ),
+  }
 }
 
 // Marks the honors contest closed without banking a token — for specs about
@@ -120,7 +123,7 @@ function surrender(state: DiveState, playerId = 'p1'): DiveState {
 // take. Reward-pool items the medium start doesn't hand out.
 function withEarnedGear(state: DiveState, diverIds: string[] = ['p1'], count = 6): DiveState {
   const starting = new Set(startingItemIds(SETTINGS.variant))
-  const earned = rewardPoolFor(ALL_WARBOND_CODES)
+  const earned = rewardPoolFor(ALL_WARBOND_CODES, undefined, 10)
     .filter(item => !starting.has(item.id))
     .slice(0, count)
     .map(item => item.id)
@@ -146,8 +149,8 @@ function twoDiverState(): DiveState {
   return {
     ...freshState(),
     divers: [
-      { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], heldPactIds: [], brokenPactIds: [], penance: null, pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
-      { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], heldPactIds: [], brokenPactIds: [], penance: null, pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
+      { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
+      { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
     ],
     personalInventories: {
       p1: startingItemIds(SETTINGS.variant),
@@ -888,15 +891,6 @@ describe('SET_WARBONDS (personal ownership)', () => {
 })
 
 describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
-  it('keeps a clean run clear and records a directive tax only when a success applies it', () => {
-    const clean = reduce(divingState(42), { type: 'REPORT_RESULT', outcome: 'success', stars: 2 })
-    expect(clean.debtSettled).not.toBe(true)
-
-    const taxed = { ...divingState(42), directiveTax: true }
-    const paid = reduce(taxed, { type: 'REPORT_RESULT', outcome: 'success', stars: 2 })
-    expect(paid.debtSettled).toBe(true)
-  })
-
   it('clamps stars to what the difficulty offers', () => {
     const state = divingState(42)
     const maxed = settleDebrief(reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 }))
@@ -943,7 +937,7 @@ describe('REPORT_RESULT (success) → rewards → ADVANCE', () => {
 
   it('freezes draft options and their odds when divers step away, rejoin or leave', () => {
     const diving = twoDiverDivingState()
-    const reported = reduce(diving, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+    const reported = settleDebrief(reduce(diving, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 }))
     const options = reported.divers.map(diver => diverOptions(reported, diver))
     expect(reported.offerTeamRisk).toBe(teamRiskOf(diving))
 
@@ -1196,7 +1190,7 @@ describe('Brasch\'s Bargains: credit haul banking and BUY_ITEM', () => {
       }
       state = reduce(state, { type: 'DEAL_PACTS' })
       state = reduce(state, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
-      state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 })
+      state = settleDebrief(reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 3 }))
       return reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: diverOptions(state, requireDiver(state))[0]!.optionId })
     }
     let state = reduce(rich(opened(freshState())), { type: 'BUY_ARMOR_PACK', playerId: 'p1' })
@@ -1321,7 +1315,7 @@ describe('REPORT_RESULT (failure) → forfeit', () => {
     const ceilingRank = rank[ceiling === 'S+' ? 's' : ceiling.toLowerCase()]!
     // Earned gear in every tier: only what the ceiling reaches may be offered.
     const starting = new Set(startingItemIds(SETTINGS.variant))
-    const rich = rewardPoolFor(ALL_WARBOND_CODES).filter(item => !starting.has(item.id)).map(item => item.id)
+    const rich = rewardPoolFor(ALL_WARBOND_CODES, undefined, 10).filter(item => !starting.has(item.id)).map(item => item.id)
     const stocked = { ...state, personalInventories: { p1: rich } }
     const offer = forfeitOptionsFor(stocked, diver)
     expect(offer.length).toBeGreaterThan(0)
@@ -1425,8 +1419,8 @@ describe('identity actions', () => {
     const withTwo: DiveState = {
       ...freshState(),
       divers: [
-        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], heldPactIds: [], brokenPactIds: [], penance: null, pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
-        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], heldPactIds: [], brokenPactIds: [], penance: null, pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
+        { id: 'p1', name: 'A', isHost: true, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
+        { id: 'p2', name: 'B', isHost: false, pactsLocked: false, pactIds: [], failedPactIds: [], pickedOptionId: null, warbondCodes: [], catchUpGranted: 0, catchUpOwed: 0, rewardTokens: 0, credits: 0, bargain: null, bannedItemIds: [], rewardRerollSeed: null, rewardBanned: false, away: false },
       ],
     }
     const moved = reduce(withTwo, { type: 'TRANSFER_HOST', playerId: 'p2' })
@@ -1738,7 +1732,7 @@ describe('PICK_REWARD — Diver\'s Choice (S+)', () => {
       misfortuneAccepted: true,
       divers: base.divers.map(entry =>
         entry.id === base.divers[0]?.id
-          ? { ...entry, pactIds: ['stimAbstinent', 'untouchable'], failedPactIds: [], heldPactIds: ['stimAbstinent'] }
+          ? { ...entry, pactIds: ['stimAbstinent', 'untouchable'], failedPactIds: [] }
           : entry),
     }
     const diver = requireDiver(heavy)
@@ -1759,7 +1753,7 @@ describe('PICK_REWARD — Diver\'s Choice (S+)', () => {
   function claimableId(state: DiveState): string {
     const diver = requireDiver(state)
     const owned = new Set(state.personalInventories[diver.id] ?? [])
-    const item = rewardPoolFor(diver.warbondCodes).find(entry => !owned.has(entry.id))
+    const item = catalogPoolFor(diver.warbondCodes, undefined, state.difficulty).find(entry => !owned.has(entry.id))
     if (!item) {
       throw new Error('expected a claimable item')
     }
@@ -1823,18 +1817,9 @@ describe('reward tokens + bonus honors', () => {
     })
   }
 
-  // The draft itself: honors closed so the offer is open to pick from.
+  // The draft itself: honors closed and the offer dealt, open to pick from.
   const draftState = (seed = 42, pactIds: string[] = []): DiveState =>
-    withHonorsClosed(rewardsState(seed, pactIds))
-
-  function withTokens(state: DiveState, playerId: string, tokens: number): DiveState {
-    return {
-      ...state,
-      divers: state.divers.map(diver =>
-        diver.id === playerId ? { ...diver, rewardTokens: tokens } : diver,
-      ),
-    }
-  }
+    reduce(withHonorsClosed(rewardsState(seed, pactIds)), { type: 'DEAL_REWARDS' })
 
   function pickFirst(state: DiveState): DiveState {
     const option = diverOptions(state, requireDiver(state))[0]
@@ -1962,7 +1947,7 @@ describe('reward tokens + bonus honors', () => {
     expect(state.bonusWinnerIds).toEqual(['p1'])
     expect(state.divers[0]?.rewardTokens).toBe(1)
     expect(reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1'] })).toBe(state)
-    expect(pickFirst(state).divers[0]?.pickedOptionId).not.toBeNull()
+    expect(pickFirst(reduce(state, { type: 'DEAL_REWARDS' })).divers[0]?.pickedOptionId).not.toBeNull()
   })
 
   it('revokes a report-window spin when the filed report no longer qualifies', () => {
@@ -2179,31 +2164,33 @@ describe('reward tokens + bonus honors', () => {
     expect(state.divers[0]?.rewardTokens).toBe(before)
   })
 
-  it('lets the squad draft first, then holds the next drop until the winner is named', () => {
+  it('holds the deal until the winner is named, then drafts with the token in hand', () => {
     const start = twoDiverRewards()
-    // Due but not yet rolled: the drafts are open, the next drop is shut.
+    // Due: the debrief is open and the draft is shut.
     expect(honorsDue(start)).toBe(true)
-    const drafted = everyoneDrafts(start)
-    expect(drafted.divers.every(diver => diver.pickedOptionId !== null)).toBe(true)
-    expect(reduce(drafted, { type: 'ADVANCE' })).toBe(drafted)
+    expect(reduce(start, { type: 'DEAL_REWARDS' })).toBe(start)
     // Rolled, nobody named yet: still shut.
-    const rolled = reduce(drafted, { type: 'SPIN_BONUS', seed: 7 })
-    expect(climbBlockers(rolled).honors).toBe(true)
-    expect(reduce(rolled, { type: 'ADVANCE' })).toBe(rolled)
-    // Named: the squad can move on.
+    const rolled = reduce(start, { type: 'SPIN_BONUS', seed: 7 })
+    expect(debriefReady(rolled)).toBe(false)
+    expect(reduce(rolled, { type: 'DEAL_REWARDS' })).toBe(rolled)
+    // Named: the host can deal, and the winner's token is already banked.
     const awarded = reduce(rolled, { type: 'AWARD_BONUS', playerIds: ['p2'] })
     expect(honorsDue(awarded)).toBe(false)
-    expect(reduce(awarded, { type: 'ADVANCE' }).phase).toBe('spin')
+    const dealt = reduce(awarded, { type: 'DEAL_REWARDS' })
+    expect(dealt.divers.find(diver => diver.id === 'p2')?.rewardTokens).toBe(1)
+    const drafted = everyoneDrafts(dealt)
+    expect(reduce(drafted, { type: 'ADVANCE' }).phase).toBe('spin')
   })
 
-  it('moves on at once when the mission is not on the honors cadence', () => {
+  it('deals at once when the mission is not on the honors cadence', () => {
     const off = { ...twoDiverRewards(), missionIndex: 1 }
     expect(honorsDue(off)).toBe(false)
-    expect(reduce(everyoneDrafts(off), { type: 'ADVANCE' }).phase).toBe('spin')
+    const dealt = reduce(off, { type: 'DEAL_REWARDS' })
+    expect(reduce(everyoneDrafts(dealt), { type: 'ADVANCE' }).phase).toBe('spin')
   })
 
   it('resets the bonus ceremony and the ban flag on advance', () => {
-    const state = pickFirst(spun(rewardsState()))
+    const state = pickFirst(reduce(spun(rewardsState()), { type: 'DEAL_REWARDS' }))
     const advanced = reduce(state, { type: 'ADVANCE' })
     expect(advanced.bonusSeed).toBeNull()
     expect(advanced.bonusWinnerIds).toEqual([])
@@ -2440,236 +2427,90 @@ describe('SET_AWAY', () => {
   })
 })
 
-describe('stats check after the draft', () => {
-  // Reports a 2-star clear with the given rules in force, so the squad lands
-  // on the climbs page with the stats screen still to settle.
-  function banked(pactIds: string[], misfortuneId: string | null = null, penance: DiverState['penance'] = null): DiveState {
+describe('the debrief', () => {
+  // Reports a clear with the given rules in force: the squad lands in the
+  // debrief with no offer dealt yet.
+  function reported(pactIds: string[], misfortuneId: string | null = null): DiveState {
     const base = divingState(1)
     const staged: DiveState = {
       ...base,
       wheel: { seed: 1, misfortuneId: misfortuneId ?? 'noBackpacks' },
       misfortuneAccepted: misfortuneId !== null,
-      divers: base.divers.map(diver => ({ ...diver, pactIds, failedPactIds: [], heldPactIds: [], brokenPactIds: [], penance })),
+      divers: base.divers.map(diver => ({ ...diver, pactIds, failedPactIds: [] })),
     }
     return reduce(staged, { type: 'REPORT_RESULT', outcome: 'success', stars: 2 })
   }
+  const optionCount = (state: DiveState): number => diverOptions(state, requireDiver(state)).length
 
-  const firstOption = (state: DiveState): string => diverOptions(state, requireDiver(state))[0]!.optionId
-  const pickFor = (state: DiveState): DiveState =>
-    reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: firstOption(state) })
-  // The next mission's pact hand, reached from a banked mission.
-  function nextMission(state: DiveState, seed = 77): DiveState {
-    let next = reduce(state, { type: 'ADVANCE' })
-    next = reduce(next, { type: 'SPIN_WHEEL', seed })
-    next = reduce(next, { type: 'ACCEPT_MISFORTUNE', accepted: false })
-    return reduce(next, { type: 'DEAL_PACTS' })
-  }
+  it('banks the haul at the report but holds the offer until the host deals it', () => {
+    const state = reported(['cleanHands'])
+    expect(debriefOpen(state)).toBe(true)
+    expect(optionCount(state)).toBe(0)
+    expect(reduce(state, { type: 'PICK_REWARD', playerId: 'p1', optionId: 'x' })).toBe(state)
+    expect(reduce(state, { type: 'ADVANCE' })).toBe(state)
+    const dealt = reduce(state, { type: 'DEAL_REWARDS' })
+    expect(debriefOpen(dealt)).toBe(false)
+    expect(optionCount(dealt)).toBeGreaterThan(0)
+    expect(reduce(dealt, { type: 'DEAL_REWARDS' })).toBe(dealt)
+  })
 
-  it('opens the draft at once, with the stats rules still unsettled', () => {
-    const state = banked(['cleanHands'])
+  it('lets a token banked in the debrief reroll the very draft it precedes', () => {
+    const state = withTokens(reported(['cleanHands']), 'p1', 1)
+    const dealt = reduce(state, { type: 'DEAL_REWARDS' })
+    const rerolled = reduce(dealt, { type: 'REROLL_REWARDS', playerId: 'p1', seed: 99 })
+    expect(requireDiver(rerolled).rewardTokens).toBe(0)
+  })
+
+  it('costs the draft an option and voids the risk when a stats pact breaks', () => {
+    const state = reported(['cleanHands'])
     expect(statsPendingPactIds(state, requireDiver(state))).toEqual(['cleanHands'])
-    expect(pickFor(state).divers[0]?.pickedOptionId).not.toBeNull()
+    const broke = reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'cleanHands' })
+    expect(requireDiver(broke).failedPactIds).toEqual(['cleanHands'])
+    expect(pactRiskOf(requireDiver(broke), broke.difficulty)).toBe(0)
+    expect(optionCount(reduce(broke, { type: 'DEAL_REWARDS' })))
+      .toBe(optionCount(reduce(state, { type: 'DEAL_REWARDS' })) - 1)
+    expect(reduce(broke, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'cleanHands' })).toBe(broke)
   })
 
-  it('advances with unmarked stats rules held by default', () => {
-    const drafted = pickFor(banked(['cleanHands']))
-    expect(climbBlockers(drafted)).toEqual({ honors: false })
-    expect(reduce(drafted, { type: 'ADVANCE' }).phase).toBe('spin')
-    const held = reduce(drafted, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'cleanHands' })
-    expect(reduce(held, { type: 'ADVANCE' }).phase).toBe('spin')
-  })
-
-  it('leaves the banked offer alone when a stats pact breaks, and owes it back', () => {
-    const drafted = pickFor(banked(['cleanHands']))
-    const before = diverOptions(drafted, requireDiver(drafted)).map(option => option.optionId)
-    const broke = reduce(drafted, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'cleanHands' })
-    expect(requireDiver(broke).brokenPactIds).toEqual(['cleanHands'])
-    expect(requireDiver(broke).failedPactIds).toEqual([])
-    expect(diverOptions(broke, requireDiver(broke)).map(option => option.optionId)).toEqual(before)
-    expect(broke.divers[0]?.pickedOptionId).toBe(drafted.divers[0]?.pickedOptionId)
-    expect(climbBlockers(broke)).toEqual({ honors: false })
-  })
-
-  it('leaves loadout and field pacts out of the check', () => {
-    const state = banked(['untouchable', 'packLight'])
-    expect(statsPendingPactIds(state, requireDiver(state))).toEqual([])
-    // A field pact is judged live: the check window is closed to it.
+  it('closes the check once the offer is dealt, and leaves loadout and field pacts out', () => {
+    const state = reported(['cleanHands', 'untouchable', 'packLight'])
+    expect(statsPendingPactIds(state, requireDiver(state))).toEqual(['cleanHands'])
     expect(reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'untouchable' })).toBe(state)
+    const dealt = reduce(state, { type: 'DEAL_REWARDS' })
+    expect(reduce(dealt, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'cleanHands' })).toBe(dealt)
   })
 
-  it('treats held and broke as one-way, and refuses either outside the climbs page', () => {
-    const state = banked(['cleanHands', 'coldSteel'])
-    const held = reduce(state, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'cleanHands' })
-    expect(reduce(held, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'cleanHands' })).toBe(held)
-    expect(reduce(held, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'cleanHands' })).toBe(held)
-    const broke = reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'coldSteel' })
-    expect(reduce(broke, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'coldSteel' })).toBe(broke)
-    expect(reduce(broke, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'coldSteel' })).toBe(broke)
-
-    const diving = divingState(1)
-    expect(reduce(diving, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'cleanHands' })).toBe(diving)
+  it('voids the shared risk when a stats directive breaks, and the draft loses an option', () => {
+    const state = reported([], 'pacifist')
+    expect(statsPendingMisfortune(state)?.id).toBe('pacifist')
+    const broke = reduce(state, { type: 'FAIL_MISFORTUNE' })
+    expect(broke.misfortuneFailed).toBe(true)
+    expect(teamRiskOf(broke)).toBeLessThan(teamRiskOf(state))
+    expect(optionCount(reduce(broke, { type: 'DEAL_REWARDS' })))
+      .toBe(optionCount(reduce(state, { type: 'DEAL_REWARDS' })) - 1)
+    const dealt = reduce(state, { type: 'DEAL_REWARDS' })
+    expect(reduce(dealt, { type: 'FAIL_MISFORTUNE' })).toBe(dealt)
   })
 
-  it('advances with a stats-verified directive held by default', () => {
-    const drafted = pickFor(banked([], 'stimShortage'))
-    expect(statsPendingMisfortune(drafted)?.id).toBe('stimShortage')
-    expect(reduce(drafted, { type: 'ADVANCE' }).phase).toBe('spin')
-
-    const held = reduce(drafted, { type: 'HOLD_MISFORTUNE' })
-    expect(held.misfortuneHeld).toBe(true)
-    expect(reduce(held, { type: 'FAIL_MISFORTUNE' })).toBe(held)
-    expect(reduce(held, { type: 'HOLD_MISFORTUNE' })).toBe(held)
-    expect(reduce(held, { type: 'ADVANCE' }).directiveTax).toBe(false)
+  it('lists every stats-verified rule with whether it broke', () => {
+    const state = reported(['cleanHands', 'packLight'], 'pacifist')
+    expect(statsRules(state).map(rule => [rule.scope, rule.conditionId, rule.broke]))
+      .toEqual([['directive', 'pacifist', false], ['pact', 'cleanHands', false]])
+    const broke = reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'cleanHands' })
+    expect(statsRules(broke).find(rule => rule.conditionId === 'cleanHands')?.broke).toBe(true)
+    expect(statsRules(reduce(state, { type: 'DEAL_REWARDS' }))).toEqual([])
   })
 
-  it('taxes the next draft, not this one, when a stats directive breaks', () => {
-    const drafted = pickFor(banked([], 'stimShortage'))
-    const before = diverOptions(drafted, requireDiver(drafted)).length
-    const broke = reduce(drafted, { type: 'FAIL_MISFORTUNE' })
-    expect(broke.misfortuneBroken).toBe(true)
-    expect(broke.misfortuneFailed).toBe(false)
-    expect(diverOptions(broke, requireDiver(broke)).length).toBe(before)
-
-    const next = reduce(broke, { type: 'ADVANCE' })
-    expect(next.directiveTax).toBe(true)
-    expect(next.misfortuneBroken).toBe(false)
-    expect(optionsLostFor(next, requireDiver(next))).toBe(1)
-  })
-
-  it('does not check a field-verified directive on the climbs page', () => {
-    const state = banked([], 'zeroDeaths')
-    expect(statsPendingMisfortune(state)).toBeNull()
-    expect(reduce(state, { type: 'FAIL_MISFORTUNE' })).toBe(state)
-    expect(reduce(state, { type: 'HOLD_MISFORTUNE' })).toBe(state)
-  })
-
-  it('lists every stats-verified rule with where it stands', () => {
-    const state = banked(['cleanHands', 'untouchable', 'coldSteel'], 'stimShortage')
-    expect(statsRules(state)).toEqual([
-      { scope: 'directive', diverId: null, conditionId: 'stimShortage', status: 'pending', penance: false, afterDraft: false },
-      { scope: 'pact', diverId: 'p1', conditionId: 'cleanHands', status: 'pending', penance: false, afterDraft: false },
-      { scope: 'pact', diverId: 'p1', conditionId: 'coldSteel', status: 'pending', penance: false, afterDraft: false },
-    ])
-    let next = reduce(state, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'cleanHands' })
-    next = reduce(next, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'coldSteel' })
-    next = reduce(next, { type: 'FAIL_MISFORTUNE' })
-    expect(statsRules(next).map(rule => rule.status)).toEqual(['broke', 'held', 'broke'])
-    expect(statsRules(next).map(rule => rule.afterDraft)).toEqual([true, false, true])
-    expect(statsRules(divingState(1))).toEqual([])
-  })
-
-  it('clears the check with the next mission', () => {
-    const state = settleDebrief(banked(['cleanHands'], 'stimShortage'))
-    const next = reduce(pickFor(state), { type: 'ADVANCE' })
-    expect(next.misfortuneHeld).toBe(false)
-    expect(next.divers[0]?.heldPactIds).toEqual([])
-    expect(next.divers[0]?.brokenPactIds).toEqual([])
-  })
-
-  describe('Penance', () => {
-    // A diver who broke Clean Hands, drafted, and carries the debt forward.
-    function owing(): { owedAt: DiveState, itemId: string } {
-      const drafted = pickFor(banked(['cleanHands']))
-      const broke = reduce(drafted, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'cleanHands' })
-      return { owedAt: broke, itemId: drafted.divers[0]!.pickedOptionId! }
-    }
-
-    it('re-swears a broken pact next mission for no Valor, keeping the reward at stake', () => {
-      const { owedAt, itemId } = owing()
-      const next = nextMission(owedAt)
-      expect(requireDiver(next).penance).toEqual({ pactIds: ['cleanHands'], itemId, status: 'owed' })
-      expect(squadPenances(next)).toEqual(['cleanHands'])
-
-      const locked = reduce(next, { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
-      expect(requireDiver(locked).pactIds).toEqual(['cleanHands'])
-      expect(pactRiskOf(requireDiver(locked), locked.difficulty)).toBe(0)
+  it('clears the marks with the next mission', () => {
+    const broke = reduce(reported(['cleanHands']), { type: 'FAIL_PACT', playerId: 'p1', pactId: 'cleanHands' })
+    const dealt = reduce(broke, { type: 'DEAL_REWARDS' })
+    const picked = reduce(dealt, {
+      type: 'PICK_REWARD',
+      playerId: 'p1',
+      optionId: diverOptions(dealt, requireDiver(dealt))[0]!.optionId,
     })
-
-    it('never offers the penance pact again, and swears it ahead of the diver’s picks', () => {
-      const { owedAt } = owing()
-      for (const seed of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
-        const next = nextMission(owedAt, seed)
-        expect(pactOfferFor(next, 'p1').map(pact => pact.id)).not.toContain('cleanHands')
-      }
-      const next = nextMission(owedAt)
-      const pick = pactOfferFor(next, 'p1')[0]!.id
-      const locked = reduce(next, { type: 'SET_PACTS', playerId: 'p1', pactIds: [pick] })
-      expect(requireDiver(locked).pactIds).toEqual(['cleanHands', pick])
-    })
-
-    it('keeps the reward once the penance pact is held', () => {
-      const { owedAt, itemId } = owing()
-      let state = reduce(nextMission(owedAt), { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
-      state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 2 })
-      const held = reduce(state, { type: 'HOLD_PACT', playerId: 'p1', pactId: 'cleanHands' })
-      expect(requireDiver(held).penance?.status).toBe('served')
-      expect(held.debtSettled).toBe(true)
-      expect(held.personalInventories.p1).toContain(itemId)
-    })
-
-    it('serves an unmarked penance pact by default when the squad moves on', () => {
-      const { owedAt, itemId } = owing()
-      let state = reduce(nextMission(owedAt), { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
-      state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 2 })
-      state = pickFor(state)
-      if (honorsDue(state)) {
-        state = reduce(state, { type: 'SPIN_BONUS', seed: 4242 })
-        if (honorsDue(state)) {
-          state = reduce(state, { type: 'AWARD_BONUS', playerIds: ['p1'] })
-        }
-      }
-      const next = reduce(state, { type: 'ADVANCE' })
-      expect(next.phase).toBe('spin')
-      expect(next.debtSettled).toBe(true)
-      expect(next.personalInventories.p1).toContain(itemId)
-      expect(requireDiver(next).penance).toBeNull()
-    })
-
-    it('voids the reward when the penance pact breaks again, with no second debt', () => {
-      const { owedAt, itemId } = owing()
-      expect(owedAt.personalInventories.p1).toContain(itemId)
-      let state = reduce(nextMission(owedAt), { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
-      state = pickFor(reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 2 }))
-      const broke = reduce(state, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'cleanHands' })
-      expect(requireDiver(broke).penance?.status).toBe('voided')
-      expect(broke.personalInventories.p1).not.toContain(itemId)
-      expect(optionsLostFor(broke, requireDiver(broke))).toBe(0)
-
-      const after = reduce(broke, { type: 'ADVANCE' })
-      expect(requireDiver(after).penance).toBeNull()
-    })
-
-    it('voids the reward when the mission is failed', () => {
-      const { owedAt, itemId } = owing()
-      const diving = reduce(nextMission(owedAt), { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
-      const failed = reduce(diving, { type: 'REPORT_RESULT', outcome: 'failure', stars: 0 })
-      expect(failed.personalInventories.p1).not.toContain(itemId)
-    })
-
-    it('is voided in the field too, without costing a draft option', () => {
-      const { owedAt, itemId } = owing()
-      const diving = reduce(nextMission(owedAt), { type: 'SET_PACTS', playerId: 'p1', pactIds: [] })
-      const broke = reduce(diving, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'cleanHands' })
-      expect(requireDiver(broke).penance?.status).toBe('voided')
-      expect(broke.personalInventories.p1).not.toContain(itemId)
-      expect(optionsLostFor(broke, requireDiver(broke))).toBe(0)
-    })
-
-    it('does not tie a debt to a draft that banked nothing', () => {
-      const staged = banked(['cleanHands'])
-      const banned: DiveState = {
-        ...staged,
-        divers: staged.divers.map(diver => ({ ...diver, rewardBanned: true })),
-      }
-      const broke = reduce(banned, { type: 'FAIL_PACT', playerId: 'p1', pactId: 'cleanHands' })
-      expect(requireDiver(reduce(broke, { type: 'ADVANCE' })).penance)
-        .toEqual({ pactIds: ['cleanHands'], itemId: null, status: 'owed' })
-    })
-
-    it('keeps directives that would block a penance pact off the wheel', () => {
-      expect(eligibleMisfortunes([], ['stimAbstinent']).map(m => m.id)).not.toContain('stimShortage')
-      expect(eligibleMisfortunes([], ['coldSteel']).map(m => m.id)).not.toContain('pacifist')
-      expect(eligibleMisfortunes([], ['cleanHands']).length).toBe(eligibleMisfortunes().length)
-    })
+    const next = reduce(picked, { type: 'ADVANCE' })
+    expect(next.phase).toBe('spin')
+    expect(requireDiver(next).failedPactIds).toEqual([])
   })
 })

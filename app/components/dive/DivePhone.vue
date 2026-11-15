@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
-import { allDiversPicked, bonusFor, bonusWinners } from '~~/shared/engine/selectors'
+import { allDiversPicked, bonusFor, bonusWinners, debriefOpen } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState, MissionReport } from '~~/shared/engine/types'
 import type { SteamLobbyInfo } from '~~/shared/types/messages'
 
@@ -34,12 +34,11 @@ const emit = defineEmits<{
   report: [payload: MissionReport]
   failPact: [playerId: string, pactId: string]
   failDirective: []
-  holdPact: [playerId: string, pactId: string]
-  holdDirective: []
   pick: [optionId: string, choiceItemId?: string]
   rerollRewards: []
   spinBonus: []
   awardBonus: [playerIds: string[]]
+  dealRewards: []
   advance: []
   forfeit: [itemId: string]
   kick: [diverId: string]
@@ -72,11 +71,12 @@ function requestKick(diverId: string): void {
 }
 
 // Held back while the report's reel is still rolling.
-const honors = computed(() => (props.state.phase !== 'diving' ? bonusFor(props.state) : null))
+const honors = computed(() => (props.state.phase !== 'diving' && props.state.phase !== 'rewards' ? bonusFor(props.state) : null))
 const honorsWinners = computed(() => bonusWinners(props.state).map(diver => upperName(diver.name)))
 const honorsAwarded = computed(() => Boolean(props.state.bonusWinnerIds.length))
 
 // Same squad-climbs beat as the desktop shell, derived from synced state.
+const debriefing = computed(() => debriefOpen(props.state))
 const squadBanked = computed(() => phase.value === 'rewards' && allDiversPicked(props.state))
 </script>
 
@@ -154,6 +154,20 @@ const squadBanked = computed(() => phase.value === 'rewards' && allDiversPicked(
           @fail-directive="emit('failDirective')"
         />
 
+        <DebriefStage
+          v-else-if="debriefing"
+          :state="state"
+          :self="self"
+          :self-id="selfId"
+          :can-control="canControl"
+          phone
+          @fail-pact="(playerId, pactId) => emit('failPact', playerId, pactId)"
+          @fail-directive="emit('failDirective')"
+          @spin-bonus="emit('spinBonus')"
+          @award-bonus="emit('awardBonus', $event)"
+          @deal="emit('dealRewards')"
+        />
+
         <ClimbCleared
           v-else-if="squadBanked"
           :state="state"
@@ -163,12 +177,6 @@ const squadBanked = computed(() => phase.value === 'rewards' && allDiversPicked(
           :op-length="opLength"
           phone
           @advance="emit('advance')"
-          @hold-pact="(playerId, pactId) => emit('holdPact', playerId, pactId)"
-          @fail-pact="(playerId, pactId) => emit('failPact', playerId, pactId)"
-          @hold-directive="emit('holdDirective')"
-          @fail-directive="emit('failDirective')"
-          @spin-bonus="emit('spinBonus')"
-          @award-bonus="emit('awardBonus', $event)"
         />
 
         <PhoneRewardDraft

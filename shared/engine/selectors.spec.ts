@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { ITEMS_BY_ID, WARBONDS } from '../data/catalog'
-import { MAX_DIFFICULTY, MIN_DIFFICULTY, STRAIN_RISK, missionsPerOperation, conditionRiskAt, directiveValorAt, directiveWeightFor } from './config'
+import { MAX_DIFFICULTY, MIN_DIFFICULTY, STRAIN_RISK, missionsPerOperation, conditionRiskAt, directiveValorAt, directiveWeightFor, VEHICLE_UNLOCK_DIFFICULTY } from './config'
 import { itemPrice, oddsToReach } from './rewards'
 import { createDiveState, reduce } from './reducer'
-import { actingDiverIds, activeMisfortune, activeStrain, armorPackFor, armorPackItemsFor, armorPackOfferFor, armorPacksFor, armoryRules, awaitingDiverIds, bargainLamp, bargainsClosedReason, bargainShelfFor, bargainSlotKinds, canBuyArmorPack, canBuyItem, canRerollWheel, ceilingRange, diverOptions, itemBannedInArmory, majorOrderPlanetsForFront, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, missionsUntilHonors, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
+import { actingDiverIds, activeMisfortune, activeStrain, armorPackFor, armorPackItemsFor, armorPackOfferFor, armorPacksFor, armoryRules, awaitingDiverIds, bargainLamp, bargainsClosedReason, bargainShelfFor, bargainSlotKinds, canBuyArmorPack, canBuyItem, canRerollWheel, catalogPoolFor, ceilingRange, diverOptions, itemBannedInArmory, majorOrderPlanetsForFront, maxValorFor, misfortuneDecision, misfortuneStrandedDivers, missionsUntilHonors, pactOfferFor, rewardPoolFor, strainDecision, teamRiskOf } from './selectors'
 import { isPactSelectable, rollPactOffer } from './pacts'
 import { startingItemIds } from './progression'
 import type { DiveState, DiverState, RewardTier } from './types'
@@ -181,12 +181,24 @@ describe('maxValorFor (meter scale)', () => {
 
 describe('rewardPoolFor', () => {
   it('never offers armor passives — they are Brasch exclusives', () => {
-    const pool = rewardPoolFor(WARBONDS.map(warbond => warbond.code))
+    const pool = rewardPoolFor(WARBONDS.map(warbond => warbond.code), undefined, 10)
     expect(pool.some(item => item.category === 'armorPassive')).toBe(false)
   })
 
+  it('holds mechs and vehicles back until the 5th star unlocks', () => {
+    const codes = WARBONDS.map(warbond => warbond.code)
+    const vehicles = (difficulty: number) => catalogPoolFor(codes, undefined, difficulty).filter(item => item.tags.includes('Vehicles'))
+    expect(vehicles(VEHICLE_UNLOCK_DIFFICULTY - 1)).toEqual([])
+    expect(vehicles(VEHICLE_UNLOCK_DIFFICULTY).length).toBeGreaterThan(0)
+  })
+
+  it('lets Liberty\'s Cross claim passives that drafts never roll', () => {
+    const codes = WARBONDS.map(warbond => warbond.code)
+    expect(catalogPoolFor(codes, undefined, 10).some(item => item.category === 'armorPassive')).toBe(true)
+  })
+
   it('still filters by owned warbonds', () => {
-    const pool = rewardPoolFor([])
+    const pool = rewardPoolFor([], undefined, 10)
     expect(pool.every(item => item.warbondCode === 'none')).toBe(true)
   })
 })
@@ -200,6 +212,8 @@ describe('diverOptions', () => {
     state = reduce(state, { type: 'DEAL_PACTS' })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'host', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
+    state = reduce(state, { type: 'SPIN_BONUS', seed: 1 })
+    state = reduce(state, { type: 'DEAL_REWARDS' })
     const diver = state.divers.find((candidate): candidate is DiverState => candidate.id === 'host')!
     const options = diverOptions(state, diver)
     expect(options.length).toBeGreaterThan(0)
@@ -214,6 +228,8 @@ describe('diverOptions', () => {
     state = reduce(state, { type: 'DEAL_PACTS' })
     state = reduce(state, { type: 'SET_PACTS', playerId: 'host', pactIds: [] })
     state = reduce(state, { type: 'REPORT_RESULT', outcome: 'success', stars: 5 })
+    state = reduce(state, { type: 'SPIN_BONUS', seed: 1 })
+    state = reduce(state, { type: 'DEAL_REWARDS' })
     const diver = state.divers.find((candidate): candidate is DiverState => candidate.id === 'host')!
     const options = diverOptions(state, diver)
     expect(options.length).toBeGreaterThan(0)
@@ -384,7 +400,7 @@ describe('misfortuneStrandedDivers', () => {
       pactsLocked: false,
       pactIds: [],
       failedPactIds: [],
-      heldPactIds: [], brokenPactIds: [], penance: null,
+
       pickedOptionId: null,
       warbondCodes: [],
       catchUpGranted: 0,

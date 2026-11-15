@@ -1,7 +1,7 @@
 import type { Tier } from '../data/types'
 import type { RewardTier } from './types'
 
-export const ENGINE_VERSION = 3
+export const ENGINE_VERSION = 4
 
 export const MIN_DIFFICULTY = 3
 export const MAX_DIFFICULTY = 10
@@ -30,6 +30,10 @@ export function missionsPerOperation(difficulty: number): number {
 // 1st from Trivial (1), 2nd from Easy (2), 3rd from Medium (3), 4th from Hard
 // (5), 5th from Suicide (7) — and a completed mission never awards zero stars.
 const STAR_UNLOCK_DIFFICULTY = [1, 2, 3, 5, 7] as const
+
+// Mechs and vehicles trivialize the early ladder, so they stay out of every
+// pool until the 5th star unlocks.
+export const VEHICLE_UNLOCK_DIFFICULTY = Math.max(...STAR_UNLOCK_DIFFICULTY)
 
 export function maxStarsFor(difficulty: number): number {
   return STAR_UNLOCK_DIFFICULTY.filter(min => difficulty >= min).length

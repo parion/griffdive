@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { conditionById } from '~~/shared/data/conditions'
 import { conditionRiskAt } from '~~/shared/engine/config'
 import { statsRules } from '~~/shared/engine/selectors'
 import type { StatsRule } from '~~/shared/engine/selectors'
 import type { DiveState } from '~~/shared/engine/types'
 
-// The stats check: every rule only HD2's end-of-mission stats screen can prove,
-// attested held or broke now that the drafts are banked. A broken pact is owed
-// back next mission as Penance (purple); a broken Penance pact voids the reward
-// it was guarding. The engine owns all of it; this panel only reports.
+// The debrief's stats check: every rule only HD2's end-of-mission stats screen
+// can prove. Rules are held unless marked broke, and a break is an ordinary
+// failed mark: it voids the rule's risk and costs the coming draft an option.
 const props = defineProps<{
   state: DiveState
   selfId: string | null
@@ -17,9 +15,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  holdPact: [playerId: string, pactId: string]
   failPact: [playerId: string, pactId: string]
-  holdDirective: []
   failDirective: []
 }>()
 
@@ -31,9 +27,7 @@ interface RuleRow extends StatsRule {
   scopeLabel: string
   condition: NonNullable<ReturnType<typeof conditionById>>
   risk: number
-  canSettle: boolean
-  stake: string | null
-  outcome: string
+  canMark: boolean
 }
 
 const rows = computed<RuleRow[]>(() => statsRules(props.state).flatMap((rule) => {
@@ -43,50 +37,23 @@ const rows = computed<RuleRow[]>(() => statsRules(props.state).flatMap((rule) =>
   }
   const owner = rule.diverId ? props.state.divers.find(diver => diver.id === rule.diverId) : null
   const ownerName = owner ? upperName(owner.name) : hostName.value
-  const stakeId = rule.penance ? owner?.penance?.itemId : null
-  const stake = stakeId ? ITEMS_BY_ID.get(stakeId)?.displayName ?? null : null
-  let outcome = rule.status === 'held' ? 'Held' : 'Broke'
-  if (rule.status === 'held' && rule.penance) {
-    outcome = stake ? `Held · ${stake} kept` : 'Held · debt cleared'
-  }
-  else if (rule.status === 'broke' && rule.penance) {
-    outcome = stake ? `Broke · ${stake} voided` : 'Broke · voided'
-  }
-  else if (rule.status === 'broke' && rule.afterDraft) {
-    outcome = rule.scope === 'directive' ? 'Broke · draft tax next mission' : 'Broke · Penance next mission'
-  }
   return [{
     ...rule,
     name: condition.name,
     condition,
     risk: conditionRiskAt(rule.conditionId, props.state.difficulty),
-    scopeLabel: rule.scope === 'directive'
-      ? 'Squad directive'
-      : `${ownerName}’s ${rule.penance ? 'penance' : 'pact'}`,
-    // The host referees any pact, as with field marks; a diver settles their
-    // own. The directive binds the squad, so only the host settles it.
-    canSettle: rule.scope === 'directive'
+    scopeLabel: rule.scope === 'directive' ? 'Squad directive' : `${ownerName}’s pact`,
+    // The host referees any pact, as with field marks; a diver marks their
+    // own. The directive binds the squad, so only the host marks it.
+    canMark: rule.scope === 'directive'
       ? props.isHost
       : props.isHost || rule.diverId === props.selfId,
-    stake,
-    outcome,
   }]
 }))
-const pending = computed(() => rows.value.filter(row => row.status === 'pending').length)
 
-// A broke mark is one-way and has a price, so it takes a second tap.
+// A broke mark is one-way and costs a loot option, so it takes a second tap.
 const armed = ref<string | null>(null)
 const keyOf = (rule: StatsRule): string => `${rule.scope}:${rule.diverId ?? ''}:${rule.conditionId}`
-
-function hold(rule: StatsRule): void {
-  armed.value = null
-  if (rule.scope === 'directive') {
-    emit('holdDirective')
-  }
-  else if (rule.diverId) {
-    emit('holdPact', rule.diverId, rule.conditionId)
-  }
-}
 
 function broke(rule: StatsRule): void {
   const key = keyOf(rule)
@@ -111,10 +78,7 @@ function broke(rule: StatsRule): void {
   >
     <header class="stats-head">
       <span class="cap">Stats check</span>
-      <span
-        class="tiny"
-        :class="{ clear: pending === 0 && rows.length > 0 }"
-      >{{ rows.length === 0 ? 'Nothing rides on the stats screen' : pending === 0 ? 'All settled' : 'Held by default — mark any you broke' }}</span>
+      <span class="tiny">{{ rows.length === 0 ? 'Nothing rides on the stats screen' : 'Held by default — mark any you broke' }}</span>
     </header>
 
     <ul
@@ -125,7 +89,7 @@ function broke(rule: StatsRule): void {
         v-for="row in rows"
         :key="keyOf(row)"
         class="rule-row"
-        :class="[row.status, { penance: row.penance }]"
+        :class="row.broke ? 'broke' : 'held'"
       >
         <div class="rule-text">
           <span class="cap scope">{{ row.scopeLabel }}</span>
@@ -134,7 +98,7 @@ function broke(rule: StatsRule): void {
               v-if="row.scope === 'pact'"
               :value="row.risk"
               :max="row.risk"
-              :tone="row.penance ? 'purple' : row.risk >= 3 ? 'red' : 'gold'"
+              :tone="row.risk >= 3 ? 'red' : 'gold'"
             />
             <b class="disp">{{ row.name }}</b>
           </span>
@@ -142,46 +106,22 @@ function broke(rule: StatsRule): void {
             class="rule-body"
             :condition="row.condition"
           />
-          <span
-            v-if="row.penance && row.status === 'pending'"
-            class="rule-stake"
-          >{{ row.stake ? `Hold it to keep ${row.stake}.` : 'Hold it to clear the debt.' }}</span>
         </div>
-        <div
-          v-if="row.status === 'pending' && row.canSettle"
-          class="rule-act"
-          role="group"
-          :aria-label="`${row.name} outcome`"
+        <button
+          v-if="!row.broke && row.canMark"
+          class="act broke"
+          :class="{ armed: armed === keyOf(row) }"
+          type="button"
+          :aria-label="`Mark ${row.name} broke`"
+          @click="broke(row)"
         >
-          <button
-            class="act held selected"
-            type="button"
-            aria-pressed="true"
-            :aria-label="`${row.name} held`"
-            @click="hold(row)"
-          >
-            Held
-          </button>
-          <button
-            class="act broke"
-            :class="{ armed: armed === keyOf(row) }"
-            type="button"
-            aria-pressed="false"
-            :aria-label="`${row.name} broke`"
-            @click="broke(row)"
-          >
-            {{ armed === keyOf(row) ? 'Confirm?' : 'Broke' }}
-          </button>
-        </div>
-        <span
-          v-else-if="row.status === 'pending'"
-          class="chip held"
-        >Held</span>
+          {{ armed === keyOf(row) ? 'Confirm?' : 'Broke' }}
+        </button>
         <span
           v-else
           class="chip"
-          :class="[row.status, { owes: row.afterDraft && row.scope === 'pact' && !row.penance }]"
-        >{{ row.outcome }}</span>
+          :class="row.broke ? 'broke' : 'held'"
+        >{{ row.broke ? 'Broke · loot option lost' : 'Held' }}</span>
       </li>
     </ul>
   </section>
@@ -206,18 +146,11 @@ function broke(rule: StatsRule): void {
 }
 .rule-row.held { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--teal) 45%, var(--line-3)); }
 .rule-row.broke { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 55%, var(--line-3)); }
-.rule-row.penance {
-  background: color-mix(in srgb, var(--purple) 8%, var(--raised));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--purple) 50%, var(--line-3)), inset 3px 0 0 var(--purple);
-}
 .rule-text { display: flex; flex: 1 1 220px; flex-direction: column; gap: 3px; min-width: 0; }
 .scope { color: var(--muted); }
-.penance .scope { color: var(--purple); }
 .rule-name { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .rule-name .disp { font-size: 18px; }
 .rule-body { color: var(--khaki); font-size: var(--fs-sm); }
-.rule-stake { color: var(--purple); font-size: 12px; }
-.rule-act { display: inline-flex; }
 .act {
   min-width: 88px;
   min-height: 40px;
@@ -231,11 +164,8 @@ function broke(rule: StatsRule): void {
   cursor: pointer;
   box-shadow: inset 0 0 0 1px var(--line-4);
 }
-.act + .act { border-left: 1px solid var(--line-4); }
-.act.held { background: var(--gold); color: var(--on-gold); box-shadow: none; }
 .act.broke.armed { color: var(--red); box-shadow: inset 0 0 0 1px var(--red); }
 .chip { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
 .chip.held { color: var(--teal); }
 .chip.broke { color: var(--red); }
-.chip.broke.owes { color: var(--purple); }
 </style>

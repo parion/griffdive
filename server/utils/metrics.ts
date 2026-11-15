@@ -688,6 +688,16 @@ export function createRoomMetrics(): RoomMetrics {
   // Every gameplay counter is derived from a (before, after) pair the server
   // already holds: the reducer is the single source of truth for the rules, so
   // the observability layer only reads the two states it produced.
+  function observeRisk(state: DiveState): void {
+    for (const diver of activeDivers(state)) {
+      valorAtReport.observe(diverValor(state, diver))
+      // A failure has no loot offer; its forfeit still rolls the same
+      // Valor-capped ceiling, so keep the risk signal comparable.
+      const top = topTierOf(diverOptions(state, diver)) ?? diverRolledCeiling(state, diver)
+      ceilingRolled.inc({ tier: top.toLowerCase() })
+    }
+  }
+
   function recordAction(before: DiveState, after: DiveState, action: EngineAction): void {
     if (before.phase === 'pacts' && after.phase !== 'pacts') {
       for (const diver of activeDivers(after)) {
@@ -770,16 +780,18 @@ export function createRoomMetrics(): RoomMetrics {
         if (typeof action.timePct === 'number') {
           reportTimePct.observe(Math.min(Math.max(action.timePct, 0), 100))
         }
-        // Valor and the top rolled loot tier are read at the report: offerSeed
-        // lands there, no pact can change anymore, and this is the risk the
-        // mission actually ran on.
-        for (const diver of activeDivers(after)) {
-          valorAtReport.observe(diverValor(after, diver))
-          // A failure has no loot offer; its forfeit still rolls the same
-          // Valor-capped ceiling, so keep the risk signal comparable.
-          const top = topTierOf(diverOptions(after, diver)) ?? diverRolledCeiling(after, diver)
-          ceilingRolled.inc({ tier: top.toLowerCase() })
+        // A failure has no debrief, so its risk is read here; a clear is read
+        // when the host deals the draft.
+        if (action.outcome === 'failure') {
+          observeRisk(after)
         }
+        break
+      }
+      case 'DEAL_REWARDS': {
+        // Valor and the top rolled loot tier are read at the deal: the offer
+        // seed lands there, every mark is final, and this is the risk the
+        // mission actually ran on.
+        observeRisk(after)
         break
       }
       case 'PICK_REWARD': {

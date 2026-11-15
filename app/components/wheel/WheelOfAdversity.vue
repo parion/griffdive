@@ -13,9 +13,7 @@ const props = withDefaults(defineProps<{
   spinning?: boolean
   // Every present diver's kit: directives someone can't field leave the wheel.
   inventories?: readonly (readonly string[])[]
-  // Pacts the squad owes back as Penance: directives that block one are off the wheel.
-  penance?: readonly string[]
-}>(), { canControl: false, spinning: false, inventories: () => [], penance: () => [] })
+}>(), { canControl: false, spinning: false, inventories: () => [] })
 
 const emit = defineEmits<{ spin: [] }>()
 
@@ -33,7 +31,7 @@ const SEG_HIT = 'var(--gold)'
 const HIT_REACH = 18
 
 const segments = computed(() =>
-  eligibleMisfortunes(props.inventories, props.penance).map((misfortune) => {
+  eligibleMisfortunes(props.inventories).map((misfortune) => {
     const risk = conditionRiskAt(misfortune.id, props.difficulty)
     const tone = risk >= 4 ? 'var(--red)' : risk === 3 ? 'var(--orange)' : 'var(--khaki)'
     return { id: misfortune.id, name: misfortune.name, risk, tone }
@@ -48,7 +46,7 @@ const drawn = computed(() => {
   if (props.resultId) {
     return segments.value.find(segment => segment.id === props.resultId) ?? null
   }
-  return deriveMisfortune(props.seed, props.inventories, props.penance)
+  return deriveMisfortune(props.seed, props.inventories)
 })
 const drawnIndex = computed(() =>
   drawn.value ? segments.value.findIndex(segment => segment.id === drawn.value!.id) : -1)

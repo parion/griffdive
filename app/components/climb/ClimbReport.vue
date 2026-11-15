@@ -111,7 +111,7 @@ const samples = computed(() => SAMPLES
       </li>
       <li v-if="directive">
         <span>Directive</span>
-        <b :class="{ broke: state.misfortuneFailed || state.misfortuneBroken }">{{ directive.name }}</b>
+        <b :class="{ broke: state.misfortuneFailed }">{{ directive.name }}</b>
       </li>
       <li v-if="strain">
         <span>Strain</span>

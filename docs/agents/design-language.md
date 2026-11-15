@@ -74,17 +74,18 @@ set; extracted references are git-ignored and presentation-only. Nothing here to
   help, veterans never see it (the Hades boon-screen lesson). A rule's parenthetical detail is an
   **aside** (`RulePart.aside`): smaller, `--dim` and italic, so the headline reads first. Rules
   use brackets for extra detail, never an em dash.
-- **Squad climbs**: the page after the draft (`ClimbCleared`, in `components/climb/`). The Stats
-  check (`ClimbStats`) and Squad Honors (`ClimbHonors`) share one panel beside the haul card; the
-  squad's drafts (`SquadDraftBoard`, compact) flex beneath **Your haul**, and the report is a slim
-  strip (`ClimbReport`) above them. The stats check is a side-by-side HELD/BROKE button group with
-  **HELD preselected** — an unmarked rule is held, so only a break costs a tap. The honors reel is
-  built for a flex *row* (`flex: 1 1 340px`), so in a column it must sit in a plain block slot or it
+- **Debrief**: the squad-wide beat between the report and the roll (`DebriefStage`, in
+  `components/debrief/`). It reads "Read the stats screen": the report strip (`ClimbReport`), then
+  one panel holding Squad Honors (`DebriefHonors`) and the Stats check (`DebriefStats`), then the
+  host's **Roll the loot** (`ClimbFoot`, the CTA shared with the climbs page; the phone variant puts it
+  in the action bar). Stats rules are held by default, so each row offers only a two-tap **Broke**
+  and otherwise reads *Held*; a broken one reads "loot option lost". Every diver sees it; only the
+  host rolls. The honors reel is built for a flex *row* (`flex: 1 1 340px`), so in a column it must sit in a plain block slot or it
   turns 340px tall. Never name a local class `.row` or `.rule` — `main.css` owns both (`.row` carries
   `flex-wrap: wrap`, which wrapped the reel's labels until `HonorsReel` set `nowrap`).
-- **Penance is purple.** `--purple` is reserved for it: purple skulls (`RiskPips tone="purple"`) and
-  a *Penance* tag on the Pacts sworn row, the owed strip on the pact screens (`PactPenance`), and a
-  purple-edged row on the climbs page. Never reuse it for anything else.
+- **Squad climbs**: the page after the draft (`ClimbCleared`, in `components/climb/`): the haul, the
+  squad's drafts (`SquadDraftBoard`, compact) beneath **Your haul**, the report strip above them,
+  Brasch's door and the host's call to the next drop.
 - **Banners**: every standing message — an error, a removal, a blocked join, a locked shop, a
   server restart — is one `AppBanner` (`app/components/app/AppBanner.vue`), never a hand-rolled
   strip. One shape: a square tone glyph (`i` teal **info**, `!` orange **warn**, `×` red **error**,
@@ -155,7 +156,7 @@ merge with them.
   in `DiveMenu`, because the global bridge header stands down on `/dive`.
 - **`SquadDock`** anchors the bottom: status lamps and names for every diver (`.seat` cards —
   not the global `.chip` tag utility), open seats, Steam lobby and invite copy, and a compact honors
-  readout outside the rewards beat. `ClimbHonors` owns the contest and winner prompt, so the dock
+  readout outside the rewards beat. `DebriefHonors` owns the contest and winner prompt, so the dock
   does not repeat it there or force an extra wrap at 1280px. For the host the Steam control toggles a
   **Steam lobby bar** docked just above the squad bar: pin or change the `steam://joinlobby/…`
   link, copy it, jump into the lobby, or remove it — removal closes the bar. A squadmate gets a
@@ -378,7 +379,7 @@ rules can cost different divers different options. Time remains at **0%** until 
 its 20 values use 44px hit targets in a four-column grid.
 
 Filing a report is the only normal spin trigger: if eligible, it sends the seed before filing the
-result. The contest's **`HonorsReel`** is revealed on the squad-climbs page after the draft, flush to
+result. The contest's **`HonorsReel`** is revealed in the debrief before the roll, flush to
 its right edge and filling the width (full width under the title on phones). There is no manual
 "Roll now" control; an older in-progress report without a seed auto-rolls on entry as recovery.
 When honors are not due the reel is replaced by a plain message naming the next mission they
@@ -436,10 +437,9 @@ local and survives the squad's syncs — only a genuinely new offer (a reroll) c
 
 Once **every** diver has banked (`allDiversPicked`, synced state, so the whole squad sees it), the
 draft hands off to **`ClimbCleared`** — one page for every mission and operation end; the engine
-stays in rewards and the host's ADVANCE is the only way on (refused until the stats check and honors
-settle). Mid-operation it reads "Mission secured": a mission track (secured drops lit teal, the next
+stays in rewards and the host's ADVANCE is the only way on. Mid-operation it reads "Mission secured": a mission track (secured drops lit teal, the next
 one breathing gold), the report strip, the diver's banked haul as a hero card
-(`MissionBankedHaul`), the Stats check and Squad Honors, the squad's picks (`SquadDraftBoard`), and
+(`MissionBankedHaul`), the squad's picks (`SquadDraftBoard`), and
 **the door to Brasch's Bargains** when the shop is open (it is left off the page entirely until the
 first operation completes). At the operation's end it becomes "The squad climbs": the next in-game
 difficulty emblem slams in over rays, above a 3–10 chevron ladder underlined in each rung's base
@@ -461,9 +461,8 @@ slanted or marqueed, and "Griffdive achieved" appears once, as the kicker.
 - **Hero** — the Bridge hero's frame. The creed comes back in the same three-line stack:
   **"Freedom / was / earned."** for an achieved run, **"Service / is / recorded."** for an ended one
   (khaki, not gold). A one-line lede names the squad and the climb ("… climbed from Medium to Super
-  Helldive in 24 missions"). The Ministry notice sits under it as an edged note: the **Pardon**
-  only when Penance was served or a directive tax paid and no debt is still owed; **File closed**
-  on every ended run. Actions: Back to bridge (primary), Delete save (local saves), the locked
+  Helldive in 24 missions"). The Ministry notice sits under it as an edged note: **File closed**
+  on an ended run; an achieved run carries no notice. Actions: Back to bridge (primary), Delete save (local saves), the locked
   Endless teaser (achieved only).
 - **Summit** — where the Bridge shows its wheel: the in-game emblem of the last difficulty slams in
   over two counter-rotating ray fields and a breathing halo, with embers rising on an achieved run.

@@ -77,33 +77,39 @@ export async function expectJoinerLanded(page: Page): Promise<void> {
   await expect(page.getByRole('dialog', { name: 'Warbonds' })).toBeHidden()
 }
 
-// Once every draft is banked the squad lands on the climbs page: the stats
-// check and Squad Honors settle there before the host can call the next drop. An
-// honest squad attests every rule held; the host's page also names an honors
-// winner once the reel lands (it rolls by itself a beat after the page opens).
-// A joiner only settles their own rules. Returns with the host's CTA live.
+// Filing a clear opens the debrief: Squad Honors and the stats check settle
+// before the host deals the draft. Stats rules are held by default, so an
+// honest host only names an honors winner once the reel lands (it rolls by
+// itself a beat after the page opens), then rolls the loot. A joiner just
+// waits on the host. Returns once the draft is open for the host.
+export async function settleDebrief(page: Page, { host = true }: { host?: boolean } = {}): Promise<void> {
+  const debrief = page.locator('.debrief')
+  await expect(debrief).toBeVisible()
+  if (!host) {
+    return
+  }
+  const roll = debrief.locator('.cta:not([disabled])').or(page.locator('#phone-bar-primary .bar-cta'))
+  for (let step = 0; step < 100; step++) {
+    if (await roll.first().isVisible().catch(() => false)) {
+      await roll.first().click()
+      await expect(debrief).toBeHidden()
+      return
+    }
+    const winner = debrief.getByRole('button', { name: /^Award Squad Honors token to / }).first()
+    if (await winner.isVisible().catch(() => false)) {
+      await winner.click()
+      await debrief.getByRole('button', { name: 'Award', exact: true }).click()
+    }
+    await page.waitForTimeout(150)
+  }
+}
+
+// Once every draft is banked the squad lands on the climbs page, where only the
+// host's call to the next drop is left. Returns with that CTA live for the host.
 export async function settleClimb(page: Page, { host = true }: { host?: boolean } = {}): Promise<void> {
   const climb = page.locator('.climb')
   await expect(climb).toBeVisible()
-  const advance = climb.locator('.cta:not([disabled])').or(page.locator('#phone-bar-primary .bar-cta'))
-  for (let step = 0; step < 100; step++) {
-    if (host && await advance.first().isVisible().catch(() => false)) {
-      return
-    }
-    const held = climb.locator('.rule-act .held').first()
-    if (await held.isVisible().catch(() => false)) {
-      await held.click()
-    }
-    else if (!host) {
-      return
-    }
-    else {
-      const winner = climb.getByRole('button', { name: /^Award Squad Honors token to / }).first()
-      if (await winner.isVisible().catch(() => false)) {
-        await winner.click()
-        await climb.getByRole('button', { name: 'Award', exact: true }).click()
-      }
-    }
-    await page.waitForTimeout(150)
+  if (host) {
+    await expect(climb.locator('.cta:not([disabled])').or(page.locator('#phone-bar-primary .bar-cta')).first()).toBeVisible()
   }
 }

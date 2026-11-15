@@ -33,7 +33,7 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
   {
     id: 'resupply',
     term: 'Resupply',
-    definition: 'The yellow Resupply stratagem and the pods it drops. Ammo boxes on the map and Supply Packs are not resupplies.',
+    definition: 'The yellow Resupply stratagem and the pods it drops, plus Supply Packs: any refill a stratagem delivers. Ammo boxes and pickups on the map are not resupplies, and a refill a squadmate hands you is always fair.',
   },
   {
     id: 'reserve',
@@ -97,6 +97,11 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
     term: 'Pickups',
     definition: 'Anything lifted off the ground or from a fallen diver: dropped weapons, support weapons, gear.',
   },
+  {
+    id: 'bring',
+    term: 'Bring',
+    definition: 'Equipped on the loadout screen. Gear found in the field is a pickup, and only rules that name pickups forbid it.',
+  },
 
   // Field and stats
   {
@@ -118,6 +123,11 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
     id: 'friendlyFire',
     term: 'Friendly fire',
     definition: 'Damage dealt to squadmates, read off the end-of-mission stats screen.',
+  },
+  {
+    id: 'death',
+    term: 'Death',
+    definition: 'A diver going down to enemies, hazards or their own mistakes. Friendly fire is exempt: a death a squadmate causes neither fails a rule nor keeps anyone from being reinforced.',
   },
   {
     id: 'failed',

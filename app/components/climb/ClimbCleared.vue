@@ -2,17 +2,15 @@
 import { baseTierFor, MAX_DIFFICULTY } from '~~/shared/engine/config'
 import { catchUpOpsBehind, difficultyName } from '~~/shared/engine/progression'
 import { difficultyImageUrl } from '~~/shared/data/images'
-import { bargainsClosedReason, climbBlockers, currentFront, draftSummaryFor } from '~~/shared/engine/selectors'
+import { bargainsClosedReason, currentFront, draftSummaryFor } from '~~/shared/engine/selectors'
 import type { DiverState, DiveState } from '~~/shared/engine/types'
 import { operationMilestone } from '~/utils/operationMilestone'
 
 // The squad-climbs page: where the squad regroups once every draft is banked,
-// at the end of every mission and operation. HD2 shows its stats screen only
-// after the report, so everything it proves settles here, after the rewards:
-// the stats-checked rules (a broken pact is owed back as Penance), Squad
-// Honors, then a last call at Brasch's shelf, until the host calls the next
-// drop. The engine stays in rewards and ADVANCE is the one way out; it refuses
-// until the stats check and honors are settled.
+// at the end of every mission and operation. The debrief already settled the
+// stats screen, so this is the haul, a last call at Brasch's shelf and the
+// host's call to the next drop. The engine stays in rewards and ADVANCE is the
+// one way out.
 const props = withDefaults(defineProps<{
   state: DiveState
   self: DiverState | null
@@ -24,12 +22,6 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   advance: []
-  holdPact: [playerId: string, pactId: string]
-  failPact: [playerId: string, pactId: string]
-  holdDirective: []
-  failDirective: []
-  spinBonus: []
-  awardBonus: [playerIds: string[]]
 }>()
 
 const mission = computed(() => props.state.missionInOperation)
@@ -60,24 +52,12 @@ const squadDrafts = computed(() =>
     .filter(diver => diver.id !== props.selfId)
     .map(diver => ({ id: diver.id, name: upperName(diver.name), summary: draftSummaryFor(props.state, diver) })))
 
-const blockers = computed(() => climbBlockers(props.state))
-const settled = computed(() => !blockers.value.honors)
-const blockerLabel = computed(() => {
-  if (blockers.value.honors) {
-    return props.state.bonusSeed === null ? 'Rolling Squad Honors' : 'Award honors first'
-  }
-  return ''
-})
 const ctaLabel = computed(() => {
-  if (!settled.value) {
-    return blockerLabel.value
-  }
   if (climbs.value) {
     return `Start operation ${nextOp.value}`
   }
   return opEnds.value ? 'Complete operation' : 'Next mission'
 })
-const waitingLabel = computed(() => (settled.value ? `Waiting on ${hostName.value}` : blockerLabel.value))
 
 const nextDrop = computed(() => {
   if (climbs.value) {
@@ -227,24 +207,6 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
           compact
         />
       </div>
-
-      <article class="check">
-        <ClimbStats
-          :state="state"
-          :self-id="selfId"
-          :is-host="canControl"
-          @hold-pact="(playerId, pactId) => emit('holdPact', playerId, pactId)"
-          @fail-pact="(playerId, pactId) => emit('failPact', playerId, pactId)"
-          @hold-directive="emit('holdDirective')"
-          @fail-directive="emit('failDirective')"
-        />
-        <ClimbHonors
-          :state="state"
-          :is-host="canControl"
-          @spin-bonus="emit('spinBonus')"
-          @award-bonus="emit('awardBonus', $event)"
-        />
-      </article>
     </div>
 
     <section
@@ -264,56 +226,13 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
       />
     </section>
 
-    <PhoneActionBar v-if="phone">
-      <template #primary>
-        <button
-          v-if="canControl && settled"
-          class="bar-cta cta-sweep"
-          type="button"
-          @click="emit('advance')"
-        >
-          <span class="disp">{{ ctaLabel }}</span>
-        </button>
-        <span
-          v-else
-          class="bar-gate"
-        ><span class="bar-gate-word quiet">{{ canControl ? blockerLabel : waitingLabel }}</span></span>
-      </template>
-    </PhoneActionBar>
-    <footer
-      v-else
-      class="foot"
-    >
-      <button
-        v-if="canControl"
-        class="cta cut cta-sweep"
-        :class="{ 'cta-locked': !settled }"
-        type="button"
-        :disabled="!settled"
-        @click="emit('advance')"
-      >
-        {{ ctaLabel }}
-        <svg
-          v-if="settled"
-          width="22"
-          height="14"
-          viewBox="0 0 22 14"
-          aria-hidden="true"
-        >
-          <path
-            d="M0 0h5l7 7-7 7H0l7-7zM10 0h5l7 7-7 7h-5l7-7z"
-            fill="currentColor"
-          />
-        </svg>
-      </button>
-      <p
-        v-else
-        class="waiting"
-        role="status"
-      >
-        {{ settled ? `Waiting for ${hostName} to call the next drop.` : `${blockerLabel}.` }}{{ shopOpen ? ' Shop while you wait.' : '' }}
-      </p>
-    </footer>
+    <ClimbFoot
+      :label="ctaLabel"
+      :can-control="canControl"
+      :waiting="`Waiting for ${hostName} to call the next drop.${shopOpen ? ' Shop while you wait.' : ''}`"
+      :phone="phone"
+      @go="emit('advance')"
+    />
   </section>
 </template>
 
@@ -533,25 +452,12 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
 .climb > .track { width: auto; align-self: center; }
 .board {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
   /* A wider art well keeps the climb, the haul and the CTA on one desktop screen. */
   --haul-aspect: 16 / 10;
 }
 .haul-stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .squad-under-haul :deep(.board-grid) { display: flex; flex-wrap: wrap; gap: 8px; }
 .squad-under-haul :deep(.squad-pick) { flex: 1 1 180px; }
-.check {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 16px;
-  background: color-mix(in srgb, var(--rail) 88%, transparent);
-  box-shadow: inset 0 0 0 1px var(--line-2);
-  animation: deal-in 0.55s var(--ease-out) 0.25s both;
-}
-.check > * { flex-shrink: 0; }
 .shop {
   display: flex;
   flex-direction: column;
@@ -565,31 +471,8 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
 .last-call { display: flex; align-items: baseline; gap: 10px; margin: 0; color: var(--muted); font-size: 12px; }
 .last-call .cap { color: var(--orange); }
 
-.foot { display: flex; justify-content: center; }
-.cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  width: min(100%, 440px);
-  min-height: 60px;
-  padding: 0 26px;
-  border: 0;
-  background: linear-gradient(180deg, #ffe57a 0%, var(--gold) 45%, #f0bf1a 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -3px 0 rgba(110, 80, 0, 0.35), 0 0 34px rgba(255, 214, 66, 0.26);
-  color: var(--on-gold);
-  font: 800 18px var(--font-display);
-  font-stretch: 125%;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.cta:hover { filter: brightness(1.06); }
-.cta:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
-.waiting { margin: 0; color: var(--muted); font-size: 14px; text-align: center; }
-
 @media (max-width: 860px) {
-  .board { grid-template-columns: minmax(0, 1fr); --haul-aspect: 4 / 3; }
+  .board { --haul-aspect: 4 / 3; }
 }
 @media (max-width: 600px) {
   .rung { height: 46px; font-size: 15px; padding-left: 6px; clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%, 8px 50%); }
@@ -599,8 +482,6 @@ const embers = Array.from({ length: EMBER_COUNT }, (_, i) => ({
 }
 
 .phone { gap: 14px; }
-.phone .board { grid-template-columns: minmax(0, 1fr); }
-.phone .check { padding: 12px; }
 .phone .shop { padding: 0; }
 .phone .last-call { flex-direction: column; gap: 2px; }
 .phone .title { font-size: 34px; }

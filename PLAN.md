@@ -82,6 +82,9 @@ IDs are stable and append-only; do not renumber.
 | N50 | Brasch's Bargains d8–10 buy drop | Balance/Data | M | Todo (re-run on Armor Pack shop) | beta review |
 | N51 | Heat ladders / bounties | Feature/Rules | L | Spec'd, gated | roadmap |
 | N52 | Low-end phone + Lighthouse pass | Infra/Perf | M | Done (measured) | marketing checklist |
+| N53 | Debrief stage: Squad Honors + stats check settle before the roll; Penance retired | Rules/UX | L | Done | playtest |
+| N54 | Pact vocabulary: bring vs carry, Primary Concern bans pickups, Thirsty, friendly-fire exemption on death rules | Rules | M | Done | playtest |
+| N55 | Vehicles/mechs gated to difficulty 7; Liberty's Cross can claim armor passives; Combat Hatchet in the starting kit; pact screen no longer lists reserve stratagems as banned | Rules/Bug | M | Done | playtest |
 
 Also carried, positive: `F3` (failure copy/guardrails excellent) lives in the regression baseline.
 
@@ -803,11 +806,14 @@ reducer tie/empty-award tests and the v14→v15 migration tests.
 
 ## Accepted / notes
 
-- **Stats check defaults to held (2026-11-11).** `ClimbStats` renders HELD/BROKE as a side-by-side
-  group with HELD preselected; `climbBlockers` only gates Squad Honors, and `ADVANCE` serves an
-  unmarked Penance debt before carrying the next one. The climbs page flexes the squad's drafts
-  under **Your haul**. Rules and the gate are documented in `game-rules.md`; the design note is in
-  `design-language.md`.
+- **Debrief replaces the post-draft stats check (N53, 2026-11-15).** Squad Honors and the stats
+  check moved from the climbs page to a squad-wide `DebriefStage` between the report and the roll;
+  `DEAL_REWARDS` (host) seeds the offer, so a stats break is an ordinary failed mark that costs this
+  draft an option and a Honors token can reroll it. Penance, `HOLD_PACT`/`HOLD_MISFORTUNE`, the
+  `directiveTax` and the Pardon notice are gone (`PactPenance`, `settleHeldPenance`, `carryDebts`,
+  `voidPenance`, `climbBlockers`, the held/broke attestation fields). No schema bump: a removed
+  field is ignored on load, and an in-flight `rewards` state already carries its `offerSeed`, so it
+  opens straight into the draft. Rules in `game-rules.md`; design note in `design-language.md`.
 - **N28 (`F1`) · `holdingsEmpty` is unreachable.** Needs ~19 failures per diver; fine as a safety
   net. No action.
 - **N30 (`F4`) · Failure cannot lower difficulty or set `achieved`.** Verified by inspection; a
