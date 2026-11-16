@@ -164,3 +164,18 @@ export function heroStratagem(id: string): HeroStratagem | null {
 export function stratagemCode(id: string): string | null {
   return HERO_BY_ID.get(id)?.code ?? null
 }
+
+// Drill's practice filters: the catalog's four stratagem colors, plus the
+// mission calls.
+export type HeroCategory = 'all' | 'Supply' | 'Eagle' | 'Orbital' | 'Defense' | 'Mission'
+
+const CATALOG_CATEGORY: ReadonlyMap<string, string> = new Map(stratagems.map(item => [item.id, item.category]))
+
+export function heroPoolIds(category: HeroCategory): string[] | undefined {
+  if (category === 'all') {
+    return undefined
+  }
+  return HERO_POOL
+    .filter(entry => (CATALOG_CATEGORY.get(entry.id) ?? 'Mission') === category)
+    .map(entry => entry.id)
+}

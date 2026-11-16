@@ -70,6 +70,14 @@
   the climbs page, which `settleClimb` clears (rules held, honors winner named) before a spec clicks
   the next drop (`e2e/climb.spec.ts` covers Held, Broke and Penance); the Armor Pack and
   achievement specs cover escalation/reveal bounds, the compact recap and its Pardon gate.
+  The stratagem arcade is played for real: `e2e/arcade.ts` reads `data-code` off the board and
+  types each arrow at a human pace (the replay refuses a machine-fast median gap).
+  `drill.spec.ts` clears a round, keeps a personal best across a reload, restarts a code on a wrong
+  arrow and drives the touch d-pad on a phone; `redemption.spec.ts` pins Martyrdom onto a solo save
+  (the wheel is random), clears round 3 and sees the next target climb to 4. The engine side —
+  round derivation, split-invariant timing, expiry at the edge, replay refusals and the
+  `hero-rounds` golden — lives in `shared/engine/hero.spec.ts` and `redemption.spec.ts`, and the
+  target-or-host rule in `room-sync.spec.ts`.
   Room creation is
   rate-limited per address (10/min in production) and the whole suite shares one address, as are WebSocket joins (20/min), so the e2e server runs with `ROOM_CREATE_LIMIT=200` and
   `ROOM_JOIN_LIMIT=400` (`playwright.config.ts`) — a capped join looks like a page stuck on

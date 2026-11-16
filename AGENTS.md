@@ -20,7 +20,7 @@ A loaded file is mandatory instructions that override defaults.
 
 | Topic | File | Load when |
 | --- | --- | --- |
-| Core loop, directives (misfortunes), strains, Major Orders, pacts, condition scaling, reward math, Brasch's Bargains (credits), tokens/honors, inventory, mid-crusade joining, save model | [`docs/agents/game-rules.md`](./docs/agents/game-rules.md) | changing `shared/engine/**` or `shared/data/**`, rules, reward math, or player-facing copy |
+| Core loop, directives (misfortunes), strains, Major Orders, pacts, Redemption (stratagem arcade), condition scaling, reward math, Brasch's Bargains (credits), tokens/honors, inventory, mid-crusade joining, save model | [`docs/agents/game-rules.md`](./docs/agents/game-rules.md) | changing `shared/engine/**` or `shared/data/**`, rules, reward math, or player-facing copy |
 | Design north star, Destroyer Terminal design language, tokens/utilities/motion | [`docs/agents/design-language.md`](./docs/agents/design-language.md) | any component, CSS, motion, or layout work |
 | Architecture, directory map, sync protocol, rooms, saved dives, Steam lobby codes, matchmaking | [`docs/agents/server-architecture.md`](./docs/agents/server-architecture.md) | navigating the tree, or server/WebSocket/room work |
 | Deployment, hosting, monitoring, CI/CD | [`docs/agents/deployment.md`](./docs/agents/deployment.md) | Fly.io, Docker, metrics, or GitHub Actions |
@@ -47,7 +47,7 @@ pnpm only (`pnpm-lock.yaml` is canonical).
 | `pnpm lint:fix` | exists | Auto-fix lint/style issues |
 | `pnpm test` | exists | Vitest (engine unit + golden tests) |
 | `pnpm test:watch` | exists | Vitest watch mode |
-| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, join briefing, Armory slide-over, session saves, custom tier lists, PWA affordances; production build on :3173) |
+| `pnpm test:e2e` | exists | Playwright (solo flow, room sync, join briefing, Armory slide-over, session saves, custom tier lists, Drill + Redemption arcade, PWA affordances; production build on :3173) |
 | `pnpm typecheck` | exists | `nuxt typecheck` (vue-tsc) |
 
 Update this table the moment a command lands.

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DiveSessionStatus } from '~/composables/useDiveSession'
 import { allDiversPicked, bonusFor, bonusWinners } from '~~/shared/engine/selectors'
+import type { HeroTranscript } from '~~/shared/engine/hero'
 import type { DiverState, DiveState, MissionReport } from '~~/shared/engine/types'
 import type { SteamLobbyInfo } from '~~/shared/types/messages'
 
@@ -34,6 +35,8 @@ const emit = defineEmits<{
   report: [payload: MissionReport]
   failPact: [playerId: string, pactId: string]
   failDirective: []
+  beginRedemption: [playerId: string]
+  submitRedemption: [playerId: string, seed: number, transcript: HeroTranscript]
   holdPact: [playerId: string, pactId: string]
   holdDirective: []
   pick: [optionId: string, choiceItemId?: string]
@@ -152,6 +155,8 @@ const squadBanked = computed(() => phase.value === 'rewards' && allDiversPicked(
           @report="emit('report', $event)"
           @fail="(playerId, pactId) => emit('failPact', playerId, pactId)"
           @fail-directive="emit('failDirective')"
+          @begin-redemption="emit('beginRedemption', $event)"
+          @submit-redemption="(playerId, seed, transcript) => emit('submitRedemption', playerId, seed, transcript)"
         />
 
         <ClimbCleared
