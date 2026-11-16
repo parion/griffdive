@@ -3,6 +3,7 @@ import { ITEMS_BY_ID } from '~~/shared/data/catalog'
 import { createDiveState, reduce } from '~~/shared/engine/reducer'
 import { joinDiver } from '~~/shared/engine/room'
 import { createSaveDoc } from '~~/shared/engine/saves'
+import { heroPerfectTranscript } from '~~/shared/engine/hero'
 import { forfeitOptionsFor, pactOfferFor } from '~~/shared/engine/selectors'
 import type { DiveState } from '~~/shared/engine/types'
 import { AWAY_GRACE_MS, CRUSADE_TTL_MS, HOST_RECONNECT_GRACE_MS, InvalidSaveError, ROOM_TTL_MS, RoomLimitError, censusRooms, createPeerDirectory, createRoom, createRoomFromSave, drainPeers, enforceSaveCap, loadRoom, markAwayIfOffline, processAction, processClose, processHello, processSave, processSetSteam, processUnsave, reapSilentPeers, sweepRooms } from './room-sync'
@@ -289,6 +290,54 @@ describe('room-sync', () => {
     await processAction(kv, peers, host, { action: { type: 'FAIL_PACT', playerId: joinerId, pactId: offer[1]! } })
     snapshot = await lastSnapshot(joiner)
     expect(snapshot.divers.find(diver => diver.id === joinerId)?.failedPactIds).toEqual(offer)
+  })
+
+  it('lets the diver and the host run Redemption, verifies it, and logs no transcript', async () => {
+    const kv = fakeKV()
+    const peers = createPeerDirectory()
+    const code = await createRoom(kv)
+
+    const host = fakePeer('ws-a')
+    host.context.roomCode = code
+    await processHello(kv, peers, host, { name: 'Host' })
+    const hostId = welcomeOf(host).selfId
+
+    const joiner = fakePeer('ws-b')
+    joiner.context.roomCode = code
+    await processHello(kv, peers, joiner, { name: 'B' })
+    const joinerId = welcomeOf(joiner).selfId
+
+    await processAction(kv, peers, host, { action: { type: 'START_DIVE', settings: { variant: 'medium' } } })
+    await processAction(kv, peers, host, { action: { type: 'SPIN_WHEEL', seed: 42 } })
+    await processAction(kv, peers, host, { action: { type: 'ACCEPT_MISFORTUNE', accepted: true } })
+    await processAction(kv, peers, host, { action: { type: 'ACCEPT_STRAIN', accepted: false } })
+    await processAction(kv, peers, host, { action: { type: 'DEAL_PACTS' } })
+    await processAction(kv, peers, joiner, { action: { type: 'SET_PACTS', playerId: joinerId, pactIds: [] } })
+    await processAction(kv, peers, host, { action: { type: 'SET_PACTS', playerId: hostId, pactIds: [] } })
+
+    // Force Martyrdom onto the squad, whatever the wheel drew.
+    const stored = kv.dump().get(code) as StoredRoom
+    stored.state = { ...stored.state, wheel: { ...stored.state.wheel!, misfortuneId: 'noReserves' }, misfortuneAccepted: true }
+    sent(joiner).length = 0
+
+    await processAction(kv, peers, joiner, { action: { type: 'BEGIN_REDEMPTION', playerId: hostId, seed: 9 } })
+    expect(sent(joiner).some(m => m.type === 'error' && m.code === 'bad-action')).toBe(true)
+
+    // The host may open a run on a squadmate's behalf.
+    await processAction(kv, peers, host, { action: { type: 'BEGIN_REDEMPTION', playerId: joinerId, seed: 9 } })
+    const opened = (await loadRoom(kv, code))!.state.divers.find(diver => diver.id === joinerId)!
+    const target = opened.redemption!.run!.target
+    expect(target).toBe(stored.state.difficulty)
+
+    const forged = heroPerfectTranscript(10, { targetRound: target }, 120)
+    await processAction(kv, peers, joiner, { action: { type: 'SUBMIT_REDEMPTION', playerId: joinerId, seed: 9, transcript: forged } })
+    expect((await loadRoom(kv, code))!.state.divers.find(diver => diver.id === joinerId)!.redemption?.earned).toBe(0)
+
+    const transcript = heroPerfectTranscript(9, { targetRound: target }, 120)
+    await processAction(kv, peers, joiner, { action: { type: 'SUBMIT_REDEMPTION', playerId: joinerId, seed: 9, transcript } })
+    const room = (await loadRoom(kv, code))!
+    expect(room.state.divers.find(diver => diver.id === joinerId)!.redemption).toEqual({ earned: 1, run: null })
+    expect(room.state.actionLog.at(-1)).toMatchObject({ type: 'SUBMIT_REDEMPTION', transcript: null })
   })
 
   it('lets the host kick a diver and silences the kicked diver', async () => {

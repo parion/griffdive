@@ -295,6 +295,7 @@ Canonical engine actions (the reducer union; keep names stable):
 
 `START_DIVE{settings,seed?,majorOrder?}` `SET_TIER_LIST{tierList}` `SPIN_WHEEL{seed}` `ACCEPT_MISFORTUNE{accepted}` `ACCEPT_STRAIN{accepted}`
 `DEAL_PACTS{}` `REROLL_WHEEL{wheel,seed}` `SET_PACTS{playerId,pactIds}` `FAIL_PACT{playerId,pactId}` `HOLD_PACT{playerId,pactId}` `FAIL_MISFORTUNE{}` `HOLD_MISFORTUNE{}` `SET_WARBONDS{playerId,warbondCodes}`
+`BEGIN_REDEMPTION{playerId,seed}` `SUBMIT_REDEMPTION{playerId,seed,transcript}`
 `REPORT_RESULT{outcome,stars,timePct?,samples?}` `FORFEIT_ITEM{playerId,itemId}` `PICK_REWARD{playerId,optionId,choiceItemId?}`
 `BUY_ITEM{playerId,itemId}`
 `REROLL_REWARDS{playerId,seed}` `BAN_REWARDS{playerId,optionIds}` `SPIN_BONUS{seed}`
@@ -311,6 +312,7 @@ self-service. Saved dives are outside the engine union: `save-dive` may be sent 
 diver, `unsave-dive` is host-only; the Steam lobby link is likewise outside the union and
 host-only (`set-steam`, blank clears).
 `FAIL_PACT` and `HOLD_PACT` are sent by the target diver or the host (server refuses everyone else; the squad-climbs page lets the host settle any diver's stats pact);
+`BEGIN_REDEMPTION` and `SUBMIT_REDEMPTION` follow the same target-or-host rule (a diver without a device runs Redemption on the host's screen). The reducer replays the submitted transcript, so the server verifies a run with no extra code, and the logged copy carries `transcript: null`;
 `FAIL_MISFORTUNE` and `HOLD_MISFORTUNE` are host-only, since the directive binds the whole squad. A
 host's last socket closing starts a process-local `HOST_RECONNECT_GRACE_MS` (90s): the host seat
 stays put through a refresh or brief network loss, and a `hello` with the same stored playerId

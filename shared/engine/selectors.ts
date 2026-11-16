@@ -20,6 +20,10 @@ import {
   OPTIONS_LOST_PER_FAILED_DIRECTIVE,
   FORFEIT_STREAM,
   OPTIONS_LOST_PER_FAILED_PACT,
+  REDEMPTION_DIRECTIVES,
+  REDEMPTION_ESCALATION,
+  REDEMPTION_PACTS,
+  REDEMPTION_TARGET_MAX,
   SQUAD_SIZE_MAX,
   STRAIN_RISK,
   bargainStratagemSlotsFor,
@@ -49,7 +53,7 @@ import { STARTING_KITS, catchUpOpsBehind, startingItemIds } from './progression'
 import { itemPrice, maxCeiling, oddsToReach, optionsForDiver, bargainKindOf, rollBargainShelf, rollBonus, rollCeiling, rollRewardOffer, rollRewardOptions, topTierOf, valorOf } from './rewards'
 import type { BargainSlot, RewardOption } from './rewards'
 import { deriveSeed, hashString, mulberry32 } from './rng'
-import type { ArmorPackDeal, BargainDeal, BargainSlotKind, CrusadeMode, CrusadeSettings, DiveState, DivePhase, DiverState, FrontPlan, MajorOrderPlanet, MissionOutcome, PenanceDebt, RewardTier } from './types'
+import type { ArmorPackDeal, BargainDeal, BargainSlotKind, CrusadeMode, RedemptionState, CrusadeSettings, DiveState, DivePhase, DiverState, FrontPlan, MajorOrderPlanet, MissionOutcome, PenanceDebt, RewardTier } from './types'
 import { eligibleMisfortunes, eligibleStrains, frontById, strainById } from './wheel'
 
 // A completed run is tracked by its full draw — misfortune, front and strain —
@@ -1303,4 +1307,40 @@ export function pactOfferFor(state: DiveState, diverId: string): Pact[] {
     squadSize(state),
     state.divers.find(diver => diver.id === diverId)?.penance?.pactIds ?? [],
   )
+}
+
+// Redemption ---------------------------------------------------------------
+
+export function redemptionOf(diver: DiverState): RedemptionState {
+  return diver.redemption ?? { earned: 0, run: null }
+}
+
+// The rules standing between a fallen diver and a reinforce: the accepted
+// directive, then the diver's own pacts. A rule already marked broken binds
+// nobody, so it offers no Redemption.
+export function reinforceBlockersFor(state: DiveState, diver: DiverState): string[] {
+  if (state.phase !== 'diving') {
+    return []
+  }
+  const directive = activeMisfortune(state)
+  const blockers: string[] = []
+  if (directive && REDEMPTION_DIRECTIVES.includes(directive.id) && !state.misfortuneFailed) {
+    blockers.push(directive.id)
+  }
+  for (const pactId of diver.pactIds) {
+    if (REDEMPTION_PACTS.includes(pactId) && !diver.failedPactIds.includes(pactId)) {
+      blockers.push(pactId)
+    }
+  }
+  return blockers
+}
+
+export function reinforceBlockedFor(state: DiveState, diver: DiverState): boolean {
+  return reinforceBlockersFor(state, diver).length > 0
+}
+
+// The round a Redemption run must clear: the mission difficulty, one higher for
+// each redemption this diver already earned this mission.
+export function redemptionTargetFor(state: DiveState, diver: DiverState): number {
+  return Math.min(state.difficulty + redemptionOf(diver).earned * REDEMPTION_ESCALATION, REDEMPTION_TARGET_MAX)
 }

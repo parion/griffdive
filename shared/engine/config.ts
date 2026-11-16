@@ -621,3 +621,34 @@ export const STRAIN_MIN_DIFFICULTY: Readonly<Record<string, number>> = {
   appropriators: 3,
   voteSnatchers: 5,
 }
+
+// The stratagem arcade (Redemption and Drill), modelled on the ship's Stratagem
+// Hero cabinet: round r deals min(base + r − 1, max) codes against a countdown
+// that refills a little per finished code. All times are integer ms.
+export const HERO_BASE_CODES = 6
+export const HERO_MAX_CODES = 16
+export const HERO_ROUND_MS = 10_000
+// Time refilled per arrow of a finished code, so a long code buys back the time
+// it took. The bar never overfills past HERO_ROUND_MS.
+export const HERO_ARROW_BONUS_MS = 250
+export const HERO_INTERMISSION_MS = 2_000
+export const HERO_ROUND_STREAM = 8
+export const HERO_ARROW_POINTS = 5
+export const HERO_ROUND_BONUS_BASE = 75
+export const HERO_ROUND_BONUS_STEP = 25
+// Points per full 100 ms left on the bar when a round clears.
+export const HERO_TIME_POINTS_PER_100MS = 1
+export const HERO_PERFECT_BONUS = 100
+// Sanity bounds on a submitted run. They stop trivial fakes, not a determined
+// cheat: like REPORT_RESULT, a run is honor-system but replayable.
+export const HERO_MAX_INPUTS = 4_000
+export const HERO_MAX_GAP_MS = 60_000
+export const HERO_MIN_MEDIAN_GAP_MS = 50
+
+// Redemption: the rules that keep a fallen diver down, and the round a run must
+// clear to lift them. The target is the mission difficulty, plus one per
+// redemption the diver already earned this mission.
+export const REDEMPTION_PACTS: readonly string[] = ['deadWeight']
+export const REDEMPTION_DIRECTIVES: readonly string[] = ['noReserves']
+export const REDEMPTION_ESCALATION = 1
+export const REDEMPTION_TARGET_MAX = 20

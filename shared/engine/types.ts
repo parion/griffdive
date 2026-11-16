@@ -1,4 +1,5 @@
 import type { FrontId } from '../data/fronts'
+import type { HeroTranscript } from './hero'
 import type { TierList } from './tierList'
 
 export type BargainSlotKind = 'primary' | 'secondary' | 'throwable' | 'armorPassive' | 'stratagem'
@@ -116,6 +117,18 @@ export interface DiverState {
   // never waits on them: pact lock-in, reward picks and squad size count only
   // divers who are present. Cleared the moment they reconnect.
   away: boolean
+  // Redemption: a diver down under a no-reinforce rule earns their reinforce
+  // back by clearing an arcade run (see shared/engine/hero.ts). Absent = none
+  // earned and no run open. Reset with the pacts every mission.
+  redemption?: RedemptionState
+}
+
+export interface RedemptionState {
+  // Redemptions earned this mission; each raises the next run's target.
+  earned: number
+  // The open run: its committed seed, the round it must clear, and how many
+  // runs this diver has opened since their last redemption. null = none open.
+  run: { seed: number, target: number, tries: number } | null
 }
 
 // Penance: a stats-verified pact broken after the draft is re-sworn next mission
@@ -306,6 +319,8 @@ export type EngineAction
     | { type: 'HOLD_PACT', playerId: string, pactId: string }
     | { type: 'FAIL_MISFORTUNE' }
     | { type: 'HOLD_MISFORTUNE' }
+    | { type: 'BEGIN_REDEMPTION', playerId: string, seed: number }
+    | { type: 'SUBMIT_REDEMPTION', playerId: string, seed: number, transcript: HeroTranscript | null }
     | { type: 'SET_WARBONDS', playerId: string, warbondCodes: string[] }
     | { type: 'REPORT_RESULT', outcome: MissionOutcome, stars: number, timePct?: number, samples?: SampleCounts }
     | { type: 'FORFEIT_ITEM', playerId: string, itemId: string }
