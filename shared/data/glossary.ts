@@ -26,6 +26,11 @@ export const GLOSSARY: readonly GlossaryEntry[] = [
     definition: 'The yellow stratagem that drops a fallen diver back in. Only rules that name it touch it; a stratagem ban never does.',
   },
   {
+    id: 'redemption',
+    term: 'Redemption',
+    definition: 'A fallen diver held down by a no-reinforce rule can earn their way back: clear the stratagem arcade to the mission\'s difficulty round and the squad may reinforce them. The rule still holds. Each redemption raises the next run by a round.',
+  },
+  {
     id: 'seaf',
     term: 'SEAF resources',
     definition: 'Super Earth forces already on the ground, like the SEAF Artillery. Calling on them never counts as a stratagem call.',

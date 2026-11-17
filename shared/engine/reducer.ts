@@ -1,5 +1,6 @@
 import { ALL_WARBOND_CODES, WARBONDS } from '../data/catalog'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection } from './types'
+import { heroReplay } from './hero'
 import { ACTION_LOG_CAP, ARMOR_PACK_STREAM, MAJOR_ORDER_REROLL_BONUS, MAX_DIFFICULTY, MAX_NAME_LENGTH, REROLL_TOKENS_PER_OPERATION, REWARD_TOKEN_CAP, armorPackPrice, maxStarsFor, missionsPerOperation } from './config'
 import { STARTING_KITS, earnedKit, mergeKit, startingItemIds } from './progression'
 import { pactById } from '../data/pacts'
@@ -7,7 +8,7 @@ import { hasLegalLoadout, pactConflictsWith, pactSubsumedBy } from './pacts'
 import { createLobbyState, joinDiver, resolveFrontPlan } from './room'
 import { deriveSeed, hashString } from './rng'
 import { rollSupportKit } from './support'
-import { activeDivers, activeMisfortune, allDiversPicked, armorPackPoolFor, availableCaches, bonusEligibleFor, canBuyArmorPack, canBuyItem, catchUpOptionsFor, climbSettled, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, isPenancePact, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, penanceIncurredBy, rewardPoolFor, squadInventories, squadPenances, squadSize, statsPendingMisfortune, statsPendingPactIds, strainDecision, teamRiskOf } from './selectors'
+import { activeDivers, activeMisfortune, allDiversPicked, armorPackPoolFor, availableCaches, bonusEligibleFor, canBuyArmorPack, canBuyItem, catchUpOptionsFor, climbSettled, comboKey, dealBargain, diverOptions, forfeitOptionsFor, forfeitSettled, isPenancePact, majorOrderFronts, misfortuneDecision, misfortuneStrandedDivers, pactOfferFor, pactsSettled, penanceIncurredBy, redemptionOf, redemptionTargetFor, reinforceBlockedFor, rewardPoolFor, squadInventories, squadPenances, squadSize, statsPendingMisfortune, statsPendingPactIds, strainDecision, teamRiskOf } from './selectors'
 import { bargainKindOf, itemPrice, missionHaul, rollArmorPack } from './rewards'
 import { normalizeTierList, tierListOf, tieredItem } from './tierList'
 import type { TierList } from './tierList'
@@ -94,6 +95,7 @@ function resetDivers(state: DiveState): DiverState[] {
     rewardRerollSeed: null,
     rewardBanned: false,
     draftExcludedIds: null,
+    redemption: undefined,
   }))
 }
 
@@ -611,6 +613,45 @@ export function reduce(state: DiveState, action: EngineAction): DiveState {
         return state
       }
       return commit(state, { misfortuneBroken: true }, action)
+    }
+
+    case 'BEGIN_REDEMPTION': {
+      // Opening a run commits its seed, so the attempt is on record before the
+      // diver sees a code. A new run replaces an open one: retries are free.
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      if (!diver || !Number.isInteger(action.seed) || !reinforceBlockedFor(state, diver)) {
+        return state
+      }
+      const current = redemptionOf(diver)
+      const run = {
+        seed: action.seed >>> 0,
+        target: redemptionTargetFor(state, diver),
+        tries: (current.run?.tries ?? 0) + 1,
+      }
+      const divers = state.divers.map(candidate =>
+        candidate.id === diver.id ? { ...candidate, redemption: { ...current, run } } : candidate)
+      return commit(state, { divers, seedHistory: [...state.seedHistory, run.seed] }, { ...action, seed: run.seed })
+    }
+
+    case 'SUBMIT_REDEMPTION': {
+      // The server replays the run through the same arcade rules the client
+      // played; only a clear of the committed target counts. Redemption is
+      // free: pacts, the directive, Valor and options are untouched.
+      const diver = state.divers.find(candidate => candidate.id === action.playerId)
+      const current = diver ? redemptionOf(diver) : null
+      const run = current?.run
+      if (!diver || !current || !run || state.phase !== 'diving' || run.seed !== action.seed || !action.transcript) {
+        return state
+      }
+      const replay = heroReplay(run.seed, { targetRound: run.target }, action.transcript)
+      if (!replay.ok || replay.run?.status !== 'cleared') {
+        return state
+      }
+      const divers = state.divers.map(candidate =>
+        candidate.id === diver.id ? { ...candidate, redemption: { earned: current.earned + 1, run: null } } : candidate)
+      // The transcript is verified, not kept: the seed already fixes the run,
+      // and the log rides every save.
+      return commit(state, { divers }, { ...action, transcript: null })
     }
 
     case 'HOLD_MISFORTUNE': {

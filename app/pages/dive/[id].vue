@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useIntervalFn, useMediaQuery } from '@vueuse/core'
+import type { HeroTranscript } from '~~/shared/engine/hero'
 import { createSaveDoc } from '~~/shared/engine/saves'
-import { allDiversPicked, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending, squadInventories, squadPenances } from '~~/shared/engine/selectors'
+import { allDiversPicked, bonusFor, bonusWinners, diverOptions, majorOrderFronts, promotionPending, redemptionOf, squadInventories, squadPenances } from '~~/shared/engine/selectors'
 import { VARIANTS } from '~~/shared/engine/progression'
 import { deriveFront, deriveMisfortune, deriveStrain } from '~~/shared/engine/wheel'
 import type { CrusadeSettings, DiveState, DiverState, EngineAction, MajorOrderSelection, MissionReport } from '~~/shared/engine/types'
@@ -263,6 +264,20 @@ watch(
   },
 )
 
+// A squadmate's Redemption is only useful if whoever holds the reinforce
+// hears about it: announce each one earned.
+watch(
+  () => (state.value?.divers ?? []).map(diver => [diver.id, redemptionOf(diver).earned] as const),
+  (now, before) => {
+    const previous = new Map(before ?? [])
+    for (const [id, earned] of now) {
+      if (id !== selfId.value && earned > (previous.get(id) ?? earned)) {
+        pushToast(`Reinforce authorized: call ${diverName(id)} in.`)
+      }
+    }
+  },
+)
+
 // The Steam editor is the host's dock, so the crown moving away closes it.
 watch(() => session.selfIsHost.value, (isHost) => {
   if (!isHost) {
@@ -352,6 +367,16 @@ function lockPacts(pactIds: string[]): void {
 // host refereeing the squad.
 function failPact(playerId: string, pactId: string): void {
   dispatch({ type: 'FAIL_PACT', playerId, pactId })
+}
+
+// Redemption: a fresh seed commits each run before a code is shown; the
+// reducer replays the submitted run against it.
+function beginRedemption(playerId: string): void {
+  dispatch({ type: 'BEGIN_REDEMPTION', playerId, seed: session.newSeed() })
+}
+
+function submitRedemption(playerId: string, seed: number, transcript: HeroTranscript): void {
+  dispatch({ type: 'SUBMIT_REDEMPTION', playerId, seed, transcript })
 }
 
 // The stats check before the draft: held or broke, once the stats screen is up.
@@ -781,6 +806,8 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
       @report="report"
       @fail-pact="failPact"
       @fail-directive="failDirective"
+      @begin-redemption="beginRedemption"
+      @submit-redemption="submitRedemption"
       @hold-pact="holdPact"
       @hold-directive="holdDirective"
       @pick="pick"
@@ -893,6 +920,8 @@ function launchCrusade(settings: CrusadeSettings, majorOrder: MajorOrderSelectio
             @fail="failPact"
             @fail-directive="failDirective"
             @reporting="reporting = $event"
+            @begin-redemption="beginRedemption"
+            @submit-redemption="submitRedemption"
           />
 
           <Transition

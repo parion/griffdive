@@ -159,7 +159,7 @@ top of the ladder:
 | Standard Issue (`primaryOnly`) | No support weapons, no pickups or swaps (secondaries and every other stratagem stay legal) | 2 → 3 | field |
 | Oops, All Airstrikes (`oopsAllAirstrikes`) | Equip Eagle and orbital ("red") stratagems only (yellow calls like Resupply stay open). On the wheel only when **every** seated diver can field four | 2 → 3 | loadout |
 | Spotless Record (`zeroDeaths`) | Any diver death **fails the directive**, not the mission (the mission plays on) | 3 → 5 | field |
-| Martyrdom (`noReserves`) | No one is reinforced, so a fallen diver stays down (every other stratagem stays legal) | 2 → 4 | field |
+| Martyrdom (`noReserves`) | No one is reinforced: a fallen diver stays down unless they earn Redemption (every other stratagem stays legal) | 2 → 4 | field |
 | Deserted (`noStratagems`) | Stratagems only in the mission's first minute (Reinforce and SEAF resources excepted) | 2 → 4 | field |
 | Fix Bayonets (`meleeOnly`) | Kill with melee only (no guns, grenades or offensive stratagems) | 2 → 4 | field |
 | Peacekeepers (`pacifist`) | No diver scores a kill (stratagem kills count to the caller) | 3 → 5 | stats |
@@ -374,7 +374,7 @@ Starter catalog:
 | Thirsty | I call no resupply and take none from others | 1 → 2 | field |
 | Empty Pockets | I equip no booster | 1 → 1 | loadout |
 | Anti-Tank Abstinent | I carry nothing anti-tank (no stratagem, weapon or grenade) | 1 → 4 | loadout |
-| Dead Weight | If I die I can't be reinforced on my own (I return only when another diver needs reinforcing; squad only) | 2 → 2 | field |
+| Dead Weight | If I die I can't be reinforced on my own (I return when another diver needs reinforcing, or by earning Redemption; squad only) | 2 → 2 | field |
 | Stim Abstinent | I use no stims | 3 → 4 | stats |
 | Loadout Loyalist | I use only my equipped loadout (no pickups or swaps) | 2 → 2 | field |
 | Primary Concern | I bring no support weapon (secondaries and every other stratagem stay legal) | 1 → 3 | loadout |
@@ -521,6 +521,50 @@ drops the directive's contribution, so every diver's Valor and odds preview fall
 forfeits one reward option (`OPTIONS_LOST_PER_FAILED_DIRECTIVE`, floored at one). The
 operation-long strain and a live Major Order are untouched: they carry no rule to break. The mark
 resets with the pacts every mission.
+
+### Redemption — earning a reinforce back
+
+A diver killed under a rule that keeps them down would otherwise sit out the rest of a mission.
+**Redemption** turns that wait into practice: the fallen diver plays a Stratagem Hero–style arcade
+run (`shared/engine/hero.ts`) and, by clearing the target round, earns the right to be reinforced.
+
+- **Who:** `reinforceBlockedFor(state, diver)`, during `diving` only. The blocking rules are listed in
+  config: the accepted directive in `REDEMPTION_DIRECTIVES` (*Martyrdom*, `noReserves`) unless it was
+  marked failed, and the diver's own pacts in `REDEMPTION_PACTS` (*Dead Weight*) unless failed. A
+  broken rule binds nobody, so it offers no Redemption. *Untouchable* and *Spotless Record* never
+  qualify: a death fails them but doesn't block a reinforce, and Redemption restores play, it never
+  forgives a broken rule.
+- **Target:** `redemptionTargetFor` = mission difficulty + `REDEMPTION_ESCALATION` × redemptions this
+  diver already earned this mission, capped at `REDEMPTION_TARGET_MAX`. One bad death is recoverable;
+  a habit isn't (HD2's shrinking reinforce budget, in arcade form).
+- **Free:** a redemption leaves the pact or directive held, Valor and reward options untouched. The
+  price is the skill and the time spent down. Retries are unlimited.
+- **The run:** round *r* deals `min(HERO_BASE_CODES + r − 1, HERO_MAX_CODES)` stratagem codes
+  (6, 7, … 16, as the ship's cabinet does) from the code catalog (`shared/data/stratagemCodes.ts`)
+  against a `HERO_ROUND_MS` countdown; each finished code refills `HERO_ARROW_BONUS_MS` per arrow,
+  never past full. A wrong arrow restarts the current code. The countdown hitting zero ends the run.
+  Rounds are separated by a `HERO_INTERMISSION_MS` pause on the engine clock. No code repeats back
+  to back, and the target round always ends on **Reinforce**. Score (Drill only) is points per
+  arrow + a round bonus + a time-left bonus + a perfect-round bonus.
+- **Seeds and replay:** `BEGIN_REDEMPTION { playerId, seed }` commits the run's seed (logged and kept
+  in `seedHistory`) and opens `redemption.run = { seed, target, tries }`, replacing any open run.
+  `SUBMIT_REDEMPTION { playerId, seed, transcript }` carries the arrows pressed and the integer ms
+  between presses; the reducer replays it (`heroReplay`) through the same rules the client played and
+  counts it only if it **clears the committed target**: `earned + 1`, run closed. The logged action
+  drops the transcript (the seed already fixes the run, and the log rides every save). Time advances
+  split-invariantly and before each press lands, so the screen and the replay agree to the
+  millisecond. Like `REPORT_RESULT`, a run is honor-system (`HERO_MAX_INPUTS`, `HERO_MAX_GAP_MS` and
+  the `HERO_MIN_MEDIAN_GAP_MS` floor stop trivial fakes only), but every claim is replayable.
+- **Who may send:** the fallen diver, or the host on their behalf (a diver without a device plays on
+  the host's screen) — the `FAIL_PACT` referee rule.
+- **Field play:** a squad wipe under Martyrdom is still a failure by the extraction rule; the first
+  diver to redeem takes the game's wipe reinforce, so a wipe becomes a last stand. Solo Martyrdom is
+  survivable: redeem, then accept the auto-reinforce. A *Dead Weight* diver still returns free on a
+  squadmate's reinforce. `REPORT_RESULT` is never blocked by an open run; the state resets with the
+  pacts every mission, and an unfinished run is simply dropped. A deploy that changes the code pool
+  or the `HERO_*` tunables changes how a seed derives, so a run straddling it fails to verify and the
+  diver retries.
+- **Drill:** the same arcade, endless, outside any dive (`/drill`), with local personal bests.
 
 ### Reward math
 
@@ -1034,7 +1078,9 @@ session link is the identity. Crusade state includes: settings, difficulty, miss
 `tierList` (optional and additive: an absent field is the default list, so it needed no schema bump
 or room normalization), inventories, per-diver warbond declarations,
 `completedCombos` (misfortune × front × strain), the operation's drawn-directive history, the
-optional additive `debtSettled` achievement marker (absent means false), reroll tokens, action log
+optional additive `debtSettled` achievement marker (absent means false), the optional additive
+per-diver `redemption` (absent means none earned and no run open; reset to absent every mission, and
+a forked room keeps only the clamped `earned` count, never an open run), reroll tokens, action log
 (capped), RNG seed
 history, legacy caches (earned gear) parked by departed divers, per-diver catch-up bookkeeping, credit
 purses and the mission's Brasch's Bargains seed and per-diver deals (the crusade's Armor Pack

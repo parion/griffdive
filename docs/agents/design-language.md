@@ -368,6 +368,33 @@ sizes the Kit starts closed and remains available from the rail. It closes again
 (or the report form opens) unless the diver picked a panel of their own meanwhile. On a phone the
 panel never opens by itself.
 
+#### Redemption and Drill — the stratagem arcade
+
+A diver held down by *Martyrdom* or *Dead Weight* sees a gold **Redemption** card (`RedemptionCard`)
+under the directive on the field screen, desktop and phone alike: "Down? Clear round N to earn your
+reinforce", with the redemptions already earned. **I'm down** opens `RedemptionDialog`
+(`AppDialog`, modal on desktop, a full-screen takeover on phones): a briefing (the binding rule, the
+target round, earned and tries), then the cabinet, then a verdict — **Redemption earned** slams in
+gold, a miss reads "Round 6 of 9" in red with **Again**, and a run the reducer would not verify reads
+"Run not verified". The squad's roster lamp pulses gold and reads "Redeeming · R9" while a run is
+open; every squadmate gets a "Reinforce authorized: call X in" toast when one is earned.
+
+The cabinet is `app/components/stratagem-hero/` (shared with `/drill`): `StratagemHeroBoard` shows
+round / target, codes left and score; the current stratagem large with a gold outline and the next
+four dimmed; its name on a gold strip; the arrow row (entered arrows light gold, a wrong arrow
+glitches the row with a red edge — a colour flash alone under reduced motion); and the timer bar,
+gold until under 30%, then red. A round clear slams in its bonus breakdown. Mission stratagems have
+no catalog art, so `StratagemHeroIcon` draws them as a yellow call tile with initials.
+`StratagemHeroPad` is the touch d-pad: a 3×3 cross of at least 64px cells firing on `pointerdown`
+(`touch-action: none`), hidden on fine-pointer devices where the keyboard types. Input is arrows or
+WASD, and a controller's d-pad through the Gamepad API (`useStratagemHero` polls it on the same
+animation frame as the timer). The board exposes `data-code`, `data-round` and `data-status`, and
+reads the current code to screen readers through a polite live region; Drill's untimed mode is the
+WCAG-friendly practice path (the Redemption gate itself is essential timing). `/drill` sits in the
+top nav beside the Tier Maker, with a pool filter (All / Supply / Eagle / Orbital / Defense /
+Mission), an untimed switch and the device's personal best for that pool. On phones the nav stacks
+each icon over its label so four links fit beside the brand.
+
 #### Report — `MissionReport`
 
 The report window is a two-column lit form on desktop and one column on phones: mission stars,

@@ -875,6 +875,16 @@ export async function processAction(
       sendError(peer, 'bad-action', 'Only the diver or the host can settle a pact')
       return
     }
+    // Redemption runs the same way: the fallen diver's own, or the host's
+    // screen when the diver has no device to hand.
+    if (
+      (action.type === 'BEGIN_REDEMPTION' || action.type === 'SUBMIT_REDEMPTION')
+      && action.playerId !== playerId
+      && room.state.hostId !== playerId
+    ) {
+      sendError(peer, 'bad-action', 'Only the diver or the host can run Redemption')
+      return
+    }
 
     const enforced = enforceSelf(action, playerId)
     if (enforced.type === 'FORFEIT_ITEM') {

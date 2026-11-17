@@ -37,6 +37,16 @@
   in `public/images/svgs/` (directory name historical); the importer rewrites upstream's `.svg`
   `imageURL`s to `.webp`. Asset
   licensing: respect upstream terms; hot-link or bundle only what the licenses allow.
+- **Stratagem codes:** the generated catalog carries no input codes, so they live hand-maintained in
+  `shared/data/stratagemCodes.ts`: `STRATAGEM_CODES` keyed by catalog id (U/D/L/R strings), plus
+  `MISSION_STRATAGEMS` (Reinforce, Resupply, SOS Beacon, Eagle Rearm, Hellbomb, SEAF Artillery and
+  the objective calls) that are code-only and never loot. `HERO_POOL` is their union sorted by id;
+  that fixed order is what makes an arcade seed derive the same rounds everywhere, so adding or
+  changing a code moves the `hero-rounds` golden. Source: the
+  [helldivers.wiki.gg stratagem tables](https://helldivers.wiki.gg/wiki/Stratagems), cross-checked
+  against [drizzer14/stratagem-hero](https://github.com/drizzer14/stratagem-hero) (MIT).
+  `stratagemCodes.spec.ts` fails the build when a catalog stratagem lacks a code — **a warbond
+  refresh must add its codes in the same commit**.
 - **Versioning:** `CATALOG_VERSION` bumped whenever items/warbonds change (Helldivers 2 patches add
   warbonds); it restarted at 1 with the beta clean slate. Saves record catalog + engine versions as
   diagnostics; the save-schema version drives migrations (see Save model). From beta the schema is

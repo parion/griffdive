@@ -6,7 +6,7 @@ import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
 } from 'reka-ui'
-import { actingDiverIds } from '~~/shared/engine/selectors'
+import { actingDiverIds, redemptionOf } from '~~/shared/engine/selectors'
 import type { BonusStat } from '~~/shared/engine/config'
 import type { DiveState, DiverState } from '~~/shared/engine/types'
 import type { SteamLobbyInfo } from '~~/shared/types/messages'
@@ -67,7 +67,11 @@ function statusOf(diver: DiverState): string {
     case 'strain':
     case 'deal': return diver.id === host.value ? 'Host · calling' : 'Listening'
     case 'pacts': return diver.pactsLocked ? 'Sworn ✓' : 'Swearing'
-    case 'diving': return 'In game'
+    case 'diving': {
+      const redemption = redemptionOf(diver)
+      if (redemption.run) return `Redeeming · R${redemption.run.target}`
+      return redemption.earned ? `In game · Redeemed ×${redemption.earned}` : 'In game'
+    }
     case 'rewards':
       if (diver.rewardBanned) return 'Banned'
       if (diver.pickedOptionId) return 'Banked ✓'
@@ -82,6 +86,7 @@ function statusOf(diver: DiverState): string {
 
 function lampClass(diver: DiverState): string {
   if (diver.away) return 'dim'
+  if (props.state.phase === 'diving' && redemptionOf(diver).run) return 'gold pulse'
   return acting.value.has(diver.id) ? 'gold pulse' : 'teal'
 }
 

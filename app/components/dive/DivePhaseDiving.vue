@@ -9,6 +9,7 @@ import {
   pactRiskOf,
   teamRiskOf,
 } from '~~/shared/engine/selectors'
+import type { HeroTranscript } from '~~/shared/engine/hero'
 import type { DiverState, DiveState, MissionReport } from '~~/shared/engine/types'
 
 const props = defineProps<{
@@ -24,6 +25,8 @@ const emit = defineEmits<{
   fail: [playerId: string, pactId: string]
   failDirective: []
   reporting: [open: boolean]
+  beginRedemption: [playerId: string]
+  submitRedemption: [playerId: string, seed: number, transcript: HeroTranscript]
 }>()
 
 const misfortune = computed(() => activeMisfortune(props.state))
@@ -147,6 +150,13 @@ watch(reportMode, mode => emit('reporting', mode !== 'none'), { immediate: true 
           <span>strain · whole operation</span>
         </div>
       </div>
+
+      <RedemptionCard
+        :state="state"
+        :self="self"
+        @begin="playerId => emit('beginRedemption', playerId)"
+        @submit="(playerId, seed, transcript) => emit('submitRedemption', playerId, seed, transcript)"
+      />
 
       <PactLedger
         class="sworn"

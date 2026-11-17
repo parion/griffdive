@@ -28,6 +28,15 @@ Griffdive stands on the work of the Helldivers community. Thank you.
   URLs by `shared/data/images.ts`. The stratagem art has since been replaced with an updated set of
   `.webp` renders (the directory name is historical); the sample icons remain SVG.
 
+## Stratagem input codes + the arcade
+
+- Codes: the stratagem tables on [helldivers.wiki.gg](https://helldivers.wiki.gg/wiki/Stratagems),
+  cross-checked against [drizzer14/stratagem-hero](https://github.com/drizzer14/stratagem-hero)
+  (MIT). Hand-maintained in `shared/data/stratagemCodes.ts`.
+- The Redemption / Drill arcade is modelled on Stratagem Hero, the arcade cabinet aboard the Super
+  Destroyer in Helldivers 2 (Arrowhead Game Studios); drizzer14's web version showed how well it
+  plays in a browser. Griffdive's arcade is its own code.
+
 ## Equipment images
 
 - [helldivers.wiki.gg](https://helldivers.wiki.gg/wiki/Helldivers_2).

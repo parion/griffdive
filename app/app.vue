@@ -121,6 +121,19 @@ const inMaker = computed(() => standalone || route.name === 'tiers')
               aria-hidden="true"
             >Tiers</span>
           </NuxtLink>
+          <NuxtLink
+            v-if="!standalone && !inMaker"
+            class="icon-btn navb"
+            to="/drill"
+            aria-label="Drill"
+          >
+            <IconDpad class="nav-icon" />
+            <span class="wide-label">Drill</span>
+            <span
+              class="phone-label"
+              aria-hidden="true"
+            >Drill</span>
+          </NuxtLink>
           <a
             class="icon-btn navb"
             href="https://ko-fi.com/griffdive"
@@ -241,18 +254,19 @@ const inMaker = computed(() => standalone || route.name === 'tiers')
   .release-chip { display: none; }
   .uplink { display: none; }
   /* Labels stay on phones — playtesters never found Codex/Warbonds behind bare
-     icons. Icon and label sit side by side to fit beside the brand. */
+     icons. Icon stacks over label so four links fit beside the brand. */
   /* The Tier Maker keeps one way out on a phone: to the game. */
   .ship-nav.maker .navb:not(.play-link) { display: none; }
   .wide-label { display: none; }
   .phone-label { display: inline; }
   .navb {
-    flex-direction: row;
-    gap: 6px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
     height: 44px;
     padding: 0 6px;
-    font-size: 10px;
-    letter-spacing: 0.12em;
+    font-size: 9px;
+    letter-spacing: 0.1em;
   }
   .nav-icon { width: 18px; height: 18px; }
 }

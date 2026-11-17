@@ -194,6 +194,16 @@ Each phase lands shippable. Update the relevant `docs/agents/` files (commands, 
   shop. **E4** heat ladders/bounties is spec'd (N51) and gated on ≥30 achieved crusades in a 14-day
   window plus ≥10% of launches reaching difficulty 8+; if that misses, fix the mid-climb and do not
   build N51 or endless yet. See [PLAN.md](../../PLAN.md) → Batch E.
+- **Redemption + Drill (landed 2026-11-16).** Death under a no-reinforce rule (*Martyrdom*, *Dead
+  Weight*) no longer benches a diver for the mission: a Stratagem Hero–style run to the difficulty
+  round earns the reinforce back, free, unlimited retries, +1 round per redemption earned. The
+  same arcade ships as `/drill` (endless, local bests). Codes for every catalog stratagem are
+  hand-maintained with a coverage spec. Follow-ups: Redemption clear-rate telemetry by difficulty
+  band (aggregate only) to tune *Martyrdom*'s risk slope; show codes on Kit/Armory cards; a
+  "my loadout" Drill pool; an ephemeral spectator ping ("R4/9"); a "fastest redemption" honors
+  stat; synthesized arcade sound behind a mute toggle; Nvigneux art for the mission stratagems
+  (initial tiles today); let the host open a run for a diver from the roster (the server already
+  allows it).
 - **Phase 5 — Post-v1 backlog.** Specialists (PC parity), heat
   ladders/bounties (N51; spec'd and gated), endless mode, accounts + cloud saves, i18n, and a
   hosted tier-list marketplace (publish, browse and rank community lists) as a feature of the

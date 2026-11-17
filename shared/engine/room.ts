@@ -9,6 +9,7 @@ import {
   MAX_DIFFICULTY,
   MAX_NAME_LENGTH,
   MIN_DIFFICULTY,
+  REDEMPTION_TARGET_MAX,
   REROLL_TOKENS_PER_OPERATION,
   REWARD_TOKEN_CAP,
   SQUAD_SIZE_MAX,
@@ -228,6 +229,11 @@ function sanitizeDiver(raw: unknown): DiverState | null {
     rewardBanned: diver.rewardBanned === true,
     draftExcludedIds: Array.isArray(diver.draftExcludedIds) ? stringArray(diver.draftExcludedIds, 2000) : null,
     away: false,
+    // A forked room never inherits an open run: its seed was committed in
+    // another room.
+    ...(diver.redemption && typeof diver.redemption === 'object'
+      ? { redemption: { earned: clampInt(diver.redemption.earned, 0, REDEMPTION_TARGET_MAX, 0), run: null } }
+      : {}),
   }
 }
 
@@ -417,6 +423,7 @@ function resolveStrandedForfeit(state: DiveState): DiveState {
       rewardRerollSeed: null,
       rewardBanned: false,
       draftExcludedIds: null,
+      redemption: undefined,
     })),
     legacyCaches,
   }
